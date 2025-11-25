@@ -4,6 +4,7 @@ import {
 	Delete,
 	Get,
 	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -11,7 +12,17 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
@@ -20,6 +31,7 @@ import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity'
 import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
 
+@ApiTags('devices-module')
 @Controller('channels/:channelId/controls')
 export class ChannelsControlsController {
 	private readonly logger = new Logger(ChannelsControlsController.name);
@@ -30,6 +42,12 @@ export class ChannelsControlsController {
 	) {}
 
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all controls for a channel' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiSuccessArrayResponse(ChannelControlEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Channel not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 	): Promise<ChannelControlEntity[]> {
@@ -45,6 +63,13 @@ export class ChannelsControlsController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Retrieve a specific control for a channel' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
+	@ApiSuccessResponse(ChannelControlEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Channel or control not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOneControl(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -61,6 +86,14 @@ export class ChannelsControlsController {
 	}
 
 	@Post()
+	@ApiOperation({ summary: 'Create a new control for a channel' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiBody({ type: ReqCreateChannelControlDto })
+	@ApiCreatedSuccessResponse(ChannelControlEntity)
+	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
+	@ApiNotFoundResponse('Channel not found')
+	@ApiUnprocessableEntityResponse('Channel control could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:channel/controls/:id`)
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
@@ -104,6 +137,14 @@ export class ChannelsControlsController {
 	}
 
 	@Delete(':id')
+	@HttpCode(204)
+	@ApiOperation({ summary: 'Delete a control for a channel' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
+	@ApiNoContentResponse({ description: 'Control deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Channel or control not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async remove(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

@@ -7,6 +7,7 @@ import {
 	Delete,
 	Get,
 	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -16,7 +17,17 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -35,6 +46,7 @@ import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
 import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
+@ApiTags('devices-module')
 @Controller('devices/:deviceId/channels/:channelId/properties')
 export class DevicesChannelsPropertiesController {
 	private readonly logger = new Logger(DevicesChannelsPropertiesController.name);
@@ -48,6 +60,13 @@ export class DevicesChannelsPropertiesController {
 	) {}
 
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all properties for a device channel' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiSuccessArrayResponse(ChannelPropertyEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device or channel not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
@@ -67,6 +86,14 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Retrieve a specific property for a device channel' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
+	@ApiSuccessResponse(ChannelPropertyEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device, channel, or property not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
@@ -85,6 +112,17 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@Get(':id/timeseries')
+	@ApiOperation({ summary: 'Retrieve timeseries data for a device channel property' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
+	@ApiQuery({ name: 'from', type: 'string', required: false, description: 'Start date (ISO 8601 format)' })
+	@ApiQuery({ name: 'to', type: 'string', required: false, description: 'End date (ISO 8601 format)' })
+	@ApiQuery({ name: 'bucket', type: 'string', required: false, description: 'Time bucket for aggregation' })
+	@ApiSuccessResponse(PropertyTimeseriesModel)
+	@ApiBadRequestResponse('Invalid UUID format or invalid date format')
+	@ApiNotFoundResponse('Device, channel, or property not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async getTimeseries(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
@@ -121,6 +159,15 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@Post()
+	@ApiOperation({ summary: 'Create a new property for a device channel' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiBody({ type: CreateChannelPropertyDto })
+	@ApiCreatedSuccessResponse(ChannelPropertyEntity)
+	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported property type')
+	@ApiNotFoundResponse('Device or channel not found')
+	@ApiUnprocessableEntityResponse('Channel property could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/channels/:channel/properties/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
@@ -206,6 +253,16 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({ summary: 'Update a property for a device channel' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
+	@ApiBody({ type: UpdateChannelPropertyDto })
+	@ApiSuccessResponse(ChannelPropertyEntity)
+	@ApiBadRequestResponse('Invalid UUID format or unsupported property type')
+	@ApiNotFoundResponse('Device, channel, or property not found')
+	@ApiUnprocessableEntityResponse('Channel property could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async update(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
@@ -284,6 +341,15 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@Delete(':id')
+	@HttpCode(204)
+	@ApiOperation({ summary: 'Delete a property for a device channel' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
+	@ApiNoContentResponse({ description: 'Property deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device, channel, or property not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async remove(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,

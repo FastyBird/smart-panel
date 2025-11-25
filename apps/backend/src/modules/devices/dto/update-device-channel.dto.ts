@@ -1,12 +1,16 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 
 type ReqUpdateDeviceChannel = components['schemas']['DevicesModuleReqUpdateChannel'];
 type UpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
 
+@ApiSchema('DevicesModuleUpdateChannel')
 export class UpdateDeviceChannelDto implements UpdateChannel {
+	@ApiProperty({ description: 'Channel type', type: 'string', example: 'generic' })
 	@Expose()
 	@IsNotEmpty({
 		message: '[{"field":"type","reason":"Type must be a valid string representing a supported channel type."}]',
@@ -16,6 +20,12 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 	})
 	type: string;
 
+	@ApiPropertyOptional({
+		description: 'Channel identifier',
+		type: 'string',
+		nullable: true,
+		example: 'main',
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({
@@ -29,12 +39,19 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 	@ValidateIf((_, value) => value !== null)
 	identifier?: string | null;
 
+	@ApiPropertyOptional({ description: 'Channel name', type: 'string', example: 'Main Channel' })
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	name?: string;
 
+	@ApiPropertyOptional({
+		description: 'Channel description',
+		type: 'string',
+		nullable: true,
+		example: 'Main device channel',
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
@@ -42,13 +59,16 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 	@ValidateIf((_, value) => value !== null)
 	description?: string | null;
 
+	@ApiPropertyOptional({ description: 'Channel enabled status', type: 'boolean', example: true })
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
 }
 
+@ApiSchema('DevicesModuleReqUpdateChannel')
 export class ReqUpdateDeviceChannelDto implements ReqUpdateDeviceChannel {
+	@ApiProperty({ description: 'Device channel data', type: UpdateDeviceChannelDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdateDeviceChannelDto)

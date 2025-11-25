@@ -7,6 +7,7 @@ import {
 	Delete,
 	Get,
 	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -15,7 +16,17 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -27,6 +38,7 @@ import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/chann
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
 
+@ApiTags('devices-module')
 @Controller('devices/:deviceId/channels')
 export class DevicesChannelsController {
 	private readonly logger = new Logger(DevicesChannelsController.name);
@@ -38,6 +50,12 @@ export class DevicesChannelsController {
 	) {}
 
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all channels for a device' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiSuccessArrayResponse(ChannelEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string): Promise<ChannelEntity[]> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all channels for deviceId=${deviceId}`);
 
@@ -51,6 +69,13 @@ export class DevicesChannelsController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Retrieve a specific channel for a device' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiSuccessResponse(ChannelEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device or channel not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -67,6 +92,14 @@ export class DevicesChannelsController {
 	}
 
 	@Post()
+	@ApiOperation({ summary: 'Create a new channel for a device' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiBody({ type: CreateChannelDto })
+	@ApiCreatedSuccessResponse(ChannelEntity)
+	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported channel type')
+	@ApiNotFoundResponse('Device not found')
+	@ApiUnprocessableEntityResponse('Channel could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/channels/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
@@ -139,6 +172,15 @@ export class DevicesChannelsController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({ summary: 'Update a channel for a device' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiBody({ type: UpdateChannelDto })
+	@ApiSuccessResponse(ChannelEntity)
+	@ApiBadRequestResponse('Invalid UUID format or unsupported channel type')
+	@ApiNotFoundResponse('Device or channel not found')
+	@ApiUnprocessableEntityResponse('Channel could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async update(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -207,6 +249,14 @@ export class DevicesChannelsController {
 	}
 
 	@Delete(':id')
+	@HttpCode(204)
+	@ApiOperation({ summary: 'Delete a channel for a device' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Channel deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device or channel not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async remove(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

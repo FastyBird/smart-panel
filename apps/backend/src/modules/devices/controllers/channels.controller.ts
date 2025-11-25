@@ -7,6 +7,7 @@ import {
 	Delete,
 	Get,
 	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -15,7 +16,17 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -26,6 +37,7 @@ import { ChannelEntity } from '../entities/devices.entity';
 import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
 import { ChannelsService } from '../services/channels.service';
 
+@ApiTags('devices-module')
 @Controller('channels')
 export class ChannelsController {
 	private readonly logger = new Logger(ChannelsController.name);
@@ -37,6 +49,9 @@ export class ChannelsController {
 
 	// Channels
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all channels' })
+	@ApiSuccessArrayResponse(ChannelEntity)
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(): Promise<ChannelEntity[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all channels');
 
@@ -48,6 +63,12 @@ export class ChannelsController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Retrieve a specific channel by ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiSuccessResponse(ChannelEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Channel not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<ChannelEntity> {
 		this.logger.debug(`[LOOKUP] Fetching channel id=${id}`);
 
@@ -59,6 +80,12 @@ export class ChannelsController {
 	}
 
 	@Post()
+	@ApiOperation({ summary: 'Create a new channel' })
+	@ApiBody({ type: CreateChannelDto })
+	@ApiCreatedSuccessResponse(ChannelEntity)
+	@ApiBadRequestResponse('Invalid request data or unsupported channel type')
+	@ApiUnprocessableEntityResponse('Channel could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:id`)
 	async create(@Body() createDto: { data: object }): Promise<ChannelEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new channel');
@@ -120,6 +147,14 @@ export class ChannelsController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({ summary: 'Update a channel' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiBody({ type: UpdateChannelDto })
+	@ApiSuccessResponse(ChannelEntity)
+	@ApiBadRequestResponse('Invalid UUID format or unsupported channel type')
+	@ApiNotFoundResponse('Channel not found')
+	@ApiUnprocessableEntityResponse('Channel could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
@@ -183,6 +218,13 @@ export class ChannelsController {
 	}
 
 	@Delete(':id')
+	@HttpCode(204)
+	@ApiOperation({ summary: 'Delete a channel' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Channel deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Channel not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete channel id=${id}`);
 

@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsDateString,
 	IsIn,
@@ -7,6 +8,8 @@ import {
 	ValidatorConstraint,
 	ValidatorConstraintInterface,
 } from 'class-validator';
+
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 
 /**
  * Custom validator to ensure:
@@ -41,17 +44,35 @@ export class TimeRangeValidator implements ValidatorConstraintInterface {
 	}
 }
 
+@ApiSchema('DevicesModuleQueryPropertyTimeseries')
 export class QueryPropertyTimeseriesDto {
+	@ApiPropertyOptional({
+		description: 'Start date for timeseries query',
+		type: 'string',
+		format: 'date-time',
+		example: '2024-01-01T00:00:00Z',
+	})
 	@IsOptional()
 	@IsDateString()
 	@Validate(TimeRangeValidator)
 	from?: string;
 
+	@ApiPropertyOptional({
+		description: 'End date for timeseries query',
+		type: 'string',
+		format: 'date-time',
+		example: '2024-01-31T23:59:59Z',
+	})
 	@IsOptional()
 	@IsDateString()
 	@Validate(TimeRangeValidator)
 	to?: string;
 
+	@ApiPropertyOptional({
+		description: 'Time bucket aggregation interval',
+		enum: ['1m', '5m', '15m', '1h'],
+		example: '1h',
+	})
 	@IsOptional()
 	@IsIn(['1m', '5m', '15m', '1h'])
 	bucket?: '1m' | '5m' | '15m' | '1h';

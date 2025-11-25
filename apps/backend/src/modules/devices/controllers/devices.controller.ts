@@ -7,6 +7,7 @@ import {
 	Delete,
 	Get,
 	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -15,7 +16,17 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -26,6 +37,7 @@ import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
+@ApiTags('devices-module')
 @Controller('devices')
 export class DevicesController {
 	private readonly logger = new Logger(DevicesController.name);
@@ -36,6 +48,9 @@ export class DevicesController {
 	) {}
 
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all devices' })
+	@ApiSuccessArrayResponse(DeviceEntity)
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(): Promise<DeviceEntity[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all devices');
 
@@ -47,6 +62,12 @@ export class DevicesController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Retrieve a specific device by ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiSuccessResponse(DeviceEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DeviceEntity> {
 		this.logger.debug(`[LOOKUP] Fetching device id=${id}`);
 
@@ -58,6 +79,12 @@ export class DevicesController {
 	}
 
 	@Post()
+	@ApiOperation({ summary: 'Create a new device' })
+	@ApiBody({ type: CreateDeviceDto })
+	@ApiCreatedSuccessResponse(DeviceEntity)
+	@ApiBadRequestResponse('Invalid request data or unsupported device type')
+	@ApiUnprocessableEntityResponse('Device could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:id`)
 	async create(@Body() createDto: { data: object }): Promise<DeviceEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new device');
@@ -119,6 +146,14 @@ export class DevicesController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({ summary: 'Update a device' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiBody({ type: UpdateDeviceDto })
+	@ApiSuccessResponse(DeviceEntity)
+	@ApiBadRequestResponse('Invalid UUID format or unsupported device type')
+	@ApiNotFoundResponse('Device not found')
+	@ApiUnprocessableEntityResponse('Device could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
@@ -182,6 +217,13 @@ export class DevicesController {
 	}
 
 	@Delete(':id')
+	@HttpCode(204)
+	@ApiOperation({ summary: 'Delete a device' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiNoContentResponse({ description: 'Device deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete device id=${id}`);
 
