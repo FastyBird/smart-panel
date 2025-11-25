@@ -1,10 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsString } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('DevicesHomeAssistantPluginServiceRequest')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginServiceRequest' })
 export class ServiceRequestDto {
 	@Expose()
 	@IsString()

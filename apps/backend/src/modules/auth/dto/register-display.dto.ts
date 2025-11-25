@@ -1,15 +1,13 @@
 import { Expose, Type } from 'class-transformer';
 import { IsMACAddress, IsNotEmpty, IsString, IsUUID, Matches, ValidateNested } from 'class-validator';
 
-import { ApiProperty } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 
 type ReqRegister = components['schemas']['AuthModuleReqRegisterDisplay'];
 type Register = components['schemas']['AuthModuleRegisterDisplay'];
 
-@ApiSchema('AuthModuleRegisterDisplay')
+@ApiSchema({ name: 'AuthModuleRegisterDisplay' })
 export class RegisterDisplayDto implements Register {
 	@ApiProperty({
 		description: 'Unique identifier for the display device (e.g., UUID).',
@@ -60,7 +58,7 @@ export class RegisterDisplayDto implements Register {
 	build: string;
 }
 
-@ApiSchema('AuthModuleReqRegisterDisplay')
+@ApiSchema({ name: 'AuthModuleReqRegisterDisplay' })
 export class ReqRegisterDisplayDto implements ReqRegister {
 	@ApiProperty({
 		description: 'Display registration data',

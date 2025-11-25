@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
@@ -12,12 +12,11 @@ import {
 } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 
 type ReqUpdateDeviceChannelProperty = components['schemas']['DevicesModuleReqUpdateChannelProperty'];
 type UpdateChannelProperty = components['schemas']['DevicesModuleUpdateChannelProperty'];
 
-@ApiSchema('DevicesModuleUpdateChannelProperty')
+@ApiSchema({ name: 'DevicesModuleUpdateChannelProperty' })
 export class UpdateDeviceChannelPropertyDto implements UpdateChannelProperty {
 	@ApiProperty({ description: 'Property type', type: 'string', example: 'dynamic' })
 	@Expose()
@@ -137,7 +136,7 @@ export class UpdateDeviceChannelPropertyDto implements UpdateChannelProperty {
 	value?: string | number | boolean | null;
 }
 
-@ApiSchema('DevicesModuleReqUpdateChannelProperty')
+@ApiSchema({ name: 'DevicesModuleReqUpdateChannelProperty' })
 export class ReqUpdateDeviceChannelPropertyDto implements ReqUpdateDeviceChannelProperty {
 	@ApiProperty({ description: 'Channel property data', type: UpdateDeviceChannelPropertyDto })
 	@Expose()

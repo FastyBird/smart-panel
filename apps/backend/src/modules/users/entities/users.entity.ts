@@ -2,15 +2,13 @@ import { Expose, Transform } from 'class-transformer';
 import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, IsUUID, Validate, ValidateIf } from 'class-validator';
 import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
 
-import { ApiProperty } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { DisplayProfileEntity } from '../../system/entities/system.entity';
 import { UserRole } from '../users.constants';
 
-@ApiSchema('AuthModuleUser')
+@ApiSchema({ name: 'AuthModuleUser' })
 @Entity('users_module_users')
 export class UserEntity extends BaseEntity {
 	@ApiProperty({
@@ -102,7 +100,7 @@ export class UserEntity extends BaseEntity {
 	role: UserRole;
 }
 
-@ApiSchema('AuthModuleDisplayInstance')
+@ApiSchema({ name: 'AuthModuleDisplayInstance' })
 @Entity('users_module_displays_instances')
 export class DisplayInstanceEntity extends BaseEntity {
 	@ApiProperty({

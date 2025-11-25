@@ -11,10 +11,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { DeviceCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
 
@@ -23,7 +22,7 @@ import { CreateDeviceControlDto } from './create-device-control.dto';
 
 type CreateDeviceBase = components['schemas']['DevicesModuleCreateDevice'];
 
-@ApiSchema('DevicesModuleCreateDevice')
+@ApiSchema({ name: 'DevicesModuleCreateDevice' })
 export class CreateDeviceDto implements CreateDeviceBase {
 	@ApiPropertyOptional({
 		description: 'Device ID',

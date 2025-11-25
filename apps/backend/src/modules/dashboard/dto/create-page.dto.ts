@@ -11,10 +11,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
 import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
 
@@ -23,7 +22,7 @@ import { CreateDataSourceDto } from './create-data-source.dto';
 type ReqCreatePage = components['schemas']['DashboardModuleReqCreatePage'];
 type CreatePage = components['schemas']['DashboardModuleCreatePage'];
 
-@ApiSchema('DashboardModuleCreatePage')
+@ApiSchema({ name: 'DashboardModuleCreatePage' })
 export class CreatePageDto implements CreatePage {
 	@ApiPropertyOptional({
 		description: 'Page ID',
@@ -102,7 +101,7 @@ export class CreatePageDto implements CreatePage {
 	display?: string;
 }
 
-@ApiSchema('DashboardModuleReqCreatePage')
+@ApiSchema({ name: 'DashboardModuleReqCreatePage' })
 export class ReqCreatePageDto implements ReqCreatePage {
 	@ApiProperty({ description: 'Page data', type: () => CreatePageDto })
 	@Expose()

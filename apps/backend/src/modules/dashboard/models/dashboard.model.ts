@@ -1,11 +1,9 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsDate, IsNumber, ValidateNested } from 'class-validator';
 
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('DashboardModuleRegisteredPages')
+@ApiSchema({ name: 'DashboardModuleRegisteredPages' })
 export class RegisteredPagesModel {
 	@ApiProperty({ description: 'Number of registered pages', type: 'number', example: 5 })
 	@Expose()
@@ -34,7 +32,7 @@ export class RegisteredPagesModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DashboardModuleRegisteredTiles')
+@ApiSchema({ name: 'DashboardModuleRegisteredTiles' })
 export class RegisteredTilesModel {
 	@ApiProperty({ description: 'Number of registered tiles', type: 'number', example: 12 })
 	@Expose()
@@ -63,7 +61,7 @@ export class RegisteredTilesModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DashboardModuleRegisteredDataSources')
+@ApiSchema({ name: 'DashboardModuleRegisteredDataSources' })
 export class RegisteredDataSourcesModel {
 	@ApiProperty({ description: 'Number of registered data sources', type: 'number', example: 8 })
 	@Expose()
@@ -92,7 +90,7 @@ export class RegisteredDataSourcesModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DashboardModuleStats')
+@ApiSchema({ name: 'DashboardModuleStats' })
 export class ModuleStatsModel {
 	@ApiProperty({
 		name: 'registered_pages',

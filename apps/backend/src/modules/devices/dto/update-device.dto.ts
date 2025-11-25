@@ -1,14 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { DeviceCategory } from '../devices.constants';
 
 type UpdateDeviceBase = components['schemas']['DevicesModuleUpdateDevice'];
 
-@ApiSchema('DevicesModuleUpdateDevice')
+@ApiSchema({ name: 'DevicesModuleUpdateDevice' })
 export class UpdateDeviceDto implements UpdateDeviceBase {
 	@ApiProperty({ description: 'Device type', type: 'string', example: 'generic' })
 	@Expose()

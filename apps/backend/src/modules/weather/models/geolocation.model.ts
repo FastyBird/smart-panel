@@ -1,10 +1,8 @@
 import { Expose, Type } from 'class-transformer';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('WeatherModuleGeolocationCity')
+@ApiSchema({ name: 'WeatherModuleGeolocationCity' })
 export class GeolocationCityModel {
 	@ApiProperty({ description: 'City name', type: 'string', example: 'London' })
 	@Expose()
@@ -36,7 +34,7 @@ export class GeolocationCityModel {
 	state?: string;
 }
 
-@ApiSchema('WeatherModuleGeolocationZip')
+@ApiSchema({ name: 'WeatherModuleGeolocationZip' })
 export class GeolocationZipModel {
 	@ApiProperty({ description: 'Zip/postal code', type: 'string', example: 'SW1A 1AA' })
 	@Expose()

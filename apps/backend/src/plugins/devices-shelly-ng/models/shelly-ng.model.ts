@@ -1,11 +1,10 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 
-@ApiSchema('DevicesShellyNgPluginShellyNgSupportedDeviceComponent')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgSupportedDeviceComponent' })
 export class ShellyNgSupportedDeviceComponentModel {
 	@ApiProperty({
 		description: 'Component type',
@@ -26,7 +25,7 @@ export class ShellyNgSupportedDeviceComponentModel {
 	ids: number[];
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgSupportedDeviceSystemComponent')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgSupportedDeviceSystemComponent' })
 export class ShellyNgSupportedDeviceSystemComponentModel {
 	@ApiProperty({
 		description: 'System component type',
@@ -37,7 +36,7 @@ export class ShellyNgSupportedDeviceSystemComponentModel {
 	type: string;
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgSupportedDevice')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgSupportedDevice' })
 export class ShellyNgSupportedDeviceModel {
 	@ApiProperty({
 		description: 'Device group',
@@ -99,7 +98,7 @@ export class ShellyNgSupportedDeviceModel {
 	system: ShellyNgSupportedDeviceSystemComponentModel[];
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgDeviceInfoComponent')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgDeviceInfoComponent' })
 export class ShellyNgDeviceInfoComponentModel {
 	@ApiProperty({
 		description: 'Component type',
@@ -120,7 +119,7 @@ export class ShellyNgDeviceInfoComponentModel {
 	ids: number[];
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgDeviceInfoAuthentication')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgDeviceInfoAuthentication' })
 export class ShellyNgDeviceInfoAuthenticationModel {
 	@ApiPropertyOptional({
 		description: 'Authentication domain',
@@ -142,7 +141,7 @@ export class ShellyNgDeviceInfoAuthenticationModel {
 	enabled: boolean = false;
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgDeviceInfo')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgDeviceInfo' })
 export class ShellyNgDeviceInfoModel {
 	@ApiProperty({
 		description: 'Device identifier',

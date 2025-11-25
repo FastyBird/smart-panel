@@ -1,10 +1,9 @@
 import { Expose, Type } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 
 import { ParentDto } from './common.dto';
 
@@ -12,7 +11,7 @@ type ReqCreateDataSource = components['schemas']['DashboardModuleReqCreateDataSo
 type ReqCreateDataSourceWithParent = components['schemas']['DashboardModuleReqCreateDataSourceWithParent'];
 type CreateDataSource = components['schemas']['DashboardModuleCreateDataSource'];
 
-@ApiSchema('DashboardModuleCreateDataSource')
+@ApiSchema({ name: 'DashboardModuleCreateDataSource' })
 export abstract class CreateDataSourceDto implements CreateDataSource {
 	@ApiPropertyOptional({
 		description: 'Data source ID',
@@ -32,7 +31,7 @@ export abstract class CreateDataSourceDto implements CreateDataSource {
 	readonly type: string;
 }
 
-@ApiSchema('DashboardModuleCreateSingleDataSource')
+@ApiSchema({ name: 'DashboardModuleCreateSingleDataSource' })
 export class CreateSingleDataSourceDto extends CreateDataSourceDto {
 	@ApiProperty({ description: 'Parent entity information', type: () => ParentDto })
 	@Expose()
@@ -41,7 +40,7 @@ export class CreateSingleDataSourceDto extends CreateDataSourceDto {
 	readonly parent: ParentDto;
 }
 
-@ApiSchema('DashboardModuleReqCreateDataSource')
+@ApiSchema({ name: 'DashboardModuleReqCreateDataSource' })
 export class ReqCreateDataSourceDto implements ReqCreateDataSource {
 	@ApiProperty({ description: 'Data source data', type: () => CreateSingleDataSourceDto })
 	@Expose()
@@ -50,7 +49,7 @@ export class ReqCreateDataSourceDto implements ReqCreateDataSource {
 	data: CreateSingleDataSourceDto;
 }
 
-@ApiSchema('DashboardModuleReqCreateDataSourceWithParent')
+@ApiSchema({ name: 'DashboardModuleReqCreateDataSourceWithParent' })
 export class ReqCreateDataSourceWithParentDto implements ReqCreateDataSourceWithParent {
 	@ApiProperty({ description: 'Data source data', type: () => CreateDataSourceDto })
 	@Expose()

@@ -13,9 +13,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 import {
 	LanguageType,
@@ -93,7 +91,7 @@ export class BaseConfigDto {
 	type: SectionType.AUDIO | SectionType.DISPLAY | SectionType.LANGUAGE | SectionType.WEATHER | SectionType.SYSTEM;
 }
 
-@ApiSchema('ConfigModuleUpdateAudio')
+@ApiSchema({ name: 'ConfigModuleUpdateAudio' })
 export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -161,7 +159,7 @@ export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
 	microphone_volume?: number;
 }
 
-@ApiSchema('ConfigModuleUpdateDisplay')
+@ApiSchema({ name: 'ConfigModuleUpdateDisplay' })
 export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDisplay {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -234,7 +232,7 @@ export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDispl
 	screen_saver?: boolean;
 }
 
-@ApiSchema('ConfigModuleUpdateLanguage')
+@ApiSchema({ name: 'ConfigModuleUpdateLanguage' })
 export class UpdateLanguageConfigDto extends BaseConfigDto implements UpdateLanguage {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -276,7 +274,7 @@ export class UpdateLanguageConfigDto extends BaseConfigDto implements UpdateLang
 	time_format?: TimeFormatType;
 }
 
-@ApiSchema('ConfigModuleUpdateWeather')
+@ApiSchema({ name: 'ConfigModuleUpdateWeather' })
 export abstract class UpdateWeatherConfigDto extends BaseConfigDto {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -319,7 +317,7 @@ export abstract class UpdateWeatherConfigDto extends BaseConfigDto {
 	open_weather_api_key?: string;
 }
 
-@ApiSchema('ConfigModuleUpdateWeatherLatLon')
+@ApiSchema({ name: 'ConfigModuleUpdateWeatherLatLon' })
 export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherLatLon {
 	@ApiProperty({
 		description: 'Location type',
@@ -367,7 +365,7 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto impleme
 	longitude?: number;
 }
 
-@ApiSchema('ConfigModuleUpdateWeatherCityName')
+@ApiSchema({ name: 'ConfigModuleUpdateWeatherCityName' })
 export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherCityName {
 	@ApiProperty({
 		description: 'Location type',
@@ -425,7 +423,7 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto imple
 	longitude?: number;
 }
 
-@ApiSchema('ConfigModuleUpdateWeatherCityId')
+@ApiSchema({ name: 'ConfigModuleUpdateWeatherCityId' })
 export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherCityId {
 	@ApiProperty({
 		description: 'Location type',
@@ -447,7 +445,7 @@ export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto impleme
 	city_id?: number;
 }
 
-@ApiSchema('ConfigModuleUpdateWeatherZipCode')
+@ApiSchema({ name: 'ConfigModuleUpdateWeatherZipCode' })
 export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherZipCode {
 	@ApiProperty({
 		description: 'Location type',
@@ -505,7 +503,7 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implem
 	longitude?: number;
 }
 
-@ApiSchema('ConfigModuleUpdateSystem')
+@ApiSchema({ name: 'ConfigModuleUpdateSystem' })
 export class UpdateSystemConfigDto extends BaseConfigDto implements UpdateSystem {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -536,7 +534,7 @@ export class UpdateSystemConfigDto extends BaseConfigDto implements UpdateSystem
 	log_levels?: LogLevelType[];
 }
 
-@ApiSchema('ConfigModuleReqUpdateSection')
+@ApiSchema({ name: 'ConfigModuleReqUpdateSection' })
 export class ReqUpdateSectionDto implements ReqUpdateSection {
 	@ApiProperty({
 		description: 'Configuration section data',
@@ -568,7 +566,7 @@ export class ReqUpdateSectionDto implements ReqUpdateSection {
 		| UpdateSystemConfigDto;
 }
 
-@ApiSchema('ConfigModuleUpdatePlugin')
+@ApiSchema({ name: 'ConfigModuleUpdatePlugin' })
 export class UpdatePluginConfigDto implements UpdatePlugin {
 	@ApiProperty({
 		description: 'Plugin identifier',
@@ -590,7 +588,7 @@ export class UpdatePluginConfigDto implements UpdatePlugin {
 	enabled?: boolean;
 }
 
-@ApiSchema('ConfigModuleReqUpdatePlugin')
+@ApiSchema({ name: 'ConfigModuleReqUpdatePlugin' })
 export class ReqUpdatePluginDto implements ReqUpdatePlugin {
 	@ApiProperty({
 		description: 'Plugin configuration data',

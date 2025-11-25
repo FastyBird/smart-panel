@@ -1,13 +1,12 @@
 import { Expose } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { ChildEntity, Column } from 'typeorm';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-@ApiSchema('DevicesShellyNgPluginShellyNgDevice')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgDevice' })
 @ChildEntity()
 export class ShellyNgDeviceEntity extends DeviceEntity {
 	@ApiProperty({ description: 'Device type', type: 'string', example: 'devices-shelly-ng' })
@@ -35,7 +34,7 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 	}
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgChannel')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgChannel' })
 @ChildEntity()
 export class ShellyNgChannelEntity extends ChannelEntity {
 	@ApiProperty({ description: 'Channel type', type: 'string', example: 'devices-shelly-ng' })
@@ -49,7 +48,7 @@ export class ShellyNgChannelEntity extends ChannelEntity {
 	}
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgChannelProperty')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgChannelProperty' })
 @ChildEntity()
 export class ShellyNgChannelPropertyEntity extends ChannelPropertyEntity {
 	@ApiProperty({ description: 'Channel property type', type: 'string', example: 'devices-shelly-ng' })

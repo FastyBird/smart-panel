@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayMinSize,
@@ -12,9 +12,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantState')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantState' })
 export class HomeAssistantStateModel {
 	@ApiProperty({
 		description: 'Home Assistant entity ID',
@@ -107,7 +105,7 @@ export class HomeAssistantStateModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantDiscoveredDevice')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDiscoveredDevice' })
 export class HomeAssistantDiscoveredDeviceModel {
 	@ApiProperty({
 		description: 'Device identifier',
@@ -164,7 +162,7 @@ export class HomeAssistantDiscoveredDeviceModel {
 	states: HomeAssistantStateModel[];
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantEntityRegistryResponseResult')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantEntityRegistryResponseResult' })
 export class HomeAssistantEntityRegistryResponseResultModel {
 	@ApiProperty({
 		description: 'Entity registry identifier',
@@ -327,7 +325,7 @@ export class HomeAssistantEntityRegistryResponseResultModel {
 	modifiedAt?: Date | string;
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantEntityRegistryResponse')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantEntityRegistryResponse' })
 export class HomeAssistantEntityRegistryResponseModel {
 	@ApiProperty({
 		description: 'Response identifier',
@@ -368,7 +366,7 @@ export class HomeAssistantEntityRegistryResponseModel {
 	result: HomeAssistantEntityRegistryResponseResultModel[];
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantDeviceRegistryResponseResult')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDeviceRegistryResponseResult' })
 export class HomeAssistantDeviceRegistryResponseResultModel {
 	@ApiProperty({
 		description: 'Device registry identifier',
@@ -548,7 +546,7 @@ export class HomeAssistantDeviceRegistryResponseResultModel {
 	modifiedAt?: Date | string;
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantDeviceRegistryResponse')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDeviceRegistryResponse' })
 export class HomeAssistantDeviceRegistryResponseModel {
 	@ApiProperty({
 		description: 'Response identifier',

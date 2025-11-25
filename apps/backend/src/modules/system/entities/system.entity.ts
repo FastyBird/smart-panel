@@ -2,12 +2,11 @@ import { Expose } from 'class-transformer';
 import { IsBoolean, IsInt, IsNumber, IsString, IsUUID } from 'class-validator';
 import { Column, Entity } from 'typeorm';
 
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { BaseEntity } from '../../../common/entities/base.entity';
 
-@ApiSchema('SystemModuleDisplayProfile')
+@ApiSchema({ name: 'SystemModuleDisplayProfile' })
 @Entity('system_module_displays_profiles')
 export class DisplayProfileEntity extends BaseEntity {
 	@ApiProperty({

@@ -1,8 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ChannelCategory } from '../../../modules/devices/devices.constants';
 import { UpdateChannelDto } from '../../../modules/devices/dto/update-channel.dto';
 import type { components } from '../../../openapi';
@@ -10,7 +9,7 @@ import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 type UpdateShellyNgChannel = components['schemas']['DevicesShellyNgPluginUpdateShellyNgChannel'];
 
-@ApiSchema('DevicesShellyNgPluginUpdateShellyNgChannel')
+@ApiSchema({ name: 'DevicesShellyNgPluginUpdateShellyNgChannel' })
 export class UpdateShellyNgChannelDto extends UpdateChannelDto implements UpdateShellyNgChannel {
 	@ApiProperty({
 		description: 'Channel type',

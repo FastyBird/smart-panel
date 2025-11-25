@@ -1,14 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 
 type ReqCreateChannelControl = components['schemas']['DevicesModuleReqCreateChannelControl'];
 type CreateChannelControl = components['schemas']['DevicesModuleCreateChannelControl'];
 
-@ApiSchema('DevicesModuleCreateChannelControl')
+@ApiSchema({ name: 'DevicesModuleCreateChannelControl' })
 export class CreateDeviceChannelControlDto implements CreateChannelControl {
 	@ApiPropertyOptional({
 		description: 'Control ID',
@@ -28,7 +27,7 @@ export class CreateDeviceChannelControlDto implements CreateChannelControl {
 	name: string;
 }
 
-@ApiSchema('DevicesModuleReqCreateChannelControl')
+@ApiSchema({ name: 'DevicesModuleReqCreateChannelControl' })
 export class ReqCreateDeviceChannelControlDto implements ReqCreateChannelControl {
 	@ApiProperty({ description: 'Channel control data', type: CreateDeviceChannelControlDto })
 	@Expose()

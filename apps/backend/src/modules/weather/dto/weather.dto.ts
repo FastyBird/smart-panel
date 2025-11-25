@@ -1,11 +1,9 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('WeatherModuleCoordinates')
+@ApiSchema({ name: 'WeatherModuleCoordinates' })
 class WeatherCoordinatesDto {
 	@ApiProperty({ description: 'Longitude', type: 'number', example: -0.1278 })
 	@Expose()
@@ -18,7 +16,7 @@ class WeatherCoordinatesDto {
 	lat: number;
 }
 
-@ApiSchema('WeatherModuleCondition')
+@ApiSchema({ name: 'WeatherModuleCondition' })
 class WeatherConditionDto {
 	@ApiProperty({ description: 'Weather condition ID', type: 'number', example: 800 })
 	@Expose()
@@ -41,7 +39,7 @@ class WeatherConditionDto {
 	icon: string;
 }
 
-@ApiSchema('WeatherModuleMain')
+@ApiSchema({ name: 'WeatherModuleMain' })
 class WeatherMainDto {
 	@ApiProperty({ description: 'Temperature', type: 'number', example: 15.5 })
 	@Expose()
@@ -91,7 +89,7 @@ class WeatherMainDto {
 	grnd_level?: number;
 }
 
-@ApiSchema('WeatherModuleWind')
+@ApiSchema({ name: 'WeatherModuleWind' })
 class WeatherWindDto {
 	@ApiProperty({ description: 'Wind speed (m/s)', type: 'number', example: 3.5 })
 	@Expose()
@@ -110,7 +108,7 @@ class WeatherWindDto {
 	gust?: number;
 }
 
-@ApiSchema('WeatherModuleClouds')
+@ApiSchema({ name: 'WeatherModuleClouds' })
 class WeatherCloudsDto {
 	@ApiProperty({ description: 'Cloudiness percentage', type: 'number', example: 75 })
 	@Expose()
@@ -118,7 +116,7 @@ class WeatherCloudsDto {
 	all: number;
 }
 
-@ApiSchema('WeatherModuleRain')
+@ApiSchema({ name: 'WeatherModuleRain' })
 class WeatherRainDto {
 	@ApiProperty({ description: 'Rain volume for last hour (mm)', type: 'number', example: 2.5 })
 	@Expose()
@@ -126,7 +124,7 @@ class WeatherRainDto {
 	'1h': number;
 }
 
-@ApiSchema('WeatherModuleSnow')
+@ApiSchema({ name: 'WeatherModuleSnow' })
 class WeatherSnowDto {
 	@ApiProperty({ description: 'Snow volume for last hour (mm)', type: 'number', example: 1.5 })
 	@Expose()
@@ -134,7 +132,7 @@ class WeatherSnowDto {
 	'1h': number;
 }
 
-@ApiSchema('WeatherModuleSys')
+@ApiSchema({ name: 'WeatherModuleSys' })
 class WeatherSysDto {
 	@ApiProperty({ description: 'System type', type: 'number', example: 1 })
 	@Expose()
@@ -162,7 +160,7 @@ class WeatherSysDto {
 	sunset: number;
 }
 
-@ApiSchema('WeatherModuleWeather')
+@ApiSchema({ name: 'WeatherModuleWeather' })
 export class WeatherDto {
 	@ApiProperty({ description: 'Coordinates', type: WeatherCoordinatesDto })
 	@Expose()

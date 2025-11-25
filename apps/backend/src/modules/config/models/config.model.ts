@@ -13,9 +13,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 import {
 	LanguageType,
 	LogLevelType,
@@ -25,7 +23,7 @@ import {
 	WeatherLocationType,
 } from '../config.constants';
 
-@ApiSchema('ConfigModuleBase')
+@ApiSchema({ name: 'ConfigModuleBase' })
 export abstract class BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -35,7 +33,7 @@ export abstract class BaseConfigModel {
 	type?: SectionType;
 }
 
-@ApiSchema('ConfigModuleAudio')
+@ApiSchema({ name: 'ConfigModuleAudio' })
 export class AudioConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -95,7 +93,7 @@ export class AudioConfigModel extends BaseConfigModel {
 	microphoneVolume: number = 0;
 }
 
-@ApiSchema('ConfigModuleDisplay')
+@ApiSchema({ name: 'ConfigModuleDisplay' })
 export class DisplayConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -156,7 +154,7 @@ export class DisplayConfigModel extends BaseConfigModel {
 	screenSaver: boolean = true;
 }
 
-@ApiSchema('ConfigModuleLanguage')
+@ApiSchema({ name: 'ConfigModuleLanguage' })
 export class LanguageConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -196,7 +194,7 @@ export class LanguageConfigModel extends BaseConfigModel {
 	timeFormat: TimeFormatType = TimeFormatType.HOUR_24;
 }
 
-@ApiSchema('ConfigModuleWeather')
+@ApiSchema({ name: 'ConfigModuleWeather' })
 export abstract class WeatherConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -239,7 +237,7 @@ export abstract class WeatherConfigModel extends BaseConfigModel {
 	openWeatherApiKey: string | null = null;
 }
 
-@ApiSchema('ConfigModuleWeatherLatLon')
+@ApiSchema({ name: 'ConfigModuleWeatherLatLon' })
 export class WeatherLatLonConfigModel extends WeatherConfigModel {
 	@ApiProperty({
 		name: 'location_type',
@@ -284,7 +282,7 @@ export class WeatherLatLonConfigModel extends WeatherConfigModel {
 	longitude: number | null = null;
 }
 
-@ApiSchema('ConfigModuleWeatherCityName')
+@ApiSchema({ name: 'ConfigModuleWeatherCityName' })
 export class WeatherCityNameConfigModel extends WeatherConfigModel {
 	@ApiProperty({
 		name: 'location_type',
@@ -341,7 +339,7 @@ export class WeatherCityNameConfigModel extends WeatherConfigModel {
 	longitude: number | null = null;
 }
 
-@ApiSchema('ConfigModuleWeatherCityId')
+@ApiSchema({ name: 'ConfigModuleWeatherCityId' })
 export class WeatherCityIdConfigModel extends WeatherConfigModel {
 	@ApiProperty({
 		name: 'location_type',
@@ -366,7 +364,7 @@ export class WeatherCityIdConfigModel extends WeatherConfigModel {
 	cityId: number | null = null;
 }
 
-@ApiSchema('ConfigModuleWeatherZipCode')
+@ApiSchema({ name: 'ConfigModuleWeatherZipCode' })
 export class WeatherZipCodeConfigModel extends WeatherConfigModel {
 	@ApiProperty({
 		name: 'location_type',
@@ -423,7 +421,7 @@ export class WeatherZipCodeConfigModel extends WeatherConfigModel {
 	longitude: number | null = null;
 }
 
-@ApiSchema('ConfigModuleSystem')
+@ApiSchema({ name: 'ConfigModuleSystem' })
 export class SystemConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -451,7 +449,7 @@ export class SystemConfigModel extends BaseConfigModel {
 	logLevels: LogLevelType[] = [LogLevelType.INFO, LogLevelType.WARN, LogLevelType.ERROR, LogLevelType.FATAL];
 }
 
-@ApiSchema('ConfigModulePlugin')
+@ApiSchema({ name: 'ConfigModulePlugin' })
 export abstract class PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin identifier',
@@ -472,7 +470,7 @@ export abstract class PluginConfigModel {
 	enabled: boolean = false;
 }
 
-@ApiSchema('ConfigModuleApp')
+@ApiSchema({ name: 'ConfigModuleApp' })
 export class AppConfigModel {
 	@ApiProperty({
 		description: 'Configuration file path',

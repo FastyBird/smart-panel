@@ -1,14 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 
 type ReqCreateDeviceControl = components['schemas']['DevicesModuleReqCreateDeviceControl'];
 type CreateDeviceControl = components['schemas']['DevicesModuleCreateDeviceControl'];
 
-@ApiSchema('DevicesModuleCreateDeviceControl')
+@ApiSchema({ name: 'DevicesModuleCreateDeviceControl' })
 export class CreateDeviceControlDto implements CreateDeviceControl {
 	@ApiPropertyOptional({
 		description: 'Control ID',
@@ -28,7 +27,7 @@ export class CreateDeviceControlDto implements CreateDeviceControl {
 	readonly name: string;
 }
 
-@ApiSchema('DevicesModuleReqCreateDeviceControl')
+@ApiSchema({ name: 'DevicesModuleReqCreateDeviceControl' })
 export class ReqCreateDeviceControlDto implements ReqCreateDeviceControl {
 	@ApiProperty({ description: 'Device control data', type: CreateDeviceControlDto })
 	@Expose()

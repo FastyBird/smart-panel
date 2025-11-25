@@ -12,14 +12,13 @@ import {
 } from 'class-validator';
 import { BeforeInsert, BeforeUpdate, Column, Entity, JoinColumn, ManyToOne, TableInheritance } from 'typeorm';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { DisplayProfileEntity } from '../../system/entities/system.entity';
 
-@ApiSchema('DashboardModulePage')
+@ApiSchema({ name: 'DashboardModulePage' })
 @Entity('dashboard_module_pages')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class PageEntity extends BaseEntity {
@@ -99,7 +98,7 @@ export abstract class PageEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema('DashboardModuleTile')
+@ApiSchema({ name: 'DashboardModuleTile' })
 @Entity('dashboard_module_tiles')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class TileEntity extends BaseEntity {
@@ -225,7 +224,7 @@ export abstract class TileEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema('DashboardModuleDataSource')
+@ApiSchema({ name: 'DashboardModuleDataSource' })
 @Entity('dashboard_module_data_source')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class DataSourceEntity extends BaseEntity {

@@ -1,10 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('DevicesShellyNgPluginShellyNgGetInfo')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgGetInfo' })
 export class ShellyNgGetInfoDto {
 	@ApiProperty({
 		description: 'Device hostname or IP address',
@@ -27,7 +25,7 @@ export class ShellyNgGetInfoDto {
 	password?: string | null = null;
 }
 
-@ApiSchema('DevicesShellyNgPluginReqShellyNgGetInfo')
+@ApiSchema({ name: 'DevicesShellyNgPluginReqShellyNgGetInfo' })
 export class ReqShellyNgGetInfoDto {
 	@ApiProperty({ description: 'Device info request data', type: ShellyNgGetInfoDto })
 	@Expose()

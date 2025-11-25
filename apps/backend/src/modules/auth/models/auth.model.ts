@@ -1,10 +1,8 @@
 import { Expose, Transform } from 'class-transformer';
 
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('AuthModuleResLogin')
+@ApiSchema({ name: 'AuthModuleResLogin' })
 export class LoggedInResponseModel {
 	@ApiProperty({
 		name: 'access_token',
@@ -63,7 +61,7 @@ export class LoggedInResponseModel {
 	type: string;
 }
 
-@ApiSchema('AuthModuleResRefresh')
+@ApiSchema({ name: 'AuthModuleResRefresh' })
 export class RefreshTokenResponseModel {
 	@ApiProperty({
 		name: 'access_token',
@@ -122,7 +120,7 @@ export class RefreshTokenResponseModel {
 	type: string;
 }
 
-@ApiSchema('AuthModuleResRegisterDisplay')
+@ApiSchema({ name: 'AuthModuleResRegisterDisplay' })
 export class RegisteredDisplayResponseModel {
 	@ApiProperty({
 		description: 'Display account secret',
@@ -133,7 +131,7 @@ export class RegisteredDisplayResponseModel {
 	secret: string;
 }
 
-@ApiSchema('AuthModuleResCheck')
+@ApiSchema({ name: 'AuthModuleResCheck' })
 export class CheckResponseModel {
 	@ApiProperty({
 		description: 'Indicates whether the provided validation field is valid.',

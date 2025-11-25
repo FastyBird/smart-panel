@@ -13,12 +13,11 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 
-@ApiSchema('DevicesModuleDeviceChannelSpec')
+@ApiSchema({ name: 'DevicesModuleDeviceChannelSpec' })
 export class DeviceChannelSpecModel {
 	@ApiProperty({
 		description: 'Channel category',
@@ -48,7 +47,7 @@ export class DeviceChannelSpecModel {
 	multiple: boolean;
 }
 
-@ApiSchema('DevicesModuleDeviceSpec')
+@ApiSchema({ name: 'DevicesModuleDeviceSpec' })
 export class DeviceSpecModel {
 	@ApiProperty({
 		description: 'Device category',
@@ -71,7 +70,7 @@ export class DeviceSpecModel {
 	channels: DeviceChannelSpecModel[];
 }
 
-@ApiSchema('DevicesModuleChannelPropertySpec')
+@ApiSchema({ name: 'DevicesModuleChannelPropertySpec' })
 export class ChannelPropertySpecModel {
 	@ApiProperty({
 		description: 'Property category',
@@ -163,7 +162,7 @@ export class ChannelPropertySpecModel {
 	step: number | null = null;
 }
 
-@ApiSchema('DevicesModuleChannelSpec')
+@ApiSchema({ name: 'DevicesModuleChannelSpec' })
 export class ChannelSpecModel {
 	@ApiProperty({
 		description: 'Channel category',
@@ -186,7 +185,7 @@ export class ChannelSpecModel {
 	properties: ChannelPropertySpecModel[];
 }
 
-@ApiSchema('DevicesModuleRegisteredDevices')
+@ApiSchema({ name: 'DevicesModuleRegisteredDevices' })
 export class RegisteredDevicesModel {
 	@ApiProperty({
 		description: 'Number of registered devices',
@@ -219,7 +218,7 @@ export class RegisteredDevicesModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DevicesModuleRegisteredChannels')
+@ApiSchema({ name: 'DevicesModuleRegisteredChannels' })
 export class RegisteredChannelsModel {
 	@ApiProperty({
 		description: 'Number of registered channels',
@@ -252,7 +251,7 @@ export class RegisteredChannelsModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DevicesModuleUpdatesPerMin')
+@ApiSchema({ name: 'DevicesModuleUpdatesPerMin' })
 export class UpdatesPerMinModel {
 	@ApiProperty({
 		description: 'Number of updates per minute',
@@ -304,7 +303,7 @@ export class UpdatesPerMinModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DevicesModuleUpdatesToday')
+@ApiSchema({ name: 'DevicesModuleUpdatesToday' })
 export class UpdatesTodayModel {
 	@ApiProperty({
 		description: 'Total number of updates today',
@@ -356,7 +355,7 @@ export class UpdatesTodayModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DevicesModuleOnlineNow')
+@ApiSchema({ name: 'DevicesModuleOnlineNow' })
 export class OnlineNowModel {
 	@ApiProperty({
 		description: 'Number of devices currently online',
@@ -408,7 +407,7 @@ export class OnlineNowModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('DevicesModuleModuleStats')
+@ApiSchema({ name: 'DevicesModuleModuleStats' })
 export class ModuleStatsModel {
 	@ApiProperty({
 		name: 'registered_devices',
@@ -461,7 +460,7 @@ export class ModuleStatsModel {
 	onlineNow: OnlineNowModel;
 }
 
-@ApiSchema('DevicesModuleTimeseriesPoint')
+@ApiSchema({ name: 'DevicesModuleTimeseriesPoint' })
 export class TimeseriesPointModel {
 	@ApiProperty({
 		description: 'Timestamp of the data point',
@@ -482,7 +481,7 @@ export class TimeseriesPointModel {
 	value: string | number | boolean;
 }
 
-@ApiSchema('DevicesModulePropertyTimeseries')
+@ApiSchema({ name: 'DevicesModulePropertyTimeseries' })
 export class PropertyTimeseriesModel {
 	@ApiProperty({
 		description: 'Property UUID',

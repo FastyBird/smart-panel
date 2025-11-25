@@ -1,15 +1,13 @@
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsUUID, Min, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 
 type ReqCreateDisplayProfile = components['schemas']['SystemModuleReqCreateDisplayProfile'];
 type CreateDisplayProfile = components['schemas']['SystemModuleCreateDisplayProfile'];
 
-@ApiSchema('SystemModuleCreateDisplayProfile')
+@ApiSchema({ name: 'SystemModuleCreateDisplayProfile' })
 export class CreateDisplayProfileDto implements CreateDisplayProfile {
 	@ApiPropertyOptional({
 		description: 'Optional display profile ID (UUID v4)',
@@ -114,7 +112,7 @@ export class CreateDisplayProfileDto implements CreateDisplayProfile {
 	primary?: boolean;
 }
 
-@ApiSchema('SystemModuleReqCreateDisplayProfile')
+@ApiSchema({ name: 'SystemModuleReqCreateDisplayProfile' })
 export class ReqCreateDisplayProfileDto implements ReqCreateDisplayProfile {
 	@ApiProperty({
 		description: 'Display profile creation data',

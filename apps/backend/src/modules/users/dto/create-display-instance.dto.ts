@@ -1,16 +1,14 @@
 import { Expose, Type } from 'class-transformer';
 import { IsMACAddress, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 import { ValidateUserExists } from '../validators/user-exists-constraint.validator';
 
 type ReqCreateDisplayInstance = components['schemas']['UsersModuleReqCreateDisplayInstance'];
 type CreateDisplayInstance = components['schemas']['UsersModuleCreateDisplayInstance'];
 
-@ApiSchema('UsersModuleCreateDisplayInstance')
+@ApiSchema({ name: 'UsersModuleCreateDisplayInstance' })
 export class CreateDisplayInstanceDto implements CreateDisplayInstance {
 	@ApiPropertyOptional({
 		description: 'Optional display instance ID (UUID v4)',
@@ -79,7 +77,7 @@ export class CreateDisplayInstanceDto implements CreateDisplayInstance {
 	user: string;
 }
 
-@ApiSchema('UsersModuleReqCreateDisplayInstance')
+@ApiSchema({ name: 'UsersModuleReqCreateDisplayInstance' })
 export class ReqCreateDisplayInstanceDto implements ReqCreateDisplayInstance {
 	@ApiProperty({
 		description: 'Display instance creation data',

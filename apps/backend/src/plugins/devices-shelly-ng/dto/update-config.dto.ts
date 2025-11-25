@@ -1,12 +1,11 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 
-@ApiSchema('DevicesShellyNgPluginShellyNgUpdatePluginConfigMdns')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgUpdatePluginConfigMdns' })
 export class ShellyNgUpdatePluginConfigMdnsDto {
 	@ApiPropertyOptional({
 		description: 'Enable MDNS discovery',
@@ -28,7 +27,7 @@ export class ShellyNgUpdatePluginConfigMdnsDto {
 	interface?: string | null;
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgUpdatePluginConfigWebsockets')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgUpdatePluginConfigWebsockets' })
 export class ShellyNgUpdatePluginConfigWebsocketsDto {
 	@ApiPropertyOptional({
 		description: 'Websocket request timeout in milliseconds',
@@ -85,7 +84,7 @@ export class ShellyNgUpdatePluginConfigWebsocketsDto {
 	reconnect_interval: number[];
 }
 
-@ApiSchema('DevicesShellyNgPluginShellyNgUpdatePluginConfig')
+@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgUpdatePluginConfig' })
 export class ShellyNgUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin type',

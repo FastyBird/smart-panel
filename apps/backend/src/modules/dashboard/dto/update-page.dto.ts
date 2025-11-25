@@ -10,16 +10,15 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
 
 type ReqUpdatePage = components['schemas']['DashboardModuleReqUpdatePage'];
 type UpdatePage = components['schemas']['DashboardModuleUpdatePage'];
 
-@ApiSchema('DashboardModuleUpdatePage')
+@ApiSchema({ name: 'DashboardModuleUpdatePage' })
 export abstract class UpdatePageDto implements UpdatePage {
 	@ApiProperty({ description: 'Page type', type: 'string', example: 'default' })
 	@Expose()
@@ -75,7 +74,7 @@ export abstract class UpdatePageDto implements UpdatePage {
 	display?: string;
 }
 
-@ApiSchema('DashboardModuleReqUpdatePage')
+@ApiSchema({ name: 'DashboardModuleReqUpdatePage' })
 export class ReqUpdatePageDto implements ReqUpdatePage {
 	@ApiProperty({ description: 'Page data', type: () => UpdatePageDto })
 	@Expose()

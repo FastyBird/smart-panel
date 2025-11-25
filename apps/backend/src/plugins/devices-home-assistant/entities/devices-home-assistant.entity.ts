@@ -1,9 +1,8 @@
 import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 import { ChildEntity, Column, Index } from 'typeorm';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import {
 	DEVICES_HOME_ASSISTANT_TYPE,
@@ -12,7 +11,7 @@ import {
 } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantDevice')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDevice' })
 @ChildEntity()
 export class HomeAssistantDeviceEntity extends DeviceEntity {
 	@ApiProperty({
@@ -40,7 +39,7 @@ export class HomeAssistantDeviceEntity extends DeviceEntity {
 	}
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantChannel')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantChannel' })
 @ChildEntity()
 export class HomeAssistantChannelEntity extends ChannelEntity {
 	@Expose()
@@ -49,7 +48,7 @@ export class HomeAssistantChannelEntity extends ChannelEntity {
 	}
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantChannelProperty')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantChannelProperty' })
 @ChildEntity()
 export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	@ApiPropertyOptional({

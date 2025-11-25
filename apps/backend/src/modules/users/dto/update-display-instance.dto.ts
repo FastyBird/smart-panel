@@ -1,15 +1,13 @@
 import { Expose, Type } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, Matches, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 
 type ReqUpdateDisplayInstance = components['schemas']['UsersModuleReqUpdateDisplayInstance'];
 type UpdateDisplayInstance = components['schemas']['UsersModuleUpdateDisplayInstance'];
 
-@ApiSchema('UsersModuleUpdateDisplayInstance')
+@ApiSchema({ name: 'UsersModuleUpdateDisplayInstance' })
 export class UpdateDisplayInstanceDto implements UpdateDisplayInstance {
 	@ApiPropertyOptional({
 		description: 'Semantic version of the display software',
@@ -53,7 +51,7 @@ export class UpdateDisplayInstanceDto implements UpdateDisplayInstance {
 	display_profile?: string;
 }
 
-@ApiSchema('UsersModuleReqUpdateDisplayInstance')
+@ApiSchema({ name: 'UsersModuleReqUpdateDisplayInstance' })
 export class ReqUpdateDisplayInstanceDto implements ReqUpdateDisplayInstance {
 	@ApiProperty({
 		description: 'Display instance update data',

@@ -1,14 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 
 type ReqUpdateDeviceChannel = components['schemas']['DevicesModuleReqUpdateChannel'];
 type UpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
 
-@ApiSchema('DevicesModuleUpdateChannel')
+@ApiSchema({ name: 'DevicesModuleUpdateChannel' })
 export class UpdateDeviceChannelDto implements UpdateChannel {
 	@ApiProperty({ description: 'Channel type', type: 'string', example: 'generic' })
 	@Expose()
@@ -66,7 +65,7 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 	enabled?: boolean;
 }
 
-@ApiSchema('DevicesModuleReqUpdateChannel')
+@ApiSchema({ name: 'DevicesModuleReqUpdateChannel' })
 export class ReqUpdateDeviceChannelDto implements ReqUpdateDeviceChannel {
 	@ApiProperty({ description: 'Device channel data', type: UpdateDeviceChannelDto })
 	@Expose()

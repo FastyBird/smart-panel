@@ -13,9 +13,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ExtensionKindType,
@@ -25,7 +23,7 @@ import {
 	LogEntryType,
 } from '../system.constants';
 
-@ApiSchema('SystemModuleMemoryInfo')
+@ApiSchema({ name: 'SystemModuleMemoryInfo' })
 export class MemoryInfoModel {
 	@ApiProperty({ description: 'Total memory in bytes', type: 'number', example: 8589934592 })
 	@Expose()
@@ -43,7 +41,7 @@ export class MemoryInfoModel {
 	free: number;
 }
 
-@ApiSchema('SystemModuleStorageInfo')
+@ApiSchema({ name: 'SystemModuleStorageInfo' })
 export class StorageInfoModel {
 	@ApiProperty({ description: 'Filesystem', type: 'string', example: '/dev/sda1' })
 	@Expose()
@@ -66,7 +64,7 @@ export class StorageInfoModel {
 	available: number;
 }
 
-@ApiSchema('SystemModuleTemperatureInfo')
+@ApiSchema({ name: 'SystemModuleTemperatureInfo' })
 export class TemperatureInfoModel {
 	@ApiPropertyOptional({ description: 'CPU temperature in Celsius', type: 'number', example: 45.5 })
 	@Expose()
@@ -81,7 +79,7 @@ export class TemperatureInfoModel {
 	gpu?: number;
 }
 
-@ApiSchema('SystemModuleOperatingSystemInfo')
+@ApiSchema({ name: 'SystemModuleOperatingSystemInfo' })
 export class OperatingSystemInfoModel {
 	@ApiProperty({ description: 'Operating system platform', type: 'string', example: 'linux' })
 	@Expose()
@@ -120,7 +118,7 @@ export class OperatingSystemInfoModel {
 	timezone: string;
 }
 
-@ApiSchema('SystemModuleDisplayInfo')
+@ApiSchema({ name: 'SystemModuleDisplayInfo' })
 export class DisplayInfoModel {
 	@ApiProperty({ name: 'resolution_x', description: 'Display resolution X', type: 'number', example: 1920 })
 	@Expose({ name: 'resolution_x' })
@@ -143,7 +141,7 @@ export class DisplayInfoModel {
 	currentResY: number;
 }
 
-@ApiSchema('SystemModuleProcessInfo')
+@ApiSchema({ name: 'SystemModuleProcessInfo' })
 export class ProcessInfoModel {
 	@ApiProperty({ description: 'Process ID', type: 'number', example: 12345 })
 	@Expose()
@@ -156,7 +154,7 @@ export class ProcessInfoModel {
 	uptime: number;
 }
 
-@ApiSchema('SystemModuleNetworkStats')
+@ApiSchema({ name: 'SystemModuleNetworkStats' })
 export class NetworkStatsModel {
 	@ApiProperty({ description: 'Network interface name', type: 'string', example: 'eth0' })
 	@Expose()
@@ -174,7 +172,7 @@ export class NetworkStatsModel {
 	txBytes: number;
 }
 
-@ApiSchema('SystemModuleDefaultNetwork')
+@ApiSchema({ name: 'SystemModuleDefaultNetwork' })
 export class DefaultNetworkModel {
 	@ApiProperty({ description: 'Network interface name', type: 'string', example: 'eth0' })
 	@Expose()
@@ -202,7 +200,7 @@ export class DefaultNetworkModel {
 	hostname: string;
 }
 
-@ApiSchema('SystemModuleSystemHealth')
+@ApiSchema({ name: 'SystemModuleSystemHealth' })
 export class SystemHealthModel {
 	@ApiProperty({ description: 'Health status', type: 'string', example: 'healthy' })
 	@Expose()
@@ -215,7 +213,7 @@ export class SystemHealthModel {
 	version: string;
 }
 
-@ApiSchema('SystemModuleSystemInfo')
+@ApiSchema({ name: 'SystemModuleSystemInfo' })
 export class SystemInfoModel {
 	@ApiProperty({ name: 'cpu_load', description: 'CPU load percentage', type: 'number', example: 45.5 })
 	@Expose({ name: 'cpu_load' })
@@ -279,7 +277,7 @@ export class SystemInfoModel {
 	process: ProcessInfoModel;
 }
 
-@ApiSchema('SystemModuleThrottleStatus')
+@ApiSchema({ name: 'SystemModuleThrottleStatus' })
 export class ThrottleStatusModel {
 	@ApiProperty({ description: 'Undervoltage detected', type: 'boolean', example: false })
 	@Expose()
@@ -307,7 +305,7 @@ export class ThrottleStatusModel {
 	softTempLimit: boolean;
 }
 
-@ApiSchema('SystemModuleLogEntryAccepted')
+@ApiSchema({ name: 'SystemModuleLogEntryAccepted' })
 export class LogEntryAcceptedModel {
 	@ApiProperty({ description: 'Number of accepted log entries', type: 'integer', example: 150 })
 	@Expose()
@@ -320,7 +318,7 @@ export class LogEntryAcceptedModel {
 	rejected: number;
 }
 
-@ApiSchema('SystemModuleLogEntryUser')
+@ApiSchema({ name: 'SystemModuleLogEntryUser' })
 export class LogEntryUserModel {
 	@ApiPropertyOptional({ description: 'User ID', format: 'uuid', example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6' })
 	@Expose()
@@ -329,7 +327,7 @@ export class LogEntryUserModel {
 	id?: string;
 }
 
-@ApiSchema('SystemModuleLogEntryContext')
+@ApiSchema({ name: 'SystemModuleLogEntryContext' })
 export class LogEntryContextModel {
 	@ApiPropertyOptional({ name: 'app_version', description: 'Application version', type: 'string', example: '1.0.0' })
 	@Expose({ name: 'app_version' })
@@ -356,7 +354,7 @@ export class LogEntryContextModel {
 	locale?: string;
 }
 
-@ApiSchema('SystemModuleLogEntry')
+@ApiSchema({ name: 'SystemModuleLogEntry' })
 export class LogEntryModel {
 	@ApiProperty({ description: 'Log entry ID', type: 'string', example: 'log-12345' })
 	@Expose()
@@ -428,7 +426,7 @@ export class LogEntryModel {
 	context?: LogEntryContextModel;
 }
 
-@ApiSchema('SystemModuleExtensionBase')
+@ApiSchema({ name: 'SystemModuleExtensionBase' })
 export abstract class ExtensionBaseModel {
 	@ApiProperty({ description: 'Extension name', type: 'string', example: 'my-extension' })
 	@Expose()
@@ -468,7 +466,7 @@ export abstract class ExtensionBaseModel {
 	source: ExtensionSourceType;
 }
 
-@ApiSchema('SystemModuleExtensionAdmin')
+@ApiSchema({ name: 'SystemModuleExtensionAdmin' })
 export class ExtensionAdminModel extends ExtensionBaseModel {
 	@ApiProperty({ name: 'remote_url', description: 'Remote URL', type: 'string', format: 'uri' })
 	@Expose({ name: 'remote_url' })
@@ -476,7 +474,7 @@ export class ExtensionAdminModel extends ExtensionBaseModel {
 	remoteUrl: string;
 }
 
-@ApiSchema('SystemModuleExtensionBackend')
+@ApiSchema({ name: 'SystemModuleExtensionBackend' })
 export class ExtensionBackendModel extends ExtensionBaseModel {
 	@ApiProperty({ name: 'route_prefix', description: 'Route prefix', type: 'string', example: '/api' })
 	@Expose({ name: 'route_prefix' })
@@ -484,7 +482,7 @@ export class ExtensionBackendModel extends ExtensionBaseModel {
 	routePrefix: string;
 }
 
-@ApiSchema('SystemModuleCpuLoad1m')
+@ApiSchema({ name: 'SystemModuleCpuLoad1m' })
 export class CpuLoad1mModel {
 	@ApiProperty({ description: 'CPU load 1 minute', type: 'number', example: 0.45 })
 	@Expose()
@@ -507,7 +505,7 @@ export class CpuLoad1mModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('SystemModuleMemUsedPct')
+@ApiSchema({ name: 'SystemModuleMemUsedPct' })
 export class MemUsedPctModel {
 	@ApiProperty({ description: 'Memory used percentage', type: 'number', example: 65.5 })
 	@Expose()
@@ -530,7 +528,7 @@ export class MemUsedPctModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('SystemModuleDiskUsedPct')
+@ApiSchema({ name: 'SystemModuleDiskUsedPct' })
 export class DiskUsedPctModel {
 	@ApiProperty({ description: 'Disk used percentage', type: 'number', example: 42.3 })
 	@Expose()
@@ -553,7 +551,7 @@ export class DiskUsedPctModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('SystemModuleSystemUptimeSec')
+@ApiSchema({ name: 'SystemModuleSystemUptimeSec' })
 export class SystemUptimeSecModel {
 	@ApiProperty({ description: 'System uptime in seconds', type: 'number', example: 86400 })
 	@Expose()
@@ -576,7 +574,7 @@ export class SystemUptimeSecModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('SystemModuleProcessUptimeSec')
+@ApiSchema({ name: 'SystemModuleProcessUptimeSec' })
 export class ProcessUptimeSecModel {
 	@ApiProperty({ description: 'Process uptime in seconds', type: 'number', example: 3600 })
 	@Expose()
@@ -599,7 +597,7 @@ export class ProcessUptimeSecModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('SystemModuleTemperatureCpu')
+@ApiSchema({ name: 'SystemModuleTemperatureCpu' })
 export class TemperatureCpuModel {
 	@ApiProperty({ description: 'CPU temperature in Celsius', type: 'number', nullable: true, example: 45.5 })
 	@Expose()
@@ -622,7 +620,7 @@ export class TemperatureCpuModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('SystemModuleTemperatureGpu')
+@ApiSchema({ name: 'SystemModuleTemperatureGpu' })
 export class TemperatureGpuModel {
 	@ApiProperty({ description: 'GPU temperature in Celsius', type: 'number', nullable: true, example: 52.3 })
 	@Expose()
@@ -645,7 +643,7 @@ export class TemperatureGpuModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema('SystemModuleModuleStats')
+@ApiSchema({ name: 'SystemModuleModuleStats' })
 export class ModuleStatsModel {
 	@ApiProperty({ name: 'cpu_load_1m', description: 'CPU load (1 minute average)', type: CpuLoad1mModel })
 	@Expose({ name: 'cpu_load_1m' })

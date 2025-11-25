@@ -1,12 +1,11 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantUpdatePluginConfig')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantUpdatePluginConfig' })
 export class HomeAssistantUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })

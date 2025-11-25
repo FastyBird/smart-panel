@@ -1,16 +1,14 @@
 import { Expose, Type } from 'class-transformer';
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
 type ReqUpdateUser = components['schemas']['UsersModuleReqUpdateUser'];
 type UpdateUser = components['schemas']['UsersModuleUpdateUser'];
 
-@ApiSchema('UsersModuleUpdateUser')
+@ApiSchema({ name: 'UsersModuleUpdateUser' })
 export class UpdateUserDto implements UpdateUser {
 	@ApiPropertyOptional({
 		description: 'Unique identifier for the user.',
@@ -93,7 +91,7 @@ export class UpdateUserDto implements UpdateUser {
 	role?: UserRole;
 }
 
-@ApiSchema('UsersModuleReqUpdateUser')
+@ApiSchema({ name: 'UsersModuleReqUpdateUser' })
 export class ReqUpdateUserDto implements ReqUpdateUser {
 	@ApiProperty({
 		description: 'User update data',

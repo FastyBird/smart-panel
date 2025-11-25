@@ -1,8 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { CreateChannelPropertyDto } from '../../../modules/devices/dto/create-channel-property.dto';
 import type { components } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
@@ -10,7 +9,7 @@ import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants
 type CreateHomeAssistantChannelProperty =
 	components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty'];
 
-@ApiSchema('DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty' })
 export class CreateHomeAssistantChannelPropertyDto
 	extends CreateChannelPropertyDto
 	implements CreateHomeAssistantChannelProperty

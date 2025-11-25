@@ -13,10 +13,9 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Column, Entity, Index, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import {
@@ -28,7 +27,7 @@ import {
 	PropertyCategory,
 } from '../devices.constants';
 
-@ApiSchema('DevicesModuleDeviceConnectionStatus')
+@ApiSchema({ name: 'DevicesModuleDeviceConnectionStatus' })
 export class DeviceConnectionStatus {
 	@ApiProperty({ description: 'Device online status', type: 'boolean', example: true })
 	@Expose()
@@ -41,7 +40,7 @@ export class DeviceConnectionStatus {
 	status: ConnectionState = ConnectionState.UNKNOWN;
 }
 
-@ApiSchema('DevicesModuleDevice')
+@ApiSchema({ name: 'DevicesModuleDevice' })
 @Entity('devices_module_devices')
 @Unique('UQ_devices_identifier_type', ['identifier', 'type'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
@@ -113,7 +112,7 @@ export class DeviceEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema('DevicesModuleDeviceControl')
+@ApiSchema({ name: 'DevicesModuleDeviceControl' })
 @Entity('devices_module_devices_controls')
 @Unique(['name', 'device'])
 export class DeviceControlEntity extends BaseEntity {
@@ -138,7 +137,7 @@ export class DeviceControlEntity extends BaseEntity {
 	device: DeviceEntity | string;
 }
 
-@ApiSchema('DevicesModuleChannel')
+@ApiSchema({ name: 'DevicesModuleChannel' })
 @Entity('devices_module_channels')
 @Unique('UQ_channels_identifier_type', ['identifier', 'device'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
@@ -211,7 +210,7 @@ export class ChannelEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema('DevicesModuleChannelControl')
+@ApiSchema({ name: 'DevicesModuleChannelControl' })
 @Entity('devices_module_channels_controls')
 @Unique(['name', 'channel'])
 export class ChannelControlEntity extends BaseEntity {
@@ -234,7 +233,7 @@ export class ChannelControlEntity extends BaseEntity {
 	channel: ChannelEntity | string;
 }
 
-@ApiSchema('DevicesModuleChannelProperty')
+@ApiSchema({ name: 'DevicesModuleChannelProperty' })
 @Entity('devices_module_channels_properties')
 @Unique('UQ_channels_properties_identifier_type', ['identifier', 'channel'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })

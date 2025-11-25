@@ -2,16 +2,14 @@ import { Expose, Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { BeforeInsert, ChildEntity, Column, Entity, Index, ManyToOne, OneToMany, TableInheritance } from 'typeorm';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { UserEntity } from '../../users/entities/users.entity';
 import { TokenType } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { hashToken } from '../utils/token.utils';
 
-@ApiSchema('AuthModuleToken')
+@ApiSchema({ name: 'AuthModuleToken' })
 @Entity('auth_module_tokens')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class TokenEntity extends BaseEntity {
@@ -91,7 +89,7 @@ export abstract class TokenEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema('AuthModuleAccessToken')
+@ApiSchema({ name: 'AuthModuleAccessToken' })
 @ChildEntity()
 export class AccessTokenEntity extends TokenEntity {
 	@ApiProperty({
@@ -131,7 +129,7 @@ export class AccessTokenEntity extends TokenEntity {
 	}
 }
 
-@ApiSchema('AuthModuleRefreshToken')
+@ApiSchema({ name: 'AuthModuleRefreshToken' })
 @ChildEntity()
 export class RefreshTokenEntity extends TokenEntity {
 	@ApiProperty({
@@ -175,7 +173,7 @@ export class RefreshTokenEntity extends TokenEntity {
 	}
 }
 
-@ApiSchema('AuthModuleLongLiveToken')
+@ApiSchema({ name: 'AuthModuleLongLiveToken' })
 @ChildEntity()
 export class LongLiveTokenEntity extends TokenEntity {
 	@ApiProperty({

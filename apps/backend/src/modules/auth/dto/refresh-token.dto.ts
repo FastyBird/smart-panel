@@ -1,15 +1,13 @@
 import { Expose, Type } from 'class-transformer';
 import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
-import { ApiProperty } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 
 type ReqRefreshToken = components['schemas']['AuthModuleReqRefreshToken'];
 type RefreshToken = components['schemas']['AuthModuleRefreshToken'];
 
-@ApiSchema('AuthModuleRefreshToken')
+@ApiSchema({ name: 'AuthModuleRefreshToken' })
 export class RefreshTokenDto implements RefreshToken {
 	@ApiProperty({
 		description: 'JWT refresh access token',
@@ -23,7 +21,7 @@ export class RefreshTokenDto implements RefreshToken {
 	token: string;
 }
 
-@ApiSchema('AuthModuleReqRefreshToken')
+@ApiSchema({ name: 'AuthModuleReqRefreshToken' })
 export class ReqRefreshDto implements ReqRefreshToken {
 	@ApiProperty({
 		description: 'Refresh token data',

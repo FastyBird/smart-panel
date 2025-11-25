@@ -1,17 +1,16 @@
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 
 import { ParentDto } from './common.dto';
 
 type ReqUpdateTile = components['schemas']['DashboardModuleReqUpdateTile'];
 type UpdateTile = components['schemas']['DashboardModuleUpdateTile'];
 
-@ApiSchema('DashboardModuleUpdateTile')
+@ApiSchema({ name: 'DashboardModuleUpdateTile' })
 export abstract class UpdateTileDto implements UpdateTile {
 	@ApiProperty({ description: 'Tile type', type: 'string', example: 'default' })
 	@Expose()
@@ -78,7 +77,7 @@ export abstract class UpdateTileDto implements UpdateTile {
 	hidden?: boolean;
 }
 
-@ApiSchema('DashboardModuleUpdateSingleTile')
+@ApiSchema({ name: 'DashboardModuleUpdateSingleTile' })
 export class UpdateSingleTileDto extends UpdateTileDto {
 	@ApiProperty({ description: 'Parent entity information', type: () => ParentDto })
 	@Expose()
@@ -87,7 +86,7 @@ export class UpdateSingleTileDto extends UpdateTileDto {
 	readonly parent: ParentDto;
 }
 
-@ApiSchema('DashboardModuleReqUpdateTile')
+@ApiSchema({ name: 'DashboardModuleReqUpdateTile' })
 export class ReqUpdateTileDto implements ReqUpdateTile {
 	@ApiProperty({ description: 'Tile data', type: () => UpdateTileDto })
 	@Expose()
@@ -96,7 +95,7 @@ export class ReqUpdateTileDto implements ReqUpdateTile {
 	data: UpdateTileDto;
 }
 
-@ApiSchema('DashboardModuleReqUpdateTileWithParent')
+@ApiSchema({ name: 'DashboardModuleReqUpdateTileWithParent' })
 export class ReqUpdateTileWithParentDto implements ReqUpdateTile {
 	@ApiProperty({ description: 'Tile data', type: () => UpdateSingleTileDto })
 	@Expose()

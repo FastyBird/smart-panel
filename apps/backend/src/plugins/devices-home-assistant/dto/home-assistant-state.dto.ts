@@ -1,10 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsDate, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantContext')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantContext' })
 class HomeAssistantContextDto {
 	@Expose()
 	@IsString()
@@ -37,7 +35,7 @@ class HomeAssistantContextDto {
 	user_id: string | null;
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantState')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantState' })
 export class HomeAssistantStateDto {
 	@Expose()
 	@IsString()
@@ -131,7 +129,7 @@ export class HomeAssistantStateDto {
 	context: HomeAssistantContextDto;
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantStateChangedEventData')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantStateChangedEventData' })
 export class HomeAssistantStateChangedEventDataDto {
 	@Expose()
 	@ValidateNested()
@@ -155,7 +153,7 @@ export class HomeAssistantStateChangedEventDataDto {
 	new_state: HomeAssistantStateDto | null;
 }
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantStateChangedEvent')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantStateChangedEvent' })
 export class HomeAssistantStateChangedEventDto {
 	@Expose()
 	@IsString()

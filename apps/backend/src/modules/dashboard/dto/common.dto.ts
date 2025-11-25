@@ -1,11 +1,9 @@
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('DashboardModuleParent')
+@ApiSchema({ name: 'DashboardModuleParent' })
 export class ParentDto {
 	@ApiProperty({ description: 'Parent entity type', type: 'string', example: 'page' })
 	@Expose()

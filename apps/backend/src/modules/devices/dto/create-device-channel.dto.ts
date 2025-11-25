@@ -1,9 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ChannelCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
 
@@ -13,7 +12,7 @@ import { CreateDeviceChannelPropertyDto } from './create-device-channel-property
 type ReqCreateDeviceChannel = components['schemas']['DevicesModuleReqCreateDeviceChannel'];
 type CreateDeviceChannel = components['schemas']['DevicesModuleCreateDeviceChannel'];
 
-@ApiSchema('DevicesModuleCreateDeviceChannel')
+@ApiSchema({ name: 'DevicesModuleCreateDeviceChannel' })
 export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	@ApiPropertyOptional({
 		description: 'Channel ID',
@@ -113,7 +112,7 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	properties?: CreateDeviceChannelPropertyDto[];
 }
 
-@ApiSchema('DevicesModuleReqCreateDeviceChannel')
+@ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannel' })
 export class ReqCreateDeviceChannelDto implements ReqCreateDeviceChannel {
 	@ApiProperty({ description: 'Device channel data', type: CreateDeviceChannelDto })
 	@Expose()

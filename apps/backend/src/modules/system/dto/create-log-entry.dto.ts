@@ -17,16 +17,14 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 import { LogEntrySource, LogEntryType } from '../system.constants';
 
 type ReqCreateLogEntries = components['schemas']['SystemModuleReqCreateLogEntries'];
 type CreateLogEntry = components['schemas']['SystemModuleCreateLogEntry'];
 
-@ApiSchema('SystemModuleCreateLogEntryUser')
+@ApiSchema({ name: 'SystemModuleCreateLogEntryUser' })
 export class CreateLogEntryUserDto {
 	@ApiPropertyOptional({
 		description: 'User ID (UUID v4)',
@@ -39,7 +37,7 @@ export class CreateLogEntryUserDto {
 	id?: string;
 }
 
-@ApiSchema('SystemModuleCreateLogEntryContext')
+@ApiSchema({ name: 'SystemModuleCreateLogEntryContext' })
 export class CreateLogEntryContextDto {
 	@ApiPropertyOptional({
 		name: 'app_version',
@@ -85,7 +83,7 @@ export class CreateLogEntryContextDto {
 	locale?: string;
 }
 
-@ApiSchema('SystemModuleCreateLogEntry')
+@ApiSchema({ name: 'SystemModuleCreateLogEntry' })
 export class CreateLogEntryDto implements CreateLogEntry {
 	@ApiProperty({
 		description: 'Log entry timestamp (ISO 8601 format)',
@@ -204,7 +202,7 @@ export class CreateLogEntryDto implements CreateLogEntry {
 	context?: CreateLogEntryContextDto;
 }
 
-@ApiSchema('SystemModuleReqCreateLogEntries')
+@ApiSchema({ name: 'SystemModuleReqCreateLogEntries' })
 export class ReqCreateLogEntriesDto implements ReqCreateLogEntries {
 	@ApiProperty({
 		description: 'Array of log entries to create',

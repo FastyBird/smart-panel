@@ -1,11 +1,9 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsArray, IsDate, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('WeatherModuleWind')
+@ApiSchema({ name: 'WeatherModuleWind' })
 export class WindModel {
 	@ApiProperty({ description: 'Wind speed (m/s)', type: 'number', example: 3.5 })
 	@Expose()
@@ -24,7 +22,7 @@ export class WindModel {
 	gust?: number = null;
 }
 
-@ApiSchema('WeatherModuleWeather')
+@ApiSchema({ name: 'WeatherModuleWeather' })
 export class WeatherModel {
 	@ApiProperty({ description: 'Weather condition code', type: 'integer', example: 800 })
 	@Expose()
@@ -47,7 +45,7 @@ export class WeatherModel {
 	icon: string;
 }
 
-@ApiSchema('WeatherModuleForecastTemperature')
+@ApiSchema({ name: 'WeatherModuleForecastTemperature' })
 export class ForecastTemperatureModel {
 	@ApiPropertyOptional({ description: 'Day temperature', type: 'number', example: 15.5, nullable: true })
 	@Expose()
@@ -86,7 +84,7 @@ export class ForecastTemperatureModel {
 	morn?: number = null;
 }
 
-@ApiSchema('WeatherModuleForecastFeelsLike')
+@ApiSchema({ name: 'WeatherModuleForecastFeelsLike' })
 export class ForecastFeelsLikeModel {
 	@ApiPropertyOptional({ description: 'Day feels like temperature', type: 'number', example: 14.2, nullable: true })
 	@Expose()
@@ -113,7 +111,7 @@ export class ForecastFeelsLikeModel {
 	morn?: number = null;
 }
 
-@ApiSchema('WeatherModuleForecastDay')
+@ApiSchema({ name: 'WeatherModuleForecastDay' })
 export class ForecastDayModel {
 	@ApiProperty({ description: 'Temperature information', type: ForecastTemperatureModel })
 	@Expose()
@@ -288,7 +286,7 @@ export class ForecastDayModel {
 	dayTime: Date;
 }
 
-@ApiSchema('WeatherModuleCurrentDay')
+@ApiSchema({ name: 'WeatherModuleCurrentDay' })
 export class CurrentDayModel {
 	@ApiProperty({ description: 'Current temperature', type: 'number', example: 15.5 })
 	@Expose()
@@ -438,7 +436,7 @@ export class CurrentDayModel {
 	dayTime: Date;
 }
 
-@ApiSchema('WeatherModuleLocation')
+@ApiSchema({ name: 'WeatherModuleLocation' })
 export class LocationModel {
 	@ApiProperty({ description: 'Location name', type: 'string', example: 'London' })
 	@Expose()
@@ -452,7 +450,7 @@ export class LocationModel {
 	country?: string = null;
 }
 
-@ApiSchema('WeatherModuleLocationWeather')
+@ApiSchema({ name: 'WeatherModuleLocationWeather' })
 export class LocationWeatherModel {
 	@ApiProperty({ description: 'Current weather', type: CurrentDayModel })
 	@Expose()

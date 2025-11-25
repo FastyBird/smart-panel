@@ -1,10 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { ArrayNotEmpty, IsArray, IsString } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantDiscoveredDevice')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDiscoveredDevice' })
 export class HomeAssistantDiscoveredDeviceDto {
 	@Expose()
 	@IsString()

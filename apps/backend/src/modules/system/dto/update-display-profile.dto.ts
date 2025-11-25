@@ -1,15 +1,13 @@
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, Min, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import type { components } from '../../../openapi';
 
 type ReqUpdateDisplayProfile = components['schemas']['SystemModuleReqUpdateDisplayProfile'];
 type UpdateDisplayProfile = components['schemas']['SystemModuleUpdateDisplayProfile'];
 
-@ApiSchema('SystemModuleUpdateDisplayProfile')
+@ApiSchema({ name: 'SystemModuleUpdateDisplayProfile' })
 export class UpdateDisplayProfileDto implements UpdateDisplayProfile {
 	@ApiPropertyOptional({
 		name: 'unit_size',
@@ -59,7 +57,7 @@ export class UpdateDisplayProfileDto implements UpdateDisplayProfile {
 	primary?: boolean;
 }
 
-@ApiSchema('SystemModuleReqUpdateDisplayProfile')
+@ApiSchema({ name: 'SystemModuleReqUpdateDisplayProfile' })
 export class ReqUpdateDisplayProfileDto implements ReqUpdateDisplayProfile {
 	@ApiProperty({
 		description: 'Display profile update data',

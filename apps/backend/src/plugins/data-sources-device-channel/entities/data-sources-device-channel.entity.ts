@@ -1,15 +1,14 @@
 import { Exclude, Expose, Transform, Type } from 'class-transformer';
 import { IsInstance, IsOptional, IsString, IsUUID, Validate, ValidateIf } from 'class-validator';
 import { ChildEntity, Column, ManyToOne, RelationId } from 'typeorm';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { DataSourceEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 
-@ApiSchema('DataSourcesDeviceChannelPluginDeviceChannelDataSource')
+@ApiSchema({ name: 'DataSourcesDeviceChannelPluginDeviceChannelDataSource' })
 @ChildEntity()
 export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@ApiProperty({

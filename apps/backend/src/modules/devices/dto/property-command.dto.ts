@@ -10,14 +10,12 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { ValidateChannelExists } from '../validators/channel-exists-constraint.validator';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 
-@ApiSchema('DevicesModulePropertyCommandValue')
+@ApiSchema({ name: 'DevicesModulePropertyCommandValue' })
 export class PropertyCommandValueDto {
 	@ApiProperty({
 		description: 'Device ID',
@@ -70,7 +68,7 @@ export class PropertyCommandValueDto {
 	value: string | boolean | number;
 }
 
-@ApiSchema('DevicesModulePropertyCommand')
+@ApiSchema({ name: 'DevicesModulePropertyCommand' })
 export class PropertyCommandDto {
 	@ApiProperty({
 		description: 'Array of property commands',

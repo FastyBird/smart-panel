@@ -11,10 +11,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import type { components } from '../../../openapi';
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
 
 import { ParentDto } from './common.dto';
@@ -24,7 +23,7 @@ type ReqCreateTile = components['schemas']['DashboardModuleReqCreateTile'];
 type ReqCreateTileWithParent = components['schemas']['DashboardModuleReqCreateTileWithParent'];
 type CreateTile = components['schemas']['DashboardModuleCreateTile'];
 
-@ApiSchema('DashboardModuleCreateTile')
+@ApiSchema({ name: 'DashboardModuleCreateTile' })
 export abstract class CreateTileDto implements CreateTile {
 	@ApiPropertyOptional({
 		description: 'Tile ID',
@@ -116,7 +115,7 @@ export abstract class CreateTileDto implements CreateTile {
 	hidden?: boolean;
 }
 
-@ApiSchema('DashboardModuleCreateSingleTile')
+@ApiSchema({ name: 'DashboardModuleCreateSingleTile' })
 export class CreateSingleTileDto extends CreateTileDto {
 	@ApiProperty({ description: 'Parent entity information', type: () => ParentDto })
 	@Expose()
@@ -125,7 +124,7 @@ export class CreateSingleTileDto extends CreateTileDto {
 	readonly parent: ParentDto;
 }
 
-@ApiSchema('DashboardModuleReqCreateTile')
+@ApiSchema({ name: 'DashboardModuleReqCreateTile' })
 export class ReqCreateTileDto implements ReqCreateTile {
 	@ApiProperty({ description: 'Tile data', type: () => CreateSingleTileDto })
 	@Expose()
@@ -134,7 +133,7 @@ export class ReqCreateTileDto implements ReqCreateTile {
 	data: CreateSingleTileDto;
 }
 
-@ApiSchema('DashboardModuleReqCreateTileWithParent')
+@ApiSchema({ name: 'DashboardModuleReqCreateTileWithParent' })
 export class ReqCreateTileWithParentDto implements ReqCreateTileWithParent {
 	@ApiProperty({ description: 'Tile data', type: () => CreateSingleTileDto })
 	@Expose()

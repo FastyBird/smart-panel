@@ -1,12 +1,10 @@
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
-
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 import { TokenType } from '../auth.constants';
 
-@ApiSchema('AuthModuleUpdateToken')
+@ApiSchema({ name: 'AuthModuleUpdateToken' })
 export abstract class UpdateTokenDto {
 	@ApiProperty({
 		description: 'Token type discriminator',
@@ -29,7 +27,7 @@ export abstract class UpdateTokenDto {
 	revoked: boolean;
 }
 
-@ApiSchema('AuthModuleUpdateAccessToken')
+@ApiSchema({ name: 'AuthModuleUpdateAccessToken' })
 export class UpdateAccessTokenDto extends UpdateTokenDto {
 	@ApiProperty({
 		description: 'Token type',
@@ -39,7 +37,7 @@ export class UpdateAccessTokenDto extends UpdateTokenDto {
 	type: TokenType.ACCESS;
 }
 
-@ApiSchema('AuthModuleUpdateRefreshToken')
+@ApiSchema({ name: 'AuthModuleUpdateRefreshToken' })
 export class UpdateRefreshTokenDto extends UpdateTokenDto {
 	@ApiProperty({
 		description: 'Token type',
@@ -49,7 +47,7 @@ export class UpdateRefreshTokenDto extends UpdateTokenDto {
 	type: TokenType.REFRESH;
 }
 
-@ApiSchema('AuthModuleUpdateLongLiveToken')
+@ApiSchema({ name: 'AuthModuleUpdateLongLiveToken' })
 export class UpdateLongLiveTokenDto extends UpdateTokenDto {
 	@ApiProperty({
 		description: 'Token type',
@@ -83,7 +81,7 @@ export class UpdateLongLiveTokenDto extends UpdateTokenDto {
 	description?: string | null;
 }
 
-@ApiSchema('AuthModuleReqUpdateToken')
+@ApiSchema({ name: 'AuthModuleReqUpdateToken' })
 export class ReqUpdateTokenDto {
 	@ApiProperty({
 		description: 'Token update data',

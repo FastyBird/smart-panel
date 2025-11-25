@@ -1,12 +1,11 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 
-import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
-@ApiSchema('DevicesHomeAssistantPluginHomeAssistantConfig')
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantConfig' })
 export class HomeAssistantConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',
