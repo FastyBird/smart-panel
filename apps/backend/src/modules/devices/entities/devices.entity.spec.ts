@@ -2,7 +2,6 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import type { components } from '../../../openapi';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -19,12 +18,6 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from './devices.entity';
-
-type Device = components['schemas']['DevicesModuleDevice'];
-type DeviceControl = components['schemas']['DevicesModuleDeviceControl'];
-type Channel = components['schemas']['DevicesModuleChannel'];
-type ChannelControl = components['schemas']['DevicesModuleChannelControl'];
-type ChannelProperty = components['schemas']['DevicesModuleChannelProperty'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -50,7 +43,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 	};
 
 	test('DeviceEntity matches DevicesDevice', () => {
-		const openApiModel: Device = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: 'device',
 			category: DeviceCategory.GENERIC,
@@ -80,7 +73,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 	});
 
 	test('DeviceControlEntity matches DevicesDeviceControl', () => {
-		const openApiModel: DeviceControl = {
+		const openApiModel = {
 			id: uuid().toString(),
 			name: 'reboot',
 			device: uuid().toString(),
@@ -100,7 +93,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 	});
 
 	test('ChannelEntity matches DevicesChannel', () => {
-		const openApiModel: Channel = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: 'channel',
 			category: ChannelCategory.GENERIC,
@@ -126,7 +119,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 	});
 
 	test('ChannelControlEntity matches DevicesChannelControl', () => {
-		const openApiModel: ChannelControl = {
+		const openApiModel = {
 			id: uuid().toString(),
 			name: 'reset',
 			channel: uuid().toString(),
@@ -146,7 +139,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 	});
 
 	test('ChannelPropertyEntity matches DevicesChannelProperty', () => {
-		const openApiModel: ChannelProperty = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: 'property',
 			category: PropertyCategory.GENERIC,

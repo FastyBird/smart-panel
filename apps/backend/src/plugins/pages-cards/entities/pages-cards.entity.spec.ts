@@ -15,13 +15,9 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { components } from '../../../openapi';
 import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 
 import { CardEntity, CardsPageEntity } from './pages-cards.entity';
-
-type CardsPage = components['schemas']['PagesCardsPluginCardsPage'];
-type Card = components['schemas']['PagesCardsPluginCard'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -45,7 +41,7 @@ describe('Cards pages plugin entity and OpenAPI Model Synchronization', () => {
 	};
 
 	test('CardsPageEntity matches DashboardCardsPage', () => {
-		const openApiModel: CardsPage = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: PAGES_CARDS_TYPE,
 			title: 'Cards Dashboard',
@@ -71,7 +67,7 @@ describe('Cards pages plugin entity and OpenAPI Model Synchronization', () => {
 	});
 
 	test('CardEntity matches DashboardCard', () => {
-		const openApiModel: Card = {
+		const openApiModel = {
 			id: uuid().toString(),
 			title: 'Card title',
 			icon: 'Card icon',

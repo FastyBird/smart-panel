@@ -19,11 +19,7 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { LogEntrySource, LogEntryType } from '../system.constants';
-
-type ReqCreateLogEntries = components['schemas']['SystemModuleReqCreateLogEntries'];
-type CreateLogEntry = components['schemas']['SystemModuleCreateLogEntry'];
 
 @ApiSchema({ name: 'SystemModuleCreateLogEntryUser' })
 export class CreateLogEntryUserDto {
@@ -85,7 +81,7 @@ export class CreateLogEntryContextDto {
 }
 
 @ApiSchema({ name: 'SystemModuleCreateLogEntry' })
-export class CreateLogEntryDto implements CreateLogEntry {
+export class CreateLogEntryDto {
 	@ApiProperty({
 		description: 'Log entry timestamp (ISO 8601 format)',
 		type: 'string',
@@ -204,7 +200,7 @@ export class CreateLogEntryDto implements CreateLogEntry {
 }
 
 @ApiSchema({ name: 'SystemModuleReqCreateLogEntries' })
-export class ReqCreateLogEntriesDto implements ReqCreateLogEntries {
+export class ReqCreateLogEntriesDto {
 	@ApiProperty({
 		description: 'Array of log entries to create',
 		type: [CreateLogEntryDto],

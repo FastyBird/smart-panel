@@ -3,13 +3,8 @@ import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
-type ReqRefreshToken = components['schemas']['AuthModuleReqRefreshToken'];
-type RefreshToken = components['schemas']['AuthModuleRefreshToken'];
-
 @ApiSchema({ name: 'AuthModuleCreateRefreshToken' })
-export class RefreshTokenDto implements RefreshToken {
+export class RefreshTokenDto {
 	@ApiProperty({
 		description: 'JWT refresh access token',
 		type: 'string',
@@ -23,7 +18,7 @@ export class RefreshTokenDto implements RefreshToken {
 }
 
 @ApiSchema({ name: 'AuthModuleReqRefreshToken' })
-export class ReqRefreshDto implements ReqRefreshToken {
+export class ReqRefreshDto {
 	@ApiProperty({
 		description: 'Refresh token data',
 		type: () => RefreshTokenDto,

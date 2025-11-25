@@ -2,7 +2,6 @@ import { validateSync } from 'class-validator';
 import 'reflect-metadata';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { components } from '../../../openapi';
 
 import {
 	DisplayInfoModel,
@@ -19,20 +18,6 @@ import {
 	TemperatureInfoModel,
 	ThrottleStatusModel,
 } from './system.model';
-
-type MemoryInfo = components['schemas']['SystemModuleMemoryInfo'];
-type StorageInfo = components['schemas']['SystemModuleStorageInfo'];
-type TemperatureInfo = components['schemas']['SystemModuleTemperatureInfo'];
-type OperatingSystemInfo = components['schemas']['SystemModuleOperatingSystemInfo'];
-type DisplayInfo = components['schemas']['SystemModuleDisplayInfo'];
-type ProcessInfo = components['schemas']['SystemModuleProcessInfo'];
-type NetworkStats = components['schemas']['SystemModuleNetworkStats'];
-type SystemHealth = components['schemas']['SystemModuleSystemHealth'];
-type SystemInfo = components['schemas']['SystemModuleSystemInfo'];
-type ThrottleStatus = components['schemas']['SystemModuleThrottleStatus'];
-type LogEntry = components['schemas']['SystemModuleLogEntry'];
-type ExtensionAdmin = components['schemas']['SystemModuleExtensionAdmin'];
-type ExtensionBackend = components['schemas']['SystemModuleExtensionBackend'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -58,7 +43,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	};
 
 	test('MemoryInfoModel matches MemoryInfo', () => {
-		const openApiModel: MemoryInfo = {
+		const openApiModel = {
 			total: 8388608000,
 			used: 4200000000,
 			free: 4188608000,
@@ -76,7 +61,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('StorageInfoModel matches StorageInfo', () => {
-		const openApiModel: StorageInfo = {
+		const openApiModel = {
 			fs: '/dev/mmcblk0p1',
 			used: 15000000000,
 			size: 32000000000,
@@ -95,7 +80,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('TemperatureInfoModel matches TemperatureInfo', () => {
-		const openApiModel: TemperatureInfo = {
+		const openApiModel = {
 			cpu: 55,
 			gpu: 60,
 		};
@@ -112,7 +97,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('OperatingSystemInfoModel matches OperatingSystemInfo', () => {
-		const openApiModel: OperatingSystemInfo = {
+		const openApiModel = {
 			platform: 'linux',
 			distro: 'Debian',
 			release: '11 (bullseye)',
@@ -134,7 +119,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('DisplayInfoModel matches DisplayInfo', () => {
-		const openApiModel: DisplayInfo = {
+		const openApiModel = {
 			resolution_x: 1920,
 			resolution_y: 1080,
 			current_res_x: 1280,
@@ -153,7 +138,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('ProcessModel matches ProcessInfo', () => {
-		const openApiModel: ProcessInfo = {
+		const openApiModel = {
 			pid: 86523,
 			uptime: 1496,
 		};
@@ -170,7 +155,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('NetworkStatsModel matches NetworkStats', () => {
-		const openApiModel: NetworkStats = {
+		const openApiModel = {
 			interface: 'eth0',
 			rx_bytes: 123456789,
 			tx_bytes: 98765432,
@@ -188,7 +173,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('SystemInfoModel matches SystemInfo', () => {
-		const openApiModel: SystemInfo = {
+		const openApiModel = {
 			cpu_load: 15.3,
 			memory: {
 				total: 8388608000,
@@ -260,7 +245,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('SystemHealthModel matches SystemHealth', () => {
-		const openApiModel: SystemHealth = {
+		const openApiModel = {
 			status: 'ok',
 			version: '1.0.0',
 		};
@@ -277,7 +262,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('ThrottleStatusModel matches ThrottleStatus', () => {
-		const openApiModel: ThrottleStatus = {
+		const openApiModel = {
 			undervoltage: false,
 			frequency_capping: false,
 			throttling: false,
@@ -296,7 +281,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('LogEntryModel matches LogEntry', () => {
-		const openApiModel: LogEntry = {
+		const openApiModel = {
 			id: '01K83ZYR44X43H0VP0NPQBM22N',
 			ts: '2025-10-21T18:19:28.260Z',
 			ingested_at: '2025-10-21T18:19:28.260Z',
@@ -323,7 +308,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('ExtensionAdminModel matches ExtensionAdmin', () => {
-		const openApiModel: ExtensionAdmin = {
+		const openApiModel = {
 			name: '@fastybird/example-extension-admin',
 			kind: 'plugin',
 			surface: 'admin',
@@ -346,7 +331,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 	});
 
 	test('ExtensionBackendModel matches ExtensionBackend', () => {
-		const openApiModel: ExtensionBackend = {
+		const openApiModel = {
 			name: '@fastybird/example-extension-admin',
 			kind: 'plugin',
 			surface: 'backend',

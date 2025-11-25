@@ -3,13 +3,8 @@ import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
-type ReqCheckUsername = components['schemas']['AuthModuleReqCheckUsername'];
-type CheckUsername = components['schemas']['AuthModuleCheckUsername'];
-
 @ApiSchema({ name: 'AuthModuleCheckUsername' })
-export class CheckUsernameDto implements CheckUsername {
+export class CheckUsernameDto {
 	@ApiProperty({
 		description: 'The username to check for availability.',
 		type: 'string',
@@ -22,7 +17,7 @@ export class CheckUsernameDto implements CheckUsername {
 }
 
 @ApiSchema({ name: 'AuthModuleReqCheckUsername' })
-export class ReqCheckUsernameDto implements ReqCheckUsername {
+export class ReqCheckUsernameDto {
 	@ApiProperty({
 		description: 'Username validation data',
 		type: () => CheckUsernameDto,

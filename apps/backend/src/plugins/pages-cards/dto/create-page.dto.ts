@@ -4,15 +4,12 @@ import { IsArray, IsOptional, ValidateNested } from 'class-validator';
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
-import type { components } from '../../../openapi';
 import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 
 import { CreateCardDto } from './create-card.dto';
 
-type CreateCardsPage = components['schemas']['PagesCardsPluginCreateCardsPage'];
-
 @ApiSchema({ name: 'PagesCardsPluginCreateCardsPage' })
-export class CreateCardsPageDto extends CreatePageDto implements CreateCardsPage {
+export class CreateCardsPageDto extends CreatePageDto {
 	readonly type: typeof PAGES_CARDS_TYPE;
 
 	@ApiPropertyOptional({

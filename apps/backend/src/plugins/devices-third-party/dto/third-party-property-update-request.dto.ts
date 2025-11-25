@@ -11,13 +11,8 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import type { components } from '../../../openapi';
-
-type ThirdPartyDevicePropertyUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertyUpdateRequest'];
-type ThirdPartyDevicePropertiesUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertiesUpdateRequest'];
-
 @ApiSchema({ name: 'DevicesThirdPartyPluginPropertyUpdateRequest' })
-export class PropertyUpdateRequestDto implements ThirdPartyDevicePropertyUpdateRequest {
+export class PropertyUpdateRequestDto {
 	@ApiProperty({
 		description: 'Device UUID',
 		format: 'uuid',
@@ -66,7 +61,7 @@ export class PropertyUpdateRequestDto implements ThirdPartyDevicePropertyUpdateR
 }
 
 @ApiSchema({ name: 'DevicesThirdPartyPluginPropertiesUpdateRequest' })
-export class PropertiesUpdateRequestDto implements ThirdPartyDevicePropertiesUpdateRequest {
+export class PropertiesUpdateRequestDto {
 	@ApiProperty({
 		description: 'Array of property update requests',
 		type: [PropertyUpdateRequestDto],

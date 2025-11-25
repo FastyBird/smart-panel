@@ -2,11 +2,8 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import type { components } from '../../../openapi';
 
 import { DisplayProfileEntity } from './system.entity';
-
-type DisplayProfile = components['schemas']['SystemModuleDisplayProfile'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -32,7 +29,7 @@ describe('System module entity and OpenAPI component synchronization', () => {
 	};
 
 	test('DisplayEntity matches SystemDisplay', () => {
-		const openApiModel: DisplayProfile = {
+		const openApiModel = {
 			id: uuid().toString(),
 			uid: uuid().toString(),
 			screen_width: 1280,

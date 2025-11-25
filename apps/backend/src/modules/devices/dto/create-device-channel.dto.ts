@@ -3,18 +3,14 @@ import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, 
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { ChannelCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
 
 import { CreateDeviceChannelControlDto } from './create-device-channel-control.dto';
 import { CreateDeviceChannelPropertyDto } from './create-device-channel-property.dto';
 
-type ReqCreateDeviceChannel = components['schemas']['DevicesModuleReqCreateDeviceChannel'];
-type CreateDeviceChannel = components['schemas']['DevicesModuleCreateDeviceChannel'];
-
 @ApiSchema({ name: 'DevicesModuleCreateDeviceChannel' })
-export class CreateDeviceChannelDto implements CreateDeviceChannel {
+export class CreateDeviceChannelDto {
 	@ApiPropertyOptional({
 		description: 'Channel ID',
 		type: 'string',
@@ -114,7 +110,7 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 }
 
 @ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannel' })
-export class ReqCreateDeviceChannelDto implements ReqCreateDeviceChannel {
+export class ReqCreateDeviceChannelDto {
 	@ApiProperty({ description: 'Device channel data', type: CreateDeviceChannelDto })
 	@Expose()
 	@ValidateNested()

@@ -15,12 +15,9 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { components } from '../../../openapi';
 import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 import { TilesPageEntity } from './pages-tiles.entity';
-
-type TilesPage = components['schemas']['PagesTilesPluginTilesPage'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -44,7 +41,7 @@ describe('Tiles pages plugin entity and OpenAPI Model Synchronization', () => {
 	};
 
 	test('TilesPageEntity matches DashboardTilesPage', () => {
-		const openApiModel: TilesPage = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: PAGES_TILES_TYPE,
 			title: 'Cards Dashboard',

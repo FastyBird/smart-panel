@@ -3,14 +3,10 @@ import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf, Validate
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
-type ReqUpdateUser = components['schemas']['UsersModuleReqUpdateUser'];
-type UpdateUser = components['schemas']['UsersModuleUpdateUser'];
-
 @ApiSchema({ name: 'UsersModuleUpdateUser' })
-export class UpdateUserDto implements UpdateUser {
+export class UpdateUserDto {
 	@ApiPropertyOptional({
 		description: 'Unique identifier for the user.',
 		type: 'string',
@@ -93,7 +89,7 @@ export class UpdateUserDto implements UpdateUser {
 }
 
 @ApiSchema({ name: 'UsersModuleReqUpdateUser' })
-export class ReqUpdateUserDto implements ReqUpdateUser {
+export class ReqUpdateUserDto {
 	@ApiProperty({
 		description: 'User update data',
 		type: () => UpdateUserDto,

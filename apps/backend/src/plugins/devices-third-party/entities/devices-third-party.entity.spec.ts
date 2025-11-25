@@ -3,12 +3,9 @@ import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
-import type { components } from '../../../openapi';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
 import { ThirdPartyDeviceEntity } from './devices-third-party.entity';
-
-type ThirdPartyPluginThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginThirdPartyDevice'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -32,7 +29,7 @@ describe('Devices Third-Party plugin entity and OpenAPI Model Synchronization', 
 	};
 
 	test('ThirdPartyDeviceEntity matches ThirdPartyDevicesDevice', () => {
-		const openApiModel: ThirdPartyPluginThirdPartyDevice = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: DEVICES_THIRD_PARTY_TYPE,
 			category: DeviceCategory.GENERIC,

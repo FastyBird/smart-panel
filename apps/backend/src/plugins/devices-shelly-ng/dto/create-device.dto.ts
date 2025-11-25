@@ -4,13 +4,10 @@ import { IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { CreateDeviceDto } from '../../../modules/devices/dto/create-device.dto';
-import type { components } from '../../../openapi';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-type CreateShellyNgDevice = components['schemas']['DevicesShellyNgPluginCreateShellyNgDevice'];
-
 @ApiSchema({ name: 'DevicesShellyNgPluginCreateShellyNgDevice' })
-export class CreateShellyNgDeviceDto extends CreateDeviceDto implements CreateShellyNgDevice {
+export class CreateShellyNgDeviceDto extends CreateDeviceDto {
 	@ApiProperty({
 		description: 'Device type',
 		example: DEVICES_SHELLY_NG_TYPE,

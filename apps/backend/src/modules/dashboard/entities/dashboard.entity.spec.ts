@@ -16,13 +16,8 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { components } from '../../../openapi';
 
 import { DataSourceEntity, PageEntity, TileEntity } from './dashboard.entity';
-
-type Page = components['schemas']['DashboardModulePage'];
-type Tile = components['schemas']['DashboardModuleTile'];
-type DataSource = components['schemas']['DashboardModuleDataSource'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -67,7 +62,7 @@ describe('Dashboard module entity and OpenAPI component synchronization', () => 
 	};
 
 	test('PageEntity matches DashboardPage', () => {
-		const openApiModel: Page = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: 'page',
 			title: 'Cards Dashboard',
@@ -92,7 +87,7 @@ describe('Dashboard module entity and OpenAPI component synchronization', () => 
 	});
 
 	test('TileEntity matches DashboardTile', () => {
-		const openApiModel: Tile & { parent_type: string; parent_id: string } = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: 'tile',
 			parent: {
@@ -124,7 +119,7 @@ describe('Dashboard module entity and OpenAPI component synchronization', () => 
 	});
 
 	test('DataSourceEntity matches DashboardDataSource', () => {
-		const openApiModel: DataSource & { parent_type: string; parent_id: string } = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: 'data-source',
 			parent: {

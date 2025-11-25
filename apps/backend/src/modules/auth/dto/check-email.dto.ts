@@ -3,13 +3,8 @@ import { IsEmail, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
-type ReqCheckEmail = components['schemas']['AuthModuleReqCheckEmail'];
-type CheckEmail = components['schemas']['AuthModuleCheckEmail'];
-
 @ApiSchema({ name: 'AuthModuleCheckEmail' })
-export class CheckEmailDto implements CheckEmail {
+export class CheckEmailDto {
 	@ApiProperty({
 		description: 'The email address to check for availability.',
 		type: 'string',
@@ -25,7 +20,7 @@ export class CheckEmailDto implements CheckEmail {
 }
 
 @ApiSchema({ name: 'AuthModuleReqCheckEmail' })
-export class ReqCheckEmailDto implements ReqCheckEmail {
+export class ReqCheckEmailDto {
 	@ApiProperty({
 		description: 'Email validation data',
 		type: () => CheckEmailDto,

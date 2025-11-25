@@ -10,14 +10,9 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import type { components } from '../../../openapi';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 import { ShellyNgChannelEntity, ShellyNgChannelPropertyEntity, ShellyNgDeviceEntity } from './devices-shelly-ng.entity';
-
-type ShellyNgPluginShellyNgDevice = components['schemas']['DevicesShellyNgPluginShellyNgDevice'];
-type ShellyNgPluginShellyNgChannel = components['schemas']['DevicesShellyNgPluginShellyNgChannel'];
-type ShellyNgPluginShellyNgChannelProperty = components['schemas']['DevicesShellyNgPluginShellyNgChannelProperty'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -41,7 +36,7 @@ describe('Devices Shelly NG plugin entity and OpenAPI Model Synchronization', ()
 	};
 
 	test('ShellyNgDeviceEntity matches ShellyNgDevicesDevice', () => {
-		const openApiModel: ShellyNgPluginShellyNgDevice = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: DEVICES_SHELLY_NG_TYPE,
 			category: DeviceCategory.GENERIC,
@@ -73,7 +68,7 @@ describe('Devices Shelly NG plugin entity and OpenAPI Model Synchronization', ()
 	});
 
 	test('ChannelEntity matches DevicesChannel', () => {
-		const openApiModel: ShellyNgPluginShellyNgChannel = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: DEVICES_SHELLY_NG_TYPE,
 			category: ChannelCategory.GENERIC,
@@ -99,7 +94,7 @@ describe('Devices Shelly NG plugin entity and OpenAPI Model Synchronization', ()
 	});
 
 	test('ChannelPropertyEntity matches DevicesChannelProperty', () => {
-		const openApiModel: ShellyNgPluginShellyNgChannelProperty = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: DEVICES_SHELLY_NG_TYPE,
 			category: PropertyCategory.GENERIC,

@@ -3,13 +3,8 @@ import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested 
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
-type ReqUpdateCard = components['schemas']['PagesCardsPluginReqUpdateCard'];
-type UpdateCard = components['schemas']['PagesCardsPluginUpdateCard'];
-
 @ApiSchema({ name: 'PagesCardsPluginUpdateCard' })
-export class UpdateCardDto implements UpdateCard {
+export class UpdateCardDto {
 	@ApiPropertyOptional({
 		description: 'Card title',
 		type: 'string',
@@ -49,7 +44,7 @@ export class UpdateCardDto implements UpdateCard {
 }
 
 @ApiSchema({ name: 'PagesCardsPluginReqUpdateCard' })
-export class ReqUpdateCardDto implements ReqUpdateCard {
+export class ReqUpdateCardDto {
 	@ApiProperty({
 		description: 'Card update data',
 		type: UpdateCardDto,

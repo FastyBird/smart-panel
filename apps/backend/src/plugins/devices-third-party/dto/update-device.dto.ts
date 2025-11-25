@@ -3,13 +3,10 @@ import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 import { UpdateDeviceDto } from '../../../modules/devices/dto/update-device.dto';
-import type { components } from '../../../openapi';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-type UpdateThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyDevice'];
-
 @ApiSchema({ name: 'DevicesThirdPartyPluginUpdateDevice' })
-export class UpdateThirdPartyDeviceDto extends UpdateDeviceDto implements UpdateThirdPartyDevice {
+export class UpdateThirdPartyDeviceDto extends UpdateDeviceDto {
 	@ApiProperty({
 		description: 'Device type',
 		example: DEVICES_THIRD_PARTY_TYPE,

@@ -2,14 +2,10 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsUUID, ValidateNested } from 'class-validator';
 
-import type { components } from '../../../openapi';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 
-type ThirdPartyDevicePropertyUpdateResult = components['schemas']['DevicesThirdPartyPluginPropertyUpdateResult'];
-type ThirdPartyDevicePropertiesUpdateResult = components['schemas']['DevicesThirdPartyPluginPropertiesUpdateResult'];
-
 @ApiSchema({ name: 'DevicesThirdPartyPluginPropertyUpdateResult' })
-export class PropertyUpdateResultDto implements ThirdPartyDevicePropertyUpdateResult {
+export class PropertyUpdateResultDto {
 	@ApiProperty({
 		description: 'Device UUID',
 		format: 'uuid',
@@ -48,7 +44,7 @@ export class PropertyUpdateResultDto implements ThirdPartyDevicePropertyUpdateRe
 }
 
 @ApiSchema({ name: 'DevicesThirdPartyPluginPropertiesUpdateResult' })
-export class PropertiesUpdateResponseDto implements ThirdPartyDevicePropertiesUpdateResult {
+export class PropertiesUpdateResponseDto {
 	@ApiProperty({
 		description: 'Array of property update results',
 		type: [PropertyUpdateResultDto],

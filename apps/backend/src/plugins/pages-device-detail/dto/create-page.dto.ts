@@ -5,13 +5,10 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
-import type { components } from '../../../openapi';
 import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
-type CreateDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginCreateDeviceDetailPage'];
-
 @ApiSchema({ name: 'PagesDeviceDetailPluginCreateDeviceDetailPage' })
-export class CreateDeviceDetailPageDto extends CreatePageDto implements CreateDeviceDetailPage {
+export class CreateDeviceDetailPageDto extends CreatePageDto {
 	readonly type: typeof PAGES_DEVICE_DETAIL_TYPE;
 
 	@ApiProperty({

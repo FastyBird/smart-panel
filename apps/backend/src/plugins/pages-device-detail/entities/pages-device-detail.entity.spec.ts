@@ -15,12 +15,9 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { components } from '../../../openapi';
 import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
 import { DeviceDetailPageEntity } from './pages-device-detail.entity';
-
-type DeviceDetailPage = components['schemas']['PagesDeviceDetailPluginDeviceDetailPage'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -44,7 +41,7 @@ describe('Device detail pages plugin entity and OpenAPI Model Synchronization', 
 	};
 
 	test('DeviceDetailPageEntity matches DashboardDeviceDetailPage', () => {
-		const openApiModel: DeviceDetailPage = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: PAGES_DEVICE_DETAIL_TYPE,
 			title: 'Device Dashboard',

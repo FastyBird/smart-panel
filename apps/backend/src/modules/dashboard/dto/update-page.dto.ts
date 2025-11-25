@@ -12,14 +12,10 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
 
-type ReqUpdatePage = components['schemas']['DashboardModuleReqUpdatePage'];
-type UpdatePage = components['schemas']['DashboardModuleUpdatePage'];
-
 @ApiSchema({ name: 'DashboardModuleUpdatePage' })
-export abstract class UpdatePageDto implements UpdatePage {
+export abstract class UpdatePageDto {
 	@ApiProperty({ description: 'Page type', type: 'string', example: 'default' })
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported page type."}]' })
@@ -75,7 +71,7 @@ export abstract class UpdatePageDto implements UpdatePage {
 }
 
 @ApiSchema({ name: 'DashboardModuleReqUpdatePage' })
-export class ReqUpdatePageDto implements ReqUpdatePage {
+export class ReqUpdatePageDto {
 	@ApiProperty({ description: 'Page data', type: () => UpdatePageDto })
 	@Expose()
 	@ValidateNested()

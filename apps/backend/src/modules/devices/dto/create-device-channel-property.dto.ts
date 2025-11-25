@@ -15,14 +15,10 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
 
-type ReqCreateChannelProperty = components['schemas']['DevicesModuleReqCreateChannelProperty'];
-type CreateChannelProperty = components['schemas']['DevicesModuleCreateChannelProperty'];
-
 @ApiSchema({ name: 'DevicesModuleCreateDeviceChannelProperty' })
-export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
+export class CreateDeviceChannelPropertyDto {
 	@ApiPropertyOptional({
 		description: 'Property ID',
 		type: 'string',
@@ -194,7 +190,7 @@ export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 }
 
 @ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannelProperty' })
-export class ReqCreateDeviceChannelPropertyDto implements ReqCreateChannelProperty {
+export class ReqCreateDeviceChannelPropertyDto {
 	@ApiProperty({ description: 'Channel property data', type: CreateDeviceChannelPropertyDto })
 	@Expose()
 	@ValidateNested()

@@ -2,7 +2,6 @@ import { validateSync } from 'class-validator';
 import 'reflect-metadata';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { components } from '../../../openapi';
 import {
 	LanguageType,
 	LogLevelType,
@@ -23,16 +22,6 @@ import {
 	WeatherLatLonConfigModel,
 	WeatherZipCodeConfigModel,
 } from './config.model';
-
-type Audio = components['schemas']['ConfigModuleAudio'];
-type Display = components['schemas']['ConfigModuleDisplay'];
-type Language = components['schemas']['ConfigModuleLanguage'];
-type WeatherLatLon = components['schemas']['ConfigModuleWeatherLatLon'];
-type WeatherCityName = components['schemas']['ConfigModuleWeatherCityName'];
-type WeatherCityId = components['schemas']['ConfigModuleWeatherCityId'];
-type WeatherZipCode = components['schemas']['ConfigModuleWeatherZipCode'];
-type System = components['schemas']['ConfigModuleSystem'];
-type App = components['schemas']['ConfigModuleApp'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -58,7 +47,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	};
 
 	test('AudioConfigModel matches ConfigAudio', () => {
-		const openApiModel: Audio = {
+		const openApiModel = {
 			type: SectionType.AUDIO,
 			speaker: true,
 			speaker_volume: 50,
@@ -78,7 +67,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	});
 
 	test('DisplayConfigModel matches ConfigDisplay', () => {
-		const openApiModel: Display = {
+		const openApiModel = {
 			type: SectionType.DISPLAY,
 			dark_mode: false,
 			brightness: 55,
@@ -98,7 +87,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	});
 
 	test('LanguageConfigModel matches ConfigLanguage', () => {
-		const openApiModel: Language = {
+		const openApiModel = {
 			type: SectionType.LANGUAGE,
 			language: LanguageType.ENGLISH,
 			timezone: 'Europe\\Prague',
@@ -117,7 +106,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	});
 
 	test('WeatherLatLonConfigModel matches WeatherLatLon', () => {
-		const openApiModel: WeatherLatLon = {
+		const openApiModel = {
 			type: SectionType.WEATHER,
 			location_type: WeatherLocationType.LAT_LON,
 			latitude: null,
@@ -138,7 +127,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	});
 
 	test('WeatherCityNameConfigModel matches WeatherCityName', () => {
-		const openApiModel: WeatherCityName = {
+		const openApiModel = {
 			type: SectionType.WEATHER,
 			location_type: WeatherLocationType.CITY_NAME,
 			city_name: null,
@@ -160,7 +149,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	});
 
 	test('WeatherCityIdConfigModel matches WeatherCityId', () => {
-		const openApiModel: WeatherCityId = {
+		const openApiModel = {
 			type: SectionType.WEATHER,
 			location_type: WeatherLocationType.CITY_ID,
 			city_id: null,
@@ -180,7 +169,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	});
 
 	test('WeatherZipCodeConfigModel matches WeatherZipCode', () => {
-		const openApiModel: WeatherZipCode = {
+		const openApiModel = {
 			type: SectionType.WEATHER,
 			location_type: WeatherLocationType.ZIP_CODE,
 			zip_code: null,
@@ -202,7 +191,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	});
 
 	test('SystemConfigModel matches ConfigSystem', () => {
-		const openApiModel: System = {
+		const openApiModel = {
 			type: SectionType.SYSTEM,
 			log_levels: [LogLevelType.ERROR],
 		};
@@ -219,7 +208,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 	});
 
 	test('AppConfigModel matches ConfigApp', () => {
-		const openApiModel: App & { weather: WeatherLatLon | WeatherCityName | WeatherCityId | WeatherZipCode } = {
+		const openApiModel = {
 			path: '/var/smart-panel/config.yml',
 			audio: {
 				type: SectionType.AUDIO,

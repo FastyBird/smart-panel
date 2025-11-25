@@ -3,16 +3,12 @@ import { IsUUID, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 
 import { CreateDeviceChannelDto } from './create-device-channel.dto';
 
-type ReqCreateChannel = components['schemas']['DevicesModuleReqCreateChannel'];
-type CreateChannel = components['schemas']['DevicesModuleCreateChannel'];
-
 @ApiSchema({ name: 'DevicesModuleCreateChannel' })
-export class CreateChannelDto extends CreateDeviceChannelDto implements CreateChannel {
+export class CreateChannelDto extends CreateDeviceChannelDto {
 	@ApiProperty({
 		description: 'Device ID',
 		type: 'string',
@@ -26,7 +22,7 @@ export class CreateChannelDto extends CreateDeviceChannelDto implements CreateCh
 }
 
 @ApiSchema({ name: 'DevicesModuleReqCreateChannel' })
-export class ReqCreateChannelDto implements ReqCreateChannel {
+export class ReqCreateChannelDto {
 	@ApiProperty({ description: 'Channel data', type: CreateChannelDto })
 	@Expose()
 	@ValidateNested()

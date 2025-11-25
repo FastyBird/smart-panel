@@ -15,7 +15,6 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import {
 	LanguageType,
 	LogLevelType,
@@ -24,18 +23,6 @@ import {
 	TimeFormatType,
 	WeatherLocationType,
 } from '../config.constants';
-
-type ReqUpdateSection = components['schemas']['ConfigModuleReqUpdateSection'];
-type ReqUpdatePlugin = components['schemas']['ConfigModuleReqUpdatePlugin'];
-type UpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];
-type UpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];
-type UpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];
-type UpdateWeatherLatLon = components['schemas']['ConfigModuleUpdateWeatherLatLon'];
-type UpdateWeatherCityName = components['schemas']['ConfigModuleUpdateWeatherCityName'];
-type UpdateWeatherCityId = components['schemas']['ConfigModuleUpdateWeatherCityId'];
-type UpdateWeatherZipCode = components['schemas']['ConfigModuleUpdateWeatherZipCode'];
-type UpdateSystem = components['schemas']['ConfigModuleUpdateSystem'];
-type UpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
 
 const determineConfigDto = (obj: unknown): new () => object => {
 	if (
@@ -93,7 +80,7 @@ export class BaseConfigDto {
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateAudio' })
-export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
+export class UpdateAudioConfigDto extends BaseConfigDto {
 	@ApiProperty({
 		description: 'Configuration section type',
 		enum: [SectionType.AUDIO],
@@ -161,7 +148,7 @@ export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateDisplay' })
-export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDisplay {
+export class UpdateDisplayConfigDto extends BaseConfigDto {
 	@ApiProperty({
 		description: 'Configuration section type',
 		enum: [SectionType.DISPLAY],
@@ -234,7 +221,7 @@ export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDispl
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateLanguage' })
-export class UpdateLanguageConfigDto extends BaseConfigDto implements UpdateLanguage {
+export class UpdateLanguageConfigDto extends BaseConfigDto {
 	@ApiProperty({
 		description: 'Configuration section type',
 		enum: [SectionType.LANGUAGE],
@@ -319,7 +306,7 @@ export abstract class UpdateWeatherConfigDto extends BaseConfigDto {
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeatherLatLon' })
-export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherLatLon {
+export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto {
 	@ApiProperty({
 		description: 'Location type',
 		enum: [WeatherLocationType.LAT_LON],
@@ -367,7 +354,7 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto impleme
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeatherCityName' })
-export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherCityName {
+export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
 	@ApiProperty({
 		description: 'Location type',
 		enum: [WeatherLocationType.CITY_NAME],
@@ -425,7 +412,7 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto imple
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeatherCityId' })
-export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherCityId {
+export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto {
 	@ApiProperty({
 		description: 'Location type',
 		enum: [WeatherLocationType.CITY_ID],
@@ -447,7 +434,7 @@ export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto impleme
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeatherZipCode' })
-export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherZipCode {
+export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
 	@ApiProperty({
 		description: 'Location type',
 		enum: [WeatherLocationType.ZIP_CODE],
@@ -505,7 +492,7 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implem
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateSystem' })
-export class UpdateSystemConfigDto extends BaseConfigDto implements UpdateSystem {
+export class UpdateSystemConfigDto extends BaseConfigDto {
 	@ApiProperty({
 		description: 'Configuration section type',
 		enum: [SectionType.SYSTEM],
@@ -536,7 +523,7 @@ export class UpdateSystemConfigDto extends BaseConfigDto implements UpdateSystem
 }
 
 @ApiSchema({ name: 'ConfigModuleReqUpdateSection' })
-export class ReqUpdateSectionDto implements ReqUpdateSection {
+export class ReqUpdateSectionDto {
 	@ApiProperty({
 		description: 'Configuration section data',
 		oneOf: [
@@ -568,7 +555,7 @@ export class ReqUpdateSectionDto implements ReqUpdateSection {
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdatePlugin' })
-export class UpdatePluginConfigDto implements UpdatePlugin {
+export class UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin identifier',
 		type: 'string',
@@ -590,7 +577,7 @@ export class UpdatePluginConfigDto implements UpdatePlugin {
 }
 
 @ApiSchema({ name: 'ConfigModuleReqUpdatePlugin' })
-export class ReqUpdatePluginDto implements ReqUpdatePlugin {
+export class ReqUpdatePluginDto {
 	@ApiProperty({
 		description: 'Plugin configuration data',
 		type: () => UpdatePluginConfigDto,

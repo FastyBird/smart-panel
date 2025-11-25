@@ -4,16 +4,10 @@ import { IsString } from 'class-validator';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { CreateChannelPropertyDto } from '../../../modules/devices/dto/create-channel-property.dto';
-import type { components } from '../../../openapi';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-type CreateShellyNgChannelProperty = components['schemas']['DevicesShellyNgPluginCreateShellyNgChannelProperty'];
-
 @ApiSchema({ name: 'DevicesShellyNgPluginCreateShellyNgChannelProperty' })
-export class CreateShellyNgChannelPropertyDto
-	extends CreateChannelPropertyDto
-	implements CreateShellyNgChannelProperty
-{
+export class CreateShellyNgChannelPropertyDto extends CreateChannelPropertyDto {
 	@ApiProperty({
 		description: 'Channel property type',
 		example: DEVICES_SHELLY_NG_TYPE,

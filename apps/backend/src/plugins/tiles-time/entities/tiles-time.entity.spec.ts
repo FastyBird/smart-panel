@@ -15,12 +15,9 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { components } from '../../../openapi';
 import { TILES_TIME_TYPE } from '../tiles-time.constants';
 
 import { TimeTileEntity } from './tiles-time.entity';
-
-type TimeTile = components['schemas']['TilesTimePluginTimeTile'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -44,7 +41,7 @@ describe('Time tiles plugin entity and OpenAPI Model Synchronization', () => {
 	};
 
 	test('TimeTileEntity matches DashboardTimeTile', () => {
-		const openApiModel: TimeTile & { parent_type: string; parent_id: string } = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: TILES_TIME_TYPE,
 			parent: {

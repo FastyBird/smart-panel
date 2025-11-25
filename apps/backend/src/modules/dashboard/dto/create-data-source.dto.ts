@@ -3,16 +3,10 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
 import { ParentDto } from './common.dto';
 
-type ReqCreateDataSource = components['schemas']['DashboardModuleReqCreateDataSource'];
-type ReqCreateDataSourceWithParent = components['schemas']['DashboardModuleReqCreateDataSourceWithParent'];
-type CreateDataSource = components['schemas']['DashboardModuleCreateDataSource'];
-
 @ApiSchema({ name: 'DashboardModuleCreateDataSource' })
-export abstract class CreateDataSourceDto implements CreateDataSource {
+export abstract class CreateDataSourceDto {
 	@ApiPropertyOptional({
 		description: 'Data source ID',
 		type: 'string',
@@ -41,7 +35,7 @@ export class CreateSingleDataSourceDto extends CreateDataSourceDto {
 }
 
 @ApiSchema({ name: 'DashboardModuleReqCreateDataSource' })
-export class ReqCreateDataSourceDto implements ReqCreateDataSource {
+export class ReqCreateDataSourceDto {
 	@ApiProperty({ description: 'Data source data', type: () => CreateSingleDataSourceDto })
 	@Expose()
 	@ValidateNested()
@@ -50,7 +44,7 @@ export class ReqCreateDataSourceDto implements ReqCreateDataSource {
 }
 
 @ApiSchema({ name: 'DashboardModuleReqCreateDataSourceWithParent' })
-export class ReqCreateDataSourceWithParentDto implements ReqCreateDataSourceWithParent {
+export class ReqCreateDataSourceWithParentDto {
 	@ApiProperty({ description: 'Data source data', type: () => CreateDataSourceDto })
 	@Expose()
 	@ValidateNested()

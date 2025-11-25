@@ -10,7 +10,6 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import type { components } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
 import {
@@ -18,11 +17,6 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from './devices-home-assistant.entity';
-
-type HomeAssistantPluginHomeAssistantDevice = components['schemas']['DevicesHomeAssistantPluginHomeAssistantDevice'];
-type HomeAssistantPluginHomeAssistantChannel = components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannel'];
-type HomeAssistantPluginHomeAssistantChannelProperty =
-	components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannelProperty'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -46,7 +40,7 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 	};
 
 	test('HomeAssistantDeviceEntity matches HomeAssistantDevicesDevice', () => {
-		const openApiModel: HomeAssistantPluginHomeAssistantDevice = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: DeviceCategory.GENERIC,
@@ -77,7 +71,7 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 	});
 
 	test('ChannelEntity matches DevicesChannel', () => {
-		const openApiModel: HomeAssistantPluginHomeAssistantChannel = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: ChannelCategory.GENERIC,
@@ -103,7 +97,7 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 	});
 
 	test('ChannelPropertyEntity matches DevicesChannelProperty', () => {
-		const openApiModel: HomeAssistantPluginHomeAssistantChannelProperty = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: PropertyCategory.GENERIC,

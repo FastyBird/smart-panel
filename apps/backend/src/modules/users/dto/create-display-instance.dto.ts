@@ -3,14 +3,10 @@ import { IsMACAddress, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, Valida
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { ValidateUserExists } from '../validators/user-exists-constraint.validator';
 
-type ReqCreateDisplayInstance = components['schemas']['UsersModuleReqCreateDisplayInstance'];
-type CreateDisplayInstance = components['schemas']['UsersModuleCreateDisplayInstance'];
-
 @ApiSchema({ name: 'UsersModuleCreateDisplayInstance' })
-export class CreateDisplayInstanceDto implements CreateDisplayInstance {
+export class CreateDisplayInstanceDto {
 	@ApiPropertyOptional({
 		description: 'Optional display instance ID (UUID v4)',
 		format: 'uuid',
@@ -79,7 +75,7 @@ export class CreateDisplayInstanceDto implements CreateDisplayInstance {
 }
 
 @ApiSchema({ name: 'UsersModuleReqCreateDisplayInstance' })
-export class ReqCreateDisplayInstanceDto implements ReqCreateDisplayInstance {
+export class ReqCreateDisplayInstanceDto {
 	@ApiProperty({
 		description: 'Display instance creation data',
 		type: () => CreateDisplayInstanceDto,

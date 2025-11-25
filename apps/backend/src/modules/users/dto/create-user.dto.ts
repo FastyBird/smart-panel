@@ -3,14 +3,10 @@ import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, 
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
-type ReqCreateUser = components['schemas']['UsersModuleReqCreateUser'];
-type CreateUser = components['schemas']['UsersModuleCreateUser'];
-
 @ApiSchema({ name: 'UsersModuleCreateUser' })
-export class CreateUserDto implements CreateUser {
+export class CreateUserDto {
 	@ApiPropertyOptional({
 		description: 'Optional user ID (UUID v4)',
 		format: 'uuid',
@@ -99,7 +95,7 @@ export class CreateUserDto implements CreateUser {
 }
 
 @ApiSchema({ name: 'UsersModuleReqCreateUser' })
-export class ReqCreateUserDto implements ReqCreateUser {
+export class ReqCreateUserDto {
 	@ApiProperty({
 		description: 'User creation data',
 		type: () => CreateUserDto,

@@ -5,13 +5,10 @@ import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
-import type { components } from '../../../openapi';
 import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
-type UpdateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginUpdateDevicePreviewTile'];
-
 @ApiSchema({ name: 'TilesDevicePreviewPluginUpdateDevicePreviewTile' })
-export class UpdateDevicePreviewTileDto extends UpdateTileDto implements UpdateDevicePreviewTile {
+export class UpdateDevicePreviewTileDto extends UpdateTileDto {
 	readonly type: typeof TILES_DEVICE_PREVIEW_TYPE;
 
 	@ApiPropertyOptional({

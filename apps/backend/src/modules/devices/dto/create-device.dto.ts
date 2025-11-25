@@ -13,17 +13,14 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { DeviceCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
 
 import { CreateDeviceChannelDto } from './create-device-channel.dto';
 import { CreateDeviceControlDto } from './create-device-control.dto';
 
-type CreateDeviceBase = components['schemas']['DevicesModuleCreateDevice'];
-
 @ApiSchema({ name: 'DevicesModuleCreateDevice' })
-export class CreateDeviceDto implements CreateDeviceBase {
+export class CreateDeviceDto {
 	@ApiPropertyOptional({
 		description: 'Device ID',
 		type: 'string',

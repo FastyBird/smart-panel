@@ -13,18 +13,13 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
 
 import { ParentDto } from './common.dto';
 import { CreateDataSourceDto } from './create-data-source.dto';
 
-type ReqCreateTile = components['schemas']['DashboardModuleReqCreateTile'];
-type ReqCreateTileWithParent = components['schemas']['DashboardModuleReqCreateTileWithParent'];
-type CreateTile = components['schemas']['DashboardModuleCreateTile'];
-
 @ApiSchema({ name: 'DashboardModuleCreateTile' })
-export abstract class CreateTileDto implements CreateTile {
+export abstract class CreateTileDto {
 	@ApiPropertyOptional({
 		description: 'Tile ID',
 		type: 'string',
@@ -125,7 +120,7 @@ export class CreateSingleTileDto extends CreateTileDto {
 }
 
 @ApiSchema({ name: 'DashboardModuleReqCreateTile' })
-export class ReqCreateTileDto implements ReqCreateTile {
+export class ReqCreateTileDto {
 	@ApiProperty({ description: 'Tile data', type: () => CreateSingleTileDto })
 	@Expose()
 	@ValidateNested()
@@ -134,7 +129,7 @@ export class ReqCreateTileDto implements ReqCreateTile {
 }
 
 @ApiSchema({ name: 'DashboardModuleReqCreateTileWithParent' })
-export class ReqCreateTileWithParentDto implements ReqCreateTileWithParent {
+export class ReqCreateTileWithParentDto {
 	@ApiProperty({ description: 'Tile data', type: () => CreateSingleTileDto })
 	@Expose()
 	@ValidateNested()

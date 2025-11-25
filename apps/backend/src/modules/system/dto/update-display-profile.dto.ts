@@ -3,13 +3,8 @@ import { IsBoolean, IsInt, IsOptional, Min, ValidateNested } from 'class-validat
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
-type ReqUpdateDisplayProfile = components['schemas']['SystemModuleReqUpdateDisplayProfile'];
-type UpdateDisplayProfile = components['schemas']['SystemModuleUpdateDisplayProfile'];
-
 @ApiSchema({ name: 'SystemModuleUpdateDisplayProfile' })
-export class UpdateDisplayProfileDto implements UpdateDisplayProfile {
+export class UpdateDisplayProfileDto {
 	@ApiPropertyOptional({
 		name: 'unit_size',
 		description: 'Display unit size',
@@ -59,7 +54,7 @@ export class UpdateDisplayProfileDto implements UpdateDisplayProfile {
 }
 
 @ApiSchema({ name: 'SystemModuleReqUpdateDisplayProfile' })
-export class ReqUpdateDisplayProfileDto implements ReqUpdateDisplayProfile {
+export class ReqUpdateDisplayProfileDto {
 	@ApiProperty({
 		description: 'Display profile update data',
 		type: UpdateDisplayProfileDto,

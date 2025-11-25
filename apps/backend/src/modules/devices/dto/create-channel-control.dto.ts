@@ -3,18 +3,13 @@ import { ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
 import { CreateDeviceChannelControlDto } from './create-device-channel-control.dto';
 
-type ReqCreateChannelControl = components['schemas']['DevicesModuleReqCreateChannelControl'];
-type CreateChannelControl = components['schemas']['DevicesModuleCreateChannelControl'];
-
 @ApiSchema({ name: 'DevicesModuleCreateChannelControl' })
-export class CreateChannelControlDto extends CreateDeviceChannelControlDto implements CreateChannelControl {}
+export class CreateChannelControlDto extends CreateDeviceChannelControlDto {}
 
 @ApiSchema({ name: 'DevicesModuleReqCreateChannelControl' })
-export class ReqCreateChannelControlDto implements ReqCreateChannelControl {
+export class ReqCreateChannelControlDto {
 	@ApiProperty({ description: 'Channel control data', type: CreateChannelControlDto })
 	@Expose()
 	@ValidateNested()

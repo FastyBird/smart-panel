@@ -15,12 +15,9 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { components } from '../../../openapi';
 import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
 import { DevicePreviewTileEntity } from './tiles-device-preview.entity';
-
-type DevicePreviewTile = components['schemas']['TilesDevicePreviewPluginDevicePreviewTile'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -44,7 +41,7 @@ describe('Device preview tiles plugin entity and OpenAPI Model Synchronization',
 	};
 
 	test('DevicePreviewTileEntity matches DashboardDevicePreviewTile', () => {
-		const openApiModel: DevicePreviewTile & { parent_type: string; parent_id: string } = {
+		const openApiModel = {
 			id: uuid().toString(),
 			type: TILES_DEVICE_PREVIEW_TYPE,
 			parent: {

@@ -3,14 +3,10 @@ import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, 
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { UserRole } from '../../users/users.constants';
 
-type ReqRegister = components['schemas']['AuthModuleReqRegister'];
-type Register = components['schemas']['AuthModuleRegister'];
-
 @ApiSchema({ name: 'AuthModuleRegister' })
-export class RegisterDto implements Register {
+export class RegisterDto {
 	@ApiPropertyOptional({
 		description: 'Optional user ID (UUID v4)',
 		format: 'uuid',
@@ -93,7 +89,7 @@ export class RegisterDto implements Register {
 }
 
 @ApiSchema({ name: 'AuthModuleReqRegister' })
-export class ReqRegisterDto implements ReqRegister {
+export class ReqRegisterDto {
 	@ApiProperty({
 		description: 'Registration data',
 		type: () => RegisterDto,

@@ -3,13 +3,10 @@ import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
 import { DeviceCategory } from '../devices.constants';
 
-type UpdateDeviceBase = components['schemas']['DevicesModuleUpdateDevice'];
-
 @ApiSchema({ name: 'DevicesModuleUpdateDevice' })
-export class UpdateDeviceDto implements UpdateDeviceBase {
+export class UpdateDeviceDto {
 	@ApiProperty({ description: 'Device type', type: 'string', example: 'generic' })
 	@Expose()
 	@IsNotEmpty({

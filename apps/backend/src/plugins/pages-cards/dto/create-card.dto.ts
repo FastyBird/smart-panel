@@ -16,13 +16,9 @@ import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { ValidateDataSourceType } from '../../../modules/dashboard/validators/data-source-type-constraint.validator';
 import { ValidateTileType } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
-import type { components } from '../../../openapi';
-
-type ReqCreateCard = components['schemas']['PagesCardsPluginReqCreateCard'];
-type CreateCard = components['schemas']['PagesCardsPluginCreateCard'];
 
 @ApiSchema({ name: 'PagesCardsPluginCreateCard' })
-export class CreateCardDto implements CreateCard {
+export class CreateCardDto {
 	@ApiPropertyOptional({
 		description: 'Card unique identifier',
 		type: 'string',
@@ -111,7 +107,7 @@ export class CreateSingleCardDto extends CreateCardDto {
 }
 
 @ApiSchema({ name: 'PagesCardsPluginReqCreateCard' })
-export class ReqCreateCardDto implements ReqCreateCard {
+export class ReqCreateCardDto {
 	@ApiProperty({
 		description: 'Card creation data',
 		type: CreateSingleCardDto,

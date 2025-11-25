@@ -4,17 +4,10 @@ import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { CreateChannelPropertyDto } from '../../../modules/devices/dto/create-channel-property.dto';
-import type { components } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
-type CreateHomeAssistantChannelProperty =
-	components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty'];
-
 @ApiSchema({ name: 'DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty' })
-export class CreateHomeAssistantChannelPropertyDto
-	extends CreateChannelPropertyDto
-	implements CreateHomeAssistantChannelProperty
-{
+export class CreateHomeAssistantChannelPropertyDto extends CreateChannelPropertyDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel property type string."}]' })
 	@ApiProperty({

@@ -2,11 +2,8 @@ import { validateSync } from 'class-validator';
 import 'reflect-metadata';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import type { components } from '../../../openapi';
 
 import { LocationWeatherModel } from './weather.model';
-
-type LocationWeather = components['schemas']['WeatherModuleLocationWeather'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -32,7 +29,7 @@ describe('Weather module model and OpenAPI component synchronization', () => {
 	};
 
 	test('LocationWeatherModel matches LocationWeather', () => {
-		const openApiModel: LocationWeather = {
+		const openApiModel = {
 			current: {
 				temperature: 23.3,
 				temperature_min: 23.3,

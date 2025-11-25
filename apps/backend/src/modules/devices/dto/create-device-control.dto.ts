@@ -3,13 +3,8 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
-type ReqCreateDeviceControl = components['schemas']['DevicesModuleReqCreateDeviceControl'];
-type CreateDeviceControl = components['schemas']['DevicesModuleCreateDeviceControl'];
-
 @ApiSchema({ name: 'DevicesModuleCreateDeviceControl' })
-export class CreateDeviceControlDto implements CreateDeviceControl {
+export class CreateDeviceControlDto {
 	@ApiPropertyOptional({
 		description: 'Control ID',
 		type: 'string',
@@ -29,7 +24,7 @@ export class CreateDeviceControlDto implements CreateDeviceControl {
 }
 
 @ApiSchema({ name: 'DevicesModuleReqCreateDeviceControl' })
-export class ReqCreateDeviceControlDto implements ReqCreateDeviceControl {
+export class ReqCreateDeviceControlDto {
 	@ApiProperty({ description: 'Device control data', type: CreateDeviceControlDto })
 	@Expose()
 	@ValidateNested()

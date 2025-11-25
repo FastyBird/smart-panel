@@ -3,15 +3,10 @@ import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNes
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
 import { ParentDto } from './common.dto';
 
-type ReqUpdateTile = components['schemas']['DashboardModuleReqUpdateTile'];
-type UpdateTile = components['schemas']['DashboardModuleUpdateTile'];
-
 @ApiSchema({ name: 'DashboardModuleUpdateTile' })
-export abstract class UpdateTileDto implements UpdateTile {
+export abstract class UpdateTileDto {
 	@ApiProperty({ description: 'Tile type', type: 'string', example: 'default' })
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported tile type."}]' })
@@ -87,7 +82,7 @@ export class UpdateSingleTileDto extends UpdateTileDto {
 }
 
 @ApiSchema({ name: 'DashboardModuleReqUpdateTile' })
-export class ReqUpdateTileDto implements ReqUpdateTile {
+export class ReqUpdateTileDto {
 	@ApiProperty({ description: 'Tile data', type: () => UpdateTileDto })
 	@Expose()
 	@ValidateNested()
@@ -96,7 +91,7 @@ export class ReqUpdateTileDto implements ReqUpdateTile {
 }
 
 @ApiSchema({ name: 'DashboardModuleReqUpdateTileWithParent' })
-export class ReqUpdateTileWithParentDto implements ReqUpdateTile {
+export class ReqUpdateTileWithParentDto {
 	@ApiProperty({ description: 'Tile data', type: () => UpdateSingleTileDto })
 	@Expose()
 	@ValidateNested()

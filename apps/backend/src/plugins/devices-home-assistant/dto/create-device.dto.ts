@@ -4,13 +4,10 @@ import { IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { CreateDeviceDto } from '../../../modules/devices/dto/create-device.dto';
-import type { components } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
-type CreateHomeAssistantDevice = components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantDevice'];
-
 @ApiSchema({ name: 'DevicesHomeAssistantPluginCreateHomeAssistantDevice' })
-export class CreateHomeAssistantDeviceDto extends CreateDeviceDto implements CreateHomeAssistantDevice {
+export class CreateHomeAssistantDeviceDto extends CreateDeviceDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid device type string."}]' })
 	@ApiProperty({

@@ -4,13 +4,10 @@ import { IsInt, IsNotEmpty, IsOptional, Min } from 'class-validator';
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePageDto } from '../../../modules/dashboard/dto/update-page.dto';
-import type { components } from '../../../openapi';
 import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
-type UpdateTilesPage = components['schemas']['PagesTilesPluginUpdateTilesPage'];
-
 @ApiSchema({ name: 'PagesTilesPluginUpdateTilesPage' })
-export class UpdateTilesPageDto extends UpdatePageDto implements UpdateTilesPage {
+export class UpdateTilesPageDto extends UpdatePageDto {
 	readonly type: typeof PAGES_TILES_TYPE;
 
 	@ApiPropertyOptional({

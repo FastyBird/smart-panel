@@ -3,13 +3,8 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, Matches, ValidateNested } fro
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
-type ReqUpdateDisplayInstance = components['schemas']['UsersModuleReqUpdateDisplayInstance'];
-type UpdateDisplayInstance = components['schemas']['UsersModuleUpdateDisplayInstance'];
-
 @ApiSchema({ name: 'UsersModuleUpdateDisplayInstance' })
-export class UpdateDisplayInstanceDto implements UpdateDisplayInstance {
+export class UpdateDisplayInstanceDto {
 	@ApiPropertyOptional({
 		description: 'Semantic version of the display software',
 		type: 'string',
@@ -53,7 +48,7 @@ export class UpdateDisplayInstanceDto implements UpdateDisplayInstance {
 }
 
 @ApiSchema({ name: 'UsersModuleReqUpdateDisplayInstance' })
-export class ReqUpdateDisplayInstanceDto implements ReqUpdateDisplayInstance {
+export class ReqUpdateDisplayInstanceDto {
 	@ApiProperty({
 		description: 'Display instance update data',
 		type: () => UpdateDisplayInstanceDto,

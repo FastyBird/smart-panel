@@ -3,13 +3,8 @@ import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import type { components } from '../../../openapi';
-
-type ReqUpdateDeviceChannel = components['schemas']['DevicesModuleReqUpdateChannel'];
-type UpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
-
 @ApiSchema({ name: 'DevicesModuleUpdateDeviceChannel' })
-export class UpdateDeviceChannelDto implements UpdateChannel {
+export class UpdateDeviceChannelDto {
 	@ApiProperty({ description: 'Channel type', type: 'string', example: 'generic' })
 	@Expose()
 	@IsNotEmpty({
@@ -67,7 +62,7 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 }
 
 @ApiSchema({ name: 'DevicesModuleReqUpdateDeviceChannel' })
-export class ReqUpdateDeviceChannelDto implements ReqUpdateDeviceChannel {
+export class ReqUpdateDeviceChannelDto {
 	@ApiProperty({ description: 'Device channel data', type: UpdateDeviceChannelDto })
 	@Expose()
 	@ValidateNested()

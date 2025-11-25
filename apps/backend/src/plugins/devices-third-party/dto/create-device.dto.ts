@@ -3,13 +3,10 @@ import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsString } from 'class-validator';
 
 import { CreateDeviceDto } from '../../../modules/devices/dto/create-device.dto';
-import type { components } from '../../../openapi';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-type CreateThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyDevice'];
-
 @ApiSchema({ name: 'DevicesThirdPartyPluginCreateDevice' })
-export class CreateThirdPartyDeviceDto extends CreateDeviceDto implements CreateThirdPartyDevice {
+export class CreateThirdPartyDeviceDto extends CreateDeviceDto {
 	@ApiProperty({
 		description: 'Device type',
 		example: DEVICES_THIRD_PARTY_TYPE,

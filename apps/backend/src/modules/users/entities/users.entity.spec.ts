@@ -2,13 +2,9 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
 import { DisplayInstanceEntity, UserEntity } from './users.entity';
-
-type User = components['schemas']['UsersModuleUser'];
-type DisplayInstance = components['schemas']['UsersModuleDisplayInstance'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -34,7 +30,7 @@ describe('Users module entity and OpenAPI component synchronization', () => {
 	};
 
 	test('UserEntity matches UsersUser', () => {
-		const openApiModel: User = {
+		const openApiModel = {
 			id: uuid().toString(),
 			username: 'username',
 			first_name: 'John',
@@ -58,7 +54,7 @@ describe('Users module entity and OpenAPI component synchronization', () => {
 	});
 
 	test('DisplayEntity matches UsersDisplay', () => {
-		const openApiModel: DisplayInstance = {
+		const openApiModel = {
 			id: uuid().toString(),
 			uid: uuid().toString(),
 			mac: '00:1A:2B:3C:4D:5E',
