@@ -1,5 +1,11 @@
 import { Body, Controller, HttpCode, Logger, Put } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
 import { Public } from '../../../modules/auth/guards/auth.guard';
@@ -8,6 +14,7 @@ import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constan
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
 import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
 
+@ApiTags('devices-third-party-plugin')
 @Controller('demo')
 export class ThirdPartyDemoController {
 	private readonly logger = new Logger(ThirdPartyDemoController.name);
@@ -15,6 +22,19 @@ export class ThirdPartyDemoController {
 
 	constructor(private readonly channelsPropertiesService: ChannelsPropertiesService) {}
 
+	@ApiOperation({
+		summary: 'Demo webhook endpoint for third-party device property updates',
+	})
+	@ApiBody({
+		type: PropertiesUpdateRequestDto,
+		description: 'Array of device properties to update',
+	})
+	@ApiNoContentResponse({
+		description: 'Properties update request processed successfully',
+	})
+	@ApiBadRequestResponse('Invalid request data or malformed property values')
+	@ApiUnprocessableEntityResponse('One or more properties could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error occurred while processing the request')
 	@RawRoute()
 	@Public()
 	@Put('webhook')

@@ -1,3 +1,4 @@
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
@@ -15,19 +16,44 @@ import type { components } from '../../../openapi';
 type ThirdPartyDevicePropertyUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertyUpdateRequest'];
 type ThirdPartyDevicePropertiesUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertiesUpdateRequest'];
 
+@ApiSchema({ name: 'DevicesThirdPartyPluginPropertyUpdateRequest' })
 export class PropertyUpdateRequestDto implements ThirdPartyDevicePropertyUpdateRequest {
+	@ApiProperty({
+		description: 'Device UUID',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@IsUUID()
 	device: string;
 
+	@ApiProperty({
+		description: 'Channel UUID',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174001',
+	})
 	@Expose()
 	@IsUUID()
 	channel: string;
 
+	@ApiProperty({
+		description: 'Property UUID',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174002',
+	})
 	@Expose()
 	@IsUUID()
 	property: string;
 
+	@ApiProperty({
+		description: 'Property value (string, boolean, or number)',
+		oneOf: [
+			{ type: 'string' },
+			{ type: 'boolean' },
+			{ type: 'number' },
+		],
+		example: 'on',
+	})
 	@Expose()
 	@ValidateIf((o: { value: unknown }) => typeof o.value === 'string')
 	@IsString()
@@ -39,7 +65,13 @@ export class PropertyUpdateRequestDto implements ThirdPartyDevicePropertyUpdateR
 	value: string | boolean | number;
 }
 
+@ApiSchema({ name: 'DevicesThirdPartyPluginPropertiesUpdateRequest' })
 export class PropertiesUpdateRequestDto implements ThirdPartyDevicePropertiesUpdateRequest {
+	@ApiProperty({
+		description: 'Array of property update requests',
+		type: [PropertyUpdateRequestDto],
+		isArray: true,
+	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
