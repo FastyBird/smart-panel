@@ -1,5 +1,13 @@
 import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -10,6 +18,7 @@ import {
 } from '../models/home-assistant.model';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 
+@ApiTags('devices-home-assistant-plugin')
 @Controller('registry')
 export class HomeAssistantRegistryController {
 	private readonly logger = new Logger(HomeAssistantRegistryController.name);
@@ -17,6 +26,11 @@ export class HomeAssistantRegistryController {
 	constructor(private readonly homeAssistantWsService: HomeAssistantWsService) {}
 
 	@Get('devices')
+	@ApiOperation({ summary: 'Retrieve all Home Assistant devices from registry' })
+	@ApiSuccessArrayResponse(HomeAssistantDeviceRegistryResponseResultModel)
+	@ApiNotFoundResponse('Home Assistant devices registry could not be loaded')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAllDevices(): Promise<HomeAssistantDeviceRegistryResponseResultModel[]> {
 		this.logger.debug('[HOME ASSISTANT][REGISTRY CONTROLLER] Fetching all Home Assistant devices from registry');
 
@@ -53,6 +67,11 @@ export class HomeAssistantRegistryController {
 	}
 
 	@Get('entities')
+	@ApiOperation({ summary: 'Retrieve all Home Assistant entities from registry' })
+	@ApiSuccessArrayResponse(HomeAssistantEntityRegistryResponseResultModel)
+	@ApiNotFoundResponse('Home Assistant entities registry could not be loaded')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAllEntities(): Promise<HomeAssistantEntityRegistryResponseResultModel[]> {
 		this.logger.debug('[HOME ASSISTANT][REGISTRY CONTROLLER] Fetching all Home Assistant entities from registry');
 

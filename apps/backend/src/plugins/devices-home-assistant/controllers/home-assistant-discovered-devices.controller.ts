@@ -1,5 +1,14 @@
 import { Controller, Get, Logger, NotFoundException, Param, UnprocessableEntityException } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -7,6 +16,7 @@ import {
 import { HomeAssistantDiscoveredDeviceModel } from '../models/home-assistant.model';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 
+@ApiTags('devices-home-assistant-plugin')
 @Controller('discovered-devices')
 export class HomeAssistantDiscoveredDevicesController {
 	private readonly logger = new Logger(HomeAssistantDiscoveredDevicesController.name);
@@ -14,6 +24,11 @@ export class HomeAssistantDiscoveredDevicesController {
 	constructor(private readonly homeAssistantHttpService: HomeAssistantHttpService) {}
 
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all Home Assistant discovered devices' })
+	@ApiSuccessArrayResponse(HomeAssistantDiscoveredDeviceModel)
+	@ApiNotFoundResponse('Home Assistant discovered devices could not be loaded')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(): Promise<HomeAssistantDiscoveredDeviceModel[]> {
 		this.logger.debug('[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Fetching all Home Assistant discovered devices');
 
@@ -57,6 +72,13 @@ export class HomeAssistantDiscoveredDevicesController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Retrieve a Home Assistant discovered device by ID' })
+	@ApiParam({ name: 'id', type: 'string', description: 'Discovered device ID' })
+	@ApiSuccessResponse(HomeAssistantDiscoveredDeviceModel)
+	@ApiBadRequestResponse('Invalid device ID format')
+	@ApiNotFoundResponse('Home Assistant discovered device not found')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(@Param('id') id: string): Promise<HomeAssistantDiscoveredDeviceModel> {
 		this.logger.debug(
 			`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Fetching Home Assistant discovered device id=${id}`,

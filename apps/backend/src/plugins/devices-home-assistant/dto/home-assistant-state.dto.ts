@@ -1,33 +1,67 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsDate, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+
+@ApiSchema('DevicesHomeAssistantPluginHomeAssistantContext')
 class HomeAssistantContextDto {
 	@Expose()
 	@IsString()
+	@ApiProperty({
+		description: 'Context identifier',
+		example: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+	})
 	id: string;
 
 	@Expose()
 	@IsOptional()
 	@IsString()
+	@ApiPropertyOptional({
+		description: 'Parent context identifier',
+		example: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+		nullable: true,
+		name: 'parent_id',
+	})
 	parent_id: string | null;
 
 	@Expose()
 	@IsOptional()
 	@IsString()
+	@ApiPropertyOptional({
+		description: 'User identifier',
+		example: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+		nullable: true,
+		name: 'user_id',
+	})
 	user_id: string | null;
 }
 
+@ApiSchema('DevicesHomeAssistantPluginHomeAssistantState')
 export class HomeAssistantStateDto {
 	@Expose()
 	@IsString()
+	@ApiProperty({
+		description: 'Home Assistant entity ID',
+		example: 'light.living_room',
+		name: 'entity_id',
+	})
 	entity_id: string;
 
 	@Expose()
 	@IsString()
+	@ApiProperty({
+		description: 'Current state of the entity',
+		example: 'on',
+	})
 	state: string;
 
 	@Expose()
 	@IsObject()
+	@ApiProperty({
+		description: 'Dynamic attributes of the entity',
+		example: { brightness: 255, color_temp: 370 },
+	})
 	attributes: Record<string, unknown>; // Dynamic attributes
 
 	@Expose()
@@ -40,6 +74,12 @@ export class HomeAssistantStateDto {
 	)
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
+	})
+	@ApiProperty({
+		description: 'Timestamp when the state last changed',
+		example: '2023-10-15T14:30:00.000Z',
+		format: 'date-time',
+		name: 'last_changed',
 	})
 	last_changed: Date;
 
@@ -54,6 +94,12 @@ export class HomeAssistantStateDto {
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
 	})
+	@ApiProperty({
+		description: 'Timestamp when the state was last reported',
+		example: '2023-10-15T14:30:00.000Z',
+		format: 'date-time',
+		name: 'last_reported',
+	})
 	last_reported: Date;
 
 	@Expose()
@@ -67,38 +113,74 @@ export class HomeAssistantStateDto {
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
 	})
+	@ApiProperty({
+		description: 'Timestamp when the state was last updated',
+		example: '2023-10-15T14:30:00.000Z',
+		format: 'date-time',
+		name: 'last_updated',
+	})
 	last_updated: Date;
 
 	@Expose()
 	@ValidateNested()
 	@Type(() => HomeAssistantContextDto)
+	@ApiProperty({
+		description: 'Context information for this state',
+		type: () => HomeAssistantContextDto,
+	})
 	context: HomeAssistantContextDto;
 }
 
+@ApiSchema('DevicesHomeAssistantPluginHomeAssistantStateChangedEventData')
 export class HomeAssistantStateChangedEventDataDto {
 	@Expose()
 	@ValidateNested()
 	@Type(() => HomeAssistantStateDto)
+	@ApiProperty({
+		description: 'Previous state of the entity',
+		type: () => HomeAssistantStateDto,
+		name: 'old_state',
+	})
 	old_state: HomeAssistantStateDto;
 
 	@Expose()
 	@ValidateNested()
 	@Type(() => HomeAssistantStateDto)
+	@ApiProperty({
+		description: 'New state of the entity',
+		type: () => HomeAssistantStateDto,
+		nullable: true,
+		name: 'new_state',
+	})
 	new_state: HomeAssistantStateDto | null;
 }
 
+@ApiSchema('DevicesHomeAssistantPluginHomeAssistantStateChangedEvent')
 export class HomeAssistantStateChangedEventDto {
 	@Expose()
 	@IsString()
+	@ApiProperty({
+		description: 'Event type',
+		example: 'state_changed',
+		name: 'event_type',
+	})
 	event_type: 'state_changed';
 
 	@Expose()
 	@ValidateNested()
 	@Type(() => HomeAssistantStateChangedEventDataDto)
+	@ApiProperty({
+		description: 'Event data containing old and new states',
+		type: () => HomeAssistantStateChangedEventDataDto,
+	})
 	data: HomeAssistantStateChangedEventDataDto;
 
 	@Expose()
 	@IsString()
+	@ApiProperty({
+		description: 'Event origin',
+		example: 'LOCAL',
+	})
 	origin: string;
 
 	@Expose()
@@ -112,10 +194,20 @@ export class HomeAssistantStateChangedEventDto {
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
 	})
+	@ApiProperty({
+		description: 'Timestamp when the event was fired',
+		example: '2023-10-15T14:30:00.000Z',
+		format: 'date-time',
+		name: 'time_fired',
+	})
 	time_fired: Date;
 
 	@Expose()
 	@ValidateNested()
 	@Type(() => HomeAssistantContextDto)
+	@ApiProperty({
+		description: 'Context information for this event',
+		type: () => HomeAssistantContextDto,
+	})
 	context: HomeAssistantContextDto;
 }

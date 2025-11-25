@@ -1,5 +1,14 @@
 import { Controller, Get, Logger, NotFoundException, Param, UnprocessableEntityException } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -7,6 +16,7 @@ import {
 import { HomeAssistantStateModel } from '../models/home-assistant.model';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 
+@ApiTags('devices-home-assistant-plugin')
 @Controller('states')
 export class HomeAssistantStatesController {
 	private readonly logger = new Logger(HomeAssistantStatesController.name);
@@ -14,6 +24,11 @@ export class HomeAssistantStatesController {
 	constructor(private readonly homeAssistantHttpService: HomeAssistantHttpService) {}
 
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all Home Assistant entity states' })
+	@ApiSuccessArrayResponse(HomeAssistantStateModel)
+	@ApiNotFoundResponse('Home Assistant entity states could not be loaded')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(): Promise<HomeAssistantStateModel[]> {
 		this.logger.debug('[HOME ASSISTANT][STATES CONTROLLER] Fetching all Home Assistant entities states');
 
@@ -50,6 +65,13 @@ export class HomeAssistantStatesController {
 	}
 
 	@Get(':entityId')
+	@ApiOperation({ summary: 'Retrieve a Home Assistant entity state by entity ID' })
+	@ApiParam({ name: 'entityId', type: 'string', description: 'Home Assistant entity ID' })
+	@ApiSuccessResponse(HomeAssistantStateModel)
+	@ApiBadRequestResponse('Invalid entity ID format')
+	@ApiNotFoundResponse('Home Assistant entity state not found')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(@Param('entityId') entityId: string): Promise<HomeAssistantStateModel> {
 		this.logger.debug(`[HOME ASSISTANT][STATES CONTROLLER] Fetching Home Assistant entity state id=${entityId}`);
 
