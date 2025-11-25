@@ -1,8 +1,17 @@
 import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+} from '../../../common/decorators/api-documentation.decorator';
+import { CurrentDayModel, ForecastDayModel, LocationWeatherModel } from '../models/weather.model';
 import { WeatherService } from '../services/weather.service';
 import { WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
+@ApiTags('weather-module')
 @Controller('weather')
 export class WeatherController {
 	private readonly logger = new Logger(WeatherController.name);
@@ -10,6 +19,14 @@ export class WeatherController {
 	constructor(private readonly weatherService: WeatherService) {}
 
 	@Get()
+	@ApiOperation({
+		summary: 'Get weather data',
+		description: 'Retrieve current weather and forecast for configured location',
+	})
+	@ApiSuccessResponse(LocationWeatherModel, 'Weather data retrieved successfully')
+	@ApiNotFoundResponse('Weather data could not be loaded from OpenWeatherMap')
+	@ApiResponse({ status: 422, description: 'Weather module is not properly configured' })
+	@ApiInternalServerErrorResponse()
 	async getWeather() {
 		this.logger.debug('[LOOKUP] Fetching weather data');
 
@@ -39,6 +56,14 @@ export class WeatherController {
 	}
 
 	@Get('/current')
+	@ApiOperation({
+		summary: 'Get current weather',
+		description: 'Retrieve current weather data for configured location',
+	})
+	@ApiSuccessResponse(CurrentDayModel, 'Current weather data retrieved successfully')
+	@ApiNotFoundResponse('Current day weather data could not be loaded from OpenWeatherMap')
+	@ApiResponse({ status: 422, description: 'Weather module is not properly configured' })
+	@ApiInternalServerErrorResponse()
 	async getCurrentWeather() {
 		this.logger.debug('[LOOKUP] Fetching current weather data');
 
@@ -68,6 +93,11 @@ export class WeatherController {
 	}
 
 	@Get('/forecast')
+	@ApiOperation({ summary: 'Get weather forecast', description: 'Retrieve weather forecast for configured location' })
+	@ApiSuccessArrayResponse(ForecastDayModel, 'Forecast weather data retrieved successfully')
+	@ApiNotFoundResponse('Current day weather data could not be loaded from OpenWeatherMap')
+	@ApiResponse({ status: 422, description: 'Weather module is not properly configured' })
+	@ApiInternalServerErrorResponse()
 	async getForecastWeather() {
 		this.logger.debug('[LOOKUP] Fetching forecast weather data');
 

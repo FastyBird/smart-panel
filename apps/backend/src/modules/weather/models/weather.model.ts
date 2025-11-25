@@ -1,136 +1,178 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsArray, IsDate, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+
+@ApiSchema('WeatherModuleWind')
 export class WindModel {
+	@ApiProperty({ description: 'Wind speed (m/s)', type: 'number', example: 3.5 })
 	@Expose()
 	@IsNumber()
 	speed: number;
 
+	@ApiProperty({ description: 'Wind direction (degrees)', type: 'number', example: 250 })
 	@Expose()
 	@IsNumber()
 	deg: number;
 
+	@ApiPropertyOptional({ description: 'Wind gust (m/s)', type: 'number', example: 5.2, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	gust?: number = null;
 }
 
+@ApiSchema('WeatherModuleWeather')
 export class WeatherModel {
+	@ApiProperty({ description: 'Weather condition code', type: 'integer', example: 800 })
 	@Expose()
 	@IsInt()
 	code: number;
 
+	@ApiProperty({ description: 'Weather group', type: 'string', example: 'Clear' })
 	@Expose()
 	@IsString()
 	main: string;
 
+	@ApiProperty({ description: 'Weather description', type: 'string', example: 'clear sky' })
 	@Expose()
 	@IsString()
 	description: string;
 
+	@ApiProperty({ description: 'Weather icon ID', type: 'string', example: '01d' })
 	@Expose()
 	@IsString()
 	icon: string;
 }
 
+@ApiSchema('WeatherModuleForecastTemperature')
 export class ForecastTemperatureModel {
+	@ApiPropertyOptional({ description: 'Day temperature', type: 'number', example: 15.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	day?: number = null;
 
+	@ApiPropertyOptional({ description: 'Minimum temperature', type: 'number', example: 13.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	min?: number = null;
 
+	@ApiPropertyOptional({ description: 'Maximum temperature', type: 'number', example: 17.2, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	max?: number = null;
 
+	@ApiPropertyOptional({ description: 'Night temperature', type: 'number', example: 12.0, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	night?: number = null;
 
+	@ApiPropertyOptional({ description: 'Evening temperature', type: 'number', example: 14.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	eve?: number = null;
 
+	@ApiPropertyOptional({ description: 'Morning temperature', type: 'number', example: 11.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	morn?: number = null;
 }
 
+@ApiSchema('WeatherModuleForecastFeelsLike')
 export class ForecastFeelsLikeModel {
+	@ApiPropertyOptional({ description: 'Day feels like temperature', type: 'number', example: 14.2, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	day?: number = null;
 
+	@ApiPropertyOptional({ description: 'Night feels like temperature', type: 'number', example: 11.0, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	night?: number = null;
 
+	@ApiPropertyOptional({ description: 'Evening feels like temperature', type: 'number', example: 13.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	eve?: number = null;
 
+	@ApiPropertyOptional({ description: 'Morning feels like temperature', type: 'number', example: 10.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	morn?: number = null;
 }
 
+@ApiSchema('WeatherModuleForecastDay')
 export class ForecastDayModel {
+	@ApiProperty({ description: 'Temperature information', type: ForecastTemperatureModel })
 	@Expose()
 	@ValidateNested()
 	@Type(() => ForecastTemperatureModel)
 	temperature: ForecastTemperatureModel;
 
+	@ApiProperty({ name: 'feels_like', description: 'Feels like temperature information', type: ForecastFeelsLikeModel })
 	@Expose({ name: 'feels_like' })
 	@ValidateNested()
 	@Type(() => ForecastFeelsLikeModel)
 	feelsLike: ForecastFeelsLikeModel;
 
+	@ApiProperty({ description: 'Atmospheric pressure (hPa)', type: 'number', example: 1013 })
 	@Expose()
 	@IsNumber()
 	pressure: number;
 
+	@ApiProperty({ description: 'Humidity percentage', type: 'number', example: 72 })
 	@Expose()
 	@IsNumber()
 	humidity: number;
 
+	@ApiProperty({ description: 'Weather condition', type: WeatherModel })
 	@Expose()
 	@ValidateNested()
 	@Type(() => WeatherModel)
 	weather: WeatherModel;
 
+	@ApiProperty({ description: 'Wind information', type: WindModel })
 	@Expose()
 	@ValidateNested()
 	@Type(() => WindModel)
 	wind: WindModel;
 
+	@ApiProperty({ description: 'Cloudiness percentage', type: 'number', example: 75 })
 	@Expose()
 	@IsNumber()
 	clouds: number;
 
+	@ApiPropertyOptional({ description: 'Rain volume (mm)', type: 'number', example: 2.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	rain: number | null = null;
 
+	@ApiPropertyOptional({ description: 'Snow volume (mm)', type: 'number', example: 1.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	snow: number | null = null;
 
+	@ApiPropertyOptional({
+		description: 'Sunrise time (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T07:15:00.000Z',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsDate()
@@ -149,6 +191,13 @@ export class ForecastDayModel {
 	)
 	sunrise?: Date = null;
 
+	@ApiPropertyOptional({
+		description: 'Sunset time (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T16:30:00.000Z',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsDate()
@@ -167,6 +216,13 @@ export class ForecastDayModel {
 	)
 	sunset?: Date = null;
 
+	@ApiPropertyOptional({
+		description: 'Moonrise time (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T19:00:00.000Z',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsDate()
@@ -185,6 +241,13 @@ export class ForecastDayModel {
 	)
 	moonrise?: Date = null;
 
+	@ApiPropertyOptional({
+		description: 'Moonset time (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T08:00:00.000Z',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsDate()
@@ -203,6 +266,13 @@ export class ForecastDayModel {
 	)
 	moonset?: Date = null;
 
+	@ApiProperty({
+		name: 'day_time',
+		description: 'Day time (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T12:00:00.000Z',
+	})
 	@Expose({ name: 'day_time' })
 	@IsDate()
 	@Transform(
@@ -218,11 +288,20 @@ export class ForecastDayModel {
 	dayTime: Date;
 }
 
+@ApiSchema('WeatherModuleCurrentDay')
 export class CurrentDayModel {
+	@ApiProperty({ description: 'Current temperature', type: 'number', example: 15.5 })
 	@Expose()
 	@IsNumber()
 	temperature: number;
 
+	@ApiPropertyOptional({
+		name: 'temperature_min',
+		description: 'Minimum temperature',
+		type: 'number',
+		example: 13.5,
+		nullable: true,
+	})
 	@Expose({ name: 'temperature_min' })
 	@IsOptional()
 	@IsNumber()
@@ -233,6 +312,13 @@ export class CurrentDayModel {
 	)
 	temperatureMin?: number = null;
 
+	@ApiPropertyOptional({
+		name: 'temperature_max',
+		description: 'Maximum temperature',
+		type: 'number',
+		example: 17.2,
+		nullable: true,
+	})
 	@Expose({ name: 'temperature_max' })
 	@IsOptional()
 	@IsNumber()
@@ -243,6 +329,7 @@ export class CurrentDayModel {
 	)
 	temperatureMax?: number = null;
 
+	@ApiProperty({ name: 'feels_like', description: 'Feels like temperature', type: 'number', example: 14.2 })
 	@Expose({ name: 'feels_like' })
 	@IsNumber()
 	@Transform(({ obj }: { obj: { feels_like?: number; feelsLike?: number } }) => obj.feels_like || obj.feelsLike, {
@@ -250,38 +337,51 @@ export class CurrentDayModel {
 	})
 	feelsLike: number;
 
+	@ApiProperty({ description: 'Atmospheric pressure (hPa)', type: 'number', example: 1013 })
 	@Expose()
 	@IsNumber()
 	pressure: number;
 
+	@ApiProperty({ description: 'Humidity percentage', type: 'number', example: 72 })
 	@Expose()
 	@IsNumber()
 	humidity: number;
 
+	@ApiProperty({ description: 'Weather condition', type: WeatherModel })
 	@Expose()
 	@ValidateNested()
 	@Type(() => WeatherModel)
 	weather: WeatherModel;
 
+	@ApiProperty({ description: 'Wind information', type: WindModel })
 	@Expose()
 	@ValidateNested()
 	@Type(() => WindModel)
 	wind: WindModel;
 
+	@ApiProperty({ description: 'Cloudiness percentage', type: 'number', example: 75 })
 	@Expose()
 	@IsNumber()
 	clouds: number;
 
+	@ApiPropertyOptional({ description: 'Rain volume (mm)', type: 'number', example: 2.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	rain: number | null = null;
 
+	@ApiPropertyOptional({ description: 'Snow volume (mm)', type: 'number', example: 1.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	snow: number | null = null;
 
+	@ApiProperty({
+		description: 'Sunrise time (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T07:15:00.000Z',
+	})
 	@Expose()
 	@IsDate()
 	@Transform(
@@ -296,6 +396,12 @@ export class CurrentDayModel {
 	})
 	sunrise: Date;
 
+	@ApiProperty({
+		description: 'Sunset time (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T16:30:00.000Z',
+	})
 	@Expose()
 	@IsDate()
 	@Transform(
@@ -310,6 +416,13 @@ export class CurrentDayModel {
 	})
 	sunset: Date;
 
+	@ApiProperty({
+		name: 'day_time',
+		description: 'Day time (ISO 8601)',
+		type: 'string',
+		format: 'date-time',
+		example: '2020-11-12T12:00:00.000Z',
+	})
 	@Expose({ name: 'day_time' })
 	@IsDate()
 	@Transform(
@@ -325,29 +438,36 @@ export class CurrentDayModel {
 	dayTime: Date;
 }
 
+@ApiSchema('WeatherModuleLocation')
 export class LocationModel {
+	@ApiProperty({ description: 'Location name', type: 'string', example: 'London' })
 	@Expose()
 	@IsString()
 	name: string;
 
+	@ApiPropertyOptional({ description: 'Country code', type: 'string', example: 'GB', nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsString()
 	country?: string = null;
 }
 
+@ApiSchema('WeatherModuleLocationWeather')
 export class LocationWeatherModel {
+	@ApiProperty({ description: 'Current weather', type: CurrentDayModel })
 	@Expose()
 	@ValidateNested()
 	@Type(() => CurrentDayModel)
 	current: CurrentDayModel;
 
+	@ApiProperty({ description: 'Forecast weather', type: [ForecastDayModel] })
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => ForecastDayModel)
 	forecast: ForecastDayModel[];
 
+	@ApiProperty({ description: 'Location information', type: LocationModel })
 	@Expose()
 	@ValidateNested()
 	@Type(() => LocationModel)
