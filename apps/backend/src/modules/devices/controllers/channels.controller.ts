@@ -31,8 +31,8 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateChannelDto } from '../dto/create-channel.dto';
-import { UpdateChannelDto } from '../dto/update-channel.dto';
+import { CreateChannelDto, ReqCreateChannelDto } from '../dto/create-channel.dto';
+import { ReqUpdateChannelDto, UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity } from '../entities/devices.entity';
 import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
 import { ChannelsService } from '../services/channels.service';
@@ -81,7 +81,7 @@ export class ChannelsController {
 
 	@Post()
 	@ApiOperation({ summary: 'Create a new channel' })
-	@ApiBody({ type: CreateChannelDto })
+	@ApiBody({ type: ReqCreateChannelDto })
 	@ApiCreatedSuccessResponse(ChannelEntity)
 	@ApiBadRequestResponse('Invalid request data or unsupported channel type')
 	@ApiUnprocessableEntityResponse('Channel could not be created')
@@ -149,7 +149,7 @@ export class ChannelsController {
 	@Patch(':id')
 	@ApiOperation({ summary: 'Update a channel' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiBody({ type: UpdateChannelDto })
+	@ApiBody({ type: ReqUpdateChannelDto })
 	@ApiSuccessResponse(ChannelEntity)
 	@ApiBadRequestResponse('Invalid UUID format or unsupported channel type')
 	@ApiNotFoundResponse('Channel not found')

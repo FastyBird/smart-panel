@@ -32,6 +32,8 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
+import { ReqCreateDeviceChannelDto } from '../dto/create-device-channel.dto';
+import { ReqUpdateDeviceChannelDto } from '../dto/update-device-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
@@ -94,7 +96,7 @@ export class DevicesChannelsController {
 	@Post()
 	@ApiOperation({ summary: 'Create a new channel for a device' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
-	@ApiBody({ type: CreateChannelDto })
+	@ApiBody({ type: ReqCreateDeviceChannelDto })
 	@ApiCreatedSuccessResponse(ChannelEntity)
 	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported channel type')
 	@ApiNotFoundResponse('Device not found')
@@ -175,7 +177,7 @@ export class DevicesChannelsController {
 	@ApiOperation({ summary: 'Update a channel for a device' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiBody({ type: UpdateChannelDto })
+	@ApiBody({ type: ReqUpdateDeviceChannelDto })
 	@ApiSuccessResponse(ChannelEntity)
 	@ApiBadRequestResponse('Invalid UUID format or unsupported channel type')
 	@ApiNotFoundResponse('Device or channel not found')

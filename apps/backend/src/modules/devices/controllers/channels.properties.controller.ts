@@ -32,9 +32,9 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
+import { CreateChannelPropertyDto, ReqCreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
-import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { ReqUpdateChannelPropertyDto, UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyTimeseriesModel } from '../models/devices.model';
 import {
@@ -148,7 +148,7 @@ export class ChannelsPropertiesController {
 	@Post()
 	@ApiOperation({ summary: 'Create a new property for a channel' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiBody({ type: CreateChannelPropertyDto })
+	@ApiBody({ type: ReqCreateChannelPropertyDto })
 	@ApiCreatedSuccessResponse(ChannelPropertyEntity)
 	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported property type')
 	@ApiNotFoundResponse('Channel not found')
@@ -236,7 +236,7 @@ export class ChannelsPropertiesController {
 	@ApiOperation({ summary: 'Update a property for a channel' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
-	@ApiBody({ type: UpdateChannelPropertyDto })
+	@ApiBody({ type: ReqUpdateChannelPropertyDto })
 	@ApiSuccessResponse(ChannelPropertyEntity)
 	@ApiBadRequestResponse('Invalid UUID format or unsupported property type')
 	@ApiNotFoundResponse('Channel or property not found')

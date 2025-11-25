@@ -33,7 +33,9 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
+import { ReqCreateDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
 import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
+import { ReqUpdateDeviceChannelPropertyDto } from '../dto/update-device-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { PropertyTimeseriesModel } from '../models/devices.model';
@@ -162,7 +164,7 @@ export class DevicesChannelsPropertiesController {
 	@ApiOperation({ summary: 'Create a new property for a device channel' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiBody({ type: CreateChannelPropertyDto })
+	@ApiBody({ type: ReqCreateDeviceChannelPropertyDto })
 	@ApiCreatedSuccessResponse(ChannelPropertyEntity)
 	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported property type')
 	@ApiNotFoundResponse('Device or channel not found')
@@ -257,7 +259,7 @@ export class DevicesChannelsPropertiesController {
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
-	@ApiBody({ type: UpdateChannelPropertyDto })
+	@ApiBody({ type: ReqUpdateDeviceChannelPropertyDto })
 	@ApiSuccessResponse(ChannelPropertyEntity)
 	@ApiBadRequestResponse('Invalid UUID format or unsupported property type')
 	@ApiNotFoundResponse('Device, channel, or property not found')
