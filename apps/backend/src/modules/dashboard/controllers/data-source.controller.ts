@@ -7,6 +7,7 @@ import {
 	Delete,
 	Get,
 	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -16,17 +17,32 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateDataSourceDto, CreateSingleDataSourceDto } from '../dto/create-data-source.dto';
-import { UpdateDataSourceDto, UpdateSingleDataSourceDto } from '../dto/update-data-source.dto';
+import { CreateDataSourceDto, CreateSingleDataSourceDto, ReqCreateDataSourceDto } from '../dto/create-data-source.dto';
+import {
+	ReqUpdateDataSourceWithParentDto,
+	UpdateDataSourceDto,
+	UpdateSingleDataSourceDto,
+} from '../dto/update-data-source.dto';
 import { DataSourceEntity } from '../entities/dashboard.entity';
 import { DataSourceTypeMapping, DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
 import { DataSourcesService } from '../services/data-sources.service';
 
+@ApiTags('dashboard-module')
 @Controller('data-source')
 export class DataSourceController {
 	private readonly logger = new Logger(DataSourceController.name);
@@ -37,6 +53,17 @@ export class DataSourceController {
 	) {}
 
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all data sources' })
+	@ApiQuery({ name: 'parent_type', type: 'string', required: false, description: 'Filter by parent entity type' })
+	@ApiQuery({
+		name: 'parent_id',
+		type: 'string',
+		format: 'uuid',
+		required: false,
+		description: 'Filter by parent entity ID',
+	})
+	@ApiSuccessArrayResponse(DataSourceEntity)
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
@@ -58,6 +85,12 @@ export class DataSourceController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Retrieve a specific data source by ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
+	@ApiSuccessResponse(DataSourceEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Data source not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DataSourceEntity> {
 		this.logger.debug(`[LOOKUP] Fetching data source id=${id}`);
 
@@ -70,6 +103,12 @@ export class DataSourceController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/data-source/:id`)
+	@ApiOperation({ summary: 'Create a new data source' })
+	@ApiBody({ type: ReqCreateDataSourceDto })
+	@ApiCreatedSuccessResponse(DataSourceEntity)
+	@ApiBadRequestResponse('Invalid request data or unsupported data source type')
+	@ApiUnprocessableEntityResponse('Data source could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async create(@Body() createDto: { data: object }): Promise<DataSourceEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new data source`);
 
@@ -163,6 +202,14 @@ export class DataSourceController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({ summary: 'Update an existing data source' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
+	@ApiBody({ type: ReqUpdateDataSourceWithParentDto })
+	@ApiSuccessResponse(DataSourceEntity)
+	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported data source type')
+	@ApiNotFoundResponse('Data source not found')
+	@ApiUnprocessableEntityResponse('Data source could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
@@ -245,6 +292,13 @@ export class DataSourceController {
 	}
 
 	@Delete(':id')
+	@HttpCode(204)
+	@ApiOperation({ summary: 'Delete a data source' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
+	@ApiNoContentResponse({ description: 'Data source deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Data source not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete data source id=${id}`);
 

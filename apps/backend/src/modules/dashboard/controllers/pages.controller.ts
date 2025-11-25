@@ -7,6 +7,7 @@ import {
 	Delete,
 	Get,
 	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -15,17 +16,28 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreatePageDto } from '../dto/create-page.dto';
-import { UpdatePageDto } from '../dto/update-page.dto';
+import { CreatePageDto, ReqCreatePageDto } from '../dto/create-page.dto';
+import { ReqUpdatePageDto, UpdatePageDto } from '../dto/update-page.dto';
 import { PageEntity } from '../entities/dashboard.entity';
 import { PageTypeMapping, PagesTypeMapperService } from '../services/pages-type-mapper.service';
 import { PagesService } from '../services/pages.service';
 
+@ApiTags('dashboard-module')
 @Controller('pages')
 export class PagesController {
 	private readonly logger = new Logger(PagesController.name);
@@ -37,6 +49,9 @@ export class PagesController {
 
 	// Pages
 	@Get()
+	@ApiOperation({ summary: 'Retrieve all pages' })
+	@ApiSuccessArrayResponse(PageEntity)
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(): Promise<PageEntity[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all pages');
 
@@ -48,6 +63,12 @@ export class PagesController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Retrieve a specific page by ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
+	@ApiSuccessResponse(PageEntity)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Page not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<PageEntity> {
 		this.logger.debug(`[LOOKUP] Fetching page id=${id}`);
 
@@ -60,6 +81,12 @@ export class PagesController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:id`)
+	@ApiOperation({ summary: 'Create a new page' })
+	@ApiBody({ type: ReqCreatePageDto })
+	@ApiCreatedSuccessResponse(PageEntity)
+	@ApiBadRequestResponse('Invalid request data or unsupported page type')
+	@ApiUnprocessableEntityResponse('Page could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async create(@Body() createDto: { data: object }): Promise<PageEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new page');
 
@@ -135,6 +162,14 @@ export class PagesController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({ summary: 'Update an existing page' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
+	@ApiBody({ type: ReqUpdatePageDto })
+	@ApiSuccessResponse(PageEntity)
+	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported page type')
+	@ApiNotFoundResponse('Page not found')
+	@ApiUnprocessableEntityResponse('Page could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
@@ -196,6 +231,13 @@ export class PagesController {
 	}
 
 	@Delete(':id')
+	@HttpCode(204)
+	@ApiOperation({ summary: 'Delete a page' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
+	@ApiNoContentResponse({ description: 'Page deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Page not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete page id=${id}`);
 

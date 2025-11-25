@@ -12,34 +12,54 @@ import {
 } from 'class-validator';
 import { BeforeInsert, BeforeUpdate, Column, Entity, JoinColumn, ManyToOne, TableInheritance } from 'typeorm';
 
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { DisplayProfileEntity } from '../../system/entities/system.entity';
 
+@ApiSchema('DashboardModulePage')
 @Entity('dashboard_module_pages')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class PageEntity extends BaseEntity {
+	@ApiProperty({ description: 'Page title', type: 'string', example: 'Home' })
 	@Expose()
 	@IsString()
 	@Column()
 	title: string;
 
+	@ApiPropertyOptional({ description: 'Page icon', type: 'string', example: 'home', nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
 	icon?: string | null;
 
+	@ApiProperty({ description: 'Display order', type: 'number', example: 0 })
 	@Expose()
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
 	@Column({ type: 'int', default: 0 })
 	order: number;
 
+	@ApiProperty({
+		name: 'show_top_bar',
+		description: 'Whether to show top bar',
+		type: 'boolean',
+		example: true,
+	})
 	@Expose({ name: 'show_top_bar' })
 	@IsBoolean()
 	@Column({ default: true })
 	showTopBar: boolean;
 
+	@ApiProperty({
+		name: 'data_source',
+		description: 'Associated data sources',
+		type: 'array',
+		items: { type: 'object' },
+		example: [],
+	})
 	@Expose({ name: 'data_source' })
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -52,6 +72,13 @@ export abstract class PageEntity extends BaseEntity {
 	)
 	dataSource: DataSourceEntity[] = [];
 
+	@ApiProperty({
+		description: 'Associated display profile ID',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+		nullable: true,
+	})
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
@@ -64,6 +91,7 @@ export abstract class PageEntity extends BaseEntity {
 	@JoinColumn({ name: 'displayId' })
 	display: DisplayProfileEntity | string | null;
 
+	@ApiProperty({ description: 'Page type', type: 'string', example: 'default' })
 	@Expose()
 	get type(): string {
 		const constructorName = (this.constructor as { name: string }).name;
@@ -71,6 +99,7 @@ export abstract class PageEntity extends BaseEntity {
 	}
 }
 
+@ApiSchema('DashboardModuleTile')
 @Entity('dashboard_module_tiles')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class TileEntity extends BaseEntity {
@@ -93,16 +122,25 @@ export abstract class TileEntity extends BaseEntity {
 	@Column({ type: 'uuid' })
 	parentId: string;
 
+	@ApiProperty({ description: 'Grid row position', type: 'number', minimum: 1, example: 1 })
 	@Expose()
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
 	@Column({ type: 'int' })
 	row: number;
 
+	@ApiProperty({ description: 'Grid column position', type: 'number', minimum: 1, example: 1 })
 	@Expose()
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
 	@Column({ type: 'int' })
 	col: number;
 
+	@ApiProperty({
+		name: 'row_span',
+		description: 'Number of rows the tile spans',
+		type: 'number',
+		minimum: 1,
+		example: 1,
+	})
 	@Expose({ name: 'row_span' })
 	@IsOptional()
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
@@ -112,6 +150,13 @@ export abstract class TileEntity extends BaseEntity {
 	@Column({ type: 'int', nullable: false, default: 1 })
 	rowSpan: number;
 
+	@ApiProperty({
+		name: 'col_span',
+		description: 'Number of columns the tile spans',
+		type: 'number',
+		minimum: 1,
+		example: 1,
+	})
 	@Expose({ name: 'col_span' })
 	@IsOptional()
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
@@ -121,11 +166,19 @@ export abstract class TileEntity extends BaseEntity {
 	@Column({ type: 'int', nullable: false, default: 1 })
 	colSpan: number;
 
+	@ApiProperty({ description: 'Whether tile is hidden', type: 'boolean', example: false })
 	@Expose()
 	@IsBoolean()
 	@Column({ default: false })
 	hidden: boolean;
 
+	@ApiProperty({
+		name: 'data_source',
+		description: 'Associated data sources',
+		type: 'array',
+		items: { type: 'object' },
+		example: [],
+	})
 	@Expose({ name: 'data_source' })
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -138,6 +191,7 @@ export abstract class TileEntity extends BaseEntity {
 	)
 	dataSource: DataSourceEntity[] = [];
 
+	@ApiProperty({ description: 'Tile type', type: 'string', example: 'default' })
 	@Expose()
 	get type(): string {
 		const constructorName = (this.constructor as { name: string }).name;
@@ -146,6 +200,14 @@ export abstract class TileEntity extends BaseEntity {
 
 	set parent(_val: unknown) {}
 
+	@ApiProperty({
+		description: 'Parent entity information',
+		type: 'object',
+		properties: {
+			type: { type: 'string', example: 'page' },
+			id: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+		},
+	})
 	@Expose()
 	get parent(): { type: string; id: string } {
 		return {
@@ -163,6 +225,7 @@ export abstract class TileEntity extends BaseEntity {
 	}
 }
 
+@ApiSchema('DashboardModuleDataSource')
 @Entity('dashboard_module_data_source')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class DataSourceEntity extends BaseEntity {
@@ -185,6 +248,7 @@ export abstract class DataSourceEntity extends BaseEntity {
 	@Column({ type: 'uuid' })
 	parentId: string;
 
+	@ApiProperty({ description: 'Data source type', type: 'string', example: 'device' })
 	@Expose()
 	get type(): string {
 		const constructorName = (this.constructor as { name: string }).name;
@@ -193,6 +257,14 @@ export abstract class DataSourceEntity extends BaseEntity {
 
 	set parent(_val: unknown) {}
 
+	@ApiProperty({
+		description: 'Parent entity information',
+		type: 'object',
+		properties: {
+			type: { type: 'string', example: 'tile' },
+			id: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+		},
+	})
 	@Expose()
 	get parent(): { type: string; id: string } {
 		return {

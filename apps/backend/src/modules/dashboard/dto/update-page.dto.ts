@@ -10,24 +10,31 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
 import type { components } from '../../../openapi';
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
 
 type ReqUpdatePage = components['schemas']['DashboardModuleReqUpdatePage'];
 type UpdatePage = components['schemas']['DashboardModuleUpdatePage'];
 
+@ApiSchema('DashboardModuleUpdatePage')
 export abstract class UpdatePageDto implements UpdatePage {
+	@ApiProperty({ description: 'Page type', type: 'string', example: 'default' })
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported page type."}]' })
 	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported page type."}]' })
 	readonly type: string;
 
+	@ApiPropertyOptional({ description: 'Page title', type: 'string', example: 'Dashboard' })
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	title?: string;
 
+	@ApiPropertyOptional({ description: 'Page icon name', type: 'string', example: 'mdi:home', nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
@@ -35,6 +42,7 @@ export abstract class UpdatePageDto implements UpdatePage {
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
 
+	@ApiPropertyOptional({ description: 'Display order', type: 'number', example: 1 })
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -43,11 +51,23 @@ export abstract class UpdatePageDto implements UpdatePage {
 	)
 	order?: number;
 
+	@ApiPropertyOptional({
+		name: 'show_top_bar',
+		description: 'Whether to show top bar',
+		type: 'boolean',
+		example: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"show_top_bar","reason":"Show top bar attribute must be a valid true or false."}]' })
 	show_top_bar?: boolean;
 
+	@ApiPropertyOptional({
+		description: 'Display profile ID',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
@@ -55,7 +75,9 @@ export abstract class UpdatePageDto implements UpdatePage {
 	display?: string;
 }
 
+@ApiSchema('DashboardModuleReqUpdatePage')
 export class ReqUpdatePageDto implements ReqUpdatePage {
+	@ApiProperty({ description: 'Page data', type: () => UpdatePageDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdatePageDto)
