@@ -1,8 +1,10 @@
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { CreateSingleDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import type { components } from '../../../openapi';
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
 import { ValidateChannelExists } from '../validators/device-channel-exists-constraint.validator';
@@ -11,22 +13,41 @@ import { ValidateDeviceExists } from '../validators/device-exists-constraint.val
 type CreateDeviceChannelDataSource =
 	components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
 
+@ApiSchema('DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource')
 export class CreateDeviceChannelDataSourceDto
 	extends CreateSingleDataSourceDto
 	implements CreateDeviceChannelDataSource
 {
 	readonly type: typeof DATA_SOURCES_DEVICE_TYPE;
 
+	@ApiProperty({
+		description: 'Device ID',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
 	device: string;
 
+	@ApiProperty({
+		description: 'Channel ID',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
 	@ValidateChannelExists({ message: '[{"field":"channel","reason":"The specified channel does not exist."}]' })
 	channel: string;
 
+	@ApiProperty({
+		description: 'Property ID',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"property","reason":"Property must be a valid UUID (version 4)."}]' })
 	@ValidateChannelPropertyExists({
@@ -34,6 +55,12 @@ export class CreateDeviceChannelDataSourceDto
 	})
 	property: string;
 
+	@ApiPropertyOptional({
+		description: 'Icon name',
+		type: 'string',
+		nullable: true,
+		example: 'mdi:lightbulb',
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })

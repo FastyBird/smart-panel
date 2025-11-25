@@ -1,14 +1,23 @@
 import { Exclude, Expose, Transform, Type } from 'class-transformer';
 import { IsInstance, IsOptional, IsString, IsUUID, Validate, ValidateIf } from 'class-validator';
 import { ChildEntity, Column, ManyToOne, RelationId } from 'typeorm';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { DataSourceEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 
+@ApiSchema('DataSourcesDeviceChannelPluginDeviceChannelDataSource')
 @ChildEntity()
 export class DeviceChannelDataSourceEntity extends DataSourceEntity {
+	@ApiProperty({
+		description: 'Device ID or entity',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
@@ -22,6 +31,12 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@ManyToOne(() => DeviceEntity, { onDelete: 'CASCADE' })
 	device: DeviceEntity | string;
 
+	@ApiProperty({
+		description: 'Channel ID or entity',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
@@ -34,6 +49,12 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@ManyToOne(() => ChannelEntity, { onDelete: 'CASCADE' })
 	channel: ChannelEntity | string;
 
+	@ApiProperty({
+		description: 'Property ID or entity',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"property","reason":"Property must be a valid UUID (version 4)."}]' })
@@ -49,6 +70,12 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@ManyToOne(() => ChannelPropertyEntity, { onDelete: 'CASCADE' })
 	property: ChannelPropertyEntity | string;
 
+	@ApiPropertyOptional({
+		description: 'Icon name',
+		type: 'string',
+		nullable: true,
+		example: 'mdi:lightbulb',
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
