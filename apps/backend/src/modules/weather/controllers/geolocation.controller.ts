@@ -6,7 +6,7 @@ import {
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 } from '../../../common/decorators/api-documentation.decorator';
-import { GeolocationCityDto, GeolocationZipDto } from '../dto/geolocation.dto';
+import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
 import { GeolocationService } from '../services/geolocation.service';
 
 @ApiTags('weather-module')
@@ -20,7 +20,7 @@ export class GeolocationController {
 		description: 'Convert city name to geographic coordinates',
 	})
 	@ApiQuery({ name: 'city', description: 'City name', type: 'string', example: 'London' })
-	@ApiSuccessArrayResponse(GeolocationCityDto, 'City coordinates retrieved successfully')
+	@ApiSuccessArrayResponse(GeolocationCityModel, 'City coordinates retrieved successfully')
 	@ApiInternalServerErrorResponse()
 	async getCityCoordinates(@Query('city') city: string) {
 		return this.geolocationService.getCoordinatesByCity(city);
@@ -32,7 +32,7 @@ export class GeolocationController {
 		description: 'Convert postal/zip code to geographic coordinates',
 	})
 	@ApiQuery({ name: 'zip', description: 'Postal/zip code', type: 'string', example: 'SW1A 1AA' })
-	@ApiSuccessResponse(GeolocationZipDto, 'Zip coordinates retrieved successfully')
+	@ApiSuccessResponse(GeolocationZipModel, 'Zip coordinates retrieved successfully')
 	@ApiInternalServerErrorResponse()
 	async getZipCoordinates(@Query('zip') zip: string) {
 		return this.geolocationService.getCoordinatesByZip(zip);
@@ -45,7 +45,7 @@ export class GeolocationController {
 	})
 	@ApiQuery({ name: 'lat', description: 'Latitude', type: 'number', example: 51.5074 })
 	@ApiQuery({ name: 'lon', description: 'Longitude', type: 'number', example: -0.1278 })
-	@ApiSuccessArrayResponse(GeolocationCityDto, 'City information retrieved successfully')
+	@ApiSuccessArrayResponse(GeolocationCityModel, 'City information retrieved successfully')
 	@ApiInternalServerErrorResponse()
 	async getCity(@Query('lat') lat: number, @Query('lon') lon: number) {
 		return this.geolocationService.getCityByCoordinates(lat, lon);

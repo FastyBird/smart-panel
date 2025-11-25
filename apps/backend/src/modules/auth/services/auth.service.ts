@@ -19,15 +19,17 @@ import {
 	AuthValidationException,
 } from '../auth.exceptions';
 import { CheckEmailDto } from '../dto/check-email.dto';
-import { CheckResponseDto } from '../dto/check-response.dto';
 import { CheckUsernameDto } from '../dto/check-username.dto';
 import { CreateAccessTokenDto, CreateRefreshTokenDto } from '../dto/create-token.dto';
-import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
 import { LoginDto } from '../dto/login.dto';
-import { RefreshTokenResponseDto } from '../dto/refresh-token-response.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { UpdateRefreshTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
+import {
+	CheckResponseModel,
+	LoggedInResponseModel,
+	RefreshTokenResponseModel,
+} from '../models/auth.model';
 import { hashToken } from '../utils/token.utils';
 
 import { TokensService } from './tokens.service';
@@ -61,7 +63,7 @@ export class AuthService {
 		return token;
 	}
 
-	async checkUsername({ username }: CheckUsernameDto): Promise<CheckResponseDto> {
+	async checkUsername({ username }: CheckUsernameDto): Promise<CheckResponseModel> {
 		this.logger.debug(`[CHECK] Checking if username=${username} exists`);
 
 		const user = await this.usersService.findByUsername(username);
@@ -69,10 +71,10 @@ export class AuthService {
 
 		this.logger.debug(`[CHECK] Username=${username} taken=${isTaken}`);
 
-		return { valid: !isTaken };
+		return toInstance(CheckResponseModel, { valid: !isTaken });
 	}
 
-	async checkEmail({ email }: CheckEmailDto): Promise<CheckResponseDto> {
+	async checkEmail({ email }: CheckEmailDto): Promise<CheckResponseModel> {
 		this.logger.debug(`[CHECK] Checking if email=${email} exists`);
 
 		const user = await this.usersService.findByEmail(email);
@@ -80,7 +82,7 @@ export class AuthService {
 
 		this.logger.debug(`[CHECK] Email=${email} taken=${isTaken}`);
 
-		return { valid: !isTaken };
+		return toInstance(CheckResponseModel, { valid: !isTaken });
 	}
 
 	async getProfile(id: string): Promise<UserEntity> {
@@ -93,7 +95,7 @@ export class AuthService {
 		return user;
 	}
 
-	async login(loginDto: LoginDto): Promise<LoggedInResponseDto> {
+	async login(loginDto: LoginDto): Promise<LoggedInResponseModel> {
 		this.logger.debug(`[LOGIN] Attempting login for username=${loginDto.username}`);
 
 		const dtoInstance = await this.validateDto<LoginDto>(LoginDto, loginDto);
@@ -130,7 +132,7 @@ export class AuthService {
 
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
-		return toInstance(LoggedInResponseDto, { ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt });
+		return toInstance(LoggedInResponseModel, { ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt });
 	}
 
 	async register(registerDto: RegisterDto): Promise<UserEntity> {
@@ -210,7 +212,7 @@ export class AuthService {
 		return user;
 	}
 
-	async refreshAccessToken(token: string): Promise<RefreshTokenResponseDto> {
+	async refreshAccessToken(token: string): Promise<RefreshTokenResponseModel> {
 		let payload: { sub?: string; role: string } | null = null;
 
 		try {
@@ -279,7 +281,7 @@ export class AuthService {
 
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
-		return toInstance(RefreshTokenResponseDto, {
+		return toInstance(RefreshTokenResponseModel, {
 			...tokens,
 			type: ACCESS_TOKEN_TYPE,
 			expiration: accessTokenExpiresAt,

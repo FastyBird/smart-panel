@@ -28,16 +28,18 @@ import { UserRole } from '../../users/users.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
 import { ReqCheckEmailDto } from '../dto/check-email.dto';
-import { CheckResponseDto } from '../dto/check-response.dto';
 import { ReqCheckUsernameDto } from '../dto/check-username.dto';
-import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
 import { ReqLoginDto } from '../dto/login.dto';
-import { RefreshTokenResponseDto } from '../dto/refresh-token-response.dto';
 import { ReqRefreshDto } from '../dto/refresh-token.dto';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { ReqRegisterDto } from '../dto/register.dto';
-import { RegisteredDisplayResponseDto } from '../dto/registered-display-response.dto';
 import { Public } from '../guards/auth.guard';
+import {
+	CheckResponseModel,
+	LoggedInResponseModel,
+	RefreshTokenResponseModel,
+	RegisteredDisplayResponseModel,
+} from '../models/auth.model';
 import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
@@ -57,10 +59,10 @@ export class AuthController {
 	@Post('login')
 	@ApiOperation({ summary: 'User login', description: 'Authenticate user and return access tokens' })
 	@ApiBody({ type: ReqLoginDto, description: 'Login credentials' })
-	@ApiSuccessResponse(LoggedInResponseDto, 'Successfully authenticated')
+	@ApiSuccessResponse(LoggedInResponseModel, 'Successfully authenticated')
 	@ApiNotFoundResponse('User not found')
 	@ApiInternalServerErrorResponse()
-	async login(@Body() body: ReqLoginDto): Promise<LoggedInResponseDto> {
+	async login(@Body() body: ReqLoginDto): Promise<LoggedInResponseModel> {
 		try {
 			this.logger.debug(`[LOGIN] Attempting login for username=${body.data.username}`);
 
@@ -107,11 +109,11 @@ export class AuthController {
 	@Post('refresh')
 	@ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using a refresh token' })
 	@ApiBody({ type: ReqRefreshDto, description: 'Refresh token' })
-	@ApiSuccessResponse(RefreshTokenResponseDto, 'Token successfully refreshed')
+	@ApiSuccessResponse(RefreshTokenResponseModel, 'Token successfully refreshed')
 	@ApiBadRequestResponse()
 	@ApiForbiddenResponse('Invalid or expired refresh token')
 	@ApiInternalServerErrorResponse()
-	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshTokenResponseDto> {
+	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshTokenResponseModel> {
 		try {
 			const response = await this.authService.refreshAccessToken(body.data.token);
 
@@ -134,7 +136,7 @@ export class AuthController {
 		description: 'Register a new display device and get credentials',
 	})
 	@ApiBody({ type: ReqRegisterDisplayDto, description: 'Display device information' })
-	@ApiSuccessResponse(RegisteredDisplayResponseDto, 'Display successfully registered')
+	@ApiSuccessResponse(RegisteredDisplayResponseModel, 'Display successfully registered')
 	@ApiBadRequestResponse()
 	@ApiForbiddenResponse('Access denied or display already registered')
 	@ApiInternalServerErrorResponse()
@@ -173,7 +175,7 @@ export class AuthController {
 
 			this.logger.debug('[REGISTER DISPLAY] Display user successfully registered');
 
-			return toInstance(RegisteredDisplayResponseDto, { secret: password });
+			return toInstance(RegisteredDisplayResponseModel, { secret: password });
 		} catch (error) {
 			const err = error as Error;
 
@@ -193,10 +195,10 @@ export class AuthController {
 		description: 'Verify if a username is available for registration',
 	})
 	@ApiBody({ type: ReqCheckUsernameDto, description: 'Username to check' })
-	@ApiSuccessResponse(CheckResponseDto, 'Username availability result')
+	@ApiSuccessResponse(CheckResponseModel, 'Username availability result')
 	@ApiBadRequestResponse()
 	@ApiInternalServerErrorResponse()
-	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckResponseDto> {
+	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckResponseModel> {
 		this.logger.debug(`[CHECK] Checking availability for username=${body.data.username}`);
 
 		const response = await this.authService.checkUsername(body.data);
@@ -213,10 +215,10 @@ export class AuthController {
 		description: 'Verify if an email is available for registration',
 	})
 	@ApiBody({ type: ReqCheckEmailDto, description: 'Email to check' })
-	@ApiSuccessResponse(CheckResponseDto, 'Email availability result')
+	@ApiSuccessResponse(CheckResponseModel, 'Email availability result')
 	@ApiBadRequestResponse()
 	@ApiInternalServerErrorResponse()
-	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckResponseDto> {
+	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckResponseModel> {
 		this.logger.debug(`[CHECK] Checking availability for email=${body.data.email}`);
 
 		const response = await this.authService.checkEmail(body.data);

@@ -17,13 +17,15 @@ import { DisplaysInstancesService } from '../../users/services/displays-instance
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { CheckEmailDto } from '../dto/check-email.dto';
-import { CheckResponseDto } from '../dto/check-response.dto';
 import { CheckUsernameDto } from '../dto/check-username.dto';
-import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
 import { LoginDto } from '../dto/login.dto';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { RegisterDto } from '../dto/register.dto';
-import { RegisteredDisplayResponseDto } from '../dto/registered-display-response.dto';
+import {
+	CheckResponseModel,
+	LoggedInResponseModel,
+	RegisteredDisplayResponseModel,
+} from '../models/auth.model';
 import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
@@ -99,7 +101,7 @@ describe('AuthController', () => {
 	describe('login', () => {
 		it('should return a valid token', async () => {
 			const loginDto: LoginDto = { username: 'testuser', password: 'password' };
-			const expectedResponse = toInstance(LoggedInResponseDto, { accessToken: 'valid-token' });
+			const expectedResponse = toInstance(LoggedInResponseModel, { accessToken: 'valid-token' });
 
 			jest.spyOn(authService, 'login').mockResolvedValue(expectedResponse);
 
@@ -121,7 +123,7 @@ describe('AuthController', () => {
 
 	describe('registerDisplay', () => {
 		it('should register a display when no display user exists', async () => {
-			const expectedResponse = toInstance(RegisteredDisplayResponseDto, { secret: 'secure-password' });
+			const expectedResponse = toInstance(RegisteredDisplayResponseModel, { secret: 'secure-password' });
 
 			const displayId = uuid().toString();
 
@@ -211,7 +213,7 @@ describe('AuthController', () => {
 	describe('checkUsername', () => {
 		it('should check username availability', async () => {
 			const username: CheckUsernameDto = { username: 'testuser' };
-			const expectedResponse: CheckResponseDto = { valid: true };
+			const expectedResponse = toInstance(CheckResponseModel, { valid: true });
 
 			jest.spyOn(authService, 'checkUsername').mockResolvedValue(expectedResponse);
 
@@ -223,7 +225,7 @@ describe('AuthController', () => {
 	describe('checkEmail', () => {
 		it('should check email availability', async () => {
 			const email: CheckEmailDto = { email: 'test@example.com' };
-			const expectedResponse: CheckResponseDto = { valid: true };
+			const expectedResponse = toInstance(CheckResponseModel, { valid: true });
 
 			jest.spyOn(authService, 'checkEmail').mockResolvedValue(expectedResponse);
 
