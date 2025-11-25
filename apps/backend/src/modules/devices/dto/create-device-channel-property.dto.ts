@@ -21,7 +21,7 @@ import { DataTypeType, PermissionType, PropertyCategory } from '../devices.const
 type ReqCreateChannelProperty = components['schemas']['DevicesModuleReqCreateChannelProperty'];
 type CreateChannelProperty = components['schemas']['DevicesModuleCreateChannelProperty'];
 
-@ApiSchema({ name: 'DevicesModuleCreateChannelProperty' })
+@ApiSchema({ name: 'DevicesModuleCreateDeviceChannelProperty' })
 export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 	@ApiPropertyOptional({
 		description: 'Property ID',
@@ -193,7 +193,7 @@ export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 	value?: string | number | boolean | null;
 }
 
-@ApiSchema({ name: 'DevicesModuleReqCreateChannelProperty' })
+@ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannelProperty' })
 export class ReqCreateDeviceChannelPropertyDto implements ReqCreateChannelProperty {
 	@ApiProperty({ description: 'Channel property data', type: CreateDeviceChannelPropertyDto })
 	@Expose()

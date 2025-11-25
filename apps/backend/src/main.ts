@@ -112,7 +112,7 @@ async function bootstrap() {
 		},
 	});
 
-	sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}${API_PREFIX}/docs`, ['Bootstrap']);
+	sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);
 
 	await app.listen(port, '0.0.0.0');
 }

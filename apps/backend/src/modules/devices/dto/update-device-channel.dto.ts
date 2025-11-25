@@ -8,7 +8,7 @@ import type { components } from '../../../openapi';
 type ReqUpdateDeviceChannel = components['schemas']['DevicesModuleReqUpdateChannel'];
 type UpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
 
-@ApiSchema({ name: 'DevicesModuleUpdateChannel' })
+@ApiSchema({ name: 'DevicesModuleUpdateDeviceChannel' })
 export class UpdateDeviceChannelDto implements UpdateChannel {
 	@ApiProperty({ description: 'Channel type', type: 'string', example: 'generic' })
 	@Expose()
@@ -66,7 +66,7 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 	enabled?: boolean;
 }
 
-@ApiSchema({ name: 'DevicesModuleReqUpdateChannel' })
+@ApiSchema({ name: 'DevicesModuleReqUpdateDeviceChannel' })
 export class ReqUpdateDeviceChannelDto implements ReqUpdateDeviceChannel {
 	@ApiProperty({ description: 'Device channel data', type: UpdateDeviceChannelDto })
 	@Expose()

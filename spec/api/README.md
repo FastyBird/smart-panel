@@ -11,8 +11,7 @@ This directory contains the OpenAPI specification for the FastyBird Smart Panel 
 To generate or update the OpenAPI specification:
 
 ```bash
-cd apps/backend
-pnpm run generate:openapi
+pnpm --filter @fastybird/smart-panel-backend generate:openapi
 ```
 
 This will automatically:
@@ -49,8 +48,7 @@ npx @openapitools/openapi-generator-cli generate \
 Validate the OpenAPI spec:
 
 ```bash
-cd apps/backend
-pnpm run lint:openapi
+pnpm --filter @fastybird/smart-panel-backend lint:openapi
 ```
 
 ## Versioning

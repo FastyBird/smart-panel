@@ -8,7 +8,7 @@ import type { components } from '../../../openapi';
 type ReqRefreshToken = components['schemas']['AuthModuleReqRefreshToken'];
 type RefreshToken = components['schemas']['AuthModuleRefreshToken'];
 
-@ApiSchema({ name: 'AuthModuleRefreshToken' })
+@ApiSchema({ name: 'AuthModuleCreateRefreshToken' })
 export class RefreshTokenDto implements RefreshToken {
 	@ApiProperty({
 		description: 'JWT refresh access token',

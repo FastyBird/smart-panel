@@ -8,7 +8,7 @@ import type { components } from '../../../openapi';
 type ReqCreateChannelControl = components['schemas']['DevicesModuleReqCreateChannelControl'];
 type CreateChannelControl = components['schemas']['DevicesModuleCreateChannelControl'];
 
-@ApiSchema({ name: 'DevicesModuleCreateChannelControl' })
+@ApiSchema({ name: 'DevicesModuleCreateDeviceChannelControl' })
 export class CreateDeviceChannelControlDto implements CreateChannelControl {
 	@ApiPropertyOptional({
 		description: 'Control ID',
@@ -28,7 +28,7 @@ export class CreateDeviceChannelControlDto implements CreateChannelControl {
 	name: string;
 }
 
-@ApiSchema({ name: 'DevicesModuleReqCreateChannelControl' })
+@ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannelControl' })
 export class ReqCreateDeviceChannelControlDto implements ReqCreateChannelControl {
 	@ApiProperty({ description: 'Channel control data', type: CreateDeviceChannelControlDto })
 	@Expose()
