@@ -223,6 +223,24 @@ export class NotFoundErrorDto extends BaseErrorResponseDto {
 }
 
 /**
+ * 422 Unprocessable Entity Error Response
+ */
+export class UnprocessableEntityErrorDto extends BaseErrorResponseDto {
+	@ApiProperty({
+		description: 'Error details',
+		type: () => ErrorObjectDto,
+		example: {
+			code: 'UnprocessableEntityError',
+			message: 'The request was well-formed but could not be processed.',
+			details: {
+				reason: 'validation failed',
+			},
+		},
+	})
+	error: ErrorObjectDto;
+}
+
+/**
  * 500 Internal Server Error Response
  */
 export class InternalServerErrorDto extends BaseErrorResponseDto {

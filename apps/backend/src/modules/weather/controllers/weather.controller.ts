@@ -1,11 +1,12 @@
 import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
 import { CurrentDayModel, ForecastDayModel, LocationWeatherModel } from '../models/weather.model';
 import { WeatherService } from '../services/weather.service';
@@ -25,7 +26,7 @@ export class WeatherController {
 	})
 	@ApiSuccessResponse(LocationWeatherModel, 'Weather data retrieved successfully')
 	@ApiNotFoundResponse('Weather data could not be loaded from OpenWeatherMap')
-	@ApiResponse({ status: 422, description: 'Weather module is not properly configured' })
+	@ApiUnprocessableEntityResponse('Weather module is not properly configured')
 	@ApiInternalServerErrorResponse()
 	async getWeather() {
 		this.logger.debug('[LOOKUP] Fetching weather data');
@@ -62,7 +63,7 @@ export class WeatherController {
 	})
 	@ApiSuccessResponse(CurrentDayModel, 'Current weather data retrieved successfully')
 	@ApiNotFoundResponse('Current day weather data could not be loaded from OpenWeatherMap')
-	@ApiResponse({ status: 422, description: 'Weather module is not properly configured' })
+	@ApiUnprocessableEntityResponse('Weather module is not properly configured')
 	@ApiInternalServerErrorResponse()
 	async getCurrentWeather() {
 		this.logger.debug('[LOOKUP] Fetching current weather data');
@@ -96,7 +97,7 @@ export class WeatherController {
 	@ApiOperation({ summary: 'Get weather forecast', description: 'Retrieve weather forecast for configured location' })
 	@ApiSuccessArrayResponse(ForecastDayModel, 'Forecast weather data retrieved successfully')
 	@ApiNotFoundResponse('Current day weather data could not be loaded from OpenWeatherMap')
-	@ApiResponse({ status: 422, description: 'Weather module is not properly configured' })
+	@ApiUnprocessableEntityResponse('Weather module is not properly configured')
 	@ApiInternalServerErrorResponse()
 	async getForecastWeather() {
 		this.logger.debug('[LOOKUP] Fetching forecast weather data');

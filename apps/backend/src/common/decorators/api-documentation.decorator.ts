@@ -12,6 +12,7 @@ import {
 	NotFoundErrorDto,
 	ResponseMetadataDto,
 	SuccessMetadataDto,
+	UnprocessableEntityErrorDto,
 } from '../dto/response.dto';
 
 /**
@@ -367,6 +368,25 @@ export const ApiNotFoundResponse = (description?: string) => {
 			description: description || 'The requested resource was not found.',
 			schema: {
 				allOf: [{ $ref: getSchemaPath(BaseErrorResponseDto) }, { $ref: getSchemaPath(NotFoundErrorDto) }],
+			},
+		}),
+	);
+};
+
+/**
+ * Decorator for 422 Unprocessable Entity error response
+ */
+export const ApiUnprocessableEntityResponse = (description?: string) => {
+	return applyDecorators(
+		ApiExtraModels(BaseErrorResponseDto, ErrorObjectDto, ResponseMetadataDto, UnprocessableEntityErrorDto),
+		ApiResponse({
+			status: 422,
+			description: description || 'The request was well-formed but could not be processed.',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseErrorResponseDto) },
+					{ $ref: getSchemaPath(UnprocessableEntityErrorDto) },
+				],
 			},
 		}),
 	);
