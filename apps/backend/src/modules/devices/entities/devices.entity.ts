@@ -13,8 +13,9 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Column, Entity, Index, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
@@ -55,7 +56,12 @@ export class DeviceEntity extends BaseEntity {
 	})
 	category: DeviceCategory;
 
-	@ApiPropertyOptional({ description: 'Device unique identifier', type: 'string', example: 'device-001', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Device unique identifier',
+		type: 'string',
+		example: 'device-001',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
@@ -69,7 +75,12 @@ export class DeviceEntity extends BaseEntity {
 	@Column()
 	name: string;
 
-	@ApiPropertyOptional({ description: 'Device description', type: 'string', example: 'Smart bulb in living room', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Device description',
+		type: 'string',
+		example: 'Smart bulb in living room',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
@@ -122,7 +133,12 @@ export class DeviceControlEntity extends BaseEntity {
 	@Column()
 	name: string;
 
-	@ApiProperty({ description: 'Device identifier', type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiProperty({
+		description: 'Device identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
@@ -152,7 +168,12 @@ export class ChannelEntity extends BaseEntity {
 	})
 	category: ChannelCategory;
 
-	@ApiPropertyOptional({ description: 'Channel unique identifier', type: 'string', example: 'channel-001', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Channel unique identifier',
+		type: 'string',
+		example: 'channel-001',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
@@ -166,14 +187,24 @@ export class ChannelEntity extends BaseEntity {
 	@Column()
 	name: string;
 
-	@ApiPropertyOptional({ description: 'Channel description', type: 'string', example: 'Light brightness control', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Channel description',
+		type: 'string',
+		example: 'Light brightness control',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true })
 	description: string | null;
 
-	@ApiProperty({ description: 'Device identifier', type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiProperty({
+		description: 'Device identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
@@ -220,7 +251,12 @@ export class ChannelControlEntity extends BaseEntity {
 	@Column()
 	name: string;
 
-	@ApiProperty({ description: 'Channel identifier', type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiProperty({
+		description: 'Channel identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
@@ -248,7 +284,12 @@ export class ChannelPropertyEntity extends BaseEntity {
 	})
 	category: PropertyCategory;
 
-	@ApiPropertyOptional({ description: 'Property unique identifier', type: 'string', example: 'property-001', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Property unique identifier',
+		type: 'string',
+		example: 'property-001',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
@@ -263,7 +304,12 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@Column({ nullable: true })
 	name: string | null;
 
-	@ApiProperty({ description: 'Property permissions', type: 'array', enum: PermissionType, example: [PermissionType.READ_ONLY] })
+	@ApiProperty({
+		description: 'Property permissions',
+		type: 'array',
+		enum: PermissionType,
+		example: [PermissionType.READ_ONLY],
+	})
 	@Expose()
 	@IsEnum(PermissionType, { each: true })
 	@ArrayNotEmpty()
@@ -273,7 +319,12 @@ export class ChannelPropertyEntity extends BaseEntity {
 	})
 	permissions: PermissionType[];
 
-	@ApiProperty({ description: 'Property data type', name: 'data_type', enum: DataTypeType, example: DataTypeType.STRING })
+	@ApiProperty({
+		description: 'Property data type',
+		name: 'data_type',
+		enum: DataTypeType,
+		example: DataTypeType.STRING,
+	})
 	@Expose({ name: 'data_type' })
 	@IsEnum(DataTypeType)
 	@Transform(
@@ -294,7 +345,13 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@Column({ nullable: true })
 	unit: string | null;
 
-	@ApiPropertyOptional({ description: 'Property format constraints', type: 'array', items: { oneOf: [{ type: 'string' }, { type: 'number' }] }, example: ['on', 'off'], nullable: true })
+	@ApiPropertyOptional({
+		description: 'Property format constraints',
+		type: 'array',
+		items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+		example: ['on', 'off'],
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray()
@@ -327,7 +384,12 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@IsOptional()
 	value: string | boolean | number | null;
 
-	@ApiProperty({ description: 'Channel identifier', type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' })
+	@ApiProperty({
+		description: 'Channel identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })

@@ -2,6 +2,7 @@ import { Expose, Type } from 'class-transformer';
 import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+
 import type { components } from '../../../openapi';
 
 type ReqCheckUsername = components['schemas']['AuthModuleReqCheckUsername'];

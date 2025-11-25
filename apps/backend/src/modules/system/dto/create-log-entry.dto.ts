@@ -18,6 +18,7 @@ import {
 } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 import type { components } from '../../../openapi';
 import { LogEntrySource, LogEntryType } from '../system.constants';
 

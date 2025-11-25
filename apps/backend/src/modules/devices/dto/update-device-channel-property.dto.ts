@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
@@ -10,6 +9,8 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import type { components } from '../../../openapi';
 

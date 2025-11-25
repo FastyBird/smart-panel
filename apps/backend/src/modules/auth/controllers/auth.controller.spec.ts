@@ -21,11 +21,7 @@ import { CheckUsernameDto } from '../dto/check-username.dto';
 import { LoginDto } from '../dto/login.dto';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { RegisterDto } from '../dto/register.dto';
-import {
-	CheckResponseModel,
-	LoggedInResponseModel,
-	RegisteredDisplayResponseModel,
-} from '../models/auth.model';
+import { CheckResponseModel, LoggedInResponseModel, RegisteredDisplayResponseModel } from '../models/auth.model';
 import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 

@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+
 import { ValidateChannelExists } from '../validators/channel-exists-constraint.validator';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';

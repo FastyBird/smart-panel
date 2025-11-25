@@ -1,6 +1,7 @@
 import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 import { ChildEntity, Column, Index } from 'typeorm';
+
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';

@@ -2,6 +2,7 @@ import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 import type { components } from '../../../openapi';
 
 type ReqUpdateDisplayProfile = components['schemas']['SystemModuleReqUpdateDisplayProfile'];

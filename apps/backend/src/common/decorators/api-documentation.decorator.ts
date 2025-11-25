@@ -383,10 +383,7 @@ export const ApiUnprocessableEntityResponse = (description?: string) => {
 			status: 422,
 			description: description || 'The request was well-formed but could not be processed.',
 			schema: {
-				allOf: [
-					{ $ref: getSchemaPath(BaseErrorResponseDto) },
-					{ $ref: getSchemaPath(UnprocessableEntityErrorDto) },
-				],
+				allOf: [{ $ref: getSchemaPath(BaseErrorResponseDto) }, { $ref: getSchemaPath(UnprocessableEntityErrorDto) }],
 			},
 		}),
 	);

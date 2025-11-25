@@ -2,6 +2,7 @@ import { Expose, Transform, Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+
 import { TokenType } from '../auth.constants';
 
 const determineTokenDto = (obj: unknown): new () => object => {

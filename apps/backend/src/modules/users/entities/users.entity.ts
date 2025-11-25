@@ -3,6 +3,7 @@ import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, IsUUID, Validate, Val
 import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { DisplayProfileEntity } from '../../system/entities/system.entity';

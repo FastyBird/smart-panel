@@ -1,6 +1,7 @@
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsString } from 'class-validator';
+
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateDeviceDto } from '../../../modules/devices/dto/update-device.dto';
 import type { components } from '../../../openapi';

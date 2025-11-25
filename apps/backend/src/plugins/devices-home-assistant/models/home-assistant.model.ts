@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayMinSize,
@@ -11,6 +10,8 @@ import {
 	IsString,
 	ValidateNested,
 } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantState' })
 export class HomeAssistantStateModel {

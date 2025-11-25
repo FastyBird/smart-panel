@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import {
 	ArrayNotEmpty,
@@ -13,6 +12,8 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import type { components } from '../../../openapi';
 import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';

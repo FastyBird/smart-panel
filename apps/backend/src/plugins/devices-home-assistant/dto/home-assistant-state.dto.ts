@@ -1,6 +1,7 @@
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsDate, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantContext' })
 class HomeAssistantContextDto {

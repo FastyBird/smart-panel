@@ -25,11 +25,7 @@ import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { UpdateRefreshTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
-import {
-	CheckResponseModel,
-	LoggedInResponseModel,
-	RefreshTokenResponseModel,
-} from '../models/auth.model';
+import { CheckResponseModel, LoggedInResponseModel, RefreshTokenResponseModel } from '../models/auth.model';
 import { hashToken } from '../utils/token.utils';
 
 import { TokensService } from './tokens.service';

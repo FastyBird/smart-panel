@@ -35,8 +35,8 @@ import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { ReqCreateDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
 import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
-import { ReqUpdateDeviceChannelPropertyDto } from '../dto/update-device-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { ReqUpdateDeviceChannelPropertyDto } from '../dto/update-device-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { PropertyTimeseriesModel } from '../models/devices.model';
 import {

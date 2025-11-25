@@ -1,7 +1,8 @@
 import { Expose } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { ChildEntity, Column } from 'typeorm';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
@@ -15,14 +16,24 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 		return DEVICES_SHELLY_NG_TYPE;
 	}
 
-	@ApiPropertyOptional({ description: 'Device password for authentication', type: 'string', example: 'mypassword', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Device password for authentication',
+		type: 'string',
+		example: 'mypassword',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
 	password: string = null;
 
-	@ApiPropertyOptional({ description: 'Device hostname or IP address', type: 'string', example: '192.168.1.100', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Device hostname or IP address',
+		type: 'string',
+		example: '192.168.1.100',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()

@@ -1,5 +1,6 @@
 import { Expose } from 'class-transformer';
 import { IsString } from 'class-validator';
+
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';

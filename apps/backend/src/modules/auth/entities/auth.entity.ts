@@ -3,6 +3,7 @@ import { IsBoolean, IsDate, IsNotEmpty, IsOptional, IsString } from 'class-valid
 import { BeforeInsert, ChildEntity, Column, Entity, Index, ManyToOne, OneToMany, TableInheritance } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { UserEntity } from '../../users/entities/users.entity';
 import { TokenType } from '../auth.constants';

@@ -1,5 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
+
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';

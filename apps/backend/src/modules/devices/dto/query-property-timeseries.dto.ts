@@ -1,4 +1,3 @@
-import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import {
 	IsDateString,
 	IsIn,
@@ -8,6 +7,8 @@ import {
 	ValidatorConstraint,
 	ValidatorConstraintInterface,
 } from 'class-validator';
+
+import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 /**
  * Custom validator to ensure:

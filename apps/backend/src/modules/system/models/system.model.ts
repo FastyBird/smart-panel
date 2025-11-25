@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ExtensionKindType,

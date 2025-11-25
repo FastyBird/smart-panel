@@ -2,6 +2,7 @@ import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+
 import { TokenType } from '../auth.constants';
 
 @ApiSchema({ name: 'AuthModuleUpdateToken' })

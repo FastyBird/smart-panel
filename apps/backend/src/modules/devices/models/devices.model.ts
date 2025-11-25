@@ -13,6 +13,7 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
+
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';

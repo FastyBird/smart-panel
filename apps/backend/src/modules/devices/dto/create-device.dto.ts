@@ -75,7 +75,12 @@ export class CreateDeviceDto implements CreateDeviceBase {
 	@IsString({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;
 
-	@ApiPropertyOptional({ description: 'Device description', type: 'string', example: 'Main light in living room', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Device description',
+		type: 'string',
+		example: 'Main light in living room',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })

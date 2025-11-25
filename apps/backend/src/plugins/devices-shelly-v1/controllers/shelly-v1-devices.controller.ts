@@ -1,7 +1,15 @@
 import { validate } from 'class-validator';
 
 import { Body, Controller, Get, Logger, Post, UnprocessableEntityException } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DESCRIPTORS } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
@@ -9,6 +17,7 @@ import { ShellyV1ProbeDto } from '../dto/shelly-v1-probe.dto';
 import { ShellyV1DeviceInfoModel, ShellyV1SupportedDeviceModel } from '../models/shelly-v1.model';
 import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 
+@ApiTags('devices-shelly-v1-plugin')
 @Controller('devices')
 export class ShellyV1DevicesController {
 	private readonly logger = new Logger(ShellyV1DevicesController.name);
@@ -16,6 +25,22 @@ export class ShellyV1DevicesController {
 	constructor(private readonly probeService: ShellyV1ProbeService) {}
 
 	@Post('info')
+	@ApiOperation({ summary: 'Probe a Shelly V1 device to retrieve device information' })
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					$ref: '#/components/schemas/DevicesShellyV1PluginShellyV1Probe',
+				},
+			},
+			required: ['data'],
+		},
+	})
+	@ApiSuccessResponse(ShellyV1DeviceInfoModel, 'Device probed successfully')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiUnprocessableEntityResponse('Probe result model could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async getInfo(@Body() body: { data: ShellyV1ProbeDto }): Promise<ShellyV1DeviceInfoModel> {
 		this.logger.debug(`[SHELLY V1][DEVICES CONTROLLER] Incoming request to probe device at ${body.data.host}`);
 
@@ -62,6 +87,9 @@ export class ShellyV1DevicesController {
 	}
 
 	@Get('supported')
+	@ApiOperation({ summary: 'Get list of supported Shelly V1 devices' })
+	@ApiSuccessArrayResponse(ShellyV1SupportedDeviceModel, 'List of supported devices retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async getSupported(): Promise<ShellyV1SupportedDeviceModel[]> {
 		this.logger.debug('[SHELLY V1][DEVICES CONTROLLER] Incoming request to get Shelly V1 supported devices list');
 

@@ -2,22 +2,38 @@ import { Expose } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 import { ChildEntity, Column } from 'typeorm';
 
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 
+@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1Device' })
 @ChildEntity()
 export class ShellyV1DeviceEntity extends DeviceEntity {
+	@ApiProperty({ description: 'Device type', type: 'string', example: DEVICES_SHELLY_V1_TYPE })
 	@Expose()
 	get type(): string {
 		return DEVICES_SHELLY_V1_TYPE;
 	}
 
+	@ApiPropertyOptional({
+		description: 'Device password for authentication',
+		type: 'string',
+		example: 'mySecurePassword123',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
 	password: string = null;
 
+	@ApiPropertyOptional({
+		description: 'Device hostname or IP address',
+		type: 'string',
+		example: '192.168.1.100',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
@@ -29,8 +45,10 @@ export class ShellyV1DeviceEntity extends DeviceEntity {
 	}
 }
 
+@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1Channel' })
 @ChildEntity()
 export class ShellyV1ChannelEntity extends ChannelEntity {
+	@ApiProperty({ description: 'Channel type', type: 'string', example: DEVICES_SHELLY_V1_TYPE })
 	@Expose()
 	get type(): string {
 		return DEVICES_SHELLY_V1_TYPE;
@@ -41,8 +59,10 @@ export class ShellyV1ChannelEntity extends ChannelEntity {
 	}
 }
 
+@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1ChannelProperty' })
 @ChildEntity()
 export class ShellyV1ChannelPropertyEntity extends ChannelPropertyEntity {
+	@ApiProperty({ description: 'Property type', type: 'string', example: DEVICES_SHELLY_V1_TYPE })
 	@Expose()
 	get type(): string {
 		return DEVICES_SHELLY_V1_TYPE;
