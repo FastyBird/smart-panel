@@ -1,6 +1,8 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
 import { UpdateChannelPropertyDto } from '../../../modules/devices/dto/update-channel-property.dto';
 import type { components } from '../../../openapi';
@@ -8,14 +10,24 @@ import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 type UpdateShellyNgChannelProperty = components['schemas']['DevicesShellyNgPluginUpdateShellyNgChannelProperty'];
 
+@ApiSchema('DevicesShellyNgPluginUpdateShellyNgChannelProperty')
 export class UpdateShellyNgChannelPropertyDto
 	extends UpdateChannelPropertyDto
 	implements UpdateShellyNgChannelProperty
 {
+	@ApiProperty({
+		description: 'Channel property type',
+		example: DEVICES_SHELLY_NG_TYPE,
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel property type string."}]' })
 	type: typeof DEVICES_SHELLY_NG_TYPE;
 
+	@ApiPropertyOptional({
+		description: 'Property category',
+		enum: PropertyCategory,
+		example: PropertyCategory.GENERIC,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({

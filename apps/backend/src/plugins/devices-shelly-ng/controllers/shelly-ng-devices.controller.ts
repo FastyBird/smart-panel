@@ -2,14 +2,24 @@ import { validate } from 'class-validator';
 import { FetchError } from 'node-fetch';
 
 import { Body, Controller, Get, Logger, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DESCRIPTORS } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
-import { ShellyNgGetInfoDto } from '../dto/shelly-ng-get-info.dto';
+import { ReqShellyNgGetInfoDto } from '../dto/shelly-ng-get-info.dto';
 import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
 import { DeviceManagerService } from '../services/device-manager.service';
 
+@ApiTags('devices-shelly-ng-plugin')
 @Controller('devices')
 export class ShellyNgDevicesController {
 	private readonly logger = new Logger(ShellyNgDevicesController.name);
@@ -17,7 +27,14 @@ export class ShellyNgDevicesController {
 	constructor(private readonly deviceManagerService: DeviceManagerService) {}
 
 	@Post('info')
-	async getInfo(@Body() createDto: { data: ShellyNgGetInfoDto }): Promise<ShellyNgDeviceInfoModel> {
+	@ApiOperation({ summary: 'Fetch information about a Shelly NG device' })
+	@ApiBody({ type: ReqShellyNgGetInfoDto })
+	@ApiSuccessResponse(ShellyNgDeviceInfoModel)
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiNotFoundResponse('Device info could not be fetched')
+	@ApiUnprocessableEntityResponse('Device info model could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
+	async getInfo(@Body() createDto: ReqShellyNgGetInfoDto): Promise<ShellyNgDeviceInfoModel> {
 		let deviceInfo: Awaited<ReturnType<typeof this.deviceManagerService.getDeviceInfo>>;
 
 		try {
@@ -55,6 +72,9 @@ export class ShellyNgDevicesController {
 	}
 
 	@Get('supported')
+	@ApiOperation({ summary: 'Get list of supported Shelly NG devices' })
+	@ApiSuccessArrayResponse(ShellyNgSupportedDeviceModel)
+	@ApiInternalServerErrorResponse('Internal server error')
 	async getSupported(): Promise<ShellyNgSupportedDeviceModel[]> {
 		this.logger.debug('[SHELLY NG][DEVICES CONTROLLER] Incoming request to get Shelly NG supported devices list');
 
