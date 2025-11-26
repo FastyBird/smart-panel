@@ -1,4 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Expose, Type } from 'class-transformer';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 /**
  * Error detail field
@@ -77,6 +79,7 @@ export class ResponseMetadataDto {
 /**
  * Response metadata for success responses
  */
+@ApiSchema({ name: 'SuccessMetadataDto' })
 export class SuccessMetadataDto {
 	@ApiProperty({
 		description: 'The total time taken to process the request, in milliseconds',
@@ -85,6 +88,7 @@ export class SuccessMetadataDto {
 		example: 57,
 		readOnly: true,
 	})
+	@Expose({ name: 'request_duration_ms' })
 	request_duration_ms: number;
 
 	@ApiProperty({
@@ -94,6 +98,7 @@ export class SuccessMetadataDto {
 		example: '2025-01-18T12:00:00Z',
 		readOnly: true,
 	})
+	@Expose({ name: 'server_time' })
 	server_time: string;
 
 	@ApiProperty({
@@ -103,8 +108,15 @@ export class SuccessMetadataDto {
 		example: 25.28,
 		readOnly: true,
 	})
+	@Expose({ name: 'cpu_usage' })
 	cpu_usage: number;
 }
+
+/**
+ * Alias for OpenAPI spec compatibility
+ */
+@ApiSchema({ name: 'CommonResMetadata' })
+export class CommonResMetadata extends SuccessMetadataDto {}
 
 /**
  * Base error response structure
@@ -258,7 +270,8 @@ export class InternalServerErrorDto extends BaseErrorResponseDto {
 /**
  * Base success response structure
  */
-export class BaseSuccessResponseDto<T = unknown> {
+@ApiSchema({ name: 'BaseSuccessResponseModel' })
+export class BaseSuccessResponseModel<T = unknown> {
 	@ApiProperty({
 		description: 'Response status indicator',
 		type: 'string',
@@ -266,6 +279,7 @@ export class BaseSuccessResponseDto<T = unknown> {
 		example: 'success',
 		readOnly: true,
 	})
+	@Expose()
 	status: string;
 
 	@ApiProperty({
@@ -275,6 +289,7 @@ export class BaseSuccessResponseDto<T = unknown> {
 		example: '2025-01-18T12:00:00Z',
 		readOnly: true,
 	})
+	@Expose()
 	timestamp: string;
 
 	@ApiProperty({
@@ -284,6 +299,7 @@ export class BaseSuccessResponseDto<T = unknown> {
 		example: 'b27b7c58-76f6-407a-bc78-4068e4cfd082',
 		readOnly: true,
 	})
+	@Expose({ name: 'request_id' })
 	request_id: string;
 
 	@ApiProperty({
@@ -292,6 +308,7 @@ export class BaseSuccessResponseDto<T = unknown> {
 		example: '/api/v1/auth-module/auth/login',
 		readOnly: true,
 	})
+	@Expose()
 	path: string;
 
 	@ApiProperty({
@@ -300,16 +317,20 @@ export class BaseSuccessResponseDto<T = unknown> {
 		example: 'POST',
 		readOnly: true,
 	})
+	@Expose()
 	method: string;
 
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
 	})
+	@Expose()
 	data: T;
 
 	@ApiProperty({
 		description: 'Additional metadata about the request and server performance metrics',
 		type: () => SuccessMetadataDto,
 	})
+	@Expose()
+	@Type(() => SuccessMetadataDto)
 	metadata: SuccessMetadataDto;
 }

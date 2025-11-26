@@ -16,7 +16,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -27,17 +27,155 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { CreateHomeAssistantChannelPropertyDto } from '../../../plugins/devices-home-assistant/dto/create-channel-property.dto';
+// Import plugin DTOs for OpenAPI schema generation
+import { CreateHomeAssistantChannelDto } from '../../../plugins/devices-home-assistant/dto/create-channel.dto';
+import { CreateHomeAssistantDeviceDto } from '../../../plugins/devices-home-assistant/dto/create-device.dto';
+import { UpdateHomeAssistantChannelPropertyDto } from '../../../plugins/devices-home-assistant/dto/update-channel-property.dto';
+import { UpdateHomeAssistantChannelDto } from '../../../plugins/devices-home-assistant/dto/update-channel.dto';
+import { UpdateHomeAssistantDeviceDto } from '../../../plugins/devices-home-assistant/dto/update-device.dto';
+import { HomeAssistantDeviceEntity } from '../../../plugins/devices-home-assistant/entities/devices-home-assistant.entity';
+import {
+	HomeAssistantChannelEntity,
+	HomeAssistantChannelPropertyEntity,
+} from '../../../plugins/devices-home-assistant/entities/devices-home-assistant.entity';
+import { CreateShellyNgChannelPropertyDto } from '../../../plugins/devices-shelly-ng/dto/create-channel-property.dto';
+import { CreateShellyNgChannelDto } from '../../../plugins/devices-shelly-ng/dto/create-channel.dto';
+import { CreateShellyNgDeviceDto } from '../../../plugins/devices-shelly-ng/dto/create-device.dto';
+import { UpdateShellyNgChannelPropertyDto } from '../../../plugins/devices-shelly-ng/dto/update-channel-property.dto';
+import { UpdateShellyNgChannelDto } from '../../../plugins/devices-shelly-ng/dto/update-channel.dto';
+import { UpdateShellyNgDeviceDto } from '../../../plugins/devices-shelly-ng/dto/update-device.dto';
+import {
+	ShellyNgChannelEntity,
+	ShellyNgChannelPropertyEntity,
+	ShellyNgDeviceEntity,
+} from '../../../plugins/devices-shelly-ng/entities/devices-shelly-ng.entity';
+import {
+	CreateShellyV1ChannelDto,
+	DevicesShellyV1PluginCreateShellyV1Channel,
+} from '../../../plugins/devices-shelly-v1/dto/create-channel.dto';
+import {
+	CreateShellyV1DeviceDto,
+	DevicesShellyV1PluginCreateShellyV1Device,
+} from '../../../plugins/devices-shelly-v1/dto/create-device.dto';
+import {
+	DevicesShellyV1PluginUpdateShellyV1Device,
+	UpdateShellyV1DeviceDto,
+} from '../../../plugins/devices-shelly-v1/dto/update-device.dto';
+import {
+	ShellyV1ChannelEntity,
+	ShellyV1DeviceEntity,
+} from '../../../plugins/devices-shelly-v1/entities/devices-shelly-v1.entity';
+import {
+	CreateThirdPartyChannelPropertyDto,
+	DevicesThirdPartyPluginCreateThirdPartyChannelProperty,
+} from '../../../plugins/devices-third-party/dto/create-channel-property.dto';
+import {
+	CreateThirdPartyChannelDto,
+	DevicesThirdPartyPluginCreateThirdPartyChannel,
+} from '../../../plugins/devices-third-party/dto/create-channel.dto';
+import {
+	CreateThirdPartyDeviceDto,
+	DevicesThirdPartyPluginCreateThirdPartyDevice,
+} from '../../../plugins/devices-third-party/dto/create-device.dto';
+import {
+	DevicesThirdPartyPluginUpdateThirdPartyChannelProperty,
+	UpdateThirdPartyChannelPropertyDto,
+} from '../../../plugins/devices-third-party/dto/update-channel-property.dto';
+import {
+	DevicesThirdPartyPluginUpdateThirdPartyChannel,
+	UpdateThirdPartyChannelDto,
+} from '../../../plugins/devices-third-party/dto/update-channel.dto';
+import {
+	DevicesThirdPartyPluginUpdateThirdPartyDevice,
+	UpdateThirdPartyDeviceDto,
+} from '../../../plugins/devices-third-party/dto/update-device.dto';
+import {
+	ThirdPartyChannelEntity,
+	ThirdPartyChannelPropertyEntity,
+	ThirdPartyDeviceEntity,
+} from '../../../plugins/devices-third-party/entities/devices-third-party.entity';
+import {
+	DEVICES_MODULE_API_TAG_DESCRIPTION,
+	DEVICES_MODULE_API_TAG_NAME,
+	DEVICES_MODULE_NAME,
+	DEVICES_MODULE_PREFIX,
+} from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceDto } from '../dto/create-device.dto';
-import { UpdateDeviceDto } from '../dto/update-device.dto';
+import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
+import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
+import { DeviceResponseModel, DevicesResponseModel } from '../models/devices-response.model';
+import {
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleDeviceCategory,
+} from '../models/devices.model';
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
-@ApiTags('devices-module')
+@ApiTag({
+	tagName: DEVICES_MODULE_NAME,
+	displayName: DEVICES_MODULE_API_TAG_NAME,
+	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(
+	DeviceResponseModel,
+	DevicesResponseModel,
+	DevicesModuleDeviceCategory,
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	ReqCreateDeviceDto,
+	ReqUpdateDeviceDto,
+	// HomeAssistant plugin DTOs
+	CreateHomeAssistantDeviceDto,
+	UpdateHomeAssistantDeviceDto,
+	HomeAssistantDeviceEntity,
+	CreateHomeAssistantChannelDto,
+	UpdateHomeAssistantChannelDto,
+	CreateHomeAssistantChannelPropertyDto,
+	UpdateHomeAssistantChannelPropertyDto,
+	HomeAssistantChannelEntity,
+	HomeAssistantChannelPropertyEntity,
+	// ShellyNG plugin DTOs
+	CreateShellyNgDeviceDto,
+	UpdateShellyNgDeviceDto,
+	CreateShellyNgChannelDto,
+	UpdateShellyNgChannelDto,
+	CreateShellyNgChannelPropertyDto,
+	UpdateShellyNgChannelPropertyDto,
+	ShellyNgDeviceEntity,
+	ShellyNgChannelEntity,
+	ShellyNgChannelPropertyEntity,
+	// ShellyV1 plugin DTOs
+	CreateShellyV1DeviceDto,
+	UpdateShellyV1DeviceDto,
+	CreateShellyV1ChannelDto,
+	ShellyV1DeviceEntity,
+	ShellyV1ChannelEntity,
+	DevicesShellyV1PluginCreateShellyV1Device,
+	DevicesShellyV1PluginUpdateShellyV1Device,
+	DevicesShellyV1PluginCreateShellyV1Channel,
+	// ThirdParty plugin DTOs
+	CreateThirdPartyDeviceDto,
+	UpdateThirdPartyDeviceDto,
+	CreateThirdPartyChannelDto,
+	UpdateThirdPartyChannelDto,
+	CreateThirdPartyChannelPropertyDto,
+	UpdateThirdPartyChannelPropertyDto,
+	ThirdPartyDeviceEntity,
+	ThirdPartyChannelEntity,
+	ThirdPartyChannelPropertyEntity,
+	DevicesThirdPartyPluginCreateThirdPartyDevice,
+	DevicesThirdPartyPluginUpdateThirdPartyDevice,
+	DevicesThirdPartyPluginCreateThirdPartyChannel,
+	DevicesThirdPartyPluginUpdateThirdPartyChannel,
+	DevicesThirdPartyPluginCreateThirdPartyChannelProperty,
+	DevicesThirdPartyPluginUpdateThirdPartyChannelProperty,
+)
 @Controller('devices')
 export class DevicesController {
 	private readonly logger = new Logger(DevicesController.name);

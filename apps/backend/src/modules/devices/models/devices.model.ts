@@ -535,3 +535,13 @@ export class PropertyTimeseriesModel {
 	@ValidateNested({ each: true })
 	points: TimeseriesPointModel[];
 }
+
+// Export response wrapper models
+export {} from './devices-response.model';
+
+// Export enum schemas
+export {
+	DevicesModuleDeviceCategory,
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+} from './devices-enums.model';

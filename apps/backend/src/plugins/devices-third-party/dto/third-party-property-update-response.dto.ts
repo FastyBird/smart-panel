@@ -1,6 +1,7 @@
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsUUID, ValidateNested } from 'class-validator';
+
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 

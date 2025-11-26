@@ -5,7 +5,7 @@ import { RequestResultState } from '../../app.constants';
 import {
 	BadRequestErrorDto,
 	BaseErrorResponseDto,
-	BaseSuccessResponseDto,
+	BaseSuccessResponseModel,
 	ErrorObjectDto,
 	ForbiddenErrorDto,
 	InternalServerErrorDto,
@@ -43,13 +43,13 @@ const createSuccessResponseDecorator = <TModel extends Type<any> | (abstract new
 	description?: string,
 ) => {
 	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
+		ApiExtraModels(BaseSuccessResponseModel, SuccessMetadataDto, dataDto),
 		ApiResponse({
 			status,
 			description: description || defaultDescription,
 			schema: {
 				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{ $ref: getSchemaPath(BaseSuccessResponseModel) },
 					{
 						properties: {
 							status: {
@@ -124,13 +124,13 @@ const createDiscriminatedResponseDecorator = <TModel extends Type<any> | (abstra
 	description?: string,
 ) => {
 	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
+		ApiExtraModels(BaseSuccessResponseModel, SuccessMetadataDto, ...schemas),
 		ApiResponse({
 			status,
 			description: description || defaultDescription,
 			schema: {
 				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{ $ref: getSchemaPath(BaseSuccessResponseModel) },
 					{
 						properties: {
 							status: {
@@ -217,12 +217,12 @@ export const ApiSuccessArrayDiscriminatedResponse = <TModel extends Type<any> | 
 	description?: string,
 ) => {
 	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
+		ApiExtraModels(BaseSuccessResponseModel, SuccessMetadataDto, ...schemas),
 		ApiOkResponse({
 			description: description || 'Successful response',
 			schema: {
 				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{ $ref: getSchemaPath(BaseSuccessResponseModel) },
 					{
 						properties: {
 							status: {
@@ -260,12 +260,12 @@ export const ApiSuccessUnionResponse = <TModel extends Type<any> | (abstract new
 	description?: string,
 ) => {
 	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
+		ApiExtraModels(BaseSuccessResponseModel, SuccessMetadataDto, ...schemas),
 		ApiOkResponse({
 			description: description || 'Successful response',
 			schema: {
 				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{ $ref: getSchemaPath(BaseSuccessResponseModel) },
 					{
 						properties: {
 							status: {
@@ -296,12 +296,12 @@ export const ApiSuccessArrayResponse = <TModel extends Type<any> | (abstract new
 	description?: string,
 ) => {
 	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
+		ApiExtraModels(BaseSuccessResponseModel, SuccessMetadataDto, dataDto),
 		ApiOkResponse({
 			description: description || 'Successful response',
 			schema: {
 				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{ $ref: getSchemaPath(BaseSuccessResponseModel) },
 					{
 						properties: {
 							status: {

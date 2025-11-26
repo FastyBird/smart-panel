@@ -1,20 +1,44 @@
 import { Body, Controller, HttpCode, Logger, Put } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
 import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import {
+	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
+	DEVICES_THIRD_PARTY_PLUGIN_NAME,
+} from '../devices-third-party.constants';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
-import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
+import { PropertiesUpdateRequestDto, PropertyUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
+import { PropertiesUpdateResponseDto, PropertyUpdateResultDto } from '../dto/third-party-property-update-response.dto';
+import {
+	DevicesThirdPartyPluginErrorCode,
+	ThirdPartyDemoControlModel,
+	ThirdPartyDemoControlPropertyModel,
+} from '../models/demo-control.model';
 
-@ApiTags('devices-third-party-plugin')
+@ApiTag({
+	tagName: DEVICES_THIRD_PARTY_PLUGIN_NAME,
+	displayName: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
+	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(
+	PropertyUpdateRequestDto,
+	PropertiesUpdateRequestDto,
+	PropertyUpdateResultDto,
+	PropertiesUpdateResponseDto,
+	ThirdPartyDemoControlPropertyModel,
+	ThirdPartyDemoControlModel,
+	DevicesThirdPartyPluginErrorCode,
+)
 @Controller('demo')
 export class ThirdPartyDemoController {
 	private readonly logger = new Logger(ThirdPartyDemoController.name);

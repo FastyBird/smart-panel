@@ -16,3 +16,9 @@ export class CreateShellyV1ChannelDto extends CreateChannelDto {
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel type string."}]' })
 	readonly type: typeof DEVICES_SHELLY_V1_TYPE;
 }
+
+/**
+ * Alias for DevicesShellyV1PluginCreateShellyV1Channel (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyV1PluginCreateShellyV1Channel' })
+export class DevicesShellyV1PluginCreateShellyV1Channel extends CreateShellyV1ChannelDto {}

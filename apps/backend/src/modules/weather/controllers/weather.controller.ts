@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
@@ -8,11 +8,27 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+import {
+	LocationCurrentResponseModel,
+	LocationForecastResponseModel,
+	LocationWeatherResponseModel,
+} from '../models/weather-response.model';
 import { CurrentDayModel, ForecastDayModel, LocationWeatherModel } from '../models/weather.model';
 import { WeatherService } from '../services/weather.service';
+import {
+	WEATHER_MODULE_API_TAG_DESCRIPTION,
+	WEATHER_MODULE_API_TAG_NAME,
+	WEATHER_MODULE_NAME,
+} from '../weather.constants';
 import { WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
-@ApiTags('weather-module')
+@ApiTag({
+	tagName: WEATHER_MODULE_NAME,
+	displayName: WEATHER_MODULE_API_TAG_NAME,
+	description: WEATHER_MODULE_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(LocationWeatherResponseModel, LocationCurrentResponseModel, LocationForecastResponseModel)
 @Controller('weather')
 export class WeatherController {
 	private readonly logger = new Logger(WeatherController.name);

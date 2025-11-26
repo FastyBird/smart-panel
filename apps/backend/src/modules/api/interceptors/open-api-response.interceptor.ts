@@ -1,18 +1,21 @@
+import { instanceToPlain } from 'class-transformer';
 import { FastifyReply, FastifyRequest as Request, FastifyReply as Response } from 'fastify';
-import os from 'os';
 import { Observable, map } from 'rxjs';
-import { v4 as uuidv4 } from 'uuid';
 
 import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { RequestResultState } from '../../../app.constants';
-import { getResponseMeta } from '../../../common/utils/http.utils';
+import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
 import { RAW_ROUTE } from '../decorators/raw-route.decorator';
+import { ResponseMetadataService } from '../services/response-metadata.service';
 
 @Injectable()
 export class OpenApiResponseInterceptor<T> implements NestInterceptor<T, any> {
-	constructor(private readonly reflector: Reflector) {}
+	constructor(
+		private readonly reflector: Reflector,
+		private readonly metadataService: ResponseMetadataService,
+	) {}
 
 	intercept(context: ExecutionContext, next: CallHandler<T>): Observable<any> {
 		const http = context.switchToHttp();
@@ -26,32 +29,51 @@ export class OpenApiResponseInterceptor<T> implements NestInterceptor<T, any> {
 
 		const request = context.switchToHttp().getRequest<Request>();
 		const response = context.switchToHttp().getResponse<Response>();
-		const startTime = Date.now();
-		const requestId = uuidv4();
+		const metadataContext = this.metadataService.createContext();
 
 		return next.handle().pipe(
 			map((data) => {
-				const responseTime = Date.now() - startTime;
 				if (request.method === 'DELETE') {
 					response.status(HttpStatus.NO_CONTENT);
 
 					return null;
 				}
 
-				return {
+				// Check if the response is already a BaseSuccessResponseModel instance
+				// If so, merge metadata instead of double-wrapping
+				if (
+					data &&
+					typeof data === 'object' &&
+					'data' in data &&
+					'status' in data &&
+					'metadata' in data &&
+					Object.getPrototypeOf(data.constructor.prototype) === BaseSuccessResponseModel.prototype
+				) {
+					const responseModel = data as unknown as BaseSuccessResponseModel<unknown>;
+
+					// Merge metadata from service with existing metadata
+					const merged = this.metadataService.mergeMetadata(responseModel, request, metadataContext);
+
+					// Use class-transformer to serialize the response
+					return instanceToPlain(merged, {
+						excludeExtraneousValues: true,
+						exposeUnsetFields: false,
+					});
+				}
+
+				// For plain responses, create a new BaseSuccessResponseModel instance
+				const metadata = this.metadataService.extractMetadata(request, metadataContext);
+				const responseModel = Object.assign(new BaseSuccessResponseModel(), {
 					status: RequestResultState.SUCCESS,
-					timestamp: new Date().toISOString(),
-					request_id: requestId,
-					path: request.originalUrl,
-					method: request.method,
+					...metadata,
 					data,
-					metadata: {
-						...(getResponseMeta(request) ?? {}),
-						request_duration_ms: responseTime,
-						server_time: new Date().toISOString(),
-						cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
-					},
-				};
+				});
+
+				// Use class-transformer to serialize the response
+				return instanceToPlain(responseModel, {
+					excludeExtraneousValues: true,
+					exposeUnsetFields: false,
+				});
 			}),
 		);
 	}

@@ -1,6 +1,7 @@
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsString } from 'class-validator';
+
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateChannelDto } from '../../../modules/devices/dto/update-channel.dto';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
@@ -15,3 +16,9 @@ export class UpdateThirdPartyChannelDto extends UpdateChannelDto {
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel type string."}]' })
 	type: typeof DEVICES_THIRD_PARTY_TYPE;
 }
+
+/**
+ * Alias for DevicesThirdPartyPluginUpdateThirdPartyChannel (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesThirdPartyPluginUpdateThirdPartyChannel' })
+export class DevicesThirdPartyPluginUpdateThirdPartyChannel extends UpdateThirdPartyChannelDto {}

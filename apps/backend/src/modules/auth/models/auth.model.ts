@@ -2,8 +2,11 @@ import { Expose, Transform } from 'class-transformer';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'AuthModuleResLogin' })
-export class LoggedInResponseModel {
+/**
+ * Login data model
+ */
+@ApiSchema({ name: 'AuthModuleDataLogin' })
+export class LoggedInModel {
 	@ApiProperty({
 		name: 'access_token',
 		description: 'The JWT access token for authenticated sessions.',
@@ -61,8 +64,11 @@ export class LoggedInResponseModel {
 	type: string;
 }
 
-@ApiSchema({ name: 'AuthModuleResRefresh' })
-export class RefreshTokenResponseModel {
+/**
+ * Refresh token data model
+ */
+@ApiSchema({ name: 'AuthModuleDataRefresh' })
+export class RefreshTokenModel {
 	@ApiProperty({
 		name: 'access_token',
 		description: 'The JWT access token for authenticated sessions.',
@@ -120,8 +126,11 @@ export class RefreshTokenResponseModel {
 	type: string;
 }
 
-@ApiSchema({ name: 'AuthModuleResRegisterDisplay' })
-export class RegisteredDisplayResponseModel {
+/**
+ * Register display data model
+ */
+@ApiSchema({ name: 'AuthModuleDataRegisterDisplay' })
+export class RegisteredDisplayModel {
 	@ApiProperty({
 		description: 'Display account secret',
 		type: 'string',
@@ -131,8 +140,11 @@ export class RegisteredDisplayResponseModel {
 	secret: string;
 }
 
-@ApiSchema({ name: 'AuthModuleResCheck' })
-export class CheckResponseModel {
+/**
+ * Validation data model
+ */
+@ApiSchema({ name: 'AuthModuleDataValidation' })
+export class CheckModel {
 	@ApiProperty({
 		description: 'Indicates whether the provided validation field is valid.',
 		type: 'boolean',
@@ -140,4 +152,62 @@ export class CheckResponseModel {
 	})
 	@Expose()
 	valid: boolean;
+}
+
+/**
+ * Display secret schema (data part, not full response wrapper)
+ */
+@ApiSchema({ name: 'AuthModuleDataDisplaySecret' })
+export class DisplaySecretModel {
+	@ApiProperty({
+		description: 'Display account secret',
+		type: 'string',
+		example: 'IwMj3jfHdRVIxCck6DBgcQi3zXDNAHUu',
+	})
+	@Expose()
+	secret: string;
+}
+
+/**
+ * Token pair schema (same structure as LoggedInModel)
+ */
+@ApiSchema({ name: 'AuthModuleDataTokenPair' })
+export class TokenPairModel {
+	@ApiProperty({
+		name: 'access_token',
+		description: 'The JWT access token for authenticated sessions.',
+		type: 'string',
+		example:
+			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+	})
+	@Expose({ name: 'access_token' })
+	accessToken: string;
+
+	@ApiProperty({
+		name: 'refresh_token',
+		description: 'The JWT refresh token for authenticated sessions.',
+		type: 'string',
+		example:
+			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDMyfQ.ysGR_iIUp1O2wrUaKzIlr0eKufYUhdNFV156bA_FoFw',
+	})
+	@Expose({ name: 'refresh_token' })
+	refreshToken: string;
+
+	@ApiProperty({
+		description: 'Token type',
+		type: 'string',
+		default: 'Bearer',
+		example: 'Bearer',
+	})
+	@Expose()
+	type: string;
+
+	@ApiProperty({
+		description: 'The JWT access token expiration date.',
+		type: 'string',
+		format: 'date-time',
+		example: '2025-01-18T12:00:00Z',
+	})
+	@Expose()
+	expiration: string | Date;
 }

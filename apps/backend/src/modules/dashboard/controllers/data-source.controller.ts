@@ -17,7 +17,7 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -28,21 +28,52 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
-import { DashboardException } from '../dashboard.exceptions';
-import { CreateDataSourceDto, CreateSingleDataSourceDto, ReqCreateDataSourceDto } from '../dto/create-data-source.dto';
+import { CreateDeviceChannelDataSourceDto } from '../../../plugins/data-sources-device-channel/dto/create-data-source.dto';
+import { UpdateDeviceChannelDataSourceDto } from '../../../plugins/data-sources-device-channel/dto/update-data-source.dto';
+import { DeviceChannelDataSourceEntity } from '../../../plugins/data-sources-device-channel/entities/data-sources-device-channel.entity';
 import {
+	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
+	DASHBOARD_MODULE_API_TAG_NAME,
+	DASHBOARD_MODULE_NAME,
+	DASHBOARD_MODULE_PREFIX,
+} from '../dashboard.constants';
+import { DashboardException } from '../dashboard.exceptions';
+import {
+	CreateDataSourceDto,
+	CreateSingleDataSourceDto,
+	ReqCreateDataSourceDto,
+	ReqCreateDataSourceWithParentDto,
+} from '../dto/create-data-source.dto';
+import {
+	ReqUpdateDataSourceDto,
 	ReqUpdateDataSourceWithParentDto,
 	UpdateDataSourceDto,
 	UpdateSingleDataSourceDto,
 } from '../dto/update-data-source.dto';
 import { DataSourceEntity } from '../entities/dashboard.entity';
+import { DataSourceResponseModel, DataSourcesResponseModel } from '../models/dashboard-response.model';
 import { DataSourceTypeMapping, DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
 import { DataSourcesService } from '../services/data-sources.service';
 
-@ApiTags('dashboard-module')
+@ApiTag({
+	tagName: DASHBOARD_MODULE_NAME,
+	displayName: DASHBOARD_MODULE_API_TAG_NAME,
+	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(
+	DataSourceResponseModel,
+	DataSourcesResponseModel,
+	CreateDataSourceDto,
+	UpdateDataSourceDto,
+	ReqCreateDataSourceWithParentDto,
+	ReqUpdateDataSourceDto,
+	CreateDeviceChannelDataSourceDto,
+	UpdateDeviceChannelDataSourceDto,
+	DeviceChannelDataSourceEntity,
+)
 @Controller('data-source')
 export class DataSourceController {
 	private readonly logger = new Logger(DataSourceController.name);

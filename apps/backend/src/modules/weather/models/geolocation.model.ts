@@ -56,3 +56,15 @@ export class GeolocationZipModel {
 	@Expose()
 	country: string;
 }
+
+/**
+ * Alias for GeolocationCityModel (for OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'WeatherModuleCityGeolocation' })
+export class WeatherModuleCityGeolocation extends GeolocationCityModel {}
+
+/**
+ * Alias for GeolocationZipModel (for OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'WeatherModuleZipGeolocation' })
+export class WeatherModuleZipGeolocation extends GeolocationZipModel {}

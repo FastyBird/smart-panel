@@ -35,7 +35,7 @@ export interface PropertyMetadata {
  * @returns Array of required property categories
  */
 export function getRequiredProperties(channelCategory: ChannelCategoryType): PropertyCategory[] {
-	const channelSpec = channelsSchema[channelCategory];
+	const channelSpec = channelsSchema[channelCategory] as { properties?: Record<string, PropertySpec> } | undefined;
 
 	if (!channelSpec || typeof channelSpec !== 'object' || !channelSpec.properties) {
 		return [];
@@ -43,9 +43,10 @@ export function getRequiredProperties(channelCategory: ChannelCategoryType): Pro
 
 	const requiredProperties: PropertyCategory[] = [];
 
-	for (const [propKey, propSpec] of Object.entries(channelSpec.properties)) {
-		const spec = propSpec as PropertySpec;
-		if (typeof spec === 'object' && spec.required === true) {
+	const properties = channelSpec.properties;
+
+	for (const [propKey, propSpec] of Object.entries(properties)) {
+		if (typeof propSpec === 'object' && propSpec.required === true) {
 			// Map property category string to PropertyCategory enum
 			const propertyCategory = mapPropertyCategory(propKey);
 
@@ -68,7 +69,7 @@ export function getPropertyMetadata(
 	channelCategory: ChannelCategoryType,
 	propertyCategory: PropertyCategory,
 ): PropertyMetadata | null {
-	const channelSpec = channelsSchema[channelCategory];
+	const channelSpec = channelsSchema[channelCategory] as { properties?: Record<string, PropertySpec> } | undefined;
 
 	if (!channelSpec || typeof channelSpec !== 'object' || !channelSpec.properties) {
 		return null;
@@ -81,7 +82,7 @@ export function getPropertyMetadata(
 		return null;
 	}
 
-	const propertySpec = channelSpec.properties[propertyKey] as PropertySpec;
+	const propertySpec = channelSpec.properties[propertyKey];
 
 	if (!propertySpec || typeof propertySpec !== 'object') {
 		return null;

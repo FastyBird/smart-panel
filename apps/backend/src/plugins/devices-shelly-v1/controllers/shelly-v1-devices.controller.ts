@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 
 import { Body, Controller, Get, Logger, Post, UnprocessableEntityException } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -10,14 +10,48 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
+import {
+	DEVICES_SHELLY_V1_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME,
+	DEVICES_SHELLY_V1_PLUGIN_NAME,
+} from '../devices-shelly-v1.constants';
 import { DESCRIPTORS } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
-import { ShellyV1ProbeDto } from '../dto/shelly-v1-probe.dto';
-import { ShellyV1DeviceInfoModel, ShellyV1SupportedDeviceModel } from '../models/shelly-v1.model';
+import {
+	DevicesShellyV1PluginCreateDeviceInfo,
+	DevicesShellyV1PluginReqCreateDeviceInfo,
+	ShellyV1ProbeDto,
+} from '../dto/shelly-v1-probe.dto';
+import {
+	ShellyV1DeviceInfoResponseModel,
+	ShellyV1SupportedDevicesResponseModel,
+} from '../models/shelly-v1-response.model';
+import {
+	DevicesShellyV1PluginDeviceInfo,
+	DevicesShellyV1PluginSupportedDevice,
+	ShellyV1DeviceInfoModel,
+	ShellyV1SupportedDeviceModel,
+} from '../models/shelly-v1.model';
 import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 
-@ApiTags('devices-shelly-v1-plugin')
+@ApiTag({
+	tagName: DEVICES_SHELLY_V1_PLUGIN_NAME,
+	displayName: DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME,
+	description: DEVICES_SHELLY_V1_PLUGIN_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(
+	ShellyV1ProbeDto,
+	DevicesShellyV1PluginCreateDeviceInfo,
+	DevicesShellyV1PluginReqCreateDeviceInfo,
+	ShellyV1DeviceInfoModel,
+	DevicesShellyV1PluginDeviceInfo,
+	ShellyV1DeviceInfoResponseModel,
+	ShellyV1SupportedDeviceModel,
+	DevicesShellyV1PluginSupportedDevice,
+	ShellyV1SupportedDevicesResponseModel,
+)
 @Controller('devices')
 export class ShellyV1DevicesController {
 	private readonly logger = new Logger(ShellyV1DevicesController.name);

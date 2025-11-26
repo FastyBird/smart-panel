@@ -110,3 +110,12 @@ export class CreateDeviceDto {
 	@Type(() => CreateDeviceChannelDto)
 	channels?: CreateDeviceChannelDto[];
 }
+
+@ApiSchema({ name: 'DevicesModuleReqCreateDevice' })
+export class ReqCreateDeviceDto {
+	@ApiProperty({ description: 'Device data', type: () => CreateDeviceDto })
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateDeviceDto)
+	data: CreateDeviceDto;
+}

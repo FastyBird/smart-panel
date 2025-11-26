@@ -36,3 +36,9 @@ export class CreateShellyV1DeviceDto extends CreateDeviceDto {
 	@IsString({ message: '[{"field":"password","reason":"Password attribute must be a valid string."}]' })
 	password?: string;
 }
+
+/**
+ * Alias for DevicesShellyV1PluginCreateShellyV1Device (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyV1PluginCreateShellyV1Device' })
+export class DevicesShellyV1PluginCreateShellyV1Device extends CreateShellyV1DeviceDto {}

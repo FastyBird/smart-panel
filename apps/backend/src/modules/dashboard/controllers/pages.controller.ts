@@ -16,7 +16,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -27,17 +27,54 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+// Import plugin page DTOs and entities for OpenAPI schema generation
+import { CreateCardsPageDto } from '../../../plugins/pages-cards/dto/create-page.dto';
+import { UpdateCardsPageDto } from '../../../plugins/pages-cards/dto/update-page.dto';
+import { CardsPageEntity } from '../../../plugins/pages-cards/entities/pages-cards.entity';
+import { CreateDeviceDetailPageDto } from '../../../plugins/pages-device-detail/dto/create-page.dto';
+import { UpdateDeviceDetailPageDto } from '../../../plugins/pages-device-detail/dto/update-page.dto';
+import { DeviceDetailPageEntity } from '../../../plugins/pages-device-detail/entities/pages-device-detail.entity';
+import { CreateTilesPageDto } from '../../../plugins/pages-tiles/dto/create-page.dto';
+import { UpdateTilesPageDto } from '../../../plugins/pages-tiles/dto/update-page.dto';
+import { TilesPageEntity } from '../../../plugins/pages-tiles/entities/pages-tiles.entity';
+import {
+	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
+	DASHBOARD_MODULE_API_TAG_NAME,
+	DASHBOARD_MODULE_NAME,
+	DASHBOARD_MODULE_PREFIX,
+} from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreatePageDto, ReqCreatePageDto } from '../dto/create-page.dto';
 import { ReqUpdatePageDto, UpdatePageDto } from '../dto/update-page.dto';
 import { PageEntity } from '../entities/dashboard.entity';
+import { PageResponseModel, PagesResponseModel } from '../models/dashboard-response.model';
 import { PageTypeMapping, PagesTypeMapperService } from '../services/pages-type-mapper.service';
 import { PagesService } from '../services/pages.service';
 
-@ApiTags('dashboard-module')
+@ApiTag({
+	tagName: DASHBOARD_MODULE_NAME,
+	displayName: DASHBOARD_MODULE_API_TAG_NAME,
+	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(
+	PageResponseModel,
+	PagesResponseModel,
+	// PagesCardsPlugin
+	CreateCardsPageDto,
+	UpdateCardsPageDto,
+	CardsPageEntity,
+	// PagesDeviceDetailPlugin
+	CreateDeviceDetailPageDto,
+	UpdateDeviceDetailPageDto,
+	DeviceDetailPageEntity,
+	// PagesTilesPlugin
+	CreateTilesPageDto,
+	UpdateTilesPageDto,
+	TilesPageEntity,
+)
 @Controller('pages')
 export class PagesController {
 	private readonly logger = new Logger(PagesController.name);

@@ -232,3 +232,15 @@ export class ShellyNgDeviceInfoModel {
 	@Type(() => ShellyNgDeviceInfoComponentModel)
 	components: ShellyNgDeviceInfoComponentModel[];
 }
+
+/**
+ * Alias for DevicesShellyNgPluginDeviceInfo (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginDeviceInfo' })
+export class DevicesShellyNgPluginDeviceInfo extends ShellyNgDeviceInfoModel {}
+
+/**
+ * Alias for DevicesShellyNgPluginSupportedDevice (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginSupportedDevice' })
+export class DevicesShellyNgPluginSupportedDevice extends ShellyNgSupportedDeviceModel {}

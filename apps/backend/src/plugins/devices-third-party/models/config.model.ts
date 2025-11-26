@@ -1,5 +1,6 @@
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsString } from 'class-validator';
+
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';

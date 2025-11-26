@@ -1,5 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
@@ -80,3 +81,9 @@ export class ShellyV1ConfigModel extends PluginConfigModel {
 	})
 	timeouts: ShellyV1TimeoutsConfigModel = new ShellyV1TimeoutsConfigModel();
 }
+
+/**
+ * Alias for DevicesShellyV1PluginConfig (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyV1PluginConfig' })
+export class DevicesShellyV1PluginConfig extends ShellyV1ConfigModel {}

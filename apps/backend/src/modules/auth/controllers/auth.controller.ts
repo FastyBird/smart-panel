@@ -10,7 +10,7 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -19,12 +19,13 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateDisplayInstanceDto } from '../../users/dto/create-display-instance.dto';
-import { UserEntity } from '../../users/entities/users.entity';
 import { DisplaysInstancesService } from '../../users/services/displays-instances.service';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
+import { AUTH_MODULE_API_TAG_DESCRIPTION, AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_NAME } from '../auth.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
 import { ReqCheckEmailDto } from '../dto/check-email.dto';
@@ -35,15 +36,22 @@ import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { ReqRegisterDto } from '../dto/register.dto';
 import { Public } from '../guards/auth.guard';
 import {
-	CheckResponseModel,
-	LoggedInResponseModel,
-	RefreshTokenResponseModel,
-	RegisteredDisplayResponseModel,
-} from '../models/auth.model';
+	CheckEmailResponseModel,
+	CheckUsernameResponseModel,
+	LoginResponseModel,
+	ProfileResponseModel,
+	RefreshResponseModel,
+	RegisterDisplayResponseModel,
+} from '../models/auth-response.model';
+import { RegisteredDisplayModel } from '../models/auth.model';
 import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
-@ApiTags('auth-module')
+@ApiTag({
+	tagName: AUTH_MODULE_NAME,
+	displayName: AUTH_MODULE_API_TAG_NAME,
+	description: AUTH_MODULE_API_TAG_DESCRIPTION,
+})
 @Controller('auth')
 export class AuthController {
 	private readonly logger = new Logger(AuthController.name);
@@ -59,18 +67,18 @@ export class AuthController {
 	@Post('login')
 	@ApiOperation({ summary: 'User login', description: 'Authenticate user and return access tokens' })
 	@ApiBody({ type: ReqLoginDto, description: 'Login credentials' })
-	@ApiSuccessResponse(LoggedInResponseModel, 'Successfully authenticated')
+	@ApiSuccessResponse(LoginResponseModel, 'Successfully authenticated')
 	@ApiNotFoundResponse('User not found')
 	@ApiInternalServerErrorResponse()
-	async login(@Body() body: ReqLoginDto): Promise<LoggedInResponseModel> {
+	async login(@Body() body: ReqLoginDto): Promise<LoginResponseModel> {
 		try {
 			this.logger.debug(`[LOGIN] Attempting login for username=${body.data.username}`);
 
-			const response = await this.authService.login(body.data);
+			const data = await this.authService.login(body.data);
 
 			this.logger.debug(`[LOGIN] Successful login for username=${body.data.username}`);
 
-			return response;
+			return toInstance(LoginResponseModel, { data });
 		} catch (error) {
 			if (error instanceof AuthNotFoundException) {
 				throw new NotFoundException(error.message);
@@ -109,17 +117,17 @@ export class AuthController {
 	@Post('refresh')
 	@ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using a refresh token' })
 	@ApiBody({ type: ReqRefreshDto, description: 'Refresh token' })
-	@ApiSuccessResponse(RefreshTokenResponseModel, 'Token successfully refreshed')
+	@ApiSuccessResponse(RefreshResponseModel, 'Token successfully refreshed')
 	@ApiBadRequestResponse()
 	@ApiForbiddenResponse('Invalid or expired refresh token')
 	@ApiInternalServerErrorResponse()
-	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshTokenResponseModel> {
+	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshResponseModel> {
 		try {
-			const response = await this.authService.refreshAccessToken(body.data.token);
+			const data = await this.authService.refreshAccessToken(body.data.token);
 
 			this.logger.debug('[REFRESH] Successfully refreshed user access token');
 
-			return response;
+			return toInstance(RefreshResponseModel, { data });
 		} catch (error) {
 			if (error instanceof AuthUnauthorizedException) {
 				throw new ForbiddenException(error.message);
@@ -136,11 +144,14 @@ export class AuthController {
 		description: 'Register a new display device and get credentials',
 	})
 	@ApiBody({ type: ReqRegisterDisplayDto, description: 'Display device information' })
-	@ApiSuccessResponse(RegisteredDisplayResponseModel, 'Display successfully registered')
+	@ApiSuccessResponse(RegisterDisplayResponseModel, 'Display successfully registered')
 	@ApiBadRequestResponse()
 	@ApiForbiddenResponse('Access denied or display already registered')
 	@ApiInternalServerErrorResponse()
-	async registerDisplay(@Headers('User-Agent') userAgent: string, @Body() createDto: ReqRegisterDisplayDto) {
+	async registerDisplay(
+		@Headers('User-Agent') userAgent: string,
+		@Body() createDto: ReqRegisterDisplayDto,
+	): Promise<RegisterDisplayResponseModel> {
 		this.logger.debug(`[REGISTER DISPLAY] User-Agent: ${userAgent}`);
 
 		if (!userAgent || !userAgent.includes('FlutterApp')) {
@@ -175,7 +186,9 @@ export class AuthController {
 
 			this.logger.debug('[REGISTER DISPLAY] Display user successfully registered');
 
-			return toInstance(RegisteredDisplayResponseModel, { secret: password });
+			const data = toInstance(RegisteredDisplayModel, { secret: password });
+
+			return toInstance(RegisterDisplayResponseModel, { data });
 		} catch (error) {
 			const err = error as Error;
 
@@ -195,17 +208,17 @@ export class AuthController {
 		description: 'Verify if a username is available for registration',
 	})
 	@ApiBody({ type: ReqCheckUsernameDto, description: 'Username to check' })
-	@ApiSuccessResponse(CheckResponseModel, 'Username availability result')
+	@ApiSuccessResponse(CheckUsernameResponseModel, 'Username availability result')
 	@ApiBadRequestResponse()
 	@ApiInternalServerErrorResponse()
-	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckResponseModel> {
+	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckUsernameResponseModel> {
 		this.logger.debug(`[CHECK] Checking availability for username=${body.data.username}`);
 
-		const response = await this.authService.checkUsername(body.data);
+		const data = await this.authService.checkUsername(body.data);
 
-		this.logger.debug(`[CHECK] Username=${body.data.username} available=${response.valid}`);
+		this.logger.debug(`[CHECK] Username=${body.data.username} available=${data.valid}`);
 
-		return response;
+		return toInstance(CheckUsernameResponseModel, { data });
 	}
 
 	@Public()
@@ -215,26 +228,26 @@ export class AuthController {
 		description: 'Verify if an email is available for registration',
 	})
 	@ApiBody({ type: ReqCheckEmailDto, description: 'Email to check' })
-	@ApiSuccessResponse(CheckResponseModel, 'Email availability result')
+	@ApiSuccessResponse(CheckEmailResponseModel, 'Email availability result')
 	@ApiBadRequestResponse()
 	@ApiInternalServerErrorResponse()
-	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckResponseModel> {
+	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckEmailResponseModel> {
 		this.logger.debug(`[CHECK] Checking availability for email=${body.data.email}`);
 
-		const response = await this.authService.checkEmail(body.data);
+		const data = await this.authService.checkEmail(body.data);
 
-		this.logger.debug(`[CHECK] Email=${body.data.email} available=${response.valid}`);
+		this.logger.debug(`[CHECK] Email=${body.data.email} available=${data.valid}`);
 
-		return response;
+		return toInstance(CheckEmailResponseModel, { data });
 	}
 
 	@Get('profile')
 	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the authenticated user profile information' })
-	@ApiSuccessResponse(UserEntity, 'User profile retrieved')
+	@ApiSuccessResponse(ProfileResponseModel, 'User profile retrieved')
 	@ApiNotFoundResponse('User not found')
 	@ApiForbiddenResponse('User not authenticated')
 	@ApiInternalServerErrorResponse()
-	async getProfile(@Req() req: AuthenticatedRequest): Promise<UserEntity> {
+	async getProfile(@Req() req: AuthenticatedRequest): Promise<ProfileResponseModel> {
 		const { user } = req;
 
 		if (!user) {
@@ -243,10 +256,10 @@ export class AuthController {
 
 		this.logger.debug(`[PROFILE] Fetching profile for user=${user.id}`);
 
-		const response = await this.authService.getProfile(user.id);
+		const userData = await this.authService.getProfile(user.id);
 
 		this.logger.debug(`[PROFILE] Successfully fetched profile for user=${user.id}`);
 
-		return response;
+		return toInstance(ProfileResponseModel, { data: userData });
 	}
 }

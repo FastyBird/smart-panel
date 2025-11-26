@@ -8,6 +8,8 @@ import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.co
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantConfig' })
 export class HomeAssistantConfigModel extends PluginConfigModel {
+	// Alias for OpenAPI spec compatibility
+	static readonly ConfigAlias = HomeAssistantConfigModel;
 	@ApiProperty({
 		description: 'Plugin type',
 		type: 'string',
@@ -38,3 +40,9 @@ export class HomeAssistantConfigModel extends PluginConfigModel {
 	@IsString()
 	hostname: string = 'homeassistant.local';
 }
+
+/**
+ * Alias for DevicesHomeAssistantPluginConfig (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginConfig' })
+export class DevicesHomeAssistantPluginConfig extends HomeAssistantConfigModel {}

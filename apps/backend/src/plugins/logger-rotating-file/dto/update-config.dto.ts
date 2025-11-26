@@ -12,6 +12,7 @@ import {
 	registerDecorator,
 } from 'class-validator';
 import { CronTime } from 'cron';
+
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';

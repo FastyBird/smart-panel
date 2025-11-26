@@ -9,13 +9,14 @@ import {
 	Logger,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { Public } from '../../auth/guards/auth.guard';
 import {
@@ -23,10 +24,21 @@ import {
 	PlatformNotSupportedException,
 	PlatformValidationException,
 } from '../../platform/platform.exceptions';
+import {
+	SystemHealthResponseModel,
+	SystemInfoResponseModel,
+	ThrottleStatusResponseModel,
+} from '../models/system-response.model';
 import { SystemHealthModel, SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
+import { SYSTEM_MODULE_API_TAG_DESCRIPTION, SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.constants';
 
-@ApiTags('system-module')
+@ApiTag({
+	tagName: SYSTEM_MODULE_NAME,
+	displayName: SYSTEM_MODULE_API_TAG_NAME,
+	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(SystemHealthResponseModel, SystemInfoResponseModel, ThrottleStatusResponseModel)
 @Controller('system')
 export class SystemController {
 	private readonly logger = new Logger(SystemController.name);

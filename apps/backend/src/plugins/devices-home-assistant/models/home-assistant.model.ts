@@ -15,6 +15,8 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantState' })
 export class HomeAssistantStateModel {
+	// Alias for OpenAPI spec compatibility
+	static readonly StateAlias = HomeAssistantStateModel;
 	@ApiProperty({
 		description: 'Home Assistant entity ID',
 		type: 'string',
@@ -106,6 +108,12 @@ export class HomeAssistantStateModel {
 	lastUpdated: Date;
 }
 
+/**
+ * Alias for DevicesHomeAssistantPluginState (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginState' })
+export class DevicesHomeAssistantPluginState extends HomeAssistantStateModel {}
+
 @ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDiscoveredDevice' })
 export class HomeAssistantDiscoveredDeviceModel {
 	@ApiProperty({
@@ -162,6 +170,12 @@ export class HomeAssistantDiscoveredDeviceModel {
 	@Type(() => HomeAssistantStateModel)
 	states: HomeAssistantStateModel[];
 }
+
+/**
+ * Alias for DevicesHomeAssistantPluginDiscoveredDevice (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDiscoveredDevice' })
+export class DevicesHomeAssistantPluginDiscoveredDevice extends HomeAssistantDiscoveredDeviceModel {}
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantEntityRegistryResponseResult' })
 export class HomeAssistantEntityRegistryResponseResultModel {
@@ -587,3 +601,6 @@ export class HomeAssistantDeviceRegistryResponseModel {
 	@Type(() => HomeAssistantDeviceRegistryResponseResultModel)
 	result: HomeAssistantDeviceRegistryResponseResultModel[];
 }
+
+// Export response wrapper models
+export {} from './home-assistant-response.model';

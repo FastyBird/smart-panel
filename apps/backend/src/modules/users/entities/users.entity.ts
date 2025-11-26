@@ -9,7 +9,7 @@ import { AbstractInstanceValidator } from '../../../common/validation/abstract-i
 import { DisplayProfileEntity } from '../../system/entities/system.entity';
 import { UserRole } from '../users.constants';
 
-@ApiSchema({ name: 'AuthModuleUser' })
+@ApiSchema({ name: 'UsersModuleUser' })
 @Entity('users_module_users')
 export class UserEntity extends BaseEntity {
 	@ApiProperty({
@@ -101,7 +101,7 @@ export class UserEntity extends BaseEntity {
 	role: UserRole;
 }
 
-@ApiSchema({ name: 'AuthModuleDisplayInstance' })
+@ApiSchema({ name: 'UsersModuleDisplayInstance' })
 @Entity('users_module_displays_instances')
 export class DisplayInstanceEntity extends BaseEntity {
 	@ApiProperty({

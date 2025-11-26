@@ -1,8 +1,23 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsUUID, ValidateNested } from 'class-validator';
+
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
+
+/**
+ * Alias for DevicesThirdPartyPluginErrorCode (OpenAPI spec compatibility)
+ * This is an enum schema that matches ThirdPartyPropertiesUpdateStatus
+ */
+@ApiSchema({ name: 'DevicesThirdPartyPluginErrorCode' })
+export class DevicesThirdPartyPluginErrorCode {
+	@ApiProperty({
+		description: 'Error code',
+		enum: ThirdPartyPropertiesUpdateStatus,
+		example: ThirdPartyPropertiesUpdateStatus.SUCCESS,
+	})
+	code: ThirdPartyPropertiesUpdateStatus;
+}
 
 @ApiSchema({ name: 'DevicesThirdPartyPluginThirdPartyDemoControlProperty' })
 export class ThirdPartyDemoControlPropertyModel {

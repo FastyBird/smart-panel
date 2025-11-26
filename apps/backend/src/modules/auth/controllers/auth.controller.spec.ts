@@ -21,7 +21,14 @@ import { CheckUsernameDto } from '../dto/check-username.dto';
 import { LoginDto } from '../dto/login.dto';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { RegisterDto } from '../dto/register.dto';
-import { CheckResponseModel, LoggedInResponseModel, RegisteredDisplayResponseModel } from '../models/auth.model';
+import {
+	CheckEmailResponseModel,
+	CheckUsernameResponseModel,
+	LoginResponseModel,
+	ProfileResponseModel,
+	RegisterDisplayResponseModel,
+} from '../models/auth-response.model';
+import { CheckModel, LoggedInModel, RegisteredDisplayModel } from '../models/auth.model';
 import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
@@ -97,9 +104,10 @@ describe('AuthController', () => {
 	describe('login', () => {
 		it('should return a valid token', async () => {
 			const loginDto: LoginDto = { username: 'testuser', password: 'password' };
-			const expectedResponse = toInstance(LoggedInResponseModel, { accessToken: 'valid-token' });
+			const serviceResponse = toInstance(LoggedInModel, { accessToken: 'valid-token' });
+			const expectedResponse = toInstance(LoginResponseModel, { data: serviceResponse });
 
-			jest.spyOn(authService, 'login').mockResolvedValue(expectedResponse);
+			jest.spyOn(authService, 'login').mockResolvedValue(serviceResponse);
 
 			await expect(controller.login({ data: loginDto })).resolves.toEqual(expectedResponse);
 			expect(authService.login).toHaveBeenCalledWith(loginDto);
@@ -119,7 +127,8 @@ describe('AuthController', () => {
 
 	describe('registerDisplay', () => {
 		it('should register a display when no display user exists', async () => {
-			const expectedResponse = toInstance(RegisteredDisplayResponseModel, { secret: 'secure-password' });
+			const serviceResponse = toInstance(RegisteredDisplayModel, { secret: 'secure-password' });
+			const expectedResponse = toInstance(RegisterDisplayResponseModel, { data: serviceResponse });
 
 			const displayId = uuid().toString();
 
@@ -209,9 +218,10 @@ describe('AuthController', () => {
 	describe('checkUsername', () => {
 		it('should check username availability', async () => {
 			const username: CheckUsernameDto = { username: 'testuser' };
-			const expectedResponse = toInstance(CheckResponseModel, { valid: true });
+			const serviceResponse = toInstance(CheckModel, { valid: true });
+			const expectedResponse = toInstance(CheckUsernameResponseModel, { data: serviceResponse });
 
-			jest.spyOn(authService, 'checkUsername').mockResolvedValue(expectedResponse);
+			jest.spyOn(authService, 'checkUsername').mockResolvedValue(serviceResponse);
 
 			await expect(controller.checkUsername({ data: username })).resolves.toEqual(expectedResponse);
 			expect(authService.checkUsername).toHaveBeenCalledWith(username);
@@ -221,9 +231,10 @@ describe('AuthController', () => {
 	describe('checkEmail', () => {
 		it('should check email availability', async () => {
 			const email: CheckEmailDto = { email: 'test@example.com' };
-			const expectedResponse = toInstance(CheckResponseModel, { valid: true });
+			const serviceResponse = toInstance(CheckModel, { valid: true });
+			const expectedResponse = toInstance(CheckEmailResponseModel, { data: serviceResponse });
 
-			jest.spyOn(authService, 'checkEmail').mockResolvedValue(expectedResponse);
+			jest.spyOn(authService, 'checkEmail').mockResolvedValue(serviceResponse);
 
 			await expect(controller.checkEmail({ data: email })).resolves.toEqual(expectedResponse);
 			expect(authService.checkEmail).toHaveBeenCalledWith(email);
@@ -236,10 +247,11 @@ describe('AuthController', () => {
 			const requestMock = { user };
 			const expectedUser = new UserEntity();
 			expectedUser.id = '123';
+			const expectedResponse = toInstance(ProfileResponseModel, { data: expectedUser });
 
 			jest.spyOn(authService, 'getProfile').mockResolvedValue(expectedUser);
 
-			await expect(controller.getProfile(requestMock as any)).resolves.toEqual(expectedUser);
+			await expect(controller.getProfile(requestMock as any)).resolves.toEqual(expectedResponse);
 			expect(authService.getProfile).toHaveBeenCalledWith('123');
 		});
 

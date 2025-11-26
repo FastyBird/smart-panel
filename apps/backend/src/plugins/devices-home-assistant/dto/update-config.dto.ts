@@ -36,3 +36,9 @@ export class HomeAssistantUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	})
 	hostname?: string;
 }
+
+/**
+ * Alias for DevicesHomeAssistantPluginUpdateConfig (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginUpdateConfig' })
+export class DevicesHomeAssistantPluginUpdateConfig extends HomeAssistantUpdatePluginConfigDto {}

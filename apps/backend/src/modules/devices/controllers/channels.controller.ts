@@ -16,7 +16,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -34,10 +34,12 @@ import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto, ReqCreateChannelDto } from '../dto/create-channel.dto';
 import { ReqUpdateChannelDto, UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity } from '../entities/devices.entity';
+import { ChannelResponseModel, ChannelsResponseModel } from '../models/devices-response.model';
 import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
 import { ChannelsService } from '../services/channels.service';
 
 @ApiTags('devices-module')
+@ApiExtraModels(ChannelResponseModel, ChannelsResponseModel)
 @Controller('channels')
 export class ChannelsController {
 	private readonly logger = new Logger(ChannelsController.name);

@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, Param, UnprocessableEntityException } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -9,14 +9,29 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+} from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
-import { HomeAssistantStateModel } from '../models/home-assistant.model';
+import {
+	HomeAssistantStateResponseModel,
+	HomeAssistantStatesResponseModel,
+} from '../models/home-assistant-response.model';
+import { DevicesHomeAssistantPluginState, HomeAssistantStateModel } from '../models/home-assistant.model';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 
-@ApiTags('devices-home-assistant-plugin')
+@ApiTag({
+	tagName: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	displayName: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	description: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(DevicesHomeAssistantPluginState, HomeAssistantStateResponseModel, HomeAssistantStatesResponseModel)
 @Controller('states')
 export class HomeAssistantStatesController {
 	private readonly logger = new Logger(HomeAssistantStatesController.name);

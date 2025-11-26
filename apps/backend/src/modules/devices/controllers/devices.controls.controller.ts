@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -28,10 +28,12 @@ import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
+import { DeviceControlResponseModel, DeviceControlsResponseModel } from '../models/devices-response.model';
 import { DevicesControlsService } from '../services/devices.controls.service';
 import { DevicesService } from '../services/devices.service';
 
 @ApiTags('devices-module')
+@ApiExtraModels(DeviceControlResponseModel, DeviceControlsResponseModel)
 @Controller('devices/:deviceId/controls')
 export class DevicesControlsController {
 	private readonly logger = new Logger(DevicesControlsController.name);

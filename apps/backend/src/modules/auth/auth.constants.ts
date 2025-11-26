@@ -6,6 +6,11 @@ export const AUTH_MODULE_PREFIX = 'auth-module';
 
 export const AUTH_MODULE_NAME = 'auth-module';
 
+export const AUTH_MODULE_API_TAG_NAME = 'Auth module';
+
+export const AUTH_MODULE_API_TAG_DESCRIPTION =
+	'Endpoints related to user authentication, including registration, login, token validation, and session management.';
+
 export enum TokenType {
 	ACCESS = 'access',
 	REFRESH = 'refresh',

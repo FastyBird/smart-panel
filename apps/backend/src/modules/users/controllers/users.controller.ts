@@ -13,7 +13,7 @@ import {
 	Req,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiTags, ApiUnprocessableEntityResponse } from '@nestjs/swagger';
+import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiUnprocessableEntityResponse } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -23,14 +23,26 @@ import {
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { AuthenticatedRequest } from '../../auth/auth.constants';
 import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
+import { UserResponseModel, UsersResponseModel } from '../models/users-response.model';
 import { UsersService } from '../services/users.service';
-import { USERS_MODULE_PREFIX } from '../users.constants';
+import {
+	USERS_MODULE_API_TAG_DESCRIPTION,
+	USERS_MODULE_API_TAG_NAME,
+	USERS_MODULE_NAME,
+	USERS_MODULE_PREFIX,
+} from '../users.constants';
 
-@ApiTags('users-module')
+@ApiTag({
+	tagName: USERS_MODULE_NAME,
+	displayName: USERS_MODULE_API_TAG_NAME,
+	description: USERS_MODULE_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(UserResponseModel, UsersResponseModel)
 @Controller('users')
 export class UsersController {
 	private readonly logger = new Logger(UsersController.name);

@@ -1,5 +1,5 @@
-import { Expose } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -70,4 +70,13 @@ export class UpdateDeviceDto {
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
+}
+
+@ApiSchema({ name: 'DevicesModuleReqUpdateDevice' })
+export class ReqUpdateDeviceDto {
+	@ApiProperty({ description: 'Device data', type: () => UpdateDeviceDto })
+	@Expose()
+	@ValidateNested()
+	@Type(() => UpdateDeviceDto)
+	data: UpdateDeviceDto;
 }

@@ -1,13 +1,18 @@
 import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 
 import {
-	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessArrayResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+} from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -18,7 +23,11 @@ import {
 } from '../models/home-assistant.model';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 
-@ApiTags('devices-home-assistant-plugin')
+@ApiTag({
+	tagName: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	displayName: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	description: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
+})
 @Controller('registry')
 export class HomeAssistantRegistryController {
 	private readonly logger = new Logger(HomeAssistantRegistryController.name);

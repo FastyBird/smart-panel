@@ -115,3 +115,9 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 		return `HA Entity-attribute [${this.haEntityId}][${this.haAttribute}] -> FB Channel property [${this.id}]`;
 	}
 }
+
+/**
+ * Alias for DevicesHomeAssistantPluginHomeAssistantChannelProperty (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantChannelProperty' })
+export class DevicesHomeAssistantPluginHomeAssistantChannelProperty extends HomeAssistantChannelPropertyEntity {}

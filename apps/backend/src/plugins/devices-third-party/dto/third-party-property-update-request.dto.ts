@@ -1,4 +1,3 @@
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
@@ -10,6 +9,8 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
+
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 @ApiSchema({ name: 'DevicesThirdPartyPluginPropertyUpdateRequest' })
 export class PropertyUpdateRequestDto {
@@ -42,11 +43,7 @@ export class PropertyUpdateRequestDto {
 
 	@ApiProperty({
 		description: 'Property value (string, boolean, or number)',
-		oneOf: [
-			{ type: 'string' },
-			{ type: 'boolean' },
-			{ type: 'number' },
-		],
+		oneOf: [{ type: 'string' }, { type: 'boolean' }, { type: 'number' }],
 		example: 'on',
 	})
 	@Expose()

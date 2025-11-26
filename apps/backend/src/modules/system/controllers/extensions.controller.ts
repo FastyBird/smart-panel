@@ -6,7 +6,7 @@ import path from 'node:path';
 import { DiscoveredAdminExtension } from '@fastybird/smart-panel-extension-sdk';
 import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
@@ -17,7 +17,8 @@ import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
-import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
+import { ExtensionsResponseModel } from '../models/system-response.model';
+import { ExtensionAdminModel, ExtensionBackendModel, ExtensionBaseModel } from '../models/system.model';
 import {
 	ExtensionKindType,
 	ExtensionSourceType,
@@ -36,6 +37,7 @@ interface BundledManifest {
 }
 
 @ApiTags('system-module')
+@ApiExtraModels(ExtensionsResponseModel, ExtensionBaseModel)
 @Controller('extensions')
 export class ExtensionsController {
 	private readonly logger = new Logger(ExtensionsController.name);
@@ -171,6 +173,23 @@ export class ExtensionsController {
 	@RawRoute()
 	@Public()
 	@Get('assets/:pkg/*')
+	@ApiOperation({
+		summary: 'Serve an Admin extension asset (ESM)',
+		description:
+			'Streams a file (typically the ESM entry) from the discovered extension package directory. `asset_path` represents the remaining subpath inside the package and may include slashes.',
+	})
+	@ApiParam({
+		name: 'pkg',
+		description: 'NPM package name (URL-encoded), e.g. `@fastybird/example-extension-admin`.',
+		type: 'string',
+		required: true,
+	})
+	@ApiParam({
+		name: 'asset_path',
+		description: 'Subpath inside the package (may include slashes), e.g. `admin/index.js`.',
+		type: 'string',
+		required: true,
+	})
 	async asset(@Param('pkg') pkg: string, @Req() req: Request, @Res() res: Response) {
 		const { admin } = await getDiscoveredExtensions();
 

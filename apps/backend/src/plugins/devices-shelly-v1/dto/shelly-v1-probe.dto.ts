@@ -1,5 +1,5 @@
-import { Expose } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -24,4 +24,22 @@ export class ShellyV1ProbeDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"password","reason":"Password attribute must be a valid string."}]' })
 	password?: string | null = null;
+}
+
+/**
+ * Alias for DevicesShellyV1PluginCreateDeviceInfo (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyV1PluginCreateDeviceInfo' })
+export class DevicesShellyV1PluginCreateDeviceInfo extends ShellyV1ProbeDto {}
+
+/**
+ * Request wrapper for DevicesShellyV1PluginCreateDeviceInfo
+ */
+@ApiSchema({ name: 'DevicesShellyV1PluginReqCreateDeviceInfo' })
+export class DevicesShellyV1PluginReqCreateDeviceInfo {
+	@ApiProperty({ description: 'Device probe request data', type: () => DevicesShellyV1PluginCreateDeviceInfo })
+	@Expose()
+	@ValidateNested()
+	@Type(() => DevicesShellyV1PluginCreateDeviceInfo)
+	data: DevicesShellyV1PluginCreateDeviceInfo;
 }

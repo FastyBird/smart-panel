@@ -25,7 +25,7 @@ import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { UpdateRefreshTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
-import { CheckResponseModel, LoggedInResponseModel, RefreshTokenResponseModel } from '../models/auth.model';
+import { CheckModel, LoggedInModel, RefreshTokenModel } from '../models/auth.model';
 import { hashToken } from '../utils/token.utils';
 
 import { TokensService } from './tokens.service';
@@ -59,7 +59,7 @@ export class AuthService {
 		return token;
 	}
 
-	async checkUsername({ username }: CheckUsernameDto): Promise<CheckResponseModel> {
+	async checkUsername({ username }: CheckUsernameDto): Promise<CheckModel> {
 		this.logger.debug(`[CHECK] Checking if username=${username} exists`);
 
 		const user = await this.usersService.findByUsername(username);
@@ -67,10 +67,10 @@ export class AuthService {
 
 		this.logger.debug(`[CHECK] Username=${username} taken=${isTaken}`);
 
-		return toInstance(CheckResponseModel, { valid: !isTaken });
+		return toInstance(CheckModel, { valid: !isTaken });
 	}
 
-	async checkEmail({ email }: CheckEmailDto): Promise<CheckResponseModel> {
+	async checkEmail({ email }: CheckEmailDto): Promise<CheckModel> {
 		this.logger.debug(`[CHECK] Checking if email=${email} exists`);
 
 		const user = await this.usersService.findByEmail(email);
@@ -78,7 +78,7 @@ export class AuthService {
 
 		this.logger.debug(`[CHECK] Email=${email} taken=${isTaken}`);
 
-		return toInstance(CheckResponseModel, { valid: !isTaken });
+		return toInstance(CheckModel, { valid: !isTaken });
 	}
 
 	async getProfile(id: string): Promise<UserEntity> {
@@ -91,7 +91,7 @@ export class AuthService {
 		return user;
 	}
 
-	async login(loginDto: LoginDto): Promise<LoggedInResponseModel> {
+	async login(loginDto: LoginDto): Promise<LoggedInModel> {
 		this.logger.debug(`[LOGIN] Attempting login for username=${loginDto.username}`);
 
 		const dtoInstance = await this.validateDto<LoginDto>(LoginDto, loginDto);
@@ -128,7 +128,7 @@ export class AuthService {
 
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
-		return toInstance(LoggedInResponseModel, { ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt });
+		return toInstance(LoggedInModel, { ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt });
 	}
 
 	async register(registerDto: RegisterDto): Promise<UserEntity> {
@@ -208,7 +208,7 @@ export class AuthService {
 		return user;
 	}
 
-	async refreshAccessToken(token: string): Promise<RefreshTokenResponseModel> {
+	async refreshAccessToken(token: string): Promise<RefreshTokenModel> {
 		let payload: { sub?: string; role: string } | null = null;
 
 		try {
@@ -277,7 +277,7 @@ export class AuthService {
 
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
-		return toInstance(RefreshTokenResponseModel, {
+		return toInstance(RefreshTokenModel, {
 			...tokens,
 			type: ACCESS_TOKEN_TYPE,
 			expiration: accessTokenExpiresAt,

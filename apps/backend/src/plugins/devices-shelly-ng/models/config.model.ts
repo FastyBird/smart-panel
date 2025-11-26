@@ -91,3 +91,9 @@ export class ShellyNgConfigModel extends PluginConfigModel {
 	@Type(() => ShellyNgWebsocketsConfigModel)
 	websockets: ShellyNgWebsocketsConfigModel = new ShellyNgWebsocketsConfigModel();
 }
+
+/**
+ * Alias for DevicesShellyNgPluginConfig (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginConfig' })
+export class DevicesShellyNgPluginConfig extends ShellyNgConfigModel {}

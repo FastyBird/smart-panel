@@ -17,7 +17,15 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+	ApiBody,
+	ApiExtraModels,
+	ApiNoContentResponse,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiTags,
+} from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -36,7 +44,11 @@ import { CreateChannelPropertyDto, ReqCreateChannelPropertyDto } from '../dto/cr
 import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
 import { ReqUpdateChannelPropertyDto, UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
-import { PropertyTimeseriesModel } from '../models/devices.model';
+import {
+	ChannelPropertiesResponseModel,
+	ChannelPropertyResponseModel,
+	PropertyTimeseriesResponseModel,
+} from '../models/devices-response.model';
 import {
 	ChannelPropertyTypeMapping,
 	ChannelsPropertiesTypeMapperService,
@@ -46,6 +58,7 @@ import { ChannelsService } from '../services/channels.service';
 import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
 @ApiTags('devices-module')
+@ApiExtraModels(ChannelPropertyResponseModel, ChannelPropertiesResponseModel)
 @Controller('channels/:channelId/properties')
 export class ChannelsPropertiesController {
 	private readonly logger = new Logger(ChannelsPropertiesController.name);
@@ -108,7 +121,7 @@ export class ChannelsPropertiesController {
 	@ApiQuery({ name: 'from', type: 'string', required: false, description: 'Start date (ISO 8601 format)' })
 	@ApiQuery({ name: 'to', type: 'string', required: false, description: 'End date (ISO 8601 format)' })
 	@ApiQuery({ name: 'bucket', type: 'string', required: false, description: 'Time bucket for aggregation' })
-	@ApiSuccessResponse(PropertyTimeseriesModel)
+	@ApiSuccessResponse(PropertyTimeseriesResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format or invalid date format')
 	@ApiNotFoundResponse('Channel or property not found')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -116,7 +129,7 @@ export class ChannelsPropertiesController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Query() query: QueryPropertyTimeseriesDto,
-	): Promise<PropertyTimeseriesModel> {
+	): Promise<PropertyTimeseriesResponseModel> {
 		this.logger.debug(
 			`[TIMESERIES] Fetching timeseries for property id=${id} channelId=${channelId} from=${query.from ?? 'default'} to=${query.to ?? 'default'} bucket=${query.bucket ?? 'auto'}`,
 		);
@@ -142,7 +155,7 @@ export class ChannelsPropertiesController {
 			`[TIMESERIES] Retrieved ${result.points.length} points for property id=${property.id} channelId=${channel.id}`,
 		);
 
-		return result;
+		return toInstance(PropertyTimeseriesResponseModel, { data: result });
 	}
 
 	@Post()

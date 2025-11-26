@@ -15,9 +15,14 @@ import {
 
 export const DEVICES_SHELLY_V1_PLUGIN_PREFIX = 'devices-shelly-v1';
 
-export const DEVICES_SHELLY_V1_PLUGIN_NAME = 'devices-shelly-v1';
+export const DEVICES_SHELLY_V1_PLUGIN_NAME = 'devices-shelly-v1-plugin';
 
 export const DEVICES_SHELLY_V1_TYPE = 'devices-shelly-v1';
+
+export const DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME = 'Devices Shelly V1 plugin';
+
+export const DEVICES_SHELLY_V1_PLUGIN_API_TAG_DESCRIPTION =
+	'Endpoints for interacting with Shelly Generation 1 (V1) devices and their states. This plugin allows discovery, inspection, and potential adoption of Shelly Gen 1 devices into the Smart Panel ecosystem.';
 
 /**
  * Authentication constants

@@ -16,26 +16,48 @@ import {
 import {
 	ApiBody,
 	ApiCreatedResponse,
+	ApiExtraModels,
 	ApiNotFoundResponse,
 	ApiOkResponse,
 	ApiOperation,
 	ApiParam,
 	ApiQuery,
 	ApiResponse,
-	ApiTags,
 	ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
-import { ReqCreateCardDto } from '../dto/create-card.dto';
-import { ReqUpdateCardDto } from '../dto/update-card.dto';
-import { CardEntity } from '../entities/pages-cards.entity';
-import { PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.constants';
+import { CreateCardDto, CreateSingleCardDto, ReqCreateCardDto } from '../dto/create-card.dto';
+import { ReqUpdateCardDto, UpdateCardDto } from '../dto/update-card.dto';
+import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
+import { CardResponseModel, CardsResponseModel } from '../models/pages-cards-response.model';
+import {
+	PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
+	PAGES_CARDS_PLUGIN_API_TAG_NAME,
+	PAGES_CARDS_PLUGIN_NAME,
+	PAGES_CARDS_PLUGIN_PREFIX,
+} from '../pages-cards.constants';
 import { CardsService } from '../services/cards.service';
 
-@ApiTags('pages-cards-plugin')
+@ApiTag({
+	tagName: PAGES_CARDS_PLUGIN_NAME,
+	displayName: PAGES_CARDS_PLUGIN_API_TAG_NAME,
+	description: PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(
+	CreateCardDto,
+	CreateSingleCardDto,
+	ReqCreateCardDto,
+	UpdateCardDto,
+	ReqUpdateCardDto,
+	CardEntity,
+	CardsPageEntity,
+	CardResponseModel,
+	CardsResponseModel,
+)
 @Controller('cards')
 export class CardsController {
 	private readonly logger = new Logger(CardsController.name);

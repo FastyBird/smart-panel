@@ -12,7 +12,13 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiTags, ApiUnprocessableEntityResponse } from '@nestjs/swagger';
+import {
+	ApiExtraModels,
+	ApiNoContentResponse,
+	ApiOperation,
+	ApiTags,
+	ApiUnprocessableEntityResponse,
+} from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -26,12 +32,18 @@ import { ReqCreateDisplayInstanceDto } from '../dto/create-display-instance.dto'
 import { ReqUpdateDisplayInstanceDto } from '../dto/update-display-instance.dto';
 import { DisplayInstanceEntity } from '../entities/users.entity';
 import { Roles } from '../guards/roles.guard';
+import {
+	DisplayInstanceByUidResponseModel,
+	DisplayInstanceResponseModel,
+	DisplayInstancesResponseModel,
+} from '../models/users-response.model';
 import { DisplaysInstancesService } from '../services/displays-instances.service';
 import { UsersService } from '../services/users.service';
 import { UserRole } from '../users.constants';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 
 @ApiTags('users-module')
+@ApiExtraModels(DisplayInstanceResponseModel, DisplayInstanceByUidResponseModel, DisplayInstancesResponseModel)
 @Controller('displays-instances')
 export class DisplaysInstancesController {
 	private readonly logger = new Logger(DisplaysInstancesController.name);

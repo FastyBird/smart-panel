@@ -15,7 +15,7 @@ import { AuthException, AuthNotFoundException } from '../auth.exceptions';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { AccessTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
-import { CheckResponseModel, LoggedInResponseModel } from '../models/auth.model';
+import { CheckModel, LoggedInModel } from '../models/auth.model';
 
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens.service';
@@ -117,7 +117,7 @@ describe('AuthService', () => {
 
 			const result = await authService.checkUsername({ username: 'testuser' });
 
-			expect(result).toEqual(toInstance(CheckResponseModel, { valid: false }));
+			expect(result).toEqual(toInstance(CheckModel, { valid: false }));
 		});
 
 		it('should return valid true if username does not exist', async () => {
@@ -125,7 +125,7 @@ describe('AuthService', () => {
 
 			const result = await authService.checkUsername({ username: 'newUser' });
 
-			expect(result).toEqual(toInstance(CheckResponseModel, { valid: true }));
+			expect(result).toEqual(toInstance(CheckModel, { valid: true }));
 		});
 	});
 
@@ -135,7 +135,7 @@ describe('AuthService', () => {
 
 			const result = await authService.checkEmail({ email: 'test@example.com' });
 
-			expect(result).toEqual(toInstance(CheckResponseModel, { valid: false }));
+			expect(result).toEqual(toInstance(CheckModel, { valid: false }));
 		});
 
 		it('should return valid true if email does not exist', async () => {
@@ -143,7 +143,7 @@ describe('AuthService', () => {
 
 			const result = await authService.checkEmail({ email: 'new@example.com' });
 
-			expect(result).toEqual(toInstance(CheckResponseModel, { valid: true }));
+			expect(result).toEqual(toInstance(CheckModel, { valid: true }));
 		});
 	});
 
@@ -191,7 +191,7 @@ describe('AuthService', () => {
 			const result = await authService.login(loginDto);
 
 			expect(result).toEqual(
-				toInstance(LoggedInResponseModel, {
+				toInstance(LoggedInModel, {
 					accessToken: 'mocked-jwt-token',
 					refreshToken: 'mocked-jwt-token',
 					type: ACCESS_TOKEN_TYPE,

@@ -2,7 +2,7 @@ import { validate } from 'class-validator';
 import { FetchError } from 'node-fetch';
 
 import { Body, Controller, Get, Logger, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -12,14 +12,58 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
+import {
+	DEVICES_SHELLY_NG_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME,
+	DEVICES_SHELLY_NG_PLUGIN_NAME,
+} from '../devices-shelly-ng.constants';
 import { DESCRIPTORS } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
-import { ReqShellyNgGetInfoDto } from '../dto/shelly-ng-get-info.dto';
-import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
+import {
+	DevicesShellyNgPluginCreateDeviceInfo,
+	DevicesShellyNgPluginReqCreateDeviceInfo,
+	ReqShellyNgGetInfoDto,
+	ShellyNgGetInfoDto,
+} from '../dto/shelly-ng-get-info.dto';
+import {
+	ShellyNgDeviceInfoResponseModel,
+	ShellyNgSupportedDevicesResponseModel,
+} from '../models/shelly-ng-response.model';
+import {
+	DevicesShellyNgPluginDeviceInfo,
+	DevicesShellyNgPluginSupportedDevice,
+	ShellyNgDeviceInfoAuthenticationModel,
+	ShellyNgDeviceInfoComponentModel,
+	ShellyNgDeviceInfoModel,
+	ShellyNgSupportedDeviceComponentModel,
+	ShellyNgSupportedDeviceModel,
+	ShellyNgSupportedDeviceSystemComponentModel,
+} from '../models/shelly-ng.model';
 import { DeviceManagerService } from '../services/device-manager.service';
 
-@ApiTags('devices-shelly-ng-plugin')
+@ApiTag({
+	tagName: DEVICES_SHELLY_NG_PLUGIN_NAME,
+	displayName: DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME,
+	description: DEVICES_SHELLY_NG_PLUGIN_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(
+	ShellyNgGetInfoDto,
+	DevicesShellyNgPluginCreateDeviceInfo,
+	ReqShellyNgGetInfoDto,
+	DevicesShellyNgPluginReqCreateDeviceInfo,
+	ShellyNgDeviceInfoModel,
+	DevicesShellyNgPluginDeviceInfo,
+	ShellyNgDeviceInfoResponseModel,
+	ShellyNgDeviceInfoComponentModel,
+	ShellyNgDeviceInfoAuthenticationModel,
+	ShellyNgSupportedDeviceModel,
+	DevicesShellyNgPluginSupportedDevice,
+	ShellyNgSupportedDevicesResponseModel,
+	ShellyNgSupportedDeviceComponentModel,
+	ShellyNgSupportedDeviceSystemComponentModel,
+)
 @Controller('devices')
 export class ShellyNgDevicesController {
 	private readonly logger = new Logger(ShellyNgDevicesController.name);

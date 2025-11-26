@@ -80,9 +80,14 @@ import { DeviceCategory } from '../../modules/devices/devices.constants';
 
 export const DEVICES_SHELLY_NG_PLUGIN_PREFIX = 'devices-shelly-ng';
 
-export const DEVICES_SHELLY_NG_PLUGIN_NAME = 'devices-shelly-ng';
+export const DEVICES_SHELLY_NG_PLUGIN_NAME = 'devices-shelly-ng-plugin';
 
 export const DEVICES_SHELLY_NG_TYPE = 'devices-shelly-ng';
+
+export const DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME = 'Devices Shelly NG plugin';
+
+export const DEVICES_SHELLY_NG_PLUGIN_API_TAG_DESCRIPTION =
+	'Endpoints for interacting with Shelly Next-Generation (NG) devices and their states. This plugin allows discovery, inspection, and potential adoption of Shelly Next-Generation devices into the Smart Panel ecosystem.';
 
 export enum ComponentType {
 	SWITCH = 'switch',

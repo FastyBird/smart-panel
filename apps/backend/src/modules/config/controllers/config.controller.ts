@@ -1,18 +1,18 @@
 import { validate } from 'class-validator';
 
 import { BadRequestException, Body, Controller, Get, Logger, Param, Patch } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
-	ApiSuccessUnionResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DevicesException } from '../../devices/devices.exceptions';
+import { CONFIG_MODULE_API_TAG_DESCRIPTION, CONFIG_MODULE_API_TAG_NAME, CONFIG_MODULE_NAME } from '../config.constants';
 import { SectionType } from '../config.constants';
 import {
 	ReqUpdateSectionDto,
@@ -26,6 +26,12 @@ import {
 	UpdateWeatherLatLonConfigDto,
 	UpdateWeatherZipCodeConfigDto,
 } from '../dto/config.dto';
+import {
+	AppResponseModel,
+	PluginResponseModel,
+	PluginsResponseModel,
+	SectionResponseModel,
+} from '../models/config-response.model';
 import {
 	AppConfigModel,
 	AudioConfigModel,
@@ -42,7 +48,11 @@ import {
 import { ConfigService } from '../services/config.service';
 import { PluginTypeMapping, PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
-@ApiTags('config-module')
+@ApiTag({
+	tagName: CONFIG_MODULE_NAME,
+	displayName: CONFIG_MODULE_API_TAG_NAME,
+	description: CONFIG_MODULE_API_TAG_DESCRIPTION,
+})
 @Controller('config')
 export class ConfigController {
 	private readonly logger = new Logger(ConfigController.name);
@@ -54,16 +64,16 @@ export class ConfigController {
 
 	@Get()
 	@ApiOperation({ summary: 'Get all configuration', description: 'Retrieve the complete application configuration' })
-	@ApiSuccessResponse(AppConfigModel, 'Configuration retrieved successfully')
+	@ApiSuccessResponse(AppResponseModel, 'Configuration retrieved successfully')
 	@ApiInternalServerErrorResponse()
-	getAllConfig(): AppConfigModel {
+	getAllConfig(): AppResponseModel {
 		this.logger.debug('[LOOKUP ALL] Fetching application configuration');
 
 		const config = this.service.getConfig();
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved application configuration`);
 
-		return config;
+		return toInstance(AppResponseModel, { data: config });
 	}
 
 	@Get(':section')
@@ -77,22 +87,10 @@ export class ConfigController {
 		enum: Object.values(SectionType),
 		example: SectionType.AUDIO,
 	})
-	@ApiSuccessUnionResponse(
-		[
-			AudioConfigModel,
-			DisplayConfigModel,
-			LanguageConfigModel,
-			WeatherLatLonConfigModel,
-			WeatherCityNameConfigModel,
-			WeatherCityIdConfigModel,
-			WeatherZipCodeConfigModel,
-			SystemConfigModel,
-		],
-		'Section configuration retrieved successfully',
-	)
+	@ApiSuccessResponse(SectionResponseModel, 'Section configuration retrieved successfully')
 	@ApiBadRequestResponse('Invalid section identifier')
 	@ApiInternalServerErrorResponse()
-	getConfigSection(@Param('section') section: keyof AppConfigModel): BaseConfigModel {
+	getConfigSection(@Param('section') section: keyof AppConfigModel): SectionResponseModel {
 		this.logger.debug(`[LOOKUP] Fetching configuration section=${section}`);
 
 		let config: BaseConfigModel;
@@ -103,19 +101,19 @@ export class ConfigController {
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
-				return config;
+				return toInstance(SectionResponseModel, { data: config });
 			case SectionType.DISPLAY:
 				config = this.service.getConfigSection<DisplayConfigModel>(section, DisplayConfigModel);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
-				return config;
+				return toInstance(SectionResponseModel, { data: config });
 			case SectionType.LANGUAGE:
 				config = this.service.getConfigSection<LanguageConfigModel>(section, LanguageConfigModel);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
-				return config;
+				return toInstance(SectionResponseModel, { data: config });
 			case SectionType.WEATHER:
 				config = this.service.getConfigSection<
 					WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
@@ -128,13 +126,13 @@ export class ConfigController {
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
-				return config;
+				return toInstance(SectionResponseModel, { data: config });
 			case SectionType.SYSTEM:
 				config = this.service.getConfigSection<SystemConfigModel>(section, SystemConfigModel);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
-				return config;
+				return toInstance(SectionResponseModel, { data: config });
 		}
 
 		throw new BadRequestException([
@@ -145,10 +143,10 @@ export class ConfigController {
 	@Patch(SectionType.AUDIO)
 	@ApiOperation({ summary: 'Update audio configuration', description: 'Update the audio section configuration' })
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Audio configuration data' })
-	@ApiSuccessResponse(AudioConfigModel, 'Audio configuration updated successfully')
+	@ApiSuccessResponse(SectionResponseModel, 'Audio configuration updated successfully')
 	@ApiBadRequestResponse('Invalid audio configuration data')
 	@ApiInternalServerErrorResponse()
-	async updateAudioConfig(@Body() audioConfig: ReqUpdateSectionDto): Promise<AudioConfigModel> {
+	async updateAudioConfig(@Body() audioConfig: ReqUpdateSectionDto): Promise<SectionResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.AUDIO}`);
 
 		await this.service.setConfigSection(SectionType.AUDIO, audioConfig.data, UpdateAudioConfigDto);
@@ -157,16 +155,16 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.AUDIO}`);
 
-		return config;
+		return toInstance(SectionResponseModel, { data: config });
 	}
 
 	@Patch(SectionType.DISPLAY)
 	@ApiOperation({ summary: 'Update display configuration', description: 'Update the display section configuration' })
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Display configuration data' })
-	@ApiSuccessResponse(DisplayConfigModel, 'Display configuration updated successfully')
+	@ApiSuccessResponse(SectionResponseModel, 'Display configuration updated successfully')
 	@ApiBadRequestResponse('Invalid display configuration data')
 	@ApiInternalServerErrorResponse()
-	async updateDisplayConfig(@Body() displayConfig: ReqUpdateSectionDto): Promise<DisplayConfigModel> {
+	async updateDisplayConfig(@Body() displayConfig: ReqUpdateSectionDto): Promise<SectionResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.DISPLAY}`);
 
 		await this.service.setConfigSection(SectionType.DISPLAY, displayConfig.data, UpdateDisplayConfigDto);
@@ -175,16 +173,16 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.DISPLAY}`);
 
-		return config;
+		return toInstance(SectionResponseModel, { data: config });
 	}
 
 	@Patch(SectionType.LANGUAGE)
 	@ApiOperation({ summary: 'Update language configuration', description: 'Update the language section configuration' })
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Language configuration data' })
-	@ApiSuccessResponse(LanguageConfigModel, 'Language configuration updated successfully')
+	@ApiSuccessResponse(SectionResponseModel, 'Language configuration updated successfully')
 	@ApiBadRequestResponse('Invalid language configuration data')
 	@ApiInternalServerErrorResponse()
-	async updateLanguageConfig(@Body() languageConfig: ReqUpdateSectionDto): Promise<LanguageConfigModel> {
+	async updateLanguageConfig(@Body() languageConfig: ReqUpdateSectionDto): Promise<SectionResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.LANGUAGE}`);
 
 		await this.service.setConfigSection(SectionType.LANGUAGE, languageConfig.data, UpdateLanguageConfigDto);
@@ -193,23 +191,16 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.LANGUAGE}`);
 
-		return config;
+		return toInstance(SectionResponseModel, { data: config });
 	}
 
 	@Patch(SectionType.WEATHER)
 	@ApiOperation({ summary: 'Update weather configuration', description: 'Update the weather section configuration' })
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Weather configuration data' })
-	@ApiSuccessUnionResponse(
-		[WeatherLatLonConfigModel, WeatherCityNameConfigModel, WeatherCityIdConfigModel, WeatherZipCodeConfigModel],
-		'Weather configuration updated successfully',
-	)
+	@ApiSuccessResponse(SectionResponseModel, 'Weather configuration updated successfully')
 	@ApiBadRequestResponse('Invalid weather configuration data')
 	@ApiInternalServerErrorResponse()
-	async updateWeatherConfig(
-		@Body() weatherConfig: ReqUpdateSectionDto,
-	): Promise<
-		WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-	> {
+	async updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): Promise<SectionResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.WEATHER}`);
 
 		await this.service.setConfigSection(SectionType.WEATHER, weatherConfig.data, [
@@ -230,16 +221,16 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.WEATHER}`);
 
-		return config;
+		return toInstance(SectionResponseModel, { data: config });
 	}
 
 	@Patch(SectionType.SYSTEM)
 	@ApiOperation({ summary: 'Update system configuration', description: 'Update the system section configuration' })
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'System configuration data' })
-	@ApiSuccessResponse(SystemConfigModel, 'System configuration updated successfully')
+	@ApiSuccessResponse(SectionResponseModel, 'System configuration updated successfully')
 	@ApiBadRequestResponse('Invalid system configuration data')
 	@ApiInternalServerErrorResponse()
-	async updateSystemConfig(@Body() systemConfig: ReqUpdateSectionDto): Promise<SystemConfigModel> {
+	async updateSystemConfig(@Body() systemConfig: ReqUpdateSectionDto): Promise<SectionResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.SYSTEM}`);
 
 		await this.service.setConfigSection(SectionType.SYSTEM, systemConfig.data, UpdateSystemConfigDto);
@@ -248,7 +239,7 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.SYSTEM}`);
 
-		return config;
+		return toInstance(SectionResponseModel, { data: config });
 	}
 
 	@Get('plugins')
@@ -256,31 +247,31 @@ export class ConfigController {
 		summary: 'Get all plugin configurations',
 		description: 'Retrieve configuration for all registered plugins',
 	})
-	@ApiSuccessArrayResponse(PluginConfigModel, 'Plugin configurations retrieved successfully')
+	@ApiSuccessResponse(PluginsResponseModel, 'Plugin configurations retrieved successfully')
 	@ApiInternalServerErrorResponse()
-	getPluginsConfig(): PluginConfigModel[] {
+	getPluginsConfig(): PluginsResponseModel {
 		this.logger.debug('[LOOKUP] Fetching configuration for all plugins');
 
 		const config: PluginConfigModel[] = this.service.getPluginsConfig();
 
 		this.logger.debug('[LOOKUP] Found configuration for all plugins');
 
-		return config;
+		return toInstance(PluginsResponseModel, { data: config });
 	}
 
 	@Get('plugin/:plugin')
 	@ApiOperation({ summary: 'Get plugin configuration', description: 'Retrieve configuration for a specific plugin' })
 	@ApiParam({ name: 'plugin', description: 'Plugin identifier', type: 'string', example: 'devices-shelly' })
-	@ApiSuccessResponse(PluginConfigModel, 'Plugin configuration retrieved successfully')
+	@ApiSuccessResponse(PluginResponseModel, 'Plugin configuration retrieved successfully')
 	@ApiInternalServerErrorResponse()
-	getPluginConfig(@Param('plugin') plugin: string): PluginConfigModel {
+	getPluginConfig(@Param('plugin') plugin: string): PluginResponseModel {
 		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
 
 		const config: PluginConfigModel = this.service.getPluginConfig(plugin);
 
 		this.logger.debug(`[LOOKUP] Found configuration plugin=${plugin}`);
 
-		return config;
+		return toInstance(PluginResponseModel, { data: config });
 	}
 
 	@Patch('plugin/:plugin')
@@ -290,13 +281,13 @@ export class ConfigController {
 		description: 'Plugin configuration data',
 		schema: { type: 'object', properties: { data: { type: 'object' } } },
 	})
-	@ApiSuccessResponse(PluginConfigModel, 'Plugin configuration updated successfully')
+	@ApiSuccessResponse(PluginResponseModel, 'Plugin configuration updated successfully')
 	@ApiBadRequestResponse('Invalid plugin configuration data or unsupported plugin type')
 	@ApiInternalServerErrorResponse()
 	async updatePluginConfig(
 		@Param('plugin') plugin: string,
 		@Body() pluginConfig: { data: object },
-	): Promise<PluginConfigModel> {
+	): Promise<PluginResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for plugin=${plugin}`);
 
 		let mapping: PluginTypeMapping<PluginConfigModel, UpdatePluginConfigDto>;
@@ -344,6 +335,6 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration plugin=${plugin}`);
 
-		return config;
+		return toInstance(PluginResponseModel, { data: config });
 	}
 }

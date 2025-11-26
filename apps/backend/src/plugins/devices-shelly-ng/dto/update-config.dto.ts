@@ -115,3 +115,9 @@ export class ShellyNgUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Type(() => ShellyNgUpdatePluginConfigWebsocketsDto)
 	websockets: ShellyNgUpdatePluginConfigWebsocketsDto;
 }
+
+/**
+ * Alias for DevicesShellyNgPluginUpdateConfig (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginUpdateConfig' })
+export class DevicesShellyNgPluginUpdateConfig extends ShellyNgUpdatePluginConfigDto {}

@@ -24,7 +24,7 @@ import {
 	WeatherLocationType,
 } from '../config.constants';
 
-@ApiSchema({ name: 'ConfigModuleBase' })
+@ApiSchema({ name: 'ConfigModuleDataBase' })
 export abstract class BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -34,7 +34,7 @@ export abstract class BaseConfigModel {
 	type?: SectionType;
 }
 
-@ApiSchema({ name: 'ConfigModuleAudio' })
+@ApiSchema({ name: 'ConfigModuleDataAudio' })
 export class AudioConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -94,7 +94,7 @@ export class AudioConfigModel extends BaseConfigModel {
 	microphoneVolume: number = 0;
 }
 
-@ApiSchema({ name: 'ConfigModuleDisplay' })
+@ApiSchema({ name: 'ConfigModuleDataDisplay' })
 export class DisplayConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -155,7 +155,7 @@ export class DisplayConfigModel extends BaseConfigModel {
 	screenSaver: boolean = true;
 }
 
-@ApiSchema({ name: 'ConfigModuleLanguage' })
+@ApiSchema({ name: 'ConfigModuleDataLanguage' })
 export class LanguageConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -195,7 +195,7 @@ export class LanguageConfigModel extends BaseConfigModel {
 	timeFormat: TimeFormatType = TimeFormatType.HOUR_24;
 }
 
-@ApiSchema({ name: 'ConfigModuleWeather' })
+@ApiSchema({ name: 'ConfigModuleDataWeather' })
 export abstract class WeatherConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -238,7 +238,7 @@ export abstract class WeatherConfigModel extends BaseConfigModel {
 	openWeatherApiKey: string | null = null;
 }
 
-@ApiSchema({ name: 'ConfigModuleWeatherLatLon' })
+@ApiSchema({ name: 'ConfigModuleDataWeatherLatLon' })
 export class WeatherLatLonConfigModel extends WeatherConfigModel {
 	@ApiProperty({
 		name: 'location_type',
@@ -283,7 +283,7 @@ export class WeatherLatLonConfigModel extends WeatherConfigModel {
 	longitude: number | null = null;
 }
 
-@ApiSchema({ name: 'ConfigModuleWeatherCityName' })
+@ApiSchema({ name: 'ConfigModuleDataWeatherCityName' })
 export class WeatherCityNameConfigModel extends WeatherConfigModel {
 	@ApiProperty({
 		name: 'location_type',
@@ -340,7 +340,7 @@ export class WeatherCityNameConfigModel extends WeatherConfigModel {
 	longitude: number | null = null;
 }
 
-@ApiSchema({ name: 'ConfigModuleWeatherCityId' })
+@ApiSchema({ name: 'ConfigModuleDataWeatherCityId' })
 export class WeatherCityIdConfigModel extends WeatherConfigModel {
 	@ApiProperty({
 		name: 'location_type',
@@ -365,7 +365,7 @@ export class WeatherCityIdConfigModel extends WeatherConfigModel {
 	cityId: number | null = null;
 }
 
-@ApiSchema({ name: 'ConfigModuleWeatherZipCode' })
+@ApiSchema({ name: 'ConfigModuleDataWeatherZipCode' })
 export class WeatherZipCodeConfigModel extends WeatherConfigModel {
 	@ApiProperty({
 		name: 'location_type',
@@ -422,7 +422,7 @@ export class WeatherZipCodeConfigModel extends WeatherConfigModel {
 	longitude: number | null = null;
 }
 
-@ApiSchema({ name: 'ConfigModuleSystem' })
+@ApiSchema({ name: 'ConfigModuleDataSystem' })
 export class SystemConfigModel extends BaseConfigModel {
 	@ApiProperty({
 		description: 'Configuration section type',
@@ -450,7 +450,7 @@ export class SystemConfigModel extends BaseConfigModel {
 	logLevels: LogLevelType[] = [LogLevelType.INFO, LogLevelType.WARN, LogLevelType.ERROR, LogLevelType.FATAL];
 }
 
-@ApiSchema({ name: 'ConfigModulePlugin' })
+@ApiSchema({ name: 'ConfigModuleDataPlugin' })
 export abstract class PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin identifier',
@@ -471,7 +471,7 @@ export abstract class PluginConfigModel {
 	enabled: boolean = false;
 }
 
-@ApiSchema({ name: 'ConfigModuleApp' })
+@ApiSchema({ name: 'ConfigModuleDataApp' })
 export class AppConfigModel {
 	@ApiProperty({
 		description: 'Configuration file path',

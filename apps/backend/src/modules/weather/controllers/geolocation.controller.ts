@@ -1,15 +1,32 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 } from '../../../common/decorators/api-documentation.decorator';
-import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
+import {
+	GeolocationCityModel,
+	GeolocationZipModel,
+	WeatherModuleCityGeolocation,
+	WeatherModuleZipGeolocation,
+} from '../models/geolocation.model';
+import {
+	GeolocationCityToCoordinatesResponseModel,
+	GeolocationCoordinatesToCityResponseModel,
+	GeolocationZipToCoordinatesResponseModel,
+} from '../models/weather-response.model';
 import { GeolocationService } from '../services/geolocation.service';
 
 @ApiTags('weather-module')
+@ApiExtraModels(
+	GeolocationCityToCoordinatesResponseModel,
+	GeolocationCoordinatesToCityResponseModel,
+	GeolocationZipToCoordinatesResponseModel,
+	WeatherModuleCityGeolocation,
+	WeatherModuleZipGeolocation,
+)
 @Controller('geolocation')
 export class GeolocationController {
 	constructor(private readonly geolocationService: GeolocationService) {}

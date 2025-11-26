@@ -17,7 +17,7 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -28,17 +28,80 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+// Import plugin tile DTOs and entities for OpenAPI schema generation
+import { CreateDevicePreviewTileDto } from '../../../plugins/tiles-device-preview/dto/create-tile.dto';
+import { UpdateDevicePreviewTileDto } from '../../../plugins/tiles-device-preview/dto/update-tile.dto';
+import { DevicePreviewTileEntity } from '../../../plugins/tiles-device-preview/entities/tiles-device-preview.entity';
+import { CreateTimeTileDto } from '../../../plugins/tiles-time/dto/create-tile.dto';
+import { UpdateTimeTileDto } from '../../../plugins/tiles-time/dto/update-tile.dto';
+import { TimeTileEntity } from '../../../plugins/tiles-time/entities/tiles-time.entity';
+import {
+	CreateDayWeatherTileDto,
+	CreateForecastWeatherTileDto,
+} from '../../../plugins/tiles-weather/dto/create-tile.dto';
+import {
+	UpdateDayWeatherTileDto,
+	UpdateForecastWeatherTileDto,
+} from '../../../plugins/tiles-weather/dto/update-tile.dto';
+import {
+	DayWeatherTileEntity,
+	ForecastWeatherTileEntity,
+} from '../../../plugins/tiles-weather/entities/tiles-weather.entity';
+import {
+	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
+	DASHBOARD_MODULE_API_TAG_NAME,
+	DASHBOARD_MODULE_NAME,
+	DASHBOARD_MODULE_PREFIX,
+} from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateSingleTileDto, CreateTileDto, ReqCreateTileDto } from '../dto/create-tile.dto';
-import { ReqUpdateTileWithParentDto, UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
+import {
+	CreateSingleTileDto,
+	CreateTileDto,
+	ReqCreateTileDto,
+	ReqCreateTileWithParentDto,
+} from '../dto/create-tile.dto';
+import {
+	ReqUpdateTileDto,
+	ReqUpdateTileWithParentDto,
+	UpdateSingleTileDto,
+	UpdateTileDto,
+} from '../dto/update-tile.dto';
 import { TileEntity } from '../entities/dashboard.entity';
+import { TileResponseModel, TilesResponseModel } from '../models/dashboard-response.model';
 import { TileTypeMapping, TilesTypeMapperService } from '../services/tiles-type-mapper.service';
 import { TilesService } from '../services/tiles.service';
 
-@ApiTags('dashboard-module')
+@ApiTag({
+	tagName: DASHBOARD_MODULE_NAME,
+	displayName: DASHBOARD_MODULE_API_TAG_NAME,
+	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
+})
+@ApiExtraModels(
+	TileResponseModel,
+	TilesResponseModel,
+	CreateTileDto,
+	UpdateTileDto,
+	ReqCreateTileWithParentDto,
+	ReqUpdateTileDto,
+	// TilesDevicePreviewPlugin
+	CreateDevicePreviewTileDto,
+	UpdateDevicePreviewTileDto,
+	DevicePreviewTileEntity,
+	// TilesTimePlugin
+	CreateTimeTileDto,
+	UpdateTimeTileDto,
+	TimeTileEntity,
+	// TilesWeatherPlugin
+	CreateDayWeatherTileDto,
+	CreateForecastWeatherTileDto,
+	UpdateDayWeatherTileDto,
+	UpdateForecastWeatherTileDto,
+	DayWeatherTileEntity,
+	ForecastWeatherTileEntity,
+)
 @Controller('tiles')
 export class TilesController {
 	private readonly logger = new Logger(TilesController.name);

@@ -1,6 +1,7 @@
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsString } from 'class-validator';
+
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { CreateDeviceDto } from '../../../modules/devices/dto/create-device.dto';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
@@ -25,3 +26,9 @@ export class CreateThirdPartyDeviceDto extends CreateDeviceDto {
 	@IsString({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
 	service_address: string;
 }
+
+/**
+ * Alias for DevicesThirdPartyPluginCreateThirdPartyDevice (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesThirdPartyPluginCreateThirdPartyDevice' })
+export class DevicesThirdPartyPluginCreateThirdPartyDevice extends CreateThirdPartyDeviceDto {}

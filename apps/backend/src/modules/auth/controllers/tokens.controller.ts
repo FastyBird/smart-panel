@@ -17,7 +17,7 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, getSchemaPath } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -28,9 +28,16 @@ import {
 	ApiSuccessArrayDiscriminatedResponse,
 	ApiSuccessDiscriminatedResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { AUTH_MODULE_PREFIX, AuthenticatedRequest } from '../auth.constants';
+import {
+	AUTH_MODULE_API_TAG_DESCRIPTION,
+	AUTH_MODULE_API_TAG_NAME,
+	AUTH_MODULE_NAME,
+	AUTH_MODULE_PREFIX,
+} from '../auth.constants';
+import { AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
 import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
@@ -38,7 +45,11 @@ import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
 
-@ApiTags('auth-module')
+@ApiTag({
+	tagName: AUTH_MODULE_NAME,
+	displayName: AUTH_MODULE_API_TAG_NAME,
+	description: AUTH_MODULE_API_TAG_DESCRIPTION,
+})
 @Controller('tokens')
 export class TokensController {
 	private readonly logger = new Logger(TokensController.name);

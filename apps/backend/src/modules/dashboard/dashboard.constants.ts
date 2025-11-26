@@ -2,6 +2,11 @@ export const DASHBOARD_MODULE_PREFIX = 'dashboard-module';
 
 export const DASHBOARD_MODULE_NAME = 'dashboard-module';
 
+export const DASHBOARD_MODULE_API_TAG_NAME = 'Dashboard module';
+
+export const DASHBOARD_MODULE_API_TAG_DESCRIPTION =
+	'A collection of endpoints that provide dashboard-related functionalities, acting as a central module for handling tile interactions.';
+
 export enum EventType {
 	PAGE_CREATED = 'DashboardModule.Page.Created',
 	PAGE_UPDATED = 'DashboardModule.Page.Updated',

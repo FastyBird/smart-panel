@@ -5,6 +5,8 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 @ApiSchema({ name: 'DevicesShellyNgPluginShellyNgGetInfo' })
 export class ShellyNgGetInfoDto {
+	// Alias for OpenAPI spec compatibility
+	static readonly GetInfoAlias = ShellyNgGetInfoDto;
 	@ApiProperty({
 		description: 'Device hostname or IP address',
 		example: '192.168.1.100',
@@ -34,3 +36,15 @@ export class ReqShellyNgGetInfoDto {
 	@Type(() => ShellyNgGetInfoDto)
 	data: ShellyNgGetInfoDto;
 }
+
+/**
+ * Alias for DevicesShellyNgPluginCreateDeviceInfo (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginCreateDeviceInfo' })
+export class DevicesShellyNgPluginCreateDeviceInfo extends ShellyNgGetInfoDto {}
+
+/**
+ * Alias for DevicesShellyNgPluginReqCreateDeviceInfo (OpenAPI spec compatibility)
+ */
+@ApiSchema({ name: 'DevicesShellyNgPluginReqCreateDeviceInfo' })
+export class DevicesShellyNgPluginReqCreateDeviceInfo extends ReqShellyNgGetInfoDto {}
