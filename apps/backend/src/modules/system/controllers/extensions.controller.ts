@@ -6,7 +6,7 @@ import path from 'node:path';
 import { DiscoveredAdminExtension } from '@fastybird/smart-panel-extension-sdk';
 import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
-import { ApiExtraModels, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
@@ -17,8 +17,7 @@ import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
-import { ExtensionsResponseModel } from '../models/system-response.model';
-import { ExtensionAdminModel, ExtensionBackendModel, ExtensionBaseModel } from '../models/system.model';
+import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
 import {
 	ExtensionKindType,
 	ExtensionSourceType,
@@ -37,7 +36,6 @@ interface BundledManifest {
 }
 
 @ApiTags('system-module')
-@ApiExtraModels(ExtensionsResponseModel, ExtensionBaseModel)
 @Controller('extensions')
 export class ExtensionsController {
 	private readonly logger = new Logger(ExtensionsController.name);

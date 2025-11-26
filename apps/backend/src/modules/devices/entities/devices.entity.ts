@@ -28,7 +28,7 @@ import {
 	PropertyCategory,
 } from '../devices.constants';
 
-@ApiSchema({ name: 'DevicesModuleDeviceConnectionStatus' })
+@ApiSchema({ name: 'DevicesModuleDataDeviceConnectionStatus' })
 export class DeviceConnectionStatus {
 	@ApiProperty({ description: 'Device online status', type: 'boolean', example: true })
 	@Expose()
@@ -41,7 +41,7 @@ export class DeviceConnectionStatus {
 	status: ConnectionState = ConnectionState.UNKNOWN;
 }
 
-@ApiSchema({ name: 'DevicesModuleDevice' })
+@ApiSchema({ name: 'DevicesModuleDataDevice' })
 @Entity('devices_module_devices')
 @Unique('UQ_devices_identifier_type', ['identifier', 'type'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
@@ -123,7 +123,7 @@ export class DeviceEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema({ name: 'DevicesModuleDeviceControl' })
+@ApiSchema({ name: 'DevicesModuleDataDeviceControl' })
 @Entity('devices_module_devices_controls')
 @Unique(['name', 'device'])
 export class DeviceControlEntity extends BaseEntity {
@@ -153,7 +153,7 @@ export class DeviceControlEntity extends BaseEntity {
 	device: DeviceEntity | string;
 }
 
-@ApiSchema({ name: 'DevicesModuleChannel' })
+@ApiSchema({ name: 'DevicesModuleDataChannel' })
 @Entity('devices_module_channels')
 @Unique('UQ_channels_identifier_type', ['identifier', 'device'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
@@ -241,7 +241,7 @@ export class ChannelEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema({ name: 'DevicesModuleChannelControl' })
+@ApiSchema({ name: 'DevicesModuleDataChannelControl' })
 @Entity('devices_module_channels_controls')
 @Unique(['name', 'channel'])
 export class ChannelControlEntity extends BaseEntity {
@@ -269,7 +269,7 @@ export class ChannelControlEntity extends BaseEntity {
 	channel: ChannelEntity | string;
 }
 
-@ApiSchema({ name: 'DevicesModuleChannelProperty' })
+@ApiSchema({ name: 'DevicesModuleDataChannelProperty' })
 @Entity('devices_module_channels_properties')
 @Unique('UQ_channels_properties_identifier_type', ['identifier', 'channel'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })

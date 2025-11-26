@@ -3,7 +3,7 @@ import { IsDate, IsNumber, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'DashboardModuleRegisteredPages' })
+@ApiSchema({ name: 'DashboardModuleDataRegisteredPages' })
 export class RegisteredPagesModel {
 	@ApiProperty({ description: 'Number of registered pages', type: 'number', example: 5 })
 	@Expose()
@@ -32,7 +32,7 @@ export class RegisteredPagesModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema({ name: 'DashboardModuleRegisteredTiles' })
+@ApiSchema({ name: 'DashboardModuleDataRegisteredTiles' })
 export class RegisteredTilesModel {
 	@ApiProperty({ description: 'Number of registered tiles', type: 'number', example: 12 })
 	@Expose()
@@ -61,7 +61,7 @@ export class RegisteredTilesModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema({ name: 'DashboardModuleRegisteredDataSources' })
+@ApiSchema({ name: 'DashboardModuleDataRegisteredDataSources' })
 export class RegisteredDataSourcesModel {
 	@ApiProperty({ description: 'Number of registered data sources', type: 'number', example: 8 })
 	@Expose()
@@ -90,7 +90,7 @@ export class RegisteredDataSourcesModel {
 	lastUpdated: Date;
 }
 
-@ApiSchema({ name: 'DashboardModuleStats' })
+@ApiSchema({ name: 'DashboardModuleDataStats' })
 export class ModuleStatsModel {
 	@ApiProperty({
 		name: 'registered_pages',

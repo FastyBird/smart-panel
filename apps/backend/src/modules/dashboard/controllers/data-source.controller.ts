@@ -17,23 +17,19 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
 import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { CreateDeviceChannelDataSourceDto } from '../../../plugins/data-sources-device-channel/dto/create-data-source.dto';
-import { UpdateDeviceChannelDataSourceDto } from '../../../plugins/data-sources-device-channel/dto/update-data-source.dto';
-import { DeviceChannelDataSourceEntity } from '../../../plugins/data-sources-device-channel/entities/data-sources-device-channel.entity';
 import {
 	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
 	DASHBOARD_MODULE_API_TAG_NAME,
@@ -41,14 +37,8 @@ import {
 	DASHBOARD_MODULE_PREFIX,
 } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
+import { CreateDataSourceDto, CreateSingleDataSourceDto, ReqCreateDataSourceDto } from '../dto/create-data-source.dto';
 import {
-	CreateDataSourceDto,
-	CreateSingleDataSourceDto,
-	ReqCreateDataSourceDto,
-	ReqCreateDataSourceWithParentDto,
-} from '../dto/create-data-source.dto';
-import {
-	ReqUpdateDataSourceDto,
 	ReqUpdateDataSourceWithParentDto,
 	UpdateDataSourceDto,
 	UpdateSingleDataSourceDto,
@@ -63,17 +53,6 @@ import { DataSourcesService } from '../services/data-sources.service';
 	displayName: DASHBOARD_MODULE_API_TAG_NAME,
 	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	DataSourceResponseModel,
-	DataSourcesResponseModel,
-	CreateDataSourceDto,
-	UpdateDataSourceDto,
-	ReqCreateDataSourceWithParentDto,
-	ReqUpdateDataSourceDto,
-	CreateDeviceChannelDataSourceDto,
-	UpdateDeviceChannelDataSourceDto,
-	DeviceChannelDataSourceEntity,
-)
 @Controller('data-source')
 export class DataSourceController {
 	private readonly logger = new Logger(DataSourceController.name);
@@ -93,12 +72,12 @@ export class DataSourceController {
 		required: false,
 		description: 'Filter by parent entity ID',
 	})
-	@ApiSuccessArrayResponse(DataSourceEntity)
+	@ApiSuccessResponse(DataSourcesResponseModel)
 	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
-	): Promise<DataSourceEntity[]> {
+	): Promise<DataSourcesResponseModel> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all data sources`);
 
 		const dataSources = await this.dataSourceService.findAll(
@@ -112,35 +91,35 @@ export class DataSourceController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${dataSources.length} data sources`);
 
-		return dataSources;
+		return toInstance(DataSourcesResponseModel, { data: dataSources });
 	}
 
 	@Get(':id')
 	@ApiOperation({ summary: 'Retrieve a specific data source by ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
-	@ApiSuccessResponse(DataSourceEntity)
+	@ApiSuccessResponse(DataSourceResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Data source not found')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DataSourceEntity> {
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DataSourceResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching data source id=${id}`);
 
 		const dataSource = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found data source id=${dataSource.id}`);
 
-		return dataSource;
+		return toInstance(DataSourceResponseModel, { data: dataSource });
 	}
 
 	@Post()
 	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/data-source/:id`)
 	@ApiOperation({ summary: 'Create a new data source' })
 	@ApiBody({ type: ReqCreateDataSourceDto })
-	@ApiCreatedSuccessResponse(DataSourceEntity)
+	@ApiCreatedSuccessResponse(DataSourceResponseModel)
 	@ApiBadRequestResponse('Invalid request data or unsupported data source type')
 	@ApiUnprocessableEntityResponse('Data source could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async create(@Body() createDto: { data: object }): Promise<DataSourceEntity> {
+	async create(@Body() createDto: { data: object }): Promise<DataSourceResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new data source`);
 
 		const type: string | undefined =
@@ -222,7 +201,7 @@ export class DataSourceController {
 
 			this.logger.debug(`[CREATE] Successfully created data source id=${dataSource.id}`);
 
-			return dataSource;
+			return toInstance(DataSourceResponseModel, { data: dataSource });
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Data source could not be created. Please try again later');
@@ -236,7 +215,7 @@ export class DataSourceController {
 	@ApiOperation({ summary: 'Update an existing data source' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
 	@ApiBody({ type: ReqUpdateDataSourceWithParentDto })
-	@ApiSuccessResponse(DataSourceEntity)
+	@ApiSuccessResponse(DataSourceResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported data source type')
 	@ApiNotFoundResponse('Data source not found')
 	@ApiUnprocessableEntityResponse('Data source could not be updated')
@@ -244,7 +223,7 @@ export class DataSourceController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
-	): Promise<DataSourceEntity> {
+	): Promise<DataSourceResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for data source id=${id}`);
 
 		const dataSource = await this.getOneOrThrow(id);
@@ -312,7 +291,7 @@ export class DataSourceController {
 
 			this.logger.debug(`[UPDATE] Successfully updated data source id=${updatedDataSource.id}`);
 
-			return updatedDataSource;
+			return toInstance(DataSourceResponseModel, { data: updatedDataSource });
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Data source could not be updated. Please try again later');

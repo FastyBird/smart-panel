@@ -16,30 +16,19 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
 import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-// Import plugin page DTOs and entities for OpenAPI schema generation
-import { CreateCardsPageDto } from '../../../plugins/pages-cards/dto/create-page.dto';
-import { UpdateCardsPageDto } from '../../../plugins/pages-cards/dto/update-page.dto';
-import { CardsPageEntity } from '../../../plugins/pages-cards/entities/pages-cards.entity';
-import { CreateDeviceDetailPageDto } from '../../../plugins/pages-device-detail/dto/create-page.dto';
-import { UpdateDeviceDetailPageDto } from '../../../plugins/pages-device-detail/dto/update-page.dto';
-import { DeviceDetailPageEntity } from '../../../plugins/pages-device-detail/entities/pages-device-detail.entity';
-import { CreateTilesPageDto } from '../../../plugins/pages-tiles/dto/create-page.dto';
-import { UpdateTilesPageDto } from '../../../plugins/pages-tiles/dto/update-page.dto';
-import { TilesPageEntity } from '../../../plugins/pages-tiles/entities/pages-tiles.entity';
 import {
 	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
 	DASHBOARD_MODULE_API_TAG_NAME,
@@ -59,22 +48,6 @@ import { PagesService } from '../services/pages.service';
 	displayName: DASHBOARD_MODULE_API_TAG_NAME,
 	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	PageResponseModel,
-	PagesResponseModel,
-	// PagesCardsPlugin
-	CreateCardsPageDto,
-	UpdateCardsPageDto,
-	CardsPageEntity,
-	// PagesDeviceDetailPlugin
-	CreateDeviceDetailPageDto,
-	UpdateDeviceDetailPageDto,
-	DeviceDetailPageEntity,
-	// PagesTilesPlugin
-	CreateTilesPageDto,
-	UpdateTilesPageDto,
-	TilesPageEntity,
-)
 @Controller('pages')
 export class PagesController {
 	private readonly logger = new Logger(PagesController.name);
@@ -87,44 +60,44 @@ export class PagesController {
 	// Pages
 	@Get()
 	@ApiOperation({ summary: 'Retrieve all pages' })
-	@ApiSuccessArrayResponse(PageEntity)
+	@ApiSuccessResponse(PagesResponseModel)
 	@ApiInternalServerErrorResponse('Internal server error')
-	async findAll(): Promise<PageEntity[]> {
+	async findAll(): Promise<PagesResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all pages');
 
 		const pages = await this.pagesService.findAll();
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${pages.length} pages`);
 
-		return pages;
+		return toInstance(PagesResponseModel, { data: pages });
 	}
 
 	@Get(':id')
 	@ApiOperation({ summary: 'Retrieve a specific page by ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
-	@ApiSuccessResponse(PageEntity)
+	@ApiSuccessResponse(PageResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Page not found')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<PageEntity> {
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<PageResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching page id=${id}`);
 
 		const page = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found page id=${page.id}`);
 
-		return page;
+		return toInstance(PageResponseModel, { data: page });
 	}
 
 	@Post()
 	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:id`)
 	@ApiOperation({ summary: 'Create a new page' })
 	@ApiBody({ type: ReqCreatePageDto })
-	@ApiCreatedSuccessResponse(PageEntity)
+	@ApiCreatedSuccessResponse(PageResponseModel)
 	@ApiBadRequestResponse('Invalid request data or unsupported page type')
 	@ApiUnprocessableEntityResponse('Page could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async create(@Body() createDto: { data: object }): Promise<PageEntity> {
+	async create(@Body() createDto: { data: object }): Promise<PageResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new page');
 
 		const type: string | undefined =
@@ -188,7 +161,7 @@ export class PagesController {
 
 			this.logger.debug(`[CREATE] Successfully created page id=${page.id}`);
 
-			return page;
+			return toInstance(PageResponseModel, { data: page });
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Page could not be created. Please try again later');
@@ -202,7 +175,7 @@ export class PagesController {
 	@ApiOperation({ summary: 'Update an existing page' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
 	@ApiBody({ type: ReqUpdatePageDto })
-	@ApiSuccessResponse(PageEntity)
+	@ApiSuccessResponse(PageResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported page type')
 	@ApiNotFoundResponse('Page not found')
 	@ApiUnprocessableEntityResponse('Page could not be updated')
@@ -210,7 +183,7 @@ export class PagesController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
-	): Promise<PageEntity> {
+	): Promise<PageResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for page id=${id}`);
 
 		const page = await this.getOneOrThrow(id);
@@ -257,7 +230,7 @@ export class PagesController {
 
 			this.logger.debug(`[UPDATE] Successfully updated page id=${updatedPage.id}`);
 
-			return updatedPage;
+			return toInstance(PageResponseModel, { data: updatedPage });
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Page could not be updated. Please try again later');

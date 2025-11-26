@@ -222,6 +222,36 @@ This prevents conflicts like:
 - **Response Wrappers** (`{ModuleName}Res{Name}`): Extend `BaseSuccessResponseDto`, wrap data in `data` property
 - **Data Models** (`{ModuleName}Data{Name}`): Plain data structures, used inside response wrappers
 
+## Response vs. Input Usage Rules
+
+These rules must be respected across all modules:
+
+- **Input DTOs (`*Dto`)**
+  - Used **only** for request input (`@Body()`, `@Query()`, `@Param()`, etc.).
+  - MUST NOT be used as:
+    - Controller return types
+    - `@ApiOkResponse({ type: ... })`, `@ApiCreatedResponse({ type: ... })`, etc.
+  - `@ApiSchema` name pattern: `{ModuleName}{Action}{Entity}` (no `Res`/`Data` prefix).
+
+- **Response Wrappers (`*ResponseModel`, extending `BaseSuccessResponseDto`)**
+  - Used as top-level response types in controllers.
+  - Wrap actual payload in a `data` property.
+  - `@ApiSchema` name pattern: `{ModuleName}Res{Name}`.
+  - `data` property MUST reference a `Data` model, entity, or a union thereof.
+
+- **Data Models (`*Model`)**
+  - Used as payload structures inside `data` of response wrappers.
+  - Used when the payload is:
+    - Aggregated
+    - Comes from a third party
+    - Not a 1:1 DB entity
+  - `@ApiSchema` name pattern: `{ModuleName}Data{Name}`.
+
+- **Entities (`*Entity`)**
+  - May be used as payload inside `data` **only if** they are properly controlled via `@Expose`/`@Exclude` (or groups).
+  - `@ApiSchema` name pattern: `{ModuleName}{Name}`.
+  - SHOULD NOT be used directly as request body types.
+
 ## Benefits
 
 1. **Global Uniqueness**: Module prefixes ensure no naming conflicts across modules/plugins

@@ -47,17 +47,6 @@ import { CardsService } from '../services/cards.service';
 	displayName: PAGES_CARDS_PLUGIN_API_TAG_NAME,
 	description: PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	CreateCardDto,
-	CreateSingleCardDto,
-	ReqCreateCardDto,
-	UpdateCardDto,
-	ReqUpdateCardDto,
-	CardEntity,
-	CardsPageEntity,
-	CardResponseModel,
-	CardsResponseModel,
-)
 @Controller('cards')
 export class CardsController {
 	private readonly logger = new Logger(CardsController.name);

@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Logger, Put } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -30,15 +30,6 @@ import {
 	displayName: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
 	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	PropertyUpdateRequestDto,
-	PropertiesUpdateRequestDto,
-	PropertyUpdateResultDto,
-	PropertiesUpdateResponseDto,
-	ThirdPartyDemoControlPropertyModel,
-	ThirdPartyDemoControlModel,
-	DevicesThirdPartyPluginErrorCode,
-)
 @Controller('demo')
 export class ThirdPartyDemoController {
 	private readonly logger = new Logger(ThirdPartyDemoController.name);

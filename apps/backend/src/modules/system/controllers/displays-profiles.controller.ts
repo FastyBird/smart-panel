@@ -15,7 +15,6 @@ import {
 } from '@nestjs/common';
 import {
 	ApiBody,
-	ApiExtraModels,
 	ApiNoContentResponse,
 	ApiOperation,
 	ApiParam,
@@ -36,16 +35,10 @@ import { UserRole } from '../../users/users.constants';
 import { ReqCreateDisplayProfileDto } from '../dto/create-display-profile.dto';
 import { ReqUpdateDisplayProfileDto } from '../dto/update-display-profile.dto';
 import { DisplayProfileEntity } from '../entities/system.entity';
-import {
-	DisplayProfileByUidResponseModel,
-	DisplayProfileResponseModel,
-	DisplayProfilesResponseModel,
-} from '../models/system-response.model';
 import { DisplaysProfilesService } from '../services/displays-profiles.service';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 @ApiTags('system-module')
-@ApiExtraModels(DisplayProfileResponseModel, DisplayProfileByUidResponseModel, DisplayProfilesResponseModel)
 @Controller('displays-profiles')
 export class DisplaysProfilesController {
 	private readonly logger = new Logger(DisplaysProfilesController.name);

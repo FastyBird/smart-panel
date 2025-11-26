@@ -17,28 +17,25 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import {
-	ApiBody,
-	ApiExtraModels,
-	ApiNoContentResponse,
-	ApiOperation,
-	ApiParam,
-	ApiQuery,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DEVICES_MODULE_PREFIX } from '../devices.constants';
+import {
+	DEVICES_MODULE_API_TAG_DESCRIPTION,
+	DEVICES_MODULE_API_TAG_NAME,
+	DEVICES_MODULE_NAME,
+	DEVICES_MODULE_PREFIX,
+} from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto, ReqCreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
@@ -57,8 +54,11 @@ import { ChannelsPropertiesService } from '../services/channels.properties.servi
 import { ChannelsService } from '../services/channels.service';
 import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
-@ApiTags('devices-module')
-@ApiExtraModels(ChannelPropertyResponseModel, ChannelPropertiesResponseModel)
+@ApiTag({
+	tagName: DEVICES_MODULE_NAME,
+	displayName: DEVICES_MODULE_API_TAG_NAME,
+	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
+})
 @Controller('channels/:channelId/properties')
 export class ChannelsPropertiesController {
 	private readonly logger = new Logger(ChannelsPropertiesController.name);
@@ -73,13 +73,13 @@ export class ChannelsPropertiesController {
 	@Get()
 	@ApiOperation({ summary: 'Retrieve all properties for a channel' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiSuccessArrayResponse(ChannelPropertyEntity)
+	@ApiSuccessResponse(ChannelPropertiesResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-	): Promise<ChannelPropertyEntity[]> {
+	): Promise<ChannelPropertiesResponseModel> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
@@ -88,21 +88,21 @@ export class ChannelsPropertiesController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${properties.length} properties for channelId=${channel.id}`);
 
-		return properties;
+		return toInstance(ChannelPropertiesResponseModel, { data: properties });
 	}
 
 	@Get(':id')
 	@ApiOperation({ summary: 'Retrieve a specific property for a channel' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
-	@ApiSuccessResponse(ChannelPropertyEntity)
+	@ApiSuccessResponse(ChannelPropertyResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel or property not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	async findOne(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-	): Promise<ChannelPropertyEntity> {
+	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching channel id=${id} for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
@@ -111,7 +111,7 @@ export class ChannelsPropertiesController {
 
 		this.logger.debug(`[LOOKUP] Found property id=${property.id} for channelId=${channel.id}`);
 
-		return property;
+		return toInstance(ChannelPropertyResponseModel, { data: property });
 	}
 
 	@Get(':id/timeseries')
@@ -162,7 +162,7 @@ export class ChannelsPropertiesController {
 	@ApiOperation({ summary: 'Create a new property for a channel' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqCreateChannelPropertyDto })
-	@ApiCreatedSuccessResponse(ChannelPropertyEntity)
+	@ApiCreatedSuccessResponse(ChannelPropertyResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported property type')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiUnprocessableEntityResponse('Channel property could not be created')
@@ -171,7 +171,7 @@ export class ChannelsPropertiesController {
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Body() createDto: { data: object },
-	): Promise<ChannelPropertyEntity> {
+	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new property for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
@@ -235,7 +235,7 @@ export class ChannelsPropertiesController {
 
 			this.logger.debug(`[CREATE] Successfully created property id=${property.id} for channelId=${channel.id}`);
 
-			return property;
+			return toInstance(ChannelPropertyResponseModel, { data: property });
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel property could not be created. Please try again later');
@@ -250,7 +250,7 @@ export class ChannelsPropertiesController {
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
 	@ApiBody({ type: ReqUpdateChannelPropertyDto })
-	@ApiSuccessResponse(ChannelPropertyEntity)
+	@ApiSuccessResponse(ChannelPropertyResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format or unsupported property type')
 	@ApiNotFoundResponse('Channel or property not found')
 	@ApiUnprocessableEntityResponse('Channel property could not be updated')
@@ -259,7 +259,7 @@ export class ChannelsPropertiesController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
-	): Promise<ChannelPropertyEntity> {
+	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for property id=${id} for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
@@ -316,7 +316,7 @@ export class ChannelsPropertiesController {
 
 			this.logger.debug(`[UPDATE] Successfully updated property id=${updatedProperty.id} for channelId=${channel.id}`);
 
-			return updatedProperty;
+			return toInstance(ChannelPropertyResponseModel, { data: updatedProperty });
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel property could not be updated. Please try again later');

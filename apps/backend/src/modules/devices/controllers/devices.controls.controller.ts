@@ -12,19 +12,25 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DEVICES_MODULE_PREFIX } from '../devices.constants';
+import {
+	DEVICES_MODULE_API_TAG_DESCRIPTION,
+	DEVICES_MODULE_API_TAG_NAME,
+	DEVICES_MODULE_NAME,
+	DEVICES_MODULE_PREFIX,
+} from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
@@ -32,8 +38,11 @@ import { DeviceControlResponseModel, DeviceControlsResponseModel } from '../mode
 import { DevicesControlsService } from '../services/devices.controls.service';
 import { DevicesService } from '../services/devices.service';
 
-@ApiTags('devices-module')
-@ApiExtraModels(DeviceControlResponseModel, DeviceControlsResponseModel)
+@ApiTag({
+	tagName: DEVICES_MODULE_NAME,
+	displayName: DEVICES_MODULE_API_TAG_NAME,
+	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
+})
 @Controller('devices/:deviceId/controls')
 export class DevicesControlsController {
 	private readonly logger = new Logger(DevicesControlsController.name);
@@ -46,13 +55,13 @@ export class DevicesControlsController {
 	@Get()
 	@ApiOperation({ summary: 'Retrieve all controls for a device' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
-	@ApiSuccessArrayResponse(DeviceControlEntity)
+	@ApiSuccessResponse(DeviceControlsResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
-	): Promise<DeviceControlEntity[]> {
+	): Promise<DeviceControlsResponseModel> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all controls for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
@@ -61,21 +70,21 @@ export class DevicesControlsController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${controls.length} controls for deviceId=${device.id}`);
 
-		return controls;
+		return toInstance(DeviceControlsResponseModel, { data: controls });
 	}
 
 	@Get(':id')
 	@ApiOperation({ summary: 'Retrieve a specific control for a device' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
-	@ApiSuccessResponse(DeviceControlEntity)
+	@ApiSuccessResponse(DeviceControlResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device or control not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	async findOneControl(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-	): Promise<DeviceControlEntity> {
+	): Promise<DeviceControlResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching device id=${id} for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
@@ -84,14 +93,14 @@ export class DevicesControlsController {
 
 		this.logger.debug(`[LOOKUP] Found control id=${control.id} for deviceId=${device.id}`);
 
-		return control;
+		return toInstance(DeviceControlResponseModel, { data: control });
 	}
 
 	@Post()
 	@ApiOperation({ summary: 'Create a new control for a device' })
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiBody({ type: ReqCreateDeviceControlDto })
-	@ApiCreatedSuccessResponse(DeviceControlEntity)
+	@ApiCreatedSuccessResponse(DeviceControlResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Device not found')
 	@ApiUnprocessableEntityResponse('Device control could not be created')
@@ -100,7 +109,7 @@ export class DevicesControlsController {
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Body() createDto: ReqCreateDeviceControlDto,
-	): Promise<DeviceControlEntity> {
+	): Promise<DeviceControlResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new control for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
@@ -128,7 +137,7 @@ export class DevicesControlsController {
 
 			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for deviceId=${device.id}`);
 
-			return control;
+			return toInstance(DeviceControlResponseModel, { data: control });
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Device control could not be created. Please try again later');

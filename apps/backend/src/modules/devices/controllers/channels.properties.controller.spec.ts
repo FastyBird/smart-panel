@@ -264,8 +264,9 @@ describe('ChannelsPropertiesController', () => {
 
 			const result = await controller.getTimeseries(mockChannel.id, mockChannelProperty.id, query);
 
-			expect(result.points).toEqual([]);
-			expect(result.property).toBe(mockChannelProperty.id);
+			expect(result).toHaveProperty('data');
+			expect(result.data.points).toEqual([]);
+			expect(result.data.property).toBe(mockChannelProperty.id);
 		});
 
 		it('should use default time range (last 24 hours) when not provided', async () => {

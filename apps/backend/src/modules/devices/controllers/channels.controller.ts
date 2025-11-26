@@ -16,20 +16,25 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DEVICES_MODULE_PREFIX } from '../devices.constants';
+import {
+	DEVICES_MODULE_API_TAG_DESCRIPTION,
+	DEVICES_MODULE_API_TAG_NAME,
+	DEVICES_MODULE_NAME,
+	DEVICES_MODULE_PREFIX,
+} from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto, ReqCreateChannelDto } from '../dto/create-channel.dto';
 import { ReqUpdateChannelDto, UpdateChannelDto } from '../dto/update-channel.dto';
@@ -38,8 +43,11 @@ import { ChannelResponseModel, ChannelsResponseModel } from '../models/devices-r
 import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
 import { ChannelsService } from '../services/channels.service';
 
-@ApiTags('devices-module')
-@ApiExtraModels(ChannelResponseModel, ChannelsResponseModel)
+@ApiTag({
+	tagName: DEVICES_MODULE_NAME,
+	displayName: DEVICES_MODULE_API_TAG_NAME,
+	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
+})
 @Controller('channels')
 export class ChannelsController {
 	private readonly logger = new Logger(ChannelsController.name);
@@ -52,44 +60,44 @@ export class ChannelsController {
 	// Channels
 	@Get()
 	@ApiOperation({ summary: 'Retrieve all channels' })
-	@ApiSuccessArrayResponse(ChannelEntity)
+	@ApiSuccessResponse(ChannelsResponseModel)
 	@ApiInternalServerErrorResponse('Internal server error')
-	async findAll(): Promise<ChannelEntity[]> {
+	async findAll(): Promise<ChannelsResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all channels');
 
 		const channels = await this.channelsService.findAll();
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${channels.length} channels`);
 
-		return channels;
+		return toInstance(ChannelsResponseModel, { data: channels });
 	}
 
 	@Get(':id')
 	@ApiOperation({ summary: 'Retrieve a specific channel by ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiSuccessResponse(ChannelEntity)
+	@ApiSuccessResponse(ChannelResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<ChannelEntity> {
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<ChannelResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching channel id=${id}`);
 
 		const channel = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found channel id=${channel.id}`);
 
-		return channel;
+		return toInstance(ChannelResponseModel, { data: channel });
 	}
 
 	@Post()
 	@ApiOperation({ summary: 'Create a new channel' })
 	@ApiBody({ type: ReqCreateChannelDto })
-	@ApiCreatedSuccessResponse(ChannelEntity)
+	@ApiCreatedSuccessResponse(ChannelResponseModel)
 	@ApiBadRequestResponse('Invalid request data or unsupported channel type')
 	@ApiUnprocessableEntityResponse('Channel could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:id`)
-	async create(@Body() createDto: { data: object }): Promise<ChannelEntity> {
+	async create(@Body() createDto: { data: object }): Promise<ChannelResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new channel');
 
 		const type: string | undefined =
@@ -138,7 +146,7 @@ export class ChannelsController {
 
 			this.logger.debug(`[CREATE] Successfully created channel id=${channel.id}`);
 
-			return channel;
+			return toInstance(ChannelResponseModel, { data: channel });
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel could not be created. Please try again later');
@@ -152,7 +160,7 @@ export class ChannelsController {
 	@ApiOperation({ summary: 'Update a channel' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqUpdateChannelDto })
-	@ApiSuccessResponse(ChannelEntity)
+	@ApiSuccessResponse(ChannelResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format or unsupported channel type')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiUnprocessableEntityResponse('Channel could not be updated')
@@ -160,7 +168,7 @@ export class ChannelsController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
-	): Promise<ChannelEntity> {
+	): Promise<ChannelResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for channel id=${id}`);
 
 		const channel = await this.getOneOrThrow(id);
@@ -209,7 +217,7 @@ export class ChannelsController {
 
 			this.logger.debug(`[UPDATE] Successfully updated channel id=${updatedChannel.id}`);
 
-			return updatedChannel;
+			return toInstance(ChannelResponseModel, { data: updatedChannel });
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel could not be updated. Please try again later');

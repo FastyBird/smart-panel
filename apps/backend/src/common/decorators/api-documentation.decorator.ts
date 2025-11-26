@@ -1,7 +1,6 @@
 import { Type, applyDecorators } from '@nestjs/common';
-import { ApiExtraModels, ApiOkResponse, ApiProperty, ApiResponse, getSchemaPath } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOkResponse, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 
-import { RequestResultState } from '../../app.constants';
 import {
 	BadRequestErrorDto,
 	BaseErrorResponseDto,
@@ -14,20 +13,6 @@ import {
 	SuccessMetadataDto,
 	UnprocessableEntityErrorDto,
 } from '../dto/response.dto';
-
-/**
- * Base response wrapper for API responses
- */
-export class ApiResponseDto<T> {
-	@ApiProperty({ enum: RequestResultState })
-	state!: RequestResultState;
-
-	@ApiProperty()
-	data?: T;
-
-	@ApiProperty({ required: false })
-	error?: string;
-}
 
 /**
  * Helper function to create a success response decorator with a specific status code
@@ -403,11 +388,4 @@ export const ApiInternalServerErrorResponse = (description?: string) => {
 			},
 		}),
 	);
-};
-
-/**
- * Decorator that combines all common error responses (400, 404, 500)
- */
-export const ApiCommonErrorResponses = () => {
-	return applyDecorators(ApiBadRequestResponse(), ApiNotFoundResponse(), ApiInternalServerErrorResponse());
 };

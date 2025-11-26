@@ -12,19 +12,25 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DEVICES_MODULE_PREFIX } from '../devices.constants';
+import {
+	DEVICES_MODULE_API_TAG_DESCRIPTION,
+	DEVICES_MODULE_API_TAG_NAME,
+	DEVICES_MODULE_NAME,
+	DEVICES_MODULE_PREFIX,
+} from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity';
@@ -32,8 +38,11 @@ import { ChannelControlResponseModel, ChannelControlsResponseModel } from '../mo
 import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
 
-@ApiTags('devices-module')
-@ApiExtraModels(ChannelControlResponseModel, ChannelControlsResponseModel)
+@ApiTag({
+	tagName: DEVICES_MODULE_NAME,
+	displayName: DEVICES_MODULE_API_TAG_NAME,
+	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
+})
 @Controller('channels/:channelId/controls')
 export class ChannelsControlsController {
 	private readonly logger = new Logger(ChannelsControlsController.name);
@@ -46,13 +55,13 @@ export class ChannelsControlsController {
 	@Get()
 	@ApiOperation({ summary: 'Retrieve all controls for a channel' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiSuccessArrayResponse(ChannelControlEntity)
+	@ApiSuccessResponse(ChannelControlsResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-	): Promise<ChannelControlEntity[]> {
+	): Promise<ChannelControlsResponseModel> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all controls for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
@@ -61,21 +70,21 @@ export class ChannelsControlsController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${controls.length} controls for channelId=${channel.id}`);
 
-		return controls;
+		return toInstance(ChannelControlsResponseModel, { data: controls });
 	}
 
 	@Get(':id')
 	@ApiOperation({ summary: 'Retrieve a specific control for a channel' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
-	@ApiSuccessResponse(ChannelControlEntity)
+	@ApiSuccessResponse(ChannelControlResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel or control not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	async findOneControl(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-	): Promise<ChannelControlEntity> {
+	): Promise<ChannelControlResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching channel id=${id} for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
@@ -84,14 +93,14 @@ export class ChannelsControlsController {
 
 		this.logger.debug(`[LOOKUP] Found control id=${control.id} for channelId=${channel.id}`);
 
-		return control;
+		return toInstance(ChannelControlResponseModel, { data: control });
 	}
 
 	@Post()
 	@ApiOperation({ summary: 'Create a new control for a channel' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqCreateChannelControlDto })
-	@ApiCreatedSuccessResponse(ChannelControlEntity)
+	@ApiCreatedSuccessResponse(ChannelControlResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiUnprocessableEntityResponse('Channel control could not be created')
@@ -100,7 +109,7 @@ export class ChannelsControlsController {
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Body() createControlDto: ReqCreateChannelControlDto,
-	): Promise<ChannelControlEntity> {
+	): Promise<ChannelControlResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new control for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
@@ -128,7 +137,7 @@ export class ChannelsControlsController {
 
 			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for channelId=${channel.id}`);
 
-			return control;
+			return toInstance(ChannelControlResponseModel, { data: control });
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel control could not be created. Please try again later');

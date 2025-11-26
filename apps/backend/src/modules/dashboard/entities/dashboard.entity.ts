@@ -18,7 +18,7 @@ import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { DisplayProfileEntity } from '../../system/entities/system.entity';
 
-@ApiSchema({ name: 'DashboardModulePage' })
+@ApiSchema({ name: 'DashboardModuleDataPage' })
 @Entity('dashboard_module_pages')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class PageEntity extends BaseEntity {
@@ -98,7 +98,7 @@ export abstract class PageEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema({ name: 'DashboardModuleTile' })
+@ApiSchema({ name: 'DashboardModuleDataTile' })
 @Entity('dashboard_module_tiles')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class TileEntity extends BaseEntity {
@@ -224,7 +224,7 @@ export abstract class TileEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema({ name: 'DashboardModuleDataSource' })
+@ApiSchema({ name: 'DashboardModuleDataDataSource' })
 @Entity('dashboard_module_data_source')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class DataSourceEntity extends BaseEntity {

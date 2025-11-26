@@ -2,7 +2,7 @@ import { validate } from 'class-validator';
 import { FetchError } from 'node-fetch';
 
 import { Body, Controller, Get, Logger, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -48,22 +48,6 @@ import { DeviceManagerService } from '../services/device-manager.service';
 	displayName: DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME,
 	description: DEVICES_SHELLY_NG_PLUGIN_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	ShellyNgGetInfoDto,
-	DevicesShellyNgPluginCreateDeviceInfo,
-	ReqShellyNgGetInfoDto,
-	DevicesShellyNgPluginReqCreateDeviceInfo,
-	ShellyNgDeviceInfoModel,
-	DevicesShellyNgPluginDeviceInfo,
-	ShellyNgDeviceInfoResponseModel,
-	ShellyNgDeviceInfoComponentModel,
-	ShellyNgDeviceInfoAuthenticationModel,
-	ShellyNgSupportedDeviceModel,
-	DevicesShellyNgPluginSupportedDevice,
-	ShellyNgSupportedDevicesResponseModel,
-	ShellyNgSupportedDeviceComponentModel,
-	ShellyNgSupportedDeviceSystemComponentModel,
-)
 @Controller('devices')
 export class ShellyNgDevicesController {
 	private readonly logger = new Logger(ShellyNgDevicesController.name);

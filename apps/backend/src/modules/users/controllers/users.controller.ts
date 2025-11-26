@@ -13,7 +13,7 @@ import {
 	Req,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiUnprocessableEntityResponse } from '@nestjs/swagger';
+import { ApiNoContentResponse, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -22,13 +22,13 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
 import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { AuthenticatedRequest } from '../../auth/auth.constants';
 import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
-import { UserResponseModel, UsersResponseModel } from '../models/users-response.model';
 import { UsersService } from '../services/users.service';
 import {
 	USERS_MODULE_API_TAG_DESCRIPTION,
@@ -42,7 +42,6 @@ import {
 	displayName: USERS_MODULE_API_TAG_NAME,
 	description: USERS_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(UserResponseModel, UsersResponseModel)
 @Controller('users')
 export class UsersController {
 	private readonly logger = new Logger(UsersController.name);
@@ -93,7 +92,7 @@ export class UsersController {
 	})
 	@ApiCreatedSuccessResponse(UserEntity, 'User created successfully')
 	@ApiBadRequestResponse('Invalid request data')
-	@ApiUnprocessableEntityResponse({ description: 'Username or email already exists' })
+	@ApiUnprocessableEntityResponse('Username or email already exists')
 	@ApiInternalServerErrorResponse()
 	async create(@Body() createDto: ReqCreateUserDto): Promise<UserEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new user');
@@ -131,7 +130,7 @@ export class UsersController {
 	@ApiSuccessResponse(UserEntity, 'User updated successfully')
 	@ApiNotFoundResponse('User not found')
 	@ApiBadRequestResponse('Invalid request data')
-	@ApiUnprocessableEntityResponse({ description: 'Email already exists' })
+	@ApiUnprocessableEntityResponse('Email already exists')
 	@ApiInternalServerErrorResponse()
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -166,7 +165,7 @@ export class UsersController {
 	@ApiNoContentResponse({ description: 'User deleted successfully' })
 	@ApiNotFoundResponse('User not found')
 	@ApiBadRequestResponse('Invalid user ID format')
-	@ApiUnprocessableEntityResponse({ description: 'Cannot delete your own account' })
+	@ApiUnprocessableEntityResponse('Cannot delete your own account')
 	@ApiInternalServerErrorResponse()
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

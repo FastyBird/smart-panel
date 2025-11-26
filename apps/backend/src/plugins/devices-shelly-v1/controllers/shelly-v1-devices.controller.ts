@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 
 import { Body, Controller, Get, Logger, Post, UnprocessableEntityException } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -41,17 +41,6 @@ import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 	displayName: DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME,
 	description: DEVICES_SHELLY_V1_PLUGIN_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	ShellyV1ProbeDto,
-	DevicesShellyV1PluginCreateDeviceInfo,
-	DevicesShellyV1PluginReqCreateDeviceInfo,
-	ShellyV1DeviceInfoModel,
-	DevicesShellyV1PluginDeviceInfo,
-	ShellyV1DeviceInfoResponseModel,
-	ShellyV1SupportedDeviceModel,
-	DevicesShellyV1PluginSupportedDevice,
-	ShellyV1SupportedDevicesResponseModel,
-)
 @Controller('devices')
 export class ShellyV1DevicesController {
 	private readonly logger = new Logger(ShellyV1DevicesController.name);

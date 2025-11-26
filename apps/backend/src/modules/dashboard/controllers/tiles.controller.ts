@@ -17,39 +17,19 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
 import { ApiTag } from '../../../common/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-// Import plugin tile DTOs and entities for OpenAPI schema generation
-import { CreateDevicePreviewTileDto } from '../../../plugins/tiles-device-preview/dto/create-tile.dto';
-import { UpdateDevicePreviewTileDto } from '../../../plugins/tiles-device-preview/dto/update-tile.dto';
-import { DevicePreviewTileEntity } from '../../../plugins/tiles-device-preview/entities/tiles-device-preview.entity';
-import { CreateTimeTileDto } from '../../../plugins/tiles-time/dto/create-tile.dto';
-import { UpdateTimeTileDto } from '../../../plugins/tiles-time/dto/update-tile.dto';
-import { TimeTileEntity } from '../../../plugins/tiles-time/entities/tiles-time.entity';
-import {
-	CreateDayWeatherTileDto,
-	CreateForecastWeatherTileDto,
-} from '../../../plugins/tiles-weather/dto/create-tile.dto';
-import {
-	UpdateDayWeatherTileDto,
-	UpdateForecastWeatherTileDto,
-} from '../../../plugins/tiles-weather/dto/update-tile.dto';
-import {
-	DayWeatherTileEntity,
-	ForecastWeatherTileEntity,
-} from '../../../plugins/tiles-weather/entities/tiles-weather.entity';
 import {
 	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
 	DASHBOARD_MODULE_API_TAG_NAME,
@@ -57,18 +37,8 @@ import {
 	DASHBOARD_MODULE_PREFIX,
 } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import {
-	CreateSingleTileDto,
-	CreateTileDto,
-	ReqCreateTileDto,
-	ReqCreateTileWithParentDto,
-} from '../dto/create-tile.dto';
-import {
-	ReqUpdateTileDto,
-	ReqUpdateTileWithParentDto,
-	UpdateSingleTileDto,
-	UpdateTileDto,
-} from '../dto/update-tile.dto';
+import { CreateSingleTileDto, CreateTileDto, ReqCreateTileDto } from '../dto/create-tile.dto';
+import { ReqUpdateTileWithParentDto, UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
 import { TileEntity } from '../entities/dashboard.entity';
 import { TileResponseModel, TilesResponseModel } from '../models/dashboard-response.model';
 import { TileTypeMapping, TilesTypeMapperService } from '../services/tiles-type-mapper.service';
@@ -79,29 +49,6 @@ import { TilesService } from '../services/tiles.service';
 	displayName: DASHBOARD_MODULE_API_TAG_NAME,
 	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	TileResponseModel,
-	TilesResponseModel,
-	CreateTileDto,
-	UpdateTileDto,
-	ReqCreateTileWithParentDto,
-	ReqUpdateTileDto,
-	// TilesDevicePreviewPlugin
-	CreateDevicePreviewTileDto,
-	UpdateDevicePreviewTileDto,
-	DevicePreviewTileEntity,
-	// TilesTimePlugin
-	CreateTimeTileDto,
-	UpdateTimeTileDto,
-	TimeTileEntity,
-	// TilesWeatherPlugin
-	CreateDayWeatherTileDto,
-	CreateForecastWeatherTileDto,
-	UpdateDayWeatherTileDto,
-	UpdateForecastWeatherTileDto,
-	DayWeatherTileEntity,
-	ForecastWeatherTileEntity,
-)
 @Controller('tiles')
 export class TilesController {
 	private readonly logger = new Logger(TilesController.name);
@@ -121,12 +68,12 @@ export class TilesController {
 		required: false,
 		description: 'Filter by parent entity ID',
 	})
-	@ApiSuccessArrayResponse(TileEntity)
+	@ApiSuccessResponse(TilesResponseModel)
 	@ApiInternalServerErrorResponse('Internal server error')
 	async findAll(
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
-	): Promise<TileEntity[]> {
+	): Promise<TilesResponseModel> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all tiles`);
 
 		const tiles = await this.tilesService.findAll(
@@ -140,35 +87,35 @@ export class TilesController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${tiles.length} tiles`);
 
-		return tiles;
+		return toInstance(TilesResponseModel, { data: tiles });
 	}
 
 	@Get(':id')
 	@ApiOperation({ summary: 'Retrieve a specific tile by ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Tile ID' })
-	@ApiSuccessResponse(TileEntity)
+	@ApiSuccessResponse(TileResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Tile not found')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TileEntity> {
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TileResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found tile id=${tile.id}`);
 
-		return tile;
+		return toInstance(TileResponseModel, { data: tile });
 	}
 
 	@Post()
 	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/tiles/:id`)
 	@ApiOperation({ summary: 'Create a new tile' })
 	@ApiBody({ type: ReqCreateTileDto })
-	@ApiCreatedSuccessResponse(TileEntity)
+	@ApiCreatedSuccessResponse(TileResponseModel)
 	@ApiBadRequestResponse('Invalid request data or unsupported tile type')
 	@ApiUnprocessableEntityResponse('Tile could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async create(@Body() createDto: { data: object }): Promise<TileEntity> {
+	async create(@Body() createDto: { data: object }): Promise<TileResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new tile`);
 
 		const type: string | undefined =
@@ -237,7 +184,7 @@ export class TilesController {
 
 			this.logger.debug(`[CREATE] Successfully created tile id=${tile.id}`);
 
-			return tile;
+			return toInstance(TileResponseModel, { data: tile });
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Tile could not be created. Please try again later');
@@ -251,7 +198,7 @@ export class TilesController {
 	@ApiOperation({ summary: 'Update an existing tile' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Tile ID' })
 	@ApiBody({ type: ReqUpdateTileWithParentDto })
-	@ApiSuccessResponse(TileEntity)
+	@ApiSuccessResponse(TileResponseModel)
 	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported tile type')
 	@ApiNotFoundResponse('Tile not found')
 	@ApiUnprocessableEntityResponse('Tile could not be updated')
@@ -259,7 +206,7 @@ export class TilesController {
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
-	): Promise<TileEntity> {
+	): Promise<TileResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
@@ -323,7 +270,7 @@ export class TilesController {
 
 			this.logger.debug(`[UPDATE] Successfully updated tile id=${updatedTile.id}`);
 
-			return updatedTile;
+			return toInstance(TileResponseModel, { data: updatedTile });
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Tile could not be updated. Please try again later');

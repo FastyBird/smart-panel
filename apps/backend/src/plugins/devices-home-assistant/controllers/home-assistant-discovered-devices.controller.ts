@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, Param, UnprocessableEntityException } from '@nestjs/common';
-import { ApiExtraModels, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -34,11 +34,6 @@ import { HomeAssistantHttpService } from '../services/home-assistant.http.servic
 	displayName: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
 	description: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	DevicesHomeAssistantPluginDiscoveredDevice,
-	HomeAssistantDiscoveredDeviceResponseModel,
-	HomeAssistantDiscoveredDevicesResponseModel,
-)
 @Controller('discovered-devices')
 export class HomeAssistantDiscoveredDevicesController {
 	private readonly logger = new Logger(HomeAssistantDiscoveredDevicesController.name);

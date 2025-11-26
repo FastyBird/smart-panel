@@ -9,7 +9,7 @@ import {
 	Logger,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiExtraModels, ApiOperation } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -24,11 +24,6 @@ import {
 	PlatformNotSupportedException,
 	PlatformValidationException,
 } from '../../platform/platform.exceptions';
-import {
-	SystemHealthResponseModel,
-	SystemInfoResponseModel,
-	ThrottleStatusResponseModel,
-} from '../models/system-response.model';
 import { SystemHealthModel, SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
 import { SYSTEM_MODULE_API_TAG_DESCRIPTION, SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.constants';
@@ -38,7 +33,6 @@ import { SYSTEM_MODULE_API_TAG_DESCRIPTION, SYSTEM_MODULE_API_TAG_NAME, SYSTEM_M
 	displayName: SYSTEM_MODULE_API_TAG_NAME,
 	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(SystemHealthResponseModel, SystemInfoResponseModel, ThrottleStatusResponseModel)
 @Controller('system')
 export class SystemController {
 	private readonly logger = new Logger(SystemController.name);

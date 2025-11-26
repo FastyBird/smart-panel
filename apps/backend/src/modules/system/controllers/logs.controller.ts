@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Post, Query, Req } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiAcceptedSuccessResponse,
@@ -10,17 +10,11 @@ import {
 import { setResponseMeta } from '../../../common/utils/http.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ReqCreateLogEntriesDto } from '../dto/create-log-entry.dto';
-import {
-	LogEntriesResponseModel,
-	LogEntryAcceptedResponseModel,
-	SystemModuleLogIngestResult,
-} from '../models/system-response.model';
 import { LogEntryAcceptedModel, LogEntryModel } from '../models/system.model';
 import { SystemLoggerService } from '../services/system-logger.service';
 import { DEFAULT_PAGE_SIZE, LogEntryType } from '../system.constants';
 
 @ApiTags('system-module')
-@ApiExtraModels(LogEntriesResponseModel, LogEntryAcceptedResponseModel, SystemModuleLogIngestResult)
 @Controller('logs')
 export class LogsController {
 	private readonly logger = new Logger(LogsController.name);

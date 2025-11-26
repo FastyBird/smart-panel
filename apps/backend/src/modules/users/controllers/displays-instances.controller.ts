@@ -43,7 +43,6 @@ import { UserRole } from '../users.constants';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 
 @ApiTags('users-module')
-@ApiExtraModels(DisplayInstanceResponseModel, DisplayInstanceByUidResponseModel, DisplayInstancesResponseModel)
 @Controller('displays-instances')
 export class DisplaysInstancesController {
 	private readonly logger = new Logger(DisplaysInstancesController.name);

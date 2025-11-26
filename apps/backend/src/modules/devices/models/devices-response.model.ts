@@ -11,6 +11,8 @@ import {
 	DeviceEntity,
 } from '../entities/devices.entity';
 
+import { PropertyTimeseriesModel } from './devices.model';
+
 /**
  * Response wrapper for DeviceEntity
  */
@@ -189,11 +191,12 @@ export class ChannelControlsResponseModel extends BaseSuccessResponseModel<Chann
  * Response wrapper for PropertyTimeseriesModel
  */
 @ApiSchema({ name: 'DevicesModuleResPropertyTimeseries' })
-export class PropertyTimeseriesResponseModel extends BaseSuccessResponseModel<any> {
+export class PropertyTimeseriesResponseModel extends BaseSuccessResponseModel<PropertyTimeseriesModel> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
-		type: () => Object,
+		type: () => PropertyTimeseriesModel,
 	})
 	@Expose()
-	data: any;
+	@Type(() => PropertyTimeseriesModel)
+	data: PropertyTimeseriesModel;
 }
