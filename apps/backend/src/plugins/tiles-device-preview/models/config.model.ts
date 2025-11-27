@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { TILES_DEVICE_PREVIEW_PLUGIN_NAME } from '../tiles-device-preview.constants';
 
-@ApiSchema({ name: 'TilesDevicePreviewPluginConfig' })
+@ApiSchema({ name: 'TilesDevicePreviewPluginDataConfig' })
 export class DevicePreviewConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',

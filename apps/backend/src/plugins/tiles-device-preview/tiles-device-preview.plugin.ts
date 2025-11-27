@@ -9,7 +9,7 @@ import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-t
 import { DevicesModule } from '../../modules/devices/devices.module';
 
 import { CreateDevicePreviewTileDto } from './dto/create-tile.dto';
-import { DevicePreviewUpdatePluginConfigDto } from './dto/update-config.dto';
+import { DevicePreviewUpdateConfigDto } from './dto/update-config.dto';
 import { UpdateDevicePreviewTileDto } from './dto/update-tile.dto';
 import { DevicePreviewTileEntity } from './entities/tiles-device-preview.entity';
 import { DevicePreviewConfigModel } from './models/config.model';
@@ -29,10 +29,10 @@ export class TilesDevicePreviewPlugin {
 	) {}
 
 	onModuleInit() {
-		this.configMapper.registerMapping<DevicePreviewConfigModel, DevicePreviewUpdatePluginConfigDto>({
+		this.configMapper.registerMapping<DevicePreviewConfigModel, DevicePreviewUpdateConfigDto>({
 			type: TILES_DEVICE_PREVIEW_PLUGIN_NAME,
 			class: DevicePreviewConfigModel,
-			configDto: DevicePreviewUpdatePluginConfigDto,
+			configDto: DevicePreviewUpdateConfigDto,
 		});
 
 		this.tilesMapper.registerMapping<DevicePreviewTileEntity, CreateDevicePreviewTileDto, UpdateDevicePreviewTileDto>({

@@ -1,5 +1,5 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -34,4 +34,16 @@ export class CreateDevicePreviewTileDto extends CreateSingleTileDto {
 	@IsString({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
+}
+
+@ApiSchema({ name: 'TilesDevicePreviewPluginReqCreateDevicePreviewTile' })
+export class ReqCreateDevicePreviewTileDto {
+	@ApiProperty({
+		description: 'Device preview tile creation data',
+		type: CreateDevicePreviewTileDto,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateDevicePreviewTileDto)
+	data: CreateDevicePreviewTileDto;
 }

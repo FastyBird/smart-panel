@@ -1,7 +1,7 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
-import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
@@ -35,4 +35,16 @@ export class UpdateDevicePreviewTileDto extends UpdateTileDto {
 	@IsString({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
+}
+
+@ApiSchema({ name: 'TilesDevicePreviewPluginReqUpdateDevicePreviewTile' })
+export class ReqUpdateDevicePreviewTileDto {
+	@ApiProperty({
+		description: 'Device preview tile update data',
+		type: () => UpdateDevicePreviewTileDto,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => UpdateDevicePreviewTileDto)
+	data: UpdateDevicePreviewTileDto;
 }

@@ -7,7 +7,7 @@ import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { TILES_DEVICE_PREVIEW_PLUGIN_NAME } from '../tiles-device-preview.constants';
 
 @ApiSchema({ name: 'TilesDevicePreviewPluginUpdateConfig' })
-export class DevicePreviewUpdatePluginConfigDto extends UpdatePluginConfigDto {
+export class DevicePreviewUpdateConfigDto extends UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin type',
 		type: 'string',

@@ -9,7 +9,7 @@ import { TileEntity } from '../../../modules/dashboard/entities/dashboard.entity
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
-@ApiSchema({ name: 'TilesDevicePreviewPluginDevicePreviewTile' })
+@ApiSchema({ name: 'TilesDevicePreviewPluginDataDevicePreviewTile' })
 @ChildEntity()
 export class DevicePreviewTileEntity extends TileEntity {
 	@ApiProperty({
