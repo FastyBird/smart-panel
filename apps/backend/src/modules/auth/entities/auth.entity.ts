@@ -94,7 +94,7 @@ export abstract class TokenEntity extends BaseEntity {
 @ChildEntity()
 export class AccessTokenEntity extends TokenEntity {
 	@ApiProperty({
-		description: 'Token owner user ID',
+		description: 'Token owner ID',
 		type: 'string',
 		format: 'uuid',
 		example: '550e8400-e29b-41d4-a716-446655440000',
@@ -134,7 +134,7 @@ export class AccessTokenEntity extends TokenEntity {
 @ChildEntity()
 export class RefreshTokenEntity extends TokenEntity {
 	@ApiProperty({
-		description: 'Token owner user ID',
+		description: 'Token owner ID',
 		type: 'string',
 		format: 'uuid',
 		example: '550e8400-e29b-41d4-a716-446655440000',
@@ -178,7 +178,7 @@ export class RefreshTokenEntity extends TokenEntity {
 @ChildEntity()
 export class LongLiveTokenEntity extends TokenEntity {
 	@ApiProperty({
-		description: 'Token owner user ID',
+		description: 'Token owner ID',
 		type: 'string',
 		format: 'uuid',
 		example: '550e8400-e29b-41d4-a716-446655440000',
