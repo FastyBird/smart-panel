@@ -1,8 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 
 import { GeolocationCityModel, GeolocationZipModel } from './geolocation.model';
 import { CurrentDayModel, ForecastDayModel, LocationWeatherModel } from './weather.model';
@@ -17,8 +17,7 @@ export class LocationWeatherResponseModel extends BaseSuccessResponseModel<Locat
 		type: () => LocationWeatherModel,
 	})
 	@Expose()
-	@Type(() => LocationWeatherModel)
-	data: LocationWeatherModel;
+	declare data: LocationWeatherModel;
 }
 
 /**
@@ -31,8 +30,7 @@ export class LocationCurrentResponseModel extends BaseSuccessResponseModel<Curre
 		type: () => CurrentDayModel,
 	})
 	@Expose()
-	@Type(() => CurrentDayModel)
-	data: CurrentDayModel;
+	declare data: CurrentDayModel;
 }
 
 /**
@@ -46,8 +44,7 @@ export class LocationForecastResponseModel extends BaseSuccessResponseModel<Fore
 		items: { $ref: getSchemaPath(ForecastDayModel) },
 	})
 	@Expose()
-	@Type(() => ForecastDayModel)
-	data: ForecastDayModel[];
+	declare data: ForecastDayModel[];
 }
 
 /**
@@ -61,8 +58,7 @@ export class GeolocationCityToCoordinatesResponseModel extends BaseSuccessRespon
 		items: { $ref: getSchemaPath(GeolocationCityModel) },
 	})
 	@Expose()
-	@Type(() => GeolocationCityModel)
-	data: GeolocationCityModel[];
+	declare data: GeolocationCityModel[];
 }
 
 /**
@@ -76,8 +72,7 @@ export class GeolocationCoordinatesToCityResponseModel extends BaseSuccessRespon
 		items: { $ref: getSchemaPath(GeolocationCityModel) },
 	})
 	@Expose()
-	@Type(() => GeolocationCityModel)
-	data: GeolocationCityModel[];
+	declare data: GeolocationCityModel[];
 }
 
 /**
@@ -90,6 +85,5 @@ export class GeolocationZipToCoordinatesResponseModel extends BaseSuccessRespons
 		type: () => GeolocationZipModel,
 	})
 	@Expose()
-	@Type(() => GeolocationZipModel)
-	data: GeolocationZipModel;
+	declare data: GeolocationZipModel;
 }

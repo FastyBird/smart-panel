@@ -1,53 +1,89 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Logger, NotFoundException, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
-	ApiSuccessArrayResponse,
+	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
+import {
+	GeolocationCityToCoordinatesResponseModel,
+	GeolocationCoordinatesToCityResponseModel,
+	GeolocationZipToCoordinatesResponseModel,
+} from '../models/weather-response.model';
 import { GeolocationService } from '../services/geolocation.service';
+import { WEATHER_MODULE_API_TAG_NAME } from '../weather.constants';
 
-@ApiTags('weather-module')
+@ApiTags(WEATHER_MODULE_API_TAG_NAME)
 @Controller('geolocation')
 export class GeolocationController {
+	private readonly logger = new Logger(GeolocationController.name);
+
 	constructor(private readonly geolocationService: GeolocationService) {}
 
-	@Get('city-to-coordinates')
 	@ApiOperation({
+		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get coordinates by city name',
 		description: 'Convert city name to geographic coordinates',
+		operationId: 'get-weather-module-geolocation-city-to-coordinates',
 	})
 	@ApiQuery({ name: 'city', description: 'City name', type: 'string', example: 'London' })
-	@ApiSuccessArrayResponse(GeolocationCityModel, 'City coordinates retrieved successfully')
-	@ApiInternalServerErrorResponse()
-	async getCityCoordinates(@Query('city') city: string) {
-		return this.geolocationService.getCoordinatesByCity(city);
+	@ApiSuccessResponse(GeolocationCityToCoordinatesResponseModel, 'City coordinates retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('city-to-coordinates')
+	async getCityCoordinates(@Query('city') city: string): Promise<GeolocationCityToCoordinatesResponseModel> {
+		const data = await this.geolocationService.getCoordinatesByCity(city);
+
+		const response = new GeolocationCityToCoordinatesResponseModel();
+		response.data = data || [];
+
+		return response;
 	}
 
-	@Get('zip-to-coordinates')
 	@ApiOperation({
+		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get coordinates by postal code',
 		description: 'Convert postal/zip code to geographic coordinates',
+		operationId: 'get-weather-module-geolocation-zip-to-coordinates',
 	})
 	@ApiQuery({ name: 'zip', description: 'Postal/zip code', type: 'string', example: 'SW1A 1AA' })
-	@ApiSuccessResponse(GeolocationZipModel, 'Zip coordinates retrieved successfully')
-	@ApiInternalServerErrorResponse()
-	async getZipCoordinates(@Query('zip') zip: string) {
-		return this.geolocationService.getCoordinatesByZip(zip);
+	@ApiSuccessResponse(GeolocationZipToCoordinatesResponseModel, 'Zip coordinates retrieved successfully')
+	@ApiNotFoundResponse('Coordinates for the specified postal code could not be found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('zip-to-coordinates')
+	async getZipCoordinates(@Query('zip') zip: string): Promise<GeolocationZipToCoordinatesResponseModel> {
+		const data = await this.geolocationService.getCoordinatesByZip(zip);
+
+		if (!data) {
+			throw new NotFoundException('Coordinates for the specified postal code could not be found');
+		}
+
+		const response = new GeolocationZipToCoordinatesResponseModel();
+		response.data = data;
+
+		return response;
 	}
 
-	@Get('coordinates-to-city')
 	@ApiOperation({
+		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get city by coordinates',
 		description: 'Convert geographic coordinates to city name',
+		operationId: 'get-weather-module-geolocation-coordinates-to-city',
 	})
 	@ApiQuery({ name: 'lat', description: 'Latitude', type: 'number', example: 51.5074 })
 	@ApiQuery({ name: 'lon', description: 'Longitude', type: 'number', example: -0.1278 })
-	@ApiSuccessArrayResponse(GeolocationCityModel, 'City information retrieved successfully')
-	@ApiInternalServerErrorResponse()
-	async getCity(@Query('lat') lat: number, @Query('lon') lon: number) {
-		return this.geolocationService.getCityByCoordinates(lat, lon);
+	@ApiSuccessResponse(GeolocationCoordinatesToCityResponseModel, 'City information retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('coordinates-to-city')
+	async getCity(
+		@Query('lat') lat: number,
+		@Query('lon') lon: number,
+	): Promise<GeolocationCoordinatesToCityResponseModel> {
+		const data = await this.geolocationService.getCityByCoordinates(lat, lon);
+
+		const response = new GeolocationCoordinatesToCityResponseModel();
+		response.data = data || [];
+
+		return response;
 	}
 }
