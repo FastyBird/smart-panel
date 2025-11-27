@@ -554,10 +554,11 @@ export class AppConfigModel {
 		description: 'Plugin configurations',
 		type: 'array',
 		items: {
-			type: 'object',
+			$ref: getSchemaPath(PluginConfigModel),
 		},
 	})
 	@Expose()
 	@ValidateNested({ each: true })
+	@Type(() => PluginConfigModel)
 	plugins: PluginConfigModel[] = [];
 }

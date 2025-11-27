@@ -1,13 +1,12 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
 import {
 	AppConfigModel,
 	AudioConfigModel,
-	BaseConfigModel,
 	DisplayConfigModel,
 	LanguageConfigModel,
 	PluginConfigModel,
@@ -21,51 +20,48 @@ import {
 /**
  * Response wrapper for AppConfigModel
  */
-@ApiSchema({ name: 'ConfigModuleResApp' })
-export class AppResponseModel extends BaseSuccessResponseModel<AppConfigModel> {
+@ApiSchema({ name: 'ConfigModuleResAppConfig' })
+export class ConfigModuleResAppConfig extends BaseSuccessResponseModel<AppConfigModel> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'Application configuration',
 		type: () => AppConfigModel,
 	})
 	@Expose()
-	@Type(() => AppConfigModel)
-	data: AppConfigModel;
+	declare data: AppConfigModel;
 }
 
 /**
  * Response wrapper for PluginConfigModel
  */
-@ApiSchema({ name: 'ConfigModuleResPlugin' })
-export class PluginResponseModel extends BaseSuccessResponseModel<PluginConfigModel> {
+@ApiSchema({ name: 'ConfigModuleResPluginConfig' })
+export class ConfigModuleResPluginConfig extends BaseSuccessResponseModel<PluginConfigModel> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'Plugin configuration',
 		type: () => PluginConfigModel,
 	})
 	@Expose()
-	@Type(() => PluginConfigModel)
-	data: PluginConfigModel;
+	declare data: PluginConfigModel;
 }
 
 /**
  * Response wrapper for array of PluginConfigModel
  */
 @ApiSchema({ name: 'ConfigModuleResPlugins' })
-export class PluginsResponseModel extends BaseSuccessResponseModel<PluginConfigModel[]> {
+export class ConfigModuleResPlugins extends BaseSuccessResponseModel<PluginConfigModel[]> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'List of plugin configurations',
 		type: 'array',
 		items: { $ref: getSchemaPath(PluginConfigModel) },
 	})
 	@Expose()
-	@Type(() => PluginConfigModel)
-	data: PluginConfigModel[];
+	declare data: PluginConfigModel[];
 }
 
 /**
  * Response wrapper for section config (union type)
  */
 @ApiSchema({ name: 'ConfigModuleResSection' })
-export class SectionResponseModel extends BaseSuccessResponseModel<
+export class ConfigModuleResSection extends BaseSuccessResponseModel<
 	| AudioConfigModel
 	| DisplayConfigModel
 	| LanguageConfigModel
@@ -76,7 +72,7 @@ export class SectionResponseModel extends BaseSuccessResponseModel<
 	| SystemConfigModel
 > {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'Single configuration section payload',
 		oneOf: [
 			{ $ref: getSchemaPath(AudioConfigModel) },
 			{ $ref: getSchemaPath(DisplayConfigModel) },
@@ -92,23 +88,7 @@ export class SectionResponseModel extends BaseSuccessResponseModel<
 		},
 	})
 	@Expose()
-	@Type(() => BaseConfigModel, {
-		discriminator: {
-			property: 'type',
-			subTypes: [
-				{ value: AudioConfigModel, name: 'audio' },
-				{ value: DisplayConfigModel, name: 'display' },
-				{ value: LanguageConfigModel, name: 'language' },
-				{ value: WeatherCityIdConfigModel, name: 'weather' },
-				{ value: WeatherCityNameConfigModel, name: 'weather' },
-				{ value: WeatherLatLonConfigModel, name: 'weather' },
-				{ value: WeatherZipCodeConfigModel, name: 'weather' },
-				{ value: SystemConfigModel, name: 'system' },
-			],
-		},
-		keepDiscriminatorProperty: true,
-	})
-	data:
+	declare data:
 		| AudioConfigModel
 		| DisplayConfigModel
 		| LanguageConfigModel
