@@ -60,7 +60,6 @@ export class CreatePageDto {
 	order: number;
 
 	@ApiPropertyOptional({
-		name: 'show_top_bar',
 		description: 'Whether to show top bar',
 		type: 'boolean',
 		example: true,
@@ -71,7 +70,6 @@ export class CreatePageDto {
 	show_top_bar?: boolean;
 
 	@ApiPropertyOptional({
-		name: 'data_source',
 		description: 'Associated data sources',
 		type: 'array',
 		items: { $ref: getSchemaPath(CreateDataSourceDto) },

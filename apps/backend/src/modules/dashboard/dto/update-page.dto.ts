@@ -47,7 +47,6 @@ export abstract class UpdatePageDto {
 	order?: number;
 
 	@ApiPropertyOptional({
-		name: 'show_top_bar',
 		description: 'Whether to show top bar',
 		type: 'boolean',
 		example: true,

@@ -38,7 +38,6 @@ export abstract class CreateTileDto {
 	readonly type: string;
 
 	@ApiPropertyOptional({
-		name: 'data_source',
 		description: 'Associated data sources',
 		type: 'array',
 		items: { $ref: getSchemaPath(CreateDataSourceDto) },

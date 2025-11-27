@@ -34,7 +34,6 @@ export abstract class UpdateTileDto {
 	col?: number;
 
 	@ApiPropertyOptional({
-		name: 'row_span',
 		description: 'Number of rows the tile spans',
 		type: 'number',
 		minimum: 1,
@@ -50,7 +49,6 @@ export abstract class UpdateTileDto {
 	row_span?: number;
 
 	@ApiPropertyOptional({
-		name: 'col_span',
 		description: 'Number of columns the tile spans',
 		type: 'number',
 		minimum: 1,
