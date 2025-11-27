@@ -10,42 +10,21 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
-
 import { ValidateChannelExists } from '../validators/channel-exists-constraint.validator';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 
-@ApiSchema({ name: 'DevicesModulePropertyCommandValue' })
 export class PropertyCommandValueDto {
-	@ApiProperty({
-		description: 'Device ID',
-		type: 'string',
-		format: 'uuid',
-		example: '123e4567-e89b-12d3-a456-426614174000',
-	})
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
 	device: string;
 
-	@ApiProperty({
-		description: 'Channel ID',
-		type: 'string',
-		format: 'uuid',
-		example: '123e4567-e89b-12d3-a456-426614174000',
-	})
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
 	@ValidateChannelExists({ message: '[{"field":"channel","reason":"The specified channel does not exist."}]' })
 	channel: string;
 
-	@ApiProperty({
-		description: 'Property ID',
-		type: 'string',
-		format: 'uuid',
-		example: '123e4567-e89b-12d3-a456-426614174000',
-	})
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"property","reason":"Property must be a valid UUID (version 4)."}]' })
 	@ValidateChannelPropertyExists({
@@ -53,11 +32,6 @@ export class PropertyCommandValueDto {
 	})
 	property: string;
 
-	@ApiProperty({
-		description: 'Property value',
-		type: 'string',
-		example: 'on',
-	})
 	@Expose()
 	@ValidateIf((o: { value: unknown }) => typeof o.value === 'string')
 	@IsString()
@@ -69,13 +43,7 @@ export class PropertyCommandValueDto {
 	value: string | boolean | number;
 }
 
-@ApiSchema({ name: 'DevicesModulePropertyCommand' })
 export class PropertyCommandDto {
-	@ApiProperty({
-		description: 'Array of property commands',
-		type: 'array',
-		items: { $ref: getSchemaPath(PropertyCommandValueDto) },
-	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
