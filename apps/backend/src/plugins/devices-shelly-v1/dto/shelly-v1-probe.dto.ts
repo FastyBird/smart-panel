@@ -3,20 +3,20 @@ import { IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1Probe' })
-export class ShellyV1ProbeDto {
+@ApiSchema({ name: 'DevicesShellyV1PluginGetInfo' })
+export class DevicesShellyV1PluginGetInfo {
 	@ApiProperty({
-		description: 'Shelly device host (IP address or hostname)',
+		description: 'Device hostname or IP address',
 		example: '192.168.1.100',
 	})
 	@Expose()
 	@IsString({
-		message: '[{"field":"host","reason":"Host attribute must be a valid IP address or hostname."}]',
+		message: '[{"field":"hostname","reason":"Hostname attribute must be a valid IP address or network hostname."}]',
 	})
-	host: string;
+	hostname: string;
 
 	@ApiPropertyOptional({
-		description: 'Shelly device authentication password',
+		description: 'Device password',
 		example: 'admin123',
 		nullable: true,
 	})
@@ -26,14 +26,14 @@ export class ShellyV1ProbeDto {
 	password?: string | null = null;
 }
 
-/**
- * Request wrapper for DevicesShellyV1PluginCreateDeviceInfo
- */
-@ApiSchema({ name: 'DevicesShellyV1PluginReqCreateDeviceInfo' })
-export class DevicesShellyV1PluginReqCreateDeviceInfo {
-	@ApiProperty({ description: 'Device probe request data', type: () => DevicesShellyV1PluginCreateDeviceInfo })
+@ApiSchema({ name: 'DevicesShellyV1PluginReqGetInfo' })
+export class DevicesShellyV1PluginReqGetInfo {
+	@ApiProperty({
+		description: 'Device info request data',
+		type: () => DevicesShellyV1PluginGetInfo,
+	})
 	@Expose()
 	@ValidateNested()
-	@Type(() => DevicesShellyV1PluginCreateDeviceInfo)
-	data: DevicesShellyV1PluginCreateDeviceInfo;
+	@Type(() => DevicesShellyV1PluginGetInfo)
+	data: DevicesShellyV1PluginGetInfo;
 }

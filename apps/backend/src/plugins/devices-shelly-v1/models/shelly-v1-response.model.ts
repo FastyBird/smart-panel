@@ -1,8 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
 import { ShellyV1DeviceInfoModel, ShellyV1SupportedDeviceModel } from './shelly-v1.model';
 
@@ -16,8 +16,7 @@ export class ShellyV1DeviceInfoResponseModel extends BaseSuccessResponseModel<Sh
 		type: () => ShellyV1DeviceInfoModel,
 	})
 	@Expose()
-	@Type(() => ShellyV1DeviceInfoModel)
-	data: ShellyV1DeviceInfoModel;
+	declare data: ShellyV1DeviceInfoModel;
 }
 
 /**
@@ -31,6 +30,5 @@ export class ShellyV1SupportedDevicesResponseModel extends BaseSuccessResponseMo
 		items: { $ref: getSchemaPath(ShellyV1SupportedDeviceModel) },
 	})
 	@Expose()
-	@Type(() => ShellyV1SupportedDeviceModel)
-	data: ShellyV1SupportedDeviceModel[];
+	declare data: ShellyV1SupportedDeviceModel[];
 }

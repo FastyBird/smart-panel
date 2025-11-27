@@ -6,7 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 
-@ApiSchema({ name: 'DevicesShellyV1PluginUpdatePluginConfigDiscovery' })
+@ApiSchema({ name: 'DevicesShellyV1PluginUpdateConfigDiscovery' })
 export class ShellyV1UpdatePluginConfigDiscoveryDto {
 	@ApiPropertyOptional({
 		description: 'Network interface to use for device discovery',
@@ -19,7 +19,7 @@ export class ShellyV1UpdatePluginConfigDiscoveryDto {
 	interface?: string | null;
 }
 
-@ApiSchema({ name: 'DevicesShellyV1PluginUpdatePluginConfigTimeouts' })
+@ApiSchema({ name: 'DevicesShellyV1PluginUpdateConfigTimeouts' })
 export class ShellyV1UpdatePluginConfigTimeoutsDto {
 	@ApiPropertyOptional({
 		description: 'Request timeout in milliseconds',
@@ -52,7 +52,7 @@ export class ShellyV1UpdatePluginConfigTimeoutsDto {
 	stale_timeout?: number;
 }
 
-@ApiSchema({ name: 'DevicesShellyV1PluginUpdatePluginConfig' })
+@ApiSchema({ name: 'DevicesShellyV1PluginUpdateConfig' })
 export class ShellyV1UpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin type identifier',

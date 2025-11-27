@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { DESCRIPTORS, SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
-import { ShellyV1ProbeDto } from '../dto/shelly-v1-probe.dto';
+import { DevicesShellyV1PluginGetInfo } from '../dto/shelly-v1-probe.dto';
 import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import { ShellyV1DeviceInfoModel } from '../models/shelly-v1.model';
 
@@ -18,11 +18,12 @@ export class ShellyV1ProbeService {
 	constructor(private readonly httpClient: ShellyV1HttpClientService) {}
 
 	/**
-	 * Probe a Shelly V1 device at the given host
+	 * Probe a Shelly V1 device at the given hostname
 	 * Returns device information, auth status, and descriptor match without creating DB entries
 	 */
-	async probeDevice(request: ShellyV1ProbeDto): Promise<ShellyV1DeviceInfoModel> {
-		const { host, password } = request;
+	async probeDevice(request: DevicesShellyV1PluginGetInfo): Promise<ShellyV1DeviceInfoModel> {
+		const { hostname, password } = request;
+		const host = hostname;
 
 		this.logger.debug(`[SHELLY V1][PROBE] Probing device at ${host}`);
 

@@ -6,7 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 
-@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1DiscoveryConfig' })
+@ApiSchema({ name: 'DevicesShellyV1PluginDataDiscoveryConfig' })
 export class ShellyV1DiscoveryConfigModel {
 	@Expose()
 	@IsOptional()
@@ -28,7 +28,7 @@ export class ShellyV1DiscoveryConfigModel {
 	enabled: boolean = true;
 }
 
-@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1TimeoutsConfig' })
+@ApiSchema({ name: 'DevicesShellyV1PluginDataTimeoutsConfig' })
 export class ShellyV1TimeoutsConfigModel {
 	@Expose({ name: 'request_timeout' })
 	@IsInt()
@@ -53,7 +53,7 @@ export class ShellyV1TimeoutsConfigModel {
 	staleTimeout: number = 30; // seconds
 }
 
-@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1Config' })
+@ApiSchema({ name: 'DevicesShellyV1PluginDataConfig' })
 export class ShellyV1ConfigModel extends PluginConfigModel {
 	@Expose()
 	@IsString()

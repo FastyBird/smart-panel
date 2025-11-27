@@ -3,7 +3,7 @@ import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1SupportedDevice' })
+@ApiSchema({ name: 'DevicesShellyV1PluginDataSupportedDevice' })
 export class ShellyV1SupportedDeviceModel {
 	@Expose()
 	@IsString()
@@ -42,7 +42,7 @@ export class ShellyV1SupportedDeviceModel {
 	categories: string[];
 }
 
-@ApiSchema({ name: 'DevicesShellyV1PluginShellyV1DeviceInfo' })
+@ApiSchema({ name: 'DevicesShellyV1PluginDataDeviceInfo' })
 export class ShellyV1DeviceInfoModel {
 	@Expose()
 	@IsBoolean()
