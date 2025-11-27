@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { TILES_WEATHER_DAY_TYPE, TILES_WEATHER_FORECAST_TYPE } from '../tiles-weather.constants';
 
-@ApiSchema({ name: 'TilesWeatherPluginDayWeatherTile' })
+@ApiSchema({ name: 'TilesWeatherPluginDataDayWeatherTile' })
 @ChildEntity()
 export class DayWeatherTileEntity extends TileEntity {
 	@ApiProperty({
@@ -20,7 +20,7 @@ export class DayWeatherTileEntity extends TileEntity {
 	}
 }
 
-@ApiSchema({ name: 'TilesWeatherPluginForecastWeatherTile' })
+@ApiSchema({ name: 'TilesWeatherPluginDataForecastWeatherTile' })
 @ChildEntity()
 export class ForecastWeatherTileEntity extends TileEntity {
 	@ApiProperty({

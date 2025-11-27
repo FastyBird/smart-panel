@@ -7,7 +7,7 @@ import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { TILES_WEATHER_PLUGIN_NAME } from '../tiles-weather.constants';
 
 @ApiSchema({ name: 'TilesWeatherPluginUpdateConfig' })
-export class WeatherUpdatePluginConfigDto extends UpdatePluginConfigDto {
+export class WeatherUpdateConfigDto extends UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin type',
 		type: 'string',

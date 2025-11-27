@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { TILES_WEATHER_PLUGIN_NAME } from '../tiles-weather.constants';
 
-@ApiSchema({ name: 'TilesWeatherPluginConfig' })
+@ApiSchema({ name: 'TilesWeatherPluginDataConfig' })
 export class WeatherConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',

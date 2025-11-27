@@ -7,7 +7,7 @@ import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
 
 import { CreateDayWeatherTileDto, CreateForecastWeatherTileDto } from './dto/create-tile.dto';
-import { WeatherUpdatePluginConfigDto } from './dto/update-config.dto';
+import { WeatherUpdateConfigDto } from './dto/update-config.dto';
 import { UpdateDayWeatherTileDto, UpdateForecastWeatherTileDto } from './dto/update-tile.dto';
 import { DayWeatherTileEntity, ForecastWeatherTileEntity } from './entities/tiles-weather.entity';
 import { WeatherConfigModel } from './models/config.model';
@@ -27,10 +27,10 @@ export class TilesWeatherPlugin {
 	) {}
 
 	onModuleInit() {
-		this.configMapper.registerMapping<WeatherConfigModel, WeatherUpdatePluginConfigDto>({
+		this.configMapper.registerMapping<WeatherConfigModel, WeatherUpdateConfigDto>({
 			type: TILES_WEATHER_PLUGIN_NAME,
 			class: WeatherConfigModel,
-			configDto: WeatherUpdatePluginConfigDto,
+			configDto: WeatherUpdateConfigDto,
 		});
 
 		this.tilesMapper.registerMapping<DayWeatherTileEntity, CreateDayWeatherTileDto, UpdateDayWeatherTileDto>({
