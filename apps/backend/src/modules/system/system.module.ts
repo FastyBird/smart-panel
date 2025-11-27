@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { SectionType } from '../config/config.constants';
 import { ConfigModule } from '../config/config.module';
 import { SystemConfigModel } from '../config/models/config.model';
@@ -26,9 +27,21 @@ import { ModuleResetService } from './services/module-reset.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
 import { SystemService } from './services/system.service';
-import { EventHandlerName, EventType, LogEntryType, SYSTEM_MODULE_NAME } from './system.constants';
+import {
+	EventHandlerName,
+	EventType,
+	LogEntryType,
+	SYSTEM_MODULE_API_TAG_DESCRIPTION,
+	SYSTEM_MODULE_API_TAG_NAME,
+	SYSTEM_MODULE_NAME,
+} from './system.constants';
 import { DisplayProfileExistsConstraintValidator } from './validators/display-profile-exists-constraint.validator';
 
+@ApiTag({
+	tagName: SYSTEM_MODULE_NAME,
+	displayName: SYSTEM_MODULE_API_TAG_NAME,
+	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([DisplayProfileEntity]),

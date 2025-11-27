@@ -9,7 +9,7 @@ import { DataSourceEntity } from '../../../modules/dashboard/entities/dashboard.
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 
-@ApiSchema({ name: 'DataSourcesDeviceChannelPluginDeviceChannelDataSource' })
+@ApiSchema({ name: 'DataSourcesDeviceChannelPluginDataDeviceChannelDataSource' })
 @ChildEntity()
 export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@ApiProperty({
@@ -19,14 +19,14 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
+	@Transform(({ value }: { value: DeviceEntity | string }) => (typeof value === 'string' ? value : value?.id), {
+		toPlainOnly: true,
+	})
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => typeof value === 'object')
 	@Validate(AbstractInstanceValidator, [DeviceEntity], {
 		message: '[{"field":"device","reason":"Device must be a valid subclass of DeviceEntity."}]',
-	})
-	@Transform(({ value }: { value: DeviceEntity | string }) => (typeof value === 'string' ? value : value?.id), {
-		toPlainOnly: true,
 	})
 	@ManyToOne(() => DeviceEntity, { onDelete: 'CASCADE' })
 	device: DeviceEntity | string;
@@ -38,14 +38,14 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
+	@Type(() => ChannelEntity)
+	@Transform(({ value }: { value: ChannelEntity | string }) => (typeof value === 'string' ? value : value?.id), {
+		toPlainOnly: true,
+	})
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => value instanceof ChannelEntity)
 	@IsInstance(ChannelEntity, { message: '[{"field":"channel","reason":"Channel must be a valid ChannelEntity."}]' })
-	@Transform(({ value }: { value: ChannelEntity | string }) => (typeof value === 'string' ? value : value?.id), {
-		toPlainOnly: true,
-	})
-	@Type(() => ChannelEntity)
 	@ManyToOne(() => ChannelEntity, { onDelete: 'CASCADE' })
 	channel: ChannelEntity | string;
 
@@ -56,17 +56,17 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 		example: '123e4567-e89b-12d3-a456-426614174000',
 	})
 	@Expose()
+	@Type(() => ChannelPropertyEntity)
+	@Transform(
+		({ value }: { value: ChannelPropertyEntity | string }) => (typeof value === 'string' ? value : value?.id),
+		{ toPlainOnly: true },
+	)
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"property","reason":"Property must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => value instanceof ChannelPropertyEntity)
 	@IsInstance(ChannelPropertyEntity, {
 		message: '[{"field":"property","reason":"Property must be a valid ChannelPropertyEntity."}]',
 	})
-	@Type(() => ChannelPropertyEntity)
-	@Transform(
-		({ value }: { value: ChannelPropertyEntity | string }) => (typeof value === 'string' ? value : value?.id),
-		{ toPlainOnly: true },
-	)
 	@ManyToOne(() => ChannelPropertyEntity, { onDelete: 'CASCADE' })
 	property: ChannelPropertyEntity | string;
 

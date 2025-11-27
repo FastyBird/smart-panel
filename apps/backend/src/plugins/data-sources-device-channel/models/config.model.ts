@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { DATA_SOURCES_DEVICE_PLUGIN_NAME } from '../data-sources-device-channel.constants';
 
-@ApiSchema({ name: 'DataSourcesDeviceChannelPluginConfig' })
+@ApiSchema({ name: 'DataSourcesDeviceChannelPluginDataConfig' })
 export class DeviceChannelConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',
