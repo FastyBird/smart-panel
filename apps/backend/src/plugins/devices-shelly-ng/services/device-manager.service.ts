@@ -1112,7 +1112,7 @@ export class DeviceManagerService {
 			>(channel.id, {
 				...{
 					permissions,
-					data_type: inferredDataType,
+					dataType: inferredDataType,
 					unit: propertySpec?.unit,
 					format: propertySpec?.format,
 				},

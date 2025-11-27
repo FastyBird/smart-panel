@@ -96,7 +96,7 @@ export class DeviceConnectivityService {
 				type: channel.type,
 				category: PropertyCategory.STATUS,
 				permissions: [PermissionType.READ_ONLY],
-				data_type: DataTypeType.ENUM,
+				dataType: DataTypeType.ENUM,
 				format: [
 					ConnectionState.CONNECTED,
 					ConnectionState.DISCONNECTED,

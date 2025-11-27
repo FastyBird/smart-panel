@@ -185,7 +185,7 @@ describe('DevicesChannelsPropertiesController', () => {
 				category: PropertyCategory.GENERIC,
 				name: 'New Property',
 				permissions: [PermissionType.READ_ONLY],
-				data_type: DataTypeType.UNKNOWN,
+				dataType: DataTypeType.UNKNOWN,
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
