@@ -11,9 +11,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantState' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataState' })
 export class HomeAssistantStateModel {
 	// Alias for OpenAPI spec compatibility
 	static readonly StateAlias = HomeAssistantStateModel;
@@ -108,13 +108,7 @@ export class HomeAssistantStateModel {
 	lastUpdated: Date;
 }
 
-/**
- * Alias for DevicesHomeAssistantPluginState (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesHomeAssistantPluginState' })
-export class DevicesHomeAssistantPluginState extends HomeAssistantStateModel {}
-
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDiscoveredDevice' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataDiscoveredDevice' })
 export class HomeAssistantDiscoveredDeviceModel {
 	@ApiProperty({
 		description: 'Device identifier',
@@ -138,7 +132,6 @@ export class HomeAssistantDiscoveredDeviceModel {
 		description: 'List of entity IDs associated with this device',
 		type: 'array',
 		items: { type: 'string' },
-		isArray: true,
 		example: ['light.living_room', 'sensor.living_room_temperature'],
 	})
 	@Expose()
@@ -161,8 +154,8 @@ export class HomeAssistantDiscoveredDeviceModel {
 
 	@ApiProperty({
 		description: 'List of entity states',
-		type: () => HomeAssistantStateModel,
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(HomeAssistantStateModel) },
 	})
 	@Expose()
 	@IsArray()
@@ -171,13 +164,7 @@ export class HomeAssistantDiscoveredDeviceModel {
 	states: HomeAssistantStateModel[];
 }
 
-/**
- * Alias for DevicesHomeAssistantPluginDiscoveredDevice (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesHomeAssistantPluginDiscoveredDevice' })
-export class DevicesHomeAssistantPluginDiscoveredDevice extends HomeAssistantDiscoveredDeviceModel {}
-
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantEntityRegistryResponseResult' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataEntityRegistryResult' })
 export class HomeAssistantEntityRegistryResponseResultModel {
 	@ApiProperty({
 		description: 'Entity registry identifier',
@@ -371,8 +358,8 @@ export class HomeAssistantEntityRegistryResponseModel {
 
 	@ApiProperty({
 		description: 'List of entity registry results',
-		type: () => HomeAssistantEntityRegistryResponseResultModel,
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(HomeAssistantEntityRegistryResponseResultModel) },
 	})
 	@Expose()
 	@IsArray()
@@ -381,7 +368,7 @@ export class HomeAssistantEntityRegistryResponseModel {
 	result: HomeAssistantEntityRegistryResponseResultModel[];
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDeviceRegistryResponseResult' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataDeviceRegistryResult' })
 export class HomeAssistantDeviceRegistryResponseResultModel {
 	@ApiProperty({
 		description: 'Device registry identifier',
@@ -499,7 +486,6 @@ export class HomeAssistantDeviceRegistryResponseResultModel {
 		description: 'Device connections as tuples of connection type and identifier',
 		type: 'array',
 		items: { type: 'array', items: { type: 'string' } },
-		isArray: true,
 		example: [['mac', 'aa:bb:cc:dd:ee:ff']],
 	})
 	@Expose()
@@ -592,8 +578,8 @@ export class HomeAssistantDeviceRegistryResponseModel {
 
 	@ApiProperty({
 		description: 'List of device registry results',
-		type: () => HomeAssistantDeviceRegistryResponseResultModel,
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(HomeAssistantDeviceRegistryResponseResultModel) },
 	})
 	@Expose()
 	@IsArray()
@@ -601,6 +587,3 @@ export class HomeAssistantDeviceRegistryResponseModel {
 	@Type(() => HomeAssistantDeviceRegistryResponseResultModel)
 	result: HomeAssistantDeviceRegistryResponseResultModel[];
 }
-
-// Export response wrapper models
-export {} from './home-assistant-response.model';

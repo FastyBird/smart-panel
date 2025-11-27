@@ -1,10 +1,15 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
-import { HomeAssistantDiscoveredDeviceModel, HomeAssistantStateModel } from './home-assistant.model';
+import {
+	HomeAssistantDeviceRegistryResponseResultModel,
+	HomeAssistantDiscoveredDeviceModel,
+	HomeAssistantEntityRegistryResponseResultModel,
+	HomeAssistantStateModel,
+} from './home-assistant.model';
 
 /**
  * Response wrapper for HomeAssistantDiscoveredDeviceModel
@@ -16,8 +21,7 @@ export class HomeAssistantDiscoveredDeviceResponseModel extends BaseSuccessRespo
 		type: () => HomeAssistantDiscoveredDeviceModel,
 	})
 	@Expose()
-	@Type(() => HomeAssistantDiscoveredDeviceModel)
-	data: HomeAssistantDiscoveredDeviceModel;
+	declare data: HomeAssistantDiscoveredDeviceModel;
 }
 
 /**
@@ -33,8 +37,7 @@ export class HomeAssistantDiscoveredDevicesResponseModel extends BaseSuccessResp
 		items: { $ref: getSchemaPath(HomeAssistantDiscoveredDeviceModel) },
 	})
 	@Expose()
-	@Type(() => HomeAssistantDiscoveredDeviceModel)
-	data: HomeAssistantDiscoveredDeviceModel[];
+	declare data: HomeAssistantDiscoveredDeviceModel[];
 }
 
 /**
@@ -47,8 +50,7 @@ export class HomeAssistantStateResponseModel extends BaseSuccessResponseModel<Ho
 		type: () => HomeAssistantStateModel,
 	})
 	@Expose()
-	@Type(() => HomeAssistantStateModel)
-	data: HomeAssistantStateModel;
+	declare data: HomeAssistantStateModel;
 }
 
 /**
@@ -62,6 +64,37 @@ export class HomeAssistantStatesResponseModel extends BaseSuccessResponseModel<H
 		items: { $ref: getSchemaPath(HomeAssistantStateModel) },
 	})
 	@Expose()
-	@Type(() => HomeAssistantStateModel)
-	data: HomeAssistantStateModel[];
+	declare data: HomeAssistantStateModel[];
+}
+
+/**
+ * Response wrapper for array of HomeAssistantDeviceRegistryResponseResultModel
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginResDeviceRegistry' })
+export class HomeAssistantDeviceRegistryResponseModel extends BaseSuccessResponseModel<
+	HomeAssistantDeviceRegistryResponseResultModel[]
+> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(HomeAssistantDeviceRegistryResponseResultModel) },
+	})
+	@Expose()
+	declare data: HomeAssistantDeviceRegistryResponseResultModel[];
+}
+
+/**
+ * Response wrapper for array of HomeAssistantEntityRegistryResponseResultModel
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginResEntityRegistry' })
+export class HomeAssistantEntityRegistryResponseModel extends BaseSuccessResponseModel<
+	HomeAssistantEntityRegistryResponseResultModel[]
+> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(HomeAssistantEntityRegistryResponseResultModel) },
+	})
+	@Expose()
+	declare data: HomeAssistantEntityRegistryResponseResultModel[];
 }

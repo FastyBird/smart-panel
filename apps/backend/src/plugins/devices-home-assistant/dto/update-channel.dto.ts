@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { UpdateChannelDto } from '../../../modules/devices/dto/update-channel.dto';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginUpdateHomeAssistantChannel' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginUpdateChannel' })
 export class UpdateHomeAssistantChannelDto extends UpdateChannelDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel type string."}]' })

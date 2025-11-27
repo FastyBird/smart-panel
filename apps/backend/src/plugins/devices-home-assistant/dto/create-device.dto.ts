@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { CreateDeviceDto } from '../../../modules/devices/dto/create-device.dto';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginCreateHomeAssistantDevice' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginCreateDevice' })
 export class CreateHomeAssistantDeviceDto extends CreateDeviceDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid device type string."}]' })

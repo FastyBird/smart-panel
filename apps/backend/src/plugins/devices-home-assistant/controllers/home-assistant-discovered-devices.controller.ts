@@ -1,20 +1,14 @@
 import { Controller, Get, Logger, NotFoundException, Param, UnprocessableEntityException } from '@nestjs/common';
-import { ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../modules/api/decorators/api-tag.decorator';
-import {
-	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
-	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
-	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
-} from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -23,30 +17,31 @@ import {
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,
 } from '../models/home-assistant-response.model';
-import {
-	DevicesHomeAssistantPluginDiscoveredDevice,
-	HomeAssistantDiscoveredDeviceModel,
-} from '../models/home-assistant.model';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 
-@ApiTag({
-	tagName: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
-	displayName: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
-	description: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
-})
+@ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME)
 @Controller('discovered-devices')
 export class HomeAssistantDiscoveredDevicesController {
 	private readonly logger = new Logger(HomeAssistantDiscoveredDevicesController.name);
 
 	constructor(private readonly homeAssistantHttpService: HomeAssistantHttpService) {}
 
-	@Get()
-	@ApiOperation({ summary: 'Retrieve all Home Assistant discovered devices' })
-	@ApiSuccessArrayResponse(HomeAssistantDiscoveredDeviceModel)
+	@ApiOperation({
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
+		summary: 'Retrieve all Home Assistant discovered devices',
+		description:
+			'Fetches a list of all Home Assistant discovered devices that can be adopted into the Smart Panel ecosystem.',
+		operationId: 'get-devices-home-assistant-plugin-discovered-devices',
+	})
+	@ApiSuccessResponse(
+		HomeAssistantDiscoveredDevicesResponseModel,
+		'A list of Home Assistant discovered devices successfully retrieved',
+	)
 	@ApiNotFoundResponse('Home Assistant discovered devices could not be loaded')
 	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async findAll(): Promise<HomeAssistantDiscoveredDeviceModel[]> {
+	@Get()
+	async findAll(): Promise<HomeAssistantDiscoveredDevicesResponseModel> {
 		this.logger.debug('[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Fetching all Home Assistant discovered devices');
 
 		try {
@@ -56,7 +51,9 @@ export class HomeAssistantDiscoveredDevicesController {
 				`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Retrieved ${devices.length} discovered devices`,
 			);
 
-			return devices;
+			const response = new HomeAssistantDiscoveredDevicesResponseModel();
+			response.data = devices;
+			return response;
 		} catch (error) {
 			const err = error as Error;
 
@@ -88,15 +85,23 @@ export class HomeAssistantDiscoveredDevicesController {
 		}
 	}
 
-	@Get(':id')
-	@ApiOperation({ summary: 'Retrieve a Home Assistant discovered device by ID' })
+	@ApiOperation({
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
+		summary: 'Retrieve a Home Assistant discovered device by ID',
+		description: 'Fetches a specific Home Assistant discovered device by its identifier.',
+		operationId: 'get-devices-home-assistant-plugin-discovered-device',
+	})
 	@ApiParam({ name: 'id', type: 'string', description: 'Discovered device ID' })
-	@ApiSuccessResponse(HomeAssistantDiscoveredDeviceModel)
+	@ApiSuccessResponse(
+		HomeAssistantDiscoveredDeviceResponseModel,
+		'A Home Assistant discovered device successfully retrieved',
+	)
 	@ApiBadRequestResponse('Invalid device ID format')
 	@ApiNotFoundResponse('Home Assistant discovered device not found')
 	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async findOne(@Param('id') id: string): Promise<HomeAssistantDiscoveredDeviceModel> {
+	@Get(':id')
+	async findOne(@Param('id') id: string): Promise<HomeAssistantDiscoveredDeviceResponseModel> {
 		this.logger.debug(
 			`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Fetching Home Assistant discovered device id=${id}`,
 		);
@@ -108,7 +113,9 @@ export class HomeAssistantDiscoveredDevicesController {
 				`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Found Home Assistant discovered device id=${device.id}`,
 			);
 
-			return device;
+			const response = new HomeAssistantDiscoveredDeviceResponseModel();
+			response.data = device;
+			return response;
 		} catch (error) {
 			const err = error as Error;
 

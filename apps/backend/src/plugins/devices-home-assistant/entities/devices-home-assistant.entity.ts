@@ -12,7 +12,7 @@ import {
 } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDevice' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataDevice' })
 @ChildEntity()
 export class HomeAssistantDeviceEntity extends DeviceEntity {
 	@ApiProperty({
@@ -40,7 +40,7 @@ export class HomeAssistantDeviceEntity extends DeviceEntity {
 	}
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantChannel' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataChannel' })
 @ChildEntity()
 export class HomeAssistantChannelEntity extends ChannelEntity {
 	@Expose()
@@ -49,7 +49,7 @@ export class HomeAssistantChannelEntity extends ChannelEntity {
 	}
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantChannelProperty' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataChannelProperty' })
 @ChildEntity()
 export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	@ApiPropertyOptional({
@@ -115,9 +115,3 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 		return `HA Entity-attribute [${this.haEntityId}][${this.haAttribute}] -> FB Channel property [${this.id}]`;
 	}
 }
-
-/**
- * Alias for DevicesHomeAssistantPluginHomeAssistantChannelProperty (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantChannelProperty' })
-export class DevicesHomeAssistantPluginHomeAssistantChannelProperty extends HomeAssistantChannelPropertyEntity {}

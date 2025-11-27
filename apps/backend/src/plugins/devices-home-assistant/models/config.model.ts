@@ -6,7 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantConfig' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataConfig' })
 export class HomeAssistantConfigModel extends PluginConfigModel {
 	// Alias for OpenAPI spec compatibility
 	static readonly ConfigAlias = HomeAssistantConfigModel;
@@ -40,9 +40,3 @@ export class HomeAssistantConfigModel extends PluginConfigModel {
 	@IsString()
 	hostname: string = 'homeassistant.local';
 }
-
-/**
- * Alias for DevicesHomeAssistantPluginConfig (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesHomeAssistantPluginConfig' })
-export class DevicesHomeAssistantPluginConfig extends HomeAssistantConfigModel {}
