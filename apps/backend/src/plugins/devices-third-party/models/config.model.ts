@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { DEVICES_THIRD_PARTY_PLUGIN_NAME } from '../devices-third-party.constants';
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginThirdPartyConfig' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginDataConfig' })
 export class ThirdPartyConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type identifier',

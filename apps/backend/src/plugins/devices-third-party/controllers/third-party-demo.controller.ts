@@ -1,35 +1,23 @@
-import { Body, Controller, HttpCode, Logger, Put } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation } from '@nestjs/swagger';
+import { Body, Controller, Logger, Put } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
+	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../modules/api/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
 import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
-import {
-	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
-	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
-	DEVICES_THIRD_PARTY_PLUGIN_NAME,
-} from '../devices-third-party.constants';
+import { DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME } from '../devices-third-party.constants';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto, PropertyUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
-import { PropertiesUpdateResponseDto, PropertyUpdateResultDto } from '../dto/third-party-property-update-response.dto';
-import {
-	DevicesThirdPartyPluginErrorCode,
-	ThirdPartyDemoControlModel,
-	ThirdPartyDemoControlPropertyModel,
-} from '../models/demo-control.model';
+import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
+import { DemoControlResponseModel } from '../models/demo-control-response.model';
+import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
 
-@ApiTag({
-	tagName: DEVICES_THIRD_PARTY_PLUGIN_NAME,
-	displayName: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
-	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
-})
+@ApiTags(DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME)
 @Controller('demo')
 export class ThirdPartyDemoController {
 	private readonly logger = new Logger(ThirdPartyDemoController.name);
@@ -38,31 +26,35 @@ export class ThirdPartyDemoController {
 	constructor(private readonly channelsPropertiesService: ChannelsPropertiesService) {}
 
 	@ApiOperation({
+		tags: [DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME],
 		summary: 'Demo webhook endpoint for third-party device property updates',
+		description:
+			'Processes property update requests from third-party devices. This endpoint accepts an array of property update requests and returns the processing status for each property. Properties are updated asynchronously with a debounce delay to optimize performance.',
+		operationId: 'update-devices-third-party-plugin-demo-properties',
 	})
 	@ApiBody({
 		type: PropertiesUpdateRequestDto,
 		description: 'Array of device properties to update',
 	})
-	@ApiNoContentResponse({
-		description: 'Properties update request processed successfully',
-	})
+	@ApiSuccessResponse(
+		DemoControlResponseModel,
+		'Properties update request processed successfully. The response includes the status for each property update request.',
+	)
 	@ApiBadRequestResponse('Invalid request data or malformed property values')
 	@ApiUnprocessableEntityResponse('One or more properties could not be updated')
 	@ApiInternalServerErrorResponse('Internal server error occurred while processing the request')
 	@RawRoute()
 	@Public()
 	@Put('webhook')
-	@HttpCode(204)
-	async controlDevice(@Body() body: PropertiesUpdateRequestDto): Promise<ThirdPartyDemoControlModel> {
+	async controlDevice(@Body() body: PropertiesUpdateRequestDto): Promise<DemoControlResponseModel> {
 		this.logger.debug('[THIRD-PARTY][DEMO CONTROLLER] Execute demo property update');
 
-		const response = {
+		const controlData = {
 			properties: [],
 		};
 
 		for (const property of body.properties) {
-			response.properties.push({
+			controlData.properties.push({
 				...property,
 				status: ThirdPartyPropertiesUpdateStatus.SUCCESS,
 			});
@@ -99,6 +91,11 @@ export class ThirdPartyDemoController {
 			}, 500);
 		}
 
-		return toInstance(ThirdPartyDemoControlModel, response);
+		const controlModel = toInstance(ThirdPartyDemoControlModel, controlData);
+
+		const response = new DemoControlResponseModel();
+		response.data = controlModel;
+
+		return response;
 	}
 }

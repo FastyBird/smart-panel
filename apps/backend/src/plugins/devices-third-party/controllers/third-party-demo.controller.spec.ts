@@ -70,7 +70,7 @@ describe('ThirdPartyDemoController', () => {
 
 		const response = await controller.controlDevice(body);
 
-		expect(response).toEqual({
+		expect(response.data).toEqual({
 			properties: [
 				{
 					device: 'device-123',
@@ -108,7 +108,7 @@ describe('ThirdPartyDemoController', () => {
 
 		const response = await controller.controlDevice(body);
 
-		expect(response.properties[0].status).toBe(ThirdPartyPropertiesUpdateStatus.SUCCESS);
+		expect(response.data.properties[0].status).toBe(ThirdPartyPropertiesUpdateStatus.SUCCESS);
 		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
 });

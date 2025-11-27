@@ -4,6 +4,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.s
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { getEnvValue } from '../../common/utils/config.utils';
+import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
 import { ConfigModule } from '../../modules/config/config.module';
 import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -16,7 +17,12 @@ import { PlatformRegistryService } from '../../modules/devices/services/platform
 import { HomeAssistantDiscoveredDevicesController } from './controllers/home-assistant-discovered-devices.controller';
 import { HomeAssistantRegistryController } from './controllers/home-assistant-registry.controller';
 import { HomeAssistantStatesController } from './controllers/home-assistant-states.controller';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from './devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	DEVICES_HOME_ASSISTANT_TYPE,
+} from './devices-home-assistant.constants';
 import { CreateHomeAssistantChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateHomeAssistantChannelDto } from './dto/create-channel.dto';
 import { CreateHomeAssistantDeviceDto } from './dto/create-device.dto';
@@ -43,6 +49,11 @@ import { HomeAssistantWsService } from './services/home-assistant.ws.service';
 import { StateChangedEventService } from './services/state-changed.event.service';
 import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
 
+@ApiTag({
+	tagName: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	displayName: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	description: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		NestConfigModule,

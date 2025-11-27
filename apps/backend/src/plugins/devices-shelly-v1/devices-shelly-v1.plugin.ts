@@ -4,6 +4,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.s
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { getEnvValue } from '../../common/utils/config.utils';
+import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -13,7 +14,12 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
 import { ShellyV1DevicesController } from './controllers/shelly-v1-devices.controller';
-import { DEVICES_SHELLY_V1_PLUGIN_NAME, DEVICES_SHELLY_V1_TYPE } from './devices-shelly-v1.constants';
+import {
+	DEVICES_SHELLY_V1_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME,
+	DEVICES_SHELLY_V1_PLUGIN_NAME,
+	DEVICES_SHELLY_V1_TYPE,
+} from './devices-shelly-v1.constants';
 import { CreateShellyV1ChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateShellyV1ChannelDto } from './dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from './dto/create-device.dto';
@@ -35,6 +41,11 @@ import { ShellyV1ProbeService } from './services/shelly-v1-probe.service';
 import { ShellyV1Service } from './services/shelly-v1.service';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
+@ApiTag({
+	tagName: DEVICES_SHELLY_V1_PLUGIN_NAME,
+	displayName: DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME,
+	description: DEVICES_SHELLY_V1_PLUGIN_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		NestConfigModule,

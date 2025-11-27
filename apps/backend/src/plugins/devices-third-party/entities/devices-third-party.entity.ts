@@ -7,7 +7,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginThirdPartyDevice' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginDataDevice' })
 @ChildEntity()
 export class ThirdPartyDeviceEntity extends DeviceEntity {
 	@ApiProperty({
@@ -33,7 +33,7 @@ export class ThirdPartyDeviceEntity extends DeviceEntity {
 	}
 }
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginThirdPartyChannel' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginDataChannel' })
 @ChildEntity()
 export class ThirdPartyChannelEntity extends ChannelEntity {
 	@ApiProperty({ description: 'Channel type', type: 'string', example: DEVICES_THIRD_PARTY_TYPE })
@@ -43,7 +43,7 @@ export class ThirdPartyChannelEntity extends ChannelEntity {
 	}
 }
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginThirdPartyChannelProperty' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginDataChannelProperty' })
 @ChildEntity()
 export class ThirdPartyChannelPropertyEntity extends ChannelPropertyEntity {
 	@ApiProperty({ description: 'Property type', type: 'string', example: DEVICES_THIRD_PARTY_TYPE })

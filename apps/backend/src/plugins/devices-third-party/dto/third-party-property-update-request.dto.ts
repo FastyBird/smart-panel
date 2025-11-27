@@ -10,9 +10,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginPropertyUpdateRequest' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginUpdateProperty' })
 export class PropertyUpdateRequestDto {
 	@ApiProperty({
 		description: 'Device UUID',
@@ -57,12 +57,24 @@ export class PropertyUpdateRequestDto {
 	value: string | boolean | number;
 }
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginPropertiesUpdateRequest' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginReqUpdateProperties' })
+export class ReqUpdatePropertiesDto {
+	@ApiProperty({
+		description: 'Properties update request data',
+		type: () => PropertiesUpdateRequestDto,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => PropertiesUpdateRequestDto)
+	data: PropertiesUpdateRequestDto;
+}
+
+@ApiSchema({ name: 'DevicesThirdPartyPluginUpdateProperties' })
 export class PropertiesUpdateRequestDto {
 	@ApiProperty({
 		description: 'Array of property update requests',
-		type: [PropertyUpdateRequestDto],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(PropertyUpdateRequestDto) },
 	})
 	@Expose()
 	@IsArray()

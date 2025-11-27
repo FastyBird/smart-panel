@@ -8,7 +8,7 @@ import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constan
 /**
  * This is an enum schema that matches ThirdPartyPropertiesUpdateStatus
  */
-@ApiSchema({ name: 'DevicesThirdPartyPluginErrorCode' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginDataErrorCode' })
 export class DevicesThirdPartyPluginErrorCode {
 	@ApiProperty({
 		description: 'Error code',
@@ -18,7 +18,7 @@ export class DevicesThirdPartyPluginErrorCode {
 	code: ThirdPartyPropertiesUpdateStatus;
 }
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginThirdPartyDemoControlProperty' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginDataDemoControlProperty' })
 export class ThirdPartyDemoControlPropertyModel {
 	@ApiProperty({
 		description: 'Device UUID',
@@ -57,7 +57,7 @@ export class ThirdPartyDemoControlPropertyModel {
 	status: ThirdPartyPropertiesUpdateStatus;
 }
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginThirdPartyDemoControl' })
+@ApiSchema({ name: 'DevicesThirdPartyPluginDataDemoControl' })
 export class ThirdPartyDemoControlModel {
 	@ApiProperty({
 		description: 'Array of properties to control',

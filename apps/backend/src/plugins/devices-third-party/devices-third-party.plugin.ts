@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -10,7 +11,12 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
 import { ThirdPartyDemoController } from './controllers/third-party-demo.controller';
-import { DEVICES_THIRD_PARTY_PLUGIN_NAME, DEVICES_THIRD_PARTY_TYPE } from './devices-third-party.constants';
+import {
+	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
+	DEVICES_THIRD_PARTY_PLUGIN_NAME,
+	DEVICES_THIRD_PARTY_TYPE,
+} from './devices-third-party.constants';
 import { CreateThirdPartyChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateThirdPartyChannelDto } from './dto/create-channel.dto';
 import { CreateThirdPartyDeviceDto } from './dto/create-device.dto';
@@ -26,6 +32,11 @@ import {
 import { ThirdPartyConfigModel } from './models/config.model';
 import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platform';
 
+@ApiTag({
+	tagName: DEVICES_THIRD_PARTY_PLUGIN_NAME,
+	displayName: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
+	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule],
 	providers: [ThirdPartyDevicePlatform],

@@ -4,6 +4,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.s
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { getEnvValue } from '../../common/utils/config.utils';
+import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -14,7 +15,12 @@ import { PlatformRegistryService } from '../../modules/devices/services/platform
 
 import { ShellyNgDevicesController } from './controllers/shelly-ng-devices.controller';
 import { DelegatesManagerService } from './delegates/delegates-manager.service';
-import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from './devices-shelly-ng.constants';
+import {
+	DEVICES_SHELLY_NG_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME,
+	DEVICES_SHELLY_NG_PLUGIN_NAME,
+	DEVICES_SHELLY_NG_TYPE,
+} from './devices-shelly-ng.constants';
 import { CreateShellyNgChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateShellyNgChannelDto } from './dto/create-channel.dto';
 import { CreateShellyNgDeviceDto } from './dto/create-device.dto';
@@ -35,6 +41,11 @@ import { ShellyNgService } from './services/shelly-ng.service';
 import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
+@ApiTag({
+	tagName: DEVICES_SHELLY_NG_PLUGIN_NAME,
+	displayName: DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME,
+	description: DEVICES_SHELLY_NG_PLUGIN_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		NestConfigModule,

@@ -13,7 +13,7 @@ import { Logger } from '@nestjs/common';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
-import { PropertiesUpdateResponseDto } from '../dto/third-party-property-update-response.dto';
+import { PropertiesUpdateResultModel } from '../dto/third-party-property-update-response.dto';
 import { ThirdPartyDeviceEntity } from '../entities/devices-third-party.entity';
 
 import { ThirdPartyDevicePlatform } from './third-party-device.platform';
@@ -200,6 +200,6 @@ describe('ThirdPartyDevicePlatform', () => {
 		]);
 
 		expect(result).toBe(false);
-		expect(validateSpy).toHaveBeenCalledWith(PropertiesUpdateResponseDto, expect.any(Object), 'response');
+		expect(validateSpy).toHaveBeenCalledWith(PropertiesUpdateResultModel, expect.any(Object), 'response');
 	});
 });
