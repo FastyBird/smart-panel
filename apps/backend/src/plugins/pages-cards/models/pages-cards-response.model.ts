@@ -1,8 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 import { CardEntity } from '../entities/pages-cards.entity';
 
 @ApiSchema({ name: 'PagesCardsPluginResCard' })
@@ -12,8 +12,7 @@ export class CardResponseModel extends BaseSuccessResponseModel<CardEntity> {
 		type: () => CardEntity,
 	})
 	@Expose()
-	@Type(() => CardEntity)
-	data: CardEntity;
+	declare data: CardEntity;
 }
 
 @ApiSchema({ name: 'PagesCardsPluginResCards' })
@@ -24,6 +23,5 @@ export class CardsResponseModel extends BaseSuccessResponseModel<CardEntity[]> {
 		items: { $ref: getSchemaPath(CardEntity) },
 	})
 	@Expose()
-	@Type(() => CardEntity)
-	data: CardEntity[];
+	declare data: CardEntity[];
 }

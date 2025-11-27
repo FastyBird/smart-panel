@@ -13,40 +13,27 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import {
-	ApiBody,
-	ApiCreatedResponse,
-	ApiExtraModels,
-	ApiNotFoundResponse,
-	ApiOkResponse,
-	ApiOperation,
-	ApiParam,
-	ApiQuery,
-	ApiResponse,
-	ApiUnprocessableEntityResponse,
-} from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
-import { ApiTag } from '../../../modules/api/decorators/api-tag.decorator';
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../modules/api/decorators/api-documentation.decorator';
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
-import { CreateCardDto, CreateSingleCardDto, ReqCreateCardDto } from '../dto/create-card.dto';
-import { ReqUpdateCardDto, UpdateCardDto } from '../dto/update-card.dto';
-import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
+import { ReqCreateCardDto } from '../dto/create-card.dto';
+import { ReqUpdateCardDto } from '../dto/update-card.dto';
+import { CardEntity } from '../entities/pages-cards.entity';
 import { CardResponseModel, CardsResponseModel } from '../models/pages-cards-response.model';
-import {
-	PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
-	PAGES_CARDS_PLUGIN_API_TAG_NAME,
-	PAGES_CARDS_PLUGIN_NAME,
-	PAGES_CARDS_PLUGIN_PREFIX,
-} from '../pages-cards.constants';
+import { PAGES_CARDS_PLUGIN_API_TAG_NAME, PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.constants';
 import { CardsService } from '../services/cards.service';
 
-@ApiTag({
-	tagName: PAGES_CARDS_PLUGIN_NAME,
-	displayName: PAGES_CARDS_PLUGIN_API_TAG_NAME,
-	description: PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
-})
+@ApiTags(PAGES_CARDS_PLUGIN_API_TAG_NAME)
 @Controller('cards')
 export class CardsController {
 	private readonly logger = new Logger(CardsController.name);
@@ -56,11 +43,21 @@ export class CardsController {
 		private readonly cardsService: CardsService,
 	) {}
 
-	@Get()
-	@ApiOperation({ summary: 'Get all cards', description: 'Retrieve all cards, optionally filtered by page' })
+	@ApiOperation({
+		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		summary: 'Get all cards',
+		description: 'Retrieve all cards, optionally filtered by page',
+		operationId: 'get-pages-cards-plugin-cards',
+	})
 	@ApiQuery({ name: 'page', required: false, type: 'string', description: 'Filter cards by page ID' })
-	@ApiOkResponse({ description: 'Cards retrieved successfully', type: [CardEntity] })
-	async findAll(@Query('page') page?: string): Promise<CardEntity[]> {
+	@ApiSuccessResponse(
+		CardsResponseModel,
+		'Cards retrieved successfully. The response includes a list of cards, optionally filtered by page ID.',
+	)
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
+	async findAll(@Query('page') page?: string): Promise<CardsResponseModel> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Fetching all page cards`);
 
 		const filterPage = page ? await this.getPageOrThrow(page) : undefined;
@@ -69,31 +66,57 @@ export class CardsController {
 
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Retrieved ${cards.length} page cards for pageId=${page}`);
 
-		return cards;
+		const response = new CardsResponseModel();
+		response.data = cards;
+
+		return response;
 	}
 
-	@Get(':id')
-	@ApiOperation({ summary: 'Get card by ID', description: 'Retrieve a single card by its unique identifier' })
+	@ApiOperation({
+		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		summary: 'Get card by ID',
+		description: 'Retrieve a single card by its unique identifier',
+		operationId: 'get-pages-cards-plugin-card',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
-	@ApiOkResponse({ description: 'Card retrieved successfully', type: CardEntity })
-	@ApiNotFoundResponse({ description: 'Card not found' })
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<CardEntity> {
+	@ApiSuccessResponse(
+		CardResponseModel,
+		'Card retrieved successfully. The response includes the complete card details with associated tiles and data sources.',
+	)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Card not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<CardResponseModel> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Fetching page card id=${id}`);
 
 		const card = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Found page card id=${card.id}`);
 
-		return card;
+		const response = new CardResponseModel();
+		response.data = card;
+
+		return response;
 	}
 
-	@Post()
 	@Header('Location', `:baseUrl/${PAGES_CARDS_PLUGIN_PREFIX}/cards/:id`)
-	@ApiOperation({ summary: 'Create card', description: 'Create a new card' })
-	@ApiBody({ type: ReqCreateCardDto })
-	@ApiCreatedResponse({ description: 'Card created successfully', type: CardEntity })
-	@ApiUnprocessableEntityResponse({ description: 'Card could not be created' })
-	async create(@Body() createDto: ReqCreateCardDto): Promise<CardEntity> {
+	@ApiOperation({
+		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		summary: 'Create card',
+		description: 'Create a new card with optional tiles and data sources',
+		operationId: 'create-pages-cards-plugin-card',
+	})
+	@ApiBody({ type: ReqCreateCardDto, description: 'The data required to create a new card' })
+	@ApiCreatedSuccessResponse(
+		CardResponseModel,
+		'Card created successfully. The response includes the complete details of the newly created card with associated tiles and data sources.',
+	)
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiUnprocessableEntityResponse('Card could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post()
+	async create(@Body() createDto: ReqCreateCardDto): Promise<CardResponseModel> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to create a new page card`);
 
 		try {
@@ -101,7 +124,10 @@ export class CardsController {
 
 			this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully created page card id=${card.id}`);
 
-			return card;
+			const response = new CardResponseModel();
+			response.data = card;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Page card could not be created. Please try again later');
@@ -111,17 +137,27 @@ export class CardsController {
 		}
 	}
 
-	@Patch(':id')
-	@ApiOperation({ summary: 'Update card', description: 'Update an existing card by ID' })
+	@ApiOperation({
+		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		summary: 'Update card',
+		description: 'Update an existing card by ID',
+		operationId: 'update-pages-cards-plugin-card',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
-	@ApiBody({ type: ReqUpdateCardDto })
-	@ApiOkResponse({ description: 'Card updated successfully', type: CardEntity })
-	@ApiNotFoundResponse({ description: 'Card not found' })
-	@ApiUnprocessableEntityResponse({ description: 'Card could not be updated' })
+	@ApiBody({ type: ReqUpdateCardDto, description: 'The data to update the card with' })
+	@ApiSuccessResponse(
+		CardResponseModel,
+		'Card updated successfully. The response includes the complete details of the updated card.',
+	)
+	@ApiBadRequestResponse('Invalid request data or UUID format')
+	@ApiNotFoundResponse('Card not found')
+	@ApiUnprocessableEntityResponse('Card could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateCardDto,
-	): Promise<CardEntity> {
+	): Promise<CardResponseModel> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming update request for page card id=${id}`);
 
 		const card = await this.getOneOrThrow(id);
@@ -131,7 +167,10 @@ export class CardsController {
 
 			this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully updated page card id=${updatedCard.id}`);
 
-			return updatedCard;
+			const response = new CardResponseModel();
+			response.data = updatedCard;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Page Card could not be updated. Please try again later');
@@ -141,11 +180,18 @@ export class CardsController {
 		}
 	}
 
-	@Delete(':id')
-	@ApiOperation({ summary: 'Delete card', description: 'Delete a card by ID' })
+	@ApiOperation({
+		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		summary: 'Delete card',
+		description: 'Delete a card by ID',
+		operationId: 'delete-pages-cards-plugin-card',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
-	@ApiResponse({ status: 204, description: 'Card deleted successfully' })
-	@ApiNotFoundResponse({ description: 'Card not found' })
+	@ApiNoContentResponse({ description: 'Card deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Card not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to delete page card id=${id}`);
 

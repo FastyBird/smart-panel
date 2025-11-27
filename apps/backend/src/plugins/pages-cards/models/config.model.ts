@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { PAGES_CARDS_PLUGIN_NAME } from '../pages-cards.constants';
 
-@ApiSchema({ name: 'PagesCardsPluginConfig' })
+@ApiSchema({ name: 'PagesCardsPluginDataConfig' })
 export class CardsConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',

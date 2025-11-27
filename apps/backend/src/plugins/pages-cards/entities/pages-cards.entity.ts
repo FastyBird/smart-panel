@@ -11,19 +11,19 @@ import {
 } from 'class-validator';
 import { ChildEntity, Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { DataSourceEntity, PageEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 
-@ApiSchema({ name: 'PagesCardsPluginCardsPage' })
+@ApiSchema({ name: 'PagesCardsPluginDataCardsPage' })
 @ChildEntity()
 export class CardsPageEntity extends PageEntity {
 	@ApiProperty({
 		description: 'Page cards',
 		type: 'array',
-		items: { type: 'object' },
+		items: { $ref: '#/components/schemas/PagesCardsPluginDataCard' },
 	})
 	@Expose()
 	@IsArray()
@@ -43,7 +43,7 @@ export class CardsPageEntity extends PageEntity {
 	}
 }
 
-@ApiSchema({ name: 'PagesCardsPluginCard' })
+@ApiSchema({ name: 'PagesCardsPluginDataCard' })
 @Entity('dashboard_module_cards')
 export class CardEntity extends BaseEntity {
 	@ApiProperty({
@@ -103,7 +103,7 @@ export class CardEntity extends BaseEntity {
 	@ApiProperty({
 		description: 'Card tiles',
 		type: 'array',
-		items: { type: 'object' },
+		items: { $ref: getSchemaPath(TileEntity) },
 	})
 	@Expose()
 	@IsArray()
@@ -114,7 +114,7 @@ export class CardEntity extends BaseEntity {
 		description: 'Card data sources',
 		name: 'data_source',
 		type: 'array',
-		items: { type: 'object' },
+		items: { $ref: getSchemaPath(DataSourceEntity) },
 	})
 	@Expose({ name: 'data_source' })
 	@IsArray()

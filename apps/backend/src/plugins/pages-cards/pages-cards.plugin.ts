@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
@@ -15,11 +16,21 @@ import { CardsUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateCardsPageDto } from './dto/update-page.dto';
 import { CardEntity, CardsPageEntity } from './entities/pages-cards.entity';
 import { CardsConfigModel } from './models/config.model';
-import { PAGES_CARDS_PLUGIN_NAME, PAGES_CARDS_TYPE } from './pages-cards.constants';
+import {
+	PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
+	PAGES_CARDS_PLUGIN_API_TAG_NAME,
+	PAGES_CARDS_PLUGIN_NAME,
+	PAGES_CARDS_TYPE,
+} from './pages-cards.constants';
 import { CardsService } from './services/cards.service';
 import { CardsPageNestedBuilderService } from './services/page-create-nested-builder.service';
 import { PluginResetService } from './services/plugin-reset.service';
 
+@ApiTag({
+	tagName: PAGES_CARDS_PLUGIN_NAME,
+	displayName: PAGES_CARDS_PLUGIN_API_TAG_NAME,
+	description: PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [TypeOrmModule.forFeature([CardsPageEntity, CardEntity]), DashboardModule, ConfigModule, SystemModule],
 	providers: [CardsService, CardsPageNestedBuilderService, PluginResetService],
