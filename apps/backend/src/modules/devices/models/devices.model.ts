@@ -112,25 +112,23 @@ export class ChannelPropertySpecModel {
 	@IsEnum(DataTypeType)
 	data_type: DataTypeType;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Property unit',
 		type: 'string',
 		nullable: true,
 		example: '°C',
 	})
 	@Expose()
-	@IsOptional()
 	@IsString()
 	unit: string | null = null;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Property format constraints (array of strings or numbers)',
 		type: 'array',
 		nullable: true,
 		example: ['on', 'off'],
 	})
 	@Expose()
-	@IsOptional()
 	@IsArray()
 	@ValidateIf((o: { format?: unknown[] }): boolean =>
 		o.format?.every((item: unknown): boolean => typeof item === 'string'),
@@ -142,23 +140,21 @@ export class ChannelPropertySpecModel {
 	@IsNumber({}, { each: true })
 	format: string[] | number[] | null = null;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Invalid value indicator',
 		nullable: true,
 		example: null,
 	})
 	@Expose()
-	@IsOptional()
 	invalid: string | boolean | number | null = null;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Property step value for numeric types',
 		type: 'number',
 		nullable: true,
 		example: 0.1,
 	})
 	@Expose()
-	@IsOptional()
 	@IsNumber()
 	step: number | null = null;
 }
@@ -413,7 +409,7 @@ export class ModuleStatsModel {
 	@ApiProperty({
 		name: 'registered_devices',
 		description: 'Registered devices statistics',
-		type: RegisteredDevicesModel,
+		type: () => RegisteredDevicesModel,
 	})
 	@Expose({ name: 'registered_devices' })
 	@ValidateNested()
@@ -423,7 +419,7 @@ export class ModuleStatsModel {
 	@ApiProperty({
 		name: 'registered_channels',
 		description: 'Registered channels statistics',
-		type: RegisteredChannelsModel,
+		type: () => RegisteredChannelsModel,
 	})
 	@Expose({ name: 'registered_channels' })
 	@ValidateNested()
@@ -433,7 +429,7 @@ export class ModuleStatsModel {
 	@ApiProperty({
 		name: 'updates_per_min',
 		description: 'Updates per minute statistics',
-		type: UpdatesPerMinModel,
+		type: () => UpdatesPerMinModel,
 	})
 	@Expose({ name: 'updates_per_min' })
 	@ValidateNested()
@@ -443,7 +439,7 @@ export class ModuleStatsModel {
 	@ApiProperty({
 		name: 'updates_today',
 		description: 'Total updates today statistics',
-		type: UpdatesTodayModel,
+		type: () => UpdatesTodayModel,
 	})
 	@Expose({ name: 'updates_today' })
 	@ValidateNested()

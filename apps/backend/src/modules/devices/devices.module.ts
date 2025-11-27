@@ -1,3 +1,5 @@
+import { ApiTag } from 'src/common/decorators/api-tag.decorator';
+
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -23,6 +25,8 @@ import { DevicesChannelsPropertiesController } from './controllers/devices.chann
 import { DevicesController } from './controllers/devices.controller';
 import { DevicesControlsController } from './controllers/devices.controls.controller';
 import {
+	DEVICES_MODULE_API_TAG_DESCRIPTION,
+	DEVICES_MODULE_API_TAG_NAME,
 	DEVICES_MODULE_NAME,
 	DeviceStatusInfluxDbSchema,
 	EventHandlerName,
@@ -63,6 +67,11 @@ import { ChannelExistsConstraintValidator } from './validators/channel-exists-co
 import { ChannelPropertyExistsConstraintValidator } from './validators/channel-property-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
 
+@ApiTag({
+	tagName: DEVICES_MODULE_NAME,
+	displayName: DEVICES_MODULE_API_TAG_NAME,
+	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		NestConfigModule,

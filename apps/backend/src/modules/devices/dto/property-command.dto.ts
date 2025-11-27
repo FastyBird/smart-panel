@@ -10,7 +10,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { ValidateChannelExists } from '../validators/channel-exists-constraint.validator';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
@@ -73,8 +73,8 @@ export class PropertyCommandValueDto {
 export class PropertyCommandDto {
 	@ApiProperty({
 		description: 'Array of property commands',
-		type: [PropertyCommandValueDto],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(PropertyCommandValueDto) },
 	})
 	@Expose()
 	@IsArray()

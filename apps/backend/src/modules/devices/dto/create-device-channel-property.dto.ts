@@ -108,14 +108,14 @@ export class CreateDeviceChannelPropertyDto {
 		enum: DataTypeType,
 		example: DataTypeType.FLOAT,
 	})
-	@Expose()
+	@Expose({ name: 'data_type' })
 	@IsNotEmpty({
 		message: '[{"field":"data_type","reason":"Data type must be a valid data type."}]',
 	})
 	@IsEnum(DataTypeType, {
 		message: '[{"field":"data_type","reason":"Data type must be a valid data type."}]',
 	})
-	data_type: DataTypeType;
+	dataType: DataTypeType;
 
 	@ApiPropertyOptional({
 		description: 'Property unit',
@@ -191,7 +191,7 @@ export class CreateDeviceChannelPropertyDto {
 
 @ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannelProperty' })
 export class ReqCreateDeviceChannelPropertyDto {
-	@ApiProperty({ description: 'Channel property data', type: CreateDeviceChannelPropertyDto })
+	@ApiProperty({ description: 'Channel property data', type: () => CreateDeviceChannelPropertyDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateDeviceChannelPropertyDto)

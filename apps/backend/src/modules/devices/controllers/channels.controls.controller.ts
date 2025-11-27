@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -22,15 +22,8 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import {
-	DEVICES_MODULE_API_TAG_DESCRIPTION,
-	DEVICES_MODULE_API_TAG_NAME,
-	DEVICES_MODULE_NAME,
-	DEVICES_MODULE_PREFIX,
-} from '../devices.constants';
+import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity';
@@ -38,11 +31,7 @@ import { ChannelControlResponseModel, ChannelControlsResponseModel } from '../mo
 import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
 
-@ApiTag({
-	tagName: DEVICES_MODULE_NAME,
-	displayName: DEVICES_MODULE_API_TAG_NAME,
-	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
-})
+@ApiTags(DEVICES_MODULE_API_TAG_NAME)
 @Controller('channels/:channelId/controls')
 export class ChannelsControlsController {
 	private readonly logger = new Logger(ChannelsControlsController.name);
@@ -52,13 +41,22 @@ export class ChannelsControlsController {
 		private readonly channelsControlsService: ChannelsControlsService,
 	) {}
 
-	@Get()
-	@ApiOperation({ summary: 'Retrieve all controls for a channel' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a list of all available channel controls',
+		description:
+			'Fetches a list of all controls available for channels in the system. Each control represents an actionable operation associated with a channel. The response includes details such as the control’s ID, name, associated channel, and timestamps.',
+		operationId: 'get-devices-module-channel-controls',
+	})
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiSuccessResponse(ChannelControlsResponseModel)
+	@ApiSuccessResponse(
+		ChannelControlsResponseModel,
+		'A list of controls successfully retrieved. Each control includes its metadata (ID, name, and timestamps).',
+	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
 	async findAll(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 	): Promise<ChannelControlsResponseModel> {
@@ -70,17 +68,30 @@ export class ChannelsControlsController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${controls.length} controls for channelId=${channel.id}`);
 
-		return toInstance(ChannelControlsResponseModel, { data: controls });
+		const response = new ChannelControlsResponseModel();
+
+		response.data = controls;
+
+		return response;
 	}
 
-	@Get(':id')
-	@ApiOperation({ summary: 'Retrieve a specific control for a channel' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Retrieve details of a specific control for a channel',
+		description:
+			'Fetches the details of a specific control associated with a channel. The response includes the control’s unique identifier, name, associated channel, and metadata such as creation and update timestamps.',
+		operationId: 'get-devices-module-channel-control',
+	})
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
-	@ApiSuccessResponse(ChannelControlResponseModel)
+	@ApiSuccessResponse(
+		ChannelControlResponseModel,
+		'The control details were successfully retrieved. The response includes the control’s metadata (ID, name, and timestamps).',
+	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel or control not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
 	async findOneControl(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -93,19 +104,32 @@ export class ChannelsControlsController {
 
 		this.logger.debug(`[LOOKUP] Found control id=${control.id} for channelId=${channel.id}`);
 
-		return toInstance(ChannelControlResponseModel, { data: control });
+		const response = new ChannelControlResponseModel();
+
+		response.data = control;
+
+		return response;
 	}
 
-	@Post()
-	@ApiOperation({ summary: 'Create a new control for a channel' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Create a new control for a channel',
+		description:
+			'Allows the creation of a new control for a specific channel. A control represents an actionable operation or command associated with the channel. The response includes the complete details of the newly created control, including its ID, name, associated channel, and metadata.',
+		operationId: 'create-devices-module-channel-control',
+	})
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiBody({ type: ReqCreateChannelControlDto })
-	@ApiCreatedSuccessResponse(ChannelControlResponseModel)
+	@ApiBody({ type: ReqCreateChannelControlDto, description: 'The data required to create a new channel control' })
+	@ApiCreatedSuccessResponse(
+		ChannelControlResponseModel,
+		'The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated channel, and timestamps.',
+	)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiUnprocessableEntityResponse('Channel control could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:channel/controls/:id`)
+	@Post()
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Body() createControlDto: ReqCreateChannelControlDto,
@@ -137,7 +161,11 @@ export class ChannelsControlsController {
 
 			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for channelId=${channel.id}`);
 
-			return toInstance(ChannelControlResponseModel, { data: control });
+			const response = new ChannelControlResponseModel();
+
+			response.data = control;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel control could not be created. Please try again later');
@@ -147,15 +175,21 @@ export class ChannelsControlsController {
 		}
 	}
 
-	@Delete(':id')
-	@HttpCode(204)
-	@ApiOperation({ summary: 'Delete a control for a channel' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Delete a control for a channel',
+		description:
+			'Deletes a specific control associated with a channel using its unique ID. This operation is irreversible and permanently removes the control from the system.',
+		operationId: 'delete-devices-module-channel-control',
+	})
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
 	@ApiNoContentResponse({ description: 'Control deleted successfully' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel or control not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Delete(':id')
+	@HttpCode(204)
 	async remove(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

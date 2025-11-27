@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -22,15 +22,8 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import {
-	DEVICES_MODULE_API_TAG_DESCRIPTION,
-	DEVICES_MODULE_API_TAG_NAME,
-	DEVICES_MODULE_NAME,
-	DEVICES_MODULE_PREFIX,
-} from '../devices.constants';
+import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
@@ -38,11 +31,7 @@ import { DeviceControlResponseModel, DeviceControlsResponseModel } from '../mode
 import { DevicesControlsService } from '../services/devices.controls.service';
 import { DevicesService } from '../services/devices.service';
 
-@ApiTag({
-	tagName: DEVICES_MODULE_NAME,
-	displayName: DEVICES_MODULE_API_TAG_NAME,
-	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
-})
+@ApiTags(DEVICES_MODULE_API_TAG_NAME)
 @Controller('devices/:deviceId/controls')
 export class DevicesControlsController {
 	private readonly logger = new Logger(DevicesControlsController.name);
@@ -52,13 +41,21 @@ export class DevicesControlsController {
 		private readonly devicesControlsService: DevicesControlsService,
 	) {}
 
-	@Get()
-	@ApiOperation({ summary: 'Retrieve all controls for a device' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a list of all available device controls',
+		description:
+			'Fetches a list of controls associated with a specific device. Controls represent actions that can be performed on the device, such as reboot or calibration.',
+		operationId: 'get-devices-module-device-controls',
+	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
-	@ApiSuccessResponse(DeviceControlsResponseModel)
+	@ApiSuccessResponse(
+		DeviceControlsResponseModel,
+		'A list of controls successfully retrieved. Each control includes its metadata (ID, name, and timestamps).',
+	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device not found')
-	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
 	async findAll(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 	): Promise<DeviceControlsResponseModel> {
@@ -70,17 +67,30 @@ export class DevicesControlsController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${controls.length} controls for deviceId=${device.id}`);
 
-		return toInstance(DeviceControlsResponseModel, { data: controls });
+		const response = new DeviceControlsResponseModel();
+
+		response.data = controls;
+
+		return response;
 	}
 
-	@Get(':id')
-	@ApiOperation({ summary: 'Retrieve a specific control for a device' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Retrieve details of a specific control for a device',
+		description:
+			'Fetches detailed information about a specific control associated with a device using its unique ID. The response includes metadata such as the control’s name, ID, associated device, and timestamps.',
+		operationId: 'get-devices-module-device-control',
+	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
-	@ApiSuccessResponse(DeviceControlResponseModel)
+	@ApiSuccessResponse(
+		DeviceControlResponseModel,
+		'The control details were successfully retrieved. The response includes the control’s metadata (ID, name, and timestamps).',
+	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device or control not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
 	async findOneControl(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
@@ -93,18 +103,31 @@ export class DevicesControlsController {
 
 		this.logger.debug(`[LOOKUP] Found control id=${control.id} for deviceId=${device.id}`);
 
-		return toInstance(DeviceControlResponseModel, { data: control });
+		const response = new DeviceControlResponseModel();
+
+		response.data = control;
+
+		return response;
 	}
 
-	@Post()
-	@ApiOperation({ summary: 'Create a new control for a device' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Create a new control for a device',
+		description:
+			'Creates a new control associated with a specific device. Controls represent actions or commands that can be executed on the device, such as reboot or factory reset.',
+		operationId: 'create-devices-module-device-control',
+	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
-	@ApiBody({ type: ReqCreateDeviceControlDto })
-	@ApiCreatedSuccessResponse(DeviceControlResponseModel)
+	@ApiBody({ type: ReqCreateDeviceControlDto, description: 'The data required to create a new device control' })
+	@ApiCreatedSuccessResponse(
+		DeviceControlResponseModel,
+		'The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated device, and timestamps.',
+	)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Device not found')
 	@ApiUnprocessableEntityResponse('Device control could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Post()
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/controls/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
@@ -137,7 +160,11 @@ export class DevicesControlsController {
 
 			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for deviceId=${device.id}`);
 
-			return toInstance(DeviceControlResponseModel, { data: control });
+			const response = new DeviceControlResponseModel();
+
+			response.data = control;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Device control could not be created. Please try again later');
@@ -147,15 +174,21 @@ export class DevicesControlsController {
 		}
 	}
 
-	@Delete(':id')
-	@HttpCode(204)
-	@ApiOperation({ summary: 'Delete a control for a device' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Delete a control for a device',
+		description:
+			'Deletes a specific control associated with a device using its unique ID. This action is irreversible and removes the control from the system.',
+		operationId: 'delete-devices-module-device-control',
+	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
 	@ApiNoContentResponse({ description: 'Control deleted successfully' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device or control not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Delete(':id')
+	@HttpCode(204)
 	async remove(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

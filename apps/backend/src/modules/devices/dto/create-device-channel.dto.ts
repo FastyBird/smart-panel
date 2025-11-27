@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { ChannelCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
@@ -85,7 +85,8 @@ export class CreateDeviceChannelDto {
 
 	@ApiPropertyOptional({
 		description: 'Channel controls',
-		type: [CreateDeviceChannelControlDto],
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateDeviceChannelControlDto) },
 	})
 	@Expose()
 	@IsOptional()
@@ -99,7 +100,8 @@ export class CreateDeviceChannelDto {
 
 	@ApiPropertyOptional({
 		description: 'Channel properties',
-		type: [CreateDeviceChannelPropertyDto],
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateDeviceChannelPropertyDto) },
 	})
 	@Expose()
 	@IsOptional()
@@ -111,7 +113,7 @@ export class CreateDeviceChannelDto {
 
 @ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannel' })
 export class ReqCreateDeviceChannelDto {
-	@ApiProperty({ description: 'Device channel data', type: CreateDeviceChannelDto })
+	@ApiProperty({ description: 'Device channel data', type: () => CreateDeviceChannelDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateDeviceChannelDto)

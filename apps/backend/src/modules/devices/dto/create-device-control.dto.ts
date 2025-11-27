@@ -25,7 +25,7 @@ export class CreateDeviceControlDto {
 
 @ApiSchema({ name: 'DevicesModuleReqCreateDeviceControl' })
 export class ReqCreateDeviceControlDto {
-	@ApiProperty({ description: 'Device control data', type: CreateDeviceControlDto })
+	@ApiProperty({ description: 'Device control data', type: () => CreateDeviceControlDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateDeviceControlDto)

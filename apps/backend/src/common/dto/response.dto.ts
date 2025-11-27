@@ -322,6 +322,7 @@ export class BaseSuccessResponseModel<T = unknown> {
 
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
+		type: () => SuccessMetadataDto,
 	})
 	@Expose()
 	data: T;

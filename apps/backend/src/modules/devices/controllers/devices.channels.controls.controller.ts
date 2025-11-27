@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -22,15 +22,8 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import {
-	DEVICES_MODULE_API_TAG_DESCRIPTION,
-	DEVICES_MODULE_API_TAG_NAME,
-	DEVICES_MODULE_NAME,
-	DEVICES_MODULE_PREFIX,
-} from '../devices.constants';
+import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateDeviceChannelControlDto } from '../dto/create-device-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
@@ -39,11 +32,7 @@ import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
 
-@ApiTag({
-	tagName: DEVICES_MODULE_NAME,
-	displayName: DEVICES_MODULE_API_TAG_NAME,
-	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
-})
+@ApiTags(DEVICES_MODULE_API_TAG_NAME)
 @Controller('devices/:deviceId/channels/:channelId/controls')
 export class DevicesChannelsControlsController {
 	private readonly logger = new Logger(DevicesChannelsControlsController.name);
@@ -54,14 +43,23 @@ export class DevicesChannelsControlsController {
 		private readonly channelsControlsService: ChannelsControlsService,
 	) {}
 
-	@Get()
-	@ApiOperation({ summary: 'Retrieve all controls for a device channel' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a list of all available controls for a device’s channel',
+		description:
+			'Fetches a list of controls associated with a specific channel of a device. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.',
+		operationId: 'get-devices-module-device-channel-controls',
+	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiSuccessResponse(ChannelControlsResponseModel)
+	@ApiSuccessResponse(
+		ChannelControlsResponseModel,
+		'A list of controls successfully retrieved. Each control includes its metadata (ID, name, and timestamps).',
+	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device or channel not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
 	async findAll(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
@@ -77,18 +75,31 @@ export class DevicesChannelsControlsController {
 			`[LOOKUP ALL] Retrieved ${dataSources.length} data sources for deviceId=${device.id} channelId=${channel.id}`,
 		);
 
-		return toInstance(ChannelControlsResponseModel, { data: dataSources });
+		const response = new ChannelControlsResponseModel();
+
+		response.data = dataSources;
+
+		return response;
 	}
 
-	@Get(':id')
-	@ApiOperation({ summary: 'Retrieve a specific control for a device channel' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Retrieve details of a specific control for a device’s channel',
+		description:
+			'Fetches detailed information about a specific control associated with a device channel using its unique ID. The response includes metadata such as the control’s name, ID, associated channel, and timestamps.',
+		operationId: 'get-devices-module-device-channel-control',
+	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
-	@ApiSuccessResponse(ChannelControlResponseModel)
+	@ApiSuccessResponse(
+		ChannelControlResponseModel,
+		'The control details were successfully retrieved. The response includes the control’s metadata (ID, name, and timestamps).',
+	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device, channel, or control not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
 	async findOne(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
@@ -103,19 +114,32 @@ export class DevicesChannelsControlsController {
 
 		this.logger.debug(`[LOOKUP] Found channel id=${dataSource.id} for deviceId=${device.id} channelId=${channel.id}`);
 
-		return toInstance(ChannelControlResponseModel, { data: dataSource });
+		const response = new ChannelControlResponseModel();
+
+		response.data = dataSource;
+
+		return response;
 	}
 
-	@Post()
-	@ApiOperation({ summary: 'Create a new control for a device channel' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Create a new control for a specific device’s channel',
+		description:
+			'Creates a new control associated with a specific device channel. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.',
+		operationId: 'create-devices-module-device-channel-control',
+	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
-	@ApiBody({ type: ReqCreateDeviceChannelControlDto })
-	@ApiCreatedSuccessResponse(ChannelControlResponseModel)
+	@ApiBody({ type: ReqCreateDeviceChannelControlDto, description: 'The data required to create a new channel control' })
+	@ApiCreatedSuccessResponse(
+		ChannelControlResponseModel,
+		'The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated channel, and timestamps.',
+	)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Device or channel not found')
 	@ApiUnprocessableEntityResponse('Channel control could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Post()
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/channels/:channel/controls/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
@@ -154,7 +178,11 @@ export class DevicesChannelsControlsController {
 				`[CREATE] Successfully created data source id=${dataSource.id} for deviceId=${device.id} channelId=${channel.id}`,
 			);
 
-			return toInstance(ChannelControlResponseModel, { data: dataSource });
+			const response = new ChannelControlResponseModel();
+
+			response.data = dataSource;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel control could not be created. Please try again later');
@@ -164,9 +192,13 @@ export class DevicesChannelsControlsController {
 		}
 	}
 
-	@Delete(':id')
-	@HttpCode(204)
-	@ApiOperation({ summary: 'Delete a control for a device channel' })
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Create a new channel for a device',
+		description:
+			'Creates a new channel associated with a specific device. The channel can have attributes such as name, category, description, and optionally controls and properties.',
+		operationId: 'create-devices-module-device-channel',
+	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
@@ -174,6 +206,8 @@ export class DevicesChannelsControlsController {
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device, channel, or control not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Delete(':id')
+	@HttpCode(204)
 	async remove(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,

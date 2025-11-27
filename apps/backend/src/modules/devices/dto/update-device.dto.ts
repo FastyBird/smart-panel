@@ -74,7 +74,7 @@ export class UpdateDeviceDto {
 
 @ApiSchema({ name: 'DevicesModuleReqUpdateDevice' })
 export class ReqUpdateDeviceDto {
-	@ApiProperty({ description: 'Device data', type: () => UpdateDeviceDto })
+	@ApiProperty({ description: 'Device data', type: () => () => UpdateDeviceDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdateDeviceDto)

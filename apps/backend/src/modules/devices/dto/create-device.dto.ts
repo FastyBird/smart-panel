@@ -11,7 +11,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { DeviceCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
@@ -91,7 +91,11 @@ export class CreateDeviceDto {
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
 
-	@ApiPropertyOptional({ description: 'Device controls', type: [CreateDeviceControlDto], isArray: true })
+	@ApiPropertyOptional({
+		description: 'Device controls',
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateDeviceControlDto) },
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"controls","reason":"Controls must be an array."}]' })
@@ -102,7 +106,11 @@ export class CreateDeviceDto {
 	})
 	controls?: CreateDeviceControlDto[];
 
-	@ApiPropertyOptional({ description: 'Device channels', type: [CreateDeviceChannelDto], isArray: true })
+	@ApiPropertyOptional({
+		description: 'Device channels',
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateDeviceChannelDto) },
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"channels","reason":"Channels must be an array."}]' })

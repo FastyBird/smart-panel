@@ -32,25 +32,7 @@ const createSuccessResponseDecorator = <TModel extends Type<any> | (abstract new
 		ApiResponse({
 			status,
 			description: description || defaultDescription,
-			schema: {
-				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseModel) },
-					{
-						properties: {
-							status: {
-								type: 'string',
-								enum: ['success'],
-							},
-							data: {
-								$ref: getSchemaPath(dataDto),
-							},
-							metadata: {
-								$ref: getSchemaPath(SuccessMetadataDto),
-							},
-						},
-					},
-				],
-			},
+			schema: { $ref: getSchemaPath(dataDto) },
 		}),
 	);
 };

@@ -10,7 +10,7 @@ export class CreateChannelPropertyDto extends CreateDeviceChannelPropertyDto {}
 
 @ApiSchema({ name: 'DevicesModuleReqCreateChannelProperty' })
 export class ReqCreateChannelPropertyDto {
-	@ApiProperty({ description: 'Channel property data', type: CreateChannelPropertyDto })
+	@ApiProperty({ description: 'Channel property data', type: () => CreateChannelPropertyDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateChannelPropertyDto)

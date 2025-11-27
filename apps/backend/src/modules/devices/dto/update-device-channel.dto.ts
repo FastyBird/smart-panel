@@ -63,7 +63,7 @@ export class UpdateDeviceChannelDto {
 
 @ApiSchema({ name: 'DevicesModuleReqUpdateDeviceChannel' })
 export class ReqUpdateDeviceChannelDto {
-	@ApiProperty({ description: 'Device channel data', type: UpdateDeviceChannelDto })
+	@ApiProperty({ description: 'Device channel data', type: () => UpdateDeviceChannelDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdateDeviceChannelDto)

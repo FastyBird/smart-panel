@@ -94,7 +94,11 @@ export class DeviceEntity extends BaseEntity {
 	@Column({ nullable: false, default: true })
 	enabled: boolean = true;
 
-	@ApiProperty({ description: 'Device controls', type: 'array', items: { type: 'object' } })
+	@ApiProperty({
+		description: 'Device controls',
+		type: 'array',
+		items: { $ref: '#/components/schemas/DevicesModuleDataDeviceControl' },
+	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -102,7 +106,11 @@ export class DeviceEntity extends BaseEntity {
 	@OneToMany(() => DeviceControlEntity, (control) => control.device, { cascade: true, onDelete: 'CASCADE' })
 	controls: DeviceControlEntity[];
 
-	@ApiProperty({ description: 'Device channels', type: 'array', items: { type: 'object' } })
+	@ApiProperty({
+		description: 'Device channels',
+		type: 'array',
+		items: { $ref: '#/components/schemas/DevicesModuleDataChannel' },
+	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -115,7 +123,7 @@ export class DeviceEntity extends BaseEntity {
 	@Type(() => DeviceConnectionStatus)
 	status: DeviceConnectionStatus = new DeviceConnectionStatus();
 
-	@ApiProperty({ description: 'Device type', type: 'string', example: 'deviceentity' })
+	@ApiProperty({ description: 'Device type', type: 'string', example: 'device' })
 	@Expose()
 	get type(): string {
 		const constructorName = (this.constructor as { name: string }).name;
@@ -218,7 +226,11 @@ export class ChannelEntity extends BaseEntity {
 	@ManyToOne(() => DeviceEntity, (device) => device.channels, { onDelete: 'CASCADE' })
 	device: DeviceEntity | string;
 
-	@ApiProperty({ description: 'Channel controls', type: 'array', items: { type: 'object' } })
+	@ApiProperty({
+		description: 'Channel controls',
+		type: 'array',
+		items: { $ref: '#/components/schemas/DevicesModuleDataChannelControl' },
+	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -226,14 +238,18 @@ export class ChannelEntity extends BaseEntity {
 	@OneToMany(() => ChannelControlEntity, (control) => control.channel, { cascade: true, onDelete: 'CASCADE' })
 	controls: ChannelControlEntity[];
 
-	@ApiProperty({ description: 'Channel properties', type: 'array', items: { type: 'object' } })
+	@ApiProperty({
+		description: 'Channel properties',
+		type: 'array',
+		items: { $ref: '#/components/schemas/DevicesModuleDataChannelProperty' },
+	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@OneToMany(() => ChannelPropertyEntity, (property) => property.channel, { cascade: true, onDelete: 'CASCADE' })
 	properties: ChannelPropertyEntity[];
 
-	@ApiProperty({ description: 'Channel type', type: 'string', example: 'channelentity' })
+	@ApiProperty({ description: 'Channel type', type: 'string', example: 'channel' })
 	@Expose()
 	get type(): string {
 		const constructorName = (this.constructor as { name: string }).name;
@@ -401,7 +417,7 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@ManyToOne(() => ChannelEntity, (channel) => channel.properties, { onDelete: 'CASCADE' })
 	channel: ChannelEntity | string;
 
-	@ApiProperty({ description: 'Property type', type: 'string', example: 'channelpropertyentity' })
+	@ApiProperty({ description: 'Property type', type: 'string', example: 'property' })
 	@Expose()
 	get type(): string {
 		const constructorName = (this.constructor as { name: string }).name;

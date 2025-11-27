@@ -25,7 +25,7 @@ export class CreateDeviceChannelControlDto {
 
 @ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannelControl' })
 export class ReqCreateDeviceChannelControlDto {
-	@ApiProperty({ description: 'Channel control data', type: CreateDeviceChannelControlDto })
+	@ApiProperty({ description: 'Channel control data', type: () => CreateDeviceChannelControlDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateDeviceChannelControlDto)
