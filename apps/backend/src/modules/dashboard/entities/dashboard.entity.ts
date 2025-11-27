@@ -56,7 +56,7 @@ export abstract class PageEntity extends BaseEntity {
 		name: 'data_source',
 		description: 'Associated data sources',
 		type: 'array',
-		items: { type: 'object' },
+		items: { $ref: '#/components/schemas/DashboardModuleDataDataSource' },
 		example: [],
 	})
 	@Expose({ name: 'data_source' })
@@ -175,7 +175,7 @@ export abstract class TileEntity extends BaseEntity {
 		name: 'data_source',
 		description: 'Associated data sources',
 		type: 'array',
-		items: { type: 'object' },
+		items: { $ref: '#/components/schemas/DashboardModuleDataDataSource' },
 		example: [],
 	})
 	@Expose({ name: 'data_source' })

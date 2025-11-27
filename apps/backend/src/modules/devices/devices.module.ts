@@ -1,9 +1,8 @@
-import { ApiTag } from 'src/modules/api/decorators/api-tag.decorator';
-
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { SeedModule } from '../seed/seeding.module';

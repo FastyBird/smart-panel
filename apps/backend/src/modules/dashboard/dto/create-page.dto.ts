@@ -11,7 +11,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
 import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
@@ -73,8 +73,8 @@ export class CreatePageDto {
 	@ApiPropertyOptional({
 		name: 'data_source',
 		description: 'Associated data sources',
-		type: [CreateDataSourceDto],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateDataSourceDto) },
 	})
 	@Expose()
 	@IsOptional()

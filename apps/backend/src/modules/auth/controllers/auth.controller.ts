@@ -65,11 +65,16 @@ export class AuthController {
 
 	@Public()
 	@Post('login')
-	@ApiOperation({ summary: 'User login', description: 'Authenticate user and return access tokens' })
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'User login',
+		description: 'Authenticate user and return access tokens',
+		operationId: 'post-auth-module-login',
+	})
 	@ApiBody({ type: ReqLoginDto, description: 'Login credentials' })
 	@ApiSuccessResponse(LoginResponseModel, 'Successfully authenticated')
 	@ApiNotFoundResponse('User not found')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
 	async login(@Body() body: ReqLoginDto): Promise<LoginResponseModel> {
 		try {
 			this.logger.debug(`[LOGIN] Attempting login for username=${body.data.username}`);
@@ -91,12 +96,17 @@ export class AuthController {
 	@Public()
 	@HttpCode(204)
 	@Post('register')
-	@ApiOperation({ summary: 'Register new user', description: 'Register the application owner account' })
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Register new user',
+		description: 'Register the application owner account',
+		operationId: 'post-auth-module-register',
+	})
 	@ApiBody({ type: ReqRegisterDto, description: 'User registration data' })
 	@ApiResponse({ status: 204, description: 'User successfully registered' })
 	@ApiBadRequestResponse('Invalid input data')
 	@ApiForbiddenResponse('Owner already exists')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
 	async register(@Body() body: ReqRegisterDto): Promise<void> {
 		const owner = await this.userService.findOwner();
 
@@ -115,12 +125,17 @@ export class AuthController {
 
 	@Public()
 	@Post('refresh')
-	@ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using a refresh token' })
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Refresh access token',
+		description: 'Get a new access token using a refresh token',
+		operationId: 'post-auth-module-refresh',
+	})
 	@ApiBody({ type: ReqRefreshDto, description: 'Refresh token' })
 	@ApiSuccessResponse(RefreshResponseModel, 'Token successfully refreshed')
-	@ApiBadRequestResponse()
+	@ApiBadRequestResponse('Invalid refresh token data')
 	@ApiForbiddenResponse('Invalid or expired refresh token')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
 	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshResponseModel> {
 		try {
 			const data = await this.authService.refreshAccessToken(body.data.token);
@@ -140,14 +155,16 @@ export class AuthController {
 	@Public()
 	@Post('register-display')
 	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Register display device',
 		description: 'Register a new display device and get credentials',
+		operationId: 'post-auth-module-register-display',
 	})
 	@ApiBody({ type: ReqRegisterDisplayDto, description: 'Display device information' })
 	@ApiSuccessResponse(RegisterDisplayResponseModel, 'Display successfully registered')
-	@ApiBadRequestResponse()
+	@ApiBadRequestResponse('Invalid display registration data')
 	@ApiForbiddenResponse('Access denied or display already registered')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
 	async registerDisplay(
 		@Headers('User-Agent') userAgent: string,
 		@Body() createDto: ReqRegisterDisplayDto,
@@ -204,13 +221,15 @@ export class AuthController {
 	@Public()
 	@Post('check/username')
 	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Check username availability',
 		description: 'Verify if a username is available for registration',
+		operationId: 'post-auth-module-check-username',
 	})
 	@ApiBody({ type: ReqCheckUsernameDto, description: 'Username to check' })
 	@ApiSuccessResponse(CheckUsernameResponseModel, 'Username availability result')
-	@ApiBadRequestResponse()
-	@ApiInternalServerErrorResponse()
+	@ApiBadRequestResponse('Invalid username')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckUsernameResponseModel> {
 		this.logger.debug(`[CHECK] Checking availability for username=${body.data.username}`);
 
@@ -224,13 +243,15 @@ export class AuthController {
 	@Public()
 	@Post('check/email')
 	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Check email availability',
 		description: 'Verify if an email is available for registration',
+		operationId: 'post-auth-module-check-email',
 	})
 	@ApiBody({ type: ReqCheckEmailDto, description: 'Email to check' })
 	@ApiSuccessResponse(CheckEmailResponseModel, 'Email availability result')
-	@ApiBadRequestResponse()
-	@ApiInternalServerErrorResponse()
+	@ApiBadRequestResponse('Invalid email')
+	@ApiInternalServerErrorResponse('Internal server error')
 	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckEmailResponseModel> {
 		this.logger.debug(`[CHECK] Checking availability for email=${body.data.email}`);
 
@@ -242,11 +263,16 @@ export class AuthController {
 	}
 
 	@Get('profile')
-	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the authenticated user profile information' })
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Get user profile',
+		description: 'Retrieve the authenticated user profile information',
+		operationId: 'get-auth-module-profile',
+	})
 	@ApiSuccessResponse(ProfileResponseModel, 'User profile retrieved')
 	@ApiNotFoundResponse('User not found')
 	@ApiForbiddenResponse('User not authenticated')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
 	async getProfile(@Req() req: AuthenticatedRequest): Promise<ProfileResponseModel> {
 		const { user } = req;
 

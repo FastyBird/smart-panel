@@ -17,7 +17,7 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -48,6 +48,7 @@ import { DataSourceResponseModel, DataSourcesResponseModel } from '../models/das
 import { DataSourceTypeMapping, DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
 import { DataSourcesService } from '../services/data-sources.service';
 
+@ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
 @ApiTag({
 	tagName: DASHBOARD_MODULE_NAME,
 	displayName: DASHBOARD_MODULE_API_TAG_NAME,
@@ -62,8 +63,12 @@ export class DataSourceController {
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 	) {}
 
-	@Get()
-	@ApiOperation({ summary: 'Retrieve all data sources' })
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Retrieve all data sources',
+		description: 'Retrieves all dashboard data sources with optional filtering by parent entity.',
+		operationId: 'get-dashboard-module-data-sources',
+	})
 	@ApiQuery({ name: 'parent_type', type: 'string', required: false, description: 'Filter by parent entity type' })
 	@ApiQuery({
 		name: 'parent_id',
@@ -72,8 +77,12 @@ export class DataSourceController {
 		required: false,
 		description: 'Filter by parent entity ID',
 	})
-	@ApiSuccessResponse(DataSourcesResponseModel)
+	@ApiSuccessResponse(
+		DataSourcesResponseModel,
+		'All configured data sources were retrieved successfully.',
+	)
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
 	async findAll(
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
@@ -91,16 +100,27 @@ export class DataSourceController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${dataSources.length} data sources`);
 
-		return toInstance(DataSourcesResponseModel, { data: dataSources });
+		const response = new DataSourcesResponseModel();
+		response.data = dataSources;
+
+		return response;
 	}
 
-	@Get(':id')
-	@ApiOperation({ summary: 'Retrieve a specific data source by ID' })
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a specific data source by ID',
+		description: 'Fetches the dashboard data source identified by the provided UUID.',
+		operationId: 'get-dashboard-module-data-source',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
-	@ApiSuccessResponse(DataSourceResponseModel)
+	@ApiSuccessResponse(
+		DataSourceResponseModel,
+		'The requested data source was retrieved successfully.',
+	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Data source not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DataSourceResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching data source id=${id}`);
 
@@ -108,17 +128,31 @@ export class DataSourceController {
 
 		this.logger.debug(`[LOOKUP] Found data source id=${dataSource.id}`);
 
-		return toInstance(DataSourceResponseModel, { data: dataSource });
+		const response = new DataSourceResponseModel();
+		response.data = dataSource;
+
+		return response;
 	}
 
-	@Post()
-	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/data-source/:id`)
-	@ApiOperation({ summary: 'Create a new data source' })
-	@ApiBody({ type: ReqCreateDataSourceDto })
-	@ApiCreatedSuccessResponse(DataSourceResponseModel)
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Create a new data source',
+		description: 'Creates a dashboard data source with the provided configuration.',
+		operationId: 'create-dashboard-module-data-source',
+	})
+	@ApiBody({
+		type: ReqCreateDataSourceDto,
+		description: 'Payload containing the attributes for the new data source.',
+	})
+	@ApiCreatedSuccessResponse(
+		DataSourceResponseModel,
+		'The newly created data source was returned successfully.',
+	)
 	@ApiBadRequestResponse('Invalid request data or unsupported data source type')
 	@ApiUnprocessableEntityResponse('Data source could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/data-source/:id`)
+	@Post()
 	async create(@Body() createDto: { data: object }): Promise<DataSourceResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new data source`);
 
@@ -201,7 +235,10 @@ export class DataSourceController {
 
 			this.logger.debug(`[CREATE] Successfully created data source id=${dataSource.id}`);
 
-			return toInstance(DataSourceResponseModel, { data: dataSource });
+			const response = new DataSourceResponseModel();
+			response.data = dataSource;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Data source could not be created. Please try again later');
@@ -211,15 +248,26 @@ export class DataSourceController {
 		}
 	}
 
-	@Patch(':id')
-	@ApiOperation({ summary: 'Update an existing data source' })
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Update an existing data source',
+		description: 'Partially updates attributes of a dashboard data source by UUID.',
+		operationId: 'update-dashboard-module-data-source',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
-	@ApiBody({ type: ReqUpdateDataSourceWithParentDto })
-	@ApiSuccessResponse(DataSourceResponseModel)
+	@ApiBody({
+		type: ReqUpdateDataSourceWithParentDto,
+		description: 'Payload containing updated data source attributes.',
+	})
+	@ApiSuccessResponse(
+		DataSourceResponseModel,
+		'The updated data source was returned successfully.',
+	)
 	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported data source type')
 	@ApiNotFoundResponse('Data source not found')
 	@ApiUnprocessableEntityResponse('Data source could not be updated')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
@@ -291,7 +339,10 @@ export class DataSourceController {
 
 			this.logger.debug(`[UPDATE] Successfully updated data source id=${updatedDataSource.id}`);
 
-			return toInstance(DataSourceResponseModel, { data: updatedDataSource });
+			const response = new DataSourceResponseModel();
+			response.data = updatedDataSource;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Data source could not be updated. Please try again later');
@@ -301,14 +352,19 @@ export class DataSourceController {
 		}
 	}
 
-	@Delete(':id')
-	@HttpCode(204)
-	@ApiOperation({ summary: 'Delete a data source' })
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Delete a data source',
+		description: 'Deletes the dashboard data source identified by the provided UUID.',
+		operationId: 'delete-dashboard-module-data-source',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
 	@ApiNoContentResponse({ description: 'Data source deleted successfully' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Data source not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@HttpCode(204)
+	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete data source id=${id}`);
 

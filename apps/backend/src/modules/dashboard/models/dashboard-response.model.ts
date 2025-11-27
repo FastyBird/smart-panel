@@ -1,8 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
 
 /**
@@ -15,8 +15,7 @@ export class PageResponseModel extends BaseSuccessResponseModel<PageEntity> {
 		type: () => PageEntity,
 	})
 	@Expose()
-	@Type(() => PageEntity)
-	data: PageEntity;
+	declare data: PageEntity;
 }
 
 /**
@@ -30,8 +29,7 @@ export class PagesResponseModel extends BaseSuccessResponseModel<PageEntity[]> {
 		items: { $ref: getSchemaPath(PageEntity) },
 	})
 	@Expose()
-	@Type(() => PageEntity)
-	data: PageEntity[];
+	declare data: PageEntity[];
 }
 
 /**
@@ -44,8 +42,7 @@ export class TileResponseModel extends BaseSuccessResponseModel<TileEntity> {
 		type: () => TileEntity,
 	})
 	@Expose()
-	@Type(() => TileEntity)
-	data: TileEntity;
+	declare data: TileEntity;
 }
 
 /**
@@ -59,8 +56,7 @@ export class TilesResponseModel extends BaseSuccessResponseModel<TileEntity[]> {
 		items: { $ref: getSchemaPath(TileEntity) },
 	})
 	@Expose()
-	@Type(() => TileEntity)
-	data: TileEntity[];
+	declare data: TileEntity[];
 }
 
 /**
@@ -73,8 +69,7 @@ export class DataSourceResponseModel extends BaseSuccessResponseModel<DataSource
 		type: () => DataSourceEntity,
 	})
 	@Expose()
-	@Type(() => DataSourceEntity)
-	data: DataSourceEntity;
+	declare data: DataSourceEntity;
 }
 
 /**
@@ -88,6 +83,5 @@ export class DataSourcesResponseModel extends BaseSuccessResponseModel<DataSourc
 		items: { $ref: getSchemaPath(DataSourceEntity) },
 	})
 	@Expose()
-	@Type(() => DataSourceEntity)
-	data: DataSourceEntity[];
+	declare data: DataSourceEntity[];
 }

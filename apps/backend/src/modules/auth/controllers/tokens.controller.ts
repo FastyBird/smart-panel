@@ -17,16 +17,15 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, getSchemaPath } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
-	ApiCreatedSuccessDiscriminatedResponse,
+	ApiCreatedSuccessResponse,
 	ApiForbiddenResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayDiscriminatedResponse,
-	ApiSuccessDiscriminatedResponse,
+	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
 import { ApiTag } from '../../api/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -44,6 +43,7 @@ import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
+import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
 
 @ApiTag({
 	tagName: AUTH_MODULE_NAME,
@@ -60,73 +60,66 @@ export class TokensController {
 	) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Get all tokens', description: 'Retrieve all authentication tokens' })
-	@ApiSuccessArrayDiscriminatedResponse(
-		'type',
-		{
-			access: getSchemaPath(AccessTokenEntity),
-			refresh: getSchemaPath(RefreshTokenEntity),
-			long_live: getSchemaPath(LongLiveTokenEntity),
-		},
-		[AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
-		'Tokens retrieved successfully',
-	)
-	@ApiInternalServerErrorResponse()
-	async findAll(): Promise<TokenEntity[]> {
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Get all tokens',
+		description: 'Retrieve all authentication tokens',
+		operationId: 'get-auth-module-tokens',
+	})
+	@ApiSuccessResponse(TokensResponseModel, 'Tokens retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
+	async findAll(): Promise<TokensResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
 
 		const tokens = await this.tokensService.findAll<TokenEntity>();
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${tokens.length} tokens`);
+		const response = new TokensResponseModel();
+		response.data = tokens;
 
-		return tokens;
+		return response;
 	}
 
 	@Get(':id')
-	@ApiOperation({ summary: 'Get token by ID', description: 'Retrieve a specific authentication token by its ID' })
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Get token by ID',
+		description: 'Retrieve a specific authentication token by its ID',
+		operationId: 'get-auth-module-token',
+	})
 	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
-	@ApiSuccessDiscriminatedResponse(
-		'type',
-		{
-			access: getSchemaPath(AccessTokenEntity),
-			refresh: getSchemaPath(RefreshTokenEntity),
-			long_live: getSchemaPath(LongLiveTokenEntity),
-		},
-		[AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
-		'Token retrieved successfully',
-	)
+	@ApiSuccessResponse(TokenResponseModel, 'Token retrieved successfully')
 	@ApiNotFoundResponse('Token not found')
-	@ApiInternalServerErrorResponse()
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TokenEntity> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TokenResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching token id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found token id=${token.id}`);
 
-		return token;
+		const response = new TokenResponseModel();
+		response.data = token;
+
+		return response;
 	}
 
 	@Post()
 	@Header('Location', `:baseUrl/${AUTH_MODULE_PREFIX}/auth/:id`)
-	@ApiOperation({ summary: 'Create new token', description: 'Create a new authentication token' })
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Create new token',
+		description: 'Create a new authentication token',
+		operationId: 'post-auth-module-token',
+	})
 	@ApiBody({
 		description: 'Token creation data with discriminated type',
 		type: ReqCreateTokenDto,
 	})
-	@ApiCreatedSuccessDiscriminatedResponse(
-		'type',
-		{
-			access: getSchemaPath(AccessTokenEntity),
-			refresh: getSchemaPath(RefreshTokenEntity),
-			long_live: getSchemaPath(LongLiveTokenEntity),
-		},
-		[AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
-		'Token created successfully',
-	)
+	@ApiCreatedSuccessResponse(TokenResponseModel, 'Token created successfully')
 	@ApiBadRequestResponse('Invalid token data or unsupported token type')
-	@ApiInternalServerErrorResponse()
-	async create(@Body() createDto: ReqCreateTokenDto): Promise<TokenEntity> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	async create(@Body() createDto: ReqCreateTokenDto): Promise<TokenResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new token');
 
 		const type: string | undefined = createDto.data.type;
@@ -173,33 +166,33 @@ export class TokensController {
 
 		this.logger.debug(`[CREATE] Successfully created token id=${token.id}`);
 
-		return token;
+		const response = new TokenResponseModel();
+
+		response.data = token;
+
+		return response;
 	}
 
 	@Patch(':id')
-	@ApiOperation({ summary: 'Update token', description: 'Update an existing authentication token' })
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Update token',
+		description: 'Update an existing authentication token',
+		operationId: 'patch-auth-module-token',
+	})
 	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
 	@ApiBody({
 		description: 'Token update data (only certain fields can be updated)',
 		type: ReqUpdateTokenDto,
 	})
-	@ApiSuccessDiscriminatedResponse(
-		'type',
-		{
-			access: getSchemaPath(AccessTokenEntity),
-			refresh: getSchemaPath(RefreshTokenEntity),
-			long_live: getSchemaPath(LongLiveTokenEntity),
-		},
-		[AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
-		'Token updated successfully',
-	)
+	@ApiSuccessResponse(TokenResponseModel, 'Token updated successfully')
 	@ApiBadRequestResponse('Invalid token data or unsupported token type')
 	@ApiNotFoundResponse('Token not found')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateTokenDto,
-	): Promise<TokenEntity> {
+	): Promise<TokenResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for token id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
@@ -245,17 +238,26 @@ export class TokensController {
 
 		this.logger.debug(`[UPDATE] Successfully updated token id=${updatedToken.id}`);
 
-		return updatedToken;
+		const response = new TokenResponseModel();
+
+		response.data = updatedToken;
+
+		return response;
 	}
 
 	@Delete(':id')
 	@HttpCode(204)
-	@ApiOperation({ summary: 'Delete token', description: 'Delete an authentication token' })
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Delete token',
+		description: 'Delete an authentication token',
+		operationId: 'delete-auth-module-token',
+	})
 	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
 	@ApiNoContentResponse({ description: 'Token deleted successfully' })
 	@ApiForbiddenResponse('Cannot delete your own access token')
 	@ApiNotFoundResponse('Token not found')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Req() req: AuthenticatedRequest,

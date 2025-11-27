@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
@@ -12,7 +13,11 @@ import { SystemModule } from '../system/system.module';
 import { DataSourceController } from './controllers/data-source.controller';
 import { PagesController } from './controllers/pages.controller';
 import { TilesController } from './controllers/tiles.controller';
-import { DASHBOARD_MODULE_NAME } from './dashboard.constants';
+import {
+	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
+	DASHBOARD_MODULE_API_TAG_NAME,
+	DASHBOARD_MODULE_NAME,
+} from './dashboard.constants';
 import { DataSourceEntity, PageEntity, TileEntity } from './entities/dashboard.entity';
 import { DashboardStatsProvider } from './providers/dashboard-stats.provider';
 import { DashboardSeederService } from './services/dashboard-seeder.service';
@@ -32,6 +37,11 @@ import { TilesService } from './services/tiles.service';
 import { DataSourceTypeConstraintValidator } from './validators/data-source-type-constraint.validator';
 import { TileTypeConstraintValidator } from './validators/tile-type-constraint.validator';
 
+@ApiTag({
+	tagName: DASHBOARD_MODULE_NAME,
+	displayName: DASHBOARD_MODULE_API_TAG_NAME,
+	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		NestConfigModule,

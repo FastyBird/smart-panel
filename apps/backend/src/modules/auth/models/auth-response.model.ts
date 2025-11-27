@@ -1,6 +1,6 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
 import { UserEntity } from '../../users/entities/users.entity';
@@ -13,6 +13,7 @@ import {
 	RegisteredDisplayModel,
 	TokenPairModel,
 } from './auth.model';
+import { TokenEntity } from '../entities/auth.entity';
 
 /**
  * Response wrapper for UserEntity (profile)
@@ -24,8 +25,7 @@ export class ProfileResponseModel extends BaseSuccessResponseModel<UserEntity> {
 		type: () => UserEntity,
 	})
 	@Expose()
-	@Type(() => UserEntity)
-	data: UserEntity;
+	declare data: UserEntity;
 }
 
 /**
@@ -38,8 +38,7 @@ export class LoginResponseModel extends BaseSuccessResponseModel<LoggedInModel> 
 		type: () => LoggedInModel,
 	})
 	@Expose()
-	@Type(() => LoggedInModel)
-	data: LoggedInModel;
+	declare data: LoggedInModel;
 }
 
 /**
@@ -52,8 +51,7 @@ export class RefreshResponseModel extends BaseSuccessResponseModel<RefreshTokenM
 		type: () => RefreshTokenModel,
 	})
 	@Expose()
-	@Type(() => RefreshTokenModel)
-	data: RefreshTokenModel;
+	declare data: RefreshTokenModel;
 }
 
 /**
@@ -66,8 +64,7 @@ export class RegisterDisplayResponseModel extends BaseSuccessResponseModel<Regis
 		type: () => RegisteredDisplayModel,
 	})
 	@Expose()
-	@Type(() => RegisteredDisplayModel)
-	data: RegisteredDisplayModel;
+	declare data: RegisteredDisplayModel;
 }
 
 /**
@@ -80,8 +77,7 @@ export class CheckResponseModel extends BaseSuccessResponseModel<CheckModel> {
 		type: () => CheckModel,
 	})
 	@Expose()
-	@Type(() => CheckModel)
-	data: CheckModel;
+	declare data: CheckModel;
 }
 
 /**
@@ -94,8 +90,7 @@ export class CheckEmailResponseModel extends BaseSuccessResponseModel<CheckModel
 		type: () => CheckModel,
 	})
 	@Expose()
-	@Type(() => CheckModel)
-	data: CheckModel;
+	declare data: CheckModel;
 }
 
 /**
@@ -108,18 +103,58 @@ export class CheckUsernameResponseModel extends BaseSuccessResponseModel<CheckMo
 		type: () => CheckModel,
 	})
 	@Expose()
-	@Type(() => CheckModel)
-	data: CheckModel;
+	declare data: CheckModel;
 }
 
 /**
- * Display secret schema (data part, not full response wrapper)
+ * Response wrapper for DisplaySecretModel
  */
 @ApiSchema({ name: 'AuthModuleResDisplaySecret' })
-export class DisplaySecretResponseModel extends DisplaySecretModel {}
+export class DisplaySecretResponseModel extends BaseSuccessResponseModel<DisplaySecretModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => DisplaySecretModel,
+	})
+	@Expose()
+	declare data: DisplaySecretModel;
+}
 
 /**
- * Token pair schema (same structure as LoggedInModel)
+ * Response wrapper for TokenPairModel
  */
 @ApiSchema({ name: 'AuthModuleResTokenPair' })
-export class TokenPairResponseModel extends TokenPairModel {}
+export class TokenPairResponseModel extends BaseSuccessResponseModel<TokenPairModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => TokenPairModel,
+	})
+	@Expose()
+	declare data: TokenPairModel;
+}
+
+/**
+ * Response wrapper for TokenEntity
+ */
+@ApiSchema({ name: 'AuthModuleResToken' })
+export class TokenResponseModel extends BaseSuccessResponseModel<TokenEntity> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => TokenEntity,
+	})
+	@Expose()
+	declare data: TokenEntity;
+}
+
+/**
+ * Response wrapper for array of TokenEntity
+ */
+@ApiSchema({ name: 'AuthModuleResTokens' })
+export class TokensResponseModel extends BaseSuccessResponseModel<TokenEntity[]> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(TokenEntity) },
+	})
+	@Expose()
+	declare data: TokenEntity[];
+}

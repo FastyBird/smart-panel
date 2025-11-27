@@ -1,3 +1,6 @@
+import { applyDecorators } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+
 /**
  * OpenAPI tag metadata
  */
@@ -89,4 +92,7 @@ export const openApiTagRegistry = new OpenApiTagRegistry();
 export const ApiTag = (metadata: ApiTagMetadata) => {
 	// Register the tag metadata in the global registry
 	openApiTagRegistry.register(metadata);
+
+	// Apply the standard @ApiTags decorator with the tag name
+	return applyDecorators(ApiTags(metadata.tagName));
 };

@@ -16,7 +16,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -43,6 +43,7 @@ import { PageResponseModel, PagesResponseModel } from '../models/dashboard-respo
 import { PageTypeMapping, PagesTypeMapperService } from '../services/pages-type-mapper.service';
 import { PagesService } from '../services/pages.service';
 
+@ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
 @ApiTag({
 	tagName: DASHBOARD_MODULE_NAME,
 	displayName: DASHBOARD_MODULE_API_TAG_NAME,
@@ -58,10 +59,18 @@ export class PagesController {
 	) {}
 
 	// Pages
-	@Get()
-	@ApiOperation({ summary: 'Retrieve all pages' })
-	@ApiSuccessResponse(PagesResponseModel)
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Retrieve all pages',
+		description: 'Fetches metadata for every dashboard page, including tiles and configured data sources.',
+		operationId: 'get-dashboard-module-pages',
+	})
+	@ApiSuccessResponse(
+		PagesResponseModel,
+		'All configured dashboard pages were successfully retrieved.',
+	)
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
 	async findAll(): Promise<PagesResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all pages');
 
@@ -69,16 +78,27 @@ export class PagesController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${pages.length} pages`);
 
-		return toInstance(PagesResponseModel, { data: pages });
+		const response = new PagesResponseModel();
+		response.data = pages;
+
+		return response;
 	}
 
-	@Get(':id')
-	@ApiOperation({ summary: 'Retrieve a specific page by ID' })
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a specific page by ID',
+		description: 'Fetches the dashboard page identified by the provided UUID, including its tiles and metadata.',
+		operationId: 'get-dashboard-module-page',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
-	@ApiSuccessResponse(PageResponseModel)
+	@ApiSuccessResponse(
+		PageResponseModel,
+		'The requested dashboard page was retrieved successfully.',
+	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Page not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<PageResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching page id=${id}`);
 
@@ -86,17 +106,31 @@ export class PagesController {
 
 		this.logger.debug(`[LOOKUP] Found page id=${page.id}`);
 
-		return toInstance(PageResponseModel, { data: page });
+		const response = new PageResponseModel();
+		response.data = page;
+
+		return response;
 	}
 
-	@Post()
-	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:id`)
-	@ApiOperation({ summary: 'Create a new page' })
-	@ApiBody({ type: ReqCreatePageDto })
-	@ApiCreatedSuccessResponse(PageResponseModel)
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Create a new page',
+		description: 'Creates a new dashboard page with the provided metadata and nested resources.',
+		operationId: 'create-dashboard-module-page',
+	})
+	@ApiBody({
+		type: ReqCreatePageDto,
+		description: 'Payload containing the page attributes to create.',
+	})
+	@ApiCreatedSuccessResponse(
+		PageResponseModel,
+		'The newly created page was returned successfully.',
+	)
 	@ApiBadRequestResponse('Invalid request data or unsupported page type')
 	@ApiUnprocessableEntityResponse('Page could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:id`)
+	@Post()
 	async create(@Body() createDto: { data: object }): Promise<PageResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new page');
 
@@ -161,7 +195,10 @@ export class PagesController {
 
 			this.logger.debug(`[CREATE] Successfully created page id=${page.id}`);
 
-			return toInstance(PageResponseModel, { data: page });
+			const response = new PageResponseModel();
+			response.data = page;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Page could not be created. Please try again later');
@@ -171,15 +208,26 @@ export class PagesController {
 		}
 	}
 
-	@Patch(':id')
-	@ApiOperation({ summary: 'Update an existing page' })
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Update an existing page',
+		description: 'Partially updates the metadata or layout of an existing dashboard page.',
+		operationId: 'update-dashboard-module-page',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
-	@ApiBody({ type: ReqUpdatePageDto })
-	@ApiSuccessResponse(PageResponseModel)
+	@ApiBody({
+		type: ReqUpdatePageDto,
+		description: 'Payload containing the updated page attributes.',
+	})
+	@ApiSuccessResponse(
+		PageResponseModel,
+		'The updated dashboard page was returned successfully.',
+	)
 	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported page type')
 	@ApiNotFoundResponse('Page not found')
 	@ApiUnprocessableEntityResponse('Page could not be updated')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
@@ -230,7 +278,10 @@ export class PagesController {
 
 			this.logger.debug(`[UPDATE] Successfully updated page id=${updatedPage.id}`);
 
-			return toInstance(PageResponseModel, { data: updatedPage });
+			const response = new PageResponseModel();
+			response.data = updatedPage;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Page could not be updated. Please try again later');
@@ -240,14 +291,19 @@ export class PagesController {
 		}
 	}
 
-	@Delete(':id')
-	@HttpCode(204)
-	@ApiOperation({ summary: 'Delete a page' })
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Delete a page',
+		description: 'Deletes the dashboard page identified by the provided UUID.',
+		operationId: 'delete-dashboard-module-page',
+	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
 	@ApiNoContentResponse({ description: 'Page deleted successfully' })
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Page not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@HttpCode(204)
+	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete page id=${id}`);
 
