@@ -27,7 +27,6 @@ import {
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
@@ -35,64 +34,83 @@ import { UserRole } from '../../users/users.constants';
 import { ReqCreateDisplayProfileDto } from '../dto/create-display-profile.dto';
 import { ReqUpdateDisplayProfileDto } from '../dto/update-display-profile.dto';
 import { DisplayProfileEntity } from '../entities/system.entity';
+import {
+	DisplayProfileByUidResponseModel,
+	DisplayProfileResponseModel,
+	DisplayProfilesResponseModel,
+} from '../models/system-response.model';
 import { DisplaysProfilesService } from '../services/displays-profiles.service';
-import { SYSTEM_MODULE_PREFIX } from '../system.constants';
+import { SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_PREFIX } from '../system.constants';
 
-@ApiTags('system-module')
+@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
 @Controller('displays-profiles')
 export class DisplaysProfilesController {
 	private readonly logger = new Logger(DisplaysProfilesController.name);
 
 	constructor(private readonly displaysService: DisplaysProfilesService) {}
 
-	@Get()
 	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Get all display profiles',
 		description: 'Retrieve a list of all display profiles',
+		operationId: 'get-system-module-display-profiles',
 	})
-	@ApiSuccessArrayResponse(DisplayProfileEntity, 'Display profiles retrieved successfully')
-	@ApiInternalServerErrorResponse()
-	async findAll(): Promise<DisplayProfileEntity[]> {
+	@ApiSuccessResponse(DisplayProfilesResponseModel, 'Display profiles retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
+	async findAll(): Promise<DisplayProfilesResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all displays profiles');
 
 		const displays = await this.displaysService.findAll();
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${displays.length} displays profiles`);
 
-		return displays;
+		const response = new DisplayProfilesResponseModel();
+		response.data = displays;
+
+		return response;
 	}
 
-	@Get(':id')
 	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Get display profile by ID',
 		description: 'Retrieve a specific display profile by its ID',
+		operationId: 'get-system-module-display-profile',
 	})
 	@ApiParam({ name: 'id', description: 'Display profile ID', type: 'string', format: 'uuid' })
-	@ApiSuccessResponse(DisplayProfileEntity, 'Display profile retrieved successfully')
+	@ApiSuccessResponse(DisplayProfileResponseModel, 'Display profile retrieved successfully')
 	@ApiNotFoundResponse('Display profile not found')
 	@ApiBadRequestResponse('Invalid display profile ID format')
-	@ApiInternalServerErrorResponse()
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayProfileEntity> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayProfileResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching display profile id=${id}`);
 
 		const display = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found display profile id=${display.id}`);
 
-		return display;
+		const response = new DisplayProfileResponseModel();
+		response.data = display;
+
+		return response;
 	}
 
-	@Get('by-uid/:uid')
 	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Get display profile by UID',
 		description: 'Retrieve a specific display profile by its unique identifier (UID)',
+		operationId: 'get-system-module-display-profile-by-uid',
 	})
 	@ApiParam({ name: 'uid', description: 'Display profile UID', type: 'string', format: 'uuid' })
-	@ApiSuccessResponse(DisplayProfileEntity, 'Display profile retrieved successfully')
+	@ApiSuccessResponse(DisplayProfileByUidResponseModel, 'Display profile retrieved successfully')
 	@ApiNotFoundResponse('Display profile not found')
 	@ApiBadRequestResponse('Invalid UID format')
-	@ApiInternalServerErrorResponse()
-	async findOneByUid(@Param('uid', new ParseUUIDPipe({ version: '4' })) uid: string): Promise<DisplayProfileEntity> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('by-uid/:uid')
+	async findOneByUid(
+		@Param('uid', new ParseUUIDPipe({ version: '4' })) uid: string,
+	): Promise<DisplayProfileByUidResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching display profile uid=${uid}`);
 
 		const display = await this.displaysService.findByUid(uid);
@@ -105,22 +123,27 @@ export class DisplaysProfilesController {
 
 		this.logger.debug(`[LOOKUP] Found display profile id=${display.id}`);
 
-		return display;
+		const response = new DisplayProfileByUidResponseModel();
+		response.data = display;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'Create a new display profile',
+		description: 'Register a new display profile',
+		operationId: 'create-system-module-display-profile',
+	})
+	@ApiBody({ type: ReqCreateDisplayProfileDto, description: 'Display profile creation data' })
+	@ApiCreatedSuccessResponse(DisplayProfileResponseModel, 'Display profile created successfully')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiUnprocessableEntityResponse({ description: 'UID already exists' })
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
 	@Header('Location', `:baseUrl/${SYSTEM_MODULE_PREFIX}/displays/:id`)
 	@Roles(UserRole.DISPLAY)
-	@ApiOperation({
-		summary: 'Create a new display profile',
-		description: 'Register a new display profile',
-	})
-	@ApiBody({ type: ReqCreateDisplayProfileDto, description: 'Display profile creation data' })
-	@ApiCreatedSuccessResponse(DisplayProfileEntity, 'Display profile created successfully')
-	@ApiBadRequestResponse('Invalid request data')
-	@ApiUnprocessableEntityResponse({ description: 'UID already exists' })
-	@ApiInternalServerErrorResponse()
-	async create(@Body() createDto: ReqCreateDisplayProfileDto): Promise<DisplayProfileEntity> {
+	async create(@Body() createDto: ReqCreateDisplayProfileDto): Promise<DisplayProfileResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new display profile');
 
 		const existingDisplay = await this.displaysService.findByUid(createDto.data.uid);
@@ -135,25 +158,30 @@ export class DisplaysProfilesController {
 
 		this.logger.debug(`[CREATE] Successfully created display profile id=${display.id}`);
 
-		return display;
+		const response = new DisplayProfileResponseModel();
+		response.data = display;
+
+		return response;
 	}
 
-	@Patch(':id')
-	@Roles(UserRole.DISPLAY, UserRole.OWNER)
 	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Update a display profile',
 		description: 'Update an existing display profile',
+		operationId: 'update-system-module-display-profile',
 	})
 	@ApiParam({ name: 'id', description: 'Display profile ID', type: 'string', format: 'uuid' })
 	@ApiBody({ type: ReqUpdateDisplayProfileDto, description: 'Display profile update data' })
-	@ApiSuccessResponse(DisplayProfileEntity, 'Display profile updated successfully')
+	@ApiSuccessResponse(DisplayProfileResponseModel, 'Display profile updated successfully')
 	@ApiNotFoundResponse('Display profile not found')
 	@ApiBadRequestResponse('Invalid request data')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Patch(':id')
+	@Roles(UserRole.DISPLAY, UserRole.OWNER)
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateDisplayProfileDto,
-	): Promise<DisplayProfileEntity> {
+	): Promise<DisplayProfileResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for display profile id=${id}`);
 
 		const display = await this.getOneOrThrow(id);
@@ -162,21 +190,26 @@ export class DisplaysProfilesController {
 
 		this.logger.debug(`[UPDATE] Successfully updated display profile id=${updatedDisplay.id}`);
 
-		return updatedDisplay;
+		const response = new DisplayProfileResponseModel();
+		response.data = updatedDisplay;
+
+		return response;
 	}
 
-	@Delete(':id')
-	@HttpCode(204)
-	@Roles(UserRole.DISPLAY, UserRole.OWNER)
 	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Delete a display profile',
 		description: 'Delete an existing display profile',
+		operationId: 'delete-system-module-display-profile',
 	})
 	@ApiParam({ name: 'id', description: 'Display profile ID', type: 'string', format: 'uuid' })
 	@ApiNoContentResponse({ description: 'Display profile deleted successfully' })
 	@ApiNotFoundResponse('Display profile not found')
 	@ApiBadRequestResponse('Invalid display profile ID format')
 	@ApiInternalServerErrorResponse()
+	@Delete(':id')
+	@HttpCode(204)
+	@Roles(UserRole.DISPLAY, UserRole.OWNER)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete display profile id=${id}`);
 

@@ -8,20 +8,19 @@ import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common'
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
-import {
-	ApiInternalServerErrorResponse,
-	ApiSuccessUnionResponse,
-} from '../../api/decorators/api-documentation.decorator';
 import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../api/decorators/api-documentation.decorator';
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
+import { ExtensionsResponseModel } from '../models/system-response.model';
 import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
 import {
 	ExtensionKindType,
 	ExtensionSourceType,
 	ExtensionSurfaceType,
+	SYSTEM_MODULE_API_TAG_NAME,
 	SYSTEM_MODULE_PREFIX,
 } from '../system.constants';
 
@@ -35,18 +34,18 @@ interface BundledManifest {
 	}>;
 }
 
-@ApiTags('system-module')
+@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
 @Controller('extensions')
 export class ExtensionsController {
 	private readonly logger = new Logger(ExtensionsController.name);
 
 	constructor(private readonly configService: NestConfigService) {}
 
-	@Public()
-	@Get()
 	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'List all extensions',
 		description: 'Retrieve a list of all registered extensions, optionally filtered by surface',
+		operationId: 'get-system-module-extensions',
 	})
 	@ApiQuery({
 		name: 'surface',
@@ -54,11 +53,11 @@ export class ExtensionsController {
 		description: 'Filter by extension surface',
 		enum: [...Object.values(ExtensionSurfaceType), 'all'],
 	})
-	@ApiSuccessUnionResponse([ExtensionAdminModel, ExtensionBackendModel], 'Extensions retrieved successfully')
-	@ApiInternalServerErrorResponse()
-	async list(
-		@Query('surface') surface: ExtensionSurfaceType | 'all' = 'all',
-	): Promise<(ExtensionAdminModel | ExtensionBackendModel)[]> {
+	@ApiSuccessResponse(ExtensionsResponseModel, 'Extensions retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Public()
+	@Get()
+	async list(@Query('surface') surface: ExtensionSurfaceType | 'all' = 'all'): Promise<ExtensionsResponseModel> {
 		const { admin, backend } = await getDiscoveredExtensions();
 
 		const bundledSet = this.loadBundledSet();
@@ -108,12 +107,24 @@ export class ExtensionsController {
 			}
 		}
 
-		return out;
+		const response = new ExtensionsResponseModel();
+		response.data = out;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'Get extension by name',
+		description: 'Retrieve a specific extension by its name',
+		operationId: 'get-system-module-extension',
+	})
+	@ApiParam({ name: 'name', description: 'Extension name', type: 'string' })
+	@ApiSuccessResponse(ExtensionsResponseModel, 'Extension retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get(':name')
-	async findOne(@Param('name') name: string): Promise<(ExtensionAdminModel | ExtensionBackendModel)[]> {
+	async findOne(@Param('name') name: string): Promise<ExtensionsResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching extension name=${name}`);
 
 		const { admin, backend } = await getDiscoveredExtensions();
@@ -165,16 +176,18 @@ export class ExtensionsController {
 
 		this.logger.debug(`[LOOKUP] Found extension name=${name}`);
 
-		return out;
+		const response = new ExtensionsResponseModel();
+		response.data = out;
+
+		return response;
 	}
 
-	@RawRoute()
-	@Public()
-	@Get('assets/:pkg/*')
 	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Serve an Admin extension asset (ESM)',
 		description:
 			'Streams a file (typically the ESM entry) from the discovered extension package directory. `asset_path` represents the remaining subpath inside the package and may include slashes.',
+		operationId: 'get-system-module-extension-asset',
 	})
 	@ApiParam({
 		name: 'pkg',
@@ -188,6 +201,9 @@ export class ExtensionsController {
 		type: 'string',
 		required: true,
 	})
+	@RawRoute()
+	@Public()
+	@Get('assets/:pkg/*')
 	async asset(@Param('pkg') pkg: string, @Req() req: Request, @Res() res: Response) {
 		const { admin } = await getDiscoveredExtensions();
 

@@ -9,42 +9,47 @@ import {
 	Logger,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../api/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
 import { Public } from '../../auth/guards/auth.guard';
 import {
 	PlatformException,
 	PlatformNotSupportedException,
 	PlatformValidationException,
 } from '../../platform/platform.exceptions';
-import { SystemHealthModel, SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
+import {
+	SystemHealthResponseModel,
+	SystemInfoResponseModel,
+	ThrottleStatusResponseModel,
+} from '../models/system-response.model';
+import { SystemHealthModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
-import { SYSTEM_MODULE_API_TAG_DESCRIPTION, SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.constants';
+import { SYSTEM_MODULE_API_TAG_NAME } from '../system.constants';
 
-@ApiTag({
-	tagName: SYSTEM_MODULE_NAME,
-	displayName: SYSTEM_MODULE_API_TAG_NAME,
-	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
-})
+@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
 @Controller('system')
 export class SystemController {
 	private readonly logger = new Logger(SystemController.name);
 
 	constructor(private readonly systemService: SystemService) {}
 
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'Get system health',
+		description: 'Retrieve system health status and version',
+		operationId: 'get-system-module-health',
+	})
+	@ApiSuccessResponse(SystemHealthResponseModel, 'System health retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get('health')
-	@ApiOperation({ summary: 'Get system health', description: 'Retrieve system health status and version' })
-	@ApiSuccessResponse(SystemHealthModel, 'System health retrieved successfully')
-	@ApiInternalServerErrorResponse()
-	getSystemHealth(): SystemHealthModel {
+	getSystemHealth(): SystemHealthResponseModel {
 		this.logger.debug('[LOOKUP] Health check');
 
 		try {
@@ -52,21 +57,31 @@ export class SystemController {
 				| { version: string }
 				| undefined;
 
-			return toInstance(SystemHealthModel, {
+			const data = toInstance(SystemHealthModel, {
 				status: 'ok',
 				version: pkgJson.version ?? '0.0.0',
 			});
+
+			const response = new SystemHealthResponseModel();
+			response.data = data;
+
+			return response;
 		} catch (error) {
 			this.handleError(error, 'Failed to create health response');
 		}
 	}
 
-	@Get('info')
-	@ApiOperation({ summary: 'Get system information', description: 'Retrieve detailed system information' })
-	@ApiSuccessResponse(SystemInfoModel, 'System information retrieved successfully')
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'Get system information',
+		description: 'Retrieve detailed system information',
+		operationId: 'get-system-module-info',
+	})
+	@ApiSuccessResponse(SystemInfoResponseModel, 'System information retrieved successfully')
 	@ApiBadRequestResponse('Platform not supported')
-	@ApiInternalServerErrorResponse()
-	async getSystemInfo(): Promise<SystemInfoModel> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('info')
+	async getSystemInfo(): Promise<SystemInfoResponseModel> {
 		this.logger.debug('[LOOKUP] Fetching system info');
 
 		try {
@@ -74,18 +89,26 @@ export class SystemController {
 
 			this.logger.debug('[LOOKUP] Successfully retrieved system info');
 
-			return toInstance(SystemInfoModel, systemInfo);
+			const response = new SystemInfoResponseModel();
+			response.data = systemInfo;
+
+			return response;
 		} catch (error) {
 			this.handleError(error, 'Failed to retrieve system info');
 		}
 	}
 
-	@Get('throttle')
-	@ApiOperation({ summary: 'Get throttle status', description: 'Retrieve system throttling status' })
-	@ApiSuccessResponse(ThrottleStatusModel, 'Throttle status retrieved successfully')
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'Get throttle status',
+		description: 'Retrieve system throttling status',
+		operationId: 'get-system-module-throttle',
+	})
+	@ApiSuccessResponse(ThrottleStatusResponseModel, 'Throttle status retrieved successfully')
 	@ApiBadRequestResponse('Platform not supported')
-	@ApiInternalServerErrorResponse()
-	async getThrottleStatus(): Promise<ThrottleStatusModel> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('throttle')
+	async getThrottleStatus(): Promise<ThrottleStatusResponseModel> {
 		this.logger.debug('[LOOKUP] Fetching throttle status');
 
 		try {
@@ -93,7 +116,10 @@ export class SystemController {
 
 			this.logger.debug('[LOOKUP] Successfully retrieved throttle status');
 
-			return toInstance(ThrottleStatusModel, throttleStatus);
+			const response = new ThrottleStatusResponseModel();
+			response.data = throttleStatus;
+
+			return response;
 		} catch (error) {
 			this.handleError(error, 'Failed to retrieve throttle status');
 		}

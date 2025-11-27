@@ -1,8 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { DisplayProfileEntity } from '../entities/system.entity';
 
 import {
@@ -24,8 +24,7 @@ export class DisplayProfileResponseModel extends BaseSuccessResponseModel<Displa
 		type: () => DisplayProfileEntity,
 	})
 	@Expose()
-	@Type(() => DisplayProfileEntity)
-	data: DisplayProfileEntity;
+	declare data: DisplayProfileEntity;
 }
 
 /**
@@ -39,8 +38,7 @@ export class DisplayProfilesResponseModel extends BaseSuccessResponseModel<Displ
 		items: { $ref: getSchemaPath(DisplayProfileEntity) },
 	})
 	@Expose()
-	@Type(() => DisplayProfileEntity)
-	data: DisplayProfileEntity[];
+	declare data: DisplayProfileEntity[];
 }
 
 /**
@@ -53,8 +51,7 @@ export class DisplayProfileByUidResponseModel extends BaseSuccessResponseModel<D
 		type: () => DisplayProfileEntity,
 	})
 	@Expose()
-	@Type(() => DisplayProfileEntity)
-	data: DisplayProfileEntity;
+	declare data: DisplayProfileEntity;
 }
 
 /**
@@ -68,8 +65,7 @@ export class ExtensionsResponseModel extends BaseSuccessResponseModel<ExtensionB
 		items: { $ref: getSchemaPath(ExtensionBaseModel) },
 	})
 	@Expose()
-	@Type(() => ExtensionBaseModel)
-	data: ExtensionBaseModel[];
+	declare data: ExtensionBaseModel[];
 }
 
 /**
@@ -83,8 +79,7 @@ export class LogEntriesResponseModel extends BaseSuccessResponseModel<LogEntryMo
 		items: { $ref: getSchemaPath(LogEntryModel) },
 	})
 	@Expose()
-	@Type(() => LogEntryModel)
-	data: LogEntryModel[];
+	declare data: LogEntryModel[];
 }
 
 /**
@@ -97,8 +92,7 @@ export class LogEntryAcceptedResponseModel extends BaseSuccessResponseModel<LogE
 		type: () => LogEntryAcceptedModel,
 	})
 	@Expose()
-	@Type(() => LogEntryAcceptedModel)
-	data: LogEntryAcceptedModel;
+	declare data: LogEntryAcceptedModel;
 }
 
 /**
@@ -111,8 +105,7 @@ export class SystemHealthResponseModel extends BaseSuccessResponseModel<SystemHe
 		type: () => SystemHealthModel,
 	})
 	@Expose()
-	@Type(() => SystemHealthModel)
-	data: SystemHealthModel;
+	declare data: SystemHealthModel;
 }
 
 /**
@@ -125,8 +118,7 @@ export class SystemInfoResponseModel extends BaseSuccessResponseModel<SystemInfo
 		type: () => SystemInfoModel,
 	})
 	@Expose()
-	@Type(() => SystemInfoModel)
-	data: SystemInfoModel;
+	declare data: SystemInfoModel;
 }
 
 /**
@@ -139,8 +131,7 @@ export class ThrottleStatusResponseModel extends BaseSuccessResponseModel<Thrott
 		type: () => ThrottleStatusModel,
 	})
 	@Expose()
-	@Type(() => ThrottleStatusModel)
-	data: ThrottleStatusModel;
+	declare data: ThrottleStatusModel;
 }
 
 /**

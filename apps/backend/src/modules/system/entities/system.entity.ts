@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 
-@ApiSchema({ name: 'SystemModuleDisplayProfile' })
+@ApiSchema({ name: 'SystemModuleDataDisplayProfile' })
 @Entity('system_module_displays_profiles')
 export class DisplayProfileEntity extends BaseEntity {
 	@ApiProperty({
