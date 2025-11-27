@@ -48,7 +48,7 @@ const IsCronExpression = (validationOptions?: ValidationOptions) => {
 };
 
 @ApiSchema({ name: 'LoggerRotatingFilePluginUpdateConfig' })
-export class RotatingFileLoggerUpdatePluginConfigDto extends UpdatePluginConfigDto {
+export class RotatingFileUpdateConfigDto extends UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin type',
 		type: 'string',

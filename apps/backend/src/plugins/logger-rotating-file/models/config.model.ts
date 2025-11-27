@@ -6,8 +6,8 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 
-@ApiSchema({ name: 'LoggerRotatingFilePluginConfig' })
-export class RotatingFileLoggerConfigModel extends PluginConfigModel {
+@ApiSchema({ name: 'LoggerRotatingFilePluginDataConfig' })
+export class RotatingFileConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',
 		type: 'string',

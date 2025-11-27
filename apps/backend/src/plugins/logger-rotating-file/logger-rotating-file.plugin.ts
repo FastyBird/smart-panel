@@ -6,9 +6,9 @@ import { PluginsTypeMapperService } from '../../modules/config/services/plugins-
 import { SystemLoggerService } from '../../modules/system/services/system-logger.service';
 import { SystemModule } from '../../modules/system/system.module';
 
-import { RotatingFileLoggerUpdatePluginConfigDto } from './dto/update-config.dto';
+import { RotatingFileUpdateConfigDto } from './dto/update-config.dto';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from './logger-rotating-file.constants';
-import { RotatingFileLoggerConfigModel } from './models/config.model';
+import { RotatingFileConfigModel } from './models/config.model';
 import { FileLoggerService } from './services/file-logger.service';
 
 @Module({
@@ -23,10 +23,10 @@ export class LoggerRotatingFilePlugin {
 	) {}
 
 	onModuleInit() {
-		this.configMapper.registerMapping<RotatingFileLoggerConfigModel, RotatingFileLoggerUpdatePluginConfigDto>({
+		this.configMapper.registerMapping<RotatingFileConfigModel, RotatingFileUpdateConfigDto>({
 			type: LOGGER_ROTATING_FILE_PLUGIN_NAME,
-			class: RotatingFileLoggerConfigModel,
-			configDto: RotatingFileLoggerUpdatePluginConfigDto,
+			class: RotatingFileConfigModel,
+			configDto: RotatingFileUpdateConfigDto,
 		});
 
 		this.systemLoggerService.register(this.fileLoggerService);
