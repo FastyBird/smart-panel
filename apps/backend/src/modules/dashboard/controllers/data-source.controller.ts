@@ -19,6 +19,8 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -27,15 +29,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../api/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
-import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import {
-	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
-	DASHBOARD_MODULE_API_TAG_NAME,
-	DASHBOARD_MODULE_NAME,
-	DASHBOARD_MODULE_PREFIX,
-} from '../dashboard.constants';
+import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateDataSourceDto, CreateSingleDataSourceDto, ReqCreateDataSourceDto } from '../dto/create-data-source.dto';
 import {
@@ -49,11 +43,6 @@ import { DataSourceTypeMapping, DataSourcesTypeMapperService } from '../services
 import { DataSourcesService } from '../services/data-sources.service';
 
 @ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
-@ApiTag({
-	tagName: DASHBOARD_MODULE_NAME,
-	displayName: DASHBOARD_MODULE_API_TAG_NAME,
-	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
-})
 @Controller('data-source')
 export class DataSourceController {
 	private readonly logger = new Logger(DataSourceController.name);
@@ -77,10 +66,7 @@ export class DataSourceController {
 		required: false,
 		description: 'Filter by parent entity ID',
 	})
-	@ApiSuccessResponse(
-		DataSourcesResponseModel,
-		'All configured data sources were retrieved successfully.',
-	)
+	@ApiSuccessResponse(DataSourcesResponseModel, 'All configured data sources were retrieved successfully.')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(
@@ -113,10 +99,7 @@ export class DataSourceController {
 		operationId: 'get-dashboard-module-data-source',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
-	@ApiSuccessResponse(
-		DataSourceResponseModel,
-		'The requested data source was retrieved successfully.',
-	)
+	@ApiSuccessResponse(DataSourceResponseModel, 'The requested data source was retrieved successfully.')
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Data source not found')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -144,10 +127,7 @@ export class DataSourceController {
 		type: ReqCreateDataSourceDto,
 		description: 'Payload containing the attributes for the new data source.',
 	})
-	@ApiCreatedSuccessResponse(
-		DataSourceResponseModel,
-		'The newly created data source was returned successfully.',
-	)
+	@ApiCreatedSuccessResponse(DataSourceResponseModel, 'The newly created data source was returned successfully.')
 	@ApiBadRequestResponse('Invalid request data or unsupported data source type')
 	@ApiUnprocessableEntityResponse('Data source could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -259,10 +239,7 @@ export class DataSourceController {
 		type: ReqUpdateDataSourceWithParentDto,
 		description: 'Payload containing updated data source attributes.',
 	})
-	@ApiSuccessResponse(
-		DataSourceResponseModel,
-		'The updated data source was returned successfully.',
-	)
+	@ApiSuccessResponse(DataSourceResponseModel, 'The updated data source was returned successfully.')
 	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported data source type')
 	@ApiNotFoundResponse('Data source not found')
 	@ApiUnprocessableEntityResponse('Data source could not be updated')

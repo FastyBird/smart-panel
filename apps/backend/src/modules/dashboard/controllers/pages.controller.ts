@@ -18,6 +18,8 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -26,15 +28,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../api/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
-import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import {
-	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
-	DASHBOARD_MODULE_API_TAG_NAME,
-	DASHBOARD_MODULE_NAME,
-	DASHBOARD_MODULE_PREFIX,
-} from '../dashboard.constants';
+import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreatePageDto, ReqCreatePageDto } from '../dto/create-page.dto';
 import { ReqUpdatePageDto, UpdatePageDto } from '../dto/update-page.dto';
@@ -44,11 +38,6 @@ import { PageTypeMapping, PagesTypeMapperService } from '../services/pages-type-
 import { PagesService } from '../services/pages.service';
 
 @ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
-@ApiTag({
-	tagName: DASHBOARD_MODULE_NAME,
-	displayName: DASHBOARD_MODULE_API_TAG_NAME,
-	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
-})
 @Controller('pages')
 export class PagesController {
 	private readonly logger = new Logger(PagesController.name);
@@ -65,10 +54,7 @@ export class PagesController {
 		description: 'Fetches metadata for every dashboard page, including tiles and configured data sources.',
 		operationId: 'get-dashboard-module-pages',
 	})
-	@ApiSuccessResponse(
-		PagesResponseModel,
-		'All configured dashboard pages were successfully retrieved.',
-	)
+	@ApiSuccessResponse(PagesResponseModel, 'All configured dashboard pages were successfully retrieved.')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<PagesResponseModel> {
@@ -91,10 +77,7 @@ export class PagesController {
 		operationId: 'get-dashboard-module-page',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
-	@ApiSuccessResponse(
-		PageResponseModel,
-		'The requested dashboard page was retrieved successfully.',
-	)
+	@ApiSuccessResponse(PageResponseModel, 'The requested dashboard page was retrieved successfully.')
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Page not found')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -122,10 +105,7 @@ export class PagesController {
 		type: ReqCreatePageDto,
 		description: 'Payload containing the page attributes to create.',
 	})
-	@ApiCreatedSuccessResponse(
-		PageResponseModel,
-		'The newly created page was returned successfully.',
-	)
+	@ApiCreatedSuccessResponse(PageResponseModel, 'The newly created page was returned successfully.')
 	@ApiBadRequestResponse('Invalid request data or unsupported page type')
 	@ApiUnprocessableEntityResponse('Page could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -219,10 +199,7 @@ export class PagesController {
 		type: ReqUpdatePageDto,
 		description: 'Payload containing the updated page attributes.',
 	})
-	@ApiSuccessResponse(
-		PageResponseModel,
-		'The updated dashboard page was returned successfully.',
-	)
+	@ApiSuccessResponse(PageResponseModel, 'The updated dashboard page was returned successfully.')
 	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported page type')
 	@ApiNotFoundResponse('Page not found')
 	@ApiUnprocessableEntityResponse('Page could not be updated')

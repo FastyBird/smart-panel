@@ -42,7 +42,7 @@ import {
 	RefreshResponseModel,
 	RegisterDisplayResponseModel,
 } from '../models/auth-response.model';
-import { CheckModel, LoggedInModel, RefreshTokenModel, RegisteredDisplayModel } from '../models/auth.model';
+import { RegisteredDisplayModel } from '../models/auth.model';
 import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
@@ -79,7 +79,7 @@ export class AuthController {
 			this.logger.debug(`[LOGIN] Successful login for username=${body.data.username}`);
 
 			const response = new LoginResponseModel();
-			response.data = toInstance(LoggedInModel, data);
+			response.data = data;
 
 			return response;
 		} catch (error) {
@@ -141,7 +141,7 @@ export class AuthController {
 			this.logger.debug('[REFRESH] Successfully refreshed user access token');
 
 			const response = new RefreshResponseModel();
-			response.data = toInstance(RefreshTokenModel, data);
+			response.data = data;
 
 			return response;
 		} catch (error) {
@@ -240,7 +240,7 @@ export class AuthController {
 		this.logger.debug(`[CHECK] Username=${body.data.username} available=${data.valid}`);
 
 		const response = new CheckUsernameResponseModel();
-		response.data = toInstance(CheckModel, data);
+		response.data = data;
 
 		return response;
 	}
@@ -265,7 +265,7 @@ export class AuthController {
 		this.logger.debug(`[CHECK] Email=${body.data.email} available=${data.valid}`);
 
 		const response = new CheckEmailResponseModel();
-		response.data = toInstance(CheckModel, data);
+		response.data = data;
 
 		return response;
 	}

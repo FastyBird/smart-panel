@@ -19,6 +19,8 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -27,15 +29,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../api/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
-import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import {
-	DASHBOARD_MODULE_API_TAG_DESCRIPTION,
-	DASHBOARD_MODULE_API_TAG_NAME,
-	DASHBOARD_MODULE_NAME,
-	DASHBOARD_MODULE_PREFIX,
-} from '../dashboard.constants';
+import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateSingleTileDto, CreateTileDto, ReqCreateTileDto } from '../dto/create-tile.dto';
 import { ReqUpdateTileWithParentDto, UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
@@ -45,11 +39,6 @@ import { TileTypeMapping, TilesTypeMapperService } from '../services/tiles-type-
 import { TilesService } from '../services/tiles.service';
 
 @ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
-@ApiTag({
-	tagName: DASHBOARD_MODULE_NAME,
-	displayName: DASHBOARD_MODULE_API_TAG_NAME,
-	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
-})
 @Controller('tiles')
 export class TilesController {
 	private readonly logger = new Logger(TilesController.name);
@@ -73,10 +62,7 @@ export class TilesController {
 		required: false,
 		description: 'Filter by parent entity ID',
 	})
-	@ApiSuccessResponse(
-		TilesResponseModel,
-		'All configured tiles were retrieved successfully.',
-	)
+	@ApiSuccessResponse(TilesResponseModel, 'All configured tiles were retrieved successfully.')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(
@@ -137,10 +123,7 @@ export class TilesController {
 		type: ReqCreateTileDto,
 		description: 'Payload containing the tile metadata and layout information.',
 	})
-	@ApiCreatedSuccessResponse(
-		TileResponseModel,
-		'The newly created tile was returned successfully.',
-	)
+	@ApiCreatedSuccessResponse(TileResponseModel, 'The newly created tile was returned successfully.')
 	@ApiBadRequestResponse('Invalid request data or unsupported tile type')
 	@ApiUnprocessableEntityResponse('Tile could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -239,10 +222,7 @@ export class TilesController {
 		type: ReqUpdateTileWithParentDto,
 		description: 'Payload describing the updates to the tile and its parent.',
 	})
-	@ApiSuccessResponse(
-		TileResponseModel,
-		'The updated tile was returned successfully.',
-	)
+	@ApiSuccessResponse(TileResponseModel, 'The updated tile was returned successfully.')
 	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported tile type')
 	@ApiNotFoundResponse('Tile not found')
 	@ApiUnprocessableEntityResponse('Tile could not be updated')
