@@ -6,8 +6,8 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { TILES_TIME_PLUGIN_NAME } from '../tiles-time.constants';
 
-@ApiSchema({ name: 'TilesTimePluginUpdateConfig' })
-export class TimeUpdatePluginConfigDto extends UpdatePluginConfigDto {
+@ApiSchema({ name: 'TilesTimePluginDataUpdateConfig' })
+export class TimeUpdateConfigDto extends UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin type',
 		type: 'string',

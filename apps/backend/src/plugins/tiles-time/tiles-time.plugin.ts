@@ -7,7 +7,7 @@ import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
 
 import { CreateTimeTileDto } from './dto/create-tile.dto';
-import { TimeUpdatePluginConfigDto } from './dto/update-config.dto';
+import { TimeUpdateConfigDto } from './dto/update-config.dto';
 import { UpdateTimeTileDto } from './dto/update-tile.dto';
 import { TimeTileEntity } from './entities/tiles-time.entity';
 import { TimeConfigModel } from './models/config.model';
@@ -23,10 +23,10 @@ export class TilesTimePlugin {
 	) {}
 
 	onModuleInit() {
-		this.configMapper.registerMapping<TimeConfigModel, TimeUpdatePluginConfigDto>({
+		this.configMapper.registerMapping<TimeConfigModel, TimeUpdateConfigDto>({
 			type: TILES_TIME_PLUGIN_NAME,
 			class: TimeConfigModel,
-			configDto: TimeUpdatePluginConfigDto,
+			configDto: TimeUpdateConfigDto,
 		});
 
 		this.tilesMapper.registerMapping<TimeTileEntity, CreateTimeTileDto, UpdateTimeTileDto>({

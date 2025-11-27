@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { TILES_TIME_TYPE } from '../tiles-time.constants';
 
-@ApiSchema({ name: 'TilesTimePluginTimeTile' })
+@ApiSchema({ name: 'TilesTimePluginDataTimeTile' })
 @ChildEntity()
 export class TimeTileEntity extends TileEntity {
 	@ApiProperty({

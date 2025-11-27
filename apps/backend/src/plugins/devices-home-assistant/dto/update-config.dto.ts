@@ -36,4 +36,3 @@ export class HomeAssistantUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	})
 	hostname?: string;
 }
-

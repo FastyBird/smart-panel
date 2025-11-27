@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { TILES_TIME_PLUGIN_NAME } from '../tiles-time.constants';
 
-@ApiSchema({ name: 'TilesTimePluginConfig' })
+@ApiSchema({ name: 'TilesTimePluginDataConfig' })
 export class TimeConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',
