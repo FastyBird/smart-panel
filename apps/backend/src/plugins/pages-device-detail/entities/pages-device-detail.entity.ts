@@ -9,7 +9,7 @@ import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
-@ApiSchema({ name: 'PagesDeviceDetailPluginDeviceDetailPage' })
+@ApiSchema({ name: 'PagesDeviceDetailPluginDataDeviceDetailPage' })
 @ChildEntity()
 export class DeviceDetailPageEntity extends PageEntity {
 	@ApiProperty({

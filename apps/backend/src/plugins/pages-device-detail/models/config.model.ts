@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { PAGES_DEVICE_DETAIL_PLUGIN_NAME } from '../pages-device-detail.constants';
 
-@ApiSchema({ name: 'PagesDeviceDetailPluginConfig' })
+@ApiSchema({ name: 'PagesDeviceDetailPluginDataConfig' })
 export class DeviceDetailConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',
