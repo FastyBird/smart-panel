@@ -104,18 +104,17 @@ export class CreateDeviceChannelPropertyDto {
 
 	@ApiProperty({
 		description: 'Property data type',
-		name: 'data_type',
 		enum: DataTypeType,
 		example: DataTypeType.FLOAT,
 	})
-	@Expose({ name: 'data_type' })
+	@Expose()
 	@IsNotEmpty({
 		message: '[{"field":"data_type","reason":"Data type must be a valid data type."}]',
 	})
 	@IsEnum(DataTypeType, {
 		message: '[{"field":"data_type","reason":"Data type must be a valid data type."}]',
 	})
-	dataType: DataTypeType;
+	data_type: DataTypeType;
 
 	@ApiPropertyOptional({
 		description: 'Property unit',

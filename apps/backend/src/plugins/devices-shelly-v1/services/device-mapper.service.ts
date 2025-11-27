@@ -668,7 +668,7 @@ export class DeviceMapperService {
 				identifier: propDef.identifier,
 				name: propDef.name,
 				category: propDef.category,
-				dataType: propDef.dataType,
+				data_type: propDef.dataType,
 				permissions: propDef.permissions || [PermissionType.READ_ONLY],
 				...(propDef.unit !== undefined && { unit: propDef.unit }),
 				...(propDef.format !== undefined && { format: propDef.format }),
@@ -691,7 +691,7 @@ export class DeviceMapperService {
 					type: DEVICES_SHELLY_V1_TYPE,
 					// Don't update identifier or name - preserve user configuration
 					category: propDef.category,
-					dataType: propDef.dataType,
+					data_type: propDef.dataType,
 					permissions: propDef.permissions || [PermissionType.READ_ONLY],
 					...(propDef.unit !== undefined && { unit: propDef.unit }),
 					...(propDef.format !== undefined && { format: propDef.format }),

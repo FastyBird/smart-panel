@@ -283,7 +283,7 @@ describe('ChannelsPropertiesService', () => {
 				type: 'mock',
 				category: PropertyCategory.GENERIC,
 				permissions: [PermissionType.READ_ONLY],
-				dataType: DataTypeType.UNKNOWN,
+				data_type: DataTypeType.UNKNOWN,
 				mock_value: 'Random text',
 			};
 			const mockCreateProperty: Partial<MockChannelProperty> = {
@@ -291,7 +291,7 @@ describe('ChannelsPropertiesService', () => {
 				category: createDto.category,
 				name: createDto.name,
 				permissions: createDto.permissions,
-				dataType: createDto.dataType,
+				dataType: createDto.data_type,
 				channel: mockChannel.id,
 				mockValue: createDto.mock_value,
 			};
