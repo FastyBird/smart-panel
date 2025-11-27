@@ -12,21 +12,15 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import {
-	ApiExtraModels,
-	ApiNoContentResponse,
-	ApiOperation,
-	ApiTags,
-	ApiUnprocessableEntityResponse,
-} from '@nestjs/swagger';
+import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
 import { ReqCreateDisplayInstanceDto } from '../dto/create-display-instance.dto';
 import { ReqUpdateDisplayInstanceDto } from '../dto/update-display-instance.dto';
@@ -39,10 +33,9 @@ import {
 } from '../models/users-response.model';
 import { DisplaysInstancesService } from '../services/displays-instances.service';
 import { UsersService } from '../services/users.service';
-import { UserRole } from '../users.constants';
-import { USERS_MODULE_PREFIX } from '../users.constants';
+import { USERS_MODULE_API_TAG_NAME, USERS_MODULE_PREFIX, UserRole } from '../users.constants';
 
-@ApiTags('users-module')
+@ApiTags(USERS_MODULE_API_TAG_NAME)
 @Controller('displays-instances')
 export class DisplaysInstancesController {
 	private readonly logger = new Logger(DisplaysInstancesController.name);
@@ -52,52 +45,82 @@ export class DisplaysInstancesController {
 		private readonly usersService: UsersService,
 	) {}
 
-	@Get()
 	@ApiOperation({
-		summary: 'Get all display instances',
-		description: 'Retrieve a list of all display instances',
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a list of all display instances',
+		description:
+			'Fetches a list of all display instances currently registered in the system. Each display instance includes its metadata such as ID, UID, MAC address, version, build, and associated user.',
+		operationId: 'get-users-module-display-instances',
 	})
-	@ApiSuccessArrayResponse(DisplayInstanceEntity, 'Display instances retrieved successfully')
-	@ApiInternalServerErrorResponse()
-	async findAll(): Promise<DisplayInstanceEntity[]> {
+	@ApiSuccessResponse(
+		DisplayInstancesResponseModel,
+		'A list of display instances successfully retrieved. Each display instance includes its metadata (ID, UID, MAC address, version, build, and associated user).',
+	)
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
+	async findAll(): Promise<DisplayInstancesResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all displays instances');
 
 		const displays = await this.displaysService.findAll();
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${displays.length} displays instances`);
 
-		return displays;
+		const response = new DisplayInstancesResponseModel();
+
+		response.data = displays;
+
+		return response;
 	}
 
-	@Get(':id')
 	@ApiOperation({
-		summary: 'Get display instance by ID',
-		description: 'Retrieve a specific display instance by its ID',
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Retrieve details of a specific display instance',
+		description:
+			"Fetches the details of a specific display instance using its unique ID. The response includes the display instance's metadata such as ID, UID, MAC address, version, build, and associated user.",
+		operationId: 'get-users-module-display-instance',
 	})
-	@ApiSuccessResponse(DisplayInstanceEntity, 'Display instance retrieved successfully')
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display instance ID' })
+	@ApiSuccessResponse(
+		DisplayInstanceResponseModel,
+		"The display instance details were successfully retrieved. The response includes the display instance's metadata (ID, UID, MAC address, version, build, and associated user).",
+	)
+	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Display instance not found')
-	@ApiBadRequestResponse('Invalid display instance ID format')
-	@ApiInternalServerErrorResponse()
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayInstanceEntity> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayInstanceResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching display instance id=${id}`);
 
 		const display = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found display instance id=${display.id}`);
 
-		return display;
+		const response = new DisplayInstanceResponseModel();
+
+		response.data = display;
+
+		return response;
 	}
 
-	@Get('by-uid/:uid')
 	@ApiOperation({
-		summary: 'Get display instance by UID',
-		description: 'Retrieve a specific display instance by its unique identifier (UID)',
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a display instance by UID',
+		description:
+			"Fetches the details of a specific display instance using its unique identifier (UID). The response includes the display instance's metadata such as ID, UID, MAC address, version, build, and associated user.",
+		operationId: 'get-users-module-display-instance-by-uid',
 	})
-	@ApiSuccessResponse(DisplayInstanceEntity, 'Display instance retrieved successfully')
+	@ApiParam({ name: 'uid', type: 'string', format: 'uuid', description: 'Display instance UID' })
+	@ApiSuccessResponse(
+		DisplayInstanceByUidResponseModel,
+		"The display instance details were successfully retrieved. The response includes the display instance's metadata (ID, UID, MAC address, version, build, and associated user).",
+	)
+	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Display instance not found')
-	@ApiBadRequestResponse('Invalid UID format')
-	@ApiInternalServerErrorResponse()
-	async findOneByUid(@Param('uid', new ParseUUIDPipe({ version: '4' })) uid: string): Promise<DisplayInstanceEntity> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('by-uid/:uid')
+	async findOneByUid(
+		@Param('uid', new ParseUUIDPipe({ version: '4' })) uid: string,
+	): Promise<DisplayInstanceByUidResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching display instance uid=${uid}`);
 
 		const display = await this.displaysService.findByUid(uid);
@@ -110,21 +133,31 @@ export class DisplaysInstancesController {
 
 		this.logger.debug(`[LOOKUP] Found display instance id=${display.id}`);
 
-		return display;
+		const response = new DisplayInstanceByUidResponseModel();
+
+		response.data = display;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Create a new display instance',
+		description:
+			'Registers a new display instance in the system. The request requires display-specific attributes such as UID, MAC address, version, build, and associated user. The response includes the full representation of the created display instance, including its unique identifier, UID, MAC address, version, build, and timestamps. Additionally, a Location header is provided with the URI of the newly created resource.',
+		operationId: 'create-users-module-display-instance',
+	})
+	@ApiCreatedSuccessResponse(
+		DisplayInstanceResponseModel,
+		'The display instance was successfully created. The response includes the complete details of the newly created display instance, such as its unique identifier, UID, MAC address, version, build, and timestamps.',
+	)
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiUnprocessableEntityResponse('UID already exists or user not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
 	@Header('Location', `:baseUrl/${USERS_MODULE_PREFIX}/displays/:id`)
 	@Roles(UserRole.DISPLAY)
-	@ApiOperation({
-		summary: 'Create a new display instance',
-		description: 'Register a new display instance',
-	})
-	@ApiCreatedSuccessResponse(DisplayInstanceEntity, 'Display instance created successfully')
-	@ApiBadRequestResponse('Invalid request data')
-	@ApiUnprocessableEntityResponse({ description: 'UID already exists or user not found' })
-	@ApiInternalServerErrorResponse()
-	async create(@Body() createDto: ReqCreateDisplayInstanceDto): Promise<DisplayInstanceEntity> {
+	async create(@Body() createDto: ReqCreateDisplayInstanceDto): Promise<DisplayInstanceResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new display instance');
 
 		const existingDisplay = await this.displaysService.findByUid(createDto.data.uid);
@@ -147,23 +180,34 @@ export class DisplaysInstancesController {
 
 		this.logger.debug(`[CREATE] Successfully created display instance id=${display.id}`);
 
-		return display;
+		const response = new DisplayInstanceResponseModel();
+
+		response.data = display;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Update an existing display instance',
+		description:
+			'Updates the details of an existing display instance using its unique ID. The request can include updates to version, build, or display profile. The response includes the complete updated representation of the display instance.',
+		operationId: 'update-users-module-display-instance',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display instance ID' })
+	@ApiSuccessResponse(
+		DisplayInstanceResponseModel,
+		'The display instance was successfully updated. The response includes the complete details of the updated display instance, such as its unique identifier, UID, MAC address, version, build, and timestamps.',
+	)
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiNotFoundResponse('Display instance not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Patch(':id')
 	@Roles(UserRole.DISPLAY, UserRole.OWNER)
-	@ApiOperation({
-		summary: 'Update a display instance',
-		description: 'Update an existing display instance',
-	})
-	@ApiSuccessResponse(DisplayInstanceEntity, 'Display instance updated successfully')
-	@ApiNotFoundResponse('Display instance not found')
-	@ApiBadRequestResponse('Invalid request data')
-	@ApiInternalServerErrorResponse()
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateDisplayInstanceDto,
-	): Promise<DisplayInstanceEntity> {
+	): Promise<DisplayInstanceResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for display instance id=${id}`);
 
 		const display = await this.getOneOrThrow(id);
@@ -172,19 +216,27 @@ export class DisplaysInstancesController {
 
 		this.logger.debug(`[UPDATE] Successfully updated display instance id=${updatedDisplay.id}`);
 
-		return updatedDisplay;
+		const response = new DisplayInstanceResponseModel();
+
+		response.data = updatedDisplay;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Delete an existing display instance',
+		description:
+			'Deletes an existing display instance from the system using its unique ID. This operation is irreversible and will remove all associated display instance data.',
+		operationId: 'delete-users-module-display-instance',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display instance ID' })
+	@ApiNoContentResponse({ description: 'Display instance deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Display instance not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Delete(':id')
 	@Roles(UserRole.DISPLAY, UserRole.OWNER)
-	@ApiOperation({
-		summary: 'Delete a display instance',
-		description: 'Delete an existing display instance',
-	})
-	@ApiNoContentResponse({ description: 'Display instance deleted successfully' })
-	@ApiNotFoundResponse('Display instance not found')
-	@ApiBadRequestResponse('Invalid display instance ID format')
-	@ApiInternalServerErrorResponse()
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete display instance id=${id}`);
 

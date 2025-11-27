@@ -13,88 +13,105 @@ import {
 	Req,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation } from '@nestjs/swagger';
+import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
-	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../api/decorators/api-tag.decorator';
 import { AuthenticatedRequest } from '../../auth/auth.constants';
 import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
+import { UserResponseModel, UsersResponseModel } from '../models/users-response.model';
 import { UsersService } from '../services/users.service';
-import {
-	USERS_MODULE_API_TAG_DESCRIPTION,
-	USERS_MODULE_API_TAG_NAME,
-	USERS_MODULE_NAME,
-	USERS_MODULE_PREFIX,
-} from '../users.constants';
+import { USERS_MODULE_API_TAG_NAME, USERS_MODULE_PREFIX } from '../users.constants';
 
-@ApiTag({
-	tagName: USERS_MODULE_NAME,
-	displayName: USERS_MODULE_API_TAG_NAME,
-	description: USERS_MODULE_API_TAG_DESCRIPTION,
-})
+@ApiTags(USERS_MODULE_API_TAG_NAME)
 @Controller('users')
 export class UsersController {
 	private readonly logger = new Logger(UsersController.name);
 
 	constructor(private readonly usersService: UsersService) {}
 
-	@Get()
 	@ApiOperation({
-		summary: 'Get all users',
-		description: 'Retrieve a list of all registered users',
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a list of all users',
+		description:
+			'Fetches a list of all users currently registered in the system. Each user includes their metadata such as ID, username, email, role, and profile information.',
+		operationId: 'get-users-module-users',
 	})
-	@ApiSuccessArrayResponse(UserEntity, 'Users retrieved successfully')
-	@ApiInternalServerErrorResponse()
-	async findAll(): Promise<UserEntity[]> {
+	@ApiSuccessResponse(
+		UsersResponseModel,
+		'A list of users successfully retrieved. Each user includes their metadata (ID, username, email, role, and profile information).',
+	)
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
+	async findAll(): Promise<UsersResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all users');
 
 		const users = await this.usersService.findAll();
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${users.length} users`);
 
-		return users;
+		const response = new UsersResponseModel();
+
+		response.data = users;
+
+		return response;
 	}
 
-	@Get(':id')
 	@ApiOperation({
-		summary: 'Get user by ID',
-		description: 'Retrieve a specific user by their ID',
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Retrieve details of a specific user',
+		description:
+			"Fetches the details of a specific user using their unique ID. The response includes the user's metadata such as ID, username, email, role, and profile information.",
+		operationId: 'get-users-module-user',
 	})
-	@ApiSuccessResponse(UserEntity, 'User retrieved successfully')
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'User ID' })
+	@ApiSuccessResponse(
+		UserResponseModel,
+		"The user details were successfully retrieved. The response includes the user's metadata (ID, username, email, role, and profile information).",
+	)
+	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('User not found')
-	@ApiBadRequestResponse('Invalid user ID format')
-	@ApiInternalServerErrorResponse()
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UserEntity> {
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UserResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching page id=${id}`);
 
 		const user = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found user id=${user.id}`);
 
-		return user;
+		const response = new UserResponseModel();
+
+		response.data = user;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Create a new user',
+		description:
+			'Creates a new user account in the system. The request requires user-specific attributes such as username, password, and optionally email and profile information. The response includes the full representation of the created user, including their unique identifier, username, email, role, and timestamps. Additionally, a Location header is provided with the URI of the newly created resource.',
+		operationId: 'create-users-module-user',
+	})
+	@ApiCreatedSuccessResponse(
+		UserResponseModel,
+		'The user was successfully created. The response includes the complete details of the newly created user, such as its unique identifier, username, email, role, and timestamps.',
+	)
+	@ApiBadRequestResponse('Invalid request data or unsupported user data')
+	@ApiUnprocessableEntityResponse('Username or email already exists')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
 	@Header('Location', `:baseUrl/${USERS_MODULE_PREFIX}/users/:id`)
-	@ApiOperation({
-		summary: 'Create a new user',
-		description: 'Create a new user account',
-	})
-	@ApiCreatedSuccessResponse(UserEntity, 'User created successfully')
-	@ApiBadRequestResponse('Invalid request data')
-	@ApiUnprocessableEntityResponse('Username or email already exists')
-	@ApiInternalServerErrorResponse()
-	async create(@Body() createDto: ReqCreateUserDto): Promise<UserEntity> {
+	async create(@Body() createDto: ReqCreateUserDto): Promise<UserResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new user');
 
 		const existingUsername = await this.usersService.findByUsername(createDto.data.username);
@@ -119,23 +136,34 @@ export class UsersController {
 
 		this.logger.debug(`[CREATE] Successfully created user id=${user.id}`);
 
-		return user;
+		const response = new UserResponseModel();
+
+		response.data = user;
+
+		return response;
 	}
 
-	@Patch(':id')
 	@ApiOperation({
-		summary: 'Update a user',
-		description: 'Update an existing user',
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Update an existing user',
+		description:
+			'Updates the details of an existing user using their unique ID. The request can include updates to username, email, password, role, or profile information. The response includes the complete updated representation of the user.',
+		operationId: 'update-users-module-user',
 	})
-	@ApiSuccessResponse(UserEntity, 'User updated successfully')
-	@ApiNotFoundResponse('User not found')
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'User ID' })
+	@ApiSuccessResponse(
+		UserResponseModel,
+		'The user was successfully updated. The response includes the complete details of the updated user, such as its unique identifier, username, email, role, and timestamps.',
+	)
 	@ApiBadRequestResponse('Invalid request data')
+	@ApiNotFoundResponse('User not found')
 	@ApiUnprocessableEntityResponse('Email already exists')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateUserDto,
-	): Promise<UserEntity> {
+	): Promise<UserResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for user id=${id}`);
 
 		const user = await this.getOneOrThrow(id);
@@ -154,19 +182,27 @@ export class UsersController {
 
 		this.logger.debug(`[UPDATE] Successfully updated user id=${updatedUser.id}`);
 
-		return updatedUser;
+		const response = new UserResponseModel();
+
+		response.data = updatedUser;
+
+		return response;
 	}
 
-	@Delete(':id')
 	@ApiOperation({
-		summary: 'Delete a user',
-		description: 'Delete an existing user',
+		tags: [USERS_MODULE_API_TAG_NAME],
+		summary: 'Delete an existing user',
+		description:
+			'Deletes an existing user from the system using their unique ID. This operation is irreversible and will remove all associated user data. Users cannot delete their own account.',
+		operationId: 'delete-users-module-user',
 	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'User ID' })
 	@ApiNoContentResponse({ description: 'User deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('User not found')
-	@ApiBadRequestResponse('Invalid user ID format')
 	@ApiUnprocessableEntityResponse('Cannot delete your own account')
-	@ApiInternalServerErrorResponse()
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Delete(':id')
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Req() req: AuthenticatedRequest,

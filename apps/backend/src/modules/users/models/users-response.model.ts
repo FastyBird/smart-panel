@@ -1,8 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { DisplayInstanceEntity, UserEntity } from '../entities/users.entity';
 
 /**
@@ -11,12 +11,11 @@ import { DisplayInstanceEntity, UserEntity } from '../entities/users.entity';
 @ApiSchema({ name: 'UsersModuleResUser' })
 export class UserResponseModel extends BaseSuccessResponseModel<UserEntity> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'User entity',
 		type: () => UserEntity,
 	})
 	@Expose()
-	@Type(() => UserEntity)
-	data: UserEntity;
+	declare data: UserEntity;
 }
 
 /**
@@ -25,13 +24,12 @@ export class UserResponseModel extends BaseSuccessResponseModel<UserEntity> {
 @ApiSchema({ name: 'UsersModuleResUsers' })
 export class UsersResponseModel extends BaseSuccessResponseModel<UserEntity[]> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'List of users',
 		type: 'array',
 		items: { $ref: getSchemaPath(UserEntity) },
 	})
 	@Expose()
-	@Type(() => UserEntity)
-	data: UserEntity[];
+	declare data: UserEntity[];
 }
 
 /**
@@ -40,12 +38,11 @@ export class UsersResponseModel extends BaseSuccessResponseModel<UserEntity[]> {
 @ApiSchema({ name: 'UsersModuleResDisplayInstance' })
 export class DisplayInstanceResponseModel extends BaseSuccessResponseModel<DisplayInstanceEntity> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'Display instance entity',
 		type: () => DisplayInstanceEntity,
 	})
 	@Expose()
-	@Type(() => DisplayInstanceEntity)
-	data: DisplayInstanceEntity;
+	declare data: DisplayInstanceEntity;
 }
 
 /**
@@ -54,13 +51,12 @@ export class DisplayInstanceResponseModel extends BaseSuccessResponseModel<Displ
 @ApiSchema({ name: 'UsersModuleResDisplayInstances' })
 export class DisplayInstancesResponseModel extends BaseSuccessResponseModel<DisplayInstanceEntity[]> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'List of display instances',
 		type: 'array',
 		items: { $ref: getSchemaPath(DisplayInstanceEntity) },
 	})
 	@Expose()
-	@Type(() => DisplayInstanceEntity)
-	data: DisplayInstanceEntity[];
+	declare data: DisplayInstanceEntity[];
 }
 
 /**
@@ -69,10 +65,9 @@ export class DisplayInstancesResponseModel extends BaseSuccessResponseModel<Disp
 @ApiSchema({ name: 'UsersModuleResDisplayInstanceByUid' })
 export class DisplayInstanceByUidResponseModel extends BaseSuccessResponseModel<DisplayInstanceEntity> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
+		description: 'Display instance entity',
 		type: () => DisplayInstanceEntity,
 	})
 	@Expose()
-	@Type(() => DisplayInstanceEntity)
-	data: DisplayInstanceEntity;
+	declare data: DisplayInstanceEntity;
 }
