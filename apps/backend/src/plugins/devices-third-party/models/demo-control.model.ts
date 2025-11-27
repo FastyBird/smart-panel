@@ -6,7 +6,6 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 
 /**
- * Alias for DevicesThirdPartyPluginErrorCode (OpenAPI spec compatibility)
  * This is an enum schema that matches ThirdPartyPropertiesUpdateStatus
  */
 @ApiSchema({ name: 'DevicesThirdPartyPluginErrorCode' })

@@ -16,9 +16,3 @@ export class UpdateThirdPartyChannelDto extends UpdateChannelDto {
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel type string."}]' })
 	type: typeof DEVICES_THIRD_PARTY_TYPE;
 }
-
-/**
- * Alias for DevicesThirdPartyPluginUpdateThirdPartyChannel (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesThirdPartyPluginUpdateThirdPartyChannel' })
-export class DevicesThirdPartyPluginUpdateThirdPartyChannel extends UpdateThirdPartyChannelDto {}

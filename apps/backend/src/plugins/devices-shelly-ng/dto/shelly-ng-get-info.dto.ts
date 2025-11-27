@@ -3,10 +3,8 @@ import { IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgGetInfo' })
-export class ShellyNgGetInfoDto {
-	// Alias for OpenAPI spec compatibility
-	static readonly GetInfoAlias = ShellyNgGetInfoDto;
+@ApiSchema({ name: 'DevicesShellyNgPluginGetInfo' })
+export class DevicesShellyNgPluginGetInfo {
 	@ApiProperty({
 		description: 'Device hostname or IP address',
 		example: '192.168.1.100',
@@ -28,23 +26,14 @@ export class ShellyNgGetInfoDto {
 	password?: string | null = null;
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginReqShellyNgGetInfo' })
-export class ReqShellyNgGetInfoDto {
-	@ApiProperty({ description: 'Device info request data', type: ShellyNgGetInfoDto })
+@ApiSchema({ name: 'DevicesShellyNgPluginReqGetInfo' })
+export class DevicesShellyNgPluginReqGetInfo {
+	@ApiProperty({
+		description: 'Device info request data',
+		type: () => DevicesShellyNgPluginGetInfo,
+	})
 	@Expose()
 	@ValidateNested()
-	@Type(() => ShellyNgGetInfoDto)
-	data: ShellyNgGetInfoDto;
+	@Type(() => DevicesShellyNgPluginGetInfo)
+	data: DevicesShellyNgPluginGetInfo;
 }
-
-/**
- * Alias for DevicesShellyNgPluginCreateDeviceInfo (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyNgPluginCreateDeviceInfo' })
-export class DevicesShellyNgPluginCreateDeviceInfo extends ShellyNgGetInfoDto {}
-
-/**
- * Alias for DevicesShellyNgPluginReqCreateDeviceInfo (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyNgPluginReqCreateDeviceInfo' })
-export class DevicesShellyNgPluginReqCreateDeviceInfo extends ReqShellyNgGetInfoDto {}

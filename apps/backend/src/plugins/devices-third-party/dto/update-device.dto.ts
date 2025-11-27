@@ -27,9 +27,3 @@ export class UpdateThirdPartyDeviceDto extends UpdateDeviceDto {
 	@IsString({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
 	service_address?: string;
 }
-
-/**
- * Alias for DevicesThirdPartyPluginUpdateThirdPartyDevice (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesThirdPartyPluginUpdateThirdPartyDevice' })
-export class DevicesThirdPartyPluginUpdateThirdPartyDevice extends UpdateThirdPartyDeviceDto {}

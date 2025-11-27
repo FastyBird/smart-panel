@@ -16,9 +16,3 @@ export class CreateThirdPartyChannelDto extends CreateChannelDto {
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel type string."}]' })
 	readonly type: typeof DEVICES_THIRD_PARTY_TYPE;
 }
-
-/**
- * Alias for DevicesThirdPartyPluginCreateThirdPartyChannel (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesThirdPartyPluginCreateThirdPartyChannel' })
-export class DevicesThirdPartyPluginCreateThirdPartyChannel extends CreateThirdPartyChannelDto {}

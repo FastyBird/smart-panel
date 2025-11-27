@@ -113,12 +113,6 @@ export class SuccessMetadataModel {
 }
 
 /**
- * Alias for OpenAPI spec compatibility
- */
-@ApiSchema({ name: 'CommonResMetadata' })
-export class CommonResMetadata extends SuccessMetadataModel {}
-
-/**
  * Base error response structure
  */
 export class BaseErrorResponseModel {

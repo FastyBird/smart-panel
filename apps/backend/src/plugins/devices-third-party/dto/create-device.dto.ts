@@ -26,9 +26,3 @@ export class CreateThirdPartyDeviceDto extends CreateDeviceDto {
 	@IsString({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
 	service_address: string;
 }
-
-/**
- * Alias for DevicesThirdPartyPluginCreateThirdPartyDevice (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesThirdPartyPluginCreateThirdPartyDevice' })
-export class DevicesThirdPartyPluginCreateThirdPartyDevice extends CreateThirdPartyDeviceDto {}

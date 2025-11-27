@@ -7,7 +7,7 @@ import { PropertyCategory } from '../../../modules/devices/devices.constants';
 import { UpdateChannelPropertyDto } from '../../../modules/devices/dto/update-channel-property.dto';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-@ApiSchema({ name: 'DevicesShellyNgPluginUpdateShellyNgChannelProperty' })
+@ApiSchema({ name: 'DevicesShellyNgPluginUpdateChannelProperty' })
 export class UpdateShellyNgChannelPropertyDto extends UpdateChannelPropertyDto {
 	@ApiProperty({
 		description: 'Channel property type',

@@ -82,9 +82,3 @@ export class ShellyV1UpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Type(() => ShellyV1UpdatePluginConfigTimeoutsDto)
 	timeouts?: ShellyV1UpdatePluginConfigTimeoutsDto;
 }
-
-/**
- * Alias for DevicesShellyV1PluginUpdateConfig (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyV1PluginUpdateConfig' })
-export class DevicesShellyV1PluginUpdateConfig extends ShellyV1UpdatePluginConfigDto {}

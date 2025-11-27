@@ -15,8 +15,6 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginDataState' })
 export class HomeAssistantStateModel {
-	// Alias for OpenAPI spec compatibility
-	static readonly StateAlias = HomeAssistantStateModel;
 	@ApiProperty({
 		description: 'Home Assistant entity ID',
 		type: 'string',

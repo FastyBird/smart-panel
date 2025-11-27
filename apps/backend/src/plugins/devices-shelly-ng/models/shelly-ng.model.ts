@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgSupportedDeviceComponent' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataSupportedDeviceComponent' })
 export class ShellyNgSupportedDeviceComponentModel {
 	@ApiProperty({
 		description: 'Component type',
@@ -26,7 +26,7 @@ export class ShellyNgSupportedDeviceComponentModel {
 	ids: number[];
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgSupportedDeviceSystemComponent' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataSupportedDeviceSystemComponent' })
 export class ShellyNgSupportedDeviceSystemComponentModel {
 	@ApiProperty({
 		description: 'System component type',
@@ -37,7 +37,7 @@ export class ShellyNgSupportedDeviceSystemComponentModel {
 	type: string;
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgSupportedDevice' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataSupportedDevice' })
 export class ShellyNgSupportedDeviceModel {
 	@ApiProperty({
 		description: 'Device group',
@@ -99,7 +99,7 @@ export class ShellyNgSupportedDeviceModel {
 	system: ShellyNgSupportedDeviceSystemComponentModel[];
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgDeviceInfoComponent' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataDeviceInfoComponent' })
 export class ShellyNgDeviceInfoComponentModel {
 	@ApiProperty({
 		description: 'Component type',
@@ -120,7 +120,7 @@ export class ShellyNgDeviceInfoComponentModel {
 	ids: number[];
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgDeviceInfoAuthentication' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataDeviceInfoAuthentication' })
 export class ShellyNgDeviceInfoAuthenticationModel {
 	@ApiPropertyOptional({
 		description: 'Authentication domain',
@@ -142,7 +142,7 @@ export class ShellyNgDeviceInfoAuthenticationModel {
 	enabled: boolean = false;
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgDeviceInfo' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataDeviceInfo' })
 export class ShellyNgDeviceInfoModel {
 	@ApiProperty({
 		description: 'Device identifier',
@@ -232,15 +232,3 @@ export class ShellyNgDeviceInfoModel {
 	@Type(() => ShellyNgDeviceInfoComponentModel)
 	components: ShellyNgDeviceInfoComponentModel[];
 }
-
-/**
- * Alias for DevicesShellyNgPluginDeviceInfo (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyNgPluginDeviceInfo' })
-export class DevicesShellyNgPluginDeviceInfo extends ShellyNgDeviceInfoModel {}
-
-/**
- * Alias for DevicesShellyNgPluginSupportedDevice (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyNgPluginSupportedDevice' })
-export class DevicesShellyNgPluginSupportedDevice extends ShellyNgSupportedDeviceModel {}

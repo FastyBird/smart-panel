@@ -81,9 +81,3 @@ export class ShellyV1ConfigModel extends PluginConfigModel {
 	})
 	timeouts: ShellyV1TimeoutsConfigModel = new ShellyV1TimeoutsConfigModel();
 }
-
-/**
- * Alias for DevicesShellyV1PluginConfig (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyV1PluginConfig' })
-export class DevicesShellyV1PluginConfig extends ShellyV1ConfigModel {}

@@ -34,9 +34,3 @@ export class UpdateShellyV1DeviceDto extends UpdateDeviceDto {
 	@IsString()
 	hostname?: string;
 }
-
-/**
- * Alias for DevicesShellyV1PluginUpdateShellyV1Device (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyV1PluginUpdateShellyV1Device' })
-export class DevicesShellyV1PluginUpdateShellyV1Device extends UpdateShellyV1DeviceDto {}

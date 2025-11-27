@@ -27,12 +27,6 @@ export class ShellyV1ProbeDto {
 }
 
 /**
- * Alias for DevicesShellyV1PluginCreateDeviceInfo (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyV1PluginCreateDeviceInfo' })
-export class DevicesShellyV1PluginCreateDeviceInfo extends ShellyV1ProbeDto {}
-
-/**
  * Request wrapper for DevicesShellyV1PluginCreateDeviceInfo
  */
 @ApiSchema({ name: 'DevicesShellyV1PluginReqCreateDeviceInfo' })

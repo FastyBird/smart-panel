@@ -6,7 +6,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { CreateChannelDto } from '../../../modules/devices/dto/create-channel.dto';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-@ApiSchema({ name: 'DevicesShellyNgPluginCreateShellyNgChannel' })
+@ApiSchema({ name: 'DevicesShellyNgPluginCreateChannel' })
 export class CreateShellyNgChannelDto extends CreateChannelDto {
 	@ApiProperty({
 		description: 'Channel type',

@@ -6,7 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgMdnsConfig' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataShellyNgMdnsConfig' })
 export class ShellyNgMdnsConfigModel {
 	@ApiProperty({
 		description: 'Whether mDNS discovery is enabled',
@@ -27,7 +27,7 @@ export class ShellyNgMdnsConfigModel {
 	interface: string | null = null;
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgWebsocketsConfig' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataShellyNgWebsocketsConfig' })
 export class ShellyNgWebsocketsConfigModel {
 	@ApiProperty({
 		name: 'request_timeout',
@@ -63,7 +63,7 @@ export class ShellyNgWebsocketsConfigModel {
 	reconnectInterval: number[] = [5, 10, 30, 60, 5 * 60, 10 * 60]; // seconds
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgConfig' })
+@ApiSchema({ name: 'DevicesShellyNgPluginDataShellyNgConfig' })
 export class ShellyNgConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type',
@@ -91,9 +91,3 @@ export class ShellyNgConfigModel extends PluginConfigModel {
 	@Type(() => ShellyNgWebsocketsConfigModel)
 	websockets: ShellyNgWebsocketsConfigModel = new ShellyNgWebsocketsConfigModel();
 }
-
-/**
- * Alias for DevicesShellyNgPluginConfig (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyNgPluginConfig' })
-export class DevicesShellyNgPluginConfig extends ShellyNgConfigModel {}

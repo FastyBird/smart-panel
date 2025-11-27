@@ -134,18 +134,3 @@ export class ShellyV1DeviceInfoModel {
 	})
 	description?: string;
 }
-
-/**
- * Alias for DevicesShellyV1PluginDeviceInfo (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyV1PluginDeviceInfo' })
-export class DevicesShellyV1PluginDeviceInfo extends ShellyV1DeviceInfoModel {}
-
-/**
- * Alias for DevicesShellyV1PluginSupportedDevice (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyV1PluginSupportedDevice' })
-export class DevicesShellyV1PluginSupportedDevice extends ShellyV1SupportedDeviceModel {}
-
-// Export response wrapper models
-export {} from './shelly-v1-response.model';

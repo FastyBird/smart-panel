@@ -6,7 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { CreateDeviceDto } from '../../../modules/devices/dto/create-device.dto';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-@ApiSchema({ name: 'DevicesShellyNgPluginCreateShellyNgDevice' })
+@ApiSchema({ name: 'DevicesShellyNgPluginCreateDevice' })
 export class CreateShellyNgDeviceDto extends CreateDeviceDto {
 	@ApiProperty({
 		description: 'Device type',

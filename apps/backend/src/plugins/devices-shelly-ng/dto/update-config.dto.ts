@@ -6,7 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgUpdatePluginConfigMdns' })
+@ApiSchema({ name: 'DevicesShellyNgPluginUpdateConfigMdns' })
 export class ShellyNgUpdatePluginConfigMdnsDto {
 	@ApiPropertyOptional({
 		description: 'Enable MDNS discovery',
@@ -28,7 +28,7 @@ export class ShellyNgUpdatePluginConfigMdnsDto {
 	interface?: string | null;
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgUpdatePluginConfigWebsockets' })
+@ApiSchema({ name: 'DevicesShellyNgPluginUpdateConfigWebsockets' })
 export class ShellyNgUpdatePluginConfigWebsocketsDto {
 	@ApiPropertyOptional({
 		description: 'Websocket request timeout in milliseconds',
@@ -85,7 +85,7 @@ export class ShellyNgUpdatePluginConfigWebsocketsDto {
 	reconnect_interval: number[];
 }
 
-@ApiSchema({ name: 'DevicesShellyNgPluginShellyNgUpdatePluginConfig' })
+@ApiSchema({ name: 'DevicesShellyNgPluginUpdateConfig' })
 export class ShellyNgUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@ApiProperty({
 		description: 'Plugin type',
@@ -115,9 +115,3 @@ export class ShellyNgUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Type(() => ShellyNgUpdatePluginConfigWebsocketsDto)
 	websockets: ShellyNgUpdatePluginConfigWebsocketsDto;
 }
-
-/**
- * Alias for DevicesShellyNgPluginUpdateConfig (OpenAPI spec compatibility)
- */
-@ApiSchema({ name: 'DevicesShellyNgPluginUpdateConfig' })
-export class DevicesShellyNgPluginUpdateConfig extends ShellyNgUpdatePluginConfigDto {}

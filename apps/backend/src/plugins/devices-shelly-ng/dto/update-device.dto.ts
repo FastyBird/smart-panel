@@ -6,7 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { UpdateDeviceDto } from '../../../modules/devices/dto/update-device.dto';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-@ApiSchema({ name: 'DevicesShellyNgPluginUpdateShellyNgDevice' })
+@ApiSchema({ name: 'DevicesShellyNgPluginUpdateDevice' })
 export class UpdateShellyNgDeviceDto extends UpdateDeviceDto {
 	@ApiProperty({
 		description: 'Device type',
