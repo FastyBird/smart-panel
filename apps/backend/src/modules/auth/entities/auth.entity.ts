@@ -10,7 +10,7 @@ import { TokenType } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { hashToken } from '../utils/token.utils';
 
-@ApiSchema({ name: 'AuthModuleToken' })
+@ApiSchema({ name: 'AuthModuleDataToken' })
 @Entity('auth_module_tokens')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class TokenEntity extends BaseEntity {
@@ -90,7 +90,7 @@ export abstract class TokenEntity extends BaseEntity {
 	}
 }
 
-@ApiSchema({ name: 'AuthModuleAccessToken' })
+@ApiSchema({ name: 'AuthModuleDataAccessToken' })
 @ChildEntity()
 export class AccessTokenEntity extends TokenEntity {
 	@ApiProperty({
@@ -130,7 +130,7 @@ export class AccessTokenEntity extends TokenEntity {
 	}
 }
 
-@ApiSchema({ name: 'AuthModuleRefreshToken' })
+@ApiSchema({ name: 'AuthModuleDataRefreshToken' })
 @ChildEntity()
 export class RefreshTokenEntity extends TokenEntity {
 	@ApiProperty({
@@ -174,7 +174,7 @@ export class RefreshTokenEntity extends TokenEntity {
 	}
 }
 
-@ApiSchema({ name: 'AuthModuleLongLiveToken' })
+@ApiSchema({ name: 'AuthModuleDataLongLiveToken' })
 @ChildEntity()
 export class LongLiveTokenEntity extends TokenEntity {
 	@ApiProperty({

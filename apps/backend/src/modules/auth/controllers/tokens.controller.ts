@@ -17,8 +17,10 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -27,29 +29,17 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../api/decorators/api-tag.decorator';
-import { toInstance } from '../../../common/utils/transform.utils';
-import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import {
-	AUTH_MODULE_API_TAG_DESCRIPTION,
-	AUTH_MODULE_API_TAG_NAME,
-	AUTH_MODULE_NAME,
-	AUTH_MODULE_PREFIX,
-} from '../auth.constants';
+import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
 import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
-import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { AccessTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
-import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
 
-@ApiTag({
-	tagName: AUTH_MODULE_NAME,
-	displayName: AUTH_MODULE_API_TAG_NAME,
-	description: AUTH_MODULE_API_TAG_DESCRIPTION,
-})
+@ApiTags(AUTH_MODULE_API_TAG_NAME)
 @Controller('tokens')
 export class TokensController {
 	private readonly logger = new Logger(TokensController.name);
@@ -59,7 +49,6 @@ export class TokensController {
 		private readonly tokensMapperService: TokensTypeMapperService,
 	) {}
 
-	@Get()
 	@ApiOperation({
 		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Get all tokens',
@@ -68,6 +57,7 @@ export class TokensController {
 	})
 	@ApiSuccessResponse(TokensResponseModel, 'Tokens retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get()
 	async findAll(): Promise<TokensResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
 
@@ -80,7 +70,6 @@ export class TokensController {
 		return response;
 	}
 
-	@Get(':id')
 	@ApiOperation({
 		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Get token by ID',
@@ -91,6 +80,7 @@ export class TokensController {
 	@ApiSuccessResponse(TokenResponseModel, 'Token retrieved successfully')
 	@ApiNotFoundResponse('Token not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TokenResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching token id=${id}`);
 
@@ -104,13 +94,11 @@ export class TokensController {
 		return response;
 	}
 
-	@Post()
-	@Header('Location', `:baseUrl/${AUTH_MODULE_PREFIX}/auth/:id`)
 	@ApiOperation({
 		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Create new token',
 		description: 'Create a new authentication token',
-		operationId: 'post-auth-module-token',
+		operationId: 'create-auth-module-token',
 	})
 	@ApiBody({
 		description: 'Token creation data with discriminated type',
@@ -119,6 +107,8 @@ export class TokensController {
 	@ApiCreatedSuccessResponse(TokenResponseModel, 'Token created successfully')
 	@ApiBadRequestResponse('Invalid token data or unsupported token type')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Header('Location', `:baseUrl/${AUTH_MODULE_PREFIX}/auth/:id`)
+	@Post()
 	async create(@Body() createDto: ReqCreateTokenDto): Promise<TokenResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new token');
 
@@ -134,8 +124,8 @@ export class TokensController {
 
 		try {
 			mapping = this.tokensMapperService.getMapping<TokenEntity, CreateTokenDto, UpdateTokenDto>(type);
-		} catch (error) {
-			const err = error as Error;
+		} catch (error: unknown) {
+			const err = error instanceof Error ? error : new Error('Unknown token mapping error');
 
 			this.logger.error(`[ERROR] Unsupported token type: ${type}`, { message: err.message, stack: err.stack });
 
@@ -173,12 +163,11 @@ export class TokensController {
 		return response;
 	}
 
-	@Patch(':id')
 	@ApiOperation({
 		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Update token',
 		description: 'Update an existing authentication token',
-		operationId: 'patch-auth-module-token',
+		operationId: 'update-auth-module-token',
 	})
 	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
 	@ApiBody({
@@ -189,6 +178,7 @@ export class TokensController {
 	@ApiBadRequestResponse('Invalid token data or unsupported token type')
 	@ApiNotFoundResponse('Token not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateTokenDto,
@@ -201,8 +191,8 @@ export class TokensController {
 
 		try {
 			mapping = this.tokensMapperService.getMapping<TokenEntity, CreateTokenDto, UpdateTokenDto>(token.type);
-		} catch (error) {
-			const err = error as Error;
+		} catch (error: unknown) {
+			const err = error instanceof Error ? error : new Error('Unknown token mapping error');
 
 			this.logger.error(`[ERROR] Unsupported token type for update: ${token.type}`, {
 				message: err.message,
@@ -245,8 +235,6 @@ export class TokensController {
 		return response;
 	}
 
-	@Delete(':id')
-	@HttpCode(204)
 	@ApiOperation({
 		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Delete token',
@@ -258,6 +246,8 @@ export class TokensController {
 	@ApiForbiddenResponse('Cannot delete your own access token')
 	@ApiNotFoundResponse('Token not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@HttpCode(204)
+	@Delete(':id')
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Req() req: AuthenticatedRequest,

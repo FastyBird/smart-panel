@@ -7,9 +7,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
+import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { UsersModule } from '../users/users.module';
 
-import { TokenType } from './auth.constants';
+import {
+	AUTH_MODULE_API_TAG_DESCRIPTION,
+	AUTH_MODULE_API_TAG_NAME,
+	AUTH_MODULE_NAME,
+	TokenType,
+} from './auth.constants';
 import { RegisterOwnerCommand } from './commands/register-owner.command';
 import { ResetPasswordCommand } from './commands/reset-password.command';
 import { AuthController } from './controllers/auth.controller';
@@ -23,6 +29,11 @@ import { CryptoService } from './services/crypto.service';
 import { TokensTypeMapperService } from './services/tokens-type-mapper.service';
 import { TokensService } from './services/tokens.service';
 
+@ApiTag({
+	tagName: AUTH_MODULE_NAME,
+	displayName: AUTH_MODULE_API_TAG_NAME,
+	description: AUTH_MODULE_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		JwtModule.registerAsync({

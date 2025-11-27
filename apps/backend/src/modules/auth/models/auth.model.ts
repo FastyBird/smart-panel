@@ -5,7 +5,7 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 /**
  * Login data model
  */
-@ApiSchema({ name: 'AuthModuleDataLogin' })
+@ApiSchema({ name: 'AuthModuleDataLogedIn' })
 export class LoggedInModel {
 	@ApiProperty({
 		name: 'access_token',
@@ -67,7 +67,7 @@ export class LoggedInModel {
 /**
  * Refresh token data model
  */
-@ApiSchema({ name: 'AuthModuleDataRefresh' })
+@ApiSchema({ name: 'AuthModuleDataRefreshToken' })
 export class RefreshTokenModel {
 	@ApiProperty({
 		name: 'access_token',
@@ -129,7 +129,7 @@ export class RefreshTokenModel {
 /**
  * Register display data model
  */
-@ApiSchema({ name: 'AuthModuleDataRegisterDisplay' })
+@ApiSchema({ name: 'AuthModuleDataRegisteredDisplay' })
 export class RegisteredDisplayModel {
 	@ApiProperty({
 		description: 'Display account secret',

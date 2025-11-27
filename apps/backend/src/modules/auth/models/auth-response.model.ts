@@ -2,8 +2,9 @@ import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { UserEntity } from '../../users/entities/users.entity';
+import { TokenEntity } from '../entities/auth.entity';
 
 import {
 	CheckModel,
@@ -13,7 +14,6 @@ import {
 	RegisteredDisplayModel,
 	TokenPairModel,
 } from './auth.model';
-import { TokenEntity } from '../entities/auth.entity';
 
 /**
  * Response wrapper for UserEntity (profile)
@@ -31,7 +31,7 @@ export class ProfileResponseModel extends BaseSuccessResponseModel<UserEntity> {
 /**
  * Response wrapper for LoggedInModel
  */
-@ApiSchema({ name: 'AuthModuleResLogin' })
+@ApiSchema({ name: 'AuthModuleResLoggedIn' })
 export class LoginResponseModel extends BaseSuccessResponseModel<LoggedInModel> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
@@ -44,7 +44,7 @@ export class LoginResponseModel extends BaseSuccessResponseModel<LoggedInModel> 
 /**
  * Response wrapper for RefreshTokenModel
  */
-@ApiSchema({ name: 'AuthModuleResRefresh' })
+@ApiSchema({ name: 'AuthModuleResRefreshToken' })
 export class RefreshResponseModel extends BaseSuccessResponseModel<RefreshTokenModel> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
@@ -57,7 +57,7 @@ export class RefreshResponseModel extends BaseSuccessResponseModel<RefreshTokenM
 /**
  * Response wrapper for RegisteredDisplayModel
  */
-@ApiSchema({ name: 'AuthModuleResRegisterDisplay' })
+@ApiSchema({ name: 'AuthModuleResRegisteredDisplay' })
 export class RegisterDisplayResponseModel extends BaseSuccessResponseModel<RegisteredDisplayModel> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',

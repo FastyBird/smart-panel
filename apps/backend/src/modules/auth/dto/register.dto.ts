@@ -67,25 +67,27 @@ export class RegisterDto {
 		description: "Optional user's first name.",
 		type: 'string',
 		example: 'John',
+		name: 'first_name',
 	})
-	@Expose()
+	@Expose({ name: 'first_name' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"first_name","reason":"First name must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"first_name","reason":"First name must be a non-empty string."}]' })
 	@ValidateIf((_, value) => value !== null)
-	first_name?: string | null;
+	firstName?: string | null;
 
 	@ApiPropertyOptional({
 		description: "Optional user's last name.",
 		type: 'string',
 		example: 'Doe',
+		name: 'last_name',
 	})
-	@Expose()
+	@Expose({ name: 'last_name' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"last_name","reason":"Last name must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"last_name","reason":"Last name must be a non-empty string."}]' })
 	@ValidateIf((_, value) => value !== null)
-	last_name?: string | null;
+	lastName?: string | null;
 }
 
 @ApiSchema({ name: 'AuthModuleReqRegister' })
