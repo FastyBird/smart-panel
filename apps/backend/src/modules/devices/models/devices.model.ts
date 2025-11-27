@@ -14,7 +14,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 
@@ -61,8 +61,8 @@ export class DeviceSpecModel {
 
 	@ApiProperty({
 		description: 'Device channel specifications',
-		type: [DeviceChannelSpecModel],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(DeviceChannelSpecModel) },
 	})
 	@Expose()
 	@IsArray()
@@ -172,8 +172,8 @@ export class ChannelSpecModel {
 
 	@ApiProperty({
 		description: 'Channel property specifications',
-		type: [ChannelPropertySpecModel],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(ChannelPropertySpecModel) },
 	})
 	@Expose()
 	@IsArray()
@@ -523,8 +523,8 @@ export class PropertyTimeseriesModel {
 
 	@ApiProperty({
 		description: 'Array of timeseries data points',
-		type: [TimeseriesPointModel],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(TimeseriesPointModel) },
 	})
 	@Expose()
 	@IsArray()

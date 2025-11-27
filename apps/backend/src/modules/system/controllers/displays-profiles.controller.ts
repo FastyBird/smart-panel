@@ -29,7 +29,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
-} from '../../../common/decorators/api-documentation.decorator';
+} from '../../api/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqCreateDisplayProfileDto } from '../dto/create-display-profile.dto';

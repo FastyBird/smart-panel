@@ -5,8 +5,8 @@ import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+} from '../../../modules/api/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../modules/api/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
 import { Public } from '../../../modules/auth/guards/auth.guard';

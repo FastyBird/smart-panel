@@ -15,8 +15,8 @@ import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
-} from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+} from '../../api/decorators/api-documentation.decorator';
+import { ApiTag } from '../../api/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { Public } from '../../auth/guards/auth.guard';
 import {

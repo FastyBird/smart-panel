@@ -6,8 +6,8 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessArrayResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+} from '../../../modules/api/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../modules/api/decorators/api-tag.decorator';
 import {
 	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,

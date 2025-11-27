@@ -26,7 +26,7 @@ import {
 	ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+import { ApiTag } from '../../../modules/api/decorators/api-tag.decorator';
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';

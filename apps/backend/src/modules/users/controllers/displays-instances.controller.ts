@@ -27,7 +27,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
-} from '../../../common/decorators/api-documentation.decorator';
+} from '../../api/decorators/api-documentation.decorator';
 import { ReqCreateDisplayInstanceDto } from '../dto/create-display-instance.dto';
 import { ReqUpdateDisplayInstanceDto } from '../dto/update-display-instance.dto';
 import { DisplayInstanceEntity } from '../entities/users.entity';

@@ -1,4 +1,4 @@
-import { ApiTag } from 'src/common/decorators/api-tag.decorator';
+import { ApiTag } from 'src/modules/api/decorators/api-tag.decorator';
 
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';

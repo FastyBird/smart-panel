@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 /**
  * Error detail field
  */
-export class ErrorDetailFieldDto {
+export class ErrorDetailFieldModel {
 	@ApiProperty({
 		description: 'Field name that caused the error',
 		type: 'string',
@@ -26,7 +26,7 @@ export class ErrorDetailFieldDto {
 /**
  * Error object containing code, message, and optional details
  */
-export class ErrorObjectDto {
+export class ErrorObjectModel {
 	@ApiProperty({
 		description: 'Short error code indicating the type of error.',
 		type: 'string',
@@ -50,13 +50,13 @@ export class ErrorObjectDto {
 			{ type: 'array', items: { type: 'object' } },
 		],
 	})
-	details?: ErrorDetailFieldDto | ErrorDetailFieldDto[] | Record<string, unknown>;
+	details?: ErrorDetailFieldModel | ErrorDetailFieldModel[] | Record<string, unknown>;
 }
 
 /**
  * Response metadata for error responses
  */
-export class ResponseMetadataDto {
+export class ResponseMetadataModel {
 	@ApiProperty({
 		description: 'Server timestamp in ISO 8601 format',
 		type: 'string',
@@ -79,8 +79,8 @@ export class ResponseMetadataDto {
 /**
  * Response metadata for success responses
  */
-@ApiSchema({ name: 'SuccessMetadataDto' })
-export class SuccessMetadataDto {
+@ApiSchema({ name: 'SuccessMetadataModel' })
+export class SuccessMetadataModel {
 	@ApiProperty({
 		description: 'The total time taken to process the request, in milliseconds',
 		type: 'number',
@@ -116,12 +116,12 @@ export class SuccessMetadataDto {
  * Alias for OpenAPI spec compatibility
  */
 @ApiSchema({ name: 'CommonResMetadata' })
-export class CommonResMetadata extends SuccessMetadataDto {}
+export class CommonResMetadata extends SuccessMetadataModel {}
 
 /**
  * Base error response structure
  */
-export class BaseErrorResponseDto {
+export class BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Response status indicator',
 		type: 'string',
@@ -166,24 +166,24 @@ export class BaseErrorResponseDto {
 
 	@ApiProperty({
 		description: 'Error details',
-		type: () => ErrorObjectDto,
+		type: () => ErrorObjectModel,
 	})
-	error: ErrorObjectDto;
+	error: ErrorObjectModel;
 
 	@ApiProperty({
 		description: 'Additional metadata about the request and server performance metrics.',
-		type: () => ResponseMetadataDto,
+		type: () => ResponseMetadataModel,
 	})
-	metadata: ResponseMetadataDto;
+	metadata: ResponseMetadataModel;
 }
 
 /**
  * 400 Bad Request Error Response
  */
-export class BadRequestErrorDto extends BaseErrorResponseDto {
+export class BadRequestErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
-		type: () => ErrorObjectDto,
+		type: () => ErrorObjectModel,
 		example: {
 			code: 'BadRequestError',
 			message: "The 'name' parameter is invalid.",
@@ -193,16 +193,16 @@ export class BadRequestErrorDto extends BaseErrorResponseDto {
 			},
 		},
 	})
-	error: ErrorObjectDto;
+	error: ErrorObjectModel;
 }
 
 /**
  * 403 Forbidden Error Response
  */
-export class ForbiddenErrorDto extends BaseErrorResponseDto {
+export class ForbiddenErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
-		type: () => ErrorObjectDto,
+		type: () => ErrorObjectModel,
 		example: {
 			code: 'ForbiddenError',
 			message: 'Access to this resource is forbidden.',
@@ -212,16 +212,16 @@ export class ForbiddenErrorDto extends BaseErrorResponseDto {
 			},
 		},
 	})
-	error: ErrorObjectDto;
+	error: ErrorObjectModel;
 }
 
 /**
  * 404 Not Found Error Response
  */
-export class NotFoundErrorDto extends BaseErrorResponseDto {
+export class NotFoundErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
-		type: () => ErrorObjectDto,
+		type: () => ErrorObjectModel,
 		example: {
 			code: 'NotFoundError',
 			message: 'The specified resource was not found.',
@@ -231,16 +231,16 @@ export class NotFoundErrorDto extends BaseErrorResponseDto {
 			},
 		},
 	})
-	error: ErrorObjectDto;
+	error: ErrorObjectModel;
 }
 
 /**
  * 422 Unprocessable Entity Error Response
  */
-export class UnprocessableEntityErrorDto extends BaseErrorResponseDto {
+export class UnprocessableEntityErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
-		type: () => ErrorObjectDto,
+		type: () => ErrorObjectModel,
 		example: {
 			code: 'UnprocessableEntityError',
 			message: 'The request was well-formed but could not be processed.',
@@ -249,22 +249,22 @@ export class UnprocessableEntityErrorDto extends BaseErrorResponseDto {
 			},
 		},
 	})
-	error: ErrorObjectDto;
+	error: ErrorObjectModel;
 }
 
 /**
  * 500 Internal Server Error Response
  */
-export class InternalServerErrorDto extends BaseErrorResponseDto {
+export class InternalServerErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
-		type: () => ErrorObjectDto,
+		type: () => ErrorObjectModel,
 		example: {
 			code: 'InternalServerError',
 			message: 'An unexpected error occurred.',
 		},
 	})
-	error: ErrorObjectDto;
+	error: ErrorObjectModel;
 }
 
 /**
@@ -280,7 +280,7 @@ export class BaseSuccessResponseModel<T = unknown> {
 		readOnly: true,
 	})
 	@Expose()
-	status: string;
+	status?: string;
 
 	@ApiProperty({
 		description: 'Timestamp when the response was generated, in ISO 8601 format',
@@ -290,7 +290,7 @@ export class BaseSuccessResponseModel<T = unknown> {
 		readOnly: true,
 	})
 	@Expose()
-	timestamp: string;
+	timestamp?: string;
 
 	@ApiProperty({
 		description: 'Unique identifier for this specific API request',
@@ -300,7 +300,7 @@ export class BaseSuccessResponseModel<T = unknown> {
 		readOnly: true,
 	})
 	@Expose({ name: 'request_id' })
-	request_id: string;
+	request_id?: string;
 
 	@ApiProperty({
 		description: 'The requested API endpoint',
@@ -309,7 +309,7 @@ export class BaseSuccessResponseModel<T = unknown> {
 		readOnly: true,
 	})
 	@Expose()
-	path: string;
+	path?: string;
 
 	@ApiProperty({
 		description: 'HTTP method used for the request',
@@ -318,20 +318,19 @@ export class BaseSuccessResponseModel<T = unknown> {
 		readOnly: true,
 	})
 	@Expose()
-	method: string;
+	method?: string;
 
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
-		type: () => SuccessMetadataDto,
 	})
 	@Expose()
-	data: T;
+	data!: T;
 
 	@ApiProperty({
 		description: 'Additional metadata about the request and server performance metrics',
-		type: () => SuccessMetadataDto,
+		type: () => SuccessMetadataModel,
 	})
 	@Expose()
-	@Type(() => SuccessMetadataDto)
-	metadata: SuccessMetadataDto;
+	@Type(() => SuccessMetadataModel)
+	metadata: SuccessMetadataModel;
 }

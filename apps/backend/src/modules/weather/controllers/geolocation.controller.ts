@@ -5,7 +5,7 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
-} from '../../../common/decorators/api-documentation.decorator';
+} from '../../api/decorators/api-documentation.decorator';
 import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
 import { GeolocationService } from '../services/geolocation.service';
 

@@ -2,7 +2,7 @@
  * OpenAPI transformations for System module
  * This file registers module-specific OpenAPI spec transformations
  */
-import { openApiTransformRegistry } from '../../common/decorators/openapi-transform.decorator';
+import { openApiTransformRegistry } from '../api/decorators/openapi-transform.decorator';
 
 import { SYSTEM_MODULE_PREFIX } from './system.constants';
 

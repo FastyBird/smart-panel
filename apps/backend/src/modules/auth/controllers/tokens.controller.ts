@@ -27,8 +27,8 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessArrayDiscriminatedResponse,
 	ApiSuccessDiscriminatedResponse,
-} from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+} from '../../api/decorators/api-documentation.decorator';
+import { ApiTag } from '../../api/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {

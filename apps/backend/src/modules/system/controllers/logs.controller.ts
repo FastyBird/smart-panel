@@ -6,7 +6,7 @@ import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessArrayResponse,
-} from '../../../common/decorators/api-documentation.decorator';
+} from '../../api/decorators/api-documentation.decorator';
 import { setResponseMeta } from '../../../common/utils/http.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ReqCreateLogEntriesDto } from '../dto/create-log-entry.dto';

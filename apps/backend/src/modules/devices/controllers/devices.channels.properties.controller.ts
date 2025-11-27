@@ -26,7 +26,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../common/decorators/api-documentation.decorator';
+} from '../../api/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';

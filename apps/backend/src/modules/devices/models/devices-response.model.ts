@@ -2,7 +2,7 @@ import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -23,7 +23,7 @@ export class DeviceResponseModel extends BaseSuccessResponseModel<DeviceEntity> 
 		type: () => DeviceEntity,
 	})
 	@Expose()
-	data: DeviceEntity;
+	declare data: DeviceEntity;
 }
 
 /**
@@ -37,7 +37,7 @@ export class DevicesResponseModel extends BaseSuccessResponseModel<DeviceEntity[
 		items: { $ref: getSchemaPath(DeviceEntity) },
 	})
 	@Expose()
-	data: DeviceEntity[];
+	declare data: DeviceEntity[];
 }
 
 /**
@@ -50,7 +50,7 @@ export class ChannelResponseModel extends BaseSuccessResponseModel<ChannelEntity
 		type: () => ChannelEntity,
 	})
 	@Expose()
-	data: ChannelEntity;
+	declare data: ChannelEntity;
 }
 
 /**
@@ -64,7 +64,7 @@ export class ChannelsResponseModel extends BaseSuccessResponseModel<ChannelEntit
 		items: { $ref: getSchemaPath(ChannelEntity) },
 	})
 	@Expose()
-	data: ChannelEntity[];
+	declare data: ChannelEntity[];
 }
 
 /**
@@ -77,7 +77,7 @@ export class DeviceChannelResponseModel extends BaseSuccessResponseModel<Channel
 		type: () => ChannelEntity,
 	})
 	@Expose()
-	data: ChannelEntity;
+	declare data: ChannelEntity;
 }
 
 /**
@@ -91,7 +91,7 @@ export class DeviceChannelsResponseModel extends BaseSuccessResponseModel<Channe
 		items: { $ref: getSchemaPath(ChannelEntity) },
 	})
 	@Expose()
-	data: ChannelEntity[];
+	declare data: ChannelEntity[];
 }
 
 /**
@@ -104,7 +104,7 @@ export class ChannelPropertyResponseModel extends BaseSuccessResponseModel<Chann
 		type: () => ChannelPropertyEntity,
 	})
 	@Expose()
-	data: ChannelPropertyEntity;
+	declare data: ChannelPropertyEntity;
 }
 
 /**
@@ -118,7 +118,7 @@ export class ChannelPropertiesResponseModel extends BaseSuccessResponseModel<Cha
 		items: { $ref: getSchemaPath(ChannelPropertyEntity) },
 	})
 	@Expose()
-	data: ChannelPropertyEntity[];
+	declare data: ChannelPropertyEntity[];
 }
 
 /**
@@ -131,7 +131,7 @@ export class DeviceControlResponseModel extends BaseSuccessResponseModel<DeviceC
 		type: () => DeviceControlEntity,
 	})
 	@Expose()
-	data: DeviceControlEntity;
+	declare data: DeviceControlEntity;
 }
 
 /**
@@ -145,7 +145,7 @@ export class DeviceControlsResponseModel extends BaseSuccessResponseModel<Device
 		items: { $ref: getSchemaPath(DeviceControlEntity) },
 	})
 	@Expose()
-	data: DeviceControlEntity[];
+	declare data: DeviceControlEntity[];
 }
 
 /**
@@ -158,7 +158,7 @@ export class ChannelControlResponseModel extends BaseSuccessResponseModel<Channe
 		type: () => ChannelControlEntity,
 	})
 	@Expose()
-	data: ChannelControlEntity;
+	declare data: ChannelControlEntity;
 }
 
 /**
@@ -172,7 +172,7 @@ export class ChannelControlsResponseModel extends BaseSuccessResponseModel<Chann
 		items: { $ref: getSchemaPath(ChannelControlEntity) },
 	})
 	@Expose()
-	data: ChannelControlEntity[];
+	declare data: ChannelControlEntity[];
 }
 
 /**
@@ -185,5 +185,5 @@ export class PropertyTimeseriesResponseModel extends BaseSuccessResponseModel<Pr
 		type: () => PropertyTimeseriesModel,
 	})
 	@Expose()
-	data: PropertyTimeseriesModel;
+	declare data: PropertyTimeseriesModel;
 }

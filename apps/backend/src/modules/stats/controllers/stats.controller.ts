@@ -4,8 +4,8 @@ import { ApiOperation, ApiParam } from '@nestjs/swagger';
 import {
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
-} from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+} from '../../api/decorators/api-documentation.decorator';
+import { ApiTag } from '../../api/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { StatResponseModel, StatsKeysResponseModel, StatsResponseModel } from '../models/stats-response.model';
 import { StatsAggregatorService } from '../services/stats-aggregator.service';

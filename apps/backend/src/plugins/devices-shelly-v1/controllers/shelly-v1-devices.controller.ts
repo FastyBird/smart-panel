@@ -9,8 +9,8 @@ import {
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+} from '../../../modules/api/decorators/api-documentation.decorator';
+import { ApiTag } from '../../../modules/api/decorators/api-tag.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	DEVICES_SHELLY_V1_PLUGIN_API_TAG_DESCRIPTION,

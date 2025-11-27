@@ -7,8 +7,8 @@ import {
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+} from '../../api/decorators/api-documentation.decorator';
+import { ApiTag } from '../../api/decorators/api-tag.decorator';
 import { LocationWeatherResponseModel } from '../models/weather-response.model';
 import { CurrentDayModel, ForecastDayModel, LocationWeatherModel } from '../models/weather.model';
 import { WeatherService } from '../services/weather.service';

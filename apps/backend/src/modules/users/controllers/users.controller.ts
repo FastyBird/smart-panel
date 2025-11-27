@@ -23,8 +23,8 @@ import {
 	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../common/decorators/api-documentation.decorator';
-import { ApiTag } from '../../../common/decorators/api-tag.decorator';
+} from '../../api/decorators/api-documentation.decorator';
+import { ApiTag } from '../../api/decorators/api-tag.decorator';
 import { AuthenticatedRequest } from '../../auth/auth.constants';
 import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';

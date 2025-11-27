@@ -12,8 +12,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { API_PREFIX } from '../app.constants';
 import { AppModule } from '../app.module';
-import { openApiTagRegistry } from '../common/decorators/api-tag.decorator';
-import { openApiTransformRegistry } from '../common/decorators/openapi-transform.decorator';
+import { openApiTagRegistry } from '../modules/api/decorators/api-tag.decorator';
+import { openApiTransformRegistry } from '../modules/api/decorators/openapi-transform.decorator';
 // Import OpenAPI transformation files to register module-specific transformations
 // These files register their transformations when imported (side-effect imports)
 import '../common/dto/response.openapi';
