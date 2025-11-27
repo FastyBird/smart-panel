@@ -7,13 +7,13 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { PageEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
-@ApiSchema({ name: 'PagesTilesPluginTilesPage' })
+@ApiSchema({ name: 'PagesTilesPluginDataTilesPage' })
 @ChildEntity()
 export class TilesPageEntity extends PageEntity {
 	@ApiProperty({
 		description: 'Page tiles',
 		type: 'array',
-		items: { type: 'object' },
+		items: { $ref: '#/components/schemas/DashboardModuleDataTile' },
 	})
 	@Expose()
 	@IsArray()
