@@ -10024,20 +10024,6 @@
         ]
       }
     },
-    "/plugins/example-extension/status": {
-      "get": {
-        "operationId": "getStatus",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Example"
-        ]
-      }
-    },
     "/system-module/extensions/assets/{pkg}/{asset_path}": {
       "get": {
         "description": "Streams a file (typically the ESM entry) from the discovered extension package directory. `asset_path` represents the remaining subpath inside the package and may include slashes.",

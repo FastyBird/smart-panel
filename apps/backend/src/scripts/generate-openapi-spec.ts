@@ -105,10 +105,15 @@ async function generateOpenApiSpec() {
 		}
 
 		// Remove /api/v1 prefix from paths to match original spec
+		// Also exclude example-extension paths (demo/test endpoints)
 		const originalPaths = document.paths;
 
 		const normalizedPaths: Record<string, unknown> = {};
 		for (const [path, pathItem] of Object.entries(originalPaths || {})) {
+			// Skip example-extension paths
+			if (path.includes('/example-extension/')) {
+				continue;
+			}
 			const normalizedPath = path.replace(/^\/api\/v1/, '');
 			normalizedPaths[normalizedPath] = pathItem;
 		}

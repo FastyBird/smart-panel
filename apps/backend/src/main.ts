@@ -160,6 +160,17 @@ async function bootstrap() {
 
 	document.tags = tagDefinitions;
 
+	// Exclude example-extension paths (demo/test endpoints) from Swagger UI
+	const originalPaths = document.paths;
+	const filteredPaths: Record<string, unknown> = {};
+	for (const [path, pathItem] of Object.entries(originalPaths || {})) {
+		// Skip example-extension paths
+		if (!path.includes('/example-extension/')) {
+			filteredPaths[path] = pathItem;
+		}
+	}
+	document.paths = filteredPaths;
+
 	SwaggerModule.setup(`${API_PREFIX}/docs`, app, document, {
 		swaggerOptions: {
 			persistAuthorization: true,
