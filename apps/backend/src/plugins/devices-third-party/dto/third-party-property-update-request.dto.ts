@@ -57,18 +57,6 @@ export class PropertyUpdateRequestDto {
 	value: string | boolean | number;
 }
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginReqUpdateProperties' })
-export class ReqUpdatePropertiesDto {
-	@ApiProperty({
-		description: 'Properties update request data',
-		type: () => PropertiesUpdateRequestDto,
-	})
-	@Expose()
-	@ValidateNested()
-	@Type(() => PropertiesUpdateRequestDto)
-	data: PropertiesUpdateRequestDto;
-}
-
 @ApiSchema({ name: 'DevicesThirdPartyPluginUpdateProperties' })
 export class PropertiesUpdateRequestDto {
 	@ApiProperty({
@@ -81,4 +69,16 @@ export class PropertiesUpdateRequestDto {
 	@ValidateNested({ each: true })
 	@Type(() => PropertyUpdateRequestDto)
 	properties: PropertyUpdateRequestDto[];
+}
+
+@ApiSchema({ name: 'DevicesThirdPartyPluginReqUpdateProperties' })
+export class ReqUpdatePropertiesDto {
+	@ApiProperty({
+		description: 'Properties update request data',
+		type: () => PropertiesUpdateRequestDto,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => PropertiesUpdateRequestDto)
+	data: PropertiesUpdateRequestDto;
 }
