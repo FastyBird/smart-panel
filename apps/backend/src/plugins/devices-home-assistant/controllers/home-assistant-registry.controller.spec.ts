@@ -13,8 +13,8 @@ import {
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
 import {
-	HomeAssistantDeviceRegistryResponseResultModel,
-	HomeAssistantEntityRegistryResponseResultModel,
+	HomeAssistantDeviceRegistryResultModel,
+	HomeAssistantEntityRegistryResultModel,
 } from '../models/home-assistant.model';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 
@@ -50,13 +50,13 @@ describe('HomeAssistantRegistryController', () => {
 
 	describe('findAllDevices', () => {
 		it('should return devices from the registry', async () => {
-			const mockDevices: HomeAssistantDeviceRegistryResponseResultModel[] = [
+			const mockDevices: HomeAssistantDeviceRegistryResultModel[] = [
 				{
 					id: 'device1',
 					name: 'Mock Device',
 					manufacturer: 'Test',
 					areaId: null,
-				} as unknown as HomeAssistantDeviceRegistryResponseResultModel,
+				} as unknown as HomeAssistantDeviceRegistryResultModel,
 			];
 
 			homeAssistantWsService.getDevicesRegistry.mockResolvedValue(mockDevices);
@@ -91,14 +91,14 @@ describe('HomeAssistantRegistryController', () => {
 
 	describe('findAllEntities', () => {
 		it('should return entities from the registry', async () => {
-			const mockEntities: HomeAssistantEntityRegistryResponseResultModel[] = [
+			const mockEntities: HomeAssistantEntityRegistryResultModel[] = [
 				{
 					id: 'entity1',
 					entityId: 'sensor.temp',
 					deviceId: 'device1',
 					entityCategory: 'config',
 					hasEntityName: true,
-				} as unknown as HomeAssistantEntityRegistryResponseResultModel,
+				} as unknown as HomeAssistantEntityRegistryResultModel,
 			];
 
 			homeAssistantWsService.getEntitiesRegistry.mockResolvedValue(mockEntities);

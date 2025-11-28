@@ -16,10 +16,10 @@ import {
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantConfigModel } from '../models/config.model';
 import {
-	HomeAssistantDeviceRegistryResponseModel,
-	HomeAssistantDeviceRegistryResponseResultModel,
-	HomeAssistantEntityRegistryResponseModel,
-	HomeAssistantEntityRegistryResponseResultModel,
+	HomeAssistantDeviceRegistryModel,
+	HomeAssistantDeviceRegistryResultModel,
+	HomeAssistantEntityRegistryModel,
+	HomeAssistantEntityRegistryResultModel,
 } from '../models/home-assistant.model';
 
 export interface WsEventService {
@@ -117,7 +117,7 @@ export class HomeAssistantWsService {
 		return this.ws?.readyState === WebSocket.OPEN;
 	}
 
-	async getDevicesRegistry(): Promise<HomeAssistantDeviceRegistryResponseResultModel[]> {
+	async getDevicesRegistry(): Promise<HomeAssistantDeviceRegistryResultModel[]> {
 		if (!this.isConnected()) {
 			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Tried to get devices registry while socket is not open.');
 
@@ -133,7 +133,7 @@ export class HomeAssistantWsService {
 
 			const msg: object = JSON.parse(response) as object;
 
-			const devicesRegistry = toInstance(HomeAssistantDeviceRegistryResponseModel, msg, {
+			const devicesRegistry = toInstance(HomeAssistantDeviceRegistryModel, msg, {
 				excludeExtraneousValues: false,
 			});
 
@@ -164,7 +164,7 @@ export class HomeAssistantWsService {
 		);
 	}
 
-	async getEntitiesRegistry(): Promise<HomeAssistantEntityRegistryResponseResultModel[]> {
+	async getEntitiesRegistry(): Promise<HomeAssistantEntityRegistryResultModel[]> {
 		if (!this.isConnected()) {
 			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Tried to get entities registry while socket is not open.');
 
@@ -180,7 +180,7 @@ export class HomeAssistantWsService {
 
 			const msg: object = JSON.parse(response) as object;
 
-			const entitiesRegistry = toInstance(HomeAssistantEntityRegistryResponseModel, msg, {
+			const entitiesRegistry = toInstance(HomeAssistantEntityRegistryModel, msg, {
 				excludeExtraneousValues: false,
 			});
 

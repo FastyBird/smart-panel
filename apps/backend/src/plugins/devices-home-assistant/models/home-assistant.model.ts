@@ -163,7 +163,7 @@ export class HomeAssistantDiscoveredDeviceModel {
 }
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginDataEntityRegistryResult' })
-export class HomeAssistantEntityRegistryResponseResultModel {
+export class HomeAssistantEntityRegistryResultModel {
 	@ApiProperty({
 		description: 'Entity registry identifier',
 		type: 'string',
@@ -325,8 +325,8 @@ export class HomeAssistantEntityRegistryResponseResultModel {
 	modifiedAt?: Date | string;
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantEntityRegistryResponse' })
-export class HomeAssistantEntityRegistryResponseModel {
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataHomeAssistantEntityRegistry' })
+export class HomeAssistantEntityRegistryModel {
 	@ApiProperty({
 		description: 'Response identifier',
 		type: 'string',
@@ -357,17 +357,17 @@ export class HomeAssistantEntityRegistryResponseModel {
 	@ApiProperty({
 		description: 'List of entity registry results',
 		type: 'array',
-		items: { $ref: getSchemaPath(HomeAssistantEntityRegistryResponseResultModel) },
+		items: { $ref: getSchemaPath(HomeAssistantEntityRegistryResultModel) },
 	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => HomeAssistantEntityRegistryResponseResultModel)
-	result: HomeAssistantEntityRegistryResponseResultModel[];
+	@Type(() => HomeAssistantEntityRegistryResultModel)
+	result: HomeAssistantEntityRegistryResultModel[];
 }
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginDataDeviceRegistryResult' })
-export class HomeAssistantDeviceRegistryResponseResultModel {
+export class HomeAssistantDeviceRegistryResultModel {
 	@ApiProperty({
 		description: 'Device registry identifier',
 		type: 'string',
@@ -545,8 +545,8 @@ export class HomeAssistantDeviceRegistryResponseResultModel {
 	modifiedAt?: Date | string;
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHomeAssistantDeviceRegistryResponse' })
-export class HomeAssistantDeviceRegistryResponseModel {
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataHomeAssistantDeviceRegistry' })
+export class HomeAssistantDeviceRegistryModel {
 	@ApiProperty({
 		description: 'Response identifier',
 		type: 'string',
@@ -577,11 +577,11 @@ export class HomeAssistantDeviceRegistryResponseModel {
 	@ApiProperty({
 		description: 'List of device registry results',
 		type: 'array',
-		items: { $ref: getSchemaPath(HomeAssistantDeviceRegistryResponseResultModel) },
+		items: { $ref: getSchemaPath(HomeAssistantDeviceRegistryResultModel) },
 	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => HomeAssistantDeviceRegistryResponseResultModel)
-	result: HomeAssistantDeviceRegistryResponseResultModel[];
+	@Type(() => HomeAssistantDeviceRegistryResultModel)
+	result: HomeAssistantDeviceRegistryResultModel[];
 }

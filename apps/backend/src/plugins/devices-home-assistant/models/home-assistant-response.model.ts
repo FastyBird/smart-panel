@@ -5,9 +5,9 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
 import {
-	HomeAssistantDeviceRegistryResponseResultModel,
+	HomeAssistantDeviceRegistryResultModel,
 	HomeAssistantDiscoveredDeviceModel,
-	HomeAssistantEntityRegistryResponseResultModel,
+	HomeAssistantEntityRegistryResultModel,
 	HomeAssistantStateModel,
 } from './home-assistant.model';
 
@@ -68,33 +68,33 @@ export class HomeAssistantStatesResponseModel extends BaseSuccessResponseModel<H
 }
 
 /**
- * Response wrapper for array of HomeAssistantDeviceRegistryResponseResultModel
+ * Response wrapper for array of HomeAssistantDeviceRegistryResultModel
  */
 @ApiSchema({ name: 'DevicesHomeAssistantPluginResDeviceRegistry' })
 export class HomeAssistantDeviceRegistryResponseModel extends BaseSuccessResponseModel<
-	HomeAssistantDeviceRegistryResponseResultModel[]
+	HomeAssistantDeviceRegistryResultModel[]
 > {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
 		type: 'array',
-		items: { $ref: getSchemaPath(HomeAssistantDeviceRegistryResponseResultModel) },
+		items: { $ref: getSchemaPath(HomeAssistantDeviceRegistryResultModel) },
 	})
 	@Expose()
-	declare data: HomeAssistantDeviceRegistryResponseResultModel[];
+	declare data: HomeAssistantDeviceRegistryResultModel[];
 }
 
 /**
- * Response wrapper for array of HomeAssistantEntityRegistryResponseResultModel
+ * Response wrapper for array of HomeAssistantEntityRegistryResultModel
  */
 @ApiSchema({ name: 'DevicesHomeAssistantPluginResEntityRegistry' })
 export class HomeAssistantEntityRegistryResponseModel extends BaseSuccessResponseModel<
-	HomeAssistantEntityRegistryResponseResultModel[]
+	HomeAssistantEntityRegistryResultModel[]
 > {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
 		type: 'array',
-		items: { $ref: getSchemaPath(HomeAssistantEntityRegistryResponseResultModel) },
+		items: { $ref: getSchemaPath(HomeAssistantEntityRegistryResultModel) },
 	})
 	@Expose()
-	declare data: HomeAssistantEntityRegistryResponseResultModel[];
+	declare data: HomeAssistantEntityRegistryResultModel[];
 }

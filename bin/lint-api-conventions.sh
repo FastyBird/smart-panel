@@ -44,20 +44,38 @@ echo "== DTO usage checks =="
 fail_if_matches   "No DTO types allowed in @ApiOkResponse/@ApiCreatedResponse/@ApiAcceptedResponse"   "@Api\(Ok\|Created\|Accepted\)Response\([^)]*Dto"   "${BACKEND_DIR}"
 
 # 2) DTOs MUST NOT be used as controller return types (Promise<SomethingDto>)
-fail_if_matches   "Controllers must not return Promise<...Dto>"   "Promise<[^>]*Dto>"   "${BACKEND_DIR}/modules"
+#    -> apply ONLY to files that actually contain @Controller(...) AND look like real controllers
+echo "Checking: controllers must not return Promise<...Dto>"
+
+controller_files="$(grep -RIl "@Controller(" "${BACKEND_DIR}/modules" | grep '\.controller\.ts$' || true)"
+
+if [ -n "${controller_files}" ]; then
+  dto_returns="$(grep -En "Promise<[^>]*Dto>" ${controller_files} || true)"
+
+  if [ -n "${dto_returns}" ]; then
+    echo "❌ Controllers must not return Promise<...Dto>"
+    echo "   Offending locations:"
+    echo "${dto_returns}"
+    exit 1
+  else
+    echo "✅ Controllers do not return Promise<...Dto>"
+  fi
+else
+  echo "ℹ️ No controller files found for DTO return-type check"
+fi
 
 echo
 echo "== Controller structure checks =="
 
 # 3) All controller files must have @ApiTags
-#    We approximate by: any file containing @Controller( must also contain @ApiTags(
+#    We approximate by: *.controller.ts containing @Controller( must also contain @ApiTags(
 missing_tags_files=""
 while IFS= read -r file; do
   if ! grep -q "@ApiTags(" "$file"; then
     missing_tags_files+="${file}
 "
   fi
-done < <(grep -RIl "@Controller(" "${BACKEND_DIR}/modules" || true)
+done < <(grep -RIl "@Controller(" "${BACKEND_DIR}/modules" | grep '\.controller\.ts$' || true)
 
 if [ -n "${missing_tags_files}" ]; then
   echo "❌ Controllers without @ApiTags detected:"
@@ -71,9 +89,14 @@ fi
 echo
 echo "== ResponseModel checks =="
 
-# 4) Every *ResponseModel class must extend BaseSuccessResponseModel
-#    We assume class declaration is on a single line.
-bad_response_models="$(grep -REn "class .*ResponseModel" "${BACKEND_DIR}" | grep -v "extends BaseSuccessResponseModel" || true)"
+# 4) Every concrete *ResponseModel class must extend BaseSuccessResponseModel
+#    We ignore the shared base definitions in api-response.model.ts.
+bad_response_models="$(
+  grep -REn "class .*ResponseModel" "${BACKEND_DIR}" \
+    | grep -v "extends BaseSuccessResponseModel" \
+    | grep -v "modules/api/models/api-response.model.ts" \
+    || true
+)"
 
 if [ -n "${bad_response_models}" ]; then
   echo "❌ All *ResponseModel classes must extend BaseSuccessResponseModel<T>:"
@@ -84,19 +107,23 @@ else
 fi
 
 # 5) Controllers MUST NOT return raw Entity/Model (they should return *ResponseModel)
-#    This is a heuristic and may need tuning for your naming conventions.
-#    We limit it to controller files in modules.
-controller_dir="${BACKEND_DIR}/modules"
-raw_entity_returns="$(grep -REn "return .*Entity" "${controller_dir}" || true)"
-raw_model_returns="$(grep -REn "return .*Model" "${controller_dir}" | grep -v "ResponseModel" || true)"
+#    -> check ONLY real controller files (*.controller.ts with @Controller())
+controller_files="$(grep -RIl "@Controller(" "${BACKEND_DIR}/modules" | grep '\.controller\.ts$' || true)"
 
-if [ -n "${raw_entity_returns}${raw_model_returns}" ]; then
-  echo "❌ Controllers must not return raw Entity/Model instances (use *ResponseModel instead):"
-  [ -n "${raw_entity_returns}" ] && echo "${raw_entity_returns}"
-  [ -n "${raw_model_returns}" ] && echo "${raw_model_returns}"
-  exit 1
+if [ -n "${controller_files}" ]; then
+  raw_entity_returns="$(grep -En "return .*Entity" ${controller_files} || true)"
+  raw_model_returns="$(grep -En "return .*Model" ${controller_files} | grep -v "ResponseModel" || true)"
+
+  if [ -n "${raw_entity_returns}${raw_model_returns}" ]; then
+    echo "❌ Controllers must not return raw Entity/Model instances (use *ResponseModel instead):"
+    [ -n "${raw_entity_returns}" ] && echo "${raw_entity_returns}"
+    [ -n "${raw_model_returns}" ] && echo "${raw_model_returns}"
+    exit 1
+  else
+    echo "✅ Controllers do not return raw Entity/Model instances"
+  fi
 else
-  echo "✅ Controllers do not return raw Entity/Model instances"
+  echo "ℹ️ No controller files found for raw Entity/Model return check"
 fi
 
 echo
