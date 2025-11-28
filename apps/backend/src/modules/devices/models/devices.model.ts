@@ -119,6 +119,7 @@ export class ChannelPropertySpecModel {
 		example: '°C',
 	})
 	@Expose()
+	@IsOptional()
 	@IsString()
 	unit: string | null = null;
 
@@ -155,6 +156,7 @@ export class ChannelPropertySpecModel {
 		example: 0.1,
 	})
 	@Expose()
+	@IsOptional()
 	@IsNumber()
 	step: number | null = null;
 }
