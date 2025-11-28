@@ -26,7 +26,8 @@ export class ShellyV1SupportedDeviceModel {
 	@IsString({ each: true })
 	@ApiProperty({
 		description: 'Supported device models',
-		isArray: true,
+		type: 'array',
+		items: { type: 'string' },
 		example: ['SHSW-1', 'SHSW-L'],
 	})
 	models: string[];
@@ -36,7 +37,8 @@ export class ShellyV1SupportedDeviceModel {
 	@IsString({ each: true })
 	@ApiProperty({
 		description: 'Device categories',
-		isArray: true,
+		type: 'array',
+		items: { type: 'string' },
 		example: ['switch', 'light'],
 	})
 	categories: string[];

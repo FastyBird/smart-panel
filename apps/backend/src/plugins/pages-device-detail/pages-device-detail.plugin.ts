@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -16,6 +17,7 @@ import { DeviceDetailConfigModel } from './models/config.model';
 import { PAGES_DEVICE_DETAIL_PLUGIN_NAME, PAGES_DEVICE_DETAIL_TYPE } from './pages-device-detail.constants';
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
+@ApiExtraModels(CreateDeviceDetailPageDto, UpdateDeviceDetailPageDto)
 @Module({
 	imports: [TypeOrmModule.forFeature([DeviceDetailPageEntity]), DashboardModule, DevicesModule, ConfigModule],
 	providers: [PageRelationsLoaderService],

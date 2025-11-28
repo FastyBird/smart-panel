@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { SeedModule } from '../seed/seeding.module';
@@ -18,7 +19,17 @@ import {
 	DASHBOARD_MODULE_API_TAG_NAME,
 	DASHBOARD_MODULE_NAME,
 } from './dashboard.constants';
+import { CreateDataSourceDto, CreateSingleDataSourceDto } from './dto/create-data-source.dto';
+import { CreateTileDto } from './dto/create-tile.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from './entities/dashboard.entity';
+import {
+	DataSourceResponseModel,
+	DataSourcesResponseModel,
+	PageResponseModel,
+	PagesResponseModel,
+	TileResponseModel,
+	TilesResponseModel,
+} from './models/dashboard-response.model';
 import { DashboardStatsProvider } from './providers/dashboard-stats.provider';
 import { DashboardSeederService } from './services/dashboard-seeder.service';
 import { DataSourceCreateBuilderRegistryService } from './services/data-source-create-builder-registry.service';
@@ -42,6 +53,19 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 	displayName: DASHBOARD_MODULE_API_TAG_NAME,
 	description: DASHBOARD_MODULE_API_TAG_DESCRIPTION,
 })
+@ApiExtraModels(
+	// Response models
+	PageResponseModel,
+	PagesResponseModel,
+	TileResponseModel,
+	TilesResponseModel,
+	DataSourceResponseModel,
+	DataSourcesResponseModel,
+	// DTOs for oneOf references
+	CreateDataSourceDto, // Abstract class - needed for getSchemaPath() references
+	CreateSingleDataSourceDto,
+	CreateTileDto, // Abstract class - needed for getSchemaPath() references
+)
 @Module({
 	imports: [
 		NestConfigModule,

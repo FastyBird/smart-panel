@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -19,6 +20,7 @@ import { ChannelPropertyExistsConstraintValidator } from './validators/channel-p
 import { DeviceChannelExistsConstraintValidator } from './validators/device-channel-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
 
+@ApiExtraModels(CreateDeviceChannelDataSourceDto, UpdateDeviceChannelDataSourceDto)
 @Module({
 	imports: [TypeOrmModule.forFeature([DeviceChannelDataSourceEntity]), DashboardModule, DevicesModule, ConfigModule],
 	providers: [

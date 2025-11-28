@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import { getEnvValue } from '../../common/utils/config.utils';
 import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
@@ -33,6 +34,10 @@ import {
 	ShellyV1DeviceEntity,
 } from './entities/devices-shelly-v1.entity';
 import { ShellyV1ConfigModel } from './models/config.model';
+import {
+	ShellyV1DeviceInfoResponseModel,
+	ShellyV1SupportedDevicesResponseModel,
+} from './models/shelly-v1-response.model';
 import { ShellyV1DevicePlatform } from './platforms/shelly-v1.device.platform';
 import { DeviceMapperService } from './services/device-mapper.service';
 import { ShelliesAdapterService } from './services/shellies-adapter.service';
@@ -46,6 +51,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 	displayName: DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME,
 	description: DEVICES_SHELLY_V1_PLUGIN_API_TAG_DESCRIPTION,
 })
+@ApiExtraModels(ShellyV1DeviceInfoResponseModel, ShellyV1SupportedDevicesResponseModel)
 @Module({
 	imports: [
 		NestConfigModule,

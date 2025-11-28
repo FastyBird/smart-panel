@@ -323,7 +323,7 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@ApiProperty({
 		description: 'Property permissions',
 		type: 'array',
-		enum: PermissionType,
+		items: { type: 'string', enum: Object.values(PermissionType) },
 		example: [PermissionType.READ_ONLY],
 	})
 	@Expose()

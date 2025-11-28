@@ -194,10 +194,10 @@ export class DevicesChannelsControlsController {
 
 	@ApiOperation({
 		tags: [DEVICES_MODULE_API_TAG_NAME],
-		summary: 'Create a new channel for a device',
+		summary: 'Delete a control for a device channel',
 		description:
-			'Creates a new channel associated with a specific device. The channel can have attributes such as name, category, description, and optionally controls and properties.',
-		operationId: 'create-devices-module-device-channel',
+			'Deletes a specific control associated with a device channel using its unique ID. This operation is irreversible and permanently removes the control from the system.',
+		operationId: 'delete-devices-module-device-channel-control',
 	})
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
@@ -12,9 +13,27 @@ import { ApiMetricsInterceptor } from './interceptors/api-metrics.interceptor';
 import { LocationReplaceInterceptor } from './interceptors/location-replace.interceptor';
 import { OpenApiResponseInterceptor } from './interceptors/open-api-response.interceptor';
 import { TransformResponseInterceptor } from './interceptors/transform-response.interceptor';
+import {
+	BadRequestErrorModel,
+	BaseErrorResponseModel,
+	BaseSuccessResponseModel,
+	ForbiddenErrorModel,
+	InternalServerErrorModel,
+	NotFoundErrorModel,
+	UnprocessableEntityErrorModel,
+} from './models/api-response.model';
 import { ApiStatsProvider } from './providers/api-stats.provider';
 import { ApiMetricsService } from './services/api-metrics.service';
 
+@ApiExtraModels(
+	BaseSuccessResponseModel,
+	BaseErrorResponseModel,
+	BadRequestErrorModel,
+	ForbiddenErrorModel,
+	NotFoundErrorModel,
+	UnprocessableEntityErrorModel,
+	InternalServerErrorModel,
+)
 @Module({
 	imports: [ConfigModule, StatsModule, InfluxDbModule],
 	providers: [

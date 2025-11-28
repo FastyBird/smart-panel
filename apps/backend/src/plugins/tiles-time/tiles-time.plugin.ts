@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -13,6 +14,7 @@ import { TimeTileEntity } from './entities/tiles-time.entity';
 import { TimeConfigModel } from './models/config.model';
 import { TILES_TIME_PLUGIN_NAME, TILES_TIME_TYPE } from './tiles-time.constants';
 
+@ApiExtraModels(CreateTimeTileDto, UpdateTimeTileDto)
 @Module({
 	imports: [TypeOrmModule.forFeature([TimeTileEntity]), DashboardModule, ConfigModule],
 })

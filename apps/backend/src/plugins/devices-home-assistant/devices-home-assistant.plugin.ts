@@ -2,6 +2,7 @@ import { Logger, Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import { getEnvValue } from '../../common/utils/config.utils';
 import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
@@ -44,6 +45,14 @@ import { SwitchEntityMapperService } from './mappers/switch.entity.mapper.servic
 import { UniversalEntityMapperService } from './mappers/universal.entity.mapper.service';
 import { HomeAssistantConfigModel } from './models/config.model';
 import { HomeAssistantDevicePlatform } from './platforms/home-assistant.device.platform';
+import {
+	HomeAssistantDeviceRegistryResponseModel,
+	HomeAssistantDiscoveredDeviceResponseModel,
+	HomeAssistantDiscoveredDevicesResponseModel,
+	HomeAssistantEntityRegistryResponseModel,
+	HomeAssistantStateResponseModel,
+	HomeAssistantStatesResponseModel,
+} from './models/home-assistant-response.model';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 import { HomeAssistantWsService } from './services/home-assistant.ws.service';
 import { StateChangedEventService } from './services/state-changed.event.service';
@@ -54,6 +63,14 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 	displayName: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
 	description: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
 })
+@ApiExtraModels(
+	HomeAssistantDiscoveredDeviceResponseModel,
+	HomeAssistantDiscoveredDevicesResponseModel,
+	HomeAssistantStateResponseModel,
+	HomeAssistantStatesResponseModel,
+	HomeAssistantDeviceRegistryResponseModel,
+	HomeAssistantEntityRegistryResponseModel,
+)
 @Module({
 	imports: [
 		NestConfigModule,

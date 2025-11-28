@@ -115,6 +115,7 @@ export class SuccessMetadataModel {
 /**
  * Base error response structure
  */
+@ApiSchema({ name: 'BaseErrorResponseModel' })
 export class BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Response status indicator',
@@ -174,6 +175,7 @@ export class BaseErrorResponseModel {
 /**
  * 400 Bad Request Error Response
  */
+@ApiSchema({ name: 'BadRequestErrorModel' })
 export class BadRequestErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -193,6 +195,7 @@ export class BadRequestErrorModel extends BaseErrorResponseModel {
 /**
  * 403 Forbidden Error Response
  */
+@ApiSchema({ name: 'ForbiddenErrorModel' })
 export class ForbiddenErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -212,6 +215,7 @@ export class ForbiddenErrorModel extends BaseErrorResponseModel {
 /**
  * 404 Not Found Error Response
  */
+@ApiSchema({ name: 'NotFoundErrorModel' })
 export class NotFoundErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -231,6 +235,7 @@ export class NotFoundErrorModel extends BaseErrorResponseModel {
 /**
  * 422 Unprocessable Entity Error Response
  */
+@ApiSchema({ name: 'UnprocessableEntityErrorModel' })
 export class UnprocessableEntityErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -249,6 +254,7 @@ export class UnprocessableEntityErrorModel extends BaseErrorResponseModel {
 /**
  * 500 Internal Server Error Response
  */
+@ApiSchema({ name: 'InternalServerErrorModel' })
 export class InternalServerErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',

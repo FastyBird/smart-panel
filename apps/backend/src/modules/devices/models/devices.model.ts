@@ -93,8 +93,8 @@ export class ChannelPropertySpecModel {
 
 	@ApiProperty({
 		description: 'Property permissions',
-		enum: PermissionType,
-		isArray: true,
+		type: 'array',
+		items: { type: 'string', enum: Object.values(PermissionType) },
 		example: [PermissionType.READ_ONLY, PermissionType.READ_WRITE],
 	})
 	@Expose()

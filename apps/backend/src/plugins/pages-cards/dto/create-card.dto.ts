@@ -10,7 +10,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
@@ -67,8 +67,8 @@ export class CreateCardDto {
 
 	@ApiPropertyOptional({
 		description: 'Card tiles',
-		type: [CreateTileDto],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateTileDto) },
 	})
 	@Expose()
 	@IsOptional()
@@ -81,8 +81,8 @@ export class CreateCardDto {
 	@ApiPropertyOptional({
 		description: 'Card data sources',
 		name: 'data_source',
-		type: [CreateDataSourceDto],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateDataSourceDto) },
 	})
 	@Expose()
 	@IsOptional()

@@ -132,6 +132,7 @@ export class CreateDeviceChannelPropertyDto {
 	@ApiPropertyOptional({
 		description: 'Property format',
 		type: 'array',
+		items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
 		nullable: true,
 		example: [0, 100],
 	})
@@ -173,6 +174,7 @@ export class CreateDeviceChannelPropertyDto {
 
 	@ApiPropertyOptional({
 		description: 'Property value',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
 		example: 22.5,
 	})

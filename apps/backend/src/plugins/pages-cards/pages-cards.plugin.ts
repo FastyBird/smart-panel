@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
 import { ConfigModule } from '../../modules/config/config.module';
@@ -15,7 +16,9 @@ import { CreateCardsPageDto } from './dto/create-page.dto';
 import { CardsUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateCardsPageDto } from './dto/update-page.dto';
 import { CardEntity, CardsPageEntity } from './entities/pages-cards.entity';
+import { CreateSingleCardDto } from './dto/create-card.dto';
 import { CardsConfigModel } from './models/config.model';
+import { CardResponseModel, CardsResponseModel } from './models/pages-cards-response.model';
 import {
 	PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
 	PAGES_CARDS_PLUGIN_API_TAG_NAME,
@@ -31,6 +34,7 @@ import { PluginResetService } from './services/plugin-reset.service';
 	displayName: PAGES_CARDS_PLUGIN_API_TAG_NAME,
 	description: PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
 })
+@ApiExtraModels(CardResponseModel, CardsResponseModel, CreateSingleCardDto)
 @Module({
 	imports: [TypeOrmModule.forFeature([CardsPageEntity, CardEntity]), DashboardModule, ConfigModule, SystemModule],
 	providers: [CardsService, CardsPageNestedBuilderService, PluginResetService],

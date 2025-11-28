@@ -18,6 +18,7 @@ import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessab
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
 import { openApiTagRegistry } from './modules/api/decorators/api-tag.decorator';
+import { swaggerExtraModels } from './modules/api/models/swagger-extra-models';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
@@ -112,8 +113,10 @@ async function bootstrap() {
 		.addBearerAuth()
 		.build();
 
+
 	const document = SwaggerModule.createDocument(app, swaggerConfig, {
 		operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
+		extraModels: swaggerExtraModels,
 	});
 
 	// Set OpenAPI version to 3.1.0

@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 
@@ -17,7 +17,8 @@ export class ShellyNgSupportedDeviceComponentModel {
 
 	@ApiProperty({
 		description: 'Component IDs',
-		isArray: true,
+		type: 'array',
+		items: { type: 'number' },
 		example: [0, 1],
 	})
 	@Expose()
@@ -57,7 +58,8 @@ export class ShellyNgSupportedDeviceModel {
 
 	@ApiProperty({
 		description: 'Supported device models',
-		isArray: true,
+		type: 'array',
+		items: { type: 'string' },
 		example: ['SNSW-001P16EU', 'SNSW-001P16UK'],
 	})
 	@Expose()
@@ -67,8 +69,8 @@ export class ShellyNgSupportedDeviceModel {
 
 	@ApiProperty({
 		description: 'Device categories',
-		enum: DeviceCategory,
-		isArray: true,
+		type: 'array',
+		items: { type: 'string', enum: Object.values(DeviceCategory) },
 		example: [DeviceCategory.GENERIC],
 	})
 	@Expose()
@@ -78,8 +80,8 @@ export class ShellyNgSupportedDeviceModel {
 
 	@ApiProperty({
 		description: 'Device components',
-		type: () => ShellyNgSupportedDeviceComponentModel,
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(ShellyNgSupportedDeviceComponentModel) },
 	})
 	@Expose()
 	@IsArray()
@@ -89,8 +91,8 @@ export class ShellyNgSupportedDeviceModel {
 
 	@ApiProperty({
 		description: 'System components',
-		type: () => ShellyNgSupportedDeviceSystemComponentModel,
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(ShellyNgSupportedDeviceSystemComponentModel) },
 	})
 	@Expose()
 	@IsArray()
@@ -111,7 +113,8 @@ export class ShellyNgDeviceInfoComponentModel {
 
 	@ApiProperty({
 		description: 'Component IDs',
-		isArray: true,
+		type: 'array',
+		items: { type: 'number' },
 		example: [0, 1],
 	})
 	@Expose()
@@ -223,8 +226,8 @@ export class ShellyNgDeviceInfoModel {
 
 	@ApiProperty({
 		description: 'Device components',
-		type: () => ShellyNgDeviceInfoComponentModel,
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(ShellyNgDeviceInfoComponentModel) },
 	})
 	@Expose()
 	@IsArray()

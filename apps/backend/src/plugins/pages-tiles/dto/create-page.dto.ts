@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsInt, IsNotEmpty, IsOptional, Min, ValidateNested } from 'class-validator';
 
-import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
@@ -54,8 +54,8 @@ export class CreateTilesPageDto extends CreatePageDto {
 
 	@ApiPropertyOptional({
 		description: 'Page tiles',
-		type: [CreateTileDto],
-		isArray: true,
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateTileDto) },
 	})
 	@Expose()
 	@IsOptional()
