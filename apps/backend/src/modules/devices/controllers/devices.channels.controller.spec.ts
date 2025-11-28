@@ -124,14 +124,14 @@ describe('DevicesChannelsController', () => {
 		it('should return all device channels for a device', async () => {
 			const result = await controller.findAll(mockDevice.id);
 
-			expect(result).toEqual([toInstance(ChannelEntity, mockChannel)]);
+			expect(result.data).toEqual([toInstance(ChannelEntity, mockChannel)]);
 			expect(channelsService.findAll).toHaveBeenCalledWith(mockDevice.id);
 		});
 
 		it('should return a single device channel for a device', async () => {
 			const result = await controller.findOne(mockDevice.id, mockChannel.id);
 
-			expect(result).toEqual(toInstance(ChannelEntity, mockChannel));
+			expect(result.data).toEqual(toInstance(ChannelEntity, mockChannel));
 			expect(channelsService.findOne).toHaveBeenCalledWith(mockChannel.id, mockDevice.id);
 		});
 
@@ -151,7 +151,7 @@ describe('DevicesChannelsController', () => {
 
 			const result = await controller.create(mockDevice.id, { data: createDto });
 
-			expect(result).toEqual(toInstance(ChannelEntity, mockChannel));
+			expect(result.data).toEqual(toInstance(ChannelEntity, mockChannel));
 			expect(channelsService.create).toHaveBeenCalledWith({ ...createDto, device: mockDevice.id });
 		});
 

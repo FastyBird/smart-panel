@@ -112,14 +112,14 @@ describe('ChannelsControlsController', () => {
 		it('should return all controls for a channel', async () => {
 			const result = await controller.findAll(mockChannel.id);
 
-			expect(result).toEqual([toInstance(ChannelControlEntity, mockChannelControl)]);
+			expect(result.data).toEqual([toInstance(ChannelControlEntity, mockChannelControl)]);
 			expect(channelsControlsService.findAll).toHaveBeenCalledWith(mockChannel.id);
 		});
 
 		it('should return a single control for a channel', async () => {
 			const result = await controller.findOneControl(mockChannel.id, mockChannelControl.id);
 
-			expect(result).toEqual(toInstance(ChannelControlEntity, mockChannelControl));
+			expect(result.data).toEqual(toInstance(ChannelControlEntity, mockChannelControl));
 			expect(channelsControlsService.findOne).toHaveBeenCalledWith(mockChannelControl.id, mockChannel.id);
 		});
 
@@ -128,7 +128,7 @@ describe('ChannelsControlsController', () => {
 
 			const result = await controller.create(mockChannel.id, { data: createDto });
 
-			expect(result).toEqual(toInstance(ChannelControlEntity, mockChannelControl));
+			expect(result.data).toEqual(toInstance(ChannelControlEntity, mockChannelControl));
 			expect(channelsControlsService.create).toHaveBeenCalledWith(mockChannel.id, createDto);
 		});
 

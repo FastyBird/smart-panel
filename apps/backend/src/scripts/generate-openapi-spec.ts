@@ -14,7 +14,6 @@ import { API_PREFIX } from '../app.constants';
 import { AppModule } from '../app.module';
 // Import OpenAPI transformation files to register module-specific transformations
 // These files register their transformations when imported (side-effect imports)
-import '../common/dto/response.openapi';
 import { getDiscoveredExtensions } from '../common/extensions/extensions.discovery-cache';
 import { ValidationExceptionFactory } from '../common/validation/validation-exception-factory';
 import { openApiTagRegistry } from '../modules/api/decorators/api-tag.decorator';

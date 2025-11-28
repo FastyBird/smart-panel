@@ -219,8 +219,8 @@ describe('ExtensionsController', () => {
 	it('lists only admin when surface=admin', async () => {
 		const result = await controller.list(ExtensionSurfaceType.ADMIN);
 
-		expect(result).toHaveLength(1);
-		expect(result[0]).toMatchObject({
+		expect(result.data).toHaveLength(1);
+		expect(result.data[0]).toMatchObject({
 			surface: ExtensionSurfaceType.ADMIN,
 			name: '@acme/admin-ext',
 		});
@@ -229,8 +229,8 @@ describe('ExtensionsController', () => {
 	it('lists only backend when surface=backend', async () => {
 		const result = await controller.list(ExtensionSurfaceType.BACKEND);
 
-		expect(result).toHaveLength(1);
-		expect(result[0]).toMatchObject({
+		expect(result.data).toHaveLength(1);
+		expect(result.data[0]).toMatchObject({
 			surface: ExtensionSurfaceType.BACKEND,
 			name: '@acme/backend-ext',
 		});
@@ -276,8 +276,8 @@ describe('ExtensionsController', () => {
 
 		const result = await controller.list(ExtensionSurfaceType.ADMIN);
 
-		expect(result).toHaveLength(1);
-		expect(result[0]).toMatchObject({
+		expect(result.data).toHaveLength(1);
+		expect(result.data[0]).toMatchObject({
 			name: '@acme/admin-ext',
 			source: ExtensionSourceType.BUNDLED,
 		});

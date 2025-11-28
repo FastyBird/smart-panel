@@ -77,7 +77,7 @@ describe('UsersController', () => {
 		it('should return an array of users', async () => {
 			const users = await controller.findAll();
 
-			expect(users).toEqual([toInstance(UserEntity, mockUser)]);
+			expect(users.data).toEqual([toInstance(UserEntity, mockUser)]);
 			expect(service.findAll).toHaveBeenCalledTimes(1);
 		});
 	});
@@ -86,7 +86,7 @@ describe('UsersController', () => {
 		it('should return a user when found', async () => {
 			const user = await controller.findOne(mockUser.id);
 
-			expect(user).toEqual(toInstance(UserEntity, mockUser));
+			expect(user.data).toEqual(toInstance(UserEntity, mockUser));
 			expect(service.findOne).toHaveBeenCalledWith(mockUser.id);
 		});
 
@@ -107,7 +107,7 @@ describe('UsersController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(toInstance(UserEntity, mockUser));
+			expect(result.data).toEqual(toInstance(UserEntity, mockUser));
 			expect(service.create).toHaveBeenCalledWith(createDto);
 		});
 	});

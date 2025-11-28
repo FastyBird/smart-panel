@@ -62,7 +62,7 @@ describe('HomeAssistantRegistryController', () => {
 			homeAssistantWsService.getDevicesRegistry.mockResolvedValue(mockDevices);
 
 			const result = await controller.findAllDevices();
-			expect(result).toEqual(mockDevices);
+			expect(result.data).toEqual(mockDevices);
 			expect(homeAssistantWsService.getDevicesRegistry).toHaveBeenCalled();
 		});
 
@@ -104,7 +104,7 @@ describe('HomeAssistantRegistryController', () => {
 			homeAssistantWsService.getEntitiesRegistry.mockResolvedValue(mockEntities);
 
 			const result = await controller.findAllEntities();
-			expect(result).toEqual(mockEntities);
+			expect(result.data).toEqual(mockEntities);
 			expect(homeAssistantWsService.getEntitiesRegistry).toHaveBeenCalled();
 		});
 

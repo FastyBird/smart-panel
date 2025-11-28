@@ -154,14 +154,14 @@ describe('ChannelsPropertiesController', () => {
 		it('should return all properties for a channel', async () => {
 			const result = await controller.findAll(mockChannel.id);
 
-			expect(result).toEqual([toInstance(ChannelPropertyEntity, mockChannelProperty)]);
+			expect(result.data).toEqual([toInstance(ChannelPropertyEntity, mockChannelProperty)]);
 			expect(channelsPropertiesService.findAll).toHaveBeenCalledWith(mockChannel.id);
 		});
 
 		it('should return a single property for a channel', async () => {
 			const result = await controller.findOne(mockChannel.id, mockChannelProperty.id);
 
-			expect(result).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
+			expect(result.data).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
 			expect(channelsPropertiesService.findOne).toHaveBeenCalledWith(mockChannelProperty.id, mockChannel.id);
 		});
 
@@ -183,7 +183,7 @@ describe('ChannelsPropertiesController', () => {
 
 			const result = await controller.create(mockChannel.id, { data: createDto });
 
-			expect(result).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
+			expect(result.data).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
 			expect(channelsPropertiesService.create).toHaveBeenCalledWith(mockChannel.id, createDto);
 		});
 
@@ -202,7 +202,7 @@ describe('ChannelsPropertiesController', () => {
 
 			const result = await controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto });
 
-			expect(result).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
+			expect(result.data).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto);
 		});
 
@@ -237,7 +237,7 @@ describe('ChannelsPropertiesController', () => {
 
 			const result = await controller.getTimeseries(mockChannel.id, mockChannelProperty.id, query);
 
-			expect(result).toEqual(mockTimeseriesResult);
+			expect(result.data).toEqual(mockTimeseriesResult);
 			expect(propertyTimeseriesService.queryTimeseries).toHaveBeenCalledWith(
 				expect.objectContaining({ id: mockChannelProperty.id }),
 				expect.any(Date),
@@ -264,7 +264,7 @@ describe('ChannelsPropertiesController', () => {
 
 			const result = await controller.getTimeseries(mockChannel.id, mockChannelProperty.id, query);
 
-			expect(result).toHaveProperty('data');
+			expect(result.data).toHaveProperty('points');
 			expect(result.data.points).toEqual([]);
 			expect(result.data.property).toBe(mockChannelProperty.id);
 		});
@@ -282,7 +282,7 @@ describe('ChannelsPropertiesController', () => {
 
 			const result = await controller.getTimeseries(mockChannel.id, mockChannelProperty.id, {});
 
-			expect(result).toEqual(mockTimeseriesResult);
+			expect(result.data).toEqual(mockTimeseriesResult);
 			expect(propertyTimeseriesService.queryTimeseries).toHaveBeenCalled();
 		});
 

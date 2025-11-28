@@ -100,14 +100,14 @@ describe('CardsController', () => {
 		it('should return all cards', async () => {
 			const result = await controller.findAll(mockCardsPage.id);
 
-			expect(result).toEqual([mockCard]);
+			expect(result.data).toEqual([mockCard]);
 			expect(cardsService.findAll).toHaveBeenCalledWith(mockCardsPage.id);
 		});
 
 		it('should return a single card', async () => {
 			const result = await controller.findOne(mockCard.id);
 
-			expect(result).toEqual(mockCard);
+			expect(result.data).toEqual(mockCard);
 			expect(cardsService.findOne).toHaveBeenCalledWith(mockCard.id);
 		});
 
@@ -120,7 +120,7 @@ describe('CardsController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(mockCard);
+			expect(result.data).toEqual(mockCard);
 			expect(cardsService.create).toHaveBeenCalledWith(createDto);
 		});
 
@@ -131,7 +131,7 @@ describe('CardsController', () => {
 
 			const result = await controller.update(mockCard.id, { data: updateDto });
 
-			expect(result).toEqual(mockCard);
+			expect(result.data).toEqual(mockCard);
 			expect(cardsService.update).toHaveBeenCalledWith(mockCard.id, updateDto);
 		});
 

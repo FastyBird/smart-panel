@@ -81,14 +81,14 @@ describe('DevicesController', () => {
 		it('should return all devices', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([toInstance(DeviceEntity, mockDevice)]);
+			expect(result.data).toEqual([toInstance(DeviceEntity, mockDevice)]);
 			expect(service.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single device', async () => {
 			const result = await controller.findOne(mockDevice.id);
 
-			expect(result).toEqual(toInstance(DeviceEntity, mockDevice));
+			expect(result.data).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.findOne).toHaveBeenCalledWith(mockDevice.id);
 		});
 
@@ -108,7 +108,7 @@ describe('DevicesController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(toInstance(DeviceEntity, mockDevice));
+			expect(result.data).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.create).toHaveBeenCalledWith(createDto);
 		});
 
@@ -127,7 +127,7 @@ describe('DevicesController', () => {
 
 			const result = await controller.update(mockDevice.id, { data: updateDto });
 
-			expect(result).toEqual(toInstance(DeviceEntity, mockDevice));
+			expect(result.data).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.update).toHaveBeenCalledWith(mockDevice.id, updateDto);
 		});
 

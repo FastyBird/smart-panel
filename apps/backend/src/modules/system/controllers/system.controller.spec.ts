@@ -8,6 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
 
@@ -94,11 +95,11 @@ describe('SystemController', () => {
 				},
 			};
 
-			jest.spyOn(service, 'getSystemInfo').mockResolvedValue(mockSystemInfo);
+			jest.spyOn(service, 'getSystemInfo').mockResolvedValue(toInstance(SystemInfoModel, mockSystemInfo));
 
 			const result = await controller.getSystemInfo();
 
-			expect(result.data).toBeInstanceOf(SystemInfoModel);
+			expect(result.data).toEqual(toInstance(SystemInfoModel, mockSystemInfo));
 			expect(result.data.cpuLoad).toBe(mockSystemInfo.cpuLoad);
 			expect(service.getSystemInfo).toHaveBeenCalled();
 		});
@@ -124,11 +125,11 @@ describe('SystemController', () => {
 				softTempLimit: false,
 			};
 
-			jest.spyOn(service, 'getThrottleStatus').mockResolvedValue(mockThrottleStatus);
+			jest.spyOn(service, 'getThrottleStatus').mockResolvedValue(toInstance(ThrottleStatusModel, mockThrottleStatus));
 
 			const result = await controller.getThrottleStatus();
 
-			expect(result.data).toBeInstanceOf(ThrottleStatusModel);
+			expect(result.data).toEqual(toInstance(ThrottleStatusModel, mockThrottleStatus));
 			expect(result.data.undervoltage).toBe(mockThrottleStatus.undervoltage);
 			expect(service.getThrottleStatus).toHaveBeenCalled();
 		});

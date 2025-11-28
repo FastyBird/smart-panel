@@ -153,14 +153,14 @@ describe('PagesController', () => {
 		it('should return all pages', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([toInstance(MockPageEntity, mockPageOne)]);
+			expect(result.data).toEqual([toInstance(MockPageEntity, mockPageOne)]);
 			expect(service.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single page', async () => {
 			const result = await controller.findOne(mockPageOne.id);
 
-			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
+			expect(result.data).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.findOne).toHaveBeenCalledWith(mockPageOne.id);
 		});
 
@@ -181,7 +181,7 @@ describe('PagesController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
+			expect(result.data).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.create).toHaveBeenCalledWith(createDto);
 		});
 
@@ -200,7 +200,7 @@ describe('PagesController', () => {
 
 			const result = await controller.update(mockPageOne.id, { data: updateDto });
 
-			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
+			expect(result.data).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.update).toHaveBeenCalledWith(mockPageOne.id, updateDto);
 		});
 

@@ -99,7 +99,7 @@ describe('DisplaysInstancesController', () => {
 		it('should return all displays instances', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([toInstance(DisplayInstanceEntity, mockDisplayInstance)]);
+			expect(result.data).toEqual([toInstance(DisplayInstanceEntity, mockDisplayInstance)]);
 			expect(service.findAll).toHaveBeenCalledTimes(1);
 		});
 	});
@@ -108,7 +108,7 @@ describe('DisplaysInstancesController', () => {
 		it('should return a display instance by id', async () => {
 			const result = await controller.findOne(mockDisplayInstance.id);
 
-			expect(result).toEqual(toInstance(DisplayInstanceEntity, mockDisplayInstance));
+			expect(result.data).toEqual(toInstance(DisplayInstanceEntity, mockDisplayInstance));
 			expect(service.findOne).toHaveBeenCalledWith(mockDisplayInstance.id);
 		});
 
@@ -133,7 +133,7 @@ describe('DisplaysInstancesController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(toInstance(DisplayInstanceEntity, mockDisplayInstance));
+			expect(result.data).toEqual(toInstance(DisplayInstanceEntity, mockDisplayInstance));
 			expect(service.create).toHaveBeenCalledWith(mockUser.id, createDto);
 		});
 

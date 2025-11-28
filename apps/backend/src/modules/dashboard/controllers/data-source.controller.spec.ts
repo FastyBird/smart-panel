@@ -149,14 +149,14 @@ describe('DataSourceController', () => {
 		it('should return all data sources', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([toInstance(MockDataSourceEntity, mockDataSource)]);
+			expect(result.data).toEqual([toInstance(MockDataSourceEntity, mockDataSource)]);
 			expect(dataSourceService.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single data source', async () => {
 			const result = await controller.findOne(mockDataSource.id);
 
-			expect(result).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
+			expect(result.data).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
 			expect(dataSourceService.findOne).toHaveBeenCalledWith(mockDataSource.id);
 		});
 
@@ -176,7 +176,7 @@ describe('DataSourceController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
+			expect(result.data).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
 			expect(dataSourceService.create).toHaveBeenCalledWith(createDto, { parentType: 'page', parentId: mockPage.id });
 		});
 
@@ -195,7 +195,7 @@ describe('DataSourceController', () => {
 
 			const result = await controller.update(mockDataSource.id, { data: updateDto });
 
-			expect(result).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
+			expect(result.data).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
 			expect(dataSourceService.update).toHaveBeenCalledWith(mockDataSource.id, updateDto);
 		});
 

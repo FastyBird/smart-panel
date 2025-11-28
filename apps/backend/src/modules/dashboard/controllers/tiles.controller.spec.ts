@@ -151,14 +151,14 @@ describe('TilesController', () => {
 		it('should return all tiles', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([toInstance(MockTileEntity, mockTile)]);
+			expect(result.data).toEqual([toInstance(MockTileEntity, mockTile)]);
 			expect(tilesService.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single tile', async () => {
 			const result = await controller.findOne(mockTile.id);
 
-			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
+			expect(result.data).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.findOne).toHaveBeenCalledWith(mockTile.id);
 		});
 
@@ -180,7 +180,7 @@ describe('TilesController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
+			expect(result.data).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.create).toHaveBeenCalledWith(createDto, { parentType: 'page', parentId: mockPage.id });
 		});
 
@@ -200,7 +200,7 @@ describe('TilesController', () => {
 
 			const result = await controller.update(mockTile.id, { data: updateDto });
 
-			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
+			expect(result.data).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.update).toHaveBeenCalledWith(mockTile.id, updateDto);
 		});
 
