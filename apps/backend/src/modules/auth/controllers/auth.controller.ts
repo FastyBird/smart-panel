@@ -24,7 +24,7 @@ import { CreateDisplayInstanceDto } from '../../users/dto/create-display-instanc
 import { DisplaysInstancesService } from '../../users/services/displays-instances.service';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { AUTH_MODULE_NAME } from '../auth.constants';
+import { AUTH_MODULE_API_TAG_NAME } from '../auth.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
 import { ReqCheckEmailDto } from '../dto/check-email.dto';
@@ -46,7 +46,7 @@ import { RegisteredDisplayModel } from '../models/auth.model';
 import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
-@ApiTags(AUTH_MODULE_NAME)
+@ApiTags(AUTH_MODULE_API_TAG_NAME)
 @Controller('auth')
 export class AuthController {
 	private readonly logger = new Logger(AuthController.name);
@@ -59,7 +59,7 @@ export class AuthController {
 	) {}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_NAME],
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'User login',
 		description: 'Authenticate user and return access tokens',
 		operationId: 'create-auth-module-login',
@@ -92,7 +92,7 @@ export class AuthController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_NAME],
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Register new user',
 		description: 'Register the application owner account',
 		operationId: 'create-auth-module-register',
@@ -122,7 +122,7 @@ export class AuthController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_NAME],
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Refresh access token',
 		description: 'Get a new access token using a refresh token',
 		operationId: 'create-auth-module-refresh',
@@ -154,7 +154,7 @@ export class AuthController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_NAME],
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Register display device',
 		description: 'Register a new display device and get credentials',
 		operationId: 'create-auth-module-register-display',
@@ -221,7 +221,7 @@ export class AuthController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_NAME],
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Check username availability',
 		description: 'Verify if a username is available for registration',
 		operationId: 'create-auth-module-check-username',
@@ -246,7 +246,7 @@ export class AuthController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_NAME],
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Check email availability',
 		description: 'Verify if an email is available for registration',
 		operationId: 'create-auth-module-check-email',
@@ -271,7 +271,7 @@ export class AuthController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_NAME],
+		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Get user profile',
 		description: 'Retrieve the authenticated user profile information',
 		operationId: 'get-auth-module-profile',

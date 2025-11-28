@@ -29,9 +29,9 @@ import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
 import { UserResponseModel, UsersResponseModel } from '../models/users-response.model';
 import { UsersService } from '../services/users.service';
-import { USERS_MODULE_NAME, USERS_MODULE_PREFIX } from '../users.constants';
+import { USERS_MODULE_API_TAG_NAME, USERS_MODULE_PREFIX } from '../users.constants';
 
-@ApiTags(USERS_MODULE_NAME)
+@ApiTags(USERS_MODULE_API_TAG_NAME)
 @Controller('users')
 export class UsersController {
 	private readonly logger = new Logger(UsersController.name);
@@ -39,7 +39,7 @@ export class UsersController {
 	constructor(private readonly usersService: UsersService) {}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Retrieve a list of all users',
 		description:
 			'Fetches a list of all users currently registered in the system. Each user includes their metadata such as ID, username, email, role, and profile information.',
@@ -66,7 +66,7 @@ export class UsersController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Retrieve details of a specific user',
 		description:
 			"Fetches the details of a specific user using their unique ID. The response includes the user's metadata such as ID, username, email, role, and profile information.",
@@ -96,7 +96,7 @@ export class UsersController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Create a new user',
 		description:
 			'Creates a new user account in the system. The request requires user-specific attributes such as username, password, and optionally email and profile information. The response includes the full representation of the created user, including their unique identifier, username, email, role, and timestamps. Additionally, a Location header is provided with the URI of the newly created resource.',
@@ -144,7 +144,7 @@ export class UsersController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Update an existing user',
 		description:
 			'Updates the details of an existing user using their unique ID. The request can include updates to username, email, password, role, or profile information. The response includes the complete updated representation of the user.',
@@ -190,7 +190,7 @@ export class UsersController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Delete an existing user',
 		description:
 			'Deletes an existing user from the system using their unique ID. This operation is irreversible and will remove all associated user data. Users cannot delete their own account.',

@@ -11,7 +11,7 @@ import {
 	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
 import { DevicesException } from '../../devices/devices.exceptions';
-import { CONFIG_MODULE_NAME } from '../config.constants';
+import { CONFIG_MODULE_API_TAG_NAME } from '../config.constants';
 import { SectionType } from '../config.constants';
 import {
 	ReqUpdatePluginDto,
@@ -47,7 +47,7 @@ import {
 import { ConfigService } from '../services/config.service';
 import { PluginTypeMapping, PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
-@ApiTags(CONFIG_MODULE_NAME)
+@ApiTags(CONFIG_MODULE_API_TAG_NAME)
 @Controller('config')
 export class ConfigController {
 	private readonly logger = new Logger(ConfigController.name);
@@ -59,7 +59,7 @@ export class ConfigController {
 
 	@Get()
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Get all configuration',
 		description: 'Retrieve the complete application configuration',
 		operationId: 'get-config-module-config',
@@ -80,7 +80,7 @@ export class ConfigController {
 
 	@Get(':section')
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Get configuration section',
 		description: 'Retrieve a specific configuration section',
 		operationId: 'get-config-module-section',
@@ -149,7 +149,7 @@ export class ConfigController {
 
 	@Patch(SectionType.AUDIO)
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Update audio configuration',
 		description: 'Update the audio section configuration',
 		operationId: 'update-config-module-audio',
@@ -172,7 +172,7 @@ export class ConfigController {
 
 	@Patch(SectionType.DISPLAY)
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Update display configuration',
 		description: 'Update the display section configuration',
 		operationId: 'update-config-module-display',
@@ -195,7 +195,7 @@ export class ConfigController {
 
 	@Patch(SectionType.LANGUAGE)
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Update language configuration',
 		description: 'Update the language section configuration',
 		operationId: 'update-config-module-language',
@@ -218,7 +218,7 @@ export class ConfigController {
 
 	@Patch(SectionType.WEATHER)
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Update weather configuration',
 		description: 'Update the weather section configuration',
 		operationId: 'update-config-module-weather',
@@ -253,7 +253,7 @@ export class ConfigController {
 
 	@Patch(SectionType.SYSTEM)
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Update system configuration',
 		description: 'Update the system section configuration',
 		operationId: 'update-config-module-system',
@@ -282,7 +282,7 @@ export class ConfigController {
 
 	@Get('plugins')
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Get all plugin configurations',
 		description: 'Retrieve configuration for all registered plugins',
 		operationId: 'get-config-module-plugins',
@@ -303,7 +303,7 @@ export class ConfigController {
 
 	@Get('plugin/:plugin')
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Get plugin configuration',
 		description: 'Retrieve configuration for a specific plugin',
 		operationId: 'get-config-module-plugin',
@@ -325,7 +325,7 @@ export class ConfigController {
 
 	@Patch('plugin/:plugin')
 	@ApiOperation({
-		tags: [CONFIG_MODULE_NAME],
+		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Update plugin configuration',
 		description: 'Update configuration for a specific plugin',
 		operationId: 'update-config-module-plugin',

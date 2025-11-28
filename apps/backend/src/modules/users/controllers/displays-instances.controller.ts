@@ -33,9 +33,9 @@ import {
 } from '../models/users-response.model';
 import { DisplaysInstancesService } from '../services/displays-instances.service';
 import { UsersService } from '../services/users.service';
-import { USERS_MODULE_NAME, USERS_MODULE_PREFIX, UserRole } from '../users.constants';
+import { USERS_MODULE_API_TAG_NAME, USERS_MODULE_PREFIX, UserRole } from '../users.constants';
 
-@ApiTags(USERS_MODULE_NAME)
+@ApiTags(USERS_MODULE_API_TAG_NAME)
 @Controller('displays-instances')
 export class DisplaysInstancesController {
 	private readonly logger = new Logger(DisplaysInstancesController.name);
@@ -46,7 +46,7 @@ export class DisplaysInstancesController {
 	) {}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Retrieve a list of all display instances',
 		description:
 			'Fetches a list of all display instances currently registered in the system. Each display instance includes its metadata such as ID, UID, MAC address, version, build, and associated user.',
@@ -73,7 +73,7 @@ export class DisplaysInstancesController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Retrieve details of a specific display instance',
 		description:
 			"Fetches the details of a specific display instance using its unique ID. The response includes the display instance's metadata such as ID, UID, MAC address, version, build, and associated user.",
@@ -103,7 +103,7 @@ export class DisplaysInstancesController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Retrieve a display instance by UID',
 		description:
 			"Fetches the details of a specific display instance using its unique identifier (UID). The response includes the display instance's metadata such as ID, UID, MAC address, version, build, and associated user.",
@@ -141,7 +141,7 @@ export class DisplaysInstancesController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Create a new display instance',
 		description:
 			'Registers a new display instance in the system. The request requires display-specific attributes such as UID, MAC address, version, build, and associated user. The response includes the full representation of the created display instance, including its unique identifier, UID, MAC address, version, build, and timestamps. Additionally, a Location header is provided with the URI of the newly created resource.',
@@ -188,7 +188,7 @@ export class DisplaysInstancesController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Update an existing display instance',
 		description:
 			'Updates the details of an existing display instance using its unique ID. The request can include updates to version, build, or display profile. The response includes the complete updated representation of the display instance.',
@@ -224,7 +224,7 @@ export class DisplaysInstancesController {
 	}
 
 	@ApiOperation({
-		tags: [USERS_MODULE_NAME],
+		tags: [USERS_MODULE_API_TAG_NAME],
 		summary: 'Delete an existing display instance',
 		description:
 			'Deletes an existing display instance from the system using its unique ID. This operation is irreversible and will remove all associated display instance data.',

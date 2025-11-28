@@ -11,13 +11,13 @@ import {
 import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
 import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
-import { DEVICES_THIRD_PARTY_PLUGIN_NAME } from '../devices-third-party.constants';
+import { DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME } from '../devices-third-party.constants';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
 import { DemoControlResponseModel } from '../models/demo-control-response.model';
 import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
 
-@ApiTags(DEVICES_THIRD_PARTY_PLUGIN_NAME)
+@ApiTags(DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME)
 @Controller('demo')
 export class ThirdPartyDemoController {
 	private readonly logger = new Logger(ThirdPartyDemoController.name);
@@ -26,7 +26,7 @@ export class ThirdPartyDemoController {
 	constructor(private readonly channelsPropertiesService: ChannelsPropertiesService) {}
 
 	@ApiOperation({
-		tags: [DEVICES_THIRD_PARTY_PLUGIN_NAME],
+		tags: [DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME],
 		summary: 'Demo webhook endpoint for third-party device property updates',
 		description:
 			'Processes property update requests from third-party devices. This endpoint accepts an array of property update requests and returns the processing status for each property. Properties are updated asynchronously with a debounce delay to optimize performance.',

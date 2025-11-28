@@ -17,6 +17,7 @@ import { QueryFailedExceptionFilter } from './common/filters/query-failed-except
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
+import { openApiTagRegistry } from './modules/api/decorators/api-tag.decorator';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
@@ -124,35 +125,37 @@ async function bootstrap() {
 			'The FastyBird Smart Panel API provides a local, real-time interface for retrieving device data, monitoring statuses, and integrating third-party IoT systems. It enables seamless communication between the smart panel and connected devices, ensuring fast, private, and reliable interactions without cloud dependencies.';
 	}
 
+	const tagDefinitions = openApiTagRegistry.getTagDefinitions();
+
 	/**
 	 * Sort tags by:
 	 * 1. modules (name endsWith " module") – alphabetical
 	 * 2. plugins (name endsWith " plugin") – alphabetical
 	 * 3. everything else – alphabetical, at the bottom
 	 */
-	if (document.tags) {
-		document.tags.sort((a, b) => {
-			const an = a.name.toLowerCase();
-			const bn = b.name.toLowerCase();
+	tagDefinitions.sort((a, b) => {
+		const an = a.name.toLowerCase();
+		const bn = b.name.toLowerCase();
 
-			const aIsModule = an.endsWith(' module');
-			const bIsModule = bn.endsWith(' module');
+		const aIsModule = an.endsWith(' module');
+		const bIsModule = bn.endsWith(' module');
 
-			const aIsPlugin = an.endsWith(' plugin');
-			const bIsPlugin = bn.endsWith(' plugin');
+		const aIsPlugin = an.endsWith(' plugin');
+		const bIsPlugin = bn.endsWith(' plugin');
 
-			// 1) Modules go first
-			if (aIsModule && !bIsModule) return -1;
-			if (!aIsModule && bIsModule) return 1;
+		// 1) Modules go first
+		if (aIsModule && !bIsModule) return -1;
+		if (!aIsModule && bIsModule) return 1;
 
-			// 2) Plugins go second
-			if (aIsPlugin && !bIsPlugin) return -1;
-			if (!aIsPlugin && bIsPlugin) return 1;
+		// 2) Plugins go second
+		if (aIsPlugin && !bIsPlugin) return -1;
+		if (!aIsPlugin && bIsPlugin) return 1;
 
-			// 3) Everything else: alphabetical among themselves
-			return an.localeCompare(bn);
-		});
-	}
+		// 3) Everything else: alphabetical among themselves
+		return an.localeCompare(bn);
+	});
+
+	document.tags = tagDefinitions;
 
 	SwaggerModule.setup(`${API_PREFIX}/docs`, app, document, {
 		swaggerOptions: {

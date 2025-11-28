@@ -23,7 +23,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity';
@@ -31,7 +31,7 @@ import { ChannelControlResponseModel, ChannelControlsResponseModel } from '../mo
 import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
 
-@ApiTags(DEVICES_MODULE_NAME)
+@ApiTags(DEVICES_MODULE_API_TAG_NAME)
 @Controller('channels/:channelId/controls')
 export class ChannelsControlsController {
 	private readonly logger = new Logger(ChannelsControlsController.name);
@@ -42,7 +42,7 @@ export class ChannelsControlsController {
 	) {}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_NAME],
+		tags: [DEVICES_MODULE_API_TAG_NAME],
 		summary: 'Retrieve a list of all available channel controls',
 		description:
 			'Fetches a list of all controls available for channels in the system. Each control represents an actionable operation associated with a channel. The response includes details such as the control’s ID, name, associated channel, and timestamps.',
@@ -76,7 +76,7 @@ export class ChannelsControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_NAME],
+		tags: [DEVICES_MODULE_API_TAG_NAME],
 		summary: 'Retrieve details of a specific control for a channel',
 		description:
 			'Fetches the details of a specific control associated with a channel. The response includes the control’s unique identifier, name, associated channel, and metadata such as creation and update timestamps.',
@@ -112,7 +112,7 @@ export class ChannelsControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_NAME],
+		tags: [DEVICES_MODULE_API_TAG_NAME],
 		summary: 'Create a new control for a channel',
 		description:
 			'Allows the creation of a new control for a specific channel. A control represents an actionable operation or command associated with the channel. The response includes the complete details of the newly created control, including its ID, name, associated channel, and metadata.',
@@ -176,7 +176,7 @@ export class ChannelsControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_NAME],
+		tags: [DEVICES_MODULE_API_TAG_NAME],
 		summary: 'Delete a control for a channel',
 		description:
 			'Deletes a specific control associated with a channel using its unique ID. This operation is irreversible and permanently removes the control from the system.',

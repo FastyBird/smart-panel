@@ -28,7 +28,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DASHBOARD_MODULE_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreatePageDto, ReqCreatePageDto } from '../dto/create-page.dto';
 import { ReqUpdatePageDto, UpdatePageDto } from '../dto/update-page.dto';
@@ -37,7 +37,7 @@ import { PageResponseModel, PagesResponseModel } from '../models/dashboard-respo
 import { PageTypeMapping, PagesTypeMapperService } from '../services/pages-type-mapper.service';
 import { PagesService } from '../services/pages.service';
 
-@ApiTags(DASHBOARD_MODULE_NAME)
+@ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
 @Controller('pages')
 export class PagesController {
 	private readonly logger = new Logger(PagesController.name);
@@ -49,7 +49,7 @@ export class PagesController {
 
 	// Pages
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_NAME],
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
 		summary: 'Retrieve all pages',
 		description: 'Fetches metadata for every dashboard page, including tiles and configured data sources.',
 		operationId: 'get-dashboard-module-pages',
@@ -71,7 +71,7 @@ export class PagesController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_NAME],
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
 		summary: 'Retrieve a specific page by ID',
 		description: 'Fetches the dashboard page identified by the provided UUID, including its tiles and metadata.',
 		operationId: 'get-dashboard-module-page',
@@ -96,7 +96,7 @@ export class PagesController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_NAME],
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
 		summary: 'Create a new page',
 		description: 'Creates a new dashboard page with the provided metadata and nested resources.',
 		operationId: 'create-dashboard-module-page',
@@ -189,7 +189,7 @@ export class PagesController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_NAME],
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
 		summary: 'Update an existing page',
 		description: 'Partially updates the metadata or layout of an existing dashboard page.',
 		operationId: 'update-dashboard-module-page',
@@ -269,7 +269,7 @@ export class PagesController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_NAME],
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
 		summary: 'Delete a page',
 		description: 'Deletes the dashboard page identified by the provided UUID.',
 		operationId: 'delete-dashboard-module-page',

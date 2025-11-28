@@ -13,9 +13,9 @@ import { ReqCreateLogEntriesDto } from '../dto/create-log-entry.dto';
 import { LogEntriesResponseModel, LogEntryAcceptedResponseModel } from '../models/system-response.model';
 import { LogEntryAcceptedModel } from '../models/system.model';
 import { SystemLoggerService } from '../services/system-logger.service';
-import { DEFAULT_PAGE_SIZE, LogEntryType, SYSTEM_MODULE_NAME } from '../system.constants';
+import { DEFAULT_PAGE_SIZE, LogEntryType, SYSTEM_MODULE_API_TAG_NAME } from '../system.constants';
 
-@ApiTags(SYSTEM_MODULE_NAME)
+@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
 @Controller('logs')
 export class LogsController {
 	private readonly logger = new Logger(LogsController.name);
@@ -23,7 +23,7 @@ export class LogsController {
 	constructor(private readonly appLogger: SystemLoggerService) {}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_NAME],
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'List log entries',
 		description: 'Retrieve a list of log entries with optional pagination',
 		operationId: 'get-system-module-log-entries',
@@ -54,7 +54,7 @@ export class LogsController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_NAME],
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Create log entries',
 		description: 'Submit new log entries to the system',
 		operationId: 'create-system-module-log-entries',

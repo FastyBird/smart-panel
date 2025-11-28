@@ -8,7 +8,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/api/decorators/api-documentation.decorator';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -19,7 +19,7 @@ import {
 } from '../models/home-assistant-response.model';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 
-@ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_NAME)
+@ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME)
 @Controller('states')
 export class HomeAssistantStatesController {
 	private readonly logger = new Logger(HomeAssistantStatesController.name);
@@ -27,7 +27,7 @@ export class HomeAssistantStatesController {
 	constructor(private readonly homeAssistantHttpService: HomeAssistantHttpService) {}
 
 	@ApiOperation({
-		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_NAME],
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
 		summary: 'Retrieve all Home Assistant entity states',
 		description:
 			'Fetches a list of all Home Assistant entity states currently available in the Home Assistant instance.',
@@ -76,7 +76,7 @@ export class HomeAssistantStatesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_NAME],
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
 		summary: 'Retrieve a Home Assistant entity state by entity ID',
 		description: 'Fetches the current state of a specific Home Assistant entity by its entity ID.',
 		operationId: 'get-devices-home-assistant-plugin-state',
