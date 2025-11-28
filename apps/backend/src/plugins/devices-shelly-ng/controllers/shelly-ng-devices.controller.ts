@@ -12,7 +12,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/api/decorators/api-documentation.decorator';
-import { DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME } from '../devices-shelly-ng.constants';
+import { DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 import { DESCRIPTORS } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { DevicesShellyNgPluginReqGetInfo } from '../dto/shelly-ng-get-info.dto';
@@ -23,7 +23,7 @@ import {
 import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
 import { DeviceManagerService } from '../services/device-manager.service';
 
-@ApiTags(DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME)
+@ApiTags(DEVICES_SHELLY_NG_PLUGIN_NAME)
 @Controller('devices')
 export class ShellyNgDevicesController {
 	private readonly logger = new Logger(ShellyNgDevicesController.name);
@@ -31,7 +31,7 @@ export class ShellyNgDevicesController {
 	constructor(private readonly deviceManagerService: DeviceManagerService) {}
 
 	@ApiOperation({
-		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_SHELLY_NG_PLUGIN_NAME],
 		summary: 'Fetch information about a Shelly NG device',
 		description:
 			'Retrieves detailed information about a Shelly Next-Generation device by connecting to it using the provided hostname or IP address. The response includes device identification, firmware version, authentication settings, and available components.',
@@ -91,7 +91,7 @@ export class ShellyNgDevicesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_SHELLY_NG_PLUGIN_NAME],
 		summary: 'Get list of supported Shelly NG devices',
 		description:
 			'Retrieves a comprehensive list of all Shelly Next-Generation device models that are supported by this plugin. Each entry includes device specifications, available components, and supported categories.',

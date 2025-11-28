@@ -13,10 +13,10 @@ import {
 	LocationWeatherResponseModel,
 } from '../models/weather-response.model';
 import { WeatherService } from '../services/weather.service';
-import { WEATHER_MODULE_API_TAG_NAME } from '../weather.constants';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
-@ApiTags(WEATHER_MODULE_API_TAG_NAME)
+@ApiTags(WEATHER_MODULE_NAME)
 @Controller('weather')
 export class WeatherController {
 	private readonly logger = new Logger(WeatherController.name);
@@ -24,7 +24,7 @@ export class WeatherController {
 	constructor(private readonly weatherService: WeatherService) {}
 
 	@ApiOperation({
-		tags: [WEATHER_MODULE_API_TAG_NAME],
+		tags: [WEATHER_MODULE_NAME],
 		summary: 'Get weather data',
 		description: 'Retrieve current weather and forecast for configured location',
 		operationId: 'get-weather-module-weather',
@@ -68,7 +68,7 @@ export class WeatherController {
 	}
 
 	@ApiOperation({
-		tags: [WEATHER_MODULE_API_TAG_NAME],
+		tags: [WEATHER_MODULE_NAME],
 		summary: 'Get current weather',
 		description: 'Retrieve current weather data for configured location',
 		operationId: 'get-weather-module-weather-current',
@@ -112,7 +112,7 @@ export class WeatherController {
 	}
 
 	@ApiOperation({
-		tags: [WEATHER_MODULE_API_TAG_NAME],
+		tags: [WEATHER_MODULE_NAME],
 		summary: 'Get weather forecast',
 		description: 'Retrieve weather forecast for configured location',
 		operationId: 'get-weather-module-weather-forecast',

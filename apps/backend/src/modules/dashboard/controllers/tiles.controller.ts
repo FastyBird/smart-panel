@@ -29,7 +29,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+import { DASHBOARD_MODULE_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateSingleTileDto, CreateTileDto, ReqCreateTileDto } from '../dto/create-tile.dto';
 import { ReqUpdateTileWithParentDto, UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
@@ -38,7 +38,7 @@ import { TileResponseModel, TilesResponseModel } from '../models/dashboard-respo
 import { TileTypeMapping, TilesTypeMapperService } from '../services/tiles-type-mapper.service';
 import { TilesService } from '../services/tiles.service';
 
-@ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
+@ApiTags(DASHBOARD_MODULE_NAME)
 @Controller('tiles')
 export class TilesController {
 	private readonly logger = new Logger(TilesController.name);
@@ -49,7 +49,7 @@ export class TilesController {
 	) {}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Retrieve all tiles',
 		description: 'Retrieves all dashboard tiles with optional filtering by parent entity.',
 		operationId: 'get-dashboard-module-tiles',
@@ -89,7 +89,7 @@ export class TilesController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Retrieve a specific tile by ID',
 		description: 'Fetches a dashboard tile using its unique identifier.',
 		operationId: 'get-dashboard-module-tile',
@@ -114,7 +114,7 @@ export class TilesController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Create a new tile',
 		description: 'Creates a new dashboard tile with the provided configuration.',
 		operationId: 'create-dashboard-module-tile',
@@ -212,7 +212,7 @@ export class TilesController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Update an existing tile',
 		description: 'Partially updates the values of a dashboard tile identified by UUID.',
 		operationId: 'update-dashboard-module-tile',
@@ -309,7 +309,7 @@ export class TilesController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Delete a tile',
 		description: 'Deletes the dashboard tile identified by the provided UUID.',
 		operationId: 'delete-dashboard-module-tile',

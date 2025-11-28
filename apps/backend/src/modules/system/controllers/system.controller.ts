@@ -30,9 +30,9 @@ import {
 } from '../models/system-response.model';
 import { SystemHealthModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
-import { SYSTEM_MODULE_API_TAG_NAME } from '../system.constants';
+import { SYSTEM_MODULE_NAME } from '../system.constants';
 
-@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
+@ApiTags(SYSTEM_MODULE_NAME)
 @Controller('system')
 export class SystemController {
 	private readonly logger = new Logger(SystemController.name);
@@ -40,7 +40,7 @@ export class SystemController {
 	constructor(private readonly systemService: SystemService) {}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Get system health',
 		description: 'Retrieve system health status and version',
 		operationId: 'get-system-module-health',
@@ -72,7 +72,7 @@ export class SystemController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Get system information',
 		description: 'Retrieve detailed system information',
 		operationId: 'get-system-module-info',
@@ -99,7 +99,7 @@ export class SystemController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Get throttle status',
 		description: 'Retrieve system throttling status',
 		operationId: 'get-system-module-throttle',

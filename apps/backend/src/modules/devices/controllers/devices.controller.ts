@@ -28,7 +28,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -37,7 +37,7 @@ import { DeviceResponseModel, DevicesResponseModel } from '../models/devices-res
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
-@ApiTags(DEVICES_MODULE_API_TAG_NAME)
+@ApiTags(DEVICES_MODULE_NAME)
 @Controller('devices')
 export class DevicesController {
 	private readonly logger = new Logger(DevicesController.name);
@@ -48,7 +48,7 @@ export class DevicesController {
 	) {}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve a list of available devices',
 		description:
 			'Fetches a list of all devices currently registered in the system. Each device includes its metadata (e.g., ID, name, and category), along with associated channels, controls, and properties.',
@@ -75,7 +75,7 @@ export class DevicesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve details of a specific device',
 		description:
 			'Fetches the details of a specific device using its unique ID. The response includes the device’s metadata (e.g., ID, name, and category), associated channels, controls, and properties.',
@@ -105,7 +105,7 @@ export class DevicesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Create a new device',
 		description:
 			'Creates a new device resource in the system. The request requires device-specific attributes such as category and name. The response includes the full representation of the created device, including its associated channels, controls, and properties. Additionally, a Location header is provided with the URI of the newly created resource.',
@@ -185,7 +185,7 @@ export class DevicesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Update an existing device',
 		description:
 			'Partially updates the attributes of an existing device identified by its unique ID. The update can modify metadata, such as the device’s name, category, or description, without requiring the full object.',
@@ -269,7 +269,7 @@ export class DevicesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Delete a device',
 		description:
 			'Deletes a specific device identified by its unique ID from the system. This action is irreversible and will remove the device and its associated data from the system.',

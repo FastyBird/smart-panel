@@ -28,7 +28,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { ReqCreateDeviceChannelDto } from '../dto/create-device-channel.dto';
@@ -40,7 +40,7 @@ import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/chann
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
 
-@ApiTags(DEVICES_MODULE_API_TAG_NAME)
+@ApiTags(DEVICES_MODULE_NAME)
 @Controller('devices/:deviceId/channels')
 export class DevicesChannelsController {
 	private readonly logger = new Logger(DevicesChannelsController.name);
@@ -52,7 +52,7 @@ export class DevicesChannelsController {
 	) {}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve a list of all available channels for a device',
 		description:
 			'Fetches a list of channels associated with a specific device. Each channel includes metadata (e.g., ID, name, category), associated controls, and properties.',
@@ -86,7 +86,7 @@ export class DevicesChannelsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve details of a specific channel for a device',
 		description:
 			'Fetches detailed information about a specific channel associated with a device using its unique ID. The response includes metadata, category, associated controls, and properties for the channel.',
@@ -122,7 +122,7 @@ export class DevicesChannelsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Create a new channel for a device',
 		description:
 			'Creates a new channel associated with a specific device. The channel can have attributes such as name, category, description, and optionally controls and properties.',
@@ -215,7 +215,7 @@ export class DevicesChannelsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Update an existing channel for a device',
 		description:
 			'Partially updates the attributes of an existing channel associated with a device using its unique ID. The update can modify metadata such as the channel’s name, category, or description, without requiring the full object.',
@@ -305,7 +305,7 @@ export class DevicesChannelsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Delete a channel for a device',
 		description:
 			'Deletes a specific channel associated with a device using its unique ID. This action is irreversible and will remove the channel and its associated data from the system.',

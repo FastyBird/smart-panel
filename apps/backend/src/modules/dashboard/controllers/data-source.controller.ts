@@ -29,7 +29,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+import { DASHBOARD_MODULE_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateDataSourceDto, CreateSingleDataSourceDto, ReqCreateDataSourceDto } from '../dto/create-data-source.dto';
 import {
@@ -42,7 +42,7 @@ import { DataSourceResponseModel, DataSourcesResponseModel } from '../models/das
 import { DataSourceTypeMapping, DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
 import { DataSourcesService } from '../services/data-sources.service';
 
-@ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
+@ApiTags(DASHBOARD_MODULE_NAME)
 @Controller('data-source')
 export class DataSourceController {
 	private readonly logger = new Logger(DataSourceController.name);
@@ -53,7 +53,7 @@ export class DataSourceController {
 	) {}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Retrieve all data sources',
 		description: 'Retrieves all dashboard data sources with optional filtering by parent entity.',
 		operationId: 'get-dashboard-module-data-sources',
@@ -93,7 +93,7 @@ export class DataSourceController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Retrieve a specific data source by ID',
 		description: 'Fetches the dashboard data source identified by the provided UUID.',
 		operationId: 'get-dashboard-module-data-source',
@@ -118,7 +118,7 @@ export class DataSourceController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Create a new data source',
 		description: 'Creates a dashboard data source with the provided configuration.',
 		operationId: 'create-dashboard-module-data-source',
@@ -229,7 +229,7 @@ export class DataSourceController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Update an existing data source',
 		description: 'Partially updates attributes of a dashboard data source by UUID.',
 		operationId: 'update-dashboard-module-data-source',
@@ -330,7 +330,7 @@ export class DataSourceController {
 	}
 
 	@ApiOperation({
-		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		tags: [DASHBOARD_MODULE_NAME],
 		summary: 'Delete a data source',
 		description: 'Deletes the dashboard data source identified by the provided UUID.',
 		operationId: 'delete-dashboard-module-data-source',

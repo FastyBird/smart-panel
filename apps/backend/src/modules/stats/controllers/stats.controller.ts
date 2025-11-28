@@ -4,15 +4,15 @@ import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../api/decorators/api-documentation.decorator';
 import { StatResponseModel, StatsKeysResponseModel, StatsResponseModel } from '../models/stats-response.model';
 import { StatsAggregatorService } from '../services/stats-aggregator.service';
-import { STATS_MODULE_API_TAG_NAME } from '../stats.constants';
+import { STATS_MODULE_NAME } from '../stats.constants';
 
-@ApiTags(STATS_MODULE_API_TAG_NAME)
+@ApiTags(STATS_MODULE_NAME)
 @Controller('stats')
 export class StatsController {
 	constructor(private readonly agg: StatsAggregatorService) {}
 
 	@ApiOperation({
-		tags: [STATS_MODULE_API_TAG_NAME],
+		tags: [STATS_MODULE_NAME],
 		summary: 'Get all statistics',
 		description:
 			'Retrieve all available statistics. Supports optional query parameters for filtering or customization (parameters vary by statistic provider).',
@@ -31,7 +31,7 @@ export class StatsController {
 	}
 
 	@ApiOperation({
-		tags: [STATS_MODULE_API_TAG_NAME],
+		tags: [STATS_MODULE_NAME],
 		summary: 'Get specific statistic',
 		description:
 			'Retrieve a specific statistic by key. Supports optional query parameters for filtering or customization (parameters vary by statistic).',
@@ -51,7 +51,7 @@ export class StatsController {
 	}
 
 	@ApiOperation({
-		tags: [STATS_MODULE_API_TAG_NAME],
+		tags: [STATS_MODULE_NAME],
 		summary: 'List available statistics keys',
 		description: 'Retrieve a list of all available statistic keys',
 		operationId: 'get-stats-module-keys',

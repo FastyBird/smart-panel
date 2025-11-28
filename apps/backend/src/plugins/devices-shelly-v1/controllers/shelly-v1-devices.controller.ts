@@ -10,7 +10,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/api/decorators/api-documentation.decorator';
-import { DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME } from '../devices-shelly-v1.constants';
+import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 import { DESCRIPTORS } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
 import { DevicesShellyV1PluginReqGetInfo } from '../dto/shelly-v1-probe.dto';
@@ -21,7 +21,7 @@ import {
 import { ShellyV1DeviceInfoModel, ShellyV1SupportedDeviceModel } from '../models/shelly-v1.model';
 import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 
-@ApiTags(DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME)
+@ApiTags(DEVICES_SHELLY_V1_PLUGIN_NAME)
 @Controller('devices')
 export class ShellyV1DevicesController {
 	private readonly logger = new Logger(ShellyV1DevicesController.name);
@@ -29,7 +29,7 @@ export class ShellyV1DevicesController {
 	constructor(private readonly probeService: ShellyV1ProbeService) {}
 
 	@ApiOperation({
-		tags: [DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_SHELLY_V1_PLUGIN_NAME],
 		summary: 'Fetch information about a Shelly V1 device',
 		description:
 			'Retrieves detailed information about a Shelly Generation 1 device by connecting to it using the provided hostname or IP address. The response includes device identification, firmware version, authentication settings, and reachability status.',
@@ -96,7 +96,7 @@ export class ShellyV1DevicesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_SHELLY_V1_PLUGIN_NAME],
 		summary: 'Get list of supported Shelly V1 devices',
 		description:
 			'Retrieves a comprehensive list of all Shelly Generation 1 device models that are supported by this plugin. Each entry includes device specifications and supported categories.',

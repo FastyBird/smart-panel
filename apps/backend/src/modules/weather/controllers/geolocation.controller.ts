@@ -12,9 +12,9 @@ import {
 	GeolocationZipToCoordinatesResponseModel,
 } from '../models/weather-response.model';
 import { GeolocationService } from '../services/geolocation.service';
-import { WEATHER_MODULE_API_TAG_NAME } from '../weather.constants';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 
-@ApiTags(WEATHER_MODULE_API_TAG_NAME)
+@ApiTags(WEATHER_MODULE_NAME)
 @Controller('geolocation')
 export class GeolocationController {
 	private readonly logger = new Logger(GeolocationController.name);
@@ -22,7 +22,7 @@ export class GeolocationController {
 	constructor(private readonly geolocationService: GeolocationService) {}
 
 	@ApiOperation({
-		tags: [WEATHER_MODULE_API_TAG_NAME],
+		tags: [WEATHER_MODULE_NAME],
 		summary: 'Get coordinates by city name',
 		description: 'Convert city name to geographic coordinates',
 		operationId: 'get-weather-module-geolocation-city-to-coordinates',
@@ -41,7 +41,7 @@ export class GeolocationController {
 	}
 
 	@ApiOperation({
-		tags: [WEATHER_MODULE_API_TAG_NAME],
+		tags: [WEATHER_MODULE_NAME],
 		summary: 'Get coordinates by postal code',
 		description: 'Convert postal/zip code to geographic coordinates',
 		operationId: 'get-weather-module-geolocation-zip-to-coordinates',
@@ -65,7 +65,7 @@ export class GeolocationController {
 	}
 
 	@ApiOperation({
-		tags: [WEATHER_MODULE_API_TAG_NAME],
+		tags: [WEATHER_MODULE_NAME],
 		summary: 'Get city by coordinates',
 		description: 'Convert geographic coordinates to city name',
 		operationId: 'get-weather-module-geolocation-coordinates-to-city',

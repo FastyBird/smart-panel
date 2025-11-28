@@ -23,7 +23,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateDeviceChannelControlDto } from '../dto/create-device-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
@@ -32,7 +32,7 @@ import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
 
-@ApiTags(DEVICES_MODULE_API_TAG_NAME)
+@ApiTags(DEVICES_MODULE_NAME)
 @Controller('devices/:deviceId/channels/:channelId/controls')
 export class DevicesChannelsControlsController {
 	private readonly logger = new Logger(DevicesChannelsControlsController.name);
@@ -44,7 +44,7 @@ export class DevicesChannelsControlsController {
 	) {}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve a list of all available controls for a device’s channel',
 		description:
 			'Fetches a list of controls associated with a specific channel of a device. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.',
@@ -83,7 +83,7 @@ export class DevicesChannelsControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve details of a specific control for a device’s channel',
 		description:
 			'Fetches detailed information about a specific control associated with a device channel using its unique ID. The response includes metadata such as the control’s name, ID, associated channel, and timestamps.',
@@ -122,7 +122,7 @@ export class DevicesChannelsControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Create a new control for a specific device’s channel',
 		description:
 			'Creates a new control associated with a specific device channel. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.',
@@ -193,7 +193,7 @@ export class DevicesChannelsControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Create a new channel for a device',
 		description:
 			'Creates a new channel associated with a specific device. The channel can have attributes such as name, category, description, and optionally controls and properties.',

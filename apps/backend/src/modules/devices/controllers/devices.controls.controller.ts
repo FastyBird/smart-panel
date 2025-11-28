@@ -23,7 +23,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
@@ -31,7 +31,7 @@ import { DeviceControlResponseModel, DeviceControlsResponseModel } from '../mode
 import { DevicesControlsService } from '../services/devices.controls.service';
 import { DevicesService } from '../services/devices.service';
 
-@ApiTags(DEVICES_MODULE_API_TAG_NAME)
+@ApiTags(DEVICES_MODULE_NAME)
 @Controller('devices/:deviceId/controls')
 export class DevicesControlsController {
 	private readonly logger = new Logger(DevicesControlsController.name);
@@ -42,7 +42,7 @@ export class DevicesControlsController {
 	) {}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve a list of all available device controls',
 		description:
 			'Fetches a list of controls associated with a specific device. Controls represent actions that can be performed on the device, such as reboot or calibration.',
@@ -75,7 +75,7 @@ export class DevicesControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve details of a specific control for a device',
 		description:
 			'Fetches detailed information about a specific control associated with a device using its unique ID. The response includes metadata such as the control’s name, ID, associated device, and timestamps.',
@@ -111,7 +111,7 @@ export class DevicesControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Create a new control for a device',
 		description:
 			'Creates a new control associated with a specific device. Controls represent actions or commands that can be executed on the device, such as reboot or factory reset.',
@@ -175,7 +175,7 @@ export class DevicesControlsController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Delete a control for a device',
 		description:
 			'Deletes a specific control associated with a device using its unique ID. This action is irreversible and removes the control from the system.',

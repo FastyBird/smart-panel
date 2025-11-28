@@ -29,7 +29,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { ReqCreateDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
@@ -51,7 +51,7 @@ import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
 import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
-@ApiTags(DEVICES_MODULE_API_TAG_NAME)
+@ApiTags(DEVICES_MODULE_NAME)
 @Controller('devices/:deviceId/channels/:channelId/properties')
 export class DevicesChannelsPropertiesController {
 	private readonly logger = new Logger(DevicesChannelsPropertiesController.name);
@@ -65,7 +65,7 @@ export class DevicesChannelsPropertiesController {
 	) {}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve a list of all available properties for a device’s channel',
 		description:
 			'Fetches a list of properties associated with a specific channel of a device. Properties represent attributes or measurements related to the channel, such as thermostat mode, temperature, or humidity.',
@@ -104,7 +104,7 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Retrieve details of a specific property for a device’s channel',
 		description:
 			'Fetches detailed information about a specific property associated with a device channel using its unique ID. The response includes metadata such as the property’s name, category, value, and associated channel.',
@@ -143,7 +143,7 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Get timeseries data for a specific property.',
 		description:
 			'Retrieves historical timeseries data for a property within a specified time range. Supports optional downsampling via bucket parameter. Returns empty array if no data exists.',
@@ -203,7 +203,7 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Create a new property for a specific device’s channel',
 		description:
 			'Creates a new property for a specific device channel. The property can include metadata such as category, permissions, data type, unit, and initial value. The response contains the full representation of the created property, including its unique identifier, associated channel, and metadata.',
@@ -310,7 +310,7 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Update and existing property for a specific device’s channel',
 		description:
 			'Partially updates the details of a specific property associated with a device channel. This operation allows modifications to attributes such as the property’s name, value, or metadata, while preserving its unique identifier and association with the channel.',
@@ -411,7 +411,7 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_MODULE_API_TAG_NAME],
+		tags: [DEVICES_MODULE_NAME],
 		summary: 'Delete a property for a device channel',
 		description:
 			'Deletes a specific property associated with a device channel using its unique ID. This operation is irreversible and permanently removes the property from the system.',

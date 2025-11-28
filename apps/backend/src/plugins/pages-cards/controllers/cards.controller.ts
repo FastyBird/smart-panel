@@ -30,10 +30,10 @@ import { ReqCreateCardDto } from '../dto/create-card.dto';
 import { ReqUpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity } from '../entities/pages-cards.entity';
 import { CardResponseModel, CardsResponseModel } from '../models/pages-cards-response.model';
-import { PAGES_CARDS_PLUGIN_API_TAG_NAME, PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.constants';
+import { PAGES_CARDS_PLUGIN_NAME, PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.constants';
 import { CardsService } from '../services/cards.service';
 
-@ApiTags(PAGES_CARDS_PLUGIN_API_TAG_NAME)
+@ApiTags(PAGES_CARDS_PLUGIN_NAME)
 @Controller('cards')
 export class CardsController {
 	private readonly logger = new Logger(CardsController.name);
@@ -44,7 +44,7 @@ export class CardsController {
 	) {}
 
 	@ApiOperation({
-		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		tags: [PAGES_CARDS_PLUGIN_NAME],
 		summary: 'Get all cards',
 		description: 'Retrieve all cards, optionally filtered by page',
 		operationId: 'get-pages-cards-plugin-cards',
@@ -73,7 +73,7 @@ export class CardsController {
 	}
 
 	@ApiOperation({
-		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		tags: [PAGES_CARDS_PLUGIN_NAME],
 		summary: 'Get card by ID',
 		description: 'Retrieve a single card by its unique identifier',
 		operationId: 'get-pages-cards-plugin-card',
@@ -102,7 +102,7 @@ export class CardsController {
 
 	@Header('Location', `:baseUrl/${PAGES_CARDS_PLUGIN_PREFIX}/cards/:id`)
 	@ApiOperation({
-		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		tags: [PAGES_CARDS_PLUGIN_NAME],
 		summary: 'Create card',
 		description: 'Create a new card with optional tiles and data sources',
 		operationId: 'create-pages-cards-plugin-card',
@@ -138,7 +138,7 @@ export class CardsController {
 	}
 
 	@ApiOperation({
-		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		tags: [PAGES_CARDS_PLUGIN_NAME],
 		summary: 'Update card',
 		description: 'Update an existing card by ID',
 		operationId: 'update-pages-cards-plugin-card',
@@ -181,7 +181,7 @@ export class CardsController {
 	}
 
 	@ApiOperation({
-		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
+		tags: [PAGES_CARDS_PLUGIN_NAME],
 		summary: 'Delete card',
 		description: 'Delete a card by ID',
 		operationId: 'delete-pages-cards-plugin-card',

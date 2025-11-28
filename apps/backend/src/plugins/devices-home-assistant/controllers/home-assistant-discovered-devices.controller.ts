@@ -8,7 +8,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/api/decorators/api-documentation.decorator';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -19,7 +19,7 @@ import {
 } from '../models/home-assistant-response.model';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 
-@ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME)
+@ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_NAME)
 @Controller('discovered-devices')
 export class HomeAssistantDiscoveredDevicesController {
 	private readonly logger = new Logger(HomeAssistantDiscoveredDevicesController.name);
@@ -27,7 +27,7 @@ export class HomeAssistantDiscoveredDevicesController {
 	constructor(private readonly homeAssistantHttpService: HomeAssistantHttpService) {}
 
 	@ApiOperation({
-		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_NAME],
 		summary: 'Retrieve all Home Assistant discovered devices',
 		description:
 			'Fetches a list of all Home Assistant discovered devices that can be adopted into the Smart Panel ecosystem.',
@@ -86,7 +86,7 @@ export class HomeAssistantDiscoveredDevicesController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_NAME],
 		summary: 'Retrieve a Home Assistant discovered device by ID',
 		description: 'Fetches a specific Home Assistant discovered device by its identifier.',
 		operationId: 'get-devices-home-assistant-plugin-discovered-device',

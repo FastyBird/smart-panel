@@ -7,7 +7,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/api/decorators/api-documentation.decorator';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -18,7 +18,7 @@ import {
 } from '../models/home-assistant-response.model';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 
-@ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME)
+@ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_NAME)
 @Controller('registry')
 export class HomeAssistantRegistryController {
 	private readonly logger = new Logger(HomeAssistantRegistryController.name);
@@ -26,7 +26,7 @@ export class HomeAssistantRegistryController {
 	constructor(private readonly homeAssistantWsService: HomeAssistantWsService) {}
 
 	@ApiOperation({
-		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_NAME],
 		summary: 'Retrieve all Home Assistant devices from registry',
 		description: 'Fetches a list of all devices registered in the Home Assistant device registry.',
 		operationId: 'get-devices-home-assistant-plugin-device-registry',
@@ -77,7 +77,7 @@ export class HomeAssistantRegistryController {
 	}
 
 	@ApiOperation({
-		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_NAME],
 		summary: 'Retrieve all Home Assistant entities from registry',
 		description: 'Fetches a list of all entities registered in the Home Assistant entity registry.',
 		operationId: 'get-devices-home-assistant-plugin-entity-registry',

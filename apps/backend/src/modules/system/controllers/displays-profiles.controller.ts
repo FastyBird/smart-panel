@@ -40,9 +40,9 @@ import {
 	DisplayProfilesResponseModel,
 } from '../models/system-response.model';
 import { DisplaysProfilesService } from '../services/displays-profiles.service';
-import { SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_PREFIX } from '../system.constants';
+import { SYSTEM_MODULE_NAME, SYSTEM_MODULE_PREFIX } from '../system.constants';
 
-@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
+@ApiTags(SYSTEM_MODULE_NAME)
 @Controller('displays-profiles')
 export class DisplaysProfilesController {
 	private readonly logger = new Logger(DisplaysProfilesController.name);
@@ -50,7 +50,7 @@ export class DisplaysProfilesController {
 	constructor(private readonly displaysService: DisplaysProfilesService) {}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Get all display profiles',
 		description: 'Retrieve a list of all display profiles',
 		operationId: 'get-system-module-display-profiles',
@@ -72,7 +72,7 @@ export class DisplaysProfilesController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Get display profile by ID',
 		description: 'Retrieve a specific display profile by its ID',
 		operationId: 'get-system-module-display-profile',
@@ -97,7 +97,7 @@ export class DisplaysProfilesController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Get display profile by UID',
 		description: 'Retrieve a specific display profile by its unique identifier (UID)',
 		operationId: 'get-system-module-display-profile-by-uid',
@@ -130,7 +130,7 @@ export class DisplaysProfilesController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Create a new display profile',
 		description: 'Register a new display profile',
 		operationId: 'create-system-module-display-profile',
@@ -165,7 +165,7 @@ export class DisplaysProfilesController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Update a display profile',
 		description: 'Update an existing display profile',
 		operationId: 'update-system-module-display-profile',
@@ -197,7 +197,7 @@ export class DisplaysProfilesController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Delete a display profile',
 		description: 'Delete an existing display profile',
 		operationId: 'delete-system-module-display-profile',

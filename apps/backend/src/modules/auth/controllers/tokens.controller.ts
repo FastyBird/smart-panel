@@ -29,7 +29,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
+import { AUTH_MODULE_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
@@ -39,7 +39,7 @@ import { TokenResponseModel, TokensResponseModel } from '../models/auth-response
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
 
-@ApiTags(AUTH_MODULE_API_TAG_NAME)
+@ApiTags(AUTH_MODULE_NAME)
 @Controller('tokens')
 export class TokensController {
 	private readonly logger = new Logger(TokensController.name);
@@ -50,7 +50,7 @@ export class TokensController {
 	) {}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_API_TAG_NAME],
+		tags: [AUTH_MODULE_NAME],
 		summary: 'Get all tokens',
 		description: 'Retrieve all authentication tokens',
 		operationId: 'get-auth-module-tokens',
@@ -71,7 +71,7 @@ export class TokensController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_API_TAG_NAME],
+		tags: [AUTH_MODULE_NAME],
 		summary: 'Get token by ID',
 		description: 'Retrieve a specific authentication token by its ID',
 		operationId: 'get-auth-module-token',
@@ -95,7 +95,7 @@ export class TokensController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_API_TAG_NAME],
+		tags: [AUTH_MODULE_NAME],
 		summary: 'Create new token',
 		description: 'Create a new authentication token',
 		operationId: 'create-auth-module-token',
@@ -164,7 +164,7 @@ export class TokensController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_API_TAG_NAME],
+		tags: [AUTH_MODULE_NAME],
 		summary: 'Update token',
 		description: 'Update an existing authentication token',
 		operationId: 'update-auth-module-token',
@@ -236,7 +236,7 @@ export class TokensController {
 	}
 
 	@ApiOperation({
-		tags: [AUTH_MODULE_API_TAG_NAME],
+		tags: [AUTH_MODULE_NAME],
 		summary: 'Delete token',
 		description: 'Delete an authentication token',
 		operationId: 'delete-auth-module-token',

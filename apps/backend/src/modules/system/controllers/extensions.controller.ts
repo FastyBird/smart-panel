@@ -20,7 +20,7 @@ import {
 	ExtensionKindType,
 	ExtensionSourceType,
 	ExtensionSurfaceType,
-	SYSTEM_MODULE_API_TAG_NAME,
+	SYSTEM_MODULE_NAME,
 	SYSTEM_MODULE_PREFIX,
 } from '../system.constants';
 
@@ -34,7 +34,7 @@ interface BundledManifest {
 	}>;
 }
 
-@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
+@ApiTags(SYSTEM_MODULE_NAME)
 @Controller('extensions')
 export class ExtensionsController {
 	private readonly logger = new Logger(ExtensionsController.name);
@@ -42,7 +42,7 @@ export class ExtensionsController {
 	constructor(private readonly configService: NestConfigService) {}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'List all extensions',
 		description: 'Retrieve a list of all registered extensions, optionally filtered by surface',
 		operationId: 'get-system-module-extensions',
@@ -114,7 +114,7 @@ export class ExtensionsController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Get extension by name',
 		description: 'Retrieve a specific extension by its name',
 		operationId: 'get-system-module-extension',
@@ -183,7 +183,7 @@ export class ExtensionsController {
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		tags: [SYSTEM_MODULE_NAME],
 		summary: 'Serve an Admin extension asset (ESM)',
 		description:
 			'Streams a file (typically the ESM entry) from the discovered extension package directory. `asset_path` represents the remaining subpath inside the package and may include slashes.',
