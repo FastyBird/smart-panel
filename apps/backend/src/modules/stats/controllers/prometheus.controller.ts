@@ -4,19 +4,19 @@ import { ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
 import { PrometheusExporterService } from '../services/stats.prometheus.service';
+import { STATS_MODULE_API_TAG_NAME } from '../stats.constants';
 
-@ApiTags('stats-module')
+@ApiTags(STATS_MODULE_API_TAG_NAME)
 @Public()
 @Controller('/metrics')
 export class PrometheusController {
 	constructor(private readonly exporter: PrometheusExporterService) {}
 
-	@RawRoute()
-	@Get()
-	@Header('Content-Type', 'text/plain; version=0.0.4')
 	@ApiOperation({
+		tags: [STATS_MODULE_API_TAG_NAME],
 		summary: 'Get Prometheus metrics',
 		description: 'Retrieve metrics in Prometheus exposition format',
+		operationId: 'get-stats-module-metrics',
 	})
 	@ApiProduces('text/plain')
 	@ApiResponse({
@@ -32,6 +32,9 @@ export class PrometheusController {
 			},
 		},
 	})
+	@RawRoute()
+	@Get()
+	@Header('Content-Type', 'text/plain; version=0.0.4')
 	async metrics(): Promise<string> {
 		return this.exporter.getMetrics();
 	}

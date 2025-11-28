@@ -1,61 +1,70 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
-import { toInstance } from '../../../common/utils/transform.utils';
 import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../api/decorators/api-documentation.decorator';
-import { ApiTag } from '../../api/decorators/api-tag.decorator';
 import { StatResponseModel, StatsKeysResponseModel, StatsResponseModel } from '../models/stats-response.model';
 import { StatsAggregatorService } from '../services/stats-aggregator.service';
-import { STATS_MODULE_API_TAG_DESCRIPTION, STATS_MODULE_API_TAG_NAME, STATS_MODULE_NAME } from '../stats.constants';
+import { STATS_MODULE_API_TAG_NAME } from '../stats.constants';
 
-@ApiTag({
-	tagName: STATS_MODULE_NAME,
-	displayName: STATS_MODULE_API_TAG_NAME,
-	description: STATS_MODULE_API_TAG_DESCRIPTION,
-})
+@ApiTags(STATS_MODULE_API_TAG_NAME)
 @Controller('stats')
 export class StatsController {
 	constructor(private readonly agg: StatsAggregatorService) {}
 
-	@Get()
 	@ApiOperation({
+		tags: [STATS_MODULE_API_TAG_NAME],
 		summary: 'Get all statistics',
 		description:
 			'Retrieve all available statistics. Supports optional query parameters for filtering or customization (parameters vary by statistic provider).',
+		operationId: 'get-stats-module-stats',
 	})
 	@ApiSuccessResponse(StatsResponseModel, 'Statistics retrieved successfully')
 	@ApiInternalServerErrorResponse()
+	@Get()
 	async all(@Query() q: Record<string, unknown>): Promise<StatsResponseModel> {
 		const stats = await this.agg.getAll(q);
 
-		return toInstance(StatsResponseModel, { data: stats });
+		const response = new StatsResponseModel();
+		response.data = stats;
+
+		return response;
 	}
 
-	@Get(':key')
 	@ApiOperation({
+		tags: [STATS_MODULE_API_TAG_NAME],
 		summary: 'Get specific statistic',
 		description:
 			'Retrieve a specific statistic by key. Supports optional query parameters for filtering or customization (parameters vary by statistic).',
+		operationId: 'get-stats-module-stat',
 	})
 	@ApiParam({ name: 'key', description: 'Statistic key', type: 'string', example: 'cpu_usage' })
 	@ApiSuccessResponse(StatResponseModel, 'Statistic retrieved successfully')
 	@ApiInternalServerErrorResponse()
-	one(@Param('key') key: string, @Query() q: Record<string, unknown>): StatResponseModel {
-		const stat = this.agg.get(key, q);
+	@Get(':key')
+	async one(@Param('key') key: string, @Query() q: Record<string, unknown>): Promise<StatResponseModel> {
+		const stat = await this.agg.get<Record<string, unknown>>(key, q);
 
-		return toInstance(StatResponseModel, { data: stat });
+		const response = new StatResponseModel();
+		response.data = stat;
+
+		return response;
 	}
 
-	@Get('_keys')
 	@ApiOperation({
+		tags: [STATS_MODULE_API_TAG_NAME],
 		summary: 'List available statistics keys',
 		description: 'Retrieve a list of all available statistic keys',
+		operationId: 'get-stats-module-keys',
 	})
 	@ApiSuccessResponse(StatsKeysResponseModel, 'Statistics keys retrieved successfully')
 	@ApiInternalServerErrorResponse()
+	@Get('_keys')
 	keys(): StatsKeysResponseModel {
 		const keys = this.agg.listKeys();
 
-		return toInstance(StatsKeysResponseModel, { data: keys });
+		const response = new StatsKeysResponseModel();
+		response.data = { keys };
+
+		return response;
 	}
 }
