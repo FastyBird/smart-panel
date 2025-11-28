@@ -29,7 +29,18 @@ export class LogsController {
 		operationId: 'get-system-module-logs',
 	})
 	@ApiQuery({ name: 'after_id', required: false, description: 'Cursor for pagination', type: 'string' })
-	@ApiQuery({ name: 'limit', required: false, description: 'Number of entries to return', type: 'number' })
+	@ApiQuery({
+		name: 'limit',
+		required: false,
+		description: 'Maximum number of log entries to return (default 10, max 200).',
+		schema: {
+			type: 'integer',
+			minimum: 1,
+			maximum: 200,
+			default: 10,
+		},
+		example: 10,
+	})
 	@ApiSuccessResponse(LogEntriesResponseModel, 'Log entries retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()

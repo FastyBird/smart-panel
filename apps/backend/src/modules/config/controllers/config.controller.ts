@@ -8,6 +8,7 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
 import { DevicesException } from '../../devices/devices.exceptions';
@@ -65,6 +66,7 @@ export class ConfigController {
 		operationId: 'get-config-module-config',
 	})
 	@ApiSuccessResponse(ConfigModuleResAppConfig, 'Configuration retrieved successfully')
+	@ApiBadRequestResponse('Invalid request')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getAllConfig(): ConfigModuleResAppConfig {
 		this.logger.debug('[LOOKUP ALL] Fetching application configuration');
@@ -93,6 +95,7 @@ export class ConfigController {
 	})
 	@ApiSuccessResponse(ConfigModuleResSection, 'Section configuration retrieved successfully')
 	@ApiBadRequestResponse('Invalid section identifier')
+	@ApiNotFoundResponse('Configuration section not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getConfigSection(@Param('section') section: keyof AppConfigModel): ConfigModuleResSection {
 		this.logger.debug(`[LOOKUP] Fetching configuration section=${section}`);
@@ -288,6 +291,8 @@ export class ConfigController {
 		operationId: 'get-config-module-config-plugins',
 	})
 	@ApiSuccessResponse(ConfigModuleResPlugins, 'Plugin configurations retrieved successfully')
+	@ApiBadRequestResponse('Invalid request')
+	@ApiNotFoundResponse('Plugin configurations not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getPluginsConfig(): ConfigModuleResPlugins {
 		this.logger.debug('[LOOKUP] Fetching configuration for all plugins');
@@ -310,6 +315,8 @@ export class ConfigController {
 	})
 	@ApiParam({ name: 'plugin', description: 'Plugin identifier', type: 'string', example: 'devices-shelly' })
 	@ApiSuccessResponse(ConfigModuleResPluginConfig, 'Plugin configuration retrieved successfully')
+	@ApiBadRequestResponse('Invalid plugin identifier')
+	@ApiNotFoundResponse('Plugin configuration not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getPluginConfig(@Param('plugin') plugin: string): ConfigModuleResPluginConfig {
 		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
@@ -337,6 +344,7 @@ export class ConfigController {
 	})
 	@ApiSuccessResponse(ConfigModuleResPluginConfig, 'Plugin configuration updated successfully')
 	@ApiBadRequestResponse('Invalid plugin configuration data or unsupported plugin type')
+	@ApiNotFoundResponse('Plugin configuration not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	async updatePluginConfig(
 		@Param('plugin') plugin: string,

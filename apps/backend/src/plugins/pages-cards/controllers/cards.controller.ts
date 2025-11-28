@@ -49,7 +49,7 @@ export class CardsController {
 		description: 'Retrieve all cards, optionally filtered by page',
 		operationId: 'get-pages-cards-plugin-page-cards',
 	})
-	@ApiQuery({ name: 'page', required: false, type: 'string', description: 'Filter cards by page ID' })
+	@ApiQuery({ name: 'page', required: false, type: 'string', format: 'uuid', description: 'Filter cards by page ID' })
 	@ApiSuccessResponse(
 		CardsResponseModel,
 		'Cards retrieved successfully. The response includes a list of cards, optionally filtered by page ID.',

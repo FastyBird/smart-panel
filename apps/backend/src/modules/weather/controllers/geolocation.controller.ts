@@ -70,8 +70,8 @@ export class GeolocationController {
 		description: 'Convert geographic coordinates to city name',
 		operationId: 'get-weather-module-geolocation-coordinates-to-city',
 	})
-	@ApiQuery({ name: 'lat', description: 'Latitude', type: 'number', example: 51.5074 })
-	@ApiQuery({ name: 'lon', description: 'Longitude', type: 'number', example: -0.1278 })
+	@ApiQuery({ name: 'lat', description: 'Latitude of the location for reverse geocoding.', type: 'number', format: 'float', required: true, example: 51.5074 })
+	@ApiQuery({ name: 'lon', description: 'Longitude of the location for reverse geocoding.', type: 'number', format: 'float', required: true, example: -0.1278 })
 	@ApiSuccessResponse(GeolocationCoordinatesToCityResponseModel, 'City information retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('coordinates-to-city')

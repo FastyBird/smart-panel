@@ -15,6 +15,7 @@ import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/sw
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
 	ApiForbiddenResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
@@ -66,6 +67,7 @@ export class AuthController {
 	})
 	@ApiBody({ type: ReqLoginDto, description: 'Login credentials' })
 	@ApiSuccessResponse(LoginResponseModel, 'Successfully authenticated')
+	@ApiBadRequestResponse('Invalid login credentials')
 	@ApiNotFoundResponse('User not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
@@ -128,9 +130,9 @@ export class AuthController {
 		operationId: 'update-auth-module-refresh',
 	})
 	@ApiBody({ type: ReqRefreshDto, description: 'Refresh token' })
-	@ApiSuccessResponse(RefreshResponseModel, 'Token successfully refreshed')
+	@ApiCreatedSuccessResponse(RefreshResponseModel, 'Token successfully refreshed')
 	@ApiBadRequestResponse('Invalid refresh token data')
-	@ApiForbiddenResponse('Invalid or expired refresh token')
+	@ApiNotFoundResponse('Refresh token not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Post('refresh')
@@ -160,9 +162,8 @@ export class AuthController {
 		operationId: 'create-auth-module-register-display',
 	})
 	@ApiBody({ type: ReqRegisterDisplayDto, description: 'Display device information' })
-	@ApiSuccessResponse(RegisterDisplayResponseModel, 'Display successfully registered')
+	@ApiCreatedSuccessResponse(RegisterDisplayResponseModel, 'Display successfully registered')
 	@ApiBadRequestResponse('Invalid display registration data')
-	@ApiForbiddenResponse('Access denied or display already registered')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Post('register-display')
@@ -277,6 +278,7 @@ export class AuthController {
 		operationId: 'get-auth-module-profile',
 	})
 	@ApiSuccessResponse(ProfileResponseModel, 'User profile retrieved')
+	@ApiBadRequestResponse('Invalid request')
 	@ApiNotFoundResponse('User not found')
 	@ApiForbiddenResponse('User not authenticated')
 	@ApiInternalServerErrorResponse('Internal server error')

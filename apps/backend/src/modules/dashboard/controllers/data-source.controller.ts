@@ -67,6 +67,8 @@ export class DataSourceController {
 		description: 'Filter by parent entity ID',
 	})
 	@ApiSuccessResponse(DataSourcesResponseModel, 'All configured data sources were retrieved successfully.')
+	@ApiBadRequestResponse('Invalid request')
+	@ApiNotFoundResponse('Data sources not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(
@@ -129,6 +131,7 @@ export class DataSourceController {
 	})
 	@ApiCreatedSuccessResponse(DataSourceResponseModel, 'The newly created data source was returned successfully.')
 	@ApiBadRequestResponse('Invalid request data or unsupported data source type')
+	@ApiNotFoundResponse('Parent entity not found')
 	@ApiUnprocessableEntityResponse('Data source could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/data-source/:id`)
