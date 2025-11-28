@@ -5,7 +5,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../devices.co
 /**
  * Device category enum schema
  */
-@ApiSchema({ name: 'DevicesModuleDeviceCategory' })
+@ApiSchema({ name: 'DevicesModuleDataDeviceCategory' })
 export class DevicesModuleDeviceCategory {
 	@ApiProperty({
 		description: 'Device category',
@@ -18,7 +18,7 @@ export class DevicesModuleDeviceCategory {
 /**
  * Channel category enum schema
  */
-@ApiSchema({ name: 'DevicesModuleChannelCategory' })
+@ApiSchema({ name: 'DevicesModuleDataChannelCategory' })
 export class DevicesModuleChannelCategory {
 	@ApiProperty({
 		description: 'Channel category',
@@ -31,7 +31,7 @@ export class DevicesModuleChannelCategory {
 /**
  * Channel property category enum schema
  */
-@ApiSchema({ name: 'DevicesModuleChannelPropertyCategory' })
+@ApiSchema({ name: 'DevicesModuleDataChannelPropertyCategory' })
 export class DevicesModuleChannelPropertyCategory {
 	@ApiProperty({
 		description: 'Channel property category',
