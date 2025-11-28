@@ -25,7 +25,7 @@ export class GeolocationController {
 		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get coordinates by city name',
 		description: 'Convert city name to geographic coordinates',
-		operationId: 'get-weather-module-geolocation-city-to-coordinates',
+		operationId: 'get-weather-module-city-geolocation',
 	})
 	@ApiQuery({ name: 'city', description: 'City name', type: 'string', example: 'London' })
 	@ApiSuccessResponse(GeolocationCityToCoordinatesResponseModel, 'City coordinates retrieved successfully')
@@ -44,7 +44,7 @@ export class GeolocationController {
 		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get coordinates by postal code',
 		description: 'Convert postal/zip code to geographic coordinates',
-		operationId: 'get-weather-module-geolocation-zip-to-coordinates',
+		operationId: 'get-weather-module-zip-geolocation',
 	})
 	@ApiQuery({ name: 'zip', description: 'Postal/zip code', type: 'string', example: 'SW1A 1AA' })
 	@ApiSuccessResponse(GeolocationZipToCoordinatesResponseModel, 'Zip coordinates retrieved successfully')

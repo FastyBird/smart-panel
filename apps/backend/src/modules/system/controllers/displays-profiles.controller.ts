@@ -53,7 +53,7 @@ export class DisplaysProfilesController {
 		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Get all display profiles',
 		description: 'Retrieve a list of all display profiles',
-		operationId: 'get-system-module-display-profiles',
+		operationId: 'get-system-module-displays-profiles',
 	})
 	@ApiSuccessResponse(DisplayProfilesResponseModel, 'Display profiles retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')

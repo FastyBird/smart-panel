@@ -35,7 +35,7 @@ export class ShellyNgDevicesController {
 		summary: 'Fetch information about a Shelly NG device',
 		description:
 			'Retrieves detailed information about a Shelly Next-Generation device by connecting to it using the provided hostname or IP address. The response includes device identification, firmware version, authentication settings, and available components.',
-		operationId: 'get-devices-shelly-ng-plugin-device-info',
+		operationId: 'create-devices-shelly-ng-plugin-device-info',
 	})
 	@ApiBody({
 		type: DevicesShellyNgPluginReqGetInfo,
@@ -95,7 +95,7 @@ export class ShellyNgDevicesController {
 		summary: 'Get list of supported Shelly NG devices',
 		description:
 			'Retrieves a comprehensive list of all Shelly Next-Generation device models that are supported by this plugin. Each entry includes device specifications, available components, and supported categories.',
-		operationId: 'get-devices-shelly-ng-plugin-supported-devices',
+		operationId: 'get-devices-shelly-ng-plugin-supported',
 	})
 	@ApiSuccessResponse(
 		ShellyNgSupportedDevicesResponseModel,

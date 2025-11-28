@@ -50,7 +50,7 @@ export class DisplaysInstancesController {
 		summary: 'Retrieve a list of all display instances',
 		description:
 			'Fetches a list of all display instances currently registered in the system. Each display instance includes its metadata such as ID, UID, MAC address, version, build, and associated user.',
-		operationId: 'get-users-module-display-instances',
+		operationId: 'get-users-module-displays-instances',
 	})
 	@ApiSuccessResponse(
 		DisplayInstancesResponseModel,

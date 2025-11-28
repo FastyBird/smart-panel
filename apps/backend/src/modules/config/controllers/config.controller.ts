@@ -83,7 +83,7 @@ export class ConfigController {
 		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Get configuration section',
 		description: 'Retrieve a specific configuration section',
-		operationId: 'get-config-module-section',
+		operationId: 'get-config-module-config-section',
 	})
 	@ApiParam({
 		name: 'section',
@@ -285,7 +285,7 @@ export class ConfigController {
 		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Get all plugin configurations',
 		description: 'Retrieve configuration for all registered plugins',
-		operationId: 'get-config-module-plugins',
+		operationId: 'get-config-module-config-plugins',
 	})
 	@ApiSuccessResponse(ConfigModuleResPlugins, 'Plugin configurations retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -306,7 +306,7 @@ export class ConfigController {
 		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Get plugin configuration',
 		description: 'Retrieve configuration for a specific plugin',
-		operationId: 'get-config-module-plugin',
+		operationId: 'get-config-module-config-plugin',
 	})
 	@ApiParam({ name: 'plugin', description: 'Plugin identifier', type: 'string', example: 'devices-shelly' })
 	@ApiSuccessResponse(ConfigModuleResPluginConfig, 'Plugin configuration retrieved successfully')
@@ -328,7 +328,7 @@ export class ConfigController {
 		tags: [CONFIG_MODULE_API_TAG_NAME],
 		summary: 'Update plugin configuration',
 		description: 'Update configuration for a specific plugin',
-		operationId: 'update-config-module-plugin',
+		operationId: 'update-config-module-config-plugin',
 	})
 	@ApiParam({ name: 'plugin', description: 'Plugin identifier', type: 'string', example: 'devices-shelly' })
 	@ApiBody({

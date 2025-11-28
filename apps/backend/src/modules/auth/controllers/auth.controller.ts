@@ -125,7 +125,7 @@ export class AuthController {
 		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Refresh access token',
 		description: 'Get a new access token using a refresh token',
-		operationId: 'create-auth-module-refresh',
+		operationId: 'update-auth-module-refresh',
 	})
 	@ApiBody({ type: ReqRefreshDto, description: 'Refresh token' })
 	@ApiSuccessResponse(RefreshResponseModel, 'Token successfully refreshed')
@@ -224,7 +224,7 @@ export class AuthController {
 		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Check username availability',
 		description: 'Verify if a username is available for registration',
-		operationId: 'create-auth-module-check-username',
+		operationId: 'validate-auth-module-check-username',
 	})
 	@ApiBody({ type: ReqCheckUsernameDto, description: 'Username to check' })
 	@ApiSuccessResponse(CheckUsernameResponseModel, 'Username availability result')
@@ -249,7 +249,7 @@ export class AuthController {
 		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Check email availability',
 		description: 'Verify if an email is available for registration',
-		operationId: 'create-auth-module-check-email',
+		operationId: 'validate-auth-module-check-email',
 	})
 	@ApiBody({ type: ReqCheckEmailDto, description: 'Email to check' })
 	@ApiSuccessResponse(CheckEmailResponseModel, 'Email availability result')

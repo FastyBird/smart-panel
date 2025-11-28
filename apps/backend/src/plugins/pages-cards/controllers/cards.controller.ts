@@ -47,7 +47,7 @@ export class CardsController {
 		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
 		summary: 'Get all cards',
 		description: 'Retrieve all cards, optionally filtered by page',
-		operationId: 'get-pages-cards-plugin-cards',
+		operationId: 'get-pages-cards-plugin-page-cards',
 	})
 	@ApiQuery({ name: 'page', required: false, type: 'string', description: 'Filter cards by page ID' })
 	@ApiSuccessResponse(
@@ -76,7 +76,7 @@ export class CardsController {
 		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
 		summary: 'Get card by ID',
 		description: 'Retrieve a single card by its unique identifier',
-		operationId: 'get-pages-cards-plugin-card',
+		operationId: 'get-pages-cards-plugin-page-card',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
 	@ApiSuccessResponse(
@@ -105,7 +105,7 @@ export class CardsController {
 		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
 		summary: 'Create card',
 		description: 'Create a new card with optional tiles and data sources',
-		operationId: 'create-pages-cards-plugin-card',
+		operationId: 'create-pages-cards-plugin-page-card',
 	})
 	@ApiBody({ type: ReqCreateCardDto, description: 'The data required to create a new card' })
 	@ApiCreatedSuccessResponse(
@@ -141,7 +141,7 @@ export class CardsController {
 		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
 		summary: 'Update card',
 		description: 'Update an existing card by ID',
-		operationId: 'update-pages-cards-plugin-card',
+		operationId: 'update-pages-cards-plugin-page-card',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
 	@ApiBody({ type: ReqUpdateCardDto, description: 'The data to update the card with' })
@@ -184,7 +184,7 @@ export class CardsController {
 		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
 		summary: 'Delete card',
 		description: 'Delete a card by ID',
-		operationId: 'delete-pages-cards-plugin-card',
+		operationId: 'delete-pages-cards-plugin-page-card',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
 	@ApiNoContentResponse({ description: 'Card deleted successfully' })

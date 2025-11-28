@@ -33,7 +33,7 @@ export class ShellyV1DevicesController {
 		summary: 'Fetch information about a Shelly V1 device',
 		description:
 			'Retrieves detailed information about a Shelly Generation 1 device by connecting to it using the provided hostname or IP address. The response includes device identification, firmware version, authentication settings, and reachability status.',
-		operationId: 'get-devices-shelly-v1-plugin-device-info',
+		operationId: 'create-devices-shelly-v1-plugin-device-info',
 	})
 	@ApiBody({
 		type: DevicesShellyV1PluginReqGetInfo,
@@ -100,7 +100,7 @@ export class ShellyV1DevicesController {
 		summary: 'Get list of supported Shelly V1 devices',
 		description:
 			'Retrieves a comprehensive list of all Shelly Generation 1 device models that are supported by this plugin. Each entry includes device specifications and supported categories.',
-		operationId: 'get-devices-shelly-v1-plugin-supported-devices',
+		operationId: 'get-devices-shelly-v1-plugin-supported',
 	})
 	@ApiSuccessResponse(
 		ShellyV1SupportedDevicesResponseModel,

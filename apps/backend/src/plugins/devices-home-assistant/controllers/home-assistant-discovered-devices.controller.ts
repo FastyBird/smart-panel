@@ -31,7 +31,7 @@ export class HomeAssistantDiscoveredDevicesController {
 		summary: 'Retrieve all Home Assistant discovered devices',
 		description:
 			'Fetches a list of all Home Assistant discovered devices that can be adopted into the Smart Panel ecosystem.',
-		operationId: 'get-devices-home-assistant-plugin-discovered-devices',
+		operationId: 'get-devices-home-assistant-plugin-devices',
 	})
 	@ApiSuccessResponse(
 		HomeAssistantDiscoveredDevicesResponseModel,
@@ -89,7 +89,7 @@ export class HomeAssistantDiscoveredDevicesController {
 		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
 		summary: 'Retrieve a Home Assistant discovered device by ID',
 		description: 'Fetches a specific Home Assistant discovered device by its identifier.',
-		operationId: 'get-devices-home-assistant-plugin-discovered-device',
+		operationId: 'get-devices-home-assistant-plugin-device',
 	})
 	@ApiParam({ name: 'id', type: 'string', description: 'Discovered device ID' })
 	@ApiSuccessResponse(

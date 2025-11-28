@@ -26,7 +26,7 @@ export class LogsController {
 		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'List log entries',
 		description: 'Retrieve a list of log entries with optional pagination',
-		operationId: 'get-system-module-log-entries',
+		operationId: 'get-system-module-logs',
 	})
 	@ApiQuery({ name: 'after_id', required: false, description: 'Cursor for pagination', type: 'string' })
 	@ApiQuery({ name: 'limit', required: false, description: 'Number of entries to return', type: 'number' })
@@ -57,7 +57,7 @@ export class LogsController {
 		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Create log entries',
 		description: 'Submit new log entries to the system',
-		operationId: 'create-system-module-log-entries',
+		operationId: 'create-system-module-logs',
 	})
 	@ApiBody({ type: ReqCreateLogEntriesDto, description: 'Log entries to create' })
 	@ApiAcceptedSuccessResponse(LogEntryAcceptedResponseModel, 'Log entries accepted successfully')

@@ -43,7 +43,7 @@ export class SystemController {
 		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Get system health',
 		description: 'Retrieve system health status and version',
-		operationId: 'get-system-module-health',
+		operationId: 'get-system-module-system-health',
 	})
 	@ApiSuccessResponse(SystemHealthResponseModel, 'System health retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -75,7 +75,7 @@ export class SystemController {
 		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Get system information',
 		description: 'Retrieve detailed system information',
-		operationId: 'get-system-module-info',
+		operationId: 'get-system-module-system-info',
 	})
 	@ApiSuccessResponse(SystemInfoResponseModel, 'System information retrieved successfully')
 	@ApiBadRequestResponse('Platform not supported')
@@ -102,7 +102,7 @@ export class SystemController {
 		tags: [SYSTEM_MODULE_API_TAG_NAME],
 		summary: 'Get throttle status',
 		description: 'Retrieve system throttling status',
-		operationId: 'get-system-module-throttle',
+		operationId: 'get-system-module-system-throttle',
 	})
 	@ApiSuccessResponse(ThrottleStatusResponseModel, 'Throttle status retrieved successfully')
 	@ApiBadRequestResponse('Platform not supported')

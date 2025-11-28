@@ -71,7 +71,7 @@ export class WeatherController {
 		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get current weather',
 		description: 'Retrieve current weather data for configured location',
-		operationId: 'get-weather-module-weather-current',
+		operationId: 'get-weather-module-current',
 	})
 	@ApiSuccessResponse(LocationCurrentResponseModel, 'Current weather data retrieved successfully')
 	@ApiNotFoundResponse('Current day weather data could not be loaded from OpenWeatherMap')
@@ -115,7 +115,7 @@ export class WeatherController {
 		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get weather forecast',
 		description: 'Retrieve weather forecast for configured location',
-		operationId: 'get-weather-module-weather-forecast',
+		operationId: 'get-weather-module-forecast',
 	})
 	@ApiSuccessResponse(LocationForecastResponseModel, 'Forecast weather data retrieved successfully')
 	@ApiNotFoundResponse('Forecast weather data could not be loaded from OpenWeatherMap')
