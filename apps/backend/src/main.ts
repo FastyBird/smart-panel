@@ -95,9 +95,10 @@ async function bootstrap() {
 
 	// Swagger API documentation setup
 	// Load long description from markdown file for maintainability
-	const { readFileSync } = await import('node:fs');
-	const { join } = await import('node:path');
-	const description = readFileSync(join(__dirname, '../docs/swagger-description.md'), 'utf8');
+	const fs = await import('node:fs');
+	const path = await import('node:path');
+	const filePath = path.join(__dirname, '../docs/swagger-description.md');
+	const description: string = ((): string => fs.readFileSync(filePath, 'utf8'))();
 
 	const swaggerConfig = new DocumentBuilder()
 		.setTitle('🖥️ FastyBird Smart Panel API 🚀')

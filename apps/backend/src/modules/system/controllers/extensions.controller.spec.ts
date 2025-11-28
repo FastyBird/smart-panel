@@ -192,10 +192,10 @@ describe('ExtensionsController', () => {
 	it('lists both admin and backend when surface=all (default)', async () => {
 		const result = await controller.list();
 
-		expect(result).toHaveLength(2);
+		expect(result.data).toHaveLength(2);
 
-		const admin = result.find((e) => e.surface === ExtensionSurfaceType.ADMIN);
-		const back = result.find((e) => e.surface === ExtensionSurfaceType.BACKEND);
+		const admin = result.data.find((e) => e.surface === ExtensionSurfaceType.ADMIN);
+		const back = result.data.find((e) => e.surface === ExtensionSurfaceType.BACKEND);
 
 		expect(admin).toMatchObject({
 			name: '@acme/admin-ext',

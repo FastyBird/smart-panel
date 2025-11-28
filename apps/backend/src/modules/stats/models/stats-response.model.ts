@@ -2,7 +2,7 @@ import { Expose, Type } from 'class-transformer';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../common/dto/response.dto';
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 
 import { AllStatsModel, StatModel, StatsKeysModel } from './stats.model';
 

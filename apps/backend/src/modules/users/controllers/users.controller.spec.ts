@@ -118,7 +118,7 @@ describe('UsersController', () => {
 
 			const updatedUser = await controller.update(mockUser.id, { data: updateDto });
 
-			expect(updatedUser.firstName).toBe('UpdatedName');
+			expect(updatedUser.data.firstName).toBe('UpdatedName');
 			expect(service.update).toHaveBeenCalledWith(mockUser.id, updateDto);
 		});
 

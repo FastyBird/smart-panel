@@ -11,7 +11,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ILogger } from '../../../modules/system/logger/logger';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 import { LoggerRotatingFileException } from '../logger-rotating-file.exceptions';
-import { LoggerRotatingFilePluginDataConfig } from '../models/config.model';
+import { RotatingFileConfigModel } from '../models/config.model';
 
 @Injectable()
 export class FileLoggerService implements ILogger {
@@ -19,7 +19,7 @@ export class FileLoggerService implements ILogger {
 
 	private dir: string | undefined;
 
-	private pluginConfig: LoggerRotatingFilePluginDataConfig | null = null;
+	private pluginConfig: RotatingFileConfigModel | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -101,11 +101,9 @@ export class FileLoggerService implements ILogger {
 		return this.config.filePrefix || 'smart-panel';
 	}
 
-	private get config(): LoggerRotatingFilePluginDataConfig {
+	private get config(): RotatingFileConfigModel {
 		if (!this.pluginConfig) {
-			this.pluginConfig = this.configService.getPluginConfig<LoggerRotatingFilePluginDataConfig>(
-				LOGGER_ROTATING_FILE_PLUGIN_NAME,
-			);
+			this.pluginConfig = this.configService.getPluginConfig<RotatingFileConfigModel>(LOGGER_ROTATING_FILE_PLUGIN_NAME);
 		}
 
 		return this.pluginConfig;

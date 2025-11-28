@@ -62,15 +62,15 @@ describe('ShellyV1DevicesController', () => {
 
 			probeService.probeDevice.mockResolvedValue(mockResponse);
 
-			const payload = { data: { host: '192.168.1.100' } };
+			const payload = { data: { hostname: '192.168.1.100' } };
 			const result = await controller.getInfo(payload);
 
-			expect(result.reachable).toBe(true);
-			expect(result.authRequired).toBe(false);
-			expect(result.host).toBe('192.168.1.100');
-			expect(result.model).toBe('SHSW-1');
+			expect(result.data.reachable).toBe(true);
+			expect(result.data.authRequired).toBe(false);
+			expect(result.data.host).toBe('192.168.1.100');
+			expect(result.data.model).toBe('SHSW-1');
 
-			expect(probeService.probeDevice).toHaveBeenCalledWith({ host: '192.168.1.100' });
+			expect(probeService.probeDevice).toHaveBeenCalledWith({ hostname: '192.168.1.100' });
 		});
 
 		it('returns probe result with auth status for device requiring auth', async () => {
@@ -89,14 +89,14 @@ describe('ShellyV1DevicesController', () => {
 
 			probeService.probeDevice.mockResolvedValue(mockResponse);
 
-			const payload = { data: { host: '192.168.1.101', password: 'secret' } };
+			const payload = { data: { hostname: '192.168.1.101', password: 'secret' } };
 			const result = await controller.getInfo(payload);
 
-			expect(result.reachable).toBe(true);
-			expect(result.authRequired).toBe(true);
-			expect(result.authValid).toBe(true);
+			expect(result.data.reachable).toBe(true);
+			expect(result.data.authRequired).toBe(true);
+			expect(result.data.authValid).toBe(true);
 
-			expect(probeService.probeDevice).toHaveBeenCalledWith({ host: '192.168.1.101', password: 'secret' });
+			expect(probeService.probeDevice).toHaveBeenCalledWith({ hostname: '192.168.1.101', password: 'secret' });
 		});
 
 		it('returns unreachable result for device that cannot be reached', async () => {
@@ -108,21 +108,21 @@ describe('ShellyV1DevicesController', () => {
 
 			probeService.probeDevice.mockResolvedValue(mockResponse);
 
-			const payload = { data: { host: '192.168.1.200' } };
+			const payload = { data: { hostname: '192.168.1.200' } };
 			const result = await controller.getInfo(payload);
 
-			expect(result.reachable).toBe(false);
-			expect(result.host).toBe('192.168.1.200');
+			expect(result.data.reachable).toBe(false);
+			expect(result.data.host).toBe('192.168.1.200');
 		});
 
 		it('returns unreachable result when probeDevice throws DevicesShellyV1Exception', async () => {
 			probeService.probeDevice.mockRejectedValue(new DevicesShellyV1Exception('Network timeout'));
 
-			const payload = { data: { host: '192.168.1.200' } };
+			const payload = { data: { hostname: '192.168.1.200' } };
 			const result = await controller.getInfo(payload);
 
-			expect(result.reachable).toBe(false);
-			expect(result.host).toBe('192.168.1.200');
+			expect(result.data.reachable).toBe(false);
+			expect(result.data.host).toBe('192.168.1.200');
 		});
 
 		it('rethrows unexpected errors', async () => {
@@ -130,7 +130,7 @@ describe('ShellyV1DevicesController', () => {
 
 			probeService.probeDevice.mockRejectedValue(unexpectedError);
 
-			const payload = { data: { host: '192.168.1.100' } };
+			const payload = { data: { hostname: '192.168.1.100' } };
 
 			await expect(controller.getInfo(payload)).rejects.toThrow(unexpectedError);
 		});
@@ -140,11 +140,11 @@ describe('ShellyV1DevicesController', () => {
 		it('returns list of supported Shelly V1 devices', async () => {
 			const result = await controller.getSupported();
 
-			expect(Array.isArray(result)).toBe(true);
-			expect(result.length).toBeGreaterThan(0);
+			expect(Array.isArray(result.data)).toBe(true);
+			expect(result.data.length).toBeGreaterThan(0);
 
 			// Check structure of first device
-			const firstDevice = result[0];
+			const firstDevice = result.data[0];
 
 			expect(firstDevice).toHaveProperty('group');
 			expect(firstDevice).toHaveProperty('name');

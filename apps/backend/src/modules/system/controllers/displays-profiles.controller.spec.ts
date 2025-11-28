@@ -139,7 +139,7 @@ describe('DisplaysProfilesController', () => {
 
 			const updatedDisplay = await controller.update(mockDisplay.id, { data: updateDto });
 
-			expect(updatedDisplay.rows).toBe(3);
+			expect(updatedDisplay.data.rows).toBe(3);
 			expect(service.update).toHaveBeenCalledWith(mockDisplay.id, updateDto);
 		});
 

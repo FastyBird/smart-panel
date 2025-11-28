@@ -98,8 +98,8 @@ describe('SystemController', () => {
 
 			const result = await controller.getSystemInfo();
 
-			expect(result).toBeInstanceOf(SystemInfoModel);
-			expect(result.cpuLoad).toBe(mockSystemInfo.cpuLoad);
+			expect(result.data).toBeInstanceOf(SystemInfoModel);
+			expect(result.data.cpuLoad).toBe(mockSystemInfo.cpuLoad);
 			expect(service.getSystemInfo).toHaveBeenCalled();
 		});
 
@@ -128,8 +128,8 @@ describe('SystemController', () => {
 
 			const result = await controller.getThrottleStatus();
 
-			expect(result).toBeInstanceOf(ThrottleStatusModel);
-			expect(result.undervoltage).toBe(mockThrottleStatus.undervoltage);
+			expect(result.data).toBeInstanceOf(ThrottleStatusModel);
+			expect(result.data.undervoltage).toBe(mockThrottleStatus.undervoltage);
 			expect(service.getThrottleStatus).toHaveBeenCalled();
 		});
 

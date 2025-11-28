@@ -160,7 +160,7 @@ describe('DisplaysInstancesController', () => {
 
 			const updatedDisplay = await controller.update(mockDisplayInstance.id, { data: updateDto });
 
-			expect(updatedDisplay.version).toBe('2.0.0');
+			expect(updatedDisplay.data.version).toBe('2.0.0');
 			expect(service.update).toHaveBeenCalledWith(mockDisplayInstance.id, updateDto);
 		});
 

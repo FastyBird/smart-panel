@@ -91,13 +91,13 @@ describe('ShellyNgDevicesController', () => {
 			const payload = { data: { hostname: '192.168.1.10', password: 'secret' } };
 			const result = await controller.getInfo(payload);
 
-			expect(result.firmware).toBe('1.7.0'); // from ver
-			expect(result.authentication).toEqual({ enabled: true, domain: 'local' }); // from auth_en/auth_domain
+			expect(result.data.firmware).toBe('1.7.0'); // from ver
+			expect(result.data.authentication).toEqual({ enabled: true, domain: 'local' }); // from auth_en/auth_domain
 
-			expect(result.id).toBe(baseDeviceInfo.id);
-			expect(result.model).toBe(baseDeviceInfo.model);
-			expect(Array.isArray(result.components)).toBe(true);
-			expect(result.components[0]).toEqual({ type: 'switch', ids: [0, 1] });
+			expect(result.data.id).toBe(baseDeviceInfo.id);
+			expect(result.data.model).toBe(baseDeviceInfo.model);
+			expect(Array.isArray(result.data.components)).toBe(true);
+			expect(result.data.components[0]).toEqual({ type: 'switch', ids: [0, 1] });
 
 			expect(deviceManager.getDeviceInfo).toHaveBeenCalledWith('192.168.1.10', 'secret');
 		});
@@ -131,13 +131,13 @@ describe('ShellyNgDevicesController', () => {
 		it('returns validated supported devices derived from DESCRIPTORS', async () => {
 			const result = await controller.getSupported();
 
-			expect(result).toHaveLength(2);
+			expect(result.data).toHaveLength(2);
 
-			const groups = result.map((d) => d.group).sort();
+			const groups = result.data.map((d) => d.group).sort();
 
 			expect(groups).toEqual(['SHELLYDIMMER', 'SHELLYPLUS1']);
 
-			const plus1 = result.find((d) => d.group === 'SHELLYPLUS1')!;
+			const plus1 = result.data.find((d) => d.group === 'SHELLYPLUS1')!;
 
 			expect(plus1.name).toBe('Shelly Plus 1');
 			expect(plus1.models).toEqual(['SHEM-PLUS-1']);
@@ -159,7 +159,7 @@ describe('ShellyNgDevicesController', () => {
 
 			const result = await controller.getSupported();
 
-			const groups = result.map((d: any) => d.group);
+			const groups = result.data.map((d: any) => d.group);
 
 			expect(groups).toContain('SHELLYPLUS1');
 			expect(groups).toContain('SHELLYDIMMER');
