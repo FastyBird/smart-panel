@@ -40,8 +40,16 @@ fail_if_matches() {
 
 echo "== DTO usage checks =="
 
-# 1) DTOs MUST NOT be used as response types in Swagger decorators
-fail_if_matches   "No DTO types allowed in @ApiOkResponse/@ApiCreatedResponse/@ApiAcceptedResponse"   "@Api\(Ok\|Created\|Accepted\)Response\([^)]*Dto"   "${BACKEND_DIR}"
+# 1) DTOs MUST NOT be used as response types in custom success decorators
+#    We use custom decorators:
+#      - @ApiSuccessResponse
+#      - @ApiCreatedSuccessResponse
+#      - @ApiAcceptedSuccessResponse
+#    They MUST NOT reference any *Dto type.
+fail_if_matches \
+  "No DTO types allowed in @ApiSuccessResponse/@ApiCreatedSuccessResponse/@ApiAcceptedSuccessResponse" \
+  "@Api(Success|CreatedSuccess|AcceptedSuccess)Response\([^)]*Dto" \
+  "${BACKEND_DIR}"
 
 # 2) DTOs MUST NOT be used as controller return types (Promise<SomethingDto>)
 #    -> apply ONLY to files that actually contain @Controller(...) AND look like real controllers
@@ -124,6 +132,44 @@ if [ -n "${controller_files}" ]; then
   fi
 else
   echo "ℹ️ No controller files found for raw Entity/Model return check"
+fi
+
+echo
+echo "== Forbidden Swagger decorators check =="
+
+# 6) Enforce usage of custom Api*SuccessResponse decorators only
+#    Forbidden:
+#      - @ApiOkResponse
+#      - @ApiCreatedResponse
+#      - @ApiAcceptedResponse
+#    Also forbid direct @ApiResponse(...) usage outside our custom decorators
+#    in modules/api/decorators.
+
+forbidden_success_decorators="$(
+  grep -REn "@Api\(Ok\|Created\|Accepted\)Response" "${BACKEND_DIR}" || true
+)"
+
+if [ -n "${forbidden_success_decorators}" ]; then
+  echo "❌ Forbidden NestJS Swagger decorators detected (use custom Api*SuccessResponse instead):"
+  echo "${forbidden_success_decorators}"
+  exit 1
+else
+  echo "✅ No forbidden Swagger success decorators (@ApiOkResponse/@ApiCreatedResponse/@ApiAcceptedResponse) found"
+fi
+
+direct_api_response="$(
+  grep -REn "@ApiResponse\(" "${BACKEND_DIR}" \
+    | grep -v "modules/api/decorators" \
+    | grep -v "modules/stats/controllers/prometheus.controller.ts" \
+    || true
+)"
+
+if [ -n "${direct_api_response}" ]; then
+  echo "❌ Direct @ApiResponse(...) usage detected outside custom decorators (modules/api/decorators / prometheus):"
+  echo "${direct_api_response}"
+  exit 1
+else
+  echo "✅ No direct @ApiResponse(...) usage outside custom decorators (except Prometheus endpoint)"
 fi
 
 echo

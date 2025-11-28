@@ -10,7 +10,7 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -98,7 +98,7 @@ export class AuthController {
 		operationId: 'create-auth-module-register',
 	})
 	@ApiBody({ type: ReqRegisterDto, description: 'User registration data' })
-	@ApiResponse({ status: 204, description: 'User successfully registered' })
+	@ApiNoContentResponse({ description: 'User successfully registered' })
 	@ApiBadRequestResponse('Invalid input data')
 	@ApiForbiddenResponse('Owner already exists')
 	@ApiInternalServerErrorResponse('Internal server error')
