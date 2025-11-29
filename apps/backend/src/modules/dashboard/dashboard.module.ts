@@ -98,7 +98,9 @@ export class DashboardModule {
 		private readonly dashboardStatsProvider: DashboardStatsProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(DASHBOARD_SWAGGER_EXTRA_MODELS);
+		for (const model of DASHBOARD_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

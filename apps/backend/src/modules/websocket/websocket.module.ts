@@ -47,7 +47,9 @@ export class WebsocketModule {
 		private readonly influxDbService: InfluxDbService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(WEBSOCKET_SWAGGER_EXTRA_MODELS);
+		for (const model of WEBSOCKET_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

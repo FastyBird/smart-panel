@@ -38,7 +38,9 @@ export class DataSourcesDeviceChannelPlugin {
 		private readonly dataSourceRelationsLoaderService: DataSourceRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

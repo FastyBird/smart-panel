@@ -24,7 +24,9 @@ export class TilesTimePlugin {
 		private readonly tilesMapper: TilesTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(TILES_TIME_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of TILES_TIME_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

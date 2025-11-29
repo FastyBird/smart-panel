@@ -11,13 +11,11 @@ export class SwaggerModelsRegistryService {
 	private readonly models = new Set<Type<unknown> | (abstract new (...args: unknown[]) => unknown)>();
 
 	/**
-	 * Register one or more models to be included in OpenAPI generation
-	 * @param models Array of model classes to register (including abstract classes)
+	 * Register a model to be included in OpenAPI generation
+	 * @param model Model class to register (including abstract classes)
 	 */
-	register(models: (Type<unknown> | (abstract new (...args: unknown[]) => unknown))[]): void {
-		for (const model of models) {
-			this.models.add(model);
-		}
+	register(model: Type<unknown> | (abstract new (...args: unknown[]) => unknown)): void {
+		this.models.add(model);
 	}
 
 	/**

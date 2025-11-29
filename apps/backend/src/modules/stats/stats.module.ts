@@ -23,6 +23,8 @@ import { STATS_SWAGGER_EXTRA_MODELS } from './stats.openapi';
 })
 export class StatsModule {
 	constructor(private readonly swaggerRegistry: SwaggerModelsRegistryService) {
-		this.swaggerRegistry.register(STATS_SWAGGER_EXTRA_MODELS);
+		for (const model of STATS_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

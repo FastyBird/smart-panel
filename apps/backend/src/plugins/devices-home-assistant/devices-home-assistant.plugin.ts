@@ -112,7 +112,9 @@ export class DevicesHomeAssistantPlugin {
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

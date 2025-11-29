@@ -54,7 +54,9 @@ export class DevicesThirdPartyPlugin {
 		private readonly thirdPartyDevicePlatform: ThirdPartyDevicePlatform,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

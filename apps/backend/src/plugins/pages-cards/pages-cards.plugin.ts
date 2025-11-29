@@ -49,7 +49,9 @@ export class PagesCardsPlugin {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(PAGES_CARDS_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of PAGES_CARDS_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

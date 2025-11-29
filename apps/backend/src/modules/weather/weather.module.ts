@@ -28,6 +28,8 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 })
 export class WeatherModule {
 	constructor(private readonly swaggerRegistry: SwaggerModelsRegistryService) {
-		this.swaggerRegistry.register(WEATHER_SWAGGER_EXTRA_MODELS);
+		for (const model of WEATHER_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

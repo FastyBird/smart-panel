@@ -30,7 +30,9 @@ export class PagesDeviceDetailPlugin {
 		private readonly pageRelationsLoaderService: PageRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(PAGES_DEVICE_DETAIL_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of PAGES_DEVICE_DETAIL_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

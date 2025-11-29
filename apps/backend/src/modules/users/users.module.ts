@@ -48,7 +48,9 @@ export class UsersModule {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(USERS_SWAGGER_EXTRA_MODELS);
+		for (const model of USERS_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

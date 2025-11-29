@@ -73,7 +73,9 @@ export class AuthModule {
 		private readonly mapper: TokensTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(AUTH_SWAGGER_EXTRA_MODELS);
+		for (const model of AUTH_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

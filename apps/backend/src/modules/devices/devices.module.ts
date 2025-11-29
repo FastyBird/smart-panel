@@ -159,7 +159,9 @@ export class DevicesModule {
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(DEVICES_SWAGGER_EXTRA_MODELS);
+		for (const model of DEVICES_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

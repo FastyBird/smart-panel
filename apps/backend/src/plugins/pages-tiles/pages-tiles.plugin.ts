@@ -33,7 +33,9 @@ export class PagesTilesPlugin {
 		private readonly tilesPageNestedBuilderService: TilesPageNestedBuilderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(PAGES_TILES_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of PAGES_TILES_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

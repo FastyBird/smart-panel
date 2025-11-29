@@ -24,7 +24,9 @@ export class LoggerRotatingFilePlugin {
 		private readonly systemLoggerService: SystemLoggerService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(LOGGER_ROTATING_FILE_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of LOGGER_ROTATING_FILE_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

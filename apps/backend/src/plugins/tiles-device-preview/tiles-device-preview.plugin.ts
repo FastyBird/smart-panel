@@ -30,7 +30,9 @@ export class TilesDevicePreviewPlugin {
 		private readonly tileRelationsLoaderService: TileRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

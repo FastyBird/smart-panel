@@ -79,7 +79,9 @@ export class SystemModule {
 		private readonly configService: ConfigService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(SYSTEM_SWAGGER_EXTRA_MODELS);
+		for (const model of SYSTEM_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

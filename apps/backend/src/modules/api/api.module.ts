@@ -35,7 +35,9 @@ export class ApiModule {
 		private readonly influxDbService: InfluxDbService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(API_SWAGGER_EXTRA_MODELS);
+		for (const model of API_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

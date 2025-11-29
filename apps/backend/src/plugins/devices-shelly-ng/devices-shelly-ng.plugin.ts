@@ -78,7 +78,9 @@ export class DevicesShellyNgPlugin {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {

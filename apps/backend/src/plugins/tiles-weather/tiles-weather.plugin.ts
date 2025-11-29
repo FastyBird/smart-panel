@@ -28,7 +28,9 @@ export class TilesWeatherPlugin {
 		private readonly tilesMapper: TilesTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {
-		this.swaggerRegistry.register(TILES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS);
+		for (const model of TILES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	onModuleInit() {
