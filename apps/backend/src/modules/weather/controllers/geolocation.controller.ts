@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, Query } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
@@ -27,6 +27,7 @@ export class GeolocationController {
 		description: 'Convert city name to geographic coordinates',
 		operationId: 'get-weather-module-city-geolocation',
 	})
+	@ApiExtraModels(GeolocationCityToCoordinatesResponseModel)
 	@ApiQuery({ name: 'city', description: 'City name', type: 'string', example: 'London' })
 	@ApiSuccessResponse(GeolocationCityToCoordinatesResponseModel, 'City coordinates retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -46,6 +47,7 @@ export class GeolocationController {
 		description: 'Convert postal/zip code to geographic coordinates',
 		operationId: 'get-weather-module-zip-geolocation',
 	})
+	@ApiExtraModels(GeolocationZipToCoordinatesResponseModel)
 	@ApiQuery({ name: 'zip', description: 'Postal/zip code', type: 'string', example: 'SW1A 1AA' })
 	@ApiSuccessResponse(GeolocationZipToCoordinatesResponseModel, 'Zip coordinates retrieved successfully')
 	@ApiNotFoundResponse('Coordinates for the specified postal code could not be found')
@@ -70,8 +72,23 @@ export class GeolocationController {
 		description: 'Convert geographic coordinates to city name',
 		operationId: 'get-weather-module-geolocation-coordinates-to-city',
 	})
-	@ApiQuery({ name: 'lat', description: 'Latitude of the location for reverse geocoding.', type: 'number', format: 'float', required: true, example: 51.5074 })
-	@ApiQuery({ name: 'lon', description: 'Longitude of the location for reverse geocoding.', type: 'number', format: 'float', required: true, example: -0.1278 })
+	@ApiExtraModels(GeolocationCoordinatesToCityResponseModel)
+	@ApiQuery({
+		name: 'lat',
+		description: 'Latitude of the location for reverse geocoding.',
+		type: 'number',
+		format: 'float',
+		required: true,
+		example: 51.5074,
+	})
+	@ApiQuery({
+		name: 'lon',
+		description: 'Longitude of the location for reverse geocoding.',
+		type: 'number',
+		format: 'float',
+		required: true,
+		example: -0.1278,
+	})
 	@ApiSuccessResponse(GeolocationCoordinatesToCityResponseModel, 'City information retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('coordinates-to-city')

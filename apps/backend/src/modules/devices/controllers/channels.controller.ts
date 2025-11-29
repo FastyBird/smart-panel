@@ -16,7 +16,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
@@ -54,6 +54,7 @@ export class ChannelsController {
 			'Fetches a list of channels in the system. The response includes metadata for each channel, such as its ID, name, category, associated device, controls, and properties.',
 		operationId: 'get-devices-module-channels',
 	})
+	@ApiExtraModels(ChannelsResponseModel)
 	@ApiSuccessResponse(
 		ChannelsResponseModel,
 		'A list of channels successfully retrieved. Each channel includes its metadata (ID, name, category), associated device, controls, and properties.',
@@ -81,10 +82,11 @@ export class ChannelsController {
 			'Fetches detailed information about a specific channel using its unique ID. The response includes metadata, associated device information, controls, and properties for the channel.',
 		operationId: 'get-devices-module-channel',
 	})
+	@ApiExtraModels(ChannelResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiSuccessResponse(
 		ChannelResponseModel,
-		'The channel details were successfully retrieved. The response includes the channel’s metadata (ID, name, category), associated device, controls, and properties.',
+		"The channel details were successfully retrieved. The response includes the channel's metadata (ID, name, category), associated device, controls, and properties.",
 	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel not found')
@@ -111,6 +113,7 @@ export class ChannelsController {
 			'Creates a new channel in the system. The channel can have attributes such as name, category, description, and an associated device. Optionally, controls and properties can also be defined during creation.',
 		operationId: 'create-devices-module-channel',
 	})
+	@ApiExtraModels(ChannelResponseModel, CreateChannelDto)
 	@ApiBody({ type: ReqCreateChannelDto, description: 'The data required to create a new channel' })
 	@ApiCreatedSuccessResponse(
 		ChannelResponseModel,
@@ -188,9 +191,10 @@ export class ChannelsController {
 		tags: [DEVICES_MODULE_API_TAG_NAME],
 		summary: 'Update an existing channel',
 		description:
-			'Partially updates the attributes of a specific channel using its unique ID. This allows modifications to properties such as the channel’s name, category, description, or associated controls and properties.',
+			"Partially updates the attributes of a specific channel using its unique ID. This allows modifications to properties such as the channel's name, category, description, or associated controls and properties.",
 		operationId: 'update-devices-module-channel',
 	})
+	@ApiExtraModels(ChannelResponseModel, UpdateChannelDto)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqUpdateChannelDto, description: 'The data required to update an existing channel' })
 	@ApiSuccessResponse(

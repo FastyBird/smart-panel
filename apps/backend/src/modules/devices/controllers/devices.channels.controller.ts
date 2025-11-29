@@ -16,7 +16,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
@@ -58,6 +58,7 @@ export class DevicesChannelsController {
 			'Fetches a list of channels associated with a specific device. Each channel includes metadata (e.g., ID, name, category), associated controls, and properties.',
 		operationId: 'get-devices-module-device-channels',
 	})
+	@ApiExtraModels(DeviceChannelsResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiSuccessResponse(
 		DeviceChannelsResponseModel,
@@ -92,11 +93,12 @@ export class DevicesChannelsController {
 			'Fetches detailed information about a specific channel associated with a device using its unique ID. The response includes metadata, category, associated controls, and properties for the channel.',
 		operationId: 'get-devices-module-device-channel',
 	})
+	@ApiExtraModels(DeviceChannelResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiSuccessResponse(
 		DeviceChannelResponseModel,
-		'The channel details were successfully retrieved. The response includes the channel’s metadata (ID, name, category), associated controls, and properties.',
+		"The channel details were successfully retrieved. The response includes the channel's metadata (ID, name, category), associated controls, and properties.",
 	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device or channel not found')
@@ -128,6 +130,7 @@ export class DevicesChannelsController {
 			'Creates a new channel associated with a specific device. The channel can have attributes such as name, category, description, and optionally controls and properties.',
 		operationId: 'create-devices-module-device-channel',
 	})
+	@ApiExtraModels(DeviceChannelResponseModel, CreateChannelDto)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiBody({ type: ReqCreateDeviceChannelDto, description: 'The data required to create a new channel' })
 	@ApiCreatedSuccessResponse(
@@ -218,9 +221,10 @@ export class DevicesChannelsController {
 		tags: [DEVICES_MODULE_API_TAG_NAME],
 		summary: 'Update an existing channel for a device',
 		description:
-			'Partially updates the attributes of an existing channel associated with a device using its unique ID. The update can modify metadata such as the channel’s name, category, or description, without requiring the full object.',
+			"Partially updates the attributes of an existing channel associated with a device using its unique ID. The update can modify metadata such as the channel's name, category, or description, without requiring the full object.",
 		operationId: 'update-devices-module-device-channel',
 	})
+	@ApiExtraModels(DeviceChannelResponseModel, UpdateChannelDto)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqUpdateDeviceChannelDto, description: 'The data required to update an existing channel' })

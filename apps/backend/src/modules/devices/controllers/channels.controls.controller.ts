@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
@@ -45,9 +45,10 @@ export class ChannelsControlsController {
 		tags: [DEVICES_MODULE_API_TAG_NAME],
 		summary: 'Retrieve a list of all available channel controls',
 		description:
-			'Fetches a list of all controls available for channels in the system. Each control represents an actionable operation associated with a channel. The response includes details such as the control’s ID, name, associated channel, and timestamps.',
+			"Fetches a list of all controls available for channels in the system. Each control represents an actionable operation associated with a channel. The response includes details such as the control's ID, name, associated channel, and timestamps.",
 		operationId: 'get-devices-module-channel-controls',
 	})
+	@ApiExtraModels(ChannelControlsResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiSuccessResponse(
 		ChannelControlsResponseModel,
@@ -79,14 +80,15 @@ export class ChannelsControlsController {
 		tags: [DEVICES_MODULE_API_TAG_NAME],
 		summary: 'Retrieve details of a specific control for a channel',
 		description:
-			'Fetches the details of a specific control associated with a channel. The response includes the control’s unique identifier, name, associated channel, and metadata such as creation and update timestamps.',
+			"Fetches the details of a specific control associated with a channel. The response includes the control's unique identifier, name, associated channel, and metadata such as creation and update timestamps.",
 		operationId: 'get-devices-module-channel-control',
 	})
+	@ApiExtraModels(ChannelControlResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
 	@ApiSuccessResponse(
 		ChannelControlResponseModel,
-		'The control details were successfully retrieved. The response includes the control’s metadata (ID, name, and timestamps).',
+		"The control details were successfully retrieved. The response includes the control's metadata (ID, name, and timestamps).",
 	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Channel or control not found')
@@ -118,6 +120,7 @@ export class ChannelsControlsController {
 			'Allows the creation of a new control for a specific channel. A control represents an actionable operation or command associated with the channel. The response includes the complete details of the newly created control, including its ID, name, associated channel, and metadata.',
 		operationId: 'create-devices-module-channel-control',
 	})
+	@ApiExtraModels(ChannelControlResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqCreateChannelControlDto, description: 'The data required to create a new channel control' })
 	@ApiCreatedSuccessResponse(

@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, Param, UnprocessableEntityException } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -33,6 +33,7 @@ export class HomeAssistantDiscoveredDevicesController {
 			'Fetches a list of all Home Assistant discovered devices that can be adopted into the Smart Panel ecosystem.',
 		operationId: 'get-devices-home-assistant-plugin-devices',
 	})
+	@ApiExtraModels(HomeAssistantDiscoveredDevicesResponseModel)
 	@ApiSuccessResponse(
 		HomeAssistantDiscoveredDevicesResponseModel,
 		'A list of Home Assistant discovered devices successfully retrieved',
@@ -91,6 +92,7 @@ export class HomeAssistantDiscoveredDevicesController {
 		description: 'Fetches a specific Home Assistant discovered device by its identifier.',
 		operationId: 'get-devices-home-assistant-plugin-device',
 	})
+	@ApiExtraModels(HomeAssistantDiscoveredDeviceResponseModel)
 	@ApiParam({ name: 'id', type: 'string', description: 'Discovered device ID' })
 	@ApiSuccessResponse(
 		HomeAssistantDiscoveredDeviceResponseModel,

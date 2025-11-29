@@ -1,7 +1,6 @@
 import { Logger, Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
@@ -63,21 +62,6 @@ import { ChannelEntitySubscriber } from './subscribers/channel-entity.subscriber
 import { ChannelPropertyEntitySubscriber } from './subscribers/channel-property-entity.subscriber';
 import { DeviceControlEntitySubscriber } from './subscribers/device-control-entity.subscriber';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
-import {
-	ChannelControlResponseModel,
-	ChannelControlsResponseModel,
-	ChannelPropertiesResponseModel,
-	ChannelPropertyResponseModel,
-	ChannelResponseModel,
-	ChannelsResponseModel,
-	DeviceChannelResponseModel,
-	DeviceChannelsResponseModel,
-	DeviceControlResponseModel,
-	DeviceControlsResponseModel,
-	DeviceResponseModel,
-	DevicesResponseModel,
-	PropertyTimeseriesResponseModel,
-} from './models/devices-response.model';
 import { ChannelExistsConstraintValidator } from './validators/channel-exists-constraint.validator';
 import { ChannelPropertyExistsConstraintValidator } from './validators/channel-property-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
@@ -87,21 +71,6 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 	displayName: DEVICES_MODULE_API_TAG_NAME,
 	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	DeviceResponseModel,
-	DevicesResponseModel,
-	ChannelResponseModel,
-	ChannelsResponseModel,
-	DeviceChannelResponseModel,
-	DeviceChannelsResponseModel,
-	ChannelPropertyResponseModel,
-	ChannelPropertiesResponseModel,
-	DeviceControlResponseModel,
-	DeviceControlsResponseModel,
-	ChannelControlResponseModel,
-	ChannelControlsResponseModel,
-	PropertyTimeseriesResponseModel,
-)
 @Module({
 	imports: [
 		NestConfigModule,

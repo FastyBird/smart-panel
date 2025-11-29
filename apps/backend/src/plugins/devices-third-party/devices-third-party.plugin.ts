@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
 import { ConfigModule } from '../../modules/config/config.module';
@@ -30,9 +29,7 @@ import {
 	ThirdPartyChannelPropertyEntity,
 	ThirdPartyDeviceEntity,
 } from './entities/devices-third-party.entity';
-import { PropertyUpdateRequestDto } from './dto/third-party-property-update-request.dto';
 import { ThirdPartyConfigModel } from './models/config.model';
-import { DemoControlResponseModel } from './models/demo-control-response.model';
 import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platform';
 
 @ApiTag({
@@ -40,7 +37,6 @@ import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platfor
 	displayName: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
 	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(DemoControlResponseModel, PropertyUpdateRequestDto)
 @Module({
 	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule],
 	providers: [ThirdPartyDevicePlatform],

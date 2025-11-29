@@ -2,7 +2,7 @@ import { validate } from 'class-validator';
 import { FetchError } from 'node-fetch';
 
 import { Body, Controller, Get, Logger, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -37,6 +37,7 @@ export class ShellyNgDevicesController {
 			'Retrieves detailed information about a Shelly Next-Generation device by connecting to it using the provided hostname or IP address. The response includes device identification, firmware version, authentication settings, and available components.',
 		operationId: 'create-devices-shelly-ng-plugin-device-info',
 	})
+	@ApiExtraModels(ShellyNgDeviceInfoResponseModel)
 	@ApiBody({
 		type: DevicesShellyNgPluginReqGetInfo,
 		description: 'The data required to fetch device information',
@@ -97,6 +98,7 @@ export class ShellyNgDevicesController {
 			'Retrieves a comprehensive list of all Shelly Next-Generation device models that are supported by this plugin. Each entry includes device specifications, available components, and supported categories.',
 		operationId: 'get-devices-shelly-ng-plugin-supported',
 	})
+	@ApiExtraModels(ShellyNgSupportedDevicesResponseModel)
 	@ApiSuccessResponse(
 		ShellyNgSupportedDevicesResponseModel,
 		'A list of supported Shelly NG devices was successfully retrieved. Each entry includes device specifications, available components, and supported categories.',

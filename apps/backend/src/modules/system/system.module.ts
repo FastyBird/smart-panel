@@ -1,7 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { SectionType } from '../config/config.constants';
@@ -36,19 +35,6 @@ import {
 	SYSTEM_MODULE_API_TAG_NAME,
 	SYSTEM_MODULE_NAME,
 } from './system.constants';
-import { CreateLogEntryDto } from './dto/create-log-entry.dto';
-import {
-	DisplayProfileByUidResponseModel,
-	DisplayProfileResponseModel,
-	DisplayProfilesResponseModel,
-	ExtensionsResponseModel,
-	LogEntriesResponseModel,
-	LogEntryAcceptedResponseModel,
-	SystemHealthResponseModel,
-	SystemInfoResponseModel,
-	ThrottleStatusResponseModel,
-} from './models/system-response.model';
-import { ExtensionAdminModel, ExtensionBackendModel, ExtensionBaseModel, LogEntryModel } from './models/system.model';
 import { DisplayProfileExistsConstraintValidator } from './validators/display-profile-exists-constraint.validator';
 
 @ApiTag({
@@ -56,22 +42,6 @@ import { DisplayProfileExistsConstraintValidator } from './validators/display-pr
 	displayName: SYSTEM_MODULE_API_TAG_NAME,
 	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	DisplayProfileResponseModel,
-	DisplayProfilesResponseModel,
-	DisplayProfileByUidResponseModel,
-	ExtensionsResponseModel,
-	LogEntriesResponseModel,
-	LogEntryAcceptedResponseModel,
-	SystemHealthResponseModel,
-	SystemInfoResponseModel,
-	ThrottleStatusResponseModel,
-	CreateLogEntryDto,
-	ExtensionBaseModel, // Abstract class - needed for getSchemaPath() references
-	ExtensionAdminModel, // Concrete implementation
-	ExtensionBackendModel, // Concrete implementation
-	LogEntryModel,
-)
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([DisplayProfileEntity]),

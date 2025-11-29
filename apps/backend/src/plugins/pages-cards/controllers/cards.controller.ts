@@ -14,6 +14,7 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -26,6 +27,7 @@ import {
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
+import { CreateSingleCardDto } from '../dto/create-card.dto';
 import { ReqCreateCardDto } from '../dto/create-card.dto';
 import { ReqUpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity } from '../entities/pages-cards.entity';
@@ -49,6 +51,7 @@ export class CardsController {
 		description: 'Retrieve all cards, optionally filtered by page',
 		operationId: 'get-pages-cards-plugin-page-cards',
 	})
+	@ApiExtraModels(CardsResponseModel)
 	@ApiQuery({ name: 'page', required: false, type: 'string', format: 'uuid', description: 'Filter cards by page ID' })
 	@ApiSuccessResponse(
 		CardsResponseModel,
@@ -78,6 +81,7 @@ export class CardsController {
 		description: 'Retrieve a single card by its unique identifier',
 		operationId: 'get-pages-cards-plugin-page-card',
 	})
+	@ApiExtraModels(CardResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
 	@ApiSuccessResponse(
 		CardResponseModel,
@@ -107,6 +111,7 @@ export class CardsController {
 		description: 'Create a new card with optional tiles and data sources',
 		operationId: 'create-pages-cards-plugin-page-card',
 	})
+	@ApiExtraModels(CardResponseModel, CreateSingleCardDto)
 	@ApiBody({ type: ReqCreateCardDto, description: 'The data required to create a new card' })
 	@ApiCreatedSuccessResponse(
 		CardResponseModel,
@@ -143,6 +148,7 @@ export class CardsController {
 		description: 'Update an existing card by ID',
 		operationId: 'update-pages-cards-plugin-page-card',
 	})
+	@ApiExtraModels(CardResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
 	@ApiBody({ type: ReqUpdateCardDto, description: 'The data to update the card with' })
 	@ApiSuccessResponse(

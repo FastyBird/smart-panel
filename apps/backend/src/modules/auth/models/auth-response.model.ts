@@ -4,7 +4,7 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { UserEntity } from '../../users/entities/users.entity';
-import { TokenEntity } from '../entities/auth.entity';
+import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 
 import {
 	CheckModel,
@@ -139,7 +139,19 @@ export class TokenPairResponseModel extends BaseSuccessResponseModel<TokenPairMo
 export class TokenResponseModel extends BaseSuccessResponseModel<TokenEntity> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
-		type: () => TokenEntity,
+		oneOf: [
+			{ $ref: getSchemaPath(AccessTokenEntity) },
+			{ $ref: getSchemaPath(RefreshTokenEntity) },
+			{ $ref: getSchemaPath(LongLiveTokenEntity) },
+		],
+		discriminator: {
+			propertyName: 'type',
+			mapping: {
+				access: getSchemaPath(AccessTokenEntity),
+				refresh: getSchemaPath(RefreshTokenEntity),
+				long_live: getSchemaPath(LongLiveTokenEntity),
+			},
+		},
 	})
 	@Expose()
 	declare data: TokenEntity;
@@ -153,7 +165,21 @@ export class TokensResponseModel extends BaseSuccessResponseModel<TokenEntity[]>
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
 		type: 'array',
-		items: { $ref: getSchemaPath(TokenEntity) },
+		items: {
+			oneOf: [
+				{ $ref: getSchemaPath(AccessTokenEntity) },
+				{ $ref: getSchemaPath(RefreshTokenEntity) },
+				{ $ref: getSchemaPath(LongLiveTokenEntity) },
+			],
+			discriminator: {
+				propertyName: 'type',
+				mapping: {
+					access: getSchemaPath(AccessTokenEntity),
+					refresh: getSchemaPath(RefreshTokenEntity),
+					long_live: getSchemaPath(LongLiveTokenEntity),
+				},
+			},
+		},
 	})
 	@Expose()
 	declare data: TokenEntity[];

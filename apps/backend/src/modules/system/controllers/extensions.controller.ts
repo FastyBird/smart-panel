@@ -6,7 +6,7 @@ import path from 'node:path';
 import { DiscoveredAdminExtension } from '@fastybird/smart-panel-extension-sdk';
 import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
@@ -15,7 +15,7 @@ import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../api/de
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
 import { ExtensionsResponseModel } from '../models/system-response.model';
-import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
+import { ExtensionAdminModel, ExtensionBackendModel, ExtensionBaseModel } from '../models/system.model';
 import {
 	ExtensionKindType,
 	ExtensionSourceType,
@@ -47,6 +47,7 @@ export class ExtensionsController {
 		description: 'Retrieve a list of all registered extensions, optionally filtered by surface',
 		operationId: 'get-system-module-extensions',
 	})
+	@ApiExtraModels(ExtensionsResponseModel, ExtensionBaseModel, ExtensionAdminModel, ExtensionBackendModel)
 	@ApiQuery({
 		name: 'surface',
 		required: false,
@@ -119,6 +120,7 @@ export class ExtensionsController {
 		description: 'Retrieve a specific extension by its name',
 		operationId: 'get-system-module-extension',
 	})
+	@ApiExtraModels(ExtensionsResponseModel, ExtensionBaseModel, ExtensionAdminModel, ExtensionBackendModel)
 	@ApiParam({ name: 'name', description: 'Extension name', type: 'string' })
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Extension retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')

@@ -17,7 +17,7 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
@@ -32,9 +32,21 @@ import {
 import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
-import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
-import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
-import { AccessTokenEntity, TokenEntity } from '../entities/auth.entity';
+import {
+	CreateAccessTokenDto,
+	CreateLongLiveTokenDto,
+	CreateRefreshTokenDto,
+	CreateTokenDto,
+	ReqCreateTokenDto,
+} from '../dto/create-token.dto';
+import {
+	ReqUpdateTokenDto,
+	UpdateAccessTokenDto,
+	UpdateLongLiveTokenDto,
+	UpdateRefreshTokenDto,
+	UpdateTokenDto,
+} from '../dto/update-token.dto';
+import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
@@ -55,6 +67,7 @@ export class TokensController {
 		description: 'Retrieve all authentication tokens',
 		operationId: 'get-auth-module-tokens',
 	})
+	@ApiExtraModels(TokensResponseModel, AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity)
 	@ApiSuccessResponse(TokensResponseModel, 'Tokens retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
@@ -76,6 +89,7 @@ export class TokensController {
 		description: 'Retrieve a specific authentication token by its ID',
 		operationId: 'get-auth-module-token',
 	})
+	@ApiExtraModels(TokenResponseModel, AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity)
 	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
 	@ApiSuccessResponse(TokenResponseModel, 'Token retrieved successfully')
 	@ApiNotFoundResponse('Token not found')
@@ -100,6 +114,15 @@ export class TokensController {
 		description: 'Create a new authentication token',
 		operationId: 'create-auth-module-token',
 	})
+	@ApiExtraModels(
+		TokenResponseModel,
+		AccessTokenEntity,
+		RefreshTokenEntity,
+		LongLiveTokenEntity,
+		CreateAccessTokenDto,
+		CreateRefreshTokenDto,
+		CreateLongLiveTokenDto,
+	)
 	@ApiBody({
 		description: 'Token creation data with discriminated type',
 		type: ReqCreateTokenDto,
@@ -169,6 +192,15 @@ export class TokensController {
 		description: 'Update an existing authentication token',
 		operationId: 'update-auth-module-token',
 	})
+	@ApiExtraModels(
+		TokenResponseModel,
+		AccessTokenEntity,
+		RefreshTokenEntity,
+		LongLiveTokenEntity,
+		UpdateAccessTokenDto,
+		UpdateRefreshTokenDto,
+		UpdateLongLiveTokenDto,
+	)
 	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
 	@ApiBody({
 		description: 'Token update data (only certain fields can be updated)',

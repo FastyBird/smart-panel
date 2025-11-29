@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
@@ -45,11 +45,12 @@ export class DevicesChannelsControlsController {
 
 	@ApiOperation({
 		tags: [DEVICES_MODULE_API_TAG_NAME],
-		summary: 'Retrieve a list of all available controls for a device’s channel',
+		summary: "Retrieve a list of all available controls for a device's channel",
 		description:
 			'Fetches a list of controls associated with a specific channel of a device. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.',
 		operationId: 'get-devices-module-device-channel-controls',
 	})
+	@ApiExtraModels(ChannelControlsResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiSuccessResponse(
@@ -84,17 +85,18 @@ export class DevicesChannelsControlsController {
 
 	@ApiOperation({
 		tags: [DEVICES_MODULE_API_TAG_NAME],
-		summary: 'Retrieve details of a specific control for a device’s channel',
+		summary: "Retrieve details of a specific control for a device's channel",
 		description:
-			'Fetches detailed information about a specific control associated with a device channel using its unique ID. The response includes metadata such as the control’s name, ID, associated channel, and timestamps.',
+			"Fetches detailed information about a specific control associated with a device channel using its unique ID. The response includes metadata such as the control's name, ID, associated channel, and timestamps.",
 		operationId: 'get-devices-module-device-channel-control',
 	})
+	@ApiExtraModels(ChannelControlResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
 	@ApiSuccessResponse(
 		ChannelControlResponseModel,
-		'The control details were successfully retrieved. The response includes the control’s metadata (ID, name, and timestamps).',
+		"The control details were successfully retrieved. The response includes the control's metadata (ID, name, and timestamps).",
 	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device, channel, or control not found')
@@ -123,11 +125,12 @@ export class DevicesChannelsControlsController {
 
 	@ApiOperation({
 		tags: [DEVICES_MODULE_API_TAG_NAME],
-		summary: 'Create a new control for a specific device’s channel',
+		summary: "Create a new control for a specific device's channel",
 		description:
 			'Creates a new control associated with a specific device channel. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.',
 		operationId: 'create-devices-module-device-channel-control',
 	})
+	@ApiExtraModels(ChannelControlResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqCreateDeviceChannelControlDto, description: 'The data required to create a new channel control' })

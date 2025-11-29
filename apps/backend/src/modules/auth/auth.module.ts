@@ -4,7 +4,6 @@ import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } 
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ApiExtraModels } from '@nestjs/swagger';
 
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
@@ -24,18 +23,6 @@ import { TokensController } from './controllers/tokens.controller';
 import { CreateAccessTokenDto, CreateLongLiveTokenDto, CreateRefreshTokenDto } from './dto/create-token.dto';
 import { UpdateAccessTokenDto, UpdateLongLiveTokenDto, UpdateRefreshTokenDto } from './dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from './entities/auth.entity';
-import {
-	CheckEmailResponseModel,
-	CheckUsernameResponseModel,
-	DisplaySecretResponseModel,
-	LoginResponseModel,
-	ProfileResponseModel,
-	RefreshResponseModel,
-	RegisterDisplayResponseModel,
-	TokenPairResponseModel,
-	TokenResponseModel,
-	TokensResponseModel,
-} from './models/auth-response.model';
 import { AuthGuard } from './guards/auth.guard';
 import { AuthService } from './services/auth.service';
 import { CryptoService } from './services/crypto.service';
@@ -47,26 +34,6 @@ import { TokensService } from './services/tokens.service';
 	displayName: AUTH_MODULE_API_TAG_NAME,
 	description: AUTH_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	// Response models
-	ProfileResponseModel,
-	LoginResponseModel,
-	RefreshResponseModel,
-	RegisterDisplayResponseModel,
-	CheckEmailResponseModel,
-	CheckUsernameResponseModel,
-	DisplaySecretResponseModel,
-	TokenPairResponseModel,
-	TokenResponseModel,
-	TokensResponseModel,
-	// DTOs for oneOf references
-	CreateAccessTokenDto,
-	CreateRefreshTokenDto,
-	CreateLongLiveTokenDto,
-	UpdateAccessTokenDto,
-	UpdateRefreshTokenDto,
-	UpdateLongLiveTokenDto,
-)
 @Module({
 	imports: [
 		JwtModule.registerAsync({

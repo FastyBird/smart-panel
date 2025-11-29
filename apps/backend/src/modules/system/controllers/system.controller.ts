@@ -9,7 +9,7 @@ import {
 	Logger,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -45,6 +45,7 @@ export class SystemController {
 		description: 'Retrieve system health status and version',
 		operationId: 'get-system-module-system-health',
 	})
+	@ApiExtraModels(SystemHealthResponseModel)
 	@ApiSuccessResponse(SystemHealthResponseModel, 'System health retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
@@ -77,6 +78,7 @@ export class SystemController {
 		description: 'Retrieve detailed system information',
 		operationId: 'get-system-module-system-info',
 	})
+	@ApiExtraModels(SystemInfoResponseModel)
 	@ApiSuccessResponse(SystemInfoResponseModel, 'System information retrieved successfully')
 	@ApiBadRequestResponse('Platform not supported')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -104,6 +106,7 @@ export class SystemController {
 		description: 'Retrieve system throttling status',
 		operationId: 'get-system-module-system-throttle',
 	})
+	@ApiExtraModels(ThrottleStatusResponseModel)
 	@ApiSuccessResponse(ThrottleStatusResponseModel, 'Throttle status retrieved successfully')
 	@ApiBadRequestResponse('Platform not supported')
 	@ApiInternalServerErrorResponse('Internal server error')

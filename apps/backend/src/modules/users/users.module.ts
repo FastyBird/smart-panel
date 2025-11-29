@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ApiExtraModels } from '@nestjs/swagger';
 
 import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
@@ -12,13 +11,6 @@ import { DisplaysInstancesController } from './controllers/displays-instances.co
 import { UsersController } from './controllers/users.controller';
 import { DisplayInstanceEntity, UserEntity } from './entities/users.entity';
 import { RolesGuard } from './guards/roles.guard';
-import {
-	DisplayInstanceByUidResponseModel,
-	DisplayInstanceResponseModel,
-	DisplayInstancesResponseModel,
-	UserResponseModel,
-	UsersResponseModel,
-} from './models/users-response.model';
 import { DisplaysInstancesService } from './services/displays-instances.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { UsersService } from './services/users.service';
@@ -31,13 +23,6 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 	displayName: USERS_MODULE_API_TAG_NAME,
 	description: USERS_MODULE_API_TAG_DESCRIPTION,
 })
-@ApiExtraModels(
-	UserResponseModel,
-	UsersResponseModel,
-	DisplayInstanceResponseModel,
-	DisplayInstancesResponseModel,
-	DisplayInstanceByUidResponseModel,
-)
 @Module({
 	imports: [TypeOrmModule.forFeature([UserEntity, DisplayInstanceEntity]), SystemModule],
 	providers: [
