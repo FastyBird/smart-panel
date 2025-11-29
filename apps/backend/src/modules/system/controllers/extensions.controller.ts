@@ -206,8 +206,13 @@ export class ExtensionsController {
 	})
 	@RawRoute()
 	@Public()
-	@Get('assets/:pkg/*')
-	async asset(@Param('pkg') pkg: string, @Req() req: Request, @Res() res: Response) {
+	@Get('assets/:pkg/*asset_path')
+	async asset(
+		@Param('pkg') pkg: string,
+		@Param('asset_path') assetPath: string,
+		@Req() req: Request,
+		@Res() res: Response,
+	) {
 		const { admin } = await getDiscoveredExtensions();
 
 		const ext: DiscoveredAdminExtension | undefined = admin
@@ -218,10 +223,12 @@ export class ExtensionsController {
 			return res.status(404).send('Admin extension not found or has no runtime entry');
 		}
 
+		// Fallback to wildcard '*' if named parameter not available (for compatibility)
 		const wildcard =
-			typeof req.params === 'object' && '*' in req.params && typeof req.params['*'] === 'string'
+			assetPath ||
+			(typeof req.params === 'object' && '*' in req.params && typeof req.params['*'] === 'string'
 				? req.params['*']
-				: undefined;
+				: undefined);
 		const suffix = decodeURIComponent(wildcard ?? '').replace(/^\/+/, '');
 
 		if (!suffix) {

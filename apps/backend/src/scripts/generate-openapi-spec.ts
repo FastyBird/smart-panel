@@ -11,12 +11,10 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 
 import { API_PREFIX } from '../app.constants';
 import { AppModule } from '../app.module';
-// Import OpenAPI transformation files to register module-specific transformations
-// These files register their transformations when imported (side-effect imports)
+// Import OpenAPI extra models files (side-effect imports to register models)
 import { getDiscoveredExtensions } from '../common/extensions/extensions.discovery-cache';
 import { ValidationExceptionFactory } from '../common/validation/validation-exception-factory';
 import { openApiTagRegistry } from '../modules/swagger/decorators/api-tag.decorator';
-import { openApiTransformRegistry } from '../modules/swagger/decorators/openapi-transform.decorator';
 import { SwaggerService } from '../modules/swagger/swagger.service';
 import '../modules/system/system.openapi';
 
@@ -93,10 +91,6 @@ async function generateOpenApiSpec() {
 		}
 
 		document.paths = normalizedPaths;
-
-		// Apply module/plugin-specific transformations
-		// These are registered by importing module.openapi.ts files
-		openApiTransformRegistry.apply(document as unknown as Record<string, unknown>);
 
 		// Use the registry to get tag definitions and mapping
 		const tagMapping = openApiTagRegistry.getTagNameMapping();
