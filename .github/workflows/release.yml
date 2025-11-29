@@ -207,6 +207,9 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
+      - name: "Run Code Preparation"
+        run: "pnpm bootstrap"
+  
       - name: "Build App"
         run: "pnpm --filter @fastybird/smart-panel-backend build"
 
@@ -261,6 +264,9 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
+      - name: "Run Code Preparation"
+        run: "pnpm bootstrap"
+    
       - name: "Build App"
         run: "pnpm --filter @fastybird/smart-panel-admin build"
 

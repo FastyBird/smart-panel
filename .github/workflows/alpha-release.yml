@@ -134,6 +134,9 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
+      - name: "Run Code Preparation"
+        run: "pnpm bootstrap"
+  
       - name: "Build App"
         run: "pnpm --filter @fastybird/smart-panel-backend build"
 
@@ -188,6 +191,9 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
+      - name: "Run Code Preparation"
+        run: "pnpm bootstrap"
+    
       - name: "Build App"
         run: "pnpm --filter @fastybird/smart-panel-admin build"
 
@@ -220,6 +226,8 @@ jobs:
 
     strategy:
       matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
         flutter-version: [ "3.27.0" ]
         flutter-channel: [ "stable" ]
         operating-system: [ "ubuntu-latest" ]
@@ -239,6 +247,18 @@ jobs:
           flutter-version: "${{ matrix.flutter-version }}"
           flutter-channel: "${{ matrix.flutter-channel }}"
 
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+  
+      - name: "Run Backend Code Preparation"
+        run: "pnpm bootstrap"
+    
+      - name: "Run Panel Code Preparation"
+        run: "melos rebuild-all"
+    
       - name: "Build ARMv7 Flutter Bundle (32-bit)"
         env:
           FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
