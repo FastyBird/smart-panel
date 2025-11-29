@@ -42,6 +42,7 @@ export class LogsController {
 		example: 10,
 	})
 	@ApiSuccessResponse(LogEntriesResponseModel, 'Log entries retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	list(

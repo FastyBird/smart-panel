@@ -58,6 +58,7 @@ export class ChannelsController {
 		ChannelsResponseModel,
 		'A list of channels successfully retrieved. Each channel includes its metadata (ID, name, category), associated device, controls, and properties.',
 	)
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<ChannelsResponseModel> {

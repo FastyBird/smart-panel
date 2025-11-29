@@ -56,6 +56,7 @@ export class DisplaysProfilesController {
 		operationId: 'get-system-module-displays-profiles',
 	})
 	@ApiSuccessResponse(DisplayProfilesResponseModel, 'Display profiles retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<DisplayProfilesResponseModel> {

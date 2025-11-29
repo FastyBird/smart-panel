@@ -21,6 +21,7 @@ import {
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
+	ApiServiceUnavailableResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import {
@@ -46,6 +47,7 @@ export class SystemController {
 		operationId: 'get-system-module-system-health',
 	})
 	@ApiSuccessResponse(SystemHealthResponseModel, 'System health retrieved successfully')
+	@ApiServiceUnavailableResponse('Service is temporarily unavailable')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get('health')

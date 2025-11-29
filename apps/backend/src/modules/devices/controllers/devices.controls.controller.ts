@@ -55,6 +55,7 @@ export class DevicesControlsController {
 	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Device not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,

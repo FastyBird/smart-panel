@@ -44,6 +44,7 @@ export class ShellyV1DevicesController {
 		'Device information was successfully retrieved. The response includes device identification, firmware version, authentication settings, and reachability status.',
 	)
 	@ApiBadRequestResponse('Invalid request data')
+	@ApiNotFoundResponse('Device info could not be fetched')
 	@ApiUnprocessableEntityResponse('Device info model could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('info')
@@ -106,6 +107,8 @@ export class ShellyV1DevicesController {
 		ShellyV1SupportedDevicesResponseModel,
 		'A list of supported Shelly V1 devices was successfully retrieved. Each entry includes device specifications and supported categories.',
 	)
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiNotFoundResponse('Supported devices list could not be retrieved')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('supported')
 	async getSupported(): Promise<ShellyV1SupportedDevicesResponseModel> {

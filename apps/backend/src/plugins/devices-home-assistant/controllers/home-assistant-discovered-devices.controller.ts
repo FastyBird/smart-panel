@@ -37,6 +37,7 @@ export class HomeAssistantDiscoveredDevicesController {
 		HomeAssistantDiscoveredDevicesResponseModel,
 		'A list of Home Assistant discovered devices successfully retrieved',
 	)
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiNotFoundResponse('Home Assistant discovered devices could not be loaded')
 	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
 	@ApiInternalServerErrorResponse('Internal server error')

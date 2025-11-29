@@ -56,6 +56,7 @@ export class DisplaysInstancesController {
 		DisplayInstancesResponseModel,
 		'A list of display instances successfully retrieved. Each display instance includes its metadata (ID, UID, MAC address, version, build, and associated user).',
 	)
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<DisplayInstancesResponseModel> {

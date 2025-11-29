@@ -101,6 +101,8 @@ export class ShellyNgDevicesController {
 		ShellyNgSupportedDevicesResponseModel,
 		'A list of supported Shelly NG devices was successfully retrieved. Each entry includes device specifications, available components, and supported categories.',
 	)
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiNotFoundResponse('Supported devices list could not be retrieved')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('supported')
 	async getSupported(): Promise<ShellyNgSupportedDevicesResponseModel> {

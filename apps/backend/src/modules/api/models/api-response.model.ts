@@ -268,6 +268,22 @@ export class InternalServerErrorModel extends BaseErrorResponseModel {
 }
 
 /**
+ * 503 Service Unavailable Error Response
+ */
+@ApiSchema({ name: 'ServiceUnavailableErrorModel' })
+export class ServiceUnavailableErrorModel extends BaseErrorResponseModel {
+	@ApiProperty({
+		description: 'Error details',
+		type: () => ErrorObjectModel,
+		example: {
+			code: 'ServiceUnavailableError',
+			message: 'The service is temporarily unavailable.',
+		},
+	})
+	error: ErrorObjectModel;
+}
+
+/**
  * Base success response structure
  */
 @ApiSchema({ name: 'BaseSuccessResponseModel' })

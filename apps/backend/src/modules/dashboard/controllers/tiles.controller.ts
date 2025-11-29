@@ -63,6 +63,8 @@ export class TilesController {
 		description: 'Filter by parent entity ID',
 	})
 	@ApiSuccessResponse(TilesResponseModel, 'All configured tiles were retrieved successfully.')
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiNotFoundResponse('Parent entity not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(
@@ -125,6 +127,7 @@ export class TilesController {
 	})
 	@ApiCreatedSuccessResponse(TileResponseModel, 'The newly created tile was returned successfully.')
 	@ApiBadRequestResponse('Invalid request data or unsupported tile type')
+	@ApiNotFoundResponse('Parent entity not found')
 	@ApiUnprocessableEntityResponse('Tile could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/tiles/:id`)

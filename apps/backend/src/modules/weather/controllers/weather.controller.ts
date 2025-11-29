@@ -2,6 +2,7 @@ import { Controller, Get, Logger, NotFoundException, UnprocessableEntityExceptio
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import {
+	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
@@ -30,6 +31,7 @@ export class WeatherController {
 		operationId: 'get-weather-module-weather',
 	})
 	@ApiSuccessResponse(LocationWeatherResponseModel, 'Weather data retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiNotFoundResponse('Weather data could not be loaded from OpenWeatherMap')
 	@ApiUnprocessableEntityResponse('Weather module is not properly configured')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -74,6 +76,7 @@ export class WeatherController {
 		operationId: 'get-weather-module-current',
 	})
 	@ApiSuccessResponse(LocationCurrentResponseModel, 'Current weather data retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiNotFoundResponse('Current day weather data could not be loaded from OpenWeatherMap')
 	@ApiUnprocessableEntityResponse('Weather module is not properly configured')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -118,6 +121,7 @@ export class WeatherController {
 		operationId: 'get-weather-module-forecast',
 	})
 	@ApiSuccessResponse(LocationForecastResponseModel, 'Forecast weather data retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiNotFoundResponse('Forecast weather data could not be loaded from OpenWeatherMap')
 	@ApiUnprocessableEntityResponse('Weather module is not properly configured')
 	@ApiInternalServerErrorResponse('Internal server error')

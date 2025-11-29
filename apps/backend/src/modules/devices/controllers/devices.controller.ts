@@ -58,6 +58,7 @@ export class DevicesController {
 		DevicesResponseModel,
 		'A list of devices successfully retrieved. Each device includes its metadata (ID, name, category), associated channels, controls, and properties.',
 	)
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<DevicesResponseModel> {

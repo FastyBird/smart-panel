@@ -7,6 +7,7 @@ import {
 	ForbiddenErrorModel,
 	InternalServerErrorModel,
 	NotFoundErrorModel,
+	ServiceUnavailableErrorModel,
 	UnprocessableEntityErrorModel,
 } from '../../api/models/api-response.model';
 
@@ -141,6 +142,24 @@ export const ApiInternalServerErrorResponse = (description?: string) => {
 			description: description || 'An unexpected server error occurred.',
 			schema: {
 				allOf: [{ $ref: getSchemaPath(BaseErrorResponseModel) }, { $ref: getSchemaPath(InternalServerErrorModel) }],
+			},
+		}),
+	);
+};
+
+/**
+ * Decorator for 503 Service Unavailable error response
+ */
+export const ApiServiceUnavailableResponse = (description?: string) => {
+	return applyDecorators(
+		ApiResponse({
+			status: 503,
+			description: description || 'The service is temporarily unavailable.',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseErrorResponseModel) },
+					{ $ref: getSchemaPath(ServiceUnavailableErrorModel) },
+				],
 			},
 		}),
 	);

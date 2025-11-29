@@ -55,6 +55,7 @@ export class CardsController {
 		'Cards retrieved successfully. The response includes a list of cards, optionally filtered by page ID.',
 	)
 	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiNotFoundResponse('Page not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(@Query('page') page?: string): Promise<CardsResponseModel> {
@@ -113,6 +114,7 @@ export class CardsController {
 		'Card created successfully. The response includes the complete details of the newly created card with associated tiles and data sources.',
 	)
 	@ApiBadRequestResponse('Invalid request data')
+	@ApiNotFoundResponse('Page not found')
 	@ApiUnprocessableEntityResponse('Card could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()

@@ -34,6 +34,7 @@ export class HomeAssistantStatesController {
 		operationId: 'get-devices-home-assistant-plugin-states',
 	})
 	@ApiSuccessResponse(HomeAssistantStatesResponseModel, 'A list of Home Assistant entity states successfully retrieved')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiNotFoundResponse('Home Assistant entity states could not be loaded')
 	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
 	@ApiInternalServerErrorResponse('Internal server error')

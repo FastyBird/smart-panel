@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
+	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
@@ -22,6 +23,7 @@ export class StatsController {
 		operationId: 'get-stats-module-stats',
 	})
 	@ApiSuccessResponse(StatsResponseModel, 'Statistics retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse()
 	@Get()
 	async all(@Query() q: Record<string, unknown>): Promise<StatsResponseModel> {

@@ -55,6 +55,7 @@ export class PagesController {
 		operationId: 'get-dashboard-module-pages',
 	})
 	@ApiSuccessResponse(PagesResponseModel, 'All configured dashboard pages were successfully retrieved.')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<PagesResponseModel> {

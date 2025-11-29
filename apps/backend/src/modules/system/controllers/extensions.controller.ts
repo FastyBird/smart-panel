@@ -14,7 +14,9 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
 import {
+	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { ExtensionsResponseModel } from '../models/system-response.model';
@@ -57,6 +59,7 @@ export class ExtensionsController {
 		enum: [...Object.values(ExtensionSurfaceType), 'all'],
 	})
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Extensions retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get()
@@ -124,6 +127,8 @@ export class ExtensionsController {
 	})
 	@ApiParam({ name: 'name', description: 'Extension name', type: 'string' })
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Extension retrieved successfully')
+	@ApiBadRequestResponse('Invalid extension name')
+	@ApiNotFoundResponse('Extension not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get(':name')

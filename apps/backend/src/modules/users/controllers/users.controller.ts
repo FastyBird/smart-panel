@@ -49,6 +49,7 @@ export class UsersController {
 		UsersResponseModel,
 		'A list of users successfully retrieved. Each user includes their metadata (ID, username, email, role, and profile information).',
 	)
+	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<UsersResponseModel> {
