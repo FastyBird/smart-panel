@@ -1,8 +1,6 @@
 /**
  * OpenAPI extra models for Devices module
  */
-import { Type } from '@nestjs/common';
-
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -45,7 +43,7 @@ import {
 	UpdatesTodayModel,
 } from './models/devices.model';
 
-export const DEVICES_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	// Response models
 	DeviceResponseModel,
 	DevicesResponseModel,

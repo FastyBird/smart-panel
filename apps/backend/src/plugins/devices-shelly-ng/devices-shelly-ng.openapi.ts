@@ -1,8 +1,6 @@
 /**
  * OpenAPI extra models for Devices Shelly NG plugin
  */
-import { Type } from '@nestjs/common';
-
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -22,7 +20,7 @@ import {
 	ShellyNgSupportedDeviceSystemComponentModel,
 } from './models/shelly-ng.model';
 
-export const DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// Response models
 	ShellyNgDeviceInfoResponseModel,
 	ShellyNgSupportedDevicesResponseModel,

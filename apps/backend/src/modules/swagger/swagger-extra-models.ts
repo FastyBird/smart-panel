@@ -4,8 +4,6 @@
  * This file aggregates all *_SWAGGER_EXTRA_MODELS from modules and plugins
  * into a single array for use in SwaggerModule.createDocument()
  */
-import { Type } from '@nestjs/common';
-
 // Plugins
 import { DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS } from '../../plugins/data-sources-device-channel/data-sources-device-channel.openapi';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS } from '../../plugins/devices-home-assistant/devices-home-assistant.openapi';
@@ -34,7 +32,7 @@ import { WEBSOCKET_SWAGGER_EXTRA_MODELS } from '../websocket/websocket.openapi';
 /**
  * Aggregated array of all Swagger extra models from all modules and plugins
  */
-export const SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const SWAGGER_EXTRA_MODELS = [
 	// Modules
 	...AUTH_SWAGGER_EXTRA_MODELS,
 	...API_SWAGGER_EXTRA_MODELS,

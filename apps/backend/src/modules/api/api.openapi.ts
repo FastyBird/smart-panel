@@ -1,8 +1,6 @@
 /**
  * OpenAPI extra models for API module
  */
-import { Type } from '@nestjs/common';
-
 import {
 	BadRequestErrorModel,
 	BaseErrorResponseModel,
@@ -18,7 +16,7 @@ import {
 } from './models/api-response.model';
 import { ErrorRate5MinModel, ModuleStatsModel, P95Ms5MModel, RequestsPerMinModel } from './models/api.model';
 
-export const API_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const API_SWAGGER_EXTRA_MODELS = [
 	// Response models
 	BaseSuccessResponseModel,
 	BaseErrorResponseModel,

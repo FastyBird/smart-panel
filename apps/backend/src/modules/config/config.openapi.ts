@@ -1,8 +1,17 @@
 /**
  * OpenAPI extra models for Config module
  */
-import { Type } from '@nestjs/common';
-
+import {
+	ReqUpdateSectionDto,
+	UpdateAudioConfigDto,
+	UpdateDisplayConfigDto,
+	UpdateLanguageConfigDto,
+	UpdateSystemConfigDto,
+	UpdateWeatherCityIdConfigDto,
+	UpdateWeatherCityNameConfigDto,
+	UpdateWeatherLatLonConfigDto,
+	UpdateWeatherZipCodeConfigDto,
+} from './dto/config.dto';
 import {
 	ConfigModuleResAppConfig,
 	ConfigModuleResPluginConfig,
@@ -21,7 +30,17 @@ import {
 	WeatherZipCodeConfigModel,
 } from './models/config.model';
 
-export const CONFIG_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const CONFIG_SWAGGER_EXTRA_MODELS = [
+	// DTOs
+	UpdateAudioConfigDto,
+	UpdateDisplayConfigDto,
+	UpdateLanguageConfigDto,
+	UpdateWeatherLatLonConfigDto,
+	UpdateWeatherCityNameConfigDto,
+	UpdateWeatherCityIdConfigDto,
+	UpdateWeatherZipCodeConfigDto,
+	UpdateSystemConfigDto,
+	ReqUpdateSectionDto,
 	// Response models
 	ConfigModuleResAppConfig,
 	ConfigModuleResPluginConfig,

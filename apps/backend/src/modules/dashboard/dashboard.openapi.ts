@@ -1,8 +1,8 @@
 /**
  * OpenAPI extra models for Dashboard module
  */
-import { Type } from '@nestjs/common';
-
+import { CreateDataSourceDto } from './dto/create-data-source.dto';
+import { CreateTileDto } from './dto/create-tile.dto';
 import {
 	DataSourceResponseModel,
 	DataSourcesResponseModel,
@@ -18,7 +18,10 @@ import {
 	RegisteredTilesModel,
 } from './models/dashboard.model';
 
-export const DASHBOARD_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const DASHBOARD_SWAGGER_EXTRA_MODELS = [
+	// DTOs (abstract classes need type assertion)
+	CreateDataSourceDto,
+	CreateTileDto,
 	// Response models
 	PageResponseModel,
 	PagesResponseModel,

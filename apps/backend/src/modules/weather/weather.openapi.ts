@@ -1,8 +1,6 @@
 /**
  * OpenAPI extra models for Weather module
  */
-import { Type } from '@nestjs/common';
-
 import { GeolocationCityModel, GeolocationZipModel } from './models/geolocation.model';
 import {
 	GeolocationCityToCoordinatesResponseModel,
@@ -23,7 +21,7 @@ import {
 	WindModel,
 } from './models/weather.model';
 
-export const WEATHER_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const WEATHER_SWAGGER_EXTRA_MODELS = [
 	// Response models
 	LocationWeatherResponseModel,
 	LocationCurrentResponseModel,

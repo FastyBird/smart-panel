@@ -1,8 +1,7 @@
 /**
  * OpenAPI extra models for Devices Third Party plugin
  */
-import { Type } from '@nestjs/common';
-
+import { PropertyUpdateRequestDto } from './dto/third-party-property-update-request.dto';
 import { PropertiesUpdateResultModel, PropertyUpdateResultModel } from './dto/third-party-property-update-response.dto';
 import {
 	ThirdPartyChannelEntity,
@@ -17,7 +16,9 @@ import {
 	ThirdPartyDemoControlPropertyModel,
 } from './models/demo-control.model';
 
-export const DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS = [
+	// DTOs
+	PropertyUpdateRequestDto,
 	// Response models
 	DemoControlResponseModel,
 	// Data models

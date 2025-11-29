@@ -1,8 +1,6 @@
 /**
  * OpenAPI transformations and extra models for System module
  */
-import { Type } from '@nestjs/common';
-
 import { openApiTransformRegistry } from '../api/decorators/openapi-transform.decorator';
 
 import { DisplayProfileEntity } from './entities/system.entity';
@@ -23,6 +21,7 @@ import {
 	DiskUsedPctModel,
 	ExtensionAdminModel,
 	ExtensionBackendModel,
+	ExtensionBaseModel,
 	LogEntryAcceptedModel,
 	LogEntryContextModel,
 	LogEntryModel,
@@ -69,7 +68,7 @@ openApiTransformRegistry.register((document) => {
 /**
  * OpenAPI extra models for System module
  */
-export const SYSTEM_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	// Response models
 	DisplayProfileResponseModel,
 	DisplayProfilesResponseModel,
@@ -82,6 +81,7 @@ export const SYSTEM_SWAGGER_EXTRA_MODELS: Type<any>[] = [
 	ThrottleStatusResponseModel,
 	SystemModuleLogIngestResult,
 	// Data models
+	ExtensionBaseModel,
 	ExtensionAdminModel,
 	ExtensionBackendModel,
 	SystemHealthModel,

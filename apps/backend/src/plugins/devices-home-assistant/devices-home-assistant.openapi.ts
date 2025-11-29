@@ -1,8 +1,6 @@
 /**
  * OpenAPI extra models for Devices Home Assistant plugin
  */
-import { Type } from '@nestjs/common';
-
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
@@ -26,7 +24,7 @@ import {
 	HomeAssistantStateModel,
 } from './models/home-assistant.model';
 
-export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS: Type<any>[] = [
+export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// Response models
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,

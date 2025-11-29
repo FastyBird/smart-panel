@@ -52,7 +52,8 @@ export class ShellyNgWebsocketsConfigModel {
 	@ApiProperty({
 		name: 'reconnect_interval',
 		description: 'Reconnect interval sequence in seconds',
-		isArray: true,
+		type: 'array',
+		items: { type: 'number', format: 'int32' },
 		example: [5, 10, 30, 60, 300, 600],
 	})
 	@Expose({ name: 'reconnect_interval' })
