@@ -14,9 +14,14 @@ import {
 } from './dto/config.dto';
 import {
 	ConfigModuleResAppConfig,
+	ConfigModuleResAudio,
+	ConfigModuleResDisplay,
+	ConfigModuleResLanguage,
 	ConfigModuleResPluginConfig,
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
+	ConfigModuleResSystem,
+	ConfigModuleResWeather,
 } from './models/config-response.model';
 import {
 	AppConfigModel,
@@ -46,6 +51,11 @@ export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	ConfigModuleResPluginConfig,
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
+	ConfigModuleResAudio,
+	ConfigModuleResDisplay,
+	ConfigModuleResLanguage,
+	ConfigModuleResWeather,
+	ConfigModuleResSystem,
 	// Data models
 	AudioConfigModel,
 	DisplayConfigModel,

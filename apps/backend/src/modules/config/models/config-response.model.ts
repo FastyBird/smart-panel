@@ -57,6 +57,69 @@ export class ConfigModuleResPlugins extends BaseSuccessResponseModel<PluginConfi
 	declare data: PluginConfigModel[];
 }
 
+@ApiSchema({ name: 'ConfigModuleResAudio' })
+export class ConfigModuleResAudio extends BaseSuccessResponseModel<AudioConfigModel> {
+	@ApiProperty({
+		description: 'Single configuration section payload',
+		type: () => AudioConfigModel,
+	})
+	@Expose()
+	declare data: AudioConfigModel;
+}
+
+@ApiSchema({ name: 'ConfigModuleResDisplay' })
+export class ConfigModuleResDisplay extends BaseSuccessResponseModel<DisplayConfigModel> {
+	@ApiProperty({
+		description: 'Single configuration section payload',
+		type: () => DisplayConfigModel,
+	})
+	@Expose()
+	declare data: DisplayConfigModel;
+}
+
+@ApiSchema({ name: 'ConfigModuleResLanguage' })
+export class ConfigModuleResLanguage extends BaseSuccessResponseModel<LanguageConfigModel> {
+	@ApiProperty({
+		description: 'Single configuration section payload',
+		type: () => LanguageConfigModel,
+	})
+	@Expose()
+	declare data: LanguageConfigModel;
+}
+@ApiSchema({ name: 'ConfigModuleResWeather' })
+export class ConfigModuleResWeather extends BaseSuccessResponseModel<
+	WeatherCityIdConfigModel | WeatherCityNameConfigModel | WeatherLatLonConfigModel | WeatherZipCodeConfigModel
+> {
+	@ApiProperty({
+		description: 'Single configuration section payload',
+		oneOf: [
+			{ $ref: getSchemaPath(WeatherCityIdConfigModel) },
+			{ $ref: getSchemaPath(WeatherCityNameConfigModel) },
+			{ $ref: getSchemaPath(WeatherLatLonConfigModel) },
+			{ $ref: getSchemaPath(WeatherZipCodeConfigModel) },
+		],
+		discriminator: {
+			propertyName: 'type',
+		},
+	})
+	@Expose()
+	declare data:
+		| WeatherCityIdConfigModel
+		| WeatherCityNameConfigModel
+		| WeatherLatLonConfigModel
+		| WeatherZipCodeConfigModel;
+}
+
+@ApiSchema({ name: 'ConfigModuleResSystem' })
+export class ConfigModuleResSystem extends BaseSuccessResponseModel<SystemConfigModel> {
+	@ApiProperty({
+		description: 'Single configuration section payload',
+		type: () => SystemConfigModel,
+	})
+	@Expose()
+	declare data: SystemConfigModel;
+}
+
 /**
  * Response wrapper for section config (union type)
  */

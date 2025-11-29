@@ -29,9 +29,14 @@ import {
 } from '../dto/config.dto';
 import {
 	ConfigModuleResAppConfig,
+	ConfigModuleResAudio,
+	ConfigModuleResDisplay,
+	ConfigModuleResLanguage,
 	ConfigModuleResPluginConfig,
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
+	ConfigModuleResSystem,
+	ConfigModuleResWeather,
 } from '../models/config-response.model';
 import {
 	AppConfigModel,
@@ -158,10 +163,10 @@ export class ConfigController {
 		operationId: 'update-config-module-audio',
 	})
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Audio configuration data' })
-	@ApiSuccessResponse(ConfigModuleResSection, 'Audio configuration updated successfully')
+	@ApiSuccessResponse(ConfigModuleResAudio, 'Audio configuration updated successfully')
 	@ApiBadRequestResponse('Invalid audio configuration data')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async updateAudioConfig(@Body() audioConfig: ReqUpdateSectionDto): Promise<ConfigModuleResSection> {
+	async updateAudioConfig(@Body() audioConfig: ReqUpdateSectionDto): Promise<ConfigModuleResAudio> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.AUDIO}`);
 
 		await this.service.setConfigSection(SectionType.AUDIO, audioConfig.data, UpdateAudioConfigDto);
@@ -170,7 +175,7 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.AUDIO}`);
 
-		return this.createSectionResponse(config);
+		return this.createSectionResponse(config) as ConfigModuleResAudio;
 	}
 
 	@Patch(SectionType.DISPLAY)
@@ -181,10 +186,10 @@ export class ConfigController {
 		operationId: 'update-config-module-display',
 	})
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Display configuration data' })
-	@ApiSuccessResponse(ConfigModuleResSection, 'Display configuration updated successfully')
+	@ApiSuccessResponse(ConfigModuleResDisplay, 'Display configuration updated successfully')
 	@ApiBadRequestResponse('Invalid display configuration data')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async updateDisplayConfig(@Body() displayConfig: ReqUpdateSectionDto): Promise<ConfigModuleResSection> {
+	async updateDisplayConfig(@Body() displayConfig: ReqUpdateSectionDto): Promise<ConfigModuleResDisplay> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.DISPLAY}`);
 
 		await this.service.setConfigSection(SectionType.DISPLAY, displayConfig.data, UpdateDisplayConfigDto);
@@ -193,7 +198,7 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.DISPLAY}`);
 
-		return this.createSectionResponse(config);
+		return this.createSectionResponse(config) as ConfigModuleResDisplay;
 	}
 
 	@Patch(SectionType.LANGUAGE)
@@ -204,10 +209,10 @@ export class ConfigController {
 		operationId: 'update-config-module-language',
 	})
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Language configuration data' })
-	@ApiSuccessResponse(ConfigModuleResSection, 'Language configuration updated successfully')
+	@ApiSuccessResponse(ConfigModuleResLanguage, 'Language configuration updated successfully')
 	@ApiBadRequestResponse('Invalid language configuration data')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async updateLanguageConfig(@Body() languageConfig: ReqUpdateSectionDto): Promise<ConfigModuleResSection> {
+	async updateLanguageConfig(@Body() languageConfig: ReqUpdateSectionDto): Promise<ConfigModuleResLanguage> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.LANGUAGE}`);
 
 		await this.service.setConfigSection(SectionType.LANGUAGE, languageConfig.data, UpdateLanguageConfigDto);
@@ -216,7 +221,7 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.LANGUAGE}`);
 
-		return this.createSectionResponse(config);
+		return this.createSectionResponse(config) as ConfigModuleResLanguage;
 	}
 
 	@Patch(SectionType.WEATHER)
@@ -227,10 +232,10 @@ export class ConfigController {
 		operationId: 'update-config-module-weather',
 	})
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Weather configuration data' })
-	@ApiSuccessResponse(ConfigModuleResSection, 'Weather configuration updated successfully')
+	@ApiSuccessResponse(ConfigModuleResWeather, 'Weather configuration updated successfully')
 	@ApiBadRequestResponse('Invalid weather configuration data')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): Promise<ConfigModuleResSection> {
+	async updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): Promise<ConfigModuleResWeather> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.WEATHER}`);
 
 		await this.service.setConfigSection(SectionType.WEATHER, weatherConfig.data, [
@@ -251,7 +256,7 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.WEATHER}`);
 
-		return this.createSectionResponse(config);
+		return this.createSectionResponse(config) as ConfigModuleResWeather;
 	}
 
 	@Patch(SectionType.SYSTEM)
@@ -262,10 +267,10 @@ export class ConfigController {
 		operationId: 'update-config-module-system',
 	})
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'System configuration data' })
-	@ApiSuccessResponse(ConfigModuleResSection, 'System configuration updated successfully')
+	@ApiSuccessResponse(ConfigModuleResSystem, 'System configuration updated successfully')
 	@ApiBadRequestResponse('Invalid system configuration data')
 	@ApiInternalServerErrorResponse('Internal server error')
-	async updateSystemConfig(@Body() systemConfig: ReqUpdateSectionDto): Promise<ConfigModuleResSection> {
+	async updateSystemConfig(@Body() systemConfig: ReqUpdateSectionDto): Promise<ConfigModuleResSystem> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.SYSTEM}`);
 
 		await this.service.setConfigSection(SectionType.SYSTEM, systemConfig.data, UpdateSystemConfigDto);
@@ -274,7 +279,7 @@ export class ConfigController {
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.SYSTEM}`);
 
-		return this.createSectionResponse(config);
+		return this.createSectionResponse(config) as ConfigModuleResSystem;
 	}
 
 	private createSectionResponse(config: ConfigModuleResSection['data']): ConfigModuleResSection {
