@@ -1,4 +1,3 @@
-import { CommandModule } from 'nestjs-command';
 import path from 'path';
 
 import { CacheModule } from '@nestjs/cache-manager';
@@ -173,7 +172,6 @@ export class AppModule {
 				]),
 				AuthModule,
 				ApiModule,
-				CommandModule,
 				ConfigModule,
 				DashboardModule,
 				DevicesModule,

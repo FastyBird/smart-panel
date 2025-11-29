@@ -1,4 +1,4 @@
-import { Command } from 'nestjs-command';
+import { Command, CommandRunner } from 'nest-commander';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -16,19 +16,21 @@ type BundledEntry = {
 	description?: string;
 };
 
+@Command({
+	name: 'config:generate-admin-extensions',
+	description: 'Generate Admin extensions import map (apps/admin/var/config/extensions.ts)',
+})
 @Injectable()
-export class GenerateAdminExtensionsCommand {
+export class GenerateAdminExtensionsCommand extends CommandRunner {
 	private readonly logger = new Logger(GenerateAdminExtensionsCommand.name);
 
 	private readonly filename = 'extensions.ts';
 
-	constructor(private readonly configService: NestConfigService) {}
+	constructor(private readonly configService: NestConfigService) {
+		super();
+	}
 
-	@Command({
-		command: 'config:generate-admin-extensions',
-		describe: 'Generate Admin extensions import map (apps/admin/var/config/extensions.ts)',
-	})
-	async run(): Promise<void> {
+	async run(passedParams: string[], options?: Record<string, any>): Promise<void> {
 		const outDir = this.configPath;
 		fs.mkdirSync(outDir, { recursive: true });
 

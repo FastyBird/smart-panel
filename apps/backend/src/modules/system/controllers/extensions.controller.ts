@@ -206,10 +206,10 @@ export class ExtensionsController {
 	})
 	@RawRoute()
 	@Public()
-	@Get('assets/:pkg/*asset_path')
+	@Get('assets/:pkg/*')
 	async asset(
 		@Param('pkg') pkg: string,
-		@Param('asset_path') assetPath: string,
+		@Param('*') assetPath: string | undefined,
 		@Req() req: Request,
 		@Res() res: Response,
 	) {
@@ -223,7 +223,7 @@ export class ExtensionsController {
 			return res.status(404).send('Admin extension not found or has no runtime entry');
 		}
 
-		// Fallback to wildcard '*' if named parameter not available (for compatibility)
+		// Get the wildcard path (Fastify uses '*' as the key for wildcard routes)
 		const wildcard =
 			assetPath ||
 			(typeof req.params === 'object' && '*' in req.params && typeof req.params['*'] === 'string'

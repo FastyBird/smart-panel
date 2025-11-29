@@ -1,20 +1,22 @@
-import { Command } from 'nestjs-command';
+import { Command, CommandRunner } from 'nest-commander';
 
 import { Injectable, Logger } from '@nestjs/common';
 
 import { UsersService } from '../services/users.service';
 
+@Command({
+	name: 'users:list',
+	description: 'List system users',
+})
 @Injectable()
-export class ListUsersCommand {
+export class ListUsersCommand extends CommandRunner {
 	private readonly logger = new Logger(ListUsersCommand.name);
 
-	constructor(private readonly service: UsersService) {}
+	constructor(private readonly service: UsersService) {
+		super();
+	}
 
-	@Command({
-		command: 'users:list',
-		describe: 'List system users',
-	})
-	async list() {
+	async run(passedParams: string[], options?: Record<string, any>): Promise<void> {
 		const users = await this.service.findAll();
 
 		if (users.length === 0) {

@@ -1,27 +1,31 @@
-import { Command } from 'nestjs-command';
-
-import { Injectable, Logger } from '@nestjs/common';
+import { Command, CommandRunner } from 'nest-commander';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
+import { Injectable, Logger } from '@nestjs/common';
 
 import { AppInstanceHolder } from '../../../common/services/app-instance-holder.service';
 import { openApiTagRegistry } from '../decorators/api-tag.decorator';
 import { SwaggerService } from '../services/swagger.service';
 
+@Command({
+	name: 'openapi:generate',
+	description: 'Generate OpenAPI JSON spec for Smart Panel backend',
+})
 @Injectable()
-export class GenerateOpenapiCommand {
+export class GenerateOpenapiCommand extends CommandRunner {
 	private readonly logger = new Logger(GenerateOpenapiCommand.name);
 
 	constructor(
 		private readonly swaggerService: SwaggerService,
 		private readonly appHolder: AppInstanceHolder,
-	) {}
+	) {
+		super();
+	}
 
-	@Command({
-		command: 'openapi:generate',
-		describe: 'Generate OpenAPI JSON spec for Smart Panel backend',
-	})
-	async generate(): Promise<void> {
+	async run(_passedParams: string[], _options?: Record<string, any>): Promise<void> {
+		console.log('\x1b[36m🔧 Generating OpenAPI specification...\x1b[0m\n');
+
 		this.logger.log('Generating OpenAPI spec...');
 
 		const app = this.appHolder.getApp();
@@ -78,9 +82,16 @@ export class GenerateOpenapiCommand {
 		// Write the OpenAPI spec to file
 		fs.writeFileSync(outputPath, JSON.stringify(document, null, 2), 'utf8');
 
+		const endpointCount = Object.keys(document.paths || {}).length;
+		const tagCount = (document.tags || []).length;
+
+		console.log('\n\x1b[32m✅ OpenAPI specification generated successfully!\x1b[0m');
+		console.log(`\x1b[36m📄 Output: \x1b[0m${outputPath}`);
+		console.log(`\x1b[36m📊 Endpoints: \x1b[1m${endpointCount}\x1b[0m`);
+		console.log(`\x1b[36m🏷️  Tags: \x1b[1m${tagCount}\x1b[0m\n`);
+
 		this.logger.log(`OpenAPI spec written to: ${outputPath}`);
-		this.logger.log(`Endpoints: ${Object.keys(document.paths || {}).length}`);
-		this.logger.log(`Tags: ${(document.tags || []).length}`);
+		this.logger.log(`Endpoints: ${endpointCount}`);
+		this.logger.log(`Tags: ${tagCount}`);
 	}
 }
-
