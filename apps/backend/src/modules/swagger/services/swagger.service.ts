@@ -2,10 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
-import { API_PREFIX } from '../../app.constants';
-
-import { openApiTagRegistry } from './decorators/api-tag.decorator';
-import { SWAGGER_EXTRA_MODELS } from './swagger-extra-models';
+import { API_PREFIX } from '../../../app.constants';
+import { openApiTagRegistry } from '../decorators/api-tag.decorator';
+import { SWAGGER_EXTRA_MODELS } from '../swagger-extra-models';
 
 @Injectable()
 export class SwaggerService {

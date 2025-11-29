@@ -16,7 +16,7 @@ import { QueryFailedExceptionFilter } from './common/filters/query-failed-except
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
-import { SwaggerService } from './modules/swagger/swagger.service';
+import { SwaggerService } from './modules/swagger/services/swagger.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 

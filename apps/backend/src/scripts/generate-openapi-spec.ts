@@ -15,7 +15,7 @@ import { AppModule } from '../app.module';
 import { getDiscoveredExtensions } from '../common/extensions/extensions.discovery-cache';
 import { ValidationExceptionFactory } from '../common/validation/validation-exception-factory';
 import { openApiTagRegistry } from '../modules/swagger/decorators/api-tag.decorator';
-import { SwaggerService } from '../modules/swagger/swagger.service';
+import { SwaggerService } from '../modules/swagger/services/swagger.service';
 import '../modules/system/system.openapi';
 
 async function generateOpenApiSpec() {
