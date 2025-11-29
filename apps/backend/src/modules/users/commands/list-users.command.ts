@@ -16,7 +16,7 @@ export class ListUsersCommand extends CommandRunner {
 		super();
 	}
 
-	async run(passedParams: string[], options?: Record<string, any>): Promise<void> {
+	async run(_passedParams: string[], _options?: Record<string, any>): Promise<void> {
 		const users = await this.service.findAll();
 
 		if (users.length === 0) {

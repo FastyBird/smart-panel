@@ -1,4 +1,4 @@
-import { Command, CommandRunner, Option } from 'nest-commander';
+import { Command, CommandRunner } from 'nest-commander';
 
 import { Injectable, Logger } from '@nestjs/common';
 

@@ -18,7 +18,7 @@ export class ResetPasswordCommand extends CommandRunner {
 		super();
 	}
 
-	async run(passedParams: string[], options?: Record<string, any>): Promise<void> {
+	async run(passedParams: string[], _options?: Record<string, any>): Promise<void> {
 		const username = passedParams[0];
 		const password = passedParams[1];
 

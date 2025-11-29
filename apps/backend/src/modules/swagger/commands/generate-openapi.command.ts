@@ -23,6 +23,7 @@ export class GenerateOpenapiCommand extends CommandRunner {
 		super();
 	}
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async run(_passedParams: string[], _options?: Record<string, any>): Promise<void> {
 		console.log('\x1b[36m🔧 Generating OpenAPI specification...\x1b[0m\n');
 
@@ -71,7 +72,7 @@ export class GenerateOpenapiCommand extends CommandRunner {
 		// Define output path - align with lint:openapi script location
 		// Path from dist/modules/swagger/commands/ to spec/api/v1 at monorepo root
 		// dist/modules/swagger/commands/ -> dist/modules/swagger/ -> dist/modules/ -> dist/ -> apps/backend/ -> apps/ -> root
-		const outputPath = path.resolve(__dirname, '../../../../../spec/api/v1/openapi.json');
+		const outputPath = path.resolve(__dirname, '../../../../../../spec/api/v1/openapi.json');
 		const outputDir = path.dirname(outputPath);
 
 		// Ensure directory exists

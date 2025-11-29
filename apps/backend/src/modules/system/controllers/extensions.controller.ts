@@ -6,7 +6,7 @@ import path from 'node:path';
 import { DiscoveredAdminExtension } from '@fastybird/smart-panel-extension-sdk';
 import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
@@ -185,34 +185,11 @@ export class ExtensionsController {
 		return response;
 	}
 
-	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
-		summary: 'Serve an Admin extension asset (ESM)',
-		description:
-			'Streams a file (typically the ESM entry) from the discovered extension package directory. `asset_path` represents the remaining subpath inside the package and may include slashes.',
-		operationId: 'get-system-module-extension-asset',
-	})
-	@ApiParam({
-		name: 'pkg',
-		description: 'NPM package name (URL-encoded), e.g. `@fastybird/example-extension-admin`.',
-		type: 'string',
-		required: true,
-	})
-	@ApiParam({
-		name: 'asset_path',
-		description: 'Subpath inside the package (may include slashes), e.g. `admin/index.js`.',
-		type: 'string',
-		required: true,
-	})
+	@ApiExcludeEndpoint()
 	@RawRoute()
 	@Public()
 	@Get('assets/:pkg/*')
-	async asset(
-		@Param('pkg') pkg: string,
-		@Param('*') assetPath: string | undefined,
-		@Req() req: Request,
-		@Res() res: Response,
-	) {
+	async asset(@Param('pkg') pkg: string, @Req() req: Request, @Res() res: Response) {
 		const { admin } = await getDiscoveredExtensions();
 
 		const ext: DiscoveredAdminExtension | undefined = admin
@@ -223,12 +200,10 @@ export class ExtensionsController {
 			return res.status(404).send('Admin extension not found or has no runtime entry');
 		}
 
-		// Get the wildcard path (Fastify uses '*' as the key for wildcard routes)
 		const wildcard =
-			assetPath ||
-			(typeof req.params === 'object' && '*' in req.params && typeof req.params['*'] === 'string'
+			typeof req.params === 'object' && '*' in req.params && typeof req.params['*'] === 'string'
 				? req.params['*']
-				: undefined);
+				: undefined;
 		const suffix = decodeURIComponent(wildcard ?? '').replace(/^\/+/, '');
 
 		if (!suffix) {

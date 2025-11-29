@@ -30,7 +30,7 @@ export class GenerateAdminExtensionsCommand extends CommandRunner {
 		super();
 	}
 
-	async run(passedParams: string[], options?: Record<string, any>): Promise<void> {
+	async run(_passedParams: string[], _options?: Record<string, any>): Promise<void> {
 		const outDir = this.configPath;
 		fs.mkdirSync(outDir, { recursive: true });
 
