@@ -292,7 +292,7 @@ describe('ExtensionsController', () => {
 			},
 		} as any;
 
-		const streamResult = await controller.asset('@acme/admin-ext', 'admin/index.js', req, reply as any);
+		const streamResult = await controller.asset('@acme/admin-ext', req, reply as any);
 
 		expect(reply._headers['Content-Type']).toBe('application/javascript');
 		expect(reply._headers['Cache-Control']).toBe('public, max-age=600');
@@ -307,7 +307,7 @@ describe('ExtensionsController', () => {
 
 		const req = { params: { pkg: '@acme/unknown', asset_path: 'admin/index.js', '*': 'admin/index.js' } } as any;
 
-		await controller.asset('@acme/unknown', 'admin/index.js', req, reply as any);
+		await controller.asset('@acme/unknown', req, reply as any);
 
 		expect(reply._status).toBe(404);
 	});
@@ -315,7 +315,7 @@ describe('ExtensionsController', () => {
 	it('returns 400 when asset wildcard is missing', async () => {
 		const req = { params: { pkg: '@acme/admin-ext' } } as any; // no '*'
 
-		await controller.asset('@acme/admin-ext', undefined as any, req, reply as any);
+		await controller.asset('@acme/admin-ext', req, reply as any);
 
 		expect(reply._status).toBe(400);
 	});
@@ -325,7 +325,7 @@ describe('ExtensionsController', () => {
 			params: { pkg: '@acme/admin-ext', asset_path: '../etc/passwd', '*': '../etc/passwd' },
 		} as any;
 
-		await controller.asset('@acme/admin-ext', '../etc/passwd', req, reply as any);
+		await controller.asset('@acme/admin-ext', req, reply as any);
 
 		expect(reply._status).toBe(400);
 	});
@@ -350,7 +350,7 @@ describe('ExtensionsController', () => {
 			params: { pkg: '@acme/admin-ext', asset_path: 'admin/index.js', '*': 'admin/index.js' },
 		} as any;
 
-		await controller.asset('@acme/admin-ext', 'admin/index.js', req, reply as any);
+		await controller.asset('@acme/admin-ext', req, reply as any);
 
 		expect(reply._status).toBe(404);
 	});
@@ -366,7 +366,7 @@ describe('ExtensionsController', () => {
 			params: { pkg: '@acme/admin-ext', asset_path: 'admin/index.js', '*': 'admin/index.js' },
 		} as any;
 
-		await controller.asset('@acme/admin-ext', 'admin/index.js', req, reply as any);
+		await controller.asset('@acme/admin-ext', req, reply as any);
 
 		expect(reply._status).toBe(404);
 	});
@@ -378,7 +378,7 @@ describe('ExtensionsController', () => {
 			params: { pkg: '@acme/admin-ext', asset_path: 'admin/index.js', '*': 'admin/index.js' },
 		} as any;
 
-		await controller.asset('@acme/admin-ext', 'admin/index.js', req, reply as any);
+		await controller.asset('@acme/admin-ext', req, reply as any);
 
 		expect(reply._headers['Content-Type']).toBe('text/javascript');
 	});

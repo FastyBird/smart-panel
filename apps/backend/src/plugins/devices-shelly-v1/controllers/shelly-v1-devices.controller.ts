@@ -7,6 +7,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';

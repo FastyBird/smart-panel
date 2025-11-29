@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 
-import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { DisplayProfileEntity } from '../entities/system.entity';
@@ -154,7 +154,8 @@ export class SystemModuleLogIngestResult {
 	rejected: number;
 
 	@ApiPropertyOptional({
-		description: 'Optional list of validation or processing errors for rejected items. Each entry references the index of the rejected log event in the original request batch.',
+		description:
+			'Optional list of validation or processing errors for rejected items. Each entry references the index of the rejected log event in the original request batch.',
 		type: 'array',
 		items: {
 			type: 'object',

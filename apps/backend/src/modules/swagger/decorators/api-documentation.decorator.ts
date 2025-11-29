@@ -156,10 +156,7 @@ export const ApiServiceUnavailableResponse = (description?: string) => {
 			status: 503,
 			description: description || 'The service is temporarily unavailable.',
 			schema: {
-				allOf: [
-					{ $ref: getSchemaPath(BaseErrorResponseModel) },
-					{ $ref: getSchemaPath(ServiceUnavailableErrorModel) },
-				],
+				allOf: [{ $ref: getSchemaPath(BaseErrorResponseModel) }, { $ref: getSchemaPath(ServiceUnavailableErrorModel) }],
 			},
 		}),
 	);

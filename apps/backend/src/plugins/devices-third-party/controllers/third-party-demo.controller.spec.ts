@@ -10,7 +10,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
+import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
 
 import { ThirdPartyDemoController } from './third-party-demo.controller';
 
@@ -55,15 +55,17 @@ describe('ThirdPartyDemoController', () => {
 			type: 'string',
 		};
 
-		const body: PropertiesUpdateRequestDto = {
-			properties: [
-				{
-					device: 'device-123',
-					channel: 'channel-123',
-					property: 'property-123',
-					value: 'ON',
-				},
-			],
+		const body: ReqUpdatePropertiesDto = {
+			data: {
+				properties: [
+					{
+						device: 'device-123',
+						channel: 'channel-123',
+						property: 'property-123',
+						value: 'ON',
+					},
+				],
+			},
 		};
 
 		(propertiesService.findOne as jest.Mock).mockResolvedValue(mockProperty);
@@ -95,15 +97,17 @@ describe('ThirdPartyDemoController', () => {
 	it('should skip unknown properties', async () => {
 		(propertiesService.findOne as jest.Mock).mockResolvedValue(null);
 
-		const body: PropertiesUpdateRequestDto = {
-			properties: [
-				{
-					device: 'device-123',
-					channel: 'channel-123',
-					property: 'unknown-prop',
-					value: '123',
-				},
-			],
+		const body: ReqUpdatePropertiesDto = {
+			data: {
+				properties: [
+					{
+						device: 'device-123',
+						channel: 'channel-123',
+						property: 'unknown-prop',
+						value: '123',
+					},
+				],
+			},
 		};
 
 		const response = await controller.controlDevice(body);

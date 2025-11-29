@@ -11,6 +11,7 @@ import {
 	InternalServerErrorModel,
 	NotFoundErrorModel,
 	ResponseMetadataModel,
+	ServiceUnavailableErrorModel,
 	SuccessMetadataModel,
 	UnprocessableEntityErrorModel,
 } from './models/api-response.model';
@@ -25,6 +26,7 @@ export const API_SWAGGER_EXTRA_MODELS = [
 	NotFoundErrorModel,
 	UnprocessableEntityErrorModel,
 	InternalServerErrorModel,
+	ServiceUnavailableErrorModel,
 	// Data models
 	ErrorDetailFieldModel,
 	ErrorObjectModel,
