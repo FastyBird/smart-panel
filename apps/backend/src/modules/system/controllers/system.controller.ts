@@ -12,17 +12,17 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import {
-	ApiBadRequestResponse,
-	ApiInternalServerErrorResponse,
-	ApiSuccessResponse,
-} from '../../api/decorators/api-documentation.decorator';
 import { Public } from '../../auth/guards/auth.guard';
 import {
 	PlatformException,
 	PlatformNotSupportedException,
 	PlatformValidationException,
 } from '../../platform/platform.exceptions';
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiSuccessResponse,
+} from '../../swagger/decorators/api-documentation.decorator';
 import {
 	SystemHealthResponseModel,
 	SystemInfoResponseModel,

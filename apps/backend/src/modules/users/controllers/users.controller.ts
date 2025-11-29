@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { AuthenticatedRequest } from '../../auth/auth.constants';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -22,8 +23,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../api/decorators/api-documentation.decorator';
-import { AuthenticatedRequest } from '../../auth/auth.constants';
+} from '../../swagger/decorators/api-documentation.decorator';
 import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';

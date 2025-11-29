@@ -1,7 +1,7 @@
 /**
  * OpenAPI transformations and extra models for System module
  */
-import { openApiTransformRegistry } from '../api/decorators/openapi-transform.decorator';
+import { openApiTransformRegistry } from '../swagger/decorators/openapi-transform.decorator';
 
 import { DisplayProfileEntity } from './entities/system.entity';
 import {

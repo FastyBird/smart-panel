@@ -6,7 +6,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../modules/api/decorators/api-documentation.decorator';
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,

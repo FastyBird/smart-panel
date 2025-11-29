@@ -28,7 +28,7 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
-} from '../../api/decorators/api-documentation.decorator';
+} from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqCreateDisplayProfileDto } from '../dto/create-display-profile.dto';

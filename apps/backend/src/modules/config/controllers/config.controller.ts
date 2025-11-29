@@ -5,13 +5,13 @@ import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { DevicesException } from '../../devices/devices.exceptions';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
-} from '../../api/decorators/api-documentation.decorator';
-import { DevicesException } from '../../devices/devices.exceptions';
+} from '../../swagger/decorators/api-documentation.decorator';
 import { CONFIG_MODULE_API_TAG_NAME } from '../config.constants';
 import { SectionType } from '../config.constants';
 import {

@@ -11,7 +11,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../modules/api/decorators/api-documentation.decorator';
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME } from '../devices-shelly-ng.constants';
 import { DESCRIPTORS } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';

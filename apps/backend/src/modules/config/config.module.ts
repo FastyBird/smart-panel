@@ -1,8 +1,8 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 
-import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { PlatformModule } from '../platform/platform.module';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 

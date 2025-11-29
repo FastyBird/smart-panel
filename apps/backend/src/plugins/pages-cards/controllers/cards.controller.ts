@@ -15,6 +15,9 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
+import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
+import { PagesService } from '../../../modules/dashboard/services/pages.service';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -22,10 +25,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../modules/api/decorators/api-documentation.decorator';
-import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
-import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
-import { PagesService } from '../../../modules/dashboard/services/pages.service';
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { ReqCreateCardDto } from '../dto/create-card.dto';
 import { ReqUpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity } from '../entities/pages-cards.entity';

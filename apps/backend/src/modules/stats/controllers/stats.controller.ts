@@ -1,7 +1,10 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
-import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../api/decorators/api-documentation.decorator';
+import {
+	ApiInternalServerErrorResponse,
+	ApiSuccessResponse,
+} from '../../swagger/decorators/api-documentation.decorator';
 import { StatResponseModel, StatsKeysResponseModel, StatsResponseModel } from '../models/stats-response.model';
 import { StatsAggregatorService } from '../services/stats-aggregator.service';
 import { STATS_MODULE_API_TAG_NAME } from '../stats.constants';

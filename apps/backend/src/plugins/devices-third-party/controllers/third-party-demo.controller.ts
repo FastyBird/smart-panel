@@ -2,15 +2,15 @@ import { Body, Controller, Logger, Put } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
+import { Public } from '../../../modules/auth/guards/auth.guard';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../../modules/api/decorators/api-documentation.decorator';
-import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
-import { Public } from '../../../modules/auth/guards/auth.guard';
-import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME } from '../devices-third-party.constants';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';

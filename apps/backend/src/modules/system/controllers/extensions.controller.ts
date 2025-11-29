@@ -11,9 +11,12 @@ import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../api/decorators/api-documentation.decorator';
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
+import {
+	ApiInternalServerErrorResponse,
+	ApiSuccessResponse,
+} from '../../swagger/decorators/api-documentation.decorator';
 import { ExtensionsResponseModel } from '../models/system-response.model';
 import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
 import {

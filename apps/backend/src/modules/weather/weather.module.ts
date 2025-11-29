@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 
-import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { ConfigModule } from '../config/config.module';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 
 import { GeolocationController } from './controllers/geolocation.controller';
 import { WeatherController } from './controllers/weather.controller';

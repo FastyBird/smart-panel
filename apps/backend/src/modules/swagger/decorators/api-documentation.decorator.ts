@@ -8,7 +8,7 @@ import {
 	InternalServerErrorModel,
 	NotFoundErrorModel,
 	UnprocessableEntityErrorModel,
-} from '../models/api-response.model';
+} from '../../api/models/api-response.model';
 
 /**
  * Helper function to create a success response decorator with a specific status code

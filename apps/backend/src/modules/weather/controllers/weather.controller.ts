@@ -6,7 +6,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
-} from '../../api/decorators/api-documentation.decorator';
+} from '../../swagger/decorators/api-documentation.decorator';
 import {
 	LocationCurrentResponseModel,
 	LocationForecastResponseModel,

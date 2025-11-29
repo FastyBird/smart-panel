@@ -15,8 +15,8 @@ import { AppModule } from '../app.module';
 // These files register their transformations when imported (side-effect imports)
 import { getDiscoveredExtensions } from '../common/extensions/extensions.discovery-cache';
 import { ValidationExceptionFactory } from '../common/validation/validation-exception-factory';
-import { openApiTagRegistry } from '../modules/api/decorators/api-tag.decorator';
-import { openApiTransformRegistry } from '../modules/api/decorators/openapi-transform.decorator';
+import { openApiTagRegistry } from '../modules/swagger/decorators/api-tag.decorator';
+import { openApiTransformRegistry } from '../modules/swagger/decorators/openapi-transform.decorator';
 import { SwaggerService } from '../modules/swagger/swagger.service';
 import '../modules/system/system.openapi';
 

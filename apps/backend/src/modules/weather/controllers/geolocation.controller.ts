@@ -5,7 +5,7 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
-} from '../../api/decorators/api-documentation.decorator';
+} from '../../swagger/decorators/api-documentation.decorator';
 import {
 	GeolocationCityToCoordinatesResponseModel,
 	GeolocationCoordinatesToCityResponseModel,

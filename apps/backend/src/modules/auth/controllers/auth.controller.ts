@@ -20,7 +20,7 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
-} from '../../api/decorators/api-documentation.decorator';
+} from '../../swagger/decorators/api-documentation.decorator';
 import { CreateDisplayInstanceDto } from '../../users/dto/create-display-instance.dto';
 import { DisplaysInstancesService } from '../../users/services/displays-instances.service';
 import { UsersService } from '../../users/services/users.service';

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { ApiTag } from '../api/decorators/api-tag.decorator';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 
 import { PrometheusController } from './controllers/prometheus.controller';
 import { StatsController } from './controllers/stats.controller';

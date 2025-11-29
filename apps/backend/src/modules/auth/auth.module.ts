@@ -7,7 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
-import { ApiTag } from '../api/decorators/api-tag.decorator';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { UsersModule } from '../users/users.module';
 
 import {

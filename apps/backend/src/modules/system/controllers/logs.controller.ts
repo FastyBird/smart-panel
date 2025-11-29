@@ -8,7 +8,7 @@ import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
-} from '../../api/decorators/api-documentation.decorator';
+} from '../../swagger/decorators/api-documentation.decorator';
 import { ReqCreateLogEntriesDto } from '../dto/create-log-entry.dto';
 import { LogEntriesResponseModel, LogEntryAcceptedResponseModel } from '../models/system-response.model';
 import { LogEntryAcceptedModel } from '../models/system.model';

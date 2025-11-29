@@ -2,7 +2,6 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ApiTag } from '../api/decorators/api-tag.decorator';
 import { SectionType } from '../config/config.constants';
 import { ConfigModule } from '../config/config.module';
 import { SystemConfigModel } from '../config/models/config.model';
@@ -11,6 +10,7 @@ import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';

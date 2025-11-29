@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ApiTag } from '../../modules/api/decorators/api-tag.decorator';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { PageCreateBuilderRegistryService } from '../../modules/dashboard/services/page-create-builder-registry.service';
 import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-type-mapper.service';
+import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 import { SystemModule } from '../../modules/system/system.module';
 
