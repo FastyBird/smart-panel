@@ -133,9 +133,26 @@ async function generateOpenApiSpec() {
 		process.exit(0);
 	} catch (error) {
 		console.error('❌ Error generating OpenAPI specification:', error);
+		if (error instanceof Error) {
+			console.error('Error message:', error.message);
+			console.error('Error stack:', error.stack);
+		}
 		process.exit(1);
 	}
 }
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+	console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+	process.exit(1);
+});
+
 // Run the generator
-void generateOpenApiSpec();
+generateOpenApiSpec().catch((error) => {
+	console.error('❌ Unhandled error in generateOpenApiSpec:', error);
+	if (error instanceof Error) {
+		console.error('Error message:', error.message);
+		console.error('Error stack:', error.stack);
+	}
+	process.exit(1);
+});

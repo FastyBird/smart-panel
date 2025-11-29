@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 
@@ -16,6 +17,7 @@ import { ModuleResetService } from './services/module-reset.service';
 import { UsersService } from './services/users.service';
 import { SystemDisplayEntitySubscriber } from './subscribers/system-display-entity.subscriber';
 import { USERS_MODULE_API_TAG_DESCRIPTION, USERS_MODULE_API_TAG_NAME, USERS_MODULE_NAME } from './users.constants';
+import { USERS_SWAGGER_EXTRA_MODELS } from './users.openapi';
 import { UserExistsConstraintValidator } from './validators/user-exists-constraint.validator';
 
 @ApiTag({
@@ -44,7 +46,10 @@ export class UsersModule {
 	constructor(
 		private readonly moduleReset: ModuleResetService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(USERS_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.factoryResetRegistry.register(

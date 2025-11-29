@@ -13,6 +13,7 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { HomeAssistantDiscoveredDevicesController } from './controllers/home-assistant-discovered-devices.controller';
 import { HomeAssistantRegistryController } from './controllers/home-assistant-registry.controller';
@@ -23,6 +24,7 @@ import {
 	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 	DEVICES_HOME_ASSISTANT_TYPE,
 } from './devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-home-assistant.openapi';
 import { CreateHomeAssistantChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateHomeAssistantChannelDto } from './dto/create-channel.dto';
 import { CreateHomeAssistantDeviceDto } from './dto/create-device.dto';
@@ -108,7 +110,10 @@ export class DevicesHomeAssistantPlugin {
 		private readonly homeAssistantWsService: HomeAssistantWsService,
 		private readonly stateChangedEventService: StateChangedEventService,
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<HomeAssistantConfigModel, HomeAssistantUpdatePluginConfigDto>({

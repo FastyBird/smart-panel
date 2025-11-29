@@ -5,6 +5,7 @@ import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { CreateDayWeatherTileDto, CreateForecastWeatherTileDto } from './dto/create-tile.dto';
 import { WeatherUpdateConfigDto } from './dto/update-config.dto';
@@ -16,6 +17,7 @@ import {
 	TILES_WEATHER_FORECAST_TYPE,
 	TILES_WEATHER_PLUGIN_NAME,
 } from './tiles-weather.constants';
+import { TILES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-weather.openapi';
 
 @Module({
 	imports: [TypeOrmModule.forFeature([DayWeatherTileEntity, ForecastWeatherTileEntity]), DashboardModule, ConfigModule],
@@ -24,7 +26,10 @@ export class TilesWeatherPlugin {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly tilesMapper: TilesTypeMapperService,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(TILES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<WeatherConfigModel, WeatherUpdateConfigDto>({

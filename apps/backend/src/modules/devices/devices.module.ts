@@ -9,6 +9,7 @@ import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
@@ -32,6 +33,7 @@ import {
 	EventType,
 	PropertyInfluxDbSchema,
 } from './devices.constants';
+import { DEVICES_SWAGGER_EXTRA_MODELS } from './devices.openapi';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -155,7 +157,10 @@ export class DevicesModule {
 		private readonly seedRegistry: SeedRegistryService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly statsRegistryService: StatsRegistryService,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(DEVICES_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.influxDbService.registerSchema(PropertyInfluxDbSchema);

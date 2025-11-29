@@ -9,6 +9,7 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { ThirdPartyDemoController } from './controllers/third-party-demo.controller';
 import {
@@ -17,6 +18,7 @@ import {
 	DEVICES_THIRD_PARTY_PLUGIN_NAME,
 	DEVICES_THIRD_PARTY_TYPE,
 } from './devices-third-party.constants';
+import { DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-third-party.openapi';
 import { CreateThirdPartyChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateThirdPartyChannelDto } from './dto/create-channel.dto';
 import { CreateThirdPartyDeviceDto } from './dto/create-device.dto';
@@ -50,7 +52,10 @@ export class DevicesThirdPartyPlugin {
 		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly thirdPartyDevicePlatform: ThirdPartyDevicePlatform,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<ThirdPartyConfigModel, ThirdPartyUpdatePluginConfigDto>({

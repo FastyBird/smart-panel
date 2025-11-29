@@ -7,6 +7,7 @@ import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { TileRelationsLoaderRegistryService } from '../../modules/dashboard/services/tile-relations-loader-registry.service';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { CreateDevicePreviewTileDto } from './dto/create-tile.dto';
 import { DevicePreviewUpdateConfigDto } from './dto/update-config.dto';
@@ -15,6 +16,7 @@ import { DevicePreviewTileEntity } from './entities/tiles-device-preview.entity'
 import { DevicePreviewConfigModel } from './models/config.model';
 import { TileRelationsLoaderService } from './services/tile-relations-loader.service';
 import { TILES_DEVICE_PREVIEW_PLUGIN_NAME, TILES_DEVICE_PREVIEW_TYPE } from './tiles-device-preview.constants';
+import { TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-device-preview.openapi';
 
 @Module({
 	imports: [TypeOrmModule.forFeature([DevicePreviewTileEntity]), DashboardModule, DevicesModule, ConfigModule],
@@ -26,7 +28,10 @@ export class TilesDevicePreviewPlugin {
 		private readonly tilesMapper: TilesTypeMapperService,
 		private readonly tileRelationsLoaderRegistryService: TileRelationsLoaderRegistryService,
 		private readonly tileRelationsLoaderService: TileRelationsLoaderService,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<DevicePreviewConfigModel, DevicePreviewUpdateConfigDto>({

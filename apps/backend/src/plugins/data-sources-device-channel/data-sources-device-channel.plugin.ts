@@ -7,8 +7,10 @@ import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { DataSourceRelationsLoaderRegistryService } from '../../modules/dashboard/services/data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from '../../modules/dashboard/services/data-source-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { DATA_SOURCES_DEVICE_PLUGIN_NAME, DATA_SOURCES_DEVICE_TYPE } from './data-sources-device-channel.constants';
+import { DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS } from './data-sources-device-channel.openapi';
 import { CreateDeviceChannelDataSourceDto } from './dto/create-data-source.dto';
 import { DeviceChannelUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateDeviceChannelDataSourceDto } from './dto/update-data-source.dto';
@@ -34,7 +36,10 @@ export class DataSourcesDeviceChannelPlugin {
 		private readonly dataSourcesMapper: DataSourcesTypeMapperService,
 		private readonly dataSourceRelationsLoaderRegistryService: DataSourceRelationsLoaderRegistryService,
 		private readonly dataSourceRelationsLoaderService: DataSourceRelationsLoaderService,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<DeviceChannelConfigModel, DeviceChannelUpdatePluginConfigDto>({

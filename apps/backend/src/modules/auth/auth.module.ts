@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { UsersModule } from '../users/users.module';
 
 import {
@@ -16,6 +17,7 @@ import {
 	AUTH_MODULE_NAME,
 	TokenType,
 } from './auth.constants';
+import { AUTH_SWAGGER_EXTRA_MODELS } from './auth.openapi';
 import { RegisterOwnerCommand } from './commands/register-owner.command';
 import { ResetPasswordCommand } from './commands/reset-password.command';
 import { AuthController } from './controllers/auth.controller';
@@ -67,7 +69,12 @@ import { TokensService } from './services/tokens.service';
 	exports: [AuthService, TokensService, CryptoService, TokensTypeMapperService],
 })
 export class AuthModule {
-	constructor(private readonly mapper: TokensTypeMapperService) {}
+	constructor(
+		private readonly mapper: TokensTypeMapperService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(AUTH_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.mapper.registerMapping<AccessTokenEntity, CreateAccessTokenDto, UpdateAccessTokenDto>({

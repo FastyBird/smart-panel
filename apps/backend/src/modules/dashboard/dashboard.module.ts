@@ -7,6 +7,7 @@ import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 
@@ -18,6 +19,7 @@ import {
 	DASHBOARD_MODULE_API_TAG_NAME,
 	DASHBOARD_MODULE_NAME,
 } from './dashboard.constants';
+import { DASHBOARD_SWAGGER_EXTRA_MODELS } from './dashboard.openapi';
 import { DataSourceEntity, PageEntity, TileEntity } from './entities/dashboard.entity';
 import { DashboardStatsProvider } from './providers/dashboard-stats.provider';
 import { DashboardSeederService } from './services/dashboard-seeder.service';
@@ -94,7 +96,10 @@ export class DashboardModule {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly dashboardStatsProvider: DashboardStatsProvider,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(DASHBOARD_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.seedRegistry.register(

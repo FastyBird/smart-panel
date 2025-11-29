@@ -12,6 +12,7 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { ShellyV1DevicesController } from './controllers/shelly-v1-devices.controller';
 import {
@@ -20,6 +21,7 @@ import {
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
 } from './devices-shelly-v1.constants';
+import { DEVICES_SHELLY_V1_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-shelly-v1.openapi';
 import { CreateShellyV1ChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateShellyV1ChannelDto } from './dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from './dto/create-device.dto';
@@ -74,7 +76,10 @@ export class DevicesShellyV1Plugin {
 		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
 		private readonly shellyV1DevicePlatform: ShellyV1DevicePlatform,
 		private readonly platformRegistryService: PlatformRegistryService,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(DEVICES_SHELLY_V1_PLUGIN_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<ShellyV1ConfigModel, ShellyV1UpdatePluginConfigDto>({

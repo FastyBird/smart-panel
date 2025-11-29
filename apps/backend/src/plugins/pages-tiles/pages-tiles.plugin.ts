@@ -7,6 +7,7 @@ import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { PageCreateBuilderRegistryService } from '../../modules/dashboard/services/page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from '../../modules/dashboard/services/page-relations-loader-registry.service';
 import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-type-mapper.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { CreateTilesPageDto } from './dto/create-page.dto';
 import { TilesUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -14,6 +15,7 @@ import { UpdateTilesPageDto } from './dto/update-page.dto';
 import { TilesPageEntity } from './entities/pages-tiles.entity';
 import { TilesConfigModel } from './models/config.model';
 import { PAGES_TILES_PLUGIN_NAME, PAGES_TILES_TYPE } from './pages-tiles.constants';
+import { PAGES_TILES_PLUGIN_SWAGGER_EXTRA_MODELS } from './pages-tiles.openapi';
 import { TilesPageNestedBuilderService } from './services/page-create-nested-builder.service';
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
@@ -29,7 +31,10 @@ export class PagesTilesPlugin {
 		private readonly pageRelationsLoaderService: PageRelationsLoaderService,
 		private readonly pageCreateBuilderRegistryService: PageCreateBuilderRegistryService,
 		private readonly tilesPageNestedBuilderService: TilesPageNestedBuilderService,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(PAGES_TILES_PLUGIN_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<TilesConfigModel, TilesUpdatePluginConfigDto>({

@@ -5,6 +5,7 @@ import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { CreateTimeTileDto } from './dto/create-tile.dto';
 import { TimeUpdateConfigDto } from './dto/update-config.dto';
@@ -12,6 +13,7 @@ import { UpdateTimeTileDto } from './dto/update-tile.dto';
 import { TimeTileEntity } from './entities/tiles-time.entity';
 import { TimeConfigModel } from './models/config.model';
 import { TILES_TIME_PLUGIN_NAME, TILES_TIME_TYPE } from './tiles-time.constants';
+import { TILES_TIME_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-time.openapi';
 
 @Module({
 	imports: [TypeOrmModule.forFeature([TimeTileEntity]), DashboardModule, ConfigModule],
@@ -20,7 +22,10 @@ export class TilesTimePlugin {
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly tilesMapper: TilesTypeMapperService,
-	) {}
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+	) {
+		this.swaggerRegistry.register(TILES_TIME_PLUGIN_SWAGGER_EXTRA_MODELS);
+	}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<TimeConfigModel, TimeUpdateConfigDto>({

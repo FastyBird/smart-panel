@@ -4,10 +4,12 @@ import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
 import { API_PREFIX } from '../../../app.constants';
 import { openApiTagRegistry } from '../decorators/api-tag.decorator';
-import { SWAGGER_EXTRA_MODELS } from '../swagger-extra-models';
+
+import { SwaggerModelsRegistryService } from './swagger-models-registry.service';
 
 @Injectable()
 export class SwaggerService {
+	constructor(private readonly registry: SwaggerModelsRegistryService) {}
 	/**
 	 * Create OpenAPI document from the NestJS application
 	 * @param app The NestJS application instance
@@ -29,7 +31,7 @@ export class SwaggerService {
 
 		const document = SwaggerModule.createDocument(app, swaggerConfig, {
 			operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
-			extraModels: SWAGGER_EXTRA_MODELS,
+			extraModels: this.registry.getAll(),
 		});
 
 		// Set OpenAPI version to 3.1.0
