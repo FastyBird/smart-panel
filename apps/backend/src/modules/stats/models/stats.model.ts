@@ -1,28 +1,111 @@
-import { Expose } from 'class-transformer';
-import { IsArray, IsString } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsArray, IsDateString, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
-
-/**
- * Model representing all available statistics as a dynamic object
- * where keys are stat names and values are stat data
- */
-@ApiSchema({ name: 'StatsModuleDataAllStats' })
-export class AllStatsModel {
-	// Dynamic properties representing statistics
-	// Example: cpu_usage: { value: 45.2, timestamp: '2024-01-15T10:30:00Z' }
-	[key: string]: unknown;
-}
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 /**
  * Model representing a single statistic value
- * Structure varies based on the specific statistic
  */
-@ApiSchema({ name: 'StatsModuleDataStat' })
-export class StatModel {
-	// Dynamic properties representing statistic data
-	// Example: value: 45.2, timestamp: '2024-01-15T10:30:00Z'
-	[key: string]: unknown;
+@ApiSchema({ name: 'StatsModuleStatsValue' })
+export class StatsValueModel {
+	@ApiProperty({
+		description: 'The metric value; may be numeric or null when unavailable.',
+		type: 'number',
+		nullable: true,
+		example: 42.7,
+	})
+	@Expose()
+	@ValidateIf((o: StatsValueModel) => o.value !== null)
+	@IsNumber()
+	@IsOptional()
+	value: number | null;
+
+	@ApiProperty({
+		description: 'ISO 8601 timestamp of the last metric update.',
+		type: 'string',
+		format: 'date-time',
+		example: '2025-11-02T09:13:45.607Z',
+	})
+	@Expose({ name: 'last_updated' })
+	@IsDateString()
+	last_updated: string;
+}
+
+/**
+ * Per-module metrics map (e.g., cpu_load_1m, req_per_min).
+ */
+@ApiSchema({
+	name: 'StatsModuleModuleStats',
+	description: 'Per-module metrics map (e.g., cpu_load_1m, req_per_min).',
+})
+export class ModuleStatsModel {
+	// Dynamic properties representing module metrics
+	// Example: cpu_load_1m: { value: 0.5, last_updated: '2025-11-02T09:13:45.607Z' }
+	[key: string]: StatsValueModel;
+}
+
+/**
+ * Stats grouped by module name. Known modules are listed, but additional modules are allowed.
+ */
+@ApiSchema({
+	name: 'StatsModuleStats',
+	description: 'Stats grouped by module name. Known modules are listed, but additional modules are allowed.',
+})
+export class StatsModel {
+	@ApiPropertyOptional({
+		description: 'WebSocket module statistics',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
+	})
+	@Expose({ name: 'websocket-module' })
+	@Type(() => ModuleStatsModel)
+	@ValidateNested()
+	'websocket-module'?: ModuleStatsModel;
+
+	@ApiPropertyOptional({
+		description: 'System module statistics',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
+	})
+	@Expose({ name: 'system-module' })
+	@Type(() => ModuleStatsModel)
+	@ValidateNested()
+	'system-module'?: ModuleStatsModel;
+
+	@ApiPropertyOptional({
+		description: 'API module statistics',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
+	})
+	@Expose({ name: 'api-module' })
+	@Type(() => ModuleStatsModel)
+	@ValidateNested()
+	'api-module'?: ModuleStatsModel;
+
+	@ApiPropertyOptional({
+		description: 'Dashboard module statistics',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
+	})
+	@Expose({ name: 'dashboard-module' })
+	@Type(() => ModuleStatsModel)
+	@ValidateNested()
+	'dashboard-module'?: ModuleStatsModel;
+
+	@ApiPropertyOptional({
+		description: 'Devices module statistics',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
+	})
+	@Expose({ name: 'devices-module' })
+	@Type(() => ModuleStatsModel)
+	@ValidateNested()
+	'devices-module'?: ModuleStatsModel;
+
+	// Additional properties for other modules
+	// Note: The index signature allows additional module properties
+	// The OpenAPI schema will be generated with additionalProperties pointing to ModuleStatsModel
+	[key: string]: ModuleStatsModel | undefined;
 }
 
 /**

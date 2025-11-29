@@ -7,6 +7,7 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { StatResponseModel, StatsKeysResponseModel, StatsResponseModel } from '../models/stats-response.model';
+import { ModuleStatsModel, StatsModel } from '../models/stats.model';
 import { StatsAggregatorService } from '../services/stats-aggregator.service';
 import { STATS_MODULE_API_TAG_NAME } from '../stats.constants';
 
@@ -30,7 +31,7 @@ export class StatsController {
 		const stats = await this.agg.getAll(q);
 
 		const response = new StatsResponseModel();
-		response.data = stats;
+		response.data = stats as StatsModel;
 
 		return response;
 	}
@@ -47,7 +48,7 @@ export class StatsController {
 	@ApiInternalServerErrorResponse()
 	@Get(':key')
 	async one(@Param('key') key: string, @Query() q: Record<string, unknown>): Promise<StatResponseModel> {
-		const stat = await this.agg.get<Record<string, unknown>>(key, q);
+		const stat = await this.agg.get<ModuleStatsModel>(key, q);
 
 		const response = new StatResponseModel();
 		response.data = stat;

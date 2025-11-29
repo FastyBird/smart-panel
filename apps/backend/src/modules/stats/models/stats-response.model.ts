@@ -1,35 +1,42 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 
-import { AllStatsModel, StatModel, StatsKeysModel } from './stats.model';
+import { ModuleStatsModel, StatsKeysModel, StatsModel } from './stats.model';
 
 /**
- * Response wrapper for AllStatsModel
+ * Stats Response
+ * Response containing detailed stats, including CPU load, memory usage, storage, temperature, OS, etc.
  */
-@ApiSchema({ name: 'StatsModuleResAllStats' })
-export class StatsResponseModel extends BaseSuccessResponseModel<AllStatsModel> {
+@ApiSchema({
+	name: 'StatsModuleResStats',
+	description: 'Response containing detailed stats, including CPU load, memory usage, storage, temperature, OS, etc.',
+})
+export class StatsResponseModel extends BaseSuccessResponseModel<StatsModel> {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => AllStatsModel,
+		description:
+			'The actual data payload returned by the API. The structure depends on the specific endpoint response.',
+		type: () => StatsModel,
 	})
 	@Expose()
-	declare data: AllStatsModel;
+	@Type(() => StatsModel)
+	declare data: StatsModel;
 }
 
 /**
- * Response wrapper for StatModel
+ * Response wrapper for a single stat (used for :key endpoint)
+ * Note: This model is kept for backward compatibility but may need to be updated to match OpenAPI spec
  */
 @ApiSchema({ name: 'StatsModuleResStat' })
-export class StatResponseModel extends BaseSuccessResponseModel<StatModel> {
+export class StatResponseModel extends BaseSuccessResponseModel<ModuleStatsModel> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
-		type: () => StatModel,
+		type: () => ModuleStatsModel,
 	})
 	@Expose()
-	declare data: StatModel;
+	declare data: ModuleStatsModel;
 }
 
 /**
