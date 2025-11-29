@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Post, Query, Req } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { setResponseMeta } from '../../../common/utils/http.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -28,7 +28,6 @@ export class LogsController {
 		description: 'Retrieve a list of log entries with optional pagination',
 		operationId: 'get-system-module-logs',
 	})
-	@ApiExtraModels(LogEntriesResponseModel)
 	@ApiQuery({ name: 'after_id', required: false, description: 'Cursor for pagination', type: 'string' })
 	@ApiQuery({
 		name: 'limit',
@@ -71,7 +70,6 @@ export class LogsController {
 		description: 'Submit new log entries to the system',
 		operationId: 'create-system-module-logs',
 	})
-	@ApiExtraModels(LogEntryAcceptedResponseModel, CreateLogEntryDto)
 	@ApiBody({ type: ReqCreateLogEntriesDto, description: 'Log entries to create' })
 	@ApiAcceptedSuccessResponse(LogEntryAcceptedResponseModel, 'Log entries accepted successfully')
 	@ApiBadRequestResponse('Invalid log entry data')

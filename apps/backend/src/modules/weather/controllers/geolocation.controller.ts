@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, Query } from '@nestjs/common';
-import { ApiExtraModels, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
@@ -27,7 +27,6 @@ export class GeolocationController {
 		description: 'Convert city name to geographic coordinates',
 		operationId: 'get-weather-module-city-geolocation',
 	})
-	@ApiExtraModels(GeolocationCityToCoordinatesResponseModel)
 	@ApiQuery({ name: 'city', description: 'City name', type: 'string', example: 'London' })
 	@ApiSuccessResponse(GeolocationCityToCoordinatesResponseModel, 'City coordinates retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -47,7 +46,6 @@ export class GeolocationController {
 		description: 'Convert postal/zip code to geographic coordinates',
 		operationId: 'get-weather-module-zip-geolocation',
 	})
-	@ApiExtraModels(GeolocationZipToCoordinatesResponseModel)
 	@ApiQuery({ name: 'zip', description: 'Postal/zip code', type: 'string', example: 'SW1A 1AA' })
 	@ApiSuccessResponse(GeolocationZipToCoordinatesResponseModel, 'Zip coordinates retrieved successfully')
 	@ApiNotFoundResponse('Coordinates for the specified postal code could not be found')
@@ -72,7 +70,6 @@ export class GeolocationController {
 		description: 'Convert geographic coordinates to city name',
 		operationId: 'get-weather-module-geolocation-coordinates-to-city',
 	})
-	@ApiExtraModels(GeolocationCoordinatesToCityResponseModel)
 	@ApiQuery({
 		name: 'lat',
 		description: 'Latitude of the location for reverse geocoding.',

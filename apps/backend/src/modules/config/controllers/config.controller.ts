@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 
 import { BadRequestException, Body, Controller, Get, Logger, Param, Patch } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
@@ -65,7 +65,6 @@ export class ConfigController {
 		description: 'Retrieve the complete application configuration',
 		operationId: 'get-config-module-config',
 	})
-	@ApiExtraModels(ConfigModuleResAppConfig)
 	@ApiSuccessResponse(ConfigModuleResAppConfig, 'Configuration retrieved successfully')
 	@ApiBadRequestResponse('Invalid request')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -88,13 +87,6 @@ export class ConfigController {
 		description: 'Retrieve a specific configuration section',
 		operationId: 'get-config-module-config-section',
 	})
-	@ApiExtraModels(
-		ConfigModuleResSection,
-		WeatherLatLonConfigModel,
-		WeatherCityNameConfigModel,
-		WeatherCityIdConfigModel,
-		WeatherZipCodeConfigModel,
-	)
 	@ApiParam({
 		name: 'section',
 		description: 'Configuration section identifier',
@@ -165,7 +157,6 @@ export class ConfigController {
 		description: 'Update the audio section configuration',
 		operationId: 'update-config-module-audio',
 	})
-	@ApiExtraModels(ConfigModuleResSection, UpdateAudioConfigDto)
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Audio configuration data' })
 	@ApiSuccessResponse(ConfigModuleResSection, 'Audio configuration updated successfully')
 	@ApiBadRequestResponse('Invalid audio configuration data')
@@ -189,7 +180,6 @@ export class ConfigController {
 		description: 'Update the display section configuration',
 		operationId: 'update-config-module-display',
 	})
-	@ApiExtraModels(ConfigModuleResSection, UpdateDisplayConfigDto)
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Display configuration data' })
 	@ApiSuccessResponse(ConfigModuleResSection, 'Display configuration updated successfully')
 	@ApiBadRequestResponse('Invalid display configuration data')
@@ -213,7 +203,6 @@ export class ConfigController {
 		description: 'Update the language section configuration',
 		operationId: 'update-config-module-language',
 	})
-	@ApiExtraModels(ConfigModuleResSection, UpdateLanguageConfigDto)
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Language configuration data' })
 	@ApiSuccessResponse(ConfigModuleResSection, 'Language configuration updated successfully')
 	@ApiBadRequestResponse('Invalid language configuration data')
@@ -237,17 +226,6 @@ export class ConfigController {
 		description: 'Update the weather section configuration',
 		operationId: 'update-config-module-weather',
 	})
-	@ApiExtraModels(
-		ConfigModuleResSection,
-		UpdateWeatherLatLonConfigDto,
-		UpdateWeatherCityNameConfigDto,
-		UpdateWeatherCityIdConfigDto,
-		UpdateWeatherZipCodeConfigDto,
-		WeatherLatLonConfigModel,
-		WeatherCityNameConfigModel,
-		WeatherCityIdConfigModel,
-		WeatherZipCodeConfigModel,
-	)
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Weather configuration data' })
 	@ApiSuccessResponse(ConfigModuleResSection, 'Weather configuration updated successfully')
 	@ApiBadRequestResponse('Invalid weather configuration data')
@@ -283,7 +261,6 @@ export class ConfigController {
 		description: 'Update the system section configuration',
 		operationId: 'update-config-module-system',
 	})
-	@ApiExtraModels(ConfigModuleResSection, UpdateSystemConfigDto)
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'System configuration data' })
 	@ApiSuccessResponse(ConfigModuleResSection, 'System configuration updated successfully')
 	@ApiBadRequestResponse('Invalid system configuration data')
@@ -313,7 +290,6 @@ export class ConfigController {
 		description: 'Retrieve configuration for all registered plugins',
 		operationId: 'get-config-module-config-plugins',
 	})
-	@ApiExtraModels(ConfigModuleResPlugins)
 	@ApiSuccessResponse(ConfigModuleResPlugins, 'Plugin configurations retrieved successfully')
 	@ApiBadRequestResponse('Invalid request')
 	@ApiNotFoundResponse('Plugin configurations not found')
@@ -337,7 +313,6 @@ export class ConfigController {
 		description: 'Retrieve configuration for a specific plugin',
 		operationId: 'get-config-module-config-plugin',
 	})
-	@ApiExtraModels(ConfigModuleResPluginConfig)
 	@ApiParam({ name: 'plugin', description: 'Plugin identifier', type: 'string', example: 'devices-shelly' })
 	@ApiSuccessResponse(ConfigModuleResPluginConfig, 'Plugin configuration retrieved successfully')
 	@ApiBadRequestResponse('Invalid plugin identifier')
@@ -362,7 +337,6 @@ export class ConfigController {
 		description: 'Update configuration for a specific plugin',
 		operationId: 'update-config-module-config-plugin',
 	})
-	@ApiExtraModels(ConfigModuleResPluginConfig, UpdatePluginConfigDto)
 	@ApiParam({ name: 'plugin', description: 'Plugin identifier', type: 'string', example: 'devices-shelly' })
 	@ApiBody({
 		type: ReqUpdatePluginDto,

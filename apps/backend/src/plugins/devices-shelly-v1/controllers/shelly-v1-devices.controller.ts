@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 
 import { Body, Controller, Get, Logger, Post, UnprocessableEntityException } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -35,7 +35,6 @@ export class ShellyV1DevicesController {
 			'Retrieves detailed information about a Shelly Generation 1 device by connecting to it using the provided hostname or IP address. The response includes device identification, firmware version, authentication settings, and reachability status.',
 		operationId: 'create-devices-shelly-v1-plugin-device-info',
 	})
-	@ApiExtraModels(ShellyV1DeviceInfoResponseModel)
 	@ApiBody({
 		type: DevicesShellyV1PluginReqGetInfo,
 		description: 'The data required to fetch device information',
@@ -103,7 +102,6 @@ export class ShellyV1DevicesController {
 			'Retrieves a comprehensive list of all Shelly Generation 1 device models that are supported by this plugin. Each entry includes device specifications and supported categories.',
 		operationId: 'get-devices-shelly-v1-plugin-supported',
 	})
-	@ApiExtraModels(ShellyV1SupportedDevicesResponseModel)
 	@ApiSuccessResponse(
 		ShellyV1SupportedDevicesResponseModel,
 		'A list of supported Shelly V1 devices was successfully retrieved. Each entry includes device specifications and supported categories.',

@@ -79,7 +79,6 @@ export class DevicesChannelsPropertiesController {
 			'Fetches a list of properties associated with a specific channel of a device. Properties represent attributes or measurements related to the channel, such as thermostat mode, temperature, or humidity.',
 		operationId: 'get-devices-module-device-channel-properties',
 	})
-	@ApiExtraModels(ChannelPropertiesResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiSuccessResponse(
@@ -119,7 +118,6 @@ export class DevicesChannelsPropertiesController {
 			"Fetches detailed information about a specific property associated with a device channel using its unique ID. The response includes metadata such as the property's name, category, value, and associated channel.",
 		operationId: 'get-devices-module-device-channel-property',
 	})
-	@ApiExtraModels(ChannelPropertyResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
@@ -159,7 +157,6 @@ export class DevicesChannelsPropertiesController {
 			'Retrieves historical timeseries data for a property within a specified time range. Supports optional downsampling via bucket parameter. Returns empty array if no data exists.',
 		operationId: 'get-devices-module-device-channel-property-timeseries',
 	})
-	@ApiExtraModels(PropertyTimeseriesResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
@@ -220,7 +217,6 @@ export class DevicesChannelsPropertiesController {
 			'Creates a new property for a specific device channel. The property can include metadata such as category, permissions, data type, unit, and initial value. The response contains the full representation of the created property, including its unique identifier, associated channel, and metadata.',
 		operationId: 'create-devices-module-device-channel-property',
 	})
-	@ApiExtraModels(ChannelPropertyResponseModel, CreateChannelPropertyDto)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqCreateDeviceChannelPropertyDto, description: 'The data required to create a new property' })
@@ -328,7 +324,6 @@ export class DevicesChannelsPropertiesController {
 			"Partially updates the details of a specific property associated with a device channel. This operation allows modifications to attributes such as the property's name, value, or metadata, while preserving its unique identifier and association with the channel.",
 		operationId: 'update-devices-module-device-channel-property',
 	})
-	@ApiExtraModels(ChannelPropertyResponseModel, UpdateChannelPropertyDto)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })

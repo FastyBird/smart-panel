@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
@@ -48,7 +48,6 @@ export class ChannelsControlsController {
 			"Fetches a list of all controls available for channels in the system. Each control represents an actionable operation associated with a channel. The response includes details such as the control's ID, name, associated channel, and timestamps.",
 		operationId: 'get-devices-module-channel-controls',
 	})
-	@ApiExtraModels(ChannelControlsResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiSuccessResponse(
 		ChannelControlsResponseModel,
@@ -83,7 +82,6 @@ export class ChannelsControlsController {
 			"Fetches the details of a specific control associated with a channel. The response includes the control's unique identifier, name, associated channel, and metadata such as creation and update timestamps.",
 		operationId: 'get-devices-module-channel-control',
 	})
-	@ApiExtraModels(ChannelControlResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
 	@ApiSuccessResponse(
@@ -120,7 +118,6 @@ export class ChannelsControlsController {
 			'Allows the creation of a new control for a specific channel. A control represents an actionable operation or command associated with the channel. The response includes the complete details of the newly created control, including its ID, name, associated channel, and metadata.',
 		operationId: 'create-devices-module-channel-control',
 	})
-	@ApiExtraModels(ChannelControlResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqCreateChannelControlDto, description: 'The data required to create a new channel control' })
 	@ApiCreatedSuccessResponse(

@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { ApiExtraModels, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
@@ -31,7 +31,6 @@ export class HomeAssistantRegistryController {
 		description: 'Fetches a list of all devices registered in the Home Assistant device registry.',
 		operationId: 'get-devices-home-assistant-plugin-device-registry',
 	})
-	@ApiExtraModels(HomeAssistantDeviceRegistryResponseModel)
 	@ApiSuccessResponse(
 		HomeAssistantDeviceRegistryResponseModel,
 		'A list of Home Assistant devices from registry successfully retrieved',
@@ -83,7 +82,6 @@ export class HomeAssistantRegistryController {
 		description: 'Fetches a list of all entities registered in the Home Assistant entity registry.',
 		operationId: 'get-devices-home-assistant-plugin-entity-registry',
 	})
-	@ApiExtraModels(HomeAssistantEntityRegistryResponseModel)
 	@ApiSuccessResponse(
 		HomeAssistantEntityRegistryResponseModel,
 		'A list of Home Assistant entities from registry successfully retrieved',

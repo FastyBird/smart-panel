@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
@@ -48,7 +48,6 @@ export class DevicesControlsController {
 			'Fetches a list of controls associated with a specific device. Controls represent actions that can be performed on the device, such as reboot or calibration.',
 		operationId: 'get-devices-module-device-controls',
 	})
-	@ApiExtraModels(DeviceControlsResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiSuccessResponse(
 		DeviceControlsResponseModel,
@@ -82,7 +81,6 @@ export class DevicesControlsController {
 			"Fetches detailed information about a specific control associated with a device using its unique ID. The response includes metadata such as the control's name, ID, associated device, and timestamps.",
 		operationId: 'get-devices-module-device-control',
 	})
-	@ApiExtraModels(DeviceControlResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
 	@ApiSuccessResponse(
@@ -119,7 +117,6 @@ export class DevicesControlsController {
 			'Creates a new control associated with a specific device. Controls represent actions or commands that can be executed on the device, such as reboot or factory reset.',
 		operationId: 'create-devices-module-device-control',
 	})
-	@ApiExtraModels(DeviceControlResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiBody({ type: ReqCreateDeviceControlDto, description: 'The data required to create a new device control' })
 	@ApiCreatedSuccessResponse(

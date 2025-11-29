@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { ApiExtraModels, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiInternalServerErrorResponse,
@@ -29,7 +29,6 @@ export class WeatherController {
 		description: 'Retrieve current weather and forecast for configured location',
 		operationId: 'get-weather-module-weather',
 	})
-	@ApiExtraModels(LocationWeatherResponseModel)
 	@ApiSuccessResponse(LocationWeatherResponseModel, 'Weather data retrieved successfully')
 	@ApiNotFoundResponse('Weather data could not be loaded from OpenWeatherMap')
 	@ApiUnprocessableEntityResponse('Weather module is not properly configured')
@@ -74,7 +73,6 @@ export class WeatherController {
 		description: 'Retrieve current weather data for configured location',
 		operationId: 'get-weather-module-current',
 	})
-	@ApiExtraModels(LocationCurrentResponseModel)
 	@ApiSuccessResponse(LocationCurrentResponseModel, 'Current weather data retrieved successfully')
 	@ApiNotFoundResponse('Current day weather data could not be loaded from OpenWeatherMap')
 	@ApiUnprocessableEntityResponse('Weather module is not properly configured')
@@ -119,7 +117,6 @@ export class WeatherController {
 		description: 'Retrieve weather forecast for configured location',
 		operationId: 'get-weather-module-forecast',
 	})
-	@ApiExtraModels(LocationForecastResponseModel)
 	@ApiSuccessResponse(LocationForecastResponseModel, 'Forecast weather data retrieved successfully')
 	@ApiNotFoundResponse('Forecast weather data could not be loaded from OpenWeatherMap')
 	@ApiUnprocessableEntityResponse('Weather module is not properly configured')

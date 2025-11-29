@@ -13,7 +13,7 @@ import {
 	Req,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -45,7 +45,6 @@ export class UsersController {
 			'Fetches a list of all users currently registered in the system. Each user includes their metadata such as ID, username, email, role, and profile information.',
 		operationId: 'get-users-module-users',
 	})
-	@ApiExtraModels(UsersResponseModel)
 	@ApiSuccessResponse(
 		UsersResponseModel,
 		'A list of users successfully retrieved. Each user includes their metadata (ID, username, email, role, and profile information).',
@@ -73,7 +72,6 @@ export class UsersController {
 			"Fetches the details of a specific user using their unique ID. The response includes the user's metadata such as ID, username, email, role, and profile information.",
 		operationId: 'get-users-module-user',
 	})
-	@ApiExtraModels(UserResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'User ID' })
 	@ApiSuccessResponse(
 		UserResponseModel,
@@ -104,7 +102,6 @@ export class UsersController {
 			'Creates a new user account in the system. The request requires user-specific attributes such as username, password, and optionally email and profile information. The response includes the full representation of the created user, including their unique identifier, username, email, role, and timestamps. Additionally, a Location header is provided with the URI of the newly created resource.',
 		operationId: 'create-users-module-user',
 	})
-	@ApiExtraModels(UserResponseModel)
 	@ApiCreatedSuccessResponse(
 		UserResponseModel,
 		'The user was successfully created. The response includes the complete details of the newly created user, such as its unique identifier, username, email, role, and timestamps.',
@@ -153,7 +150,6 @@ export class UsersController {
 			'Updates the details of an existing user using their unique ID. The request can include updates to username, email, password, role, or profile information. The response includes the complete updated representation of the user.',
 		operationId: 'update-users-module-user',
 	})
-	@ApiExtraModels(UserResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'User ID' })
 	@ApiSuccessResponse(
 		UserResponseModel,

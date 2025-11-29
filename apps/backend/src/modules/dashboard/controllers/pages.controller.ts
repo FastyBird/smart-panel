@@ -16,7 +16,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
@@ -54,7 +54,6 @@ export class PagesController {
 		description: 'Fetches metadata for every dashboard page, including tiles and configured data sources.',
 		operationId: 'get-dashboard-module-pages',
 	})
-	@ApiExtraModels(PagesResponseModel)
 	@ApiSuccessResponse(PagesResponseModel, 'All configured dashboard pages were successfully retrieved.')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
@@ -77,7 +76,6 @@ export class PagesController {
 		description: 'Fetches the dashboard page identified by the provided UUID, including its tiles and metadata.',
 		operationId: 'get-dashboard-module-page',
 	})
-	@ApiExtraModels(PageResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
 	@ApiSuccessResponse(PageResponseModel, 'The requested dashboard page was retrieved successfully.')
 	@ApiBadRequestResponse('Invalid UUID format')
@@ -103,7 +101,6 @@ export class PagesController {
 		description: 'Creates a new dashboard page with the provided metadata and nested resources.',
 		operationId: 'create-dashboard-module-page',
 	})
-	@ApiExtraModels(PageResponseModel, CreatePageDto)
 	@ApiBody({
 		type: ReqCreatePageDto,
 		description: 'Payload containing the page attributes to create.',
@@ -197,7 +194,6 @@ export class PagesController {
 		description: 'Partially updates the metadata or layout of an existing dashboard page.',
 		operationId: 'update-dashboard-module-page',
 	})
-	@ApiExtraModels(PageResponseModel, UpdatePageDto)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Page ID' })
 	@ApiBody({
 		type: ReqUpdatePageDto,

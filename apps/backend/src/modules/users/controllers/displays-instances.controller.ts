@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -52,7 +52,6 @@ export class DisplaysInstancesController {
 			'Fetches a list of all display instances currently registered in the system. Each display instance includes its metadata such as ID, UID, MAC address, version, build, and associated user.',
 		operationId: 'get-users-module-displays-instances',
 	})
-	@ApiExtraModels(DisplayInstancesResponseModel)
 	@ApiSuccessResponse(
 		DisplayInstancesResponseModel,
 		'A list of display instances successfully retrieved. Each display instance includes its metadata (ID, UID, MAC address, version, build, and associated user).',
@@ -80,7 +79,6 @@ export class DisplaysInstancesController {
 			"Fetches the details of a specific display instance using its unique ID. The response includes the display instance's metadata such as ID, UID, MAC address, version, build, and associated user.",
 		operationId: 'get-users-module-display-instance',
 	})
-	@ApiExtraModels(DisplayInstanceResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display instance ID' })
 	@ApiSuccessResponse(
 		DisplayInstanceResponseModel,
@@ -111,7 +109,6 @@ export class DisplaysInstancesController {
 			"Fetches the details of a specific display instance using its unique identifier (UID). The response includes the display instance's metadata such as ID, UID, MAC address, version, build, and associated user.",
 		operationId: 'get-users-module-display-instance-by-uid',
 	})
-	@ApiExtraModels(DisplayInstanceByUidResponseModel)
 	@ApiParam({ name: 'uid', type: 'string', format: 'uuid', description: 'Display instance UID' })
 	@ApiSuccessResponse(
 		DisplayInstanceByUidResponseModel,
@@ -150,7 +147,6 @@ export class DisplaysInstancesController {
 			'Registers a new display instance in the system. The request requires display-specific attributes such as UID, MAC address, version, build, and associated user. The response includes the full representation of the created display instance, including its unique identifier, UID, MAC address, version, build, and timestamps. Additionally, a Location header is provided with the URI of the newly created resource.',
 		operationId: 'create-users-module-display-instance',
 	})
-	@ApiExtraModels(DisplayInstanceResponseModel)
 	@ApiCreatedSuccessResponse(
 		DisplayInstanceResponseModel,
 		'The display instance was successfully created. The response includes the complete details of the newly created display instance, such as its unique identifier, UID, MAC address, version, build, and timestamps.',
@@ -198,7 +194,6 @@ export class DisplaysInstancesController {
 			'Updates the details of an existing display instance using its unique ID. The request can include updates to version, build, or display profile. The response includes the complete updated representation of the display instance.',
 		operationId: 'update-users-module-display-instance',
 	})
-	@ApiExtraModels(DisplayInstanceResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display instance ID' })
 	@ApiSuccessResponse(
 		DisplayInstanceResponseModel,

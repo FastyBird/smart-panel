@@ -62,7 +62,6 @@ export class TilesController {
 		description: 'Retrieves all dashboard tiles with optional filtering by parent entity.',
 		operationId: 'get-dashboard-module-tiles',
 	})
-	@ApiExtraModels(TilesResponseModel)
 	@ApiQuery({ name: 'parent_type', type: 'string', required: false, description: 'Filter by parent entity type' })
 	@ApiQuery({
 		name: 'parent_id',
@@ -103,7 +102,6 @@ export class TilesController {
 		description: 'Fetches a dashboard tile using its unique identifier.',
 		operationId: 'get-dashboard-module-tile',
 	})
-	@ApiExtraModels(TileResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Tile ID' })
 	@ApiSuccessResponse(TileResponseModel, 'The requested tile was retrieved successfully.')
 	@ApiBadRequestResponse('Invalid UUID format')
@@ -129,7 +127,6 @@ export class TilesController {
 		description: 'Creates a new dashboard tile with the provided configuration.',
 		operationId: 'create-dashboard-module-tile',
 	})
-	@ApiExtraModels(TileResponseModel, CreateSingleTileDto, CreateTileDto)
 	@ApiBody({
 		type: ReqCreateTileDto,
 		description: 'Payload containing the tile metadata and layout information.',
@@ -228,7 +225,6 @@ export class TilesController {
 		description: 'Partially updates the values of a dashboard tile identified by UUID.',
 		operationId: 'update-dashboard-module-tile',
 	})
-	@ApiExtraModels(TileResponseModel, UpdateSingleTileDto, UpdateTileDto)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Tile ID' })
 	@ApiBody({
 		type: ReqUpdateTileWithParentDto,

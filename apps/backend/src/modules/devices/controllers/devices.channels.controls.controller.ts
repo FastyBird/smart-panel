@@ -12,7 +12,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
@@ -50,7 +50,6 @@ export class DevicesChannelsControlsController {
 			'Fetches a list of controls associated with a specific channel of a device. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.',
 		operationId: 'get-devices-module-device-channel-controls',
 	})
-	@ApiExtraModels(ChannelControlsResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiSuccessResponse(
@@ -90,7 +89,6 @@ export class DevicesChannelsControlsController {
 			"Fetches detailed information about a specific control associated with a device channel using its unique ID. The response includes metadata such as the control's name, ID, associated channel, and timestamps.",
 		operationId: 'get-devices-module-device-channel-control',
 	})
-	@ApiExtraModels(ChannelControlResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Control ID' })
@@ -130,7 +128,6 @@ export class DevicesChannelsControlsController {
 			'Creates a new control associated with a specific device channel. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.',
 		operationId: 'create-devices-module-device-channel-control',
 	})
-	@ApiExtraModels(ChannelControlResponseModel)
 	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqCreateDeviceChannelControlDto, description: 'The data required to create a new channel control' })

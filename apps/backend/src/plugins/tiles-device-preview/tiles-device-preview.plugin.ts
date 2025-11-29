@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ApiExtraModels } from '@nestjs/swagger';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
@@ -17,7 +16,6 @@ import { DevicePreviewConfigModel } from './models/config.model';
 import { TileRelationsLoaderService } from './services/tile-relations-loader.service';
 import { TILES_DEVICE_PREVIEW_PLUGIN_NAME, TILES_DEVICE_PREVIEW_TYPE } from './tiles-device-preview.constants';
 
-@ApiExtraModels(CreateDevicePreviewTileDto, UpdateDevicePreviewTileDto)
 @Module({
 	imports: [TypeOrmModule.forFeature([DevicePreviewTileEntity]), DashboardModule, DevicesModule, ConfigModule],
 	providers: [TileRelationsLoaderService],

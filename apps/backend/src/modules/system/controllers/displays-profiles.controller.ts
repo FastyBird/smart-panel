@@ -56,7 +56,6 @@ export class DisplaysProfilesController {
 		description: 'Retrieve a list of all display profiles',
 		operationId: 'get-system-module-displays-profiles',
 	})
-	@ApiExtraModels(DisplayProfilesResponseModel)
 	@ApiSuccessResponse(DisplayProfilesResponseModel, 'Display profiles retrieved successfully')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
@@ -79,7 +78,6 @@ export class DisplaysProfilesController {
 		description: 'Retrieve a specific display profile by its ID',
 		operationId: 'get-system-module-display-profile',
 	})
-	@ApiExtraModels(DisplayProfileResponseModel)
 	@ApiParam({ name: 'id', description: 'Display profile ID', type: 'string', format: 'uuid' })
 	@ApiSuccessResponse(DisplayProfileResponseModel, 'Display profile retrieved successfully')
 	@ApiNotFoundResponse('Display profile not found')
@@ -105,7 +103,6 @@ export class DisplaysProfilesController {
 		description: 'Retrieve a specific display profile by its unique identifier (UID)',
 		operationId: 'get-system-module-display-profile-by-uid',
 	})
-	@ApiExtraModels(DisplayProfileByUidResponseModel)
 	@ApiParam({ name: 'uid', description: 'Display profile UID', type: 'string', format: 'uuid' })
 	@ApiSuccessResponse(DisplayProfileByUidResponseModel, 'Display profile retrieved successfully')
 	@ApiNotFoundResponse('Display profile not found')
@@ -139,7 +136,6 @@ export class DisplaysProfilesController {
 		description: 'Register a new display profile',
 		operationId: 'create-system-module-display-profile',
 	})
-	@ApiExtraModels(DisplayProfileResponseModel)
 	@ApiBody({ type: ReqCreateDisplayProfileDto, description: 'Display profile creation data' })
 	@ApiCreatedSuccessResponse(DisplayProfileResponseModel, 'Display profile created successfully')
 	@ApiBadRequestResponse('Invalid request data')
@@ -175,7 +171,6 @@ export class DisplaysProfilesController {
 		description: 'Update an existing display profile',
 		operationId: 'update-system-module-display-profile',
 	})
-	@ApiExtraModels(DisplayProfileResponseModel)
 	@ApiParam({ name: 'id', description: 'Display profile ID', type: 'string', format: 'uuid' })
 	@ApiBody({ type: ReqUpdateDisplayProfileDto, description: 'Display profile update data' })
 	@ApiSuccessResponse(DisplayProfileResponseModel, 'Display profile updated successfully')

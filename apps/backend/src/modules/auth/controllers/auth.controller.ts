@@ -10,7 +10,7 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -65,7 +65,6 @@ export class AuthController {
 		description: 'Authenticate user and return access tokens',
 		operationId: 'create-auth-module-login',
 	})
-	@ApiExtraModels(LoginResponseModel)
 	@ApiBody({ type: ReqLoginDto, description: 'Login credentials' })
 	@ApiSuccessResponse(LoginResponseModel, 'Successfully authenticated')
 	@ApiBadRequestResponse('Invalid login credentials')
@@ -130,7 +129,6 @@ export class AuthController {
 		description: 'Get a new access token using a refresh token',
 		operationId: 'update-auth-module-refresh',
 	})
-	@ApiExtraModels(RefreshResponseModel)
 	@ApiBody({ type: ReqRefreshDto, description: 'Refresh token' })
 	@ApiCreatedSuccessResponse(RefreshResponseModel, 'Token successfully refreshed')
 	@ApiBadRequestResponse('Invalid refresh token data')
@@ -163,7 +161,6 @@ export class AuthController {
 		description: 'Register a new display device and get credentials',
 		operationId: 'create-auth-module-register-display',
 	})
-	@ApiExtraModels(RegisterDisplayResponseModel)
 	@ApiBody({ type: ReqRegisterDisplayDto, description: 'Display device information' })
 	@ApiCreatedSuccessResponse(RegisterDisplayResponseModel, 'Display successfully registered')
 	@ApiBadRequestResponse('Invalid display registration data')
@@ -230,7 +227,6 @@ export class AuthController {
 		description: 'Verify if a username is available for registration',
 		operationId: 'validate-auth-module-check-username',
 	})
-	@ApiExtraModels(CheckUsernameResponseModel)
 	@ApiBody({ type: ReqCheckUsernameDto, description: 'Username to check' })
 	@ApiSuccessResponse(CheckUsernameResponseModel, 'Username availability result')
 	@ApiBadRequestResponse('Invalid username')
@@ -256,7 +252,6 @@ export class AuthController {
 		description: 'Verify if an email is available for registration',
 		operationId: 'validate-auth-module-check-email',
 	})
-	@ApiExtraModels(CheckEmailResponseModel)
 	@ApiBody({ type: ReqCheckEmailDto, description: 'Email to check' })
 	@ApiSuccessResponse(CheckEmailResponseModel, 'Email availability result')
 	@ApiBadRequestResponse('Invalid email')
@@ -282,7 +277,6 @@ export class AuthController {
 		description: 'Retrieve the authenticated user profile information',
 		operationId: 'get-auth-module-profile',
 	})
-	@ApiExtraModels(ProfileResponseModel)
 	@ApiSuccessResponse(ProfileResponseModel, 'User profile retrieved')
 	@ApiBadRequestResponse('Invalid request')
 	@ApiNotFoundResponse('User not found')

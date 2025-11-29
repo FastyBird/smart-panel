@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ApiExtraModels } from '@nestjs/swagger';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
@@ -18,12 +17,6 @@ import {
 	TILES_WEATHER_PLUGIN_NAME,
 } from './tiles-weather.constants';
 
-@ApiExtraModels(
-	CreateDayWeatherTileDto,
-	CreateForecastWeatherTileDto,
-	UpdateDayWeatherTileDto,
-	UpdateForecastWeatherTileDto,
-)
 @Module({
 	imports: [TypeOrmModule.forFeature([DayWeatherTileEntity, ForecastWeatherTileEntity]), DashboardModule, ConfigModule],
 })

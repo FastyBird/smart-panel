@@ -16,7 +16,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
@@ -54,7 +54,6 @@ export class DevicesController {
 			'Fetches a list of all devices currently registered in the system. Each device includes its metadata (e.g., ID, name, and category), along with associated channels, controls, and properties.',
 		operationId: 'get-devices-module-devices',
 	})
-	@ApiExtraModels(DevicesResponseModel)
 	@ApiSuccessResponse(
 		DevicesResponseModel,
 		'A list of devices successfully retrieved. Each device includes its metadata (ID, name, category), associated channels, controls, and properties.',
@@ -82,7 +81,6 @@ export class DevicesController {
 			"Fetches the details of a specific device using its unique ID. The response includes the device's metadata (e.g., ID, name, and category), associated channels, controls, and properties.",
 		operationId: 'get-devices-module-device',
 	})
-	@ApiExtraModels(DeviceResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiSuccessResponse(
 		DeviceResponseModel,
@@ -113,7 +111,6 @@ export class DevicesController {
 			'Creates a new device resource in the system. The request requires device-specific attributes such as category and name. The response includes the full representation of the created device, including its associated channels, controls, and properties. Additionally, a Location header is provided with the URI of the newly created resource.',
 		operationId: 'create-devices-module-device',
 	})
-	@ApiExtraModels(DeviceResponseModel, CreateDeviceDto)
 	@ApiBody({ type: CreateDeviceDto, description: 'The data required to create a new device' })
 	@ApiCreatedSuccessResponse(
 		DeviceResponseModel,
@@ -194,7 +191,6 @@ export class DevicesController {
 			"Partially updates the attributes of an existing device identified by its unique ID. The update can modify metadata, such as the device's name, category, or description, without requiring the full object.",
 		operationId: 'update-devices-module-device',
 	})
-	@ApiExtraModels(DeviceResponseModel, UpdateDeviceDto)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
 	@ApiBody({ type: UpdateDeviceDto, description: 'The data required to update an existing device' })
 	@ApiSuccessResponse(

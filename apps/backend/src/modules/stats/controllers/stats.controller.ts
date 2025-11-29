@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiExtraModels, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../api/decorators/api-documentation.decorator';
 import { StatResponseModel, StatsKeysResponseModel, StatsResponseModel } from '../models/stats-response.model';
@@ -18,7 +18,6 @@ export class StatsController {
 			'Retrieve all available statistics. Supports optional query parameters for filtering or customization (parameters vary by statistic provider).',
 		operationId: 'get-stats-module-stats',
 	})
-	@ApiExtraModels(StatsResponseModel)
 	@ApiSuccessResponse(StatsResponseModel, 'Statistics retrieved successfully')
 	@ApiInternalServerErrorResponse()
 	@Get()
@@ -38,7 +37,6 @@ export class StatsController {
 			'Retrieve a specific statistic by key. Supports optional query parameters for filtering or customization (parameters vary by statistic).',
 		operationId: 'get-stats-module-stat',
 	})
-	@ApiExtraModels(StatResponseModel)
 	@ApiParam({ name: 'key', description: 'Statistic key', type: 'string', example: 'cpu_usage' })
 	@ApiSuccessResponse(StatResponseModel, 'Statistic retrieved successfully')
 	@ApiInternalServerErrorResponse()
@@ -58,7 +56,6 @@ export class StatsController {
 		description: 'Retrieve a list of all available statistic keys',
 		operationId: 'get-stats-module-keys',
 	})
-	@ApiExtraModels(StatsKeysResponseModel)
 	@ApiSuccessResponse(StatsKeysResponseModel, 'Statistics keys retrieved successfully')
 	@ApiInternalServerErrorResponse()
 	@Get('_keys')

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import { ApiExtraModels } from '@nestjs/swagger';
 
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
@@ -25,15 +24,6 @@ import {
 import { ApiStatsProvider } from './providers/api-stats.provider';
 import { ApiMetricsService } from './services/api-metrics.service';
 
-@ApiExtraModels(
-	BaseSuccessResponseModel,
-	BaseErrorResponseModel,
-	BadRequestErrorModel,
-	ForbiddenErrorModel,
-	NotFoundErrorModel,
-	UnprocessableEntityErrorModel,
-	InternalServerErrorModel,
-)
 @Module({
 	imports: [ConfigModule, StatsModule, InfluxDbModule],
 	providers: [

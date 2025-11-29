@@ -1,5 +1,5 @@
 import { Body, Controller, Logger, Put } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -32,7 +32,6 @@ export class ThirdPartyDemoController {
 			'Processes property update requests from third-party devices. This endpoint accepts an array of property update requests and returns the processing status for each property. Properties are updated asynchronously with a debounce delay to optimize performance.',
 		operationId: 'update-devices-third-party-plugin-demo-properties',
 	})
-	@ApiExtraModels(DemoControlResponseModel, PropertyUpdateRequestDto)
 	@ApiBody({
 		type: PropertiesUpdateRequestDto,
 		description: 'Array of device properties to update',

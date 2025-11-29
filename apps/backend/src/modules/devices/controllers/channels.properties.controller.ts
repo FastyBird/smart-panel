@@ -75,7 +75,6 @@ export class ChannelsPropertiesController {
 			"Fetches all properties associated with a specific channel. The response includes metadata for each property, such as category, name, permissions, data type, unit, and current value, along with the associated channel's unique identifier.",
 		operationId: 'get-devices-module-channel-properties',
 	})
-	@ApiExtraModels(ChannelPropertiesResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiSuccessResponse(
 		ChannelPropertiesResponseModel,
@@ -110,7 +109,6 @@ export class ChannelsPropertiesController {
 			"Fetches detailed information about a specific property associated with a channel. The response includes metadata such as the property's name, category, value, and associated channel.",
 		operationId: 'get-devices-module-channel-property',
 	})
-	@ApiExtraModels(ChannelPropertyResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
 	@ApiSuccessResponse(
@@ -147,7 +145,6 @@ export class ChannelsPropertiesController {
 			'Retrieves historical timeseries data for a property within a specified time range. Supports optional downsampling via bucket parameter. Returns empty array if no data exists.',
 		operationId: 'get-devices-module-channel-property-timeseries',
 	})
-	@ApiExtraModels(PropertyTimeseriesResponseModel)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
 	@ApiQuery({ name: 'from', type: 'string', required: false, description: 'Start date (ISO 8601 format)' })
@@ -205,7 +202,6 @@ export class ChannelsPropertiesController {
 			'Creates a new property for a channel, such as thermostat mode or brightness level. The property includes metadata like category, permissions, data type, unit, and initial value. The response provides the full representation of the created property along with a Location header containing the URI for the new property resource.',
 		operationId: 'create-devices-module-channel-property',
 	})
-	@ApiExtraModels(ChannelPropertyResponseModel, CreateChannelPropertyDto)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiBody({ type: ReqCreateChannelPropertyDto, description: 'The data required to create a new property' })
 	@ApiCreatedSuccessResponse(
@@ -306,7 +302,6 @@ export class ChannelsPropertiesController {
 			"Partially updates the details of a specific property associated with a channel. This operation allows modifications to attributes such as the property's name, value, or metadata, while preserving its unique identifier and association with the channel.",
 		operationId: 'update-devices-module-channel-property',
 	})
-	@ApiExtraModels(ChannelPropertyResponseModel, UpdateChannelPropertyDto)
 	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Property ID' })
 	@ApiBody({ type: ReqUpdateChannelPropertyDto, description: 'The data required to update an existing property' })

@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, NotFoundException, Param, UnprocessableEntityException } from '@nestjs/common';
-import { ApiExtraModels, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -33,7 +33,6 @@ export class HomeAssistantStatesController {
 			'Fetches a list of all Home Assistant entity states currently available in the Home Assistant instance.',
 		operationId: 'get-devices-home-assistant-plugin-states',
 	})
-	@ApiExtraModels(HomeAssistantStatesResponseModel)
 	@ApiSuccessResponse(HomeAssistantStatesResponseModel, 'A list of Home Assistant entity states successfully retrieved')
 	@ApiNotFoundResponse('Home Assistant entity states could not be loaded')
 	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
@@ -82,7 +81,6 @@ export class HomeAssistantStatesController {
 		description: 'Fetches the current state of a specific Home Assistant entity by its entity ID.',
 		operationId: 'get-devices-home-assistant-plugin-state',
 	})
-	@ApiExtraModels(HomeAssistantStateResponseModel)
 	@ApiParam({ name: 'entityId', type: 'string', description: 'Home Assistant entity ID' })
 	@ApiSuccessResponse(HomeAssistantStateResponseModel, 'A Home Assistant entity state successfully retrieved')
 	@ApiBadRequestResponse('Invalid entity ID format')

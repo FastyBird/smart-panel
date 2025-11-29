@@ -66,7 +66,6 @@ export class DataSourceController {
 		description: 'Retrieves all dashboard data sources with optional filtering by parent entity.',
 		operationId: 'get-dashboard-module-data-sources',
 	})
-	@ApiExtraModels(DataSourcesResponseModel)
 	@ApiQuery({ name: 'parent_type', type: 'string', required: false, description: 'Filter by parent entity type' })
 	@ApiQuery({
 		name: 'parent_id',
@@ -109,7 +108,6 @@ export class DataSourceController {
 		description: 'Fetches the dashboard data source identified by the provided UUID.',
 		operationId: 'get-dashboard-module-data-source',
 	})
-	@ApiExtraModels(DataSourceResponseModel)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
 	@ApiSuccessResponse(DataSourceResponseModel, 'The requested data source was retrieved successfully.')
 	@ApiBadRequestResponse('Invalid UUID format')
@@ -135,7 +133,6 @@ export class DataSourceController {
 		description: 'Creates a dashboard data source with the provided configuration.',
 		operationId: 'create-dashboard-module-data-source',
 	})
-	@ApiExtraModels(DataSourceResponseModel, CreateSingleDataSourceDto, CreateDataSourceDto)
 	@ApiBody({
 		type: ReqCreateDataSourceDto,
 		description: 'Payload containing the attributes for the new data source.',
@@ -248,7 +245,6 @@ export class DataSourceController {
 		description: 'Partially updates attributes of a dashboard data source by UUID.',
 		operationId: 'update-dashboard-module-data-source',
 	})
-	@ApiExtraModels(DataSourceResponseModel, UpdateSingleDataSourceDto, UpdateDataSourceDto)
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Data source ID' })
 	@ApiBody({
 		type: ReqUpdateDataSourceWithParentDto,
