@@ -15,12 +15,14 @@ import {
 	ThirdPartyDemoControlModel,
 	ThirdPartyDemoControlPropertyModel,
 } from './models/demo-control.model';
+import { PropertiesUpdateResultResponseModel } from './models/properties-update-result-response.model';
 
 export const DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// DTOs
 	PropertyUpdateRequestDto,
 	// Response models
 	DemoControlResponseModel,
+	PropertiesUpdateResultResponseModel,
 	// Data models
 	DevicesThirdPartyPluginErrorCode,
 	ThirdPartyDemoControlPropertyModel,

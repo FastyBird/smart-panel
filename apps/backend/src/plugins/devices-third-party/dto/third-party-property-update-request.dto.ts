@@ -57,10 +57,10 @@ export class PropertyUpdateRequestDto {
 	value: string | boolean | number;
 }
 
-@ApiSchema({ name: 'DevicesThirdPartyPluginUpdateProperties' })
-export class PropertiesUpdateRequestDto {
+@ApiSchema({ name: 'DevicesThirdPartyPluginReqUpdateProperties' })
+export class ReqUpdatePropertiesDto {
 	@ApiProperty({
-		description: 'Array of property update requests',
+		description: 'Represents a single property update operation for a third-party device',
 		type: 'array',
 		items: { $ref: getSchemaPath(PropertyUpdateRequestDto) },
 	})
@@ -69,16 +69,4 @@ export class PropertiesUpdateRequestDto {
 	@ValidateNested({ each: true })
 	@Type(() => PropertyUpdateRequestDto)
 	properties: PropertyUpdateRequestDto[];
-}
-
-@ApiSchema({ name: 'DevicesThirdPartyPluginReqUpdateProperties' })
-export class ReqUpdatePropertiesDto {
-	@ApiProperty({
-		description: 'Properties update request data',
-		type: () => PropertiesUpdateRequestDto,
-	})
-	@Expose()
-	@ValidateNested()
-	@Type(() => PropertiesUpdateRequestDto)
-	data: PropertiesUpdateRequestDto;
 }

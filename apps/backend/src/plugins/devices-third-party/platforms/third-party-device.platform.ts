@@ -6,7 +6,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
 import { DEVICES_THIRD_PARTY_TYPE, ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
+import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
 import {
 	PropertiesUpdateResultModel,
 	PropertyUpdateResultModel,
@@ -43,7 +43,7 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 				})),
 			};
 
-			if (!(await this.validateDto(PropertiesUpdateRequestDto, payload, 'request'))) {
+			if (!(await this.validateDto(ReqUpdatePropertiesDto, payload, 'request'))) {
 				return false;
 			}
 

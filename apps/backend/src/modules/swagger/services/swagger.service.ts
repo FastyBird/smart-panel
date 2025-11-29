@@ -87,6 +87,8 @@ export class SwaggerService {
 		}
 		document.paths = filteredPaths;
 
+		this.adjustThirdPartyDemoWebhookPath(document);
+
 		return document;
 	}
 
@@ -105,5 +107,24 @@ export class SwaggerService {
 				showRequestDuration: true,
 			},
 		});
+	}
+
+	private adjustThirdPartyDemoWebhookPath(document: OpenAPIObject): void {
+		const paths = document.paths;
+
+		for (const [path, pathItem] of Object.entries(paths)) {
+			const putOperation = pathItem?.put;
+
+			if (putOperation?.operationId === 'update-devices-third-party-plugin-demo-properties') {
+				// Přidáme novou "ukázkovou" cestu
+				paths['/third-party/webhook'] = {
+					put: putOperation,
+				};
+
+				// a starou interní cestu odstraníme
+				delete paths[path];
+				break;
+			}
+		}
 	}
 }

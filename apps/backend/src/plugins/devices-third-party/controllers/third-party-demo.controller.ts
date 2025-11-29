@@ -1,21 +1,22 @@
-import { Body, Controller, Logger, Put } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FastifyReply } from 'fastify';
 
-import { toInstance } from '../../../common/utils/transform.utils';
+import { Body, Controller, HttpCode, HttpStatus, Logger, Put, Res } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
+
 import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
 import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
-	ApiSuccessResponse,
-	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
-import { DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME } from '../devices-third-party.constants';
-import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
+import {
+	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
+	ThirdPartyPropertiesUpdateStatus,
+} from '../devices-third-party.constants';
 import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
-import { DemoControlResponseModel } from '../models/demo-control-response.model';
-import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
+import { PropertyUpdateResultModel } from '../dto/third-party-property-update-response.dto';
+import { PropertiesUpdateResultResponseModel } from '../models/properties-update-result-response.model';
 
 @ApiTags(DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME)
 @Controller('demo')
@@ -31,36 +32,59 @@ export class ThirdPartyDemoController {
 		description:
 			'Processes property update requests from third-party devices. This endpoint accepts an array of property update requests and returns the processing status for each property. Properties are updated asynchronously with a debounce delay to optimize performance.',
 		operationId: 'update-devices-third-party-plugin-demo-properties',
+		servers: [
+			{
+				url: 'http://third-party.device.local',
+				description: 'Dummy local URL for third-party device webhook',
+			},
+		],
 	})
 	@ApiBody({
 		type: ReqUpdatePropertiesDto,
 		description: 'Array of device properties to update',
 	})
-	@ApiSuccessResponse(
-		DemoControlResponseModel,
-		'Properties update request processed successfully. The response includes the status for each property update request.',
+	@ApiNoContentResponse({
+		description:
+			'No Content. Indicates that the request was successfully processed and no further response is required.',
+	})
+	@ApiResponse({
+		status: 207,
+		description: 'Response from the third-party device after processing the update request.',
+		content: {
+			'application/json': {
+				schema: { $ref: getSchemaPath(PropertiesUpdateResultResponseModel) },
+				examples: {
+					'Example 1': {
+						value: {
+							properties: [
+								{
+									device: '234e5678-a89b-22d3-c456-426614174133',
+									channel: '456e7890-c89d-42d5-e678-626816194355',
+									property: 'b27b7c58-76f6-407a-bc78-4068e4cfd082',
+									status: -80003,
+								},
+							],
+						},
+					},
+				},
+			},
+		},
+	})
+	@ApiBadRequestResponse(
+		'Bad Request. Indicates that the request was invalid, possibly due to missing or malformed data.',
 	)
-	@ApiBadRequestResponse('Invalid request data or malformed property values')
-	@ApiUnprocessableEntityResponse('One or more properties could not be updated')
-	@ApiInternalServerErrorResponse('Internal server error occurred while processing the request')
+	@ApiInternalServerErrorResponse('Internal Server Error. Indicates a server-side error while processing the request.')
 	@RawRoute()
 	@Public()
 	@Put('webhook')
-	async controlDevice(@Body() body: ReqUpdatePropertiesDto): Promise<DemoControlResponseModel> {
+	@HttpCode(HttpStatus.NO_CONTENT)
+	async controlDevice(@Body() body: ReqUpdatePropertiesDto, @Res() res: FastifyReply): Promise<void> {
 		this.logger.debug('[THIRD-PARTY][DEMO CONTROLLER] Execute demo property update');
 
-		const controlData = {
-			properties: [],
-		};
+		const results: PropertyUpdateResultModel[] = [];
+		let hasErrors = false;
 
-		for (const property of body.data.properties) {
-			controlData.properties.push({
-				...property,
-				status: ThirdPartyPropertiesUpdateStatus.SUCCESS,
-			});
-		}
-
-		for (const update of body.data.properties) {
+		for (const update of body.properties) {
 			const property = await this.channelsPropertiesService.findOne(update.property);
 
 			if (property === null) {
@@ -68,8 +92,23 @@ export class ThirdPartyDemoController {
 					`[THIRD-PARTY][DEMO CONTROLLER] Property to update was not found in system ${update.property}`,
 				);
 
+				results.push({
+					device: update.device,
+					channel: update.channel,
+					property: update.property,
+					status: ThirdPartyPropertiesUpdateStatus.RESOURCE_NOT_FOUND,
+				});
+				hasErrors = true;
+
 				continue;
 			}
+
+			results.push({
+				device: update.device,
+				channel: update.channel,
+				property: update.property,
+				status: ThirdPartyPropertiesUpdateStatus.SUCCESS,
+			});
 
 			if (property.id in this.queue) {
 				clearTimeout(this.queue[property.id]);
@@ -91,11 +130,14 @@ export class ThirdPartyDemoController {
 			}, 500);
 		}
 
-		const controlModel = toInstance(ThirdPartyDemoControlModel, controlData);
+		// If all properties succeeded, return 204 No Content
+		if (!hasErrors) {
+			return res.status(HttpStatus.NO_CONTENT).send();
+		}
 
-		const response = new DemoControlResponseModel();
-		response.data = controlModel;
-
-		return response;
+		// If there are errors, return 207 Multi-Status with results
+		return res.status(HttpStatus.MULTI_STATUS).send({
+			properties: results,
+		});
 	}
 }
