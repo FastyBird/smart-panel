@@ -29,6 +29,7 @@ export abstract class CreateDataSourceDto {
 export class CreateSingleDataSourceDto extends CreateDataSourceDto {
 	@ApiProperty({ description: 'Parent entity information', type: () => ParentDto })
 	@Expose()
+	@IsNotEmpty({ message: '[{"field":"parent","reason":"Parent entity information is required."}]' })
 	@ValidateNested()
 	@Type(() => ParentDto)
 	readonly parent: ParentDto;
@@ -45,9 +46,9 @@ export class ReqCreateDataSourceDto {
 
 @ApiSchema({ name: 'DashboardModuleReqCreateDataSourceWithParent' })
 export class ReqCreateDataSourceWithParentDto {
-	@ApiProperty({ description: 'Data source data', type: () => CreateDataSourceDto })
+	@ApiProperty({ description: 'Data source data', type: () => CreateSingleDataSourceDto })
 	@Expose()
 	@ValidateNested()
-	@Type(() => CreateDataSourceDto)
-	data: CreateDataSourceDto;
+	@Type(() => CreateSingleDataSourceDto)
+	data: CreateSingleDataSourceDto;
 }

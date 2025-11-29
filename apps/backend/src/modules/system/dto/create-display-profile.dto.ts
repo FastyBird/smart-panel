@@ -45,54 +45,51 @@ export class CreateDisplayProfileDto {
 	@IsInt({ message: '[{"field":"screen_height","reason":"Display screen height must be a valid number."}]' })
 	screen_height: number;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		name: 'pixel_ratio',
 		description: 'Display pixel ratio',
 		type: 'number',
 		example: 1.5,
 	})
 	@Expose()
-	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"pixel_ratio","reason":"Display pixel ratio is required."}]' })
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
 		{ message: '[{"field":"pixel_ratio","reason":"Display pixel ratio must be a valid number."}]' },
 	)
 	pixel_ratio: number;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		name: 'unit_size',
 		description: 'Display unit size',
-		type: 'number',
+		type: 'integer',
 		example: 8,
 	})
 	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ message: '[{"field":"unit_size","reason":"Display unit size must be a valid number."}]' },
-	)
+	@IsNotEmpty({ message: '[{"field":"unit_size","reason":"Display unit size is required."}]' })
+	@IsInt({ message: '[{"field":"unit_size","reason":"Display unit size must be a valid integer."}]' })
 	unit_size: number;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Default row count',
 		type: 'integer',
 		minimum: 1,
 		example: 12,
 	})
 	@Expose()
-	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"rows","reason":"Default row count is required."}]' })
 	@IsInt({ message: '[{"field":"rows","reason":"Default row count must be a valid integer."}]' })
 	@Min(1, { message: '[{"field":"rows","reason":"Default row count must be at least 1."}]' })
 	rows: number;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Default column count',
 		type: 'integer',
 		minimum: 1,
 		example: 24,
 	})
 	@Expose()
-	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"cols","reason":"Default column count is required."}]' })
 	@IsInt({ message: '[{"field":"cols","reason":"Default column count must be a valid integer."}]' })
 	@Min(1, { message: '[{"field":"cols","reason":"Default column count must be at least 1."}]' })
 	cols: number;

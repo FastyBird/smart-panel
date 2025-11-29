@@ -152,4 +152,34 @@ export class SystemModuleLogIngestResult {
 		example: 0,
 	})
 	rejected: number;
+
+	@ApiPropertyOptional({
+		description: 'Optional list of validation or processing errors for rejected items. Each entry references the index of the rejected log event in the original request batch.',
+		type: 'array',
+		items: {
+			type: 'object',
+			properties: {
+				index: {
+					type: 'integer',
+					minimum: 0,
+					description: 'Zero-based index of the log event within the submitted data array that caused an error.',
+				},
+				reason: {
+					type: 'string',
+					description: 'Short, human-readable reason describing why the log event was rejected.',
+				},
+				details: {
+					type: 'string',
+					description: 'Optional additional details about the error.',
+					nullable: true,
+				},
+			},
+			required: ['index', 'reason'],
+		},
+	})
+	errors?: Array<{
+		index: number;
+		reason: string;
+		details?: string | null;
+	}>;
 }
