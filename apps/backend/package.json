@@ -66,7 +66,7 @@
 		"typeorm:migration:run": "ts-node-esm --project tsconfig.json --transpile-only ./node_modules/typeorm/cli.js migration:run -d ./src/dataSource.ts",
 		"typeorm:migration:revert": "ts-node-esm --project tsconfig.json --transpile-only ./node_modules/typeorm/cli.js migration:revert -d ./src/dataSource.ts",
 		"typeorm:migration:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d ./dist/dataSource.js",
-		"generate:openapi": "ts-node --project tsconfig.json src/scripts/generate-openapi-spec.ts",
+		"generate:openapi": "node dist/cli.js openapi:generate",
 		"generate:spec": "ts-node ./tools/build_devices_spec.ts && ts-node ./tools/build_channel_spec.ts",
 		"cli": "nestjs-command",
 		"cli:prod": "node dist/cli"
