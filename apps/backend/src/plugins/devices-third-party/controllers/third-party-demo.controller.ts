@@ -16,7 +16,7 @@ import {
 } from '../devices-third-party.constants';
 import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
 import { PropertyUpdateResultModel } from '../dto/third-party-property-update-response.dto';
-import { PropertiesUpdateResultResponseModel } from '../models/properties-update-result-response.model';
+import { PropertiesUpdateResultResponseModel } from '../models/demo-control-response.model';
 
 @ApiTags(DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME)
 @Controller('demo')

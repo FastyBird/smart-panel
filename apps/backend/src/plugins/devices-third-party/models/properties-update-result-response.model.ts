@@ -19,4 +19,3 @@ export class PropertiesUpdateResultResponseModel {
 	@Type(() => PropertyUpdateResultModel)
 	properties: PropertyUpdateResultModel[];
 }
-

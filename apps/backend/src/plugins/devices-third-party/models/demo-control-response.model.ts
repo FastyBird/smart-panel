@@ -1,20 +1,22 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
-
-import { ThirdPartyDemoControlModel } from './demo-control.model';
+import { PropertyUpdateResultModel } from '../dto/third-party-property-update-response.dto';
 
 /**
- * Response wrapper for ThirdPartyDemoControlModel
+ * Response model for 207 Multi-Status response
+ * This is a raw response (not wrapped in BaseSuccessResponseModel) for third-party device updates
+ * Note: This does not extend BaseSuccessResponseModel because it's used for raw 207 responses
  */
-@ApiSchema({ name: 'DevicesThirdPartyPluginResDemoControl' })
-export class DemoControlResponseModel extends BaseSuccessResponseModel<ThirdPartyDemoControlModel> {
+@ApiSchema({ name: 'DevicesThirdPartyPluginPropertiesUpdateResult' })
+export class PropertiesUpdateResultResponseModel {
 	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => ThirdPartyDemoControlModel,
+		description: 'Array of property update results',
+		type: 'array',
+		items: { $ref: getSchemaPath(PropertyUpdateResultModel) },
 	})
 	@Expose()
-	declare data: ThirdPartyDemoControlModel;
+	@Type(() => PropertyUpdateResultModel)
+	properties: PropertyUpdateResultModel[];
 }

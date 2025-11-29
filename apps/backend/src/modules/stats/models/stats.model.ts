@@ -6,7 +6,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 /**
  * Model representing a single statistic value
  */
-@ApiSchema({ name: 'StatsModuleStatsValue' })
+@ApiSchema({ name: 'StatsModuleDataStatsValue' })
 export class StatsValueModel {
 	@ApiProperty({
 		description: 'The metric value; may be numeric or null when unavailable.',
@@ -35,7 +35,7 @@ export class StatsValueModel {
  * Per-module metrics map (e.g., cpu_load_1m, req_per_min).
  */
 @ApiSchema({
-	name: 'StatsModuleModuleStats',
+	name: 'StatsModuleDataModuleStats',
 	description: 'Per-module metrics map (e.g., cpu_load_1m, req_per_min).',
 })
 export class ModuleStatsModel {
@@ -48,7 +48,7 @@ export class ModuleStatsModel {
  * Stats grouped by module name. Known modules are listed, but additional modules are allowed.
  */
 @ApiSchema({
-	name: 'StatsModuleStats',
+	name: 'StatsModuleDataStats',
 	description: 'Stats grouped by module name. Known modules are listed, but additional modules are allowed.',
 })
 export class StatsModel {

@@ -97,8 +97,9 @@ echo "== ResponseModel checks =="
 
 # 4) Every concrete *ResponseModel class must extend BaseSuccessResponseModel
 #    We ignore the shared base definitions in api-response.model.ts.
+#    Exception: PropertiesUpdateResultResponseModel is a raw 207 Multi-Status response
 bad_response_models="$(
-  grep -REn "class .*ResponseModel" "${BACKEND_DIR}"     | grep -v "extends BaseSuccessResponseModel"     | grep -v "modules/api/models/api-response.model.ts"     || true
+  grep -REn "class .*ResponseModel" "${BACKEND_DIR}"     | grep -v "extends BaseSuccessResponseModel"     | grep -v "modules/api/models/api-response.model.ts"     | grep -v "PropertiesUpdateResultResponseModel"     || true
 )"
 
 if [ -n "${bad_response_models}" ]; then
@@ -155,8 +156,9 @@ fi
 # 6b) Direct @ApiResponse(...) usage is forbidden outside:
 #     - modules/api/decorators
 #     - modules/stats/controllers/prometheus.controller.ts
+#     - plugins/devices-third-party/controllers/third-party-demo.controller.ts (207 Multi-Status response)
 direct_api_response="$(
-  grep -REn "@ApiResponse\(" "${BACKEND_DIR}"     | grep -v "modules/api/decorators"     | grep -v "modules/stats/controllers/prometheus.controller.ts"     || true
+  grep -REn "@ApiResponse\(" "${BACKEND_DIR}"     | grep -v "modules/api/decorators"     | grep -v "modules/stats/controllers/prometheus.controller.ts"     | grep -v "plugins/devices-third-party/controllers/third-party-demo.controller.ts"     || true
 )"
 
 if [ -n "${direct_api_response}" ]; then
