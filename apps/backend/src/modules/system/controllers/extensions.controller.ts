@@ -15,7 +15,7 @@ import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../api/de
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
 import { ExtensionsResponseModel } from '../models/system-response.model';
-import { ExtensionAdminModel, ExtensionBackendModel, ExtensionBaseModel } from '../models/system.model';
+import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
 import {
 	ExtensionKindType,
 	ExtensionSourceType,

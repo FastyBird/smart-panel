@@ -17,15 +17,7 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import {
-	ApiBody,
-	ApiExtraModels,
-	ApiNoContentResponse,
-	ApiOperation,
-	ApiParam,
-	ApiQuery,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';

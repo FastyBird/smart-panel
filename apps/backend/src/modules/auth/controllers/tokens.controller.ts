@@ -32,21 +32,9 @@ import {
 import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
-import {
-	CreateAccessTokenDto,
-	CreateLongLiveTokenDto,
-	CreateRefreshTokenDto,
-	CreateTokenDto,
-	ReqCreateTokenDto,
-} from '../dto/create-token.dto';
-import {
-	ReqUpdateTokenDto,
-	UpdateAccessTokenDto,
-	UpdateLongLiveTokenDto,
-	UpdateRefreshTokenDto,
-	UpdateTokenDto,
-} from '../dto/update-token.dto';
-import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
+import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
+import { AccessTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';

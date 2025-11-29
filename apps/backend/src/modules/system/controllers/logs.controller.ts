@@ -9,7 +9,7 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../api/decorators/api-documentation.decorator';
-import { CreateLogEntryDto, ReqCreateLogEntriesDto } from '../dto/create-log-entry.dto';
+import { ReqCreateLogEntriesDto } from '../dto/create-log-entry.dto';
 import { LogEntriesResponseModel, LogEntryAcceptedResponseModel } from '../models/system-response.model';
 import { LogEntryAcceptedModel } from '../models/system.model';
 import { SystemLoggerService } from '../services/system-logger.service';

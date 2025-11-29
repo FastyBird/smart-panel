@@ -13,7 +13,7 @@ import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME } from '../devices-third-party.constants';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto, PropertyUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
+import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
 import { DemoControlResponseModel } from '../models/demo-control-response.model';
 import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
 

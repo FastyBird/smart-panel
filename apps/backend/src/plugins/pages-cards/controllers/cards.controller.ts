@@ -26,7 +26,6 @@ import {
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
-import { CreateSingleCardDto } from '../dto/create-card.dto';
 import { ReqCreateCardDto } from '../dto/create-card.dto';
 import { ReqUpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity } from '../entities/pages-cards.entity';

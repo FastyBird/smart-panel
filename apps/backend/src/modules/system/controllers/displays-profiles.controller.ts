@@ -15,7 +15,6 @@ import {
 } from '@nestjs/common';
 import {
 	ApiBody,
-	ApiExtraModels,
 	ApiNoContentResponse,
 	ApiOperation,
 	ApiParam,

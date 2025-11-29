@@ -23,7 +23,6 @@ import {
 	DiskUsedPctModel,
 	ExtensionAdminModel,
 	ExtensionBackendModel,
-	ExtensionBaseModel,
 	LogEntryAcceptedModel,
 	LogEntryContextModel,
 	LogEntryModel,

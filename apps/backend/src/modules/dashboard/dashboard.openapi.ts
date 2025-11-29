@@ -3,7 +3,6 @@
  */
 import { Type } from '@nestjs/common';
 
-import { DataSourceEntity, PageEntity, TileEntity } from './entities/dashboard.entity';
 import {
 	DataSourceResponseModel,
 	DataSourcesResponseModel,

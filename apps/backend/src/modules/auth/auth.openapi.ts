@@ -3,7 +3,7 @@
  */
 import { Type } from '@nestjs/common';
 
-import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from './entities/auth.entity';
+import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity } from './entities/auth.entity';
 import {
 	CheckEmailResponseModel,
 	CheckResponseModel,
