@@ -31,7 +31,7 @@ export class UpdateCardDto {
 
 	@ApiPropertyOptional({
 		description: 'Card order position',
-		type: 'number',
+		type: 'integer',
 		example: 1,
 	})
 	@Expose()

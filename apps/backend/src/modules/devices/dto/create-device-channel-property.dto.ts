@@ -149,6 +149,7 @@ export class CreateDeviceChannelPropertyDto {
 	@ApiPropertyOptional({
 		description: 'Property invalid value',
 		nullable: true,
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'null' }],
 		example: null,
 	})
 	@Expose()

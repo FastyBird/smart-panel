@@ -13,7 +13,7 @@ import {
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME } from '../devices-third-party.constants';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto, ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
+import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
 import { DemoControlResponseModel } from '../models/demo-control-response.model';
 import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
 

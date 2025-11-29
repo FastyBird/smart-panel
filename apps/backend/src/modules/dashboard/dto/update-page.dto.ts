@@ -37,7 +37,7 @@ export abstract class UpdatePageDto {
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
 
-	@ApiPropertyOptional({ description: 'Display order', type: 'number', example: 1 })
+	@ApiPropertyOptional({ description: 'Display order', type: 'integer', example: 1 })
 	@Expose()
 	@IsOptional()
 	@IsNumber(

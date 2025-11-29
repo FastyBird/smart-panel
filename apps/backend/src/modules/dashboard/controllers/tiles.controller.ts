@@ -31,7 +31,7 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateSingleTileDto, CreateTileDto, ReqCreateTileDto } from '../dto/create-tile.dto';
+import { CreateSingleTileDto, CreateTileDto, ReqCreateTileWithParentDto } from '../dto/create-tile.dto';
 import { ReqUpdateTileWithParentDto, UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
 import { TileEntity } from '../entities/dashboard.entity';
 import { TileResponseModel, TilesResponseModel } from '../models/dashboard-response.model';
@@ -122,7 +122,7 @@ export class TilesController {
 		operationId: 'create-dashboard-module-tile',
 	})
 	@ApiBody({
-		type: ReqCreateTileDto,
+		type: ReqCreateTileWithParentDto,
 		description: 'Payload containing the tile metadata and layout information.',
 	})
 	@ApiCreatedSuccessResponse(TileResponseModel, 'The newly created tile was returned successfully.')

@@ -51,7 +51,7 @@ export class CreatePageDto {
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
 
-	@ApiProperty({ description: 'Display order', type: 'number', example: 1 })
+	@ApiProperty({ description: 'Display order', type: 'integer', example: 1 })
 	@Expose()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },

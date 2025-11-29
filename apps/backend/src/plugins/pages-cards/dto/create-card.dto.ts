@@ -55,7 +55,7 @@ export class CreateCardDto {
 
 	@ApiProperty({
 		description: 'Card order position',
-		type: 'number',
+		type: 'integer',
 		example: 1,
 	})
 	@Expose()

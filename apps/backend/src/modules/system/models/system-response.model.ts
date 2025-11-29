@@ -141,14 +141,14 @@ export class ThrottleStatusResponseModel extends BaseSuccessResponseModel<Thrott
 export class SystemModuleLogIngestResult {
 	@ApiProperty({
 		description: 'Number of log entries accepted',
-		type: 'number',
+		type: 'integer',
 		example: 5,
 	})
 	accepted: number;
 
 	@ApiProperty({
 		description: 'Number of log entries rejected',
-		type: 'number',
+		type: 'integer',
 		example: 0,
 	})
 	rejected: number;

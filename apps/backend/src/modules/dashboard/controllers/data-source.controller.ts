@@ -31,7 +31,11 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateDataSourceDto, CreateSingleDataSourceDto, ReqCreateDataSourceDto } from '../dto/create-data-source.dto';
+import {
+	CreateDataSourceDto,
+	CreateSingleDataSourceDto,
+	ReqCreateDataSourceWithParentDto,
+} from '../dto/create-data-source.dto';
 import {
 	ReqUpdateDataSourceWithParentDto,
 	UpdateDataSourceDto,
@@ -126,7 +130,7 @@ export class DataSourceController {
 		operationId: 'create-dashboard-module-data-source',
 	})
 	@ApiBody({
-		type: ReqCreateDataSourceDto,
+		type: ReqCreateDataSourceWithParentDto,
 		description: 'Payload containing the attributes for the new data source.',
 	})
 	@ApiCreatedSuccessResponse(DataSourceResponseModel, 'The newly created data source was returned successfully.')

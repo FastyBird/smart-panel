@@ -13,7 +13,7 @@ export abstract class UpdateTileDto {
 	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported tile type."}]' })
 	readonly type: string;
 
-	@ApiPropertyOptional({ description: 'Grid row position', type: 'number', minimum: 1, example: 1 })
+	@ApiPropertyOptional({ description: 'Grid row position', type: 'integer', minimum: 1, example: 1 })
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -23,7 +23,7 @@ export abstract class UpdateTileDto {
 	@Min(1, { message: '[{"field":"col","reason":"Row minimum value must be greater than 0."}]' })
 	row?: number;
 
-	@ApiPropertyOptional({ description: 'Grid column position', type: 'number', minimum: 1, example: 1 })
+	@ApiPropertyOptional({ description: 'Grid column position', type: 'integer', minimum: 1, example: 1 })
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -35,7 +35,7 @@ export abstract class UpdateTileDto {
 
 	@ApiPropertyOptional({
 		description: 'Number of rows the tile spans',
-		type: 'number',
+		type: 'integer',
 		minimum: 1,
 		example: 1,
 	})
@@ -50,7 +50,7 @@ export abstract class UpdateTileDto {
 
 	@ApiPropertyOptional({
 		description: 'Number of columns the tile spans',
-		type: 'number',
+		type: 'integer',
 		minimum: 1,
 		example: 1,
 	})

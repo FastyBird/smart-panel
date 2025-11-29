@@ -50,7 +50,7 @@ export abstract class CreateTileDto {
 	@Type(() => CreateDataSourceDto)
 	data_source?: CreateDataSourceDto[];
 
-	@ApiProperty({ description: 'Grid row position', type: 'number', minimum: 1, example: 1 })
+	@ApiProperty({ description: 'Grid row position', type: 'integer', minimum: 1, example: 1 })
 	@Expose()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
@@ -59,7 +59,7 @@ export abstract class CreateTileDto {
 	@Min(1, { message: '[{"field":"col","reason":"Row minimum value must be greater than 0."}]' })
 	row: number;
 
-	@ApiProperty({ description: 'Grid column position', type: 'number', minimum: 1, example: 1 })
+	@ApiProperty({ description: 'Grid column position', type: 'integer', minimum: 1, example: 1 })
 	@Expose()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
@@ -71,7 +71,7 @@ export abstract class CreateTileDto {
 	@ApiPropertyOptional({
 		name: 'row_span',
 		description: 'Number of rows the tile spans',
-		type: 'number',
+		type: 'integer',
 		minimum: 1,
 		example: 1,
 	})
@@ -88,7 +88,7 @@ export abstract class CreateTileDto {
 	@ApiPropertyOptional({
 		name: 'col_span',
 		description: 'Number of columns the tile spans',
-		type: 'number',
+		type: 'integer',
 		minimum: 1,
 		example: 1,
 	})
