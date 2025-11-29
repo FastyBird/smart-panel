@@ -13,7 +13,7 @@ import {
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME } from '../devices-third-party.constants';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
+import { PropertiesUpdateRequestDto, ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
 import { DemoControlResponseModel } from '../models/demo-control-response.model';
 import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
 
@@ -33,7 +33,7 @@ export class ThirdPartyDemoController {
 		operationId: 'update-devices-third-party-plugin-demo-properties',
 	})
 	@ApiBody({
-		type: PropertiesUpdateRequestDto,
+		type: ReqUpdatePropertiesDto,
 		description: 'Array of device properties to update',
 	})
 	@ApiSuccessResponse(
@@ -46,21 +46,21 @@ export class ThirdPartyDemoController {
 	@RawRoute()
 	@Public()
 	@Put('webhook')
-	async controlDevice(@Body() body: PropertiesUpdateRequestDto): Promise<DemoControlResponseModel> {
+	async controlDevice(@Body() body: ReqUpdatePropertiesDto): Promise<DemoControlResponseModel> {
 		this.logger.debug('[THIRD-PARTY][DEMO CONTROLLER] Execute demo property update');
 
 		const controlData = {
 			properties: [],
 		};
 
-		for (const property of body.properties) {
+		for (const property of body.data.properties) {
 			controlData.properties.push({
 				...property,
 				status: ThirdPartyPropertiesUpdateStatus.SUCCESS,
 			});
 		}
 
-		for (const update of body.properties) {
+		for (const update of body.data.properties) {
 			const property = await this.channelsPropertiesService.findOne(update.property);
 
 			if (property === null) {

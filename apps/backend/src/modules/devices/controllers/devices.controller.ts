@@ -30,8 +30,8 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceDto } from '../dto/create-device.dto';
-import { UpdateDeviceDto } from '../dto/update-device.dto';
+import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
+import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceResponseModel, DevicesResponseModel } from '../models/devices-response.model';
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
@@ -112,7 +112,7 @@ export class DevicesController {
 			'Creates a new device resource in the system. The request requires device-specific attributes such as category and name. The response includes the full representation of the created device, including its associated channels, controls, and properties. Additionally, a Location header is provided with the URI of the newly created resource.',
 		operationId: 'create-devices-module-device',
 	})
-	@ApiBody({ type: CreateDeviceDto, description: 'The data required to create a new device' })
+	@ApiBody({ type: ReqCreateDeviceDto, description: 'The data required to create a new device' })
 	@ApiCreatedSuccessResponse(
 		DeviceResponseModel,
 		'The device was successfully created. The response includes the complete details of the newly created device, such as its unique identifier, name, category, and timestamps.',
@@ -193,7 +193,7 @@ export class DevicesController {
 		operationId: 'update-devices-module-device',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
-	@ApiBody({ type: UpdateDeviceDto, description: 'The data required to update an existing device' })
+	@ApiBody({ type: ReqUpdateDeviceDto, description: 'The data required to update an existing device' })
 	@ApiSuccessResponse(
 		DeviceResponseModel,
 		'The device was successfully updated. The response includes the complete details of the updated device, such as its unique identifier, name, category, and timestamps.',
