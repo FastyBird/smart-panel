@@ -5,8 +5,8 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { ConfigModuleWeatherType } from '../../../openapi.constants';
-import { PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleWeatherType, ConfigModuleSection } from '../../../openapi.constants';
+import { type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -83,7 +83,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 					const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
 						params: {
 							path: {
-								section: PathsConfigModuleConfigSectionGetParametersPathSection.weather,
+								section: ConfigModuleSection.weather,
 							},
 						},
 					});
@@ -149,7 +149,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 				const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
 					params: {
 						path: {
-							section: PathsConfigModuleConfigSectionGetParametersPathSection.weather,
+							section: ConfigModuleSection.weather,
 						},
 					},
 					body: {
