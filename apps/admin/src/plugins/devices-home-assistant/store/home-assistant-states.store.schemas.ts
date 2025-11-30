@@ -2,7 +2,7 @@ import { type ZodType, z } from 'zod';
 
 import type { components } from '../../../openapi';
 
-type ApiState = components['schemas']['DevicesHomeAssistantPluginState'];
+type ApiState = components['schemas']['DevicesHomeAssistantPluginDataState'];
 
 // STORE STATE
 // ===========

@@ -4,7 +4,7 @@ import { ConfigModuleSystemLog_levels, SystemModuleLogEntrySource, type componen
 import { DEFAULT_PAGE_SIZE } from '../system.constants';
 
 type ApiCreateLogEntry = components['schemas']['SystemModuleCreateLogEntry'];
-type ApiLogEntry = components['schemas']['SystemModuleLogEntry'];
+type ApiLogEntry = components['schemas']['SystemModuleDataLogEntry'];
 
 export const LogEntryIdSchema = z.string().ulid();
 

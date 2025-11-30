@@ -9,7 +9,7 @@ import { ConfigPluginResSchema, ConfigPluginSchema } from './config-plugins.stor
 import { ConfigSystemResSchema, ConfigSystemSchema } from './config-system.store.schemas';
 import { ConfigWeatherBaseResSchema, ConfigWeatherSchema } from './config-weather.store.schemas';
 
-type ApiConfigApp = components['schemas']['ConfigModuleApp'];
+type ApiConfigApp = components['schemas']['ConfigModuleDataApp'];
 
 // STORE STATE
 // ===========

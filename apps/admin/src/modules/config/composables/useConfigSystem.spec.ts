@@ -5,13 +5,13 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigModuleSystemLog_levels, ConfigModuleSystemType } from '../../../openapi';
+import { ConfigModuleSystemLog_levels, ConfigModuleDataSystemType } from '../../../openapi';
 import type { IConfigSystem } from '../store/config-system.store.types';
 
 import { useConfigSystem } from './useConfigSystem';
 
 const mockSystem: IConfigSystem = {
-	type: ConfigModuleSystemType.system,
+	type: ConfigModuleDataSystemType.system,
 	logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn, ConfigModuleSystemLog_levels.error],
 };
 

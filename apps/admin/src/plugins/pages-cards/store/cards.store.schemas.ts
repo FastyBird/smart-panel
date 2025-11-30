@@ -6,7 +6,7 @@ import { type components } from '../../../openapi';
 
 type ApiCreateCard = components['schemas']['PagesCardsPluginCreateCard'];
 type ApiUpdateCard = components['schemas']['PagesCardsPluginUpdateCard'];
-type ApiCard = components['schemas']['PagesCardsPluginCard'];
+type ApiCard = components['schemas']['PagesCardsPluginDataCard'];
 
 // STORE STATE
 // ===========

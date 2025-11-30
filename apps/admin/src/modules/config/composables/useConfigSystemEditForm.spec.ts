@@ -3,14 +3,14 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleSystemLog_levels, ConfigModuleSystemType } from '../../../openapi';
+import { ConfigModuleSystemLog_levels, ConfigModuleDataSystemType } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigSystemEditForm } from './useConfigSystemEditForm';
 
 const mockConfig = {
-	type: ConfigModuleSystemType.system,
+	type: ConfigModuleDataSystemType.system,
 	logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn, ConfigModuleSystemLog_levels.error],
 };
 

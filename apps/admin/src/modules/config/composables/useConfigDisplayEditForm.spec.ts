@@ -3,14 +3,14 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDisplayType } from '../../../openapi';
+import { ConfigModuleDataDisplayType } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigDisplayEditForm } from './useConfigDisplayEditForm';
 
 const mockConfig = {
-	type: ConfigModuleDisplayType.display,
+	type: ConfigModuleDataDisplayType.display,
 	darkMode: true,
 	brightness: 80,
 	screenLockDuration: 300,

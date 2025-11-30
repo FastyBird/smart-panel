@@ -3,14 +3,14 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleAudioType } from '../../../openapi';
+import { ConfigModuleDataAudioType } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigAudioEditForm } from './useConfigAudioEditForm';
 
 const mockConfig = {
-	type: ConfigModuleAudioType.audio,
+	type: ConfigModuleDataAudioType.audio,
 	speaker: true,
 	speakerVolume: 80,
 	microphone: false,

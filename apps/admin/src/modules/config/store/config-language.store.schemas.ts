@@ -1,15 +1,15 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType, type components } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType, type components } from '../../../openapi';
 
-type ApiConfigLanguage = components['schemas']['ConfigModuleLanguage'];
+type ApiConfigLanguage = components['schemas']['ConfigModuleDataLanguage'];
 type ApiConfigUpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];
 
 // STORE STATE
 // ===========
 
 export const ConfigLanguageSchema = z.object({
-	type: z.nativeEnum(ConfigModuleLanguageType),
+	type: z.nativeEnum(ConfigModuleDataLanguageType),
 	language: z.nativeEnum(ConfigModuleLanguageLanguage),
 	timezone: z.string(),
 	timeFormat: z.nativeEnum(ConfigModuleLanguageTime_format),
@@ -47,14 +47,14 @@ export const ConfigLanguageEditActionPayloadSchema = z.object({
 // ===========
 
 export const ConfigLanguageUpdateReqSchema: ZodType<ApiConfigUpdateLanguage> = z.object({
-	type: z.nativeEnum(ConfigModuleLanguageType),
+	type: z.nativeEnum(ConfigModuleDataLanguageType),
 	language: z.nativeEnum(ConfigModuleLanguageLanguage),
 	timezone: z.string(),
 	time_format: z.nativeEnum(ConfigModuleLanguageTime_format),
 });
 
 export const ConfigLanguageResSchema: ZodType<ApiConfigLanguage> = z.object({
-	type: z.nativeEnum(ConfigModuleLanguageType),
+	type: z.nativeEnum(ConfigModuleDataLanguageType),
 	language: z.nativeEnum(ConfigModuleLanguageLanguage),
 	timezone: z.string(),
 	time_format: z.nativeEnum(ConfigModuleLanguageTime_format),

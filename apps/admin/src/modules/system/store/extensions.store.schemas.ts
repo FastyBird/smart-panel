@@ -3,13 +3,13 @@ import { type ZodType, z } from 'zod';
 import {
 	SystemModuleExtensionAdminSurface,
 	SystemModuleExtensionBackendSurface,
-	SystemModuleExtensionBaseKind,
-	SystemModuleExtensionBaseSource,
+	SystemModuleDataExtensionBaseKind,
+	SystemModuleDataExtensionBaseSource,
 	type components,
 } from '../../../openapi';
 
-type ApiExtensionAdmin = components['schemas']['SystemModuleExtensionAdmin'];
-type ApiExtensionBackend = components['schemas']['SystemModuleExtensionBackend'];
+type ApiExtensionAdmin = components['schemas']['SystemModuleDataExtensionAdmin'];
+type ApiExtensionBackend = components['schemas']['SystemModuleDataExtensionBackend'];
 
 export const ExtensionNameSchema = z.string();
 
@@ -18,12 +18,12 @@ export const ExtensionNameSchema = z.string();
 
 export const ExtensionBaseSchema = z.object({
 	name: ExtensionNameSchema,
-	kind: z.nativeEnum(SystemModuleExtensionBaseKind),
+	kind: z.nativeEnum(SystemModuleDataExtensionBaseKind),
 	surface: z.string(),
 	displayName: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(SystemModuleExtensionBaseSource),
+	source: z.nativeEnum(SystemModuleDataExtensionBaseSource),
 });
 
 export const ExtensionSchema = z.union([
@@ -56,23 +56,23 @@ export const ExtensionsGetActionPayloadSchema = z.object({
 
 export const ExtensionAdminResSchema: ZodType<ApiExtensionAdmin> = z.object({
 	name: z.string(),
-	kind: z.nativeEnum(SystemModuleExtensionBaseKind),
+	kind: z.nativeEnum(SystemModuleDataExtensionBaseKind),
 	surface: z.nativeEnum(SystemModuleExtensionAdminSurface),
 	display_name: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(SystemModuleExtensionBaseSource),
+	source: z.nativeEnum(SystemModuleDataExtensionBaseSource),
 	remote_url: z.string(),
 });
 
 export const ExtensionBackendResSchema: ZodType<ApiExtensionBackend> = z.object({
 	name: z.string(),
-	kind: z.nativeEnum(SystemModuleExtensionBaseKind),
+	kind: z.nativeEnum(SystemModuleDataExtensionBaseKind),
 	surface: z.nativeEnum(SystemModuleExtensionBackendSurface),
 	display_name: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(SystemModuleExtensionBaseSource),
+	source: z.nativeEnum(SystemModuleDataExtensionBaseSource),
 	route_prefix: z.string(),
 });
 

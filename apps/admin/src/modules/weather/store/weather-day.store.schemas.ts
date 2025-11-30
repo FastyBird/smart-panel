@@ -2,7 +2,7 @@ import { type ZodType, z } from 'zod';
 
 import { type components } from '../../../openapi';
 
-type ApiWeatherCurrentDay = components['schemas']['WeatherModuleCurrentDay'];
+type ApiWeatherCurrentDay = components['schemas']['WeatherModuleDataCurrentDay'];
 
 // STORE STATE
 // ===========

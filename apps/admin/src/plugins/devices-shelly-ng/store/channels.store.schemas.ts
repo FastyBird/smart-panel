@@ -3,9 +3,9 @@ import { type ZodType, z } from 'zod';
 import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateReqSchema } from '../../../modules/devices';
 import { DevicesShellyNgPluginShellyNgDeviceType, type components } from '../../../openapi';
 
-type ApiCreateChannel = components['schemas']['DevicesShellyNgPluginCreateShellyNgChannel'];
-type ApiUpdateChannel = components['schemas']['DevicesShellyNgPluginUpdateShellyNgChannel'];
-type ApiChannel = components['schemas']['DevicesShellyNgPluginShellyNgChannel'];
+type ApiCreateChannel = components['schemas']['DevicesShellyNgPluginDataChannel'];
+type ApiUpdateChannel = components['schemas']['DevicesShellyNgPluginDataChannel'];
+type ApiChannel = components['schemas']['DevicesShellyNgPluginDataChannel'];
 
 export const ShellyNgChannelSchema = ChannelSchema;
 

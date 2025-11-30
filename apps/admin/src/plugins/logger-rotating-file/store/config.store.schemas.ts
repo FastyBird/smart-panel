@@ -4,7 +4,7 @@ import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema 
 import { LoggerRotatingFilePluginConfigType, type components } from '../../../openapi';
 
 type ApiUpdateConfig = components['schemas']['LoggerRotatingFilePluginUpdateConfig'];
-type ApiConfig = components['schemas']['LoggerRotatingFilePluginConfig'];
+type ApiConfig = components['schemas']['LoggerRotatingFilePluginDataConfig'];
 
 export const RotatingFileConfigSchema = ConfigPluginSchema.extend({
 	dir: z.string().nullable(),

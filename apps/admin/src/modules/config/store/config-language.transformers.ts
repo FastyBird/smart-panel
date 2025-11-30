@@ -1,5 +1,5 @@
 import { camelToSnake, logger, snakeToCamel } from '../../../common';
-import { ConfigModuleLanguageType } from '../../../openapi';
+import { ConfigModuleDataLanguageType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioRes } from './config-audio.store.types';
@@ -24,7 +24,7 @@ export const transformConfigLanguageResponse = (
 };
 
 export const transformConfigLanguageUpdateRequest = (config: IConfigLanguageEditActionPayload['data']): IConfigLanguageUpdateReq => {
-	const parsedRequest = ConfigLanguageUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleLanguageType.language });
+	const parsedRequest = ConfigLanguageUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleDataLanguageType.language });
 
 	if (!parsedRequest.success) {
 		logger.error('Schema validation failed with:', parsedRequest.error);

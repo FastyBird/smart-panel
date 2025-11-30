@@ -4,7 +4,7 @@ import { UsersModuleUserRole, type components } from '../../../openapi';
 import { AccessTokenType } from '../auth.constants';
 
 type ApiLogin = components['schemas']['AuthModuleLogin'];
-type ApiTokenPair = components['schemas']['AuthModuleTokenPair'];
+type ApiTokenPair = components['schemas']['AuthModuleDataTokenPair'];
 
 export const TokenPayloadSchema = z.object({
 	sub: z.string().uuid(),

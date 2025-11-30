@@ -2,19 +2,19 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleSystemLog_levels, ConfigModuleSystemType } from '../../../openapi';
+import { ConfigModuleSystemLog_levels, ConfigModuleDataSystemType } from '../../../openapi';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigSystem } from './config-system.store';
 import type { IConfigSystemEditActionPayload, IConfigSystemSetActionPayload } from './config-system.store.types';
 
 const mockSystemRes = {
-	type: ConfigModuleSystemType.system,
+	type: ConfigModuleDataSystemType.system,
 	log_levels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
 };
 
 const mockSystem = {
-	type: ConfigModuleSystemType.system,
+	type: ConfigModuleDataSystemType.system,
 	logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
 };
 

@@ -9,7 +9,7 @@ import { ItemIdSchema } from './types';
 
 type ApiCreateDevice = components['schemas']['DevicesModuleCreateDevice'];
 type ApiUpdateDevice = components['schemas']['DevicesModuleUpdateDevice'];
-type ApiDevice = components['schemas']['DevicesModuleDevice'];
+type ApiDevice = components['schemas']['DevicesModuleDataDevice'];
 
 // STORE STATE
 // ===========

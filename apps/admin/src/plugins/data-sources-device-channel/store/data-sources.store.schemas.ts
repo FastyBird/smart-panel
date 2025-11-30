@@ -11,7 +11,7 @@ import { DataSourcesDeviceChannelPluginDeviceChannelDataSourceType, type compone
 
 type ApiCreateDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
 type ApiUpdateDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource'];
-type ApiDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginDeviceChannelDataSource'];
+type ApiDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginDataDeviceChannelDataSource'];
 
 // STORE STATE
 // ===========

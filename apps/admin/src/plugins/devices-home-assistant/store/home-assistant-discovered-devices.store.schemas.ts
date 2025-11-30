@@ -4,7 +4,7 @@ import type { components } from '../../../openapi';
 
 import { HomeAssistantStateResSchema } from './home-assistant-states.store.schemas';
 
-type ApiDiscoveredDevice = components['schemas']['DevicesHomeAssistantPluginDiscoveredDevice'];
+type ApiDiscoveredDevice = components['schemas']['DevicesHomeAssistantPluginDataDiscoveredDevice'];
 
 // STORE STATE
 // ===========

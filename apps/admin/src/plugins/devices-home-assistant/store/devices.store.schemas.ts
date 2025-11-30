@@ -3,9 +3,9 @@ import { type ZodType, z } from 'zod';
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
 import { DevicesHomeAssistantPluginHomeAssistantDeviceType, type components } from '../../../openapi';
 
-type ApiCreateDevice = components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantDevice'];
-type ApiDevice = components['schemas']['DevicesHomeAssistantPluginHomeAssistantDevice'];
+type ApiCreateDevice = components['schemas']['DevicesHomeAssistantPluginDataDevice'];
+type ApiUpdateDevice = components['schemas']['DevicesHomeAssistantPluginDataDevice'];
+type ApiDevice = components['schemas']['DevicesHomeAssistantPluginDataDevice'];
 
 export const HomeAssistantDeviceSchema = DeviceSchema.extend({
 	haDeviceId: z.string().trim().nonempty(),

@@ -6,7 +6,7 @@ import { PagesDeviceDetailPluginDeviceDetailPageType, type components } from '..
 
 type ApiCreateDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginCreateDeviceDetailPage'];
 type ApiUpdateDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginUpdateDeviceDetailPage'];
-type ApiDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginDeviceDetailPage'];
+type ApiDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginDataDeviceDetailPage'];
 
 // STORE STATE
 // ===========

@@ -9,7 +9,7 @@ import { ItemIdSchema } from './types';
 
 type ApiCreateChannel = components['schemas']['DevicesModuleCreateChannel'];
 type ApiUpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
-type ApiChannel = components['schemas']['DevicesModuleChannel'];
+type ApiChannel = components['schemas']['DevicesModuleDataChannel'];
 
 // STORE STATE
 // ===========

@@ -7,8 +7,8 @@ type ApiCreateDayWeatherTile = components['schemas']['TilesWeatherPluginCreateDa
 type ApiCreateForecastWeatherTile = components['schemas']['TilesWeatherPluginCreateForecastWeatherTile'];
 type ApiUpdateDayWeatherTile = components['schemas']['TilesWeatherPluginUpdateDayWeatherTile'];
 type ApiUpdateForecastWeatherTile = components['schemas']['TilesWeatherPluginUpdateForecastWeatherTile'];
-type ApiDayWeatherTile = components['schemas']['TilesWeatherPluginDayWeatherTile'];
-type ApiForecastWeatherTile = components['schemas']['TilesWeatherPluginForecastWeatherTile'];
+type ApiDayWeatherTile = components['schemas']['TilesWeatherPluginDataDayWeatherTile'];
+type ApiForecastWeatherTile = components['schemas']['TilesWeatherPluginDataForecastWeatherTile'];
 
 // STORE STATE
 // ===========

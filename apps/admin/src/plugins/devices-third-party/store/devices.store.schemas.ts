@@ -3,9 +3,9 @@ import { type ZodType, z } from 'zod';
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
 import { DevicesThirdPartyPluginThirdPartyDeviceType, type components } from '../../../openapi';
 
-type ApiCreateDevice = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyDevice'];
-type ApiDevice = components['schemas']['DevicesThirdPartyPluginThirdPartyDevice'];
+type ApiCreateDevice = components['schemas']['DevicesThirdPartyPluginDataDevice'];
+type ApiUpdateDevice = components['schemas']['DevicesThirdPartyPluginDataDevice'];
+type ApiDevice = components['schemas']['DevicesThirdPartyPluginDataDevice'];
 
 export const ThirdPartyDeviceSchema = DeviceSchema.extend({
 	serviceAddress: z.string().trim().url(),

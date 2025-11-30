@@ -5,7 +5,7 @@ import { UsersModuleUserRole, type components } from '../../../openapi';
 
 type ApiCreateUser = components['schemas']['UsersModuleCreateUser'];
 type ApiUpdateUser = components['schemas']['UsersModuleUpdateUser'];
-type ApiUser = components['schemas']['UsersModuleUser'];
+type ApiUser = components['schemas']['UsersModuleDataUser'];
 
 export const UserIdSchema = z.string().uuid();
 

@@ -5,7 +5,7 @@ import { type components } from '../../../openapi';
 
 type ApiCreateDisplayInstance = components['schemas']['UsersModuleCreateDisplayInstance'];
 type ApiUpdateDisplayInstance = components['schemas']['UsersModuleUpdateDisplayInstance'];
-type ApiDisplayInstance = components['schemas']['UsersModuleDisplayInstance'];
+type ApiDisplayInstance = components['schemas']['UsersModuleDataDisplayInstance'];
 
 export const DisplayIdSchema = z.string().uuid();
 

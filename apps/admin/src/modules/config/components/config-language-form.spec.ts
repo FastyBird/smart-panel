@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi';
 import type { IConfigLanguageEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigLanguageStore } from '../store/config-language.store.types';
@@ -59,7 +59,7 @@ describe('ConfigLanguageForm', (): void => {
 				remoteFormReset: false,
 				layout: Layout.DEFAULT,
 				config: {
-					type: ConfigModuleLanguageType.language,
+					type: ConfigModuleDataLanguageType.language,
 					language: ConfigModuleLanguageLanguage.en_US,
 					timezone: 'Europe/Prague',
 					timeFormat: ConfigModuleLanguageTime_format.Value24h,

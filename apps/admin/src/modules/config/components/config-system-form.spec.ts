@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleSystemLog_levels, ConfigModuleSystemType } from '../../../openapi';
+import { ConfigModuleSystemLog_levels, ConfigModuleDataSystemType } from '../../../openapi';
 import type { IConfigSystemEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigSystemStore } from '../store/config-system.store.types';
@@ -59,7 +59,7 @@ describe('ConfigSystemForm', (): void => {
 				remoteFormReset: false,
 				layout: Layout.DEFAULT,
 				config: {
-					type: ConfigModuleSystemType.system,
+					type: ConfigModuleDataSystemType.system,
 					logLevels: [ConfigModuleSystemLog_levels.fatal],
 				},
 			},

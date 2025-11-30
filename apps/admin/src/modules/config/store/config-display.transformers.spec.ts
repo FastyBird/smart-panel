@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDisplayType } from '../../../openapi';
+import { ConfigModuleDataDisplayType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigDisplayEditActionPayload, IConfigDisplayRes } from './config-display.store.types';
@@ -21,7 +21,7 @@ vi.mock('../../../common', async () => {
 });
 
 const validConfigDisplayResponse: IConfigDisplayRes = {
-	type: ConfigModuleDisplayType.display,
+	type: ConfigModuleDataDisplayType.display,
 	dark_mode: true,
 	brightness: 80,
 	screen_lock_duration: 300,
@@ -41,7 +41,7 @@ describe('Config Display Transformers', (): void => {
 			const result = transformConfigDisplayResponse(validConfigDisplayResponse);
 
 			expect(result).toEqual({
-				type: ConfigModuleDisplayType.display,
+				type: ConfigModuleDataDisplayType.display,
 				darkMode: true,
 				brightness: 80,
 				screenLockDuration: 300,
@@ -61,7 +61,7 @@ describe('Config Display Transformers', (): void => {
 			const result = transformConfigDisplayUpdateRequest(validConfigDisplayUpdatePayload);
 
 			expect(result).toEqual({
-				type: ConfigModuleDisplayType.display,
+				type: ConfigModuleDataDisplayType.display,
 				dark_mode: true,
 				brightness: 80,
 				screen_lock_duration: 300,

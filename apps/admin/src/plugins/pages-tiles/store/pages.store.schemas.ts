@@ -14,7 +14,7 @@ import { PagesTilesPluginTilesPageType, type components } from '../../../openapi
 
 type ApiCreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];
 type ApiUpdateTilesPage = components['schemas']['PagesTilesPluginUpdateTilesPage'];
-type ApiTilesPage = components['schemas']['PagesTilesPluginTilesPage'];
+type ApiTilesPage = components['schemas']['PagesTilesPluginDataTilesPage'];
 
 // STORE STATE
 // ===========

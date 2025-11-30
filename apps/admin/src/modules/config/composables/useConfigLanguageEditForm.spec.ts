@@ -3,14 +3,14 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigLanguageEditForm } from './useConfigLanguageEditForm';
 
 const mockConfig = {
-	type: ConfigModuleLanguageType.language,
+	type: ConfigModuleDataLanguageType.language,
 	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
 	timeFormat: ConfigModuleLanguageTime_format.Value24h,

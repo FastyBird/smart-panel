@@ -7,8 +7,8 @@ import { DataSourceCreateReqSchema, DataSourceResSchema } from './data-sources.s
 import { ItemIdSchema } from './types';
 
 type ApiCreateTile = components['schemas']['DashboardModuleCreateTile'];
-type ApiUpdateTile = components['schemas']['DashboardModuleUpdateTile'];
-type ApiTile = components['schemas']['DashboardModuleTile'];
+type ApiUpdateTile = components['schemas']['DashboardModuleUpdateSingleTile'];
+type ApiTile = components['schemas']['DashboardModuleDataTile'];
 
 // STORE STATE
 // ===========

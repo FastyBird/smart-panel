@@ -5,7 +5,7 @@ import { TilesDevicePreviewPluginDevicePreviewTileType, type components } from '
 
 type ApiCreateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginCreateDevicePreviewTile'];
 type ApiUpdateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginUpdateDevicePreviewTile'];
-type ApiDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginDevicePreviewTile'];
+type ApiDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginDataDevicePreviewTile'];
 
 // STORE STATE
 // ===========

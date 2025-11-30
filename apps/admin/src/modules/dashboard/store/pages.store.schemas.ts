@@ -8,7 +8,7 @@ import { ItemIdSchema } from './types';
 
 type ApiCreatePage = components['schemas']['DashboardModuleCreatePage'];
 type ApiUpdatePage = components['schemas']['DashboardModuleUpdatePage'];
-type ApiPage = components['schemas']['DashboardModulePage'];
+type ApiPage = components['schemas']['DashboardModuleDataPage'];
 
 // STORE STATE
 // ===========

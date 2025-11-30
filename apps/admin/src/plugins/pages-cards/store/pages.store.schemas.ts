@@ -14,7 +14,7 @@ import { CardCreateReqSchema, CardResSchema } from './cards.store.schemas';
 
 type ApiCreateCardsPage = components['schemas']['PagesCardsPluginCreateCardsPage'];
 type ApiUpdateCardsPage = components['schemas']['PagesCardsPluginUpdateCardsPage'];
-type ApiCardsPage = components['schemas']['PagesCardsPluginCardsPage'];
+type ApiCardsPage = components['schemas']['PagesCardsPluginDataCardsPage'];
 
 // STORE STATE
 // ===========

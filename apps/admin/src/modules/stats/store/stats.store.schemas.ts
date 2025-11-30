@@ -2,7 +2,7 @@ import { type ZodType, z } from 'zod';
 
 import { type components } from '../../../openapi';
 
-type ApiStats = components['schemas']['StatsModuleStats'];
+type ApiStats = components['schemas']['StatsModuleDataStats'];
 
 // STORE STATE
 // ===========

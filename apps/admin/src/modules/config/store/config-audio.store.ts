@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { ConfigModuleAudioType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleDataAudioType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -53,7 +53,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 		};
 
 		const set = (payload: IConfigAudioSetActionPayload): IConfigAudio => {
-			const parsedConfigAudio = ConfigAudioSchema.safeParse({ ...payload.data, type: ConfigModuleAudioType.audio });
+			const parsedConfigAudio = ConfigAudioSchema.safeParse({ ...payload.data, type: ConfigModuleDataAudioType.audio });
 
 			if (!parsedConfigAudio.success) {
 				logger.error('Schema validation failed with:', parsedConfigAudio.error);

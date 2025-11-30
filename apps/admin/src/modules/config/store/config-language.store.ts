@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { ConfigModuleLanguageType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleDataLanguageType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -53,7 +53,7 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 		};
 
 		const set = (payload: IConfigLanguageSetActionPayload): IConfigLanguage => {
-			const parsedConfigLanguage = ConfigLanguageSchema.safeParse({ ...payload.data, type: ConfigModuleLanguageType.language });
+			const parsedConfigLanguage = ConfigLanguageSchema.safeParse({ ...payload.data, type: ConfigModuleDataLanguageType.language });
 
 			if (!parsedConfigLanguage.success) {
 				logger.error('Schema validation failed with:', parsedConfigLanguage.error);

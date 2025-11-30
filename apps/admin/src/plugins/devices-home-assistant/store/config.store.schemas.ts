@@ -4,7 +4,7 @@ import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema 
 import { DevicesHomeAssistantPluginHomeAssistantDeviceType, type components } from '../../../openapi';
 
 type ApiUpdateConfig = components['schemas']['DevicesHomeAssistantPluginUpdateConfig'];
-type ApiConfig = components['schemas']['DevicesHomeAssistantPluginConfig'];
+type ApiConfig = components['schemas']['DevicesHomeAssistantPluginDataConfig'];
 
 export const HomeAssistantConfigSchema = ConfigPluginSchema.extend({
 	apiKey: z.string().trim().nonempty().nullable(),

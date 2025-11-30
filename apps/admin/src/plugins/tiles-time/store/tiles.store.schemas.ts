@@ -5,7 +5,7 @@ import { TilesTimePluginTimeTileType, type components } from '../../../openapi';
 
 type ApiCreateTimeTile = components['schemas']['TilesTimePluginCreateTimeTile'];
 type ApiUpdateTimeTile = components['schemas']['TilesTimePluginUpdateTimeTile'];
-type ApiTimeTile = components['schemas']['TilesTimePluginTimeTile'];
+type ApiTimeTile = components['schemas']['TilesTimePluginDataTimeTile'];
 
 // STORE STATE
 // ===========

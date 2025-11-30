@@ -3,7 +3,7 @@ import { type ZodType, z } from 'zod';
 import { type components } from '../../../openapi';
 import { ItemIdSchema } from '../../devices';
 
-type ApiConfigPlugin = components['schemas']['ConfigModulePlugin'];
+type ApiConfigPlugin = components['schemas']['ConfigModuleDataPlugin'];
 type ApiConfigUpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
 
 // STORE STATE

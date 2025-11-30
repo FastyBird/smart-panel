@@ -6,8 +6,8 @@ import type { components } from '../../../openapi';
 import { ItemIdSchema } from './types';
 
 type ApiCreateDataSource = components['schemas']['DashboardModuleCreateDataSource'];
-type ApiUpdateDataSource = components['schemas']['DashboardModuleUpdateDataSource'];
-type ApiDataSource = components['schemas']['DashboardModuleDataSource'];
+type ApiUpdateDataSource = components['schemas']['DashboardModuleUpdateSingleDataSource'];
+type ApiDataSource = components['schemas']['DashboardModuleDataDataSource'];
 
 // STORE STATE
 // ===========

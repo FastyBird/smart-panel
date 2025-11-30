@@ -4,8 +4,8 @@ import {
 	ConfigModuleSystemLog_levels,
 	SystemModuleExtensionAdminSurface,
 	SystemModuleExtensionBackendSurface,
-	SystemModuleExtensionBaseKind,
-	SystemModuleExtensionBaseSource,
+	SystemModuleDataExtensionBaseKind,
+	SystemModuleDataExtensionBaseSource,
 	SystemModuleLogEntrySource,
 } from '../../../openapi';
 
@@ -22,7 +22,7 @@ export const SystemLogsFilterSchema = z.object({
 
 export const ExtensionsFilterSchema = z.object({
 	search: z.string().optional(),
-	kinds: z.array(z.nativeEnum(SystemModuleExtensionBaseKind)).default([]),
+	kinds: z.array(z.nativeEnum(SystemModuleDataExtensionBaseKind)).default([]),
 	surfaces: z.array(z.union([z.nativeEnum(SystemModuleExtensionAdminSurface), z.nativeEnum(SystemModuleExtensionBackendSurface)])).default([]),
-	sources: z.array(z.nativeEnum(SystemModuleExtensionBaseSource)).default([]),
+	sources: z.array(z.nativeEnum(SystemModuleDataExtensionBaseSource)).default([]),
 });

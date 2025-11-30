@@ -12,7 +12,7 @@ import { ItemIdSchema } from './types';
 
 type ApiCreateChannelProperty = components['schemas']['DevicesModuleCreateChannelProperty'];
 type ApiUpdateChannelProperty = components['schemas']['DevicesModuleUpdateChannelProperty'];
-type ApiChannelProperty = components['schemas']['DevicesModuleChannelProperty'];
+type ApiChannelProperty = components['schemas']['DevicesModuleDataChannelProperty'];
 
 // STORE STATE
 // ===========
