@@ -52,9 +52,6 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - name: "Run Code Preparation"
-        run: "pnpm bootstrap"
-  
       - name: "Run Code Linting"
         run: "pnpm --filter @fastybird/smart-panel-backend lint:js"
 
@@ -96,9 +93,6 @@ jobs:
             -e INFLUXDB_ADMIN_PASSWORD= \
             influxdb:1.8
 
-      - name: "Run Code Preparation"
-        run: "pnpm bootstrap"
-    
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-backend test:unit"
 
@@ -136,9 +130,6 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - name: "Run Code Preparation"
-        run: "pnpm bootstrap"
-
       - name: "Run Code Linting"
         run: "pnpm --filter @fastybird/smart-panel-admin lint:js"
 
@@ -168,9 +159,6 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - name: "Run Code Preparation"
-        run: "pnpm bootstrap"
-  
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-admin test:unit"
 
@@ -208,9 +196,6 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - name: "Run Code Preparation"
-        run: "pnpm bootstrap"
-  
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
 

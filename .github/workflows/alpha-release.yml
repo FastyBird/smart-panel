@@ -134,9 +134,6 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - name: "Run Code Preparation"
-        run: "pnpm bootstrap"
-  
       - name: "Build App"
         run: "pnpm --filter @fastybird/smart-panel-backend build"
 
@@ -191,9 +188,6 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - name: "Run Code Preparation"
-        run: "pnpm bootstrap"
-    
       - name: "Build App"
         run: "pnpm --filter @fastybird/smart-panel-admin build"
 
@@ -252,10 +246,7 @@ jobs:
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
-  
-      - name: "Run Backend Code Preparation"
-        run: "pnpm bootstrap"
-    
+
       - name: "Run Panel Code Preparation"
         run: "melos rebuild-all"
     
