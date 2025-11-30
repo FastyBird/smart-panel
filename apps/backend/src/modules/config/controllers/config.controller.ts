@@ -155,6 +155,95 @@ export class ConfigController {
 		]);
 	}
 
+	@Patch(':section')
+	@ApiOperation({
+		tags: [CONFIG_MODULE_API_TAG_NAME],
+		summary: 'Update configuration section',
+		description: 'Update a specific configuration section',
+		operationId: 'update-config-module-config-section',
+	})
+	@ApiParam({
+		name: 'section',
+		description: 'Configuration section identifier',
+		enum: Object.values(SectionType),
+		example: SectionType.AUDIO,
+	})
+	@ApiBody({ type: ReqUpdateSectionDto, description: 'Configuration section data' })
+	@ApiSuccessResponse(ConfigModuleResSection, 'Section configuration updated successfully')
+	@ApiBadRequestResponse('Invalid section identifier or configuration data')
+	@ApiNotFoundResponse('Configuration section not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	async updateConfigSection(
+		@Param('section') section: keyof AppConfigModel,
+		@Body() dto: ReqUpdateSectionDto,
+	): Promise<ConfigModuleResSection> {
+		this.logger.debug(`[UPDATE] Incoming update request for section=${section}`);
+
+		switch (section) {
+			case SectionType.AUDIO: {
+				await this.service.setConfigSection(SectionType.AUDIO, dto.data, UpdateAudioConfigDto);
+
+				const config = this.service.getConfigSection<AudioConfigModel>(SectionType.AUDIO, AudioConfigModel);
+
+				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
+
+				return this.createSectionResponse(config);
+			}
+			case SectionType.DISPLAY: {
+				await this.service.setConfigSection(SectionType.DISPLAY, dto.data, UpdateDisplayConfigDto);
+
+				const config = this.service.getConfigSection<DisplayConfigModel>(SectionType.DISPLAY, DisplayConfigModel);
+
+				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
+
+				return this.createSectionResponse(config);
+			}
+			case SectionType.LANGUAGE: {
+				await this.service.setConfigSection(SectionType.LANGUAGE, dto.data, UpdateLanguageConfigDto);
+
+				const config = this.service.getConfigSection<LanguageConfigModel>(SectionType.LANGUAGE, LanguageConfigModel);
+
+				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
+
+				return this.createSectionResponse(config);
+			}
+			case SectionType.WEATHER: {
+				await this.service.setConfigSection(SectionType.WEATHER, dto.data, [
+					UpdateWeatherLatLonConfigDto,
+					UpdateWeatherCityNameConfigDto,
+					UpdateWeatherCityIdConfigDto,
+					UpdateWeatherZipCodeConfigDto,
+				]);
+
+				const config = this.service.getConfigSection<
+					WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
+				>(SectionType.WEATHER, [
+					WeatherLatLonConfigModel,
+					WeatherCityNameConfigModel,
+					WeatherCityIdConfigModel,
+					WeatherZipCodeConfigModel,
+				]);
+
+				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
+
+				return this.createSectionResponse(config);
+			}
+			case SectionType.SYSTEM: {
+				await this.service.setConfigSection(SectionType.SYSTEM, dto.data, UpdateSystemConfigDto);
+
+				const config = this.service.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
+
+				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
+
+				return this.createSectionResponse(config);
+			}
+		}
+
+		throw new BadRequestException([
+			JSON.stringify({ field: 'section', reason: `Requested configuration section: ${section as string} not found.` }),
+		]);
+	}
+
 	@Patch(SectionType.AUDIO)
 	@ApiOperation({
 		tags: [CONFIG_MODULE_API_TAG_NAME],
