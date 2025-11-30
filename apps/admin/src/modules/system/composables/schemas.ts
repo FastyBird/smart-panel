@@ -4,10 +4,13 @@ import {
 	ConfigModuleSystemLog_levels,
 	SystemModuleExtensionSurface,
 	SystemModuleExtensionBackendSurface,
-	SystemModuleDataExtensionBaseKind,
-	SystemModuleDataExtensionBaseSource,
 	SystemModuleLogEntrySource,
 } from '../../../openapi.constants';
+
+import {
+	SystemModuleDataExtensionBaseKind,
+	SystemModuleDataExtensionBaseSource,
+} from '../../../openapi';
 
 export const DisplaysProfilesFilterSchema = z.object({
 	search: z.string().optional(),
