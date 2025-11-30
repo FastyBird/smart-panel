@@ -50,6 +50,7 @@ export class CreateDeviceChannelDto {
 		description: 'Channel identifier',
 		type: 'string',
 		example: 'main',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -62,7 +63,7 @@ export class CreateDeviceChannelDto {
 			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel unique identifier."}]',
 	})
 	@ValidateIf((_, value) => value !== null)
-	identifier?: string;
+	identifier?: string | null;
 
 	@ApiProperty({ description: 'Channel name', type: 'string', example: 'Main Channel' })
 	@Expose()

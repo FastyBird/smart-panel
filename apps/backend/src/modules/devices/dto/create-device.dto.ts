@@ -52,7 +52,12 @@ export class CreateDeviceDto {
 	})
 	category: DeviceCategory;
 
-	@ApiPropertyOptional({ description: 'Device identifier', type: 'string', example: 'device-001' })
+	@ApiPropertyOptional({
+		description: 'Device identifier',
+		type: 'string',
+		example: 'device-001',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({
@@ -64,7 +69,7 @@ export class CreateDeviceDto {
 			'[{"field":"identifier","reason":"Identifier must be a valid string representing device unique identifier."}]',
 	})
 	@ValidateIf((_, value) => value !== null)
-	identifier?: string;
+	identifier?: string | null;
 
 	@ApiProperty({ description: 'Device name', type: 'string', example: 'Living Room Light' })
 	@Expose()

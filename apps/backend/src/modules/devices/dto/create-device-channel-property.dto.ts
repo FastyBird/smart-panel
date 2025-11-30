@@ -60,6 +60,7 @@ export class CreateDeviceChannelPropertyDto {
 		description: 'Property identifier',
 		type: 'string',
 		example: 'temperature',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -72,7 +73,7 @@ export class CreateDeviceChannelPropertyDto {
 			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel property unique identifier."}]',
 	})
 	@ValidateIf((_, value) => value !== null)
-	identifier?: string;
+	identifier?: string | null;
 
 	@ApiPropertyOptional({
 		description: 'Property name',
@@ -167,11 +168,13 @@ export class CreateDeviceChannelPropertyDto {
 		description: 'Property step value',
 		type: 'number',
 		example: 0.1,
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"step","reason":"Step must be a valid number."}]' })
-	step?: number;
+	@ValidateIf((_, value) => value !== null)
+	step?: number | null;
 
 	@ApiPropertyOptional({
 		description: 'Property value',

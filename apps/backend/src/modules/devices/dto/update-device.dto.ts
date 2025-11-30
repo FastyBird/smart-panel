@@ -58,12 +58,18 @@ export class UpdateDeviceDto {
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	name?: string;
 
-	@ApiPropertyOptional({ description: 'Device description', type: 'string', example: 'Device description' })
+	@ApiPropertyOptional({
+		description: 'Device description',
+		type: 'string',
+		example: 'Device description',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
 	@IsString({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
-	description?: string;
+	@ValidateIf((_, value) => value !== null)
+	description?: string | null;
 
 	@ApiPropertyOptional({ description: 'Device enabled status', type: 'boolean', example: true })
 	@Expose()

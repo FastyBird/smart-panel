@@ -10,6 +10,7 @@ import {
 	IsString,
 	Max,
 	Min,
+	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
 
@@ -324,6 +325,7 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto {
 		minimum: -90,
 		maximum: 90,
 		example: 50.0755,
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -333,7 +335,8 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto {
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
 	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
-	latitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	latitude?: number | null;
 
 	@ApiPropertyOptional({
 		description: 'Longitude coordinate (-180 to 180).',
@@ -342,6 +345,7 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto {
 		minimum: -180,
 		maximum: 180,
 		example: 14.4378,
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -351,7 +355,8 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto {
 	)
 	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
 	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	longitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	longitude?: number | null;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeatherCityName' })
@@ -369,11 +374,13 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
 		description: 'City name with optional country code (e.g., "Prague,CZ").',
 		type: 'string',
 		example: 'Prague,CZ',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"city_name","reason":"City name must be a valid string."}]' })
-	city_name?: string;
+	@ValidateIf((_, value) => value !== null)
+	city_name?: string | null;
 
 	@ApiPropertyOptional({
 		description: 'Latitude coordinate (-90 to 90).',
@@ -382,6 +389,7 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
 		minimum: -90,
 		maximum: 90,
 		example: 50.0755,
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -391,7 +399,8 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
 	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
-	latitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	latitude?: number | null;
 
 	@ApiPropertyOptional({
 		description: 'Longitude coordinate (-180 to 180).',
@@ -400,6 +409,7 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
 		minimum: -180,
 		maximum: 180,
 		example: 14.4378,
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -409,7 +419,8 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
 	)
 	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
 	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	longitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	longitude?: number | null;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeatherCityId' })
@@ -427,11 +438,13 @@ export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto {
 		description: 'OpenWeatherMap city ID.',
 		type: 'integer',
 		example: 3067696,
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"city_id","reason":"City ID must be a valid number."}]' })
-	city_id?: number;
+	@ValidateIf((_, value) => value !== null)
+	city_id?: number | null;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeatherZipCode' })
@@ -449,11 +462,13 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
 		description: 'ZIP/postal code with optional country code (e.g., "11000,CZ").',
 		type: 'string',
 		example: '11000,CZ',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"zip_code","reason":"ZIP code must be a valid string."}]' })
-	zip_code?: string;
+	@ValidateIf((_, value) => value !== null)
+	zip_code?: string | null;
 
 	@ApiPropertyOptional({
 		description: 'Latitude coordinate (-90 to 90).',
@@ -462,6 +477,7 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
 		minimum: -90,
 		maximum: 90,
 		example: 50.0755,
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -471,7 +487,8 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
 	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
-	latitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	latitude?: number | null;
 
 	@ApiPropertyOptional({
 		description: 'Longitude coordinate (-180 to 180).',
@@ -480,6 +497,7 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
 		minimum: -180,
 		maximum: 180,
 		example: 14.4378,
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -489,7 +507,8 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
 	)
 	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
 	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	longitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	longitude?: number | null;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateSystem' })
