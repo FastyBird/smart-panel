@@ -104,7 +104,7 @@ export const CardsEditActionPayloadSchema = z.object({
 			.transform((val) => (val === '' ? null : val))
 			.nullable()
 			.optional(),
-		order: z.number().optional(),
+		order: z.number().default(0),
 	}),
 });
 
@@ -130,7 +130,7 @@ export const CardCreateReqSchema: ZodType<ApiCreateCard> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	order: z.number().optional(),
+	order: z.number(),
 	tiles: z.array(TileCreateReqSchema).optional(),
 	data_source: z.array(DataSourceCreateReqSchema).optional(),
 });

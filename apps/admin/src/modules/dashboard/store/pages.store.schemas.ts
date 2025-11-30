@@ -92,7 +92,7 @@ export const PagesAddActionPayloadSchema = z.object({
 				.nullable()
 				.default(null)
 				.optional(),
-			order: z.number().default(0).optional(),
+			order: z.number().default(0),
 			showTopBar: z.boolean().default(true).optional(),
 			display: z.string().uuid().nullable().optional(),
 		})
@@ -112,7 +112,7 @@ export const PagesEditActionPayloadSchema = z.object({
 				.nullable()
 				.default(null)
 				.optional(),
-			order: z.number().optional(),
+			order: z.number().default(0),
 			showTopBar: z.boolean().optional(),
 			display: z.string().uuid().nullable().optional(),
 		})
@@ -140,7 +140,7 @@ export const PageCreateReqSchema: ZodType<ApiCreatePage> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	order: z.number().optional(),
+	order: z.number(),
 	show_top_bar: z.boolean().optional(),
 	display: z.string().uuid().nullable().optional(),
 });

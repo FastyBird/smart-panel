@@ -10,7 +10,7 @@ export const PageAddFormSchema = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	order: z.number().optional(),
+	order: z.number(),
 	showTopBar: z.boolean().optional(),
 	display: z.string().uuid().nullable().optional(),
 });
