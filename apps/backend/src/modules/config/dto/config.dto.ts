@@ -298,11 +298,12 @@ export abstract class UpdateWeatherConfigDto extends BaseConfigDto {
 		description: 'OpenWeatherMap API key.',
 		type: 'string',
 		example: 'your-api-key-here',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"open_weather_api_key","reason":"OpenWeather API key must be a valid string."}]' })
-	open_weather_api_key?: string;
+	open_weather_api_key?: string | null;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeatherLatLon' })

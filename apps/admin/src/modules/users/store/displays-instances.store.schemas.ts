@@ -122,7 +122,7 @@ export const DisplayInstanceResSchema: ZodType<ApiDisplayInstance> = z.object({
 	version: z.string().trim().nonempty(),
 	build: z.string().trim().nonempty(),
 	user: z.string().uuid(),
-	displayProfile: z.string().uuid().nullable(),
+	display_profile: z.string().uuid().nullable(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

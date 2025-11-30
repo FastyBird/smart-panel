@@ -1,10 +1,11 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import { DevicesShellyNgPluginShellyNgDeviceType, type components } from '../../../openapi';
+import { type components } from '../../../openapi';
+import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 type ApiUpdateConfig = components['schemas']['DevicesShellyNgPluginUpdateConfig'];
-type ApiConfig = components['schemas']['DevicesShellyNgPluginConfig'];
+type ApiConfig = components['schemas']['DevicesShellyNgPluginDataConfig'];
 
 export const ShellyNgConfigSchema = ConfigPluginSchema.extend({
 	mdns: z.object({
@@ -23,7 +24,7 @@ export const ShellyNgConfigSchema = ConfigPluginSchema.extend({
 
 export const ShellyNgConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPluginUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesShellyNgPluginShellyNgDeviceType),
+		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 		mdns: z
 			.object({
 				enabled: z.boolean().optional(),
@@ -42,7 +43,7 @@ export const ShellyNgConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPlu
 
 export const ShellyNgConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesShellyNgPluginShellyNgDeviceType),
+		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 		mdns: z.object({
 			enabled: z.boolean(),
 			interface: z.string().nullable(),

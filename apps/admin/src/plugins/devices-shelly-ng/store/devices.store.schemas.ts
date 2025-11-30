@@ -2,7 +2,8 @@ import { type ZodType, z } from 'zod';
 
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { DevicesShellyNgPluginShellyNgDeviceType, type components } from '../../../openapi';
+import { type components } from '../../../openapi';
+import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 type ApiCreateDevice = components['schemas']['DevicesShellyNgPluginDataDevice'];
 type ApiUpdateDevice = components['schemas']['DevicesShellyNgPluginDataDevice'];
@@ -18,7 +19,7 @@ export const ShellyNgDeviceSchema = DeviceSchema.extend({
 
 export const ShellyNgDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesShellyNgPluginShellyNgDeviceType),
+		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 		password: z.string().nullable(),
 		hostname: z.string(),
 	})
@@ -26,7 +27,7 @@ export const ShellyNgDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCre
 
 export const ShellyNgDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesShellyNgPluginShellyNgDeviceType),
+		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 		category: z.nativeEnum(DevicesModuleDeviceCategory).optional(),
 		password: z.string().nullable().optional(),
 		hostname: z.string().optional(),
@@ -35,7 +36,7 @@ export const ShellyNgDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpd
 
 export const ShellyNgDeviceResSchema: ZodType<ApiDevice> = DeviceResSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesShellyNgPluginShellyNgDeviceType),
+		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 		password: z.string().nullable(),
 		hostname: z.string(),
 	})

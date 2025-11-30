@@ -7,7 +7,8 @@ import {
 	DataSourceUpdateReqSchema,
 	ItemIdSchema,
 } from '../../../modules/dashboard';
-import { DataSourcesDeviceChannelPluginDeviceChannelDataSourceType, type components } from '../../../openapi';
+import { type components } from '../../../openapi';
+import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 
 type ApiCreateDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
 type ApiUpdateDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource'];
@@ -34,7 +35,7 @@ export const DeviceChannelDataSourceSchema = DataSourceSchema.extend({
 export const DeviceChannelDataSourceCreateReqSchema: ZodType<ApiCreateDeviceChannelDataSource & { parent: { type: string; id: string } }> =
 	DataSourceCreateReqSchema.and(
 		z.object({
-			type: z.nativeEnum(DataSourcesDeviceChannelPluginDeviceChannelDataSourceType),
+			type: z.literal(DATA_SOURCES_DEVICE_TYPE),
 			device: z.string().uuid(),
 			channel: z.string().uuid(),
 			property: z.string().uuid(),
@@ -49,7 +50,7 @@ export const DeviceChannelDataSourceCreateReqSchema: ZodType<ApiCreateDeviceChan
 
 export const DeviceChannelDataSourceUpdateReqSchema: ZodType<ApiUpdateDeviceChannelDataSource> = DataSourceUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DataSourcesDeviceChannelPluginDeviceChannelDataSourceType),
+		type: z.literal(DATA_SOURCES_DEVICE_TYPE),
 		device: z.string().uuid().optional(),
 		channel: z.string().uuid().optional(),
 		property: z.string().uuid().optional(),
@@ -64,7 +65,7 @@ export const DeviceChannelDataSourceUpdateReqSchema: ZodType<ApiUpdateDeviceChan
 
 export const DeviceChannelDataSourceResSchema: ZodType<ApiDeviceChannelDataSource> = DataSourceResSchema.and(
 	z.object({
-		type: z.nativeEnum(DataSourcesDeviceChannelPluginDeviceChannelDataSourceType),
+		type: z.literal(DATA_SOURCES_DEVICE_TYPE),
 		device: z.string().uuid(),
 		channel: z.string().uuid(),
 		property: z.string().uuid(),

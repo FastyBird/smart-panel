@@ -10,7 +10,8 @@ import {
 	TileCreateReqSchema,
 	TileResSchema,
 } from '../../../modules/dashboard';
-import { PagesTilesPluginTilesPageType, type components } from '../../../openapi';
+import { type components } from '../../../openapi';
+import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 type ApiCreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];
 type ApiUpdateTilesPage = components['schemas']['PagesTilesPluginUpdateTilesPage'];
@@ -30,7 +31,7 @@ export const TilesPageSchema = PageSchema.extend({
 
 export const TilesPageCreateReqSchema: ZodType<ApiCreateTilesPage> = PageCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(PagesTilesPluginTilesPageType),
+		type: z.literal(PAGES_TILES_TYPE),
 		tiles: z.array(TileCreateReqSchema).optional(),
 		data_source: z.array(DataSourceCreateReqSchema).optional(),
 		tile_size: z.number().gte(0).nullable().default(null),
@@ -41,7 +42,7 @@ export const TilesPageCreateReqSchema: ZodType<ApiCreateTilesPage> = PageCreateR
 
 export const TilesPageUpdateReqSchema: ZodType<ApiUpdateTilesPage> = PageUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(PagesTilesPluginTilesPageType),
+		type: z.literal(PAGES_TILES_TYPE),
 		tile_size: z.number().gte(0).nullable(),
 		rows: z.number().gte(1).nullable(),
 		cols: z.number().gte(1).nullable(),
@@ -50,7 +51,7 @@ export const TilesPageUpdateReqSchema: ZodType<ApiUpdateTilesPage> = PageUpdateR
 
 export const TilesPageResSchema: ZodType<ApiTilesPage> = PageResSchema.and(
 	z.object({
-		type: z.nativeEnum(PagesTilesPluginTilesPageType),
+		type: z.literal(PAGES_TILES_TYPE),
 		tiles: z.array(TileResSchema),
 		data_source: z.array(DataSourceResSchema),
 		tile_size: z.number().nullable(),

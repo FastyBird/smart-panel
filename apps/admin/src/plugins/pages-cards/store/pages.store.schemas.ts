@@ -8,7 +8,8 @@ import {
 	PageSchema,
 	PageUpdateReqSchema,
 } from '../../../modules/dashboard';
-import { PagesCardsPluginCardsPageType, type components } from '../../../openapi';
+import { type components } from '../../../openapi';
+import { PAGES_CARDS_TYPE } from '../pages-cards.contants';
 
 import { CardCreateReqSchema, CardResSchema } from './cards.store.schemas';
 
@@ -26,7 +27,7 @@ export const CardsPageSchema = PageSchema.extend({});
 
 export const CardsPageCreateReqSchema: ZodType<ApiCreateCardsPage> = PageCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(PagesCardsPluginCardsPageType),
+		type: z.literal(PAGES_CARDS_TYPE),
 		cards: z.array(CardCreateReqSchema).optional(),
 		data_source: z.array(DataSourceCreateReqSchema).optional(),
 	})
@@ -34,13 +35,13 @@ export const CardsPageCreateReqSchema: ZodType<ApiCreateCardsPage> = PageCreateR
 
 export const CardsPageUpdateReqSchema: ZodType<ApiUpdateCardsPage> = PageUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(PagesCardsPluginCardsPageType),
+		type: z.literal(PAGES_CARDS_TYPE),
 	})
 );
 
 export const CardsPageResSchema: ZodType<ApiCardsPage> = PageResSchema.and(
 	z.object({
-		type: z.nativeEnum(PagesCardsPluginCardsPageType),
+		type: z.literal(PAGES_CARDS_TYPE),
 		cards: z.array(CardResSchema),
 		data_source: z.array(DataSourceResSchema),
 	})
