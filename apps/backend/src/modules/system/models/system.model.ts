@@ -71,17 +71,17 @@ export class StorageInfoModel {
 
 @ApiSchema({ name: 'SystemModuleDataTemperatureInfo' })
 export class TemperatureInfoModel {
-	@ApiPropertyOptional({ description: 'CPU temperature in Celsius', type: 'number', example: 45.5 })
+	@ApiPropertyOptional({ description: 'CPU temperature in Celsius', type: 'number', nullable: true, example: 45.5 })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	cpu?: number;
+	cpu?: number | null;
 
-	@ApiPropertyOptional({ description: 'GPU temperature in Celsius', type: 'number', example: 52.3 })
+	@ApiPropertyOptional({ description: 'GPU temperature in Celsius', type: 'number', nullable: true, example: 52.3 })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	gpu?: number;
+	gpu?: number | null;
 }
 
 @ApiSchema({ name: 'SystemModuleDataOperatingSystemInfo' })

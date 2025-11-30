@@ -1,6 +1,6 @@
 export const DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX = 'devices-home-assistant';
 
-export const DEVICES_HOME_ASSISTANT_PLUGIN_NAME = 'devices-home-assistant';
+export const DEVICES_HOME_ASSISTANT_PLUGIN_NAME = 'devices-home-assistant-plugin';
 
 export const DEVICES_HOME_ASSISTANT_TYPE = 'devices-home-assistant';
 

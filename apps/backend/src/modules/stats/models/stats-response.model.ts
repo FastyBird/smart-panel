@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -21,7 +21,6 @@ export class StatsResponseModel extends BaseSuccessResponseModel<StatsModel> {
 		type: () => StatsModel,
 	})
 	@Expose()
-	@Type(() => StatsModel)
 	declare data: StatsModel;
 }
 

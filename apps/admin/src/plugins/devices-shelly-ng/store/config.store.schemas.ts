@@ -2,7 +2,7 @@ import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { type components } from '../../../openapi';
-import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 
 type ApiUpdateConfig = components['schemas']['DevicesShellyNgPluginUpdateConfig'];
 type ApiConfig = components['schemas']['DevicesShellyNgPluginDataShellyNgConfig'];
@@ -24,7 +24,7 @@ export const ShellyNgConfigSchema = ConfigPluginSchema.extend({
 
 export const ShellyNgConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPluginUpdateReqSchema.and(
 	z.object({
-		type: z.literal(DEVICES_SHELLY_NG_TYPE),
+		type: z.literal(DEVICES_SHELLY_NG_PLUGIN_NAME),
 		mdns: z
 			.object({
 				enabled: z.boolean().optional(),
@@ -43,7 +43,7 @@ export const ShellyNgConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPlu
 
 export const ShellyNgConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
-		type: z.literal(DEVICES_SHELLY_NG_TYPE),
+		type: z.literal(DEVICES_SHELLY_NG_PLUGIN_NAME),
 		mdns: z.object({
 			enabled: z.boolean(),
 			interface: z.string().nullable(),

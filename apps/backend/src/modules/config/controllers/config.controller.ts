@@ -442,7 +442,7 @@ export class ConfigController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	async updatePluginConfig(
 		@Param('plugin') plugin: string,
-		@Body() pluginConfig: ReqUpdatePluginDto,
+		@Body() pluginConfig: { data: object },
 	): Promise<ConfigModuleResPluginConfig> {
 		this.logger.debug(`[UPDATE] Incoming update request for plugin=${plugin}`);
 

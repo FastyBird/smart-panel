@@ -1,5 +1,5 @@
-import { Expose, Type } from 'class-transformer';
-import { IsArray, IsDateString, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { Expose } from 'class-transformer';
+import { IsArray, IsDateString, IsNumber, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -58,8 +58,6 @@ export class StatsModel {
 		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
 	})
 	@Expose({ name: 'websocket-module' })
-	@Type(() => ModuleStatsModel)
-	@ValidateNested()
 	'websocket-module'?: ModuleStatsModel;
 
 	@ApiPropertyOptional({
@@ -68,8 +66,6 @@ export class StatsModel {
 		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
 	})
 	@Expose({ name: 'system-module' })
-	@Type(() => ModuleStatsModel)
-	@ValidateNested()
 	'system-module'?: ModuleStatsModel;
 
 	@ApiPropertyOptional({
@@ -78,8 +74,6 @@ export class StatsModel {
 		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
 	})
 	@Expose({ name: 'api-module' })
-	@Type(() => ModuleStatsModel)
-	@ValidateNested()
 	'api-module'?: ModuleStatsModel;
 
 	@ApiPropertyOptional({
@@ -88,8 +82,6 @@ export class StatsModel {
 		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
 	})
 	@Expose({ name: 'dashboard-module' })
-	@Type(() => ModuleStatsModel)
-	@ValidateNested()
 	'dashboard-module'?: ModuleStatsModel;
 
 	@ApiPropertyOptional({
@@ -98,8 +90,6 @@ export class StatsModel {
 		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
 	})
 	@Expose({ name: 'devices-module' })
-	@Type(() => ModuleStatsModel)
-	@ValidateNested()
 	'devices-module'?: ModuleStatsModel;
 
 	// Additional properties for other modules

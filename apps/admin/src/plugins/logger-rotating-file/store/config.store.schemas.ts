@@ -2,7 +2,7 @@ import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import { type components } from '../../../openapi';
-import { LOGGER_ROTATING_FILE_TYPE } from '../logger-rotating-file.constants';
+import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 
 type ApiUpdateConfig = components['schemas']['LoggerRotatingFilePluginUpdateConfig'];
 type ApiConfig = components['schemas']['LoggerRotatingFilePluginDataConfig'];
@@ -19,7 +19,7 @@ export const RotatingFileConfigSchema = ConfigPluginSchema.extend({
 
 export const RotatingFileConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPluginUpdateReqSchema.and(
 	z.object({
-		type: z.literal(LOGGER_ROTATING_FILE_TYPE),
+		type: z.literal(LOGGER_ROTATING_FILE_PLUGIN_NAME),
 		dir: z.string().nullable().optional(),
 		retention_days: z.number().optional(),
 		cleanup_cron: z.string().nullable().optional(),
@@ -29,7 +29,7 @@ export const RotatingFileConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = Confi
 
 export const RotatingFileConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
-		type: z.literal(LOGGER_ROTATING_FILE_TYPE),
+		type: z.literal(LOGGER_ROTATING_FILE_PLUGIN_NAME),
 		dir: z.string().nullable(),
 		retention_days: z.number(),
 		cleanup_cron: z.string().nullable(),
