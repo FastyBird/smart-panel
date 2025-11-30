@@ -1,6 +1,20 @@
 /**
  * OpenAPI extra models for Devices Home Assistant plugin
  */
+import { CreateHomeAssistantChannelDto } from './dto/create-channel.dto';
+import { CreateHomeAssistantChannelPropertyDto } from './dto/create-channel-property.dto';
+import { CreateHomeAssistantDeviceDto } from './dto/create-device.dto';
+import { HomeAssistantDiscoveredDeviceDto } from './dto/home-assistant-discovered-device.dto';
+import { HomeAssistantServiceRequestDto } from './dto/home-assistant-service-request.dto';
+import {
+	HomeAssistantStateChangedEventDataDto,
+	HomeAssistantStateChangedEventDto,
+	HomeAssistantStateDto,
+} from './dto/home-assistant-state.dto';
+import { HomeAssistantUpdatePluginConfigDto } from './dto/update-config.dto';
+import { UpdateHomeAssistantChannelDto } from './dto/update-channel.dto';
+import { UpdateHomeAssistantChannelPropertyDto } from './dto/update-channel-property.dto';
+import { UpdateHomeAssistantDeviceDto } from './dto/update-device.dto';
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
@@ -25,6 +39,19 @@ import {
 } from './models/home-assistant.model';
 
 export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
+	// DTOs
+	CreateHomeAssistantDeviceDto,
+	UpdateHomeAssistantDeviceDto,
+	CreateHomeAssistantChannelDto,
+	UpdateHomeAssistantChannelDto,
+	CreateHomeAssistantChannelPropertyDto,
+	UpdateHomeAssistantChannelPropertyDto,
+	HomeAssistantUpdatePluginConfigDto,
+	HomeAssistantDiscoveredDeviceDto,
+	HomeAssistantStateDto,
+	HomeAssistantStateChangedEventDataDto,
+	HomeAssistantStateChangedEventDto,
+	HomeAssistantServiceRequestDto,
 	// Response models
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,

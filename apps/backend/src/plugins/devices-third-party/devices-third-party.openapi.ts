@@ -1,8 +1,15 @@
 /**
  * OpenAPI extra models for Devices Third Party plugin
  */
+import { CreateThirdPartyChannelDto } from './dto/create-channel.dto';
+import { CreateThirdPartyChannelPropertyDto } from './dto/create-channel-property.dto';
+import { CreateThirdPartyDeviceDto } from './dto/create-device.dto';
 import { PropertyUpdateRequestDto } from './dto/third-party-property-update-request.dto';
 import { PropertiesUpdateResultModel, PropertyUpdateResultModel } from './dto/third-party-property-update-response.dto';
+import { ThirdPartyUpdatePluginConfigDto } from './dto/update-config.dto';
+import { UpdateThirdPartyChannelDto } from './dto/update-channel.dto';
+import { UpdateThirdPartyChannelPropertyDto } from './dto/update-channel-property.dto';
+import { UpdateThirdPartyDeviceDto } from './dto/update-device.dto';
 import {
 	ThirdPartyChannelEntity,
 	ThirdPartyChannelPropertyEntity,
@@ -18,6 +25,13 @@ import {
 
 export const DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// DTOs
+	CreateThirdPartyDeviceDto,
+	UpdateThirdPartyDeviceDto,
+	CreateThirdPartyChannelDto,
+	UpdateThirdPartyChannelDto,
+	CreateThirdPartyChannelPropertyDto,
+	UpdateThirdPartyChannelPropertyDto,
+	ThirdPartyUpdatePluginConfigDto,
 	PropertyUpdateRequestDto,
 	// Response models
 	PropertiesUpdateResultResponseModel,

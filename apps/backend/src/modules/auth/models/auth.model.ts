@@ -67,7 +67,7 @@ export class LoggedInModel {
 /**
  * Refresh token data model
  */
-@ApiSchema({ name: 'AuthModuleDataRefreshToken' })
+@ApiSchema({ name: 'AuthModuleDataRefreshedToken' })
 export class RefreshTokenModel {
 	@ApiProperty({
 		name: 'access_token',
