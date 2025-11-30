@@ -6,6 +6,8 @@ import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { DisplayProfileEntity } from '../entities/system.entity';
 
 import {
+	ExtensionAdminModel,
+	ExtensionBackendModel,
 	ExtensionBaseModel,
 	LogEntryAcceptedModel,
 	LogEntryModel,
@@ -62,7 +64,16 @@ export class ExtensionsResponseModel extends BaseSuccessResponseModel<ExtensionB
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
 		type: 'array',
-		items: { $ref: getSchemaPath(ExtensionBaseModel) },
+		items: {
+			oneOf: [{ $ref: getSchemaPath(ExtensionAdminModel) }, { $ref: getSchemaPath(ExtensionBackendModel) }],
+			discriminator: {
+				propertyName: 'location_type',
+				mapping: {
+					admin: getSchemaPath(ExtensionAdminModel),
+					backend: getSchemaPath(ExtensionBackendModel),
+				},
+			},
+		},
 	})
 	@Expose()
 	declare data: ExtensionBaseModel[];

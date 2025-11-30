@@ -14,8 +14,8 @@ export class CreateCardsPageDto extends CreatePageDto {
 
 	@ApiPropertyOptional({
 		description: 'Page cards',
-		type: [CreateCardDto],
-		isArray: true,
+		type: 'array',
+		items: { $ref: '#/components/schemas/PagesCardsPluginCreateCard' },
 	})
 	@Expose()
 	@IsOptional()

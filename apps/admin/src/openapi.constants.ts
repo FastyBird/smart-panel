@@ -11,107 +11,94 @@
 // Auth & User Enums
 // =================
 export {
-	UsersModuleUserRole,
+	AuthModuleRegisterRole as UsersModuleUserRole,
 } from './openapi';
 
 // Device Category Enums
 // =====================
 export {
-	DevicesModuleDeviceCategory,
+	DevicesModuleCreateDeviceCategory as DevicesModuleDeviceCategory,
 } from './openapi';
 
 export {
-	DevicesModuleChannelCategory,
+	DevicesModuleCreateDeviceChannelCategory as DevicesModuleChannelCategory,
 } from './openapi';
 
 export {
-	DevicesModuleChannelPropertyCategory,
+	DevicesModuleCreateDeviceChannelPropertyCategory as DevicesModuleChannelPropertyCategory,
 } from './openapi';
 
 export {
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleCreateDeviceChannelPropertyData_type as DevicesModuleChannelPropertyDataType,
 } from './openapi';
 
 export {
-	DevicesModuleChannelPropertyPermissions,
+	DevicesModuleCreateDeviceChannelPropertyPermissions as DevicesModuleChannelPropertyPermissions,
 } from './openapi';
 
 // Device Status Enums
 // ===================
 export {
-	DevicesModuleDeviceStatusStatus,
+	DevicesModuleDataDeviceConnectionStatusStatus as DevicesModuleDeviceConnectionStatus,
 } from './openapi';
 
 // Config Module Enums
 // ===================
 export {
-	ConfigModuleLanguageLanguage,
+	ConfigModuleUpdateLanguageLanguage as ConfigModuleLanguageLanguage,
 } from './openapi';
 
 export {
-	ConfigModuleLanguageTime_format,
+	ConfigModuleUpdateLanguageTime_format as ConfigModuleLanguageTimeFormat,
 } from './openapi';
 
 export {
-	ConfigModuleSystemLog_levels,
+	ConfigModuleUpdateWeatherUnit as ConfigModuleWeatherUnit,
 } from './openapi';
 
 export {
-	ConfigModuleDataSystemType,
+	ConfigModuleUpdateAudioType as ConfigModuleAudioType,
 } from './openapi';
 
 export {
-	ConfigModuleDataLanguageType,
+	ConfigModuleUpdateDisplayType as ConfigModuleDisplayType,
+} from './openapi';
+
+export {
+	ConfigModuleUpdateLanguageType as ConfigModuleLanguageType,
+} from './openapi';
+
+export {
+	ConfigModuleUpdateWeatherType as ConfigModuleWeatherType,
+} from './openapi';
+
+export {
+	ConfigModuleUpdateSystemType as ConfigModuleSystemType,
 } from './openapi';
 
 // System Module Enums
 // ===================
 export {
-	SystemModuleLogEntrySource,
+	SystemModuleDataExtensionBaseSource as SystemModuleLogEntrySource,
 } from './openapi';
 
 export {
-	SystemModuleExtensionSurface,
+	SystemModuleDataExtensionBaseSurface as SystemModuleExtensionSurface,
 } from './openapi';
 
 export {
-	SystemModuleDataExtensionBaseKind as SystemModuleDataExtensionKind,
-	SystemModuleDataExtensionBaseKind,
+	SystemModuleDataExtensionBaseKind as SystemModuleExtensionKind,
 } from './openapi';
 
 export {
-	SystemModuleDataExtensionBaseSource as SystemModuleDataExtensionSource,
-	SystemModuleDataExtensionBaseSource,
-} from './openapi';
-
-// SystemModuleExtensionBackendSurface is an alias for SystemModuleExtensionSurface
-// (both have admin and backend values)
-export {
-	SystemModuleExtensionSurface as SystemModuleExtensionBackendSurface,
-} from './openapi';
-
-// Path Parameters Enums
-// =====================
-export {
-	PathsSystemModuleExtensionsGetParametersQuerySurface,
+	SystemModuleDataExtensionBaseSource as SystemModuleExtensionSource,
 } from './openapi';
 
 // Weather Config Location Types
 // ==============================
 export {
-	ConfigModuleDataWeatherLatLonLocation_type as ConfigModuleDataWeatherLatLonLocationType,
-	ConfigModuleDataWeatherCityNameLocation_type as ConfigModuleDataWeatherCityNameLocationType,
-	ConfigModuleDataWeatherCityIdLocation_type as ConfigModuleDataWeatherCityIdLocationType,
-	ConfigModuleDataWeatherZipCodeLocation_type as ConfigModuleDataWeatherZipCodeLocationType,
+	ConfigModuleUpdateWeatherLatLonLocation_type as ConfigModuleWeatherLatLonLocationType,
+	ConfigModuleUpdateWeatherCityNameLocation_type as ConfigModuleWeatherCityNameLocationType,
+	ConfigModuleUpdateWeatherCityIdLocation_type as ConfigModuleWeatherCityIdLocationType,
+	ConfigModuleUpdateWeatherZipCodeLocation_type as ConfigModuleWeatherZipCodeLocationType,
 } from './openapi';
-
-// Weather Config Enums (if they exist in the future)
-// ===================================================
-// Note: ConfigModuleWeatherType and ConfigModuleWeatherUnit don't exist in the new schema
-// These may need to be handled differently or removed
-
-// Plugin Type Enums
-// =================
-// Note: Plugin-specific type enums (e.g., DevicesShellyNgPluginShellyNgDeviceType)
-// don't exist in the new schema. These may need to be removed or replaced with
-// schema types instead of enums.

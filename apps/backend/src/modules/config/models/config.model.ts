@@ -519,6 +519,12 @@ export class AppConfigModel {
 		],
 		discriminator: {
 			propertyName: 'location_type',
+			mapping: {
+				lat_lon: getSchemaPath(WeatherLatLonConfigModel),
+				city_name: getSchemaPath(WeatherCityNameConfigModel),
+				city_id: getSchemaPath(WeatherCityIdConfigModel),
+				zip_code: getSchemaPath(WeatherZipCodeConfigModel),
+			},
 		},
 	})
 	@Expose()

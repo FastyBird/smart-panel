@@ -9,6 +9,7 @@ import {
 	UpdateSystemConfigDto,
 	UpdateWeatherCityIdConfigDto,
 	UpdateWeatherCityNameConfigDto,
+	UpdateWeatherConfigDto,
 	UpdateWeatherLatLonConfigDto,
 	UpdateWeatherZipCodeConfigDto,
 } from './dto/config.dto';
@@ -31,6 +32,7 @@ import {
 	SystemConfigModel,
 	WeatherCityIdConfigModel,
 	WeatherCityNameConfigModel,
+	WeatherConfigModel,
 	WeatherLatLonConfigModel,
 	WeatherZipCodeConfigModel,
 } from './models/config.model';
@@ -40,6 +42,7 @@ export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
+	UpdateWeatherConfigDto,
 	UpdateWeatherLatLonConfigDto,
 	UpdateWeatherCityNameConfigDto,
 	UpdateWeatherCityIdConfigDto,
@@ -60,6 +63,7 @@ export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	AudioConfigModel,
 	DisplayConfigModel,
 	LanguageConfigModel,
+	WeatherConfigModel,
 	WeatherLatLonConfigModel,
 	WeatherCityNameConfigModel,
 	WeatherCityIdConfigModel,

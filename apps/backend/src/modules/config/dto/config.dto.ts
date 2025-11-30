@@ -530,14 +530,18 @@ export class ReqUpdateSectionDto {
 			{ $ref: getSchemaPath(UpdateAudioConfigDto) },
 			{ $ref: getSchemaPath(UpdateDisplayConfigDto) },
 			{ $ref: getSchemaPath(UpdateLanguageConfigDto) },
-			{ $ref: getSchemaPath(UpdateWeatherLatLonConfigDto) },
-			{ $ref: getSchemaPath(UpdateWeatherCityNameConfigDto) },
-			{ $ref: getSchemaPath(UpdateWeatherCityIdConfigDto) },
-			{ $ref: getSchemaPath(UpdateWeatherZipCodeConfigDto) },
+			{ $ref: getSchemaPath(UpdateWeatherConfigDto) },
 			{ $ref: getSchemaPath(UpdateSystemConfigDto) },
 		],
 		discriminator: {
 			propertyName: 'type',
+			mapping: {
+				audio: getSchemaPath(UpdateAudioConfigDto),
+				display: getSchemaPath(UpdateDisplayConfigDto),
+				language: getSchemaPath(UpdateLanguageConfigDto),
+				weather: getSchemaPath(UpdateWeatherConfigDto),
+				system: getSchemaPath(UpdateSystemConfigDto),
+			},
 		},
 	})
 	@Expose()

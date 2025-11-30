@@ -13,6 +13,7 @@ import {
 	SystemConfigModel,
 	WeatherCityIdConfigModel,
 	WeatherCityNameConfigModel,
+	WeatherConfigModel,
 	WeatherLatLonConfigModel,
 	WeatherZipCodeConfigModel,
 } from './config.model';
@@ -99,7 +100,13 @@ export class ConfigModuleResWeather extends BaseSuccessResponseModel<
 			{ $ref: getSchemaPath(WeatherZipCodeConfigModel) },
 		],
 		discriminator: {
-			propertyName: 'type',
+			propertyName: 'location_type',
+			mapping: {
+				city_id: getSchemaPath(WeatherCityIdConfigModel),
+				city_name: getSchemaPath(WeatherCityNameConfigModel),
+				lat_lon: getSchemaPath(WeatherLatLonConfigModel),
+				zip_code: getSchemaPath(WeatherZipCodeConfigModel),
+			},
 		},
 	})
 	@Expose()
@@ -140,14 +147,18 @@ export class ConfigModuleResSection extends BaseSuccessResponseModel<
 			{ $ref: getSchemaPath(AudioConfigModel) },
 			{ $ref: getSchemaPath(DisplayConfigModel) },
 			{ $ref: getSchemaPath(LanguageConfigModel) },
-			{ $ref: getSchemaPath(WeatherCityIdConfigModel) },
-			{ $ref: getSchemaPath(WeatherCityNameConfigModel) },
-			{ $ref: getSchemaPath(WeatherLatLonConfigModel) },
-			{ $ref: getSchemaPath(WeatherZipCodeConfigModel) },
+			{ $ref: getSchemaPath(WeatherConfigModel) },
 			{ $ref: getSchemaPath(SystemConfigModel) },
 		],
 		discriminator: {
 			propertyName: 'type',
+			mapping: {
+				audio: getSchemaPath(AudioConfigModel),
+				display: getSchemaPath(DisplayConfigModel),
+				language: getSchemaPath(LanguageConfigModel),
+				weather: getSchemaPath(WeatherConfigModel),
+				system: getSchemaPath(SystemConfigModel),
+			},
 		},
 	})
 	@Expose()
