@@ -7,6 +7,7 @@ import {
 	IsString,
 	Matches,
 	Min,
+	ValidateIf,
 	ValidationArguments,
 	ValidationOptions,
 	registerDecorator,
@@ -72,12 +73,14 @@ export class RotatingFileUpdateConfigDto extends UpdatePluginConfigDto {
 		description: 'Directory path for log files',
 		type: 'string',
 		example: '/var/log/app',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"dir","reason":"Directory must be a non-empty string."}]' })
 	@IsNotEmpty({ message: '[{"field":"dir","reason":"Directory must be a non-empty string."}]' })
-	dir?: string;
+	@ValidateIf((_, value) => value !== null)
+	dir?: string | null;
 
 	@ApiPropertyOptional({
 		description: 'Number of days to retain log files',
@@ -97,13 +100,15 @@ export class RotatingFileUpdateConfigDto extends UpdatePluginConfigDto {
 		name: 'cleanup_cron',
 		type: 'string',
 		example: '0 3 * * *',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"cleanup_cron","reason":"Cleanup cron must be a non-empty string."}]' })
 	@IsNotEmpty({ message: '[{"field":"cleanup_cron","reason":"Cleanup cron must be a non-empty string."}]' })
 	@IsCronExpression()
-	cleanup_cron?: string;
+	@ValidateIf((_, value) => value !== null)
+	cleanup_cron?: string | null;
 
 	@ApiPropertyOptional({
 		description: 'Prefix for log file names',
@@ -111,6 +116,7 @@ export class RotatingFileUpdateConfigDto extends UpdatePluginConfigDto {
 		type: 'string',
 		pattern: '^[A-Za-z0-9._-]+$',
 		example: 'app-log',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
@@ -120,5 +126,6 @@ export class RotatingFileUpdateConfigDto extends UpdatePluginConfigDto {
 		message:
 			'[{"field":"file_prefix","reason":"File prefix may contain letters, numbers, dot, underscore and hyphen only."}]',
 	})
-	file_prefix?: string;
+	@ValidateIf((_, value) => value !== null)
+	file_prefix?: string | null;
 }
