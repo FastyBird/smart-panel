@@ -155,7 +155,7 @@ import { Icon } from '@iconify/vue';
 import { formatTimeAgo } from '@vueuse/core';
 
 import { IconWithChild } from '../../../../common';
-import { ConfigModuleSystemLog_levels } from '../../../../openapi';
+import { ConfigModuleSystemLog_levels } from '../../../../openapi.constants';
 import type { ILogEntry } from '../../store/logs-entries.store.types';
 
 import type { ISystemLogsTableProps } from './system-logs-table.types';

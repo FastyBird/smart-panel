@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleSystemLog_levels, ConfigModuleDataSystemType, type components } from '../../../openapi';
+import { ConfigModuleSystemLog_levels } from '../../../openapi.constants';
+import { ConfigModuleDataSystemType, type components } from '../../../openapi';
 
 type ApiConfigSystem = components['schemas']['ConfigModuleDataSystem'];
 type ApiConfigUpdateSystem = components['schemas']['ConfigModuleUpdateSystem'];

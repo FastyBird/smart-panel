@@ -5,7 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleSystemLog_levels } from '../../../openapi';
+import { ConfigModuleSystemLog_levels } from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IConfigSystem } from '../store/config-system.store.types';

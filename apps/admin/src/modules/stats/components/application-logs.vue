@@ -142,7 +142,7 @@ import { Icon } from '@iconify/vue';
 import { formatTimeAgo, useVModel } from '@vueuse/core';
 
 import { IconWithChild } from '../../../common';
-import { ConfigModuleSystemLog_levels } from '../../../openapi';
+import { ConfigModuleSystemLog_levels } from '../../../openapi.constants';
 
 import type { IApplicationLogsProps } from './application-logs.types';
 

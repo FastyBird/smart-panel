@@ -1,7 +1,8 @@
 import { type ZodType, z } from 'zod';
 
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory, DevicesShellyNgPluginShellyNgDeviceType, type components } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { DevicesShellyNgPluginShellyNgDeviceType, type components } from '../../../openapi';
 
 type ApiCreateDevice = components['schemas']['DevicesShellyNgPluginDataDevice'];
 type ApiUpdateDevice = components['schemas']['DevicesShellyNgPluginDataDevice'];

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format } from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IConfigLanguage } from '../store/config-language.store.types';

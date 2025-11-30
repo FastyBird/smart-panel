@@ -313,7 +313,7 @@ import {
 	DevicesModuleChannelPropertyCategory,
 	type DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../../openapi';
+} from '../../../../openapi.constants';
 import type { IChannelsPropertiesFilter } from '../../composables/types';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 import type { IChannel } from '../../store/channels.store.types';

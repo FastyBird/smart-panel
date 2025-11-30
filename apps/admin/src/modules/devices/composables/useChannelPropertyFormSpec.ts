@@ -1,4 +1,4 @@
-import { type DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
+import { type DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi.constants';
 import { DevicesException } from '../devices.exceptions';
 import { type ChannelPropertySpec, getChannelPropertySpecification } from '../devices.mapping';
 

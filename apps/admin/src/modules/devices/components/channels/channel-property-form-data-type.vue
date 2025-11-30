@@ -34,7 +34,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElFormItem, ElOption, ElSelect } from 'element-plus';
 
-import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelPropertyData_type } from '../../../../openapi.constants';
 import { useChannelPropertyFormSpec } from '../../composables/useChannelPropertyFormSpec';
 
 import type { IChannelPropertyFormDataTypeProps } from './channel-property-form-data-type.types';

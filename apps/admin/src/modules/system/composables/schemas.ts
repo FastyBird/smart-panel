@@ -2,12 +2,12 @@ import { z } from 'zod';
 
 import {
 	ConfigModuleSystemLog_levels,
-	SystemModuleExtensionAdminSurface,
+	SystemModuleExtensionSurface,
 	SystemModuleExtensionBackendSurface,
 	SystemModuleDataExtensionBaseKind,
 	SystemModuleDataExtensionBaseSource,
 	SystemModuleLogEntrySource,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 export const DisplaysProfilesFilterSchema = z.object({
 	search: z.string().optional(),
@@ -23,6 +23,6 @@ export const SystemLogsFilterSchema = z.object({
 export const ExtensionsFilterSchema = z.object({
 	search: z.string().optional(),
 	kinds: z.array(z.nativeEnum(SystemModuleDataExtensionBaseKind)).default([]),
-	surfaces: z.array(z.union([z.nativeEnum(SystemModuleExtensionAdminSurface), z.nativeEnum(SystemModuleExtensionBackendSurface)])).default([]),
+	surfaces: z.array(z.union([z.nativeEnum(SystemModuleExtensionSurface), z.nativeEnum(SystemModuleExtensionBackendSurface)])).default([]),
 	sources: z.array(z.nativeEnum(SystemModuleDataExtensionBaseSource)).default([]),
 });

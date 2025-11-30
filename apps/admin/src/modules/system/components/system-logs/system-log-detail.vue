@@ -123,7 +123,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElDescriptions, ElDescriptionsItem, ElTabPane, ElTabs, ElTag, useNamespace } from 'element-plus';
 
-import { ConfigModuleSystemLog_levels } from '../../../../openapi';
+import { ConfigModuleSystemLog_levels } from '../../../../openapi.constants';
 
 import type { ISystemLogsDetailProps } from './system-log-detail.types';
 

@@ -59,7 +59,7 @@ import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElS
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import type { IUsersFilter } from '../composables/types';
 
 import type { IUsersFilterProps } from './users-filter.types';

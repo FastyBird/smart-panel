@@ -107,7 +107,7 @@ import { ElButton, ElIcon, ElLink, ElPopover, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelPropertyData_type } from '../../../../openapi.constants';
 
 import type { IChannelsPropertiesTableColumnDataTypeProps } from './channels-properties-table-column-data-type.types';
 

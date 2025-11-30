@@ -7,7 +7,7 @@ import {
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
 	DevicesModuleDeviceStatusStatus,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 export const DevicesFilterSchema = z.object({
 	search: z.string().optional(),

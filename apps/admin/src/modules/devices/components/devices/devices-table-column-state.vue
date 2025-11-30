@@ -27,7 +27,7 @@ import { ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { DevicesModuleDeviceStatusStatus } from '../../../../openapi';
+import { DevicesModuleDeviceStatusStatus } from '../../../../openapi.constants';
 
 import type { IDevicesTableColumnStateProps } from './devices-table-column-state.types';
 

@@ -136,7 +136,7 @@ import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../../openapi';
+} from '../../../../openapi.constants';
 import type { IDevicesFilter } from '../../composables/types';
 
 import { type IListChannelsPropertiesAdjustProps } from './list-channels-properties-adjust.types';

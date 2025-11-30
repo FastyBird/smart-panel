@@ -5,7 +5,8 @@ import type { Client } from 'openapi-fetch';
 
 import type { IExtensionOptions } from '../../app.types';
 import { SYSTEM_MODULE_PREFIX } from '../../modules/system';
-import { PathsSystemModuleExtensionsGetParametersQuerySurface, SystemModuleExtensionAdminSurface, type operations, type paths } from '../../openapi';
+import { SystemModuleExtensionSurface } from '../../openapi.constants';
+import { PathsSystemModuleExtensionsGetParametersQuerySurface, type operations, type paths } from '../../openapi';
 import { getErrorReason } from '../utils/api-error.utils';
 
 type PluginInstallFn<TOptions> = (app: App, options?: TOptions) => void;
@@ -61,7 +62,7 @@ export const installRemoteExtensions = async (
 		const entries = responseData.data;
 
 		for (const ext of entries) {
-			if (ext.surface !== SystemModuleExtensionAdminSurface.admin) {
+			if (ext.surface !== SystemModuleExtensionSurface.admin) {
 				continue;
 			}
 

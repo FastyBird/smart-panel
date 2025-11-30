@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
 import {
-	SystemModuleExtensionAdminSurface,
+	SystemModuleExtensionSurface,
 	SystemModuleExtensionBackendSurface,
 	SystemModuleDataExtensionBaseKind,
 	SystemModuleDataExtensionBaseSource,
@@ -53,7 +53,7 @@ describe('useExtensionsDataSource', (): void => {
 				admin: {
 					name: '@fastybird/dummy-admin',
 					kind: SystemModuleDataExtensionBaseKind.plugin,
-					surface: SystemModuleExtensionAdminSurface.admin,
+					surface: SystemModuleExtensionSurface.admin,
 					displayName: 'Some dummy admin plugin',
 					description: null,
 					version: '1.0.0',

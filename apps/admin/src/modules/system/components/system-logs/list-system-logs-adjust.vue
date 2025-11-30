@@ -111,7 +111,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { ConfigModuleSystemLog_levels, SystemModuleLogEntrySource } from '../../../../openapi';
+import { ConfigModuleSystemLog_levels, SystemModuleLogEntrySource } from '../../../../openapi.constants';
 import { type ISystemLogsFilter } from '../../composables/types';
 
 import { type IListSystemLogsAdjustProps } from './list-system-logs-adjust.types';

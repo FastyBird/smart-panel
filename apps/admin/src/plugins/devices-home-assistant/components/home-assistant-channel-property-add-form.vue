@@ -244,7 +244,7 @@ import {
 	useChannelPropertyAddForm,
 	useDevices,
 } from '../../../modules/devices';
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi.constants';
 import { DEVICE_NO_ENTITY, ENTITY_MAIN_STATE_ATTRIBUTE, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 import type { IHomeAssistantChannelPropertyAddForm } from '../schemas/channels.properties.types';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';

@@ -82,7 +82,7 @@ import { I18nT, useI18n } from 'vue-i18n';
 
 import { ElTag, ElText } from 'element-plus';
 
-import { DevicesModuleChannelCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi.constants';
 import { useChannels } from '../../composables/composables';
 import { type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';

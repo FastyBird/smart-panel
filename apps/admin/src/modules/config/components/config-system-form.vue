@@ -48,7 +48,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElOption, ElSelect, ElTag, useNamespace } from 'element-plus';
 
-import { ConfigModuleSystemLog_levels } from '../../../openapi';
+import { ConfigModuleSystemLog_levels } from '../../../openapi.constants';
 import { useConfigSystemEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 

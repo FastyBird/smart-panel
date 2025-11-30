@@ -288,7 +288,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { type IPluginElement, IconWithChild, useBreakpoints } from '../../../../common';
-import { type DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi';
+import { type DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi.constants';
 import type { IDevicesFilter } from '../../composables/types';
 import type { IDevice } from '../../store/devices.store.types';
 

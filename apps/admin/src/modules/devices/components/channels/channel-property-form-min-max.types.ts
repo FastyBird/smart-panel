@@ -1,4 +1,4 @@
-import { type DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../../openapi';
+import { type DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../../openapi.constants';
 
 export interface IChannelPropertyFormMinMaxProps {
 	minValue: number | undefined;

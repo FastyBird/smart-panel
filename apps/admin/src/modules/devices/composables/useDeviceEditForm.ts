@@ -5,7 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { DeviceEditFormSchema } from '../schemas/devices.schemas';

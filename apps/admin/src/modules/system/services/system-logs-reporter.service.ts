@@ -7,7 +7,7 @@ import type { ConsolaInstance, ConsolaReporter, LogObject } from 'consola';
 
 import type { IAccountManager } from '../../../common';
 import type { MessageSchema } from '../../../locales';
-import { ConfigModuleSystemLog_levels } from '../../../openapi';
+import { ConfigModuleSystemLog_levels } from '../../../openapi.constants';
 import type { IAddLogEntry, ILogsEntriesStoreActions, ILogsEntriesStoreState } from '../store/logs-entries.store.types';
 
 type LogsStore = Store<string, ILogsEntriesStoreState, object, ILogsEntriesStoreActions>;

@@ -202,7 +202,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules, vLoading } from 'element-plus';
 
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../../openapi.constants';
 import { useChannelPropertyAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 import type { IChannelPropertyAddForm } from '../../schemas/channels.properties.types';

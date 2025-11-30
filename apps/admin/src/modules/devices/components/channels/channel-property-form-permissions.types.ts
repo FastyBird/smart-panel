@@ -2,7 +2,7 @@ import {
 	type DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../../openapi';
+} from '../../../../openapi.constants';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 
 export interface IChannelPropertyFormPermissionsProps {

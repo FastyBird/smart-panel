@@ -11,7 +11,7 @@ import {
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
 	DevicesModuleDeviceStatusStatus,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 import type { FormResultType } from '../devices.constants';
 import type {
 	IChannelPluginsComponents,

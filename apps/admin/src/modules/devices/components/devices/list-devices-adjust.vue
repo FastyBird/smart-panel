@@ -162,7 +162,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi';
+import { DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi.constants';
 import { type IDevicesFilter, useDevicesPlugins } from '../../composables/composables';
 
 import { type IListDevicesAdjustProps } from './list-devices-adjust.types';

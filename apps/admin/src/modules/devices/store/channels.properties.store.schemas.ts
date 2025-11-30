@@ -6,7 +6,7 @@ import {
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
 	type components,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 import { ItemIdSchema } from './types';
 

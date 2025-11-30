@@ -10,7 +10,7 @@ import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { type ChannelPropertySpec, channelChannelsPropertiesSpecificationMappers, getChannelPropertySpecification } from '../devices.mapping';

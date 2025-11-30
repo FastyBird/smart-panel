@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { DevicesModuleChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 
 export const ChannelAddFormSchema = z.object({
 	id: z.string().uuid().optional(),

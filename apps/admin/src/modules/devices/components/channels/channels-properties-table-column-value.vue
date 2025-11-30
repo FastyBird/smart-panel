@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import { ElText } from 'element-plus';
 
-import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelPropertyData_type } from '../../../../openapi.constants';
 
 import type { IChannelsPropertiesTableColumnValueProps } from './channels-properties-table-column-value.types';
 

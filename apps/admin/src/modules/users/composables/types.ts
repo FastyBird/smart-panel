@@ -2,7 +2,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import type { IDisplayInstance } from '../store/displays-instances.store.types';
 import type { IUser } from '../store/users.store.types';
 import type { FormResultType } from '../users.constants';

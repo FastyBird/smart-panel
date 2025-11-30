@@ -199,7 +199,7 @@ import { Icon } from '@iconify/vue';
 
 import { SUBMIT_FORM_SM, router, useFlashMessage } from '../../../common';
 import { RouteNames as DevicesRouteNames, FormResult, type FormResultType, useDevices } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import type { IShellyNgDeviceAddForm, IShellyNgDeviceInfo, IShellyNgSupportedDevice } from '../schemas/devices.types';

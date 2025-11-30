@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleSystemLog_levels, SystemModuleLogEntrySource, type components } from '../../../openapi';
+import { ConfigModuleSystemLog_levels, SystemModuleLogEntrySource } from '../../../openapi.constants';
+import { type components } from '../../../openapi';
 import { DEFAULT_PAGE_SIZE } from '../system.constants';
 
 type ApiCreateLogEntry = components['schemas']['SystemModuleCreateLogEntry'];

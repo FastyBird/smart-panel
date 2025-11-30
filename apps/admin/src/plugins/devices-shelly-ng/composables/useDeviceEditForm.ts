@@ -18,7 +18,7 @@ import {
 	channelsStoreKey,
 	devicesStoreKey,
 } from '../../../modules/devices';
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DevicesShellyNgValidationException } from '../devices-shelly-ng.exceptions';
 import { ShellyNgDeviceEditFormSchema } from '../schemas/devices.schemas';
 import type { IShellyNgDeviceEditForm, IShellyNgSupportedDevice } from '../schemas/devices.types';

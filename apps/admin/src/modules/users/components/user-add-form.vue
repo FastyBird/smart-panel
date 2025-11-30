@@ -104,7 +104,7 @@ import { useI18n } from 'vue-i18n';
 import type { InternalRuleItem } from 'async-validator';
 import { ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { type IUserAddForm, useUserAddForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 

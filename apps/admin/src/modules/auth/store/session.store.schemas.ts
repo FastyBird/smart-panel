@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
-import { UsersModuleUserRole, type components } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
+import { type components } from '../../../openapi';
 import { AccessTokenType } from '../auth.constants';
 
 type ApiLogin = components['schemas']['AuthModuleLogin'];

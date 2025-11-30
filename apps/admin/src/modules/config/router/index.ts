@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { RouteNames } from '../config.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [

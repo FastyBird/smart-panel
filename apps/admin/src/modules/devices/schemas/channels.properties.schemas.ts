@@ -4,7 +4,7 @@ import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 export const ChannelPropertyAddFormSchema = z.object({
 	id: z.string().uuid().optional(),

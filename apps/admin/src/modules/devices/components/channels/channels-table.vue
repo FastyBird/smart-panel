@@ -234,7 +234,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
-import { DevicesModuleChannelCategory } from '../../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
 import type { IChannelsFilter } from '../../composables/types';
 import type { IChannel } from '../../store/channels.store.types';
 import type { IDevice } from '../../store/devices.store.types';

@@ -4,7 +4,7 @@ import {
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
-} from '../../openapi';
+} from '../../openapi.constants';
 import { channelsSchema } from '../../spec/channels';
 import { devicesSchema } from '../../spec/devices';
 

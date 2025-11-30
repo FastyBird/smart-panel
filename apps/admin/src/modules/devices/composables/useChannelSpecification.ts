@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import type { DevicesModuleChannelPropertyCategory } from '../../../openapi';
+import type { DevicesModuleChannelPropertyCategory } from '../../../openapi.constants';
 import { DevicesException } from '../devices.exceptions';
 import { channelChannelsPropertiesSpecificationMappers } from '../devices.mapping';
 import type { IChannel } from '../store/channels.store.types';

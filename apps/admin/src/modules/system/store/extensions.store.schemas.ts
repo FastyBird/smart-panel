@@ -1,12 +1,12 @@
 import { type ZodType, z } from 'zod';
 
 import {
-	SystemModuleExtensionAdminSurface,
+	SystemModuleExtensionSurface,
 	SystemModuleExtensionBackendSurface,
 	SystemModuleDataExtensionBaseKind,
 	SystemModuleDataExtensionBaseSource,
 	type components,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 type ApiExtensionAdmin = components['schemas']['SystemModuleDataExtensionAdmin'];
 type ApiExtensionBackend = components['schemas']['SystemModuleDataExtensionBackend'];
@@ -28,11 +28,11 @@ export const ExtensionBaseSchema = z.object({
 
 export const ExtensionSchema = z.union([
 	ExtensionBaseSchema.extend({
-		surface: z.nativeEnum(SystemModuleExtensionAdminSurface),
+		surface: z.nativeEnum(SystemModuleExtensionSurface),
 		remoteUrl: z.string(),
 	}),
 	ExtensionBaseSchema.extend({
-		surface: z.nativeEnum(SystemModuleExtensionBackendSurface),
+		surface: z.nativeEnum(SystemModuleExtensionSurface),
 		routePrefix: z.string(),
 	}),
 ]);
@@ -57,7 +57,7 @@ export const ExtensionsGetActionPayloadSchema = z.object({
 export const ExtensionAdminResSchema: ZodType<ApiExtensionAdmin> = z.object({
 	name: z.string(),
 	kind: z.nativeEnum(SystemModuleDataExtensionBaseKind),
-	surface: z.nativeEnum(SystemModuleExtensionAdminSurface),
+	surface: z.nativeEnum(SystemModuleExtensionSurface),
 	display_name: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
@@ -68,7 +68,7 @@ export const ExtensionAdminResSchema: ZodType<ApiExtensionAdmin> = z.object({
 export const ExtensionBackendResSchema: ZodType<ApiExtensionBackend> = z.object({
 	name: z.string(),
 	kind: z.nativeEnum(SystemModuleDataExtensionBaseKind),
-	surface: z.nativeEnum(SystemModuleExtensionBackendSurface),
+	surface: z.nativeEnum(SystemModuleExtensionSurface),
 	display_name: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),

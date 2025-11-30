@@ -6,7 +6,7 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleDeviceStatusStatus } from '../../../openapi';
+import { DevicesModuleDeviceStatusStatus } from '../../../openapi.constants';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { devicesStoreKey } from '../store/keys';
