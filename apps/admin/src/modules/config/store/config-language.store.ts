@@ -171,7 +171,7 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 				let errorReason: string | null = 'Failed to update language config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
+					errorReason = getErrorReason<operations['update-config-module-language']>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);

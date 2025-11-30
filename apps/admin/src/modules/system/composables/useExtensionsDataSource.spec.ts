@@ -7,7 +7,6 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
 import {
 	SystemModuleExtensionSurface,
-	SystemModuleExtensionBackendSurface,
 	SystemModuleExtensionKind,
 	SystemModuleExtensionSource,
 } from '../../../openapi.constants';
@@ -65,7 +64,7 @@ describe('useExtensionsDataSource', (): void => {
 				backend: {
 					name: '@fastybird/other-dummy-backend',
 					kind: SystemModuleExtensionKind.plugin,
-					surface: SystemModuleExtensionBackendSurface.backend,
+					surface: SystemModuleExtensionSurface.backend,
 					displayName: 'Some other dummy backend plugin',
 					description: null,
 					version: '1.0.0',

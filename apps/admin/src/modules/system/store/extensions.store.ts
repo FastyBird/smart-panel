@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { SystemModuleExtensionSurface, SystemModuleExtensionBackendSurface } from '../../../openapi.constants';
+import { SystemModuleExtensionSurface } from '../../../openapi.constants';
 import { type operations } from '../../../openapi';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException } from '../system.exceptions';

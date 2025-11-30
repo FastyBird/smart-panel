@@ -171,7 +171,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 				let errorReason: string | null = 'Failed to update audio config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
+					errorReason = getErrorReason<operations['update-config-module-audio']>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);

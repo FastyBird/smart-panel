@@ -68,7 +68,11 @@ export const installRemoteExtensions = async (
 
 			try {
 				// tell Vite to leave this alone at build time
-				const mod: unknown = await import(/* @vite-ignore */ ext.remote_url);
+				const remoteUrl = 'remote_url' in ext ? ext.remote_url : undefined;
+				if (!remoteUrl) {
+					continue;
+				}
+				const mod: unknown = await import(/* @vite-ignore */ remoteUrl);
 
 				const extension = resolveExtension<IExtensionOptions>(mod);
 
@@ -90,7 +94,8 @@ export const installRemoteExtensions = async (
 			} catch (e: unknown) {
 				const msg = e instanceof Error ? e.message : String(e);
 
-				logger.error(`Failed to import ${ext.name} from ${ext.remote_url}: ${msg}`);
+				const remoteUrl = 'remote_url' in ext ? ext.remote_url : 'unknown';
+				logger.error(`Failed to import ${ext.name} from ${remoteUrl}: ${msg}`);
 			}
 		}
 

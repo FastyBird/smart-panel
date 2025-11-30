@@ -2,11 +2,14 @@ import { type ZodType, z } from 'zod';
 
 import {
 	SystemModuleExtensionSurface,
-	SystemModuleExtensionBackendSurface,
 	SystemModuleExtensionKind,
 	SystemModuleExtensionSource,
 } from '../../../openapi.constants';
-import { type components } from '../../../openapi';
+import {
+	type components,
+	SystemModuleDataExtensionAdminLocation_type,
+	SystemModuleDataExtensionBackendLocation_type,
+} from '../../../openapi';
 
 type ApiExtensionAdmin = components['schemas']['SystemModuleDataExtensionAdmin'];
 type ApiExtensionBackend = components['schemas']['SystemModuleDataExtensionBackend'];
@@ -63,6 +66,7 @@ export const ExtensionAdminResSchema: ZodType<ApiExtensionAdmin> = z.object({
 	version: z.string().nullable(),
 	source: z.nativeEnum(SystemModuleExtensionSource),
 	remote_url: z.string(),
+	location_type: z.nativeEnum(SystemModuleDataExtensionAdminLocation_type),
 });
 
 export const ExtensionBackendResSchema: ZodType<ApiExtensionBackend> = z.object({
@@ -74,6 +78,7 @@ export const ExtensionBackendResSchema: ZodType<ApiExtensionBackend> = z.object(
 	version: z.string().nullable(),
 	source: z.nativeEnum(SystemModuleExtensionSource),
 	route_prefix: z.string(),
+	location_type: z.nativeEnum(SystemModuleDataExtensionBackendLocation_type),
 });
 
 export const ExtensionResSchema: ZodType<ApiExtensionAdmin | ApiExtensionBackend> = z.union([ExtensionAdminResSchema, ExtensionBackendResSchema]);

@@ -4,6 +4,7 @@ import {
 	ConfigModuleWeatherCityIdLocationType,
 	ConfigModuleWeatherCityNameLocationType,
 	ConfigModuleWeatherLatLonLocationType,
+	ConfigModuleWeatherLocationType,
 	ConfigModuleWeatherType,
 	ConfigModuleWeatherUnit,
 	ConfigModuleWeatherZipCodeLocationType,
@@ -94,7 +95,7 @@ export const ConfigWeatherEditActionPayloadSchema = z.object({
 
 export const ConfigWeatherBaseUpdateReqSchema: ZodType<ApiConfigUpdateWeather> = z.object({
 	type: z.nativeEnum(ConfigModuleWeatherType),
-	location_type: z.nativeEnum(ConfigModuleWeatherLatLonLocationType),
+	location_type: z.nativeEnum(ConfigModuleWeatherLocationType).optional(),
 	unit: z.nativeEnum(ConfigModuleWeatherUnit).optional(),
 	open_weather_api_key: z.string().nullable().optional(),
 });
@@ -134,7 +135,7 @@ export const ConfigWeatherZipCodeUpdateReqSchema: ZodType<ApiConfigUpdateWeather
 
 export const ConfigWeatherBaseResSchema: ZodType<ApiConfigWeather> = z.object({
 	type: z.nativeEnum(ConfigModuleWeatherType),
-	location_type: z.nativeEnum(ConfigModuleWeatherLatLonLocationType),
+	location_type: z.nativeEnum(ConfigModuleWeatherLocationType),
 	unit: z.nativeEnum(ConfigModuleWeatherUnit),
 	open_weather_api_key: z.string().nullable(),
 });

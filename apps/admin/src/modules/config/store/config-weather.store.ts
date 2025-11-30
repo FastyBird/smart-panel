@@ -171,7 +171,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 				let errorReason: string | null = 'Failed to update weather config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
+					errorReason = getErrorReason<operations['update-config-module-weather']>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);

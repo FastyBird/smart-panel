@@ -80,6 +80,10 @@ export {
 	PathsConfigModuleConfigSectionGetParametersPathSection as ConfigModuleSection,
 } from './openapi';
 
+export {
+	PathsSystemModuleExtensionsGetParametersQuerySurface,
+} from './openapi';
+
 // System Module Enums
 // ===================
 export {
@@ -105,6 +109,7 @@ export {
 // Weather Config Location Types
 // ==============================
 export {
+	ConfigModuleUpdateWeatherLocation_type as ConfigModuleWeatherLocationType,
 	ConfigModuleUpdateWeatherLatLonLocation_type as ConfigModuleWeatherLatLonLocationType,
 	ConfigModuleUpdateWeatherCityNameLocation_type as ConfigModuleWeatherCityNameLocationType,
 	ConfigModuleUpdateWeatherCityIdLocation_type as ConfigModuleWeatherCityIdLocationType,

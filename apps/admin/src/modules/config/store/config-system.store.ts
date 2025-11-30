@@ -171,7 +171,7 @@ export const useConfigSystem = defineStore<'config-module_config_system', Config
 				let errorReason: string | null = 'Failed to update system config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
+					errorReason = getErrorReason<operations['update-config-module-system']>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);
