@@ -146,6 +146,10 @@ export const DataSourceCreateReqSchema: ZodType<ApiCreateDataSource & { parent: 
 
 export const DataSourceUpdateReqSchema: ZodType<ApiUpdateDataSource> = z.object({
 	type: z.string().trim().nonempty(),
+	parent: z.object({
+		id: z.string().uuid(),
+		type: z.string().trim().nonempty(),
+	}),
 });
 
 export const DataSourceResSchema: ZodType<ApiDataSource> = z.object({

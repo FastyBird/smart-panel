@@ -34,13 +34,13 @@ export const ForecastWeatherTileCreateReqSchema: ZodType<ApiCreateForecastWeathe
 		})
 	);
 
-export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile> = TileUpdateReqSchema.and(
+export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
 	z.object({
 		type: z.literal(TILES_WEATHER_PLUGIN_DAY_TYPE),
 	})
 );
 
-export const ForecastWeatherTileUpdateReqSchema: ZodType<ApiUpdateForecastWeatherTile> = TileUpdateReqSchema.and(
+export const ForecastWeatherTileUpdateReqSchema: ZodType<ApiUpdateForecastWeatherTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
 	z.object({
 		type: z.literal(TILES_WEATHER_PLUGIN_FORECAST_TYPE),
 	})
