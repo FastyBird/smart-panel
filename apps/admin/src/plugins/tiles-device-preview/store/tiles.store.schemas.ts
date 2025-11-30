@@ -28,7 +28,7 @@ export const DevicePreviewTileCreateReqSchema: ZodType<ApiCreateDevicePreviewTil
 		})
 	);
 
-export const DevicePreviewTileUpdateReqSchema: ZodType<ApiUpdateDevicePreviewTile> = TileUpdateReqSchema.and(
+export const DevicePreviewTileUpdateReqSchema: ZodType<ApiUpdateDevicePreviewTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
 	z.object({
 		type: z.literal(TILES_DEVICE_PREVIEW_TYPE),
 		device: z.string().uuid().optional(),

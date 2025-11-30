@@ -28,7 +28,7 @@ export const TimeTileUpdateReqSchema: ZodType<ApiUpdateTimeTile & { parent: { ty
 	})
 );
 
-export const TimeTileResSchema: ZodType<ApiTimeTile & { parent: { type: string; id: string } }> = TileResSchema.and(
+export const TimeTileResSchema: ZodType<ApiTimeTile> = TileResSchema.and(
 	z.object({
 		type: z.literal(TILES_TIME_TYPE),
 	})

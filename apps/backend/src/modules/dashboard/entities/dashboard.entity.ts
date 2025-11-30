@@ -202,6 +202,7 @@ export abstract class TileEntity extends BaseEntity {
 	@ApiProperty({
 		description: 'Parent entity information',
 		type: 'object',
+		required: ['type', 'id'],
 		properties: {
 			type: { type: 'string', example: 'page' },
 			id: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
@@ -259,6 +260,7 @@ export abstract class DataSourceEntity extends BaseEntity {
 	@ApiProperty({
 		description: 'Parent entity information',
 		type: 'object',
+		required: ['type', 'id'],
 		properties: {
 			type: { type: 'string', example: 'tile' },
 			id: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },

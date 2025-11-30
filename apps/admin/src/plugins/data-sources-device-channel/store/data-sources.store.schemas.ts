@@ -48,7 +48,7 @@ export const DeviceChannelDataSourceCreateReqSchema: ZodType<ApiCreateDeviceChan
 		})
 	);
 
-export const DeviceChannelDataSourceUpdateReqSchema: ZodType<ApiUpdateDeviceChannelDataSource> = DataSourceUpdateReqSchema.and(
+export const DeviceChannelDataSourceUpdateReqSchema: ZodType<ApiUpdateDeviceChannelDataSource & { parent: { type: string; id: string } }> = DataSourceUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DATA_SOURCES_DEVICE_TYPE),
 		device: z.string().uuid().optional(),
