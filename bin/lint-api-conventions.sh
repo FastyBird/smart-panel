@@ -195,7 +195,7 @@ while IFS= read -r line; do
   file="${line%%:*}"
 
   # Extract schema name from the line
-  schema_name="$(echo "${line}" | sed -E "s/.*name:\s*'([^']+)'.*//")"
+  schema_name="$(echo "${line}" | sed -E "s/.*name:[[:space:]]*'([^']+)'.*/\1/")"
 
   # If we can't parse the name, skip silently
   [ -z "${schema_name}" ] && continue
