@@ -5,8 +5,8 @@ import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { type components } from '../../../openapi';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-type ApiCreateDevice = components['schemas']['DevicesShellyNgPluginDataDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesShellyNgPluginDataDevice'];
+type ApiCreateDevice = components['schemas']['DevicesShellyNgPluginCreateDevice'];
+type ApiUpdateDevice = components['schemas']['DevicesShellyNgPluginUpdateDevice'];
 type ApiDevice = components['schemas']['DevicesShellyNgPluginDataDevice'];
 
 export const ShellyNgDeviceSchema = DeviceSchema.extend({

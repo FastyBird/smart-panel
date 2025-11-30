@@ -4,8 +4,8 @@ import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateR
 import { type components } from '../../../openapi';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-type ApiCreateChannel = components['schemas']['DevicesThirdPartyPluginDataChannel'];
-type ApiUpdateChannel = components['schemas']['DevicesThirdPartyPluginDataChannel'];
+type ApiCreateChannel = components['schemas']['DevicesThirdPartyPluginCreateChannel'];
+type ApiUpdateChannel = components['schemas']['DevicesThirdPartyPluginUpdateChannel'];
 type ApiChannel = components['schemas']['DevicesThirdPartyPluginDataChannel'];
 
 export const ThirdPartyChannelSchema = ChannelSchema;

@@ -5,7 +5,7 @@ import { type components } from '../../../openapi';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 type ApiUpdateConfig = components['schemas']['DevicesShellyNgPluginUpdateConfig'];
-type ApiConfig = components['schemas']['DevicesShellyNgPluginDataConfig'];
+type ApiConfig = components['schemas']['DevicesShellyNgPluginDataShellyNgConfig'];
 
 export const ShellyNgConfigSchema = ConfigPluginSchema.extend({
 	mdns: z.object({

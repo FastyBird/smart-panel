@@ -187,7 +187,7 @@ export const LogEntryCreateReqSchema: ZodType<ApiCreateLogEntry> = z.object({
 export const LogEntryResSchema: ZodType<ApiLogEntry> = z.object({
 	id: z.string().ulid(),
 	ts: z.string(),
-	ingested_at: z.string().optional(),
+	ingested_at: z.string(),
 	seq: z.number().optional(),
 	source: z.nativeEnum(SystemModuleLogEntrySource),
 	level: z.number(),

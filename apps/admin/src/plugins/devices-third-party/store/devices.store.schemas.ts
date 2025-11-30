@@ -4,8 +4,8 @@ import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSc
 import { type components } from '../../../openapi';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-type ApiCreateDevice = components['schemas']['DevicesThirdPartyPluginDataDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesThirdPartyPluginDataDevice'];
+type ApiCreateDevice = components['schemas']['DevicesThirdPartyPluginCreateDevice'];
+type ApiUpdateDevice = components['schemas']['DevicesThirdPartyPluginUpdateDevice'];
 type ApiDevice = components['schemas']['DevicesThirdPartyPluginDataDevice'];
 
 export const ThirdPartyDeviceSchema = DeviceSchema.extend({

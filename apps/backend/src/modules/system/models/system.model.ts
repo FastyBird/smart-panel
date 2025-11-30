@@ -449,17 +449,22 @@ export abstract class ExtensionBaseModel {
 	@IsString()
 	displayName: string;
 
-	@ApiPropertyOptional({ description: 'Extension description', type: 'string', example: 'A useful extension' })
+	@ApiPropertyOptional({
+		description: 'Extension description',
+		type: 'string',
+		nullable: true,
+		example: 'A useful extension',
+	})
 	@Expose()
 	@IsString()
 	@IsOptional()
-	description?: string;
+	description?: string | null = null;
 
-	@ApiPropertyOptional({ description: 'Extension version', type: 'string', example: '1.0.0' })
+	@ApiPropertyOptional({ description: 'Extension version', type: 'string', nullable: true, example: '1.0.0' })
 	@Expose()
 	@IsString()
 	@IsOptional()
-	version?: string;
+	version?: string | null = null;
 
 	@ApiProperty({ description: 'Extension source', enum: ExtensionSourceType })
 	@Expose()

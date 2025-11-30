@@ -4,8 +4,8 @@ import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateR
 import { type components } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
-type ApiCreateChannel = components['schemas']['DevicesHomeAssistantPluginDataChannel'];
-type ApiUpdateChannel = components['schemas']['DevicesHomeAssistantPluginDataChannel'];
+type ApiCreateChannel = components['schemas']['DevicesHomeAssistantPluginCreateChannel'];
+type ApiUpdateChannel = components['schemas']['DevicesHomeAssistantPluginUpdateChannel'];
 type ApiChannel = components['schemas']['DevicesHomeAssistantPluginDataChannel'];
 
 export const HomeAssistantChannelSchema = ChannelSchema;

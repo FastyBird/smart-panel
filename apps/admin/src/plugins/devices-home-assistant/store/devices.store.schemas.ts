@@ -4,8 +4,8 @@ import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSc
 import { type components } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
-type ApiCreateDevice = components['schemas']['DevicesHomeAssistantPluginDataDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesHomeAssistantPluginDataDevice'];
+type ApiCreateDevice = components['schemas']['DevicesHomeAssistantPluginCreateDevice'];
+type ApiUpdateDevice = components['schemas']['DevicesHomeAssistantPluginUpdateDevice'];
 type ApiDevice = components['schemas']['DevicesHomeAssistantPluginDataDevice'];
 
 export const HomeAssistantDeviceSchema = DeviceSchema.extend({

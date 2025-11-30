@@ -9,8 +9,8 @@ import {
 import { type components } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_TYPE, DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 
-type ApiCreateChannelProperty = components['schemas']['DevicesHomeAssistantPluginDataChannelProperty'];
-type ApiUpdateChannelProperty = components['schemas']['DevicesHomeAssistantPluginDataChannelProperty'];
+type ApiCreateChannelProperty = components['schemas']['DevicesHomeAssistantPluginCreateChannelProperty'];
+type ApiUpdateChannelProperty = components['schemas']['DevicesHomeAssistantPluginUpdateChannelProperty'];
 type ApiChannelProperty = components['schemas']['DevicesHomeAssistantPluginDataChannelProperty'];
 
 export const HomeAssistantChannelPropertySchema = ChannelPropertySchema.extend({

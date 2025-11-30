@@ -4,8 +4,8 @@ import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateR
 import { type components } from '../../../openapi';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-type ApiCreateChannel = components['schemas']['DevicesShellyNgPluginDataChannel'];
-type ApiUpdateChannel = components['schemas']['DevicesShellyNgPluginDataChannel'];
+type ApiCreateChannel = components['schemas']['DevicesShellyNgPluginCreateChannel'];
+type ApiUpdateChannel = components['schemas']['DevicesShellyNgPluginUpdateChannel'];
 type ApiChannel = components['schemas']['DevicesShellyNgPluginDataChannel'];
 
 export const ShellyNgChannelSchema = ChannelSchema;

@@ -9,8 +9,8 @@ import {
 import { type components } from '../../../openapi';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-type ApiCreateChannelProperty = components['schemas']['DevicesThirdPartyPluginDataChannelProperty'];
-type ApiUpdateChannelProperty = components['schemas']['DevicesThirdPartyPluginDataChannelProperty'];
+type ApiCreateChannelProperty = components['schemas']['DevicesThirdPartyPluginCreateChannelProperty'];
+type ApiUpdateChannelProperty = components['schemas']['DevicesThirdPartyPluginUpdateChannelProperty'];
 type ApiChannelProperty = components['schemas']['DevicesThirdPartyPluginDataChannelProperty'];
 
 export const ThirdPartyChannelPropertySchema = ChannelPropertySchema;

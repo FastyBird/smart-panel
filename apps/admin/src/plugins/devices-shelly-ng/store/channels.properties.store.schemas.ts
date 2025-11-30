@@ -9,8 +9,8 @@ import {
 import { type components } from '../../../openapi';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-type ApiCreateChannelProperty = components['schemas']['DevicesShellyNgPluginDataChannelProperty'];
-type ApiUpdateChannelProperty = components['schemas']['DevicesShellyNgPluginDataChannelProperty'];
+type ApiCreateChannelProperty = components['schemas']['DevicesShellyNgPluginCreateChannelProperty'];
+type ApiUpdateChannelProperty = components['schemas']['DevicesShellyNgPluginUpdateChannelProperty'];
 type ApiChannelProperty = components['schemas']['DevicesShellyNgPluginDataChannelProperty'];
 
 export const ShellyNgChannelPropertySchema = ChannelPropertySchema;

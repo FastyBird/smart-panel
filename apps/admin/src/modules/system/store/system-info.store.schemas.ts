@@ -29,8 +29,8 @@ export const SystemInfoSchema = z.object({
 		available: z.number(),
 	}),
 	temperature: z.object({
-		cpu: z.number().nullable().optional(),
-		gpu: z.number().nullable().optional(),
+		cpu: z.number().optional(),
+		gpu: z.number().optional(),
 	}),
 	os: z.object({
 		platform: z.string(),
@@ -165,8 +165,8 @@ export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
 		available: z.number(),
 	}),
 	temperature: z.object({
-		cpu: z.number().nullable().optional(),
-		gpu: z.number().nullable().optional(),
+		cpu: z.number().optional(),
+		gpu: z.number().optional(),
 	}),
 	os: z.object({
 		platform: z.string(),
