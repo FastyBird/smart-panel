@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
 	ConfigModuleSystemLog_levels,
 	SystemModuleExtensionSurface,
-	SystemModuleExtensionBackendSurface,
 	SystemModuleLogEntrySource,
 } from '../../../openapi.constants';
 
@@ -26,6 +25,6 @@ export const SystemLogsFilterSchema = z.object({
 export const ExtensionsFilterSchema = z.object({
 	search: z.string().optional(),
 	kinds: z.array(z.nativeEnum(SystemModuleDataExtensionBaseKind)).default([]),
-	surfaces: z.array(z.union([z.nativeEnum(SystemModuleExtensionSurface), z.nativeEnum(SystemModuleExtensionBackendSurface)])).default([]),
+	surfaces: z.array(z.nativeEnum(SystemModuleExtensionSurface)).default([]),
 	sources: z.array(z.nativeEnum(SystemModuleDataExtensionBaseSource)).default([]),
 });
