@@ -5,8 +5,8 @@ import {
 	SystemModuleExtensionBackendSurface,
 	SystemModuleExtensionKind,
 	SystemModuleExtensionSource,
-	type components,
 } from '../../../openapi.constants';
+import { type components } from '../../../openapi';
 
 type ApiExtensionAdmin = components['schemas']['SystemModuleDataExtensionAdmin'];
 type ApiExtensionBackend = components['schemas']['SystemModuleDataExtensionBackend'];

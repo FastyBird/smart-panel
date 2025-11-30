@@ -4,14 +4,13 @@ import {
 	ConfigModuleWeatherCityIdLocationType,
 	ConfigModuleWeatherCityNameLocationType,
 	ConfigModuleWeatherLatLonLocationType,
-	ConfigModuleWeatherLatLonLocationType,
 	ConfigModuleWeatherType,
 	ConfigModuleWeatherUnit,
 	ConfigModuleWeatherZipCodeLocationType,
 } from '../../../openapi.constants';
 import { type components } from '../../../openapi';
 
-type ApiConfigWeather = components['schemas']['ConfigModuleWeather'];
+type ApiConfigWeather = components['schemas']['ConfigModuleDataWeather'];
 type ApiConfigWeatherLatLon = components['schemas']['ConfigModuleDataWeatherLatLon'];
 type ApiConfigWeatherCityName = components['schemas']['ConfigModuleDataWeatherCityName'];
 type ApiConfigWeatherCityId = components['schemas']['ConfigModuleDataWeatherCityId'];
