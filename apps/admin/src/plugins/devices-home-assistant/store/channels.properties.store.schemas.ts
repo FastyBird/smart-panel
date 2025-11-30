@@ -57,15 +57,13 @@ export const HomeAssistantChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChann
 			.trim()
 			.nonempty()
 			.nullable()
-			.transform((val) => (val === DEVICE_NO_ENTITY ? null : val))
-			.optional(),
+			.transform((val) => (val === DEVICE_NO_ENTITY ? null : val)),
 		ha_attribute: z
 			.string()
 			.trim()
 			.nonempty()
 			.nullable()
-			.transform((val) => (val === ENTITY_NO_ATTRIBUTE ? null : val))
-			.optional(),
+			.transform((val) => (val === ENTITY_NO_ATTRIBUTE ? null : val)),
 	})
 );
 

@@ -7,7 +7,7 @@ import { ConfigDisplayResSchema, ConfigDisplaySchema } from './config-display.st
 import { ConfigLanguageResSchema, ConfigLanguageSchema } from './config-language.store.schemas';
 import { ConfigPluginResSchema, ConfigPluginSchema } from './config-plugins.store.schemas';
 import { ConfigSystemResSchema, ConfigSystemSchema } from './config-system.store.schemas';
-import { ConfigWeatherBaseResSchema, ConfigWeatherSchema } from './config-weather.store.schemas';
+import { ConfigWeatherCityIdResSchema, ConfigWeatherCityNameResSchema, ConfigWeatherLatLonResSchema, ConfigWeatherSchema, ConfigWeatherZipCodeResSchema } from './config-weather.store.schemas';
 
 type ApiConfigApp = components['schemas']['ConfigModuleDataApp'];
 
@@ -64,6 +64,6 @@ export const ConfigAppResSchema: ZodType<ApiConfigApp> = z.object({
 	display: ConfigDisplayResSchema,
 	language: ConfigLanguageResSchema,
 	system: ConfigSystemResSchema,
-	weather: ConfigWeatherBaseResSchema,
+	weather: z.union([ConfigWeatherLatLonResSchema, ConfigWeatherCityNameResSchema, ConfigWeatherCityIdResSchema, ConfigWeatherZipCodeResSchema]),
 	plugins: z.array(ConfigPluginResSchema),
 });

@@ -364,7 +364,7 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@ApiPropertyOptional({
 		description: 'Property format constraints',
 		type: 'array',
-		items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+		items: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'null' }] },
 		example: ['on', 'off'],
 		nullable: true,
 	})

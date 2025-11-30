@@ -10,10 +10,11 @@ import {
 	IsString,
 	IsUUID,
 	IsUrl,
+	Min,
 	ValidateNested,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -23,6 +24,9 @@ import {
 	LogEntrySource,
 	LogEntryType,
 } from '../system.constants';
+
+type LogArgPrimitive = string | number | boolean | null;
+type EntryLogArg = LogArgPrimitive | Record<string, unknown> | LogArgPrimitive[];
 
 @ApiSchema({ name: 'SystemModuleDataMemoryInfo' })
 export class MemoryInfoModel {
@@ -306,6 +310,38 @@ export class ThrottleStatusModel {
 	softTempLimit: boolean;
 }
 
+@ApiSchema({ name: 'SystemModuleDataLogEntryError' })
+export class LogEntryErrorModel {
+	@ApiProperty({
+		description: 'Zero-based index of the log event within the submitted `data` array that caused an error.',
+		type: 'integer',
+		minimum: 0,
+		example: 0,
+	})
+	@Expose()
+	@IsInt()
+	@Min(0)
+	index: number;
+
+	@ApiProperty({
+		description: 'Short, human-readable reason describing why the log event was rejected.',
+		type: 'string',
+		example: 'Invalid log level value.',
+	})
+	@Expose()
+	@IsString()
+	reason: string;
+
+	@ApiPropertyOptional({
+		description: 'Optional object with additional error details, such as schema validation paths or expected types.',
+		type: 'object',
+		additionalProperties: true,
+	})
+	@Expose()
+	@IsOptional()
+	details?: Record<string, unknown>;
+}
+
 @ApiSchema({ name: 'SystemModuleDataLogEntryAccepted' })
 export class LogEntryAcceptedModel {
 	@ApiProperty({ description: 'Number of accepted log entries', type: 'integer', example: 150 })
@@ -317,6 +353,17 @@ export class LogEntryAcceptedModel {
 	@Expose()
 	@IsInt()
 	rejected: number;
+
+	@ApiPropertyOptional({
+		description:
+			'Optional list of validation or processing errors for rejected items. Each entry references the index of the rejected log event in the original request batch.',
+		type: 'array',
+		items: { $ref: getSchemaPath(LogEntryErrorModel) },
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	errors?: LogEntryErrorModel[];
 }
 
 @ApiSchema({ name: 'SystemModuleDataLogEntryUser' })
@@ -406,11 +453,33 @@ export class LogEntryModel {
 	@IsString()
 	message?: string;
 
-	@ApiPropertyOptional({ description: 'Log arguments', type: 'array', items: { type: 'object' } })
+	@ApiPropertyOptional({
+		description:
+			'Optional array of structured arguments providing additional context, parameters, or error details associated with the log event. The values are JSON-safe, and the server should sanitize them before storage.',
+		type: 'array',
+		maxItems: 20,
+		items: {
+			description:
+				'Arbitrary JSON value used as a supplementary argument to the log message. Can include nested objects or arrays.',
+			anyOf: [
+				{ type: 'string' },
+				{ type: 'number' },
+				{ type: 'boolean' },
+				{ type: 'object', additionalProperties: true },
+				{
+					type: 'array',
+					items: {
+						anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'null' }],
+					},
+				},
+				{ type: 'null' },
+			],
+		},
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray()
-	args?: (string | number | boolean | Record<string, unknown> | (string | number | boolean | null)[] | null)[];
+	args?: EntryLogArg[];
 
 	@ApiPropertyOptional({ description: 'User information', type: LogEntryUserModel })
 	@Expose()

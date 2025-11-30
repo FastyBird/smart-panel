@@ -8,6 +8,7 @@ import {
 	IsObject,
 	IsOptional,
 	IsString,
+	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
 
@@ -27,16 +28,18 @@ export class HomeAssistantStateModel {
 
 	@ApiProperty({
 		description: 'Current state of the entity',
-		type: 'string',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		nullable: true,
 		example: 'on',
 	})
 	@Expose()
 	@IsString()
-	state: string;
+	state: string | number | boolean | null;
 
 	@ApiProperty({
 		description: 'Dynamic attributes of the entity',
 		example: { brightness: 255, color_temp: 370 },
+		additionalProperties: true,
 	})
 	@Expose()
 	@IsObject()
@@ -46,14 +49,20 @@ export class HomeAssistantStateModel {
 		description: 'Timestamp when the state last changed',
 		type: 'string',
 		format: 'date-time',
+		nullable: true,
 		example: '2023-10-15T14:30:00.000Z',
 		name: 'last_changed',
 	})
 	@Expose({ name: 'last_changed' })
+	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsDate()
 	@Transform(
-		({ obj }: { obj: { last_changed?: string | Date; lastChanged?: string | Date } }) => {
-			const value: string | Date = obj.last_changed || obj.lastChanged;
+		({ obj }: { obj: { last_changed?: string | Date | null; lastChanged?: string | Date | null } }) => {
+			const value: string | Date | null | undefined = obj.last_changed || obj.lastChanged;
+			if (value === null || value === undefined) {
+				return null;
+			}
 			return typeof value === 'string' ? new Date(value) : value;
 		},
 		{ toClassOnly: true },
@@ -61,20 +70,26 @@ export class HomeAssistantStateModel {
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
 	})
-	lastChanged: Date;
+	lastChanged: Date | null;
 
 	@ApiProperty({
 		description: 'Timestamp when the state was last reported',
 		type: 'string',
 		format: 'date-time',
+		nullable: true,
 		example: '2023-10-15T14:30:00.000Z',
 		name: 'last_reported',
 	})
 	@Expose({ name: 'last_reported' })
+	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsDate()
 	@Transform(
-		({ obj }: { obj: { last_reported?: string | Date; lastReported?: string | Date } }) => {
-			const value: string | Date = obj.last_reported || obj.lastReported;
+		({ obj }: { obj: { last_reported?: string | Date | null; lastReported?: string | Date | null } }) => {
+			const value: string | Date | null | undefined = obj.last_reported || obj.lastReported;
+			if (value === null || value === undefined) {
+				return null;
+			}
 			return typeof value === 'string' ? new Date(value) : value;
 		},
 		{ toClassOnly: true },
@@ -82,20 +97,26 @@ export class HomeAssistantStateModel {
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
 	})
-	lastReported: Date;
+	lastReported: Date | null;
 
 	@ApiProperty({
 		description: 'Timestamp when the state was last updated',
 		type: 'string',
 		format: 'date-time',
+		nullable: true,
 		example: '2023-10-15T14:30:00.000Z',
 		name: 'last_updated',
 	})
 	@Expose({ name: 'last_updated' })
+	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsDate()
 	@Transform(
-		({ obj }: { obj: { last_updated?: string | Date; lastUpdated?: string | Date } }) => {
-			const value: string | Date = obj.last_updated || obj.lastUpdated;
+		({ obj }: { obj: { last_updated?: string | Date | null; lastUpdated?: string | Date | null } }) => {
+			const value: string | Date | null | undefined = obj.last_updated || obj.lastUpdated;
+			if (value === null || value === undefined) {
+				return null;
+			}
 			return typeof value === 'string' ? new Date(value) : value;
 		},
 		{ toClassOnly: true },
@@ -103,7 +124,7 @@ export class HomeAssistantStateModel {
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
 	})
-	lastUpdated: Date;
+	lastUpdated: Date | null;
 }
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginDataDiscoveredDevice' })

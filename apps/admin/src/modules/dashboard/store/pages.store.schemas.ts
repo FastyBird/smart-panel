@@ -112,7 +112,7 @@ export const PagesEditActionPayloadSchema = z.object({
 				.nullable()
 				.default(null)
 				.optional(),
-			order: z.number().default(0),
+			order: z.number().optional(),
 			showTopBar: z.boolean().optional(),
 			display: z.string().uuid().nullable().optional(),
 		})

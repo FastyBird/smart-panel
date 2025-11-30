@@ -126,7 +126,7 @@ export class ChannelPropertySpecModel {
 	@ApiProperty({
 		description: 'Property format constraints (array of strings or numbers)',
 		type: 'array',
-		items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+		items: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'null' }] },
 		nullable: true,
 		example: ['on', 'off'],
 	})

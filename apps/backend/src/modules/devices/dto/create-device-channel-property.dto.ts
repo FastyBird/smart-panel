@@ -133,7 +133,7 @@ export class CreateDeviceChannelPropertyDto {
 	@ApiPropertyOptional({
 		description: 'Property format',
 		type: 'array',
-		items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+		items: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'null' }] },
 		nullable: true,
 		example: [0, 100],
 	})

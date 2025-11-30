@@ -79,7 +79,7 @@ export class ResponseMetadataModel {
 /**
  * Response metadata for success responses
  */
-@ApiSchema({ name: 'SuccessMetadataModel' })
+@ApiSchema({ name: 'CommonSuccessMetadataModel' })
 export class SuccessMetadataModel {
 	@ApiProperty({
 		description: 'The total time taken to process the request, in milliseconds',
@@ -112,10 +112,31 @@ export class SuccessMetadataModel {
 	cpu_usage: number;
 }
 
+@ApiSchema({ name: 'CommonSuccessPaginatedMetadataModel' })
+export class SuccessPaginatedMetadataModel extends SuccessMetadataModel {
+	@ApiProperty({
+		name: 'next_cursor',
+		description: 'Opaque cursor for the next page.',
+		type: 'string',
+		example: 'eyJpZCI6IjEyMyJ9',
+	})
+	@Expose({ name: 'next_cursor' })
+	nextCursor: string;
+
+	@ApiProperty({
+		name: 'has_more',
+		description: 'Whether more data is available.',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_more' })
+	hasMore: boolean;
+}
+
 /**
  * Base error response structure
  */
-@ApiSchema({ name: 'BaseErrorResponseModel' })
+@ApiSchema({ name: 'CommonBaseErrorResponseModel' })
 export class BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Response status indicator',
@@ -175,7 +196,7 @@ export class BaseErrorResponseModel {
 /**
  * 400 Bad Request Error Response
  */
-@ApiSchema({ name: 'BadRequestErrorModel' })
+@ApiSchema({ name: 'CommonBadRequestErrorModel' })
 export class BadRequestErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -195,7 +216,7 @@ export class BadRequestErrorModel extends BaseErrorResponseModel {
 /**
  * 403 Forbidden Error Response
  */
-@ApiSchema({ name: 'ForbiddenErrorModel' })
+@ApiSchema({ name: 'CommonForbiddenErrorModel' })
 export class ForbiddenErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -215,7 +236,7 @@ export class ForbiddenErrorModel extends BaseErrorResponseModel {
 /**
  * 404 Not Found Error Response
  */
-@ApiSchema({ name: 'NotFoundErrorModel' })
+@ApiSchema({ name: 'CommonNotFoundErrorModel' })
 export class NotFoundErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -235,7 +256,7 @@ export class NotFoundErrorModel extends BaseErrorResponseModel {
 /**
  * 422 Unprocessable Entity Error Response
  */
-@ApiSchema({ name: 'UnprocessableEntityErrorModel' })
+@ApiSchema({ name: 'CommonUnprocessableEntityErrorModel' })
 export class UnprocessableEntityErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -254,7 +275,7 @@ export class UnprocessableEntityErrorModel extends BaseErrorResponseModel {
 /**
  * 500 Internal Server Error Response
  */
-@ApiSchema({ name: 'InternalServerErrorModel' })
+@ApiSchema({ name: 'CommonInternalServerErrorModel' })
 export class InternalServerErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -270,7 +291,7 @@ export class InternalServerErrorModel extends BaseErrorResponseModel {
 /**
  * 503 Service Unavailable Error Response
  */
-@ApiSchema({ name: 'ServiceUnavailableErrorModel' })
+@ApiSchema({ name: 'CommonServiceUnavailableErrorModel' })
 export class ServiceUnavailableErrorModel extends BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'Error details',
@@ -286,7 +307,7 @@ export class ServiceUnavailableErrorModel extends BaseErrorResponseModel {
 /**
  * Base success response structure
  */
-@ApiSchema({ name: 'BaseSuccessResponseModel' })
+@ApiSchema({ name: 'CommonBaseSuccessResponseModel' })
 export class BaseSuccessResponseModel<T = unknown> {
 	@ApiProperty({
 		description: 'Response status indicator',

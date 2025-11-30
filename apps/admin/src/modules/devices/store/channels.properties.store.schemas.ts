@@ -29,9 +29,9 @@ export const ChannelPropertySchema = z.object({
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).default(null),
+	value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -71,9 +71,9 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 		dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 		unit: z.string().nullable(),
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-		invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z.number().nullable(),
-		value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+		value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	}),
 });
 
@@ -104,12 +104,12 @@ export const ChannelsPropertiesAddActionPayloadSchema = z.object({
 		dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 		unit: z.string().nullable(),
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-		invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z
 			.union([z.string(), z.number()])
 			.transform((val) => (val === '' ? undefined : Number(val)))
 			.nullable(),
-		value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+		value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	}),
 });
 
@@ -126,12 +126,12 @@ export const ChannelsPropertiesEditActionPayloadSchema = z.object({
 			.array(z.union([z.string(), z.union([z.number(), z.null()])]))
 			.nullable()
 			.optional(),
-		invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 		step: z
 			.union([z.string(), z.number()])
 			.transform((val) => (val === '' ? undefined : Number(val)))
 			.nullable(),
-		value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+		value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	}),
 });
 
@@ -158,9 +158,9 @@ export const ChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> =
 	data_type: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 });
 
 export const ChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> = z.object({
@@ -172,9 +172,9 @@ export const ChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> =
 		.array(z.union([z.string(), z.union([z.number(), z.null()])]))
 		.nullable()
 		.optional(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	step: z.number().nullable().optional(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+	value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 });
 
 export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
@@ -188,9 +188,9 @@ export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
 	data_type: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).nullable(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

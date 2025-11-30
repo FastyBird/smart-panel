@@ -2,7 +2,7 @@ import { Expose } from 'class-transformer';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { BaseSuccessResponseModel, SuccessPaginatedMetadataModel } from '../../api/models/api-response.model';
 import { DisplayProfileEntity } from '../entities/system.entity';
 
 import {
@@ -91,6 +91,13 @@ export class LogEntriesResponseModel extends BaseSuccessResponseModel<LogEntryMo
 	})
 	@Expose()
 	declare data: LogEntryModel[];
+
+	@ApiProperty({
+		description: 'Additional metadata about the request and server performance metrics.',
+		type: () => SuccessPaginatedMetadataModel,
+	})
+	@Expose()
+	declare metadata: SuccessPaginatedMetadataModel;
 }
 
 /**
