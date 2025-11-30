@@ -167,7 +167,9 @@ export class CreateLogEntryDto {
 				{ type: 'object' },
 				{
 					type: 'array',
-					items: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'null' }] },
+					items: {
+						oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }, { type: 'null' }],
+					},
 				},
 				{ type: 'null' },
 			],

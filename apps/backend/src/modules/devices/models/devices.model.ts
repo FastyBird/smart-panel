@@ -144,6 +144,7 @@ export class ChannelPropertySpecModel {
 
 	@ApiProperty({
 		description: 'Invalid value indicator',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
 		example: null,
 	})

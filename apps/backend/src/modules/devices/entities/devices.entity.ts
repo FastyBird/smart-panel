@@ -382,7 +382,12 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@Column({ type: 'json', nullable: true })
 	format: string[] | number[] | null;
 
-	@ApiPropertyOptional({ description: 'Invalid value indicator', type: 'string', example: null, nullable: true })
+	@ApiPropertyOptional({
+		description: 'Invalid value indicator',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+		example: null,
+	})
 	@Expose()
 	@IsOptional()
 	@Column({ type: 'text', nullable: true })
@@ -395,7 +400,12 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@Column({ type: 'real', nullable: true })
 	step: number | null;
 
-	@ApiPropertyOptional({ description: 'Property current value', type: 'string', example: '25.5', nullable: true })
+	@ApiPropertyOptional({
+		description: 'Property current value',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+		example: 25.5,
+	})
 	@Expose()
 	@IsOptional()
 	value: string | boolean | number | null;
