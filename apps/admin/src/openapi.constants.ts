@@ -83,7 +83,7 @@ export {
 // System Module Enums
 // ===================
 export {
-	SystemModuleExtensionSource as SystemModuleExtensionSource,
+	SystemModuleDataExtensionBaseSource as SystemModuleExtensionSource,
 } from './openapi';
 
 export {
@@ -91,7 +91,7 @@ export {
 } from './openapi';
 
 export {
-	SystemModuleExtensionKind as SystemModuleExtensionKind,
+	SystemModuleDataExtensionBaseKind as SystemModuleExtensionKind,
 } from './openapi';
 
 export {
@@ -99,7 +99,7 @@ export {
 } from './openapi';
 
 export {
-	SystemModuleLogEntryType as SystemModuleLogEntryType,
+	SystemModuleCreateLogEntryType as SystemModuleLogEntryType,
 } from './openapi';
 
 // Weather Config Location Types
