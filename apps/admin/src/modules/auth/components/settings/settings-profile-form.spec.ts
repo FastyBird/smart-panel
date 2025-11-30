@@ -7,7 +7,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
-import { UsersModuleUserRole } from '../../../../openapi';
+import { UsersModuleUserRole } from '../../../../openapi.constants';
 import { FormResult } from '../../auth.constants';
 import type { SessionStore } from '../../store/session.store.types';
 

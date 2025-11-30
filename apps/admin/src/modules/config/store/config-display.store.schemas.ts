@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleDisplayType, type components } from '../../../openapi';
+import { ConfigModuleDisplayType } from '../../../openapi.constants';
+import { type components } from '../../../openapi';
 
 type ApiConfigDisplay = components['schemas']['ConfigModuleDataDisplay'];
 type ApiConfigUpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];

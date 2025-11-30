@@ -76,6 +76,10 @@ export {
 	ConfigModuleUpdateSystemType as ConfigModuleSystemType,
 } from './openapi';
 
+export {
+	PathsConfigModuleConfigSectionGetParametersPathSection as ConfigModuleSection,
+} from './openapi';
+
 // System Module Enums
 // ===================
 export {
