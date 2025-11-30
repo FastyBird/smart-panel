@@ -39,7 +39,7 @@ import { ElCard, ElIcon, vLoading } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { formatNumber } from '../../../common';
-import { ConfigModuleWeatherUnit } from '../../../openapi';
+import { ConfigModuleWeatherUnit } from '../../../openapi.constants';
 import { useConfigWeather } from '../../config';
 import { useWeatherDay } from '../composables/useWeatherDay';
 import { WeatherException } from '../weather.exceptions';

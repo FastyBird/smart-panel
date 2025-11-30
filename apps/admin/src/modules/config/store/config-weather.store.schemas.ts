@@ -8,8 +8,8 @@ import {
 	ConfigModuleWeatherType,
 	ConfigModuleWeatherUnit,
 	ConfigModuleDataWeatherZipCodeLocation_type,
-	type components,
-} from '../../../openapi';
+} from '../../../openapi.constants';
+import { type components } from '../../../openapi';
 
 type ApiConfigWeather = components['schemas']['ConfigModuleWeather'];
 type ApiConfigWeatherLatLon = components['schemas']['ConfigModuleDataWeatherLatLon'];

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDataAudioType } from '../../../openapi';
+import { ConfigModuleDataAudioType } from '../../../openapi.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigAudio } from './config-audio.store';

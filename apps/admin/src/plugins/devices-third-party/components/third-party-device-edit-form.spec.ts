@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import { FormResult } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 import type { IThirdPartyDevice } from '../store/devices.store.types';
 

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigLanguage } from './config-language.store';

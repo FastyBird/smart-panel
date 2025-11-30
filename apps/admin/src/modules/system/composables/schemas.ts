@@ -9,7 +9,7 @@ import {
 import {
 	SystemModuleDataExtensionBaseKind,
 	SystemModuleDataExtensionBaseSource,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 export const DisplaysProfilesFilterSchema = z.object({
 	search: z.string().optional(),

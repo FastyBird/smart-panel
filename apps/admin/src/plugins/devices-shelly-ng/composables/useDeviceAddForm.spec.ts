@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FormResult } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 import { useDeviceAddForm } from './useDeviceAddForm';

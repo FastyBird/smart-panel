@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import type { IUser } from '../store/users.store.types';
 
 import type { IUsersTableProps } from './users-table.types';

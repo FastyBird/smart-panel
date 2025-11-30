@@ -5,7 +5,8 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { ConfigModuleDataSystemType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleDataSystemType } from '../../../openapi.constants';
+import { PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 

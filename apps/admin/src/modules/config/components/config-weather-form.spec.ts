@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleDataWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi';
+import { ConfigModuleDataWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi.constants';
 import type { IConfigWeatherEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigWeatherStore } from '../store/config-weather.store.types';

@@ -7,7 +7,7 @@ import { v4 as uuid } from 'uuid';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type IUseBackend, getErrorReason, useBackend } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { ACCESS_TOKEN_COOKIE_NAME, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 

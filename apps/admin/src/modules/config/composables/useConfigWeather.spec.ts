@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigModuleDataWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi';
+import { ConfigModuleDataWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi.constants';
 import type { IConfigWeather } from '../store/config-weather.store.types';
 
 import { useConfigWeather } from './useConfigWeather';

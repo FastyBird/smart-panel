@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDataAudioType } from '../../../openapi';
+import { ConfigModuleDataAudioType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioEditActionPayload, IConfigAudioRes } from './config-audio.store.types';

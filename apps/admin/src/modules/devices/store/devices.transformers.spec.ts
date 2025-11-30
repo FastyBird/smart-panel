@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../openapi';
+import { DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../openapi.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './devices.store.schemas';

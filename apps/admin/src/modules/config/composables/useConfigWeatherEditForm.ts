@@ -10,7 +10,7 @@ import {
 	ConfigModuleDataWeatherLatLonLocation_type,
 	ConfigModuleWeatherUnit,
 	ConfigModuleDataWeatherZipCodeLocation_type,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IConfigWeather } from '../store/config-weather.store.types';

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigLanguageEditActionPayload, IConfigLanguageRes } from './config-language.store.types';

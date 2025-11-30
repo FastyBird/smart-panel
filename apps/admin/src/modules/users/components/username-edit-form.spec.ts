@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { FormResult } from '../../auth';
 import { useUserUsernameForm } from '../composables/composables';
 

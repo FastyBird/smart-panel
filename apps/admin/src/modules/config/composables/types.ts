@@ -12,7 +12,7 @@ import {
 	ConfigModuleDataWeatherLatLonLocation_type,
 	ConfigModuleDataWeatherZipCodeLocation_type,
 } from '../../../openapi.constants';
-import type { ConfigModuleWeatherUnit } from '../../../openapi'; // Note: This enum doesn't exist in new schema
+import type { ConfigModuleWeatherUnit } from '../../../openapi.constants'; // Note: This enum doesn't exist in new schema
 import type { FormResultType } from '../config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
 import type { IConfigPluginEditForm } from '../schemas/plugins.types';

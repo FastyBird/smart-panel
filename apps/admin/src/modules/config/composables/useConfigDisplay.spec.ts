@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigModuleDataDisplayType } from '../../../openapi';
+import { ConfigModuleDataDisplayType } from '../../../openapi.constants';
 import type { IConfigDisplay } from '../store/config-display.store.types';
 
 import { useConfigDisplay } from './useConfigDisplay';

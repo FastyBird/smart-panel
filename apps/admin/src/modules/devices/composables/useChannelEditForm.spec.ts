@@ -4,7 +4,7 @@ import type { FormInstance } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesModuleChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import { ChannelSchema } from '../store/channels.store.schemas';

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDataWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi';
+import { ConfigModuleDataWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigWeather } from './config-weather.store';

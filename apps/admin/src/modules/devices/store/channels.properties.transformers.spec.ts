@@ -5,7 +5,7 @@ import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { ChannelPropertyCreateReqSchema, ChannelPropertySchema, ChannelPropertyUpdateReqSchema } from './channels.properties.store.schemas';

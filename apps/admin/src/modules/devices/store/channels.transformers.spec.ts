@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DevicesModuleChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { ChannelCreateReqSchema, ChannelSchema, ChannelUpdateReqSchema } from './channels.store.schemas';

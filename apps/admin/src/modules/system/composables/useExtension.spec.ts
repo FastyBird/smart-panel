@@ -3,7 +3,7 @@ import { type Ref, ref } from 'vue';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { SystemModuleExtensionSurface } from '../../../openapi';
+import { SystemModuleExtensionSurface } from '../../../openapi.constants';
 import type { ExtensionsStore, IExtension, IExtensionsStateSemaphore } from '../store/extensions.store.types';
 
 import { useExtension } from './useExtension';

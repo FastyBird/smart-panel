@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi.constants';
 import type { IConfigLanguage } from '../store/config-language.store.types';
 
 import { useConfigLanguage } from './useConfigLanguage';

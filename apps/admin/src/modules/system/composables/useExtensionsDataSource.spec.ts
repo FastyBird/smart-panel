@@ -10,7 +10,7 @@ import {
 	SystemModuleExtensionBackendSurface,
 	SystemModuleDataExtensionBaseKind,
 	SystemModuleDataExtensionBaseSource,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 import type { IExtension, IExtensionsStateSemaphore } from '../store/extensions.store.types';
 
 import { useExtensionsDataSource } from './useExtensionsDataSource';

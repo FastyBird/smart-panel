@@ -196,8 +196,8 @@ import {
 	ConfigModuleDataWeatherCityNameLocation_type,
 	ConfigModuleDataWeatherLatLonLocation_type,
 	ConfigModuleDataWeatherZipCodeLocation_type,
-	type components,
-} from '../../../openapi';
+} from '../../../openapi.constants';
+import { type components } from '../../../openapi';
 import { type City, cities } from '../../../spec/openweather-cities';
 import { useConfigWeatherEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';

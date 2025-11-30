@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { StoreInjectionKey } from '../../../common';
 import { DevicesValidationException, FormResult, channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IShellyNgDevice } from '../store/devices.store.types';
 
 import { useDeviceEditForm } from './useDeviceEditForm';

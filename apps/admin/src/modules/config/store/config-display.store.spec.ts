@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDataDisplayType } from '../../../openapi';
+import { ConfigModuleDataDisplayType } from '../../../openapi.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigDisplay } from './config-display.store';

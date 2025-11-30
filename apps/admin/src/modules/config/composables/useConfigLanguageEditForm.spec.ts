@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi.constants';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 

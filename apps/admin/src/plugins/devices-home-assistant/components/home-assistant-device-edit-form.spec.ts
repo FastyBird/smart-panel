@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import { FormResult } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';
 

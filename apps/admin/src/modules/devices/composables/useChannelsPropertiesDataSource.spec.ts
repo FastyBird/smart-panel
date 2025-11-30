@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
+import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi.constants';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 
 import { defaultChannelsPropertiesFilter, useChannelsPropertiesDataSource } from './useChannelsPropertiesDataSource';

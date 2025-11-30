@@ -56,6 +56,14 @@ export {
 	ConfigModuleSystemLog_levels,
 } from './openapi';
 
+export {
+	ConfigModuleDataSystemType,
+} from './openapi';
+
+export {
+	ConfigModuleDataLanguageType,
+} from './openapi';
+
 // System Module Enums
 // ===================
 export {
@@ -68,10 +76,24 @@ export {
 
 export {
 	SystemModuleDataExtensionBaseKind as SystemModuleDataExtensionKind,
+	SystemModuleDataExtensionBaseKind,
 } from './openapi';
 
 export {
 	SystemModuleDataExtensionBaseSource as SystemModuleDataExtensionSource,
+	SystemModuleDataExtensionBaseSource,
+} from './openapi';
+
+// SystemModuleExtensionBackendSurface is an alias for SystemModuleExtensionSurface
+// (both have admin and backend values)
+export {
+	SystemModuleExtensionSurface as SystemModuleExtensionBackendSurface,
+} from './openapi';
+
+// Path Parameters Enums
+// =====================
+export {
+	PathsSystemModuleExtensionsGetParametersQuerySurface,
 } from './openapi';
 
 // Weather Config Location Types
