@@ -117,13 +117,13 @@
 		<channel-property-form-min-max
 			v-if="
 				[
-					DevicesModuleChannelPropertyData_type.char,
-					DevicesModuleChannelPropertyData_type.uchar,
-					DevicesModuleChannelPropertyData_type.short,
-					DevicesModuleChannelPropertyData_type.ushort,
-					DevicesModuleChannelPropertyData_type.int,
-					DevicesModuleChannelPropertyData_type.uint,
-					DevicesModuleChannelPropertyData_type.float,
+					DevicesModuleChannelPropertyDataType.char,
+					DevicesModuleChannelPropertyDataType.uchar,
+					DevicesModuleChannelPropertyDataType.short,
+					DevicesModuleChannelPropertyDataType.ushort,
+					DevicesModuleChannelPropertyDataType.int,
+					DevicesModuleChannelPropertyDataType.uint,
+					DevicesModuleChannelPropertyDataType.float,
 				].includes(model.dataType)
 			"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-min-max`"
@@ -134,7 +134,7 @@
 		/>
 
 		<channel-property-form-enum
-			v-if="[DevicesModuleChannelPropertyData_type.enum].includes(model.dataType)"
+			v-if="[DevicesModuleChannelPropertyDataType.enum].includes(model.dataType)"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-enum`"
 			v-model="model.enumValues"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
@@ -151,13 +151,13 @@
 		<channel-property-form-step
 			v-if="
 				[
-					DevicesModuleChannelPropertyData_type.char,
-					DevicesModuleChannelPropertyData_type.uchar,
-					DevicesModuleChannelPropertyData_type.short,
-					DevicesModuleChannelPropertyData_type.ushort,
-					DevicesModuleChannelPropertyData_type.int,
-					DevicesModuleChannelPropertyData_type.uint,
-					DevicesModuleChannelPropertyData_type.float,
+					DevicesModuleChannelPropertyDataType.char,
+					DevicesModuleChannelPropertyDataType.uchar,
+					DevicesModuleChannelPropertyDataType.short,
+					DevicesModuleChannelPropertyDataType.ushort,
+					DevicesModuleChannelPropertyDataType.int,
+					DevicesModuleChannelPropertyDataType.uint,
+					DevicesModuleChannelPropertyDataType.float,
 				].includes(model.dataType)
 			"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-step`"
@@ -241,7 +241,7 @@ import ChannelPropertyFormMinMax from '../../../modules/devices/components/chann
 import ChannelPropertyFormPermissions from '../../../modules/devices/components/channels/channel-property-form-permissions.vue';
 import ChannelPropertyFormStep from '../../../modules/devices/components/channels/channel-property-form-step.vue';
 import ChannelPropertyFormUnit from '../../../modules/devices/components/channels/channel-property-form-unit.vue';
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi.constants';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyDataType } from '../../../openapi.constants';
 import { DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 import type { IHomeAssistantChannelPropertyEditForm } from '../schemas/channels.properties.types';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';

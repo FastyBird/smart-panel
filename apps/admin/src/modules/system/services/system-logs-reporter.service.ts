@@ -7,7 +7,7 @@ import type { ConsolaInstance, ConsolaReporter, LogObject } from 'consola';
 
 import type { IAccountManager } from '../../../common';
 import type { MessageSchema } from '../../../locales';
-import { ConfigModuleSystemLog_levels } from '../../../openapi.constants';
+import { SystemModuleLogEntryType  } from '../../../openapi.constants';
 import type { IAddLogEntry, ILogsEntriesStoreActions, ILogsEntriesStoreState } from '../store/logs-entries.store.types';
 
 type LogsStore = Store<string, ILogsEntriesStoreState, object, ILogsEntriesStoreActions>;
@@ -20,26 +20,26 @@ const MAX_BATCH = 20;
 const FLUSH_MS = 2000;
 const REDACT_KEYS = new Set(['password', 'token', 'secret', 'authorization']);
 
-const TYPE_MAP: Record<LogObject['type'], ConfigModuleSystemLog_levels> = {
+const TYPE_MAP: Record<LogObject['type'], SystemModuleLogEntryType> = {
 	// consola extras
-	silent: ConfigModuleSystemLog_levels.silent,
-	success: ConfigModuleSystemLog_levels.success,
-	fail: ConfigModuleSystemLog_levels.fail,
-	ready: ConfigModuleSystemLog_levels.debug,
-	start: ConfigModuleSystemLog_levels.debug,
-	box: ConfigModuleSystemLog_levels.debug,
+	silent: SystemModuleLogEntryType.silent,
+	success: SystemModuleLogEntryType.success,
+	fail: SystemModuleLogEntryType.fail,
+	ready: SystemModuleLogEntryType.debug,
+	start: SystemModuleLogEntryType.debug,
+	box: SystemModuleLogEntryType.debug,
 	// standard levels
-	fatal: ConfigModuleSystemLog_levels.fatal,
-	error: ConfigModuleSystemLog_levels.error,
-	warn: ConfigModuleSystemLog_levels.warn,
-	log: ConfigModuleSystemLog_levels.log,
-	info: ConfigModuleSystemLog_levels.info,
-	debug: ConfigModuleSystemLog_levels.debug,
-	trace: ConfigModuleSystemLog_levels.trace,
-	verbose: ConfigModuleSystemLog_levels.verbose,
+	fatal: SystemModuleLogEntryType.fatal,
+	error: SystemModuleLogEntryType.error,
+	warn: SystemModuleLogEntryType.warn,
+	log: SystemModuleLogEntryType.log,
+	info: SystemModuleLogEntryType.info,
+	debug: SystemModuleLogEntryType.debug,
+	trace: SystemModuleLogEntryType.trace,
+	verbose: SystemModuleLogEntryType.verbose,
 };
 
-const LEVEL_MAP: Record<ConfigModuleSystemLog_levels, number> = {
+const LEVEL_MAP: Record<SystemModuleLogEntryType, number> = {
 	silent: 0,
 	trace: 0,
 	verbose: 1,
@@ -89,7 +89,7 @@ export class SystemLogsReporterService {
 		this.reporter = {
 			log: (logObj: LogObject) => {
 				try {
-					const type = TYPE_MAP[logObj.type] ?? ConfigModuleSystemLog_levels.info;
+					const type = TYPE_MAP[logObj.type] ?? SystemModuleLogEntryType.info;
 					const level = logObj.level ?? LEVEL_MAP[type];
 					const isBrowser = typeof window !== 'undefined';
 					const locale: string | Ref =

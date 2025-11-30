@@ -1,6 +1,6 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleDataAudioType, type components } from '../../../openapi';
+import { ConfigModuleAudioType, type components } from '../../../openapi';
 
 type ApiConfigAudio = components['schemas']['ConfigModuleDataAudio'];
 type ApiConfigUpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];
@@ -9,7 +9,7 @@ type ApiConfigUpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];
 // ===========
 
 export const ConfigAudioSchema = z.object({
-	type: z.nativeEnum(ConfigModuleDataAudioType),
+	type: z.nativeEnum(ConfigModuleAudioType),
 	speaker: z.boolean(),
 	speakerVolume: z.number().min(0).max(100),
 	microphone: z.boolean(),
@@ -50,7 +50,7 @@ export const ConfigAudioEditActionPayloadSchema = z.object({
 // ===========
 
 export const ConfigAudioUpdateReqSchema: ZodType<ApiConfigUpdateAudio> = z.object({
-	type: z.nativeEnum(ConfigModuleDataAudioType),
+	type: z.nativeEnum(ConfigModuleAudioType),
 	speaker: z.boolean(),
 	speaker_volume: z.number().min(0).max(100),
 	microphone: z.boolean(),
@@ -58,7 +58,7 @@ export const ConfigAudioUpdateReqSchema: ZodType<ApiConfigUpdateAudio> = z.objec
 });
 
 export const ConfigAudioResSchema: ZodType<ApiConfigAudio> = z.object({
-	type: z.nativeEnum(ConfigModuleDataAudioType),
+	type: z.nativeEnum(ConfigModuleAudioType),
 	speaker: z.boolean(),
 	speaker_volume: z.number().min(0).max(100),
 	microphone: z.boolean(),

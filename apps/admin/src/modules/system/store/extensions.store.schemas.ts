@@ -3,8 +3,8 @@ import { type ZodType, z } from 'zod';
 import {
 	SystemModuleExtensionSurface,
 	SystemModuleExtensionBackendSurface,
-	SystemModuleDataExtensionBaseKind,
-	SystemModuleDataExtensionBaseSource,
+	SystemModuleExtensionKind,
+	SystemModuleExtensionSource,
 	type components,
 } from '../../../openapi.constants';
 
@@ -18,12 +18,12 @@ export const ExtensionNameSchema = z.string();
 
 export const ExtensionBaseSchema = z.object({
 	name: ExtensionNameSchema,
-	kind: z.nativeEnum(SystemModuleDataExtensionBaseKind),
+	kind: z.nativeEnum(SystemModuleExtensionKind),
 	surface: z.string(),
 	displayName: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(SystemModuleDataExtensionBaseSource),
+	source: z.nativeEnum(SystemModuleExtensionSource),
 });
 
 export const ExtensionSchema = z.union([
@@ -56,23 +56,23 @@ export const ExtensionsGetActionPayloadSchema = z.object({
 
 export const ExtensionAdminResSchema: ZodType<ApiExtensionAdmin> = z.object({
 	name: z.string(),
-	kind: z.nativeEnum(SystemModuleDataExtensionBaseKind),
+	kind: z.nativeEnum(SystemModuleExtensionKind),
 	surface: z.nativeEnum(SystemModuleExtensionSurface),
 	display_name: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(SystemModuleDataExtensionBaseSource),
+	source: z.nativeEnum(SystemModuleExtensionSource),
 	remote_url: z.string(),
 });
 
 export const ExtensionBackendResSchema: ZodType<ApiExtensionBackend> = z.object({
 	name: z.string(),
-	kind: z.nativeEnum(SystemModuleDataExtensionBaseKind),
+	kind: z.nativeEnum(SystemModuleExtensionKind),
 	surface: z.nativeEnum(SystemModuleExtensionSurface),
 	display_name: z.string(),
 	description: z.string().nullable(),
 	version: z.string().nullable(),
-	source: z.nativeEnum(SystemModuleDataExtensionBaseSource),
+	source: z.nativeEnum(SystemModuleExtensionSource),
 	route_prefix: z.string(),
 });
 

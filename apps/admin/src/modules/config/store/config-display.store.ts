@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { ConfigModuleDataDisplayType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleDisplayType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -53,7 +53,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 		};
 
 		const set = (payload: IConfigDisplaySetActionPayload): IConfigDisplay => {
-			const parsedConfigDisplay = ConfigDisplaySchema.safeParse({ ...payload.data, type: ConfigModuleDataDisplayType.display });
+			const parsedConfigDisplay = ConfigDisplaySchema.safeParse({ ...payload.data, type: ConfigModuleDisplayType.display });
 
 			if (!parsedConfigDisplay.success) {
 				logger.error('Schema validation failed with:', parsedConfigDisplay.error);

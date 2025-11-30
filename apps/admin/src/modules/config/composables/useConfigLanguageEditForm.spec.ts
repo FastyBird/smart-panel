@@ -3,17 +3,17 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi.constants';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat, ConfigModuleLanguageType } from '../../../openapi.constants';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigLanguageEditForm } from './useConfigLanguageEditForm';
 
 const mockConfig = {
-	type: ConfigModuleDataLanguageType.language,
+	type: ConfigModuleLanguageType.language,
 	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	timeFormat: ConfigModuleLanguageTime_format.Value24h,
+	timeFormat: ConfigModuleLanguageTimeFormat.Value24h,
 };
 
 const mockEdit = vi.fn();
@@ -59,7 +59,7 @@ describe('useConfigLanguageEditForm', () => {
 
 		expect(form.model.language).toBe(ConfigModuleLanguageLanguage.en_US);
 		expect(form.model.timezone).toBe('Europe/Prague');
-		expect(form.model.timeFormat).toBe(ConfigModuleLanguageTime_format.Value24h);
+		expect(form.model.timeFormat).toBe(ConfigModuleLanguageTimeFormat.Value24h);
 	});
 
 	it('sets formChanged to true when model changes', async () => {

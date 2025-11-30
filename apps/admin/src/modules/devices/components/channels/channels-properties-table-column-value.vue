@@ -1,6 +1,6 @@
 <template>
 	<el-text
-		v-if="props.property.dataType === DevicesModuleChannelPropertyData_type.string"
+		v-if="props.property.dataType === DevicesModuleChannelPropertyDataType.string"
 		truncated
 	>
 		{{ props.property.value }}
@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import { ElText } from 'element-plus';
 
-import { DevicesModuleChannelPropertyData_type } from '../../../../openapi.constants';
+import { DevicesModuleChannelPropertyDataType } from '../../../../openapi.constants';
 
 import type { IChannelsPropertiesTableColumnValueProps } from './channels-properties-table-column-value.types';
 

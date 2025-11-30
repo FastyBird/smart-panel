@@ -1,7 +1,7 @@
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
 } from '../../openapi.constants';
@@ -13,7 +13,7 @@ export type ChannelPropertySpec = {
 	required: boolean;
 	description: { en: string };
 	permissions: DevicesModuleChannelPropertyPermissions[];
-	data_type: DevicesModuleChannelPropertyData_type;
+	data_type: DevicesModuleChannelPropertyDataType;
 	unit: string | null;
 	format: string[] | number[] | null;
 	invalid?: string | number | null;

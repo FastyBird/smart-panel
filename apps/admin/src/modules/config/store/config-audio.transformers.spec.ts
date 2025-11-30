@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDataAudioType } from '../../../openapi.constants';
+import { ConfigModuleAudioType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioEditActionPayload, IConfigAudioRes } from './config-audio.store.types';
@@ -21,7 +21,7 @@ vi.mock('../../../common', async () => {
 });
 
 const validConfigAudioResponse: IConfigAudioRes = {
-	type: ConfigModuleDataAudioType.audio,
+	type: ConfigModuleAudioType.audio,
 	speaker: true,
 	speaker_volume: 80,
 	microphone: false,
@@ -41,7 +41,7 @@ describe('Config Audio Transformers', (): void => {
 			const result = transformConfigAudioResponse(validConfigAudioResponse);
 
 			expect(result).toEqual({
-				type: ConfigModuleDataAudioType.audio,
+				type: ConfigModuleAudioType.audio,
 				speaker: true,
 				speakerVolume: 80,
 				microphone: false,
@@ -61,7 +61,7 @@ describe('Config Audio Transformers', (): void => {
 			const result = transformConfigAudioUpdateRequest(validConfigAudioUpdatePayload);
 
 			expect(result).toEqual({
-				type: ConfigModuleDataAudioType.audio,
+				type: ConfigModuleAudioType.audio,
 				speaker: true,
 				speaker_volume: 80,
 				microphone: false,

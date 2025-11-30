@@ -1,5 +1,5 @@
 import { camelToSnake, logger, snakeToCamel } from '../../../common';
-import { ConfigModuleDataSystemType } from '../../../openapi.constants';
+import { ConfigModuleSystemType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioRes } from './config-audio.store.types';
@@ -24,7 +24,7 @@ export const transformConfigSystemResponse = (
 };
 
 export const transformConfigSystemUpdateRequest = (config: IConfigSystemEditActionPayload['data']): IConfigSystemUpdateReq => {
-	const parsedRequest = ConfigSystemUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleDataSystemType.system });
+	const parsedRequest = ConfigSystemUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleSystemType.system });
 
 	if (!parsedRequest.success) {
 		logger.error('Schema validation failed with:', parsedRequest.error);

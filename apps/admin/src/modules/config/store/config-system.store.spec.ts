@@ -2,20 +2,20 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleSystemLog_levels, ConfigModuleDataSystemType } from '../../../openapi.constants';
+import { SystemModuleLogEntryType, ConfigModuleSystemType  } from '../../../openapi.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigSystem } from './config-system.store';
 import type { IConfigSystemEditActionPayload, IConfigSystemSetActionPayload } from './config-system.store.types';
 
 const mockSystemRes = {
-	type: ConfigModuleDataSystemType.system,
-	log_levels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+	type: ConfigModuleSystemType.system,
+	log_levels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 };
 
 const mockSystem = {
-	type: ConfigModuleDataSystemType.system,
-	logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+	type: ConfigModuleSystemType.system,
+	logLevels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 };
 
 const backendClient = {
@@ -93,17 +93,17 @@ describe('ConfigSystem Store', () => {
 		store.data = { ...mockSystem };
 
 		(backendClient.PATCH as Mock).mockResolvedValue({
-			data: { data: { ...mockSystemRes, log_levels: [ConfigModuleSystemLog_levels.error] } },
+			data: { data: { ...mockSystemRes, log_levels: [SystemModuleLogEntryType.error] } },
 			error: undefined,
 			response: { status: 200 },
 		});
 
 		const result = await store.edit({
-			data: { ...mockSystem, logLevels: [ConfigModuleSystemLog_levels.error] },
+			data: { ...mockSystem, logLevels: [SystemModuleLogEntryType.error] },
 		});
 
-		expect(result.logLevels).toStrictEqual([ConfigModuleSystemLog_levels.error]);
-		expect(store.data?.logLevels).toStrictEqual([ConfigModuleSystemLog_levels.error]);
+		expect(result.logLevels).toStrictEqual([SystemModuleLogEntryType.error]);
+		expect(store.data?.logLevels).toStrictEqual([SystemModuleLogEntryType.error]);
 	});
 
 	it('should throw validation error if edit payload is invalid', async () => {
@@ -115,7 +115,7 @@ describe('ConfigSystem Store', () => {
 	});
 
 	it('should throw validation error if local data + edit is invalid', async () => {
-		store.data = { ...mockSystem, logLevels: [ConfigModuleSystemLog_levels.error] };
+		store.data = { ...mockSystem, logLevels: [SystemModuleLogEntryType.error] };
 
 		await expect(
 			store.edit({
@@ -139,6 +139,6 @@ describe('ConfigSystem Store', () => {
 			response: { status: 200 },
 		});
 
-		await expect(store.edit({ data: { ...mockSystem, logLevels: [ConfigModuleSystemLog_levels.error] } })).rejects.toThrow(ConfigApiException);
+		await expect(store.edit({ data: { ...mockSystem, logLevels: [SystemModuleLogEntryType.error] } })).rejects.toThrow(ConfigApiException);
 	});
 });

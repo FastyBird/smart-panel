@@ -5,11 +5,11 @@ import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import {
-	ConfigModuleDataWeatherCityIdLocation_type,
-	ConfigModuleDataWeatherCityNameLocation_type,
-	ConfigModuleDataWeatherLatLonLocation_type,
+	ConfigModuleWeatherCityIdLocationType,
+	ConfigModuleWeatherCityNameLocationType,
+	ConfigModuleWeatherLatLonLocationType,
 	ConfigModuleWeatherUnit,
-	ConfigModuleDataWeatherZipCodeLocation_type,
+	ConfigModuleWeatherZipCodeLocationType,
 } from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
@@ -38,16 +38,16 @@ export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditF
 
 	const locationTypeOptions: {
 		value:
-			| ConfigModuleDataWeatherLatLonLocation_type
-			| ConfigModuleDataWeatherCityNameLocation_type
-			| ConfigModuleDataWeatherCityIdLocation_type
-			| ConfigModuleDataWeatherZipCodeLocation_type;
+			| ConfigModuleWeatherLatLonLocationType
+			| ConfigModuleWeatherCityNameLocationType
+			| ConfigModuleWeatherCityIdLocationType
+			| ConfigModuleWeatherZipCodeLocationType;
 		label: string;
 	}[] = [
-		...Object.values(ConfigModuleDataWeatherLatLonLocation_type),
-		...Object.values(ConfigModuleDataWeatherCityNameLocation_type),
-		...Object.values(ConfigModuleDataWeatherCityIdLocation_type),
-		...Object.values(ConfigModuleDataWeatherZipCodeLocation_type),
+		...Object.values(ConfigModuleWeatherLatLonLocationType),
+		...Object.values(ConfigModuleWeatherCityNameLocationType),
+		...Object.values(ConfigModuleWeatherCityIdLocationType),
+		...Object.values(ConfigModuleWeatherZipCodeLocationType),
 	].map((value) => ({
 		value,
 		label: t(`configModule.locationTypes.${value}`),

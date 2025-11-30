@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleSystemLog_levels, ConfigModuleDataSystemType } from '../../../openapi.constants';
+import { SystemModuleLogEntryType, ConfigModuleSystemType  } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigSystemEditActionPayload, IConfigSystemRes } from './config-system.store.types';
@@ -21,12 +21,12 @@ vi.mock('../../../common', async () => {
 });
 
 const validConfigSystemResponse: IConfigSystemRes = {
-	type: ConfigModuleDataSystemType.system,
-	log_levels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+	type: ConfigModuleSystemType.system,
+	log_levels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 };
 
 const validConfigSystemUpdatePayload: IConfigSystemEditActionPayload['data'] = {
-	logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+	logLevels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 };
 
 describe('Config System Transformers', (): void => {
@@ -35,8 +35,8 @@ describe('Config System Transformers', (): void => {
 			const result = transformConfigSystemResponse(validConfigSystemResponse);
 
 			expect(result).toEqual({
-				type: ConfigModuleDataSystemType.system,
-				logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+				type: ConfigModuleSystemType.system,
+				logLevels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 			});
 		});
 
@@ -52,8 +52,8 @@ describe('Config System Transformers', (): void => {
 			const result = transformConfigSystemUpdateRequest(validConfigSystemUpdatePayload);
 
 			expect(result).toEqual({
-				type: ConfigModuleDataSystemType.system,
-				log_levels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+				type: ConfigModuleSystemType.system,
+				log_levels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 			});
 		});
 

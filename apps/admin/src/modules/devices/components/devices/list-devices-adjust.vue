@@ -162,7 +162,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi.constants';
+import { DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
 import { type IDevicesFilter, useDevicesPlugins } from '../../composables/composables';
 
 import { type IListDevicesAdjustProps } from './list-devices-adjust.types';
@@ -183,17 +183,17 @@ const { t } = useI18n();
 
 const { options: typesOptions } = useDevicesPlugins();
 
-const states: DevicesModuleDeviceStatusStatus[] = [
-	DevicesModuleDeviceStatusStatus.connected,
-	DevicesModuleDeviceStatusStatus.disconnected,
-	DevicesModuleDeviceStatusStatus.init,
-	DevicesModuleDeviceStatusStatus.ready,
-	DevicesModuleDeviceStatusStatus.running,
-	DevicesModuleDeviceStatusStatus.sleeping,
-	DevicesModuleDeviceStatusStatus.stopped,
-	DevicesModuleDeviceStatusStatus.lost,
-	DevicesModuleDeviceStatusStatus.alert,
-	DevicesModuleDeviceStatusStatus.unknown,
+const states: DevicesModuleDeviceConnectionStatus[] = [
+	DevicesModuleDeviceConnectionStatus.connected,
+	DevicesModuleDeviceConnectionStatus.disconnected,
+	DevicesModuleDeviceConnectionStatus.init,
+	DevicesModuleDeviceConnectionStatus.ready,
+	DevicesModuleDeviceConnectionStatus.running,
+	DevicesModuleDeviceConnectionStatus.sleeping,
+	DevicesModuleDeviceConnectionStatus.stopped,
+	DevicesModuleDeviceConnectionStatus.lost,
+	DevicesModuleDeviceConnectionStatus.alert,
+	DevicesModuleDeviceConnectionStatus.unknown,
 ];
 
 const categories: string[] = Object.values(DevicesModuleDeviceCategory);

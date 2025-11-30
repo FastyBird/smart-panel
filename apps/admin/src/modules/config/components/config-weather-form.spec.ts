@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleDataWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi.constants';
+import { ConfigModuleWeatherCityNameLocationType, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi.constants';
 import type { IConfigWeatherEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigWeatherStore } from '../store/config-weather.store.types';
@@ -89,7 +89,7 @@ describe('ConfigWeatherForm', (): void => {
 				config: {
 					type: ConfigModuleWeatherType.weather,
 					cityName: 'Prague,CZ',
-					locationType: ConfigModuleDataWeatherCityNameLocation_type.city_name,
+					locationType: ConfigModuleWeatherCityNameLocationType.city_name,
 					unit: ConfigModuleWeatherUnit.celsius,
 					openWeatherApiKey: null,
 				},
@@ -106,7 +106,7 @@ describe('ConfigWeatherForm', (): void => {
 
 	it('submits successfully and updates config', async (): Promise<void> => {
 		await wrapper.find('input[name="cityName"]').setValue('London,UK');
-		await wrapper.find('input[name="locationType"]').setValue(ConfigModuleDataWeatherCityNameLocation_type.city_name);
+		await wrapper.find('input[name="locationType"]').setValue(ConfigModuleWeatherCityNameLocationType.city_name);
 		await wrapper.find('input[name="unit"]').setValue(ConfigModuleWeatherUnit.fahrenheit);
 
 		(mockConfigWeatherStore.edit as Mock).mockResolvedValueOnce({});
@@ -125,7 +125,7 @@ describe('ConfigWeatherForm', (): void => {
 
 	it('handles submission failure', async (): Promise<void> => {
 		await wrapper.find('input[name="cityName"]').setValue('London,UK');
-		await wrapper.find('input[name="locationType"]').setValue(ConfigModuleDataWeatherCityNameLocation_type.city_name);
+		await wrapper.find('input[name="locationType"]').setValue(ConfigModuleWeatherCityNameLocationType.city_name);
 		await wrapper.find('input[name="unit"]').setValue(ConfigModuleWeatherUnit.fahrenheit);
 
 		(mockConfigWeatherStore.edit as Mock).mockRejectedValueOnce(new Error());
@@ -144,7 +144,7 @@ describe('ConfigWeatherForm', (): void => {
 
 	it('resets form when remoteFormReset is triggered', async (): Promise<void> => {
 		await wrapper.find('input[name="cityName"]').setValue('London,UK');
-		await wrapper.find('input[name="locationType"]').setValue(ConfigModuleDataWeatherCityNameLocation_type.city_name);
+		await wrapper.find('input[name="locationType"]').setValue(ConfigModuleWeatherCityNameLocationType.city_name);
 		await wrapper.find('input[name="unit"]').setValue(ConfigModuleWeatherUnit.fahrenheit);
 
 		await wrapper.setProps({ remoteFormReset: true });
@@ -152,7 +152,7 @@ describe('ConfigWeatherForm', (): void => {
 		await flushPromises();
 
 		expect(wrapper.vm.model.cityName).toBe('Prague,CZ');
-		expect(wrapper.vm.model.locationType).toBe(ConfigModuleDataWeatherCityNameLocation_type.city_name);
+		expect(wrapper.vm.model.locationType).toBe(ConfigModuleWeatherCityNameLocationType.city_name);
 		expect(wrapper.vm.model.unit).toBe(ConfigModuleWeatherUnit.celsius);
 		expect(wrapper.vm.model.openWeatherApiKey).toBe('');
 	});

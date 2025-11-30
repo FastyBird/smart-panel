@@ -155,7 +155,7 @@ import { Icon } from '@iconify/vue';
 import { formatTimeAgo } from '@vueuse/core';
 
 import { IconWithChild } from '../../../../common';
-import { ConfigModuleSystemLog_levels } from '../../../../openapi.constants';
+import { SystemModuleLogEntryType } from '../../../../openapi.constants';
 import type { ILogEntry } from '../../store/logs-entries.store.types';
 
 import type { ISystemLogsTableProps } from './system-logs-table.types';
@@ -189,7 +189,7 @@ const formatFull = (iso: string): string => {
 	return new Date(iso).toISOString();
 };
 
-const levelTagProps = (lvl: ConfigModuleSystemLog_levels) => {
+const levelTagProps = (lvl: SystemModuleLogEntryType) => {
 	const s = lvl.toLowerCase();
 
 	if (['fatal', 'error', 'fail'].includes(s)) {

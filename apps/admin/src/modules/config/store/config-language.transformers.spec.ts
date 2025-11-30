@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleDataLanguageType } from '../../../openapi.constants';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat, ConfigModuleLanguageType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigLanguageEditActionPayload, IConfigLanguageRes } from './config-language.store.types';
@@ -21,16 +21,16 @@ vi.mock('../../../common', async () => {
 });
 
 const validConfigLanguageResponse: IConfigLanguageRes = {
-	type: ConfigModuleDataLanguageType.language,
+	type: ConfigModuleLanguageType.language,
 	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	time_format: ConfigModuleLanguageTime_format.Value24h,
+	time_format: ConfigModuleLanguageTimeFormat.Value24h,
 };
 
 const validConfigLanguageUpdatePayload: IConfigLanguageEditActionPayload['data'] = {
 	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	timeFormat: ConfigModuleLanguageTime_format.Value24h,
+	timeFormat: ConfigModuleLanguageTimeFormat.Value24h,
 };
 
 describe('Config Language Transformers', (): void => {
@@ -39,10 +39,10 @@ describe('Config Language Transformers', (): void => {
 			const result = transformConfigLanguageResponse(validConfigLanguageResponse);
 
 			expect(result).toEqual({
-				type: ConfigModuleDataLanguageType.language,
+				type: ConfigModuleLanguageType.language,
 				language: ConfigModuleLanguageLanguage.en_US,
 				timezone: 'Europe/Prague',
-				timeFormat: ConfigModuleLanguageTime_format.Value24h,
+				timeFormat: ConfigModuleLanguageTimeFormat.Value24h,
 			});
 		});
 
@@ -58,10 +58,10 @@ describe('Config Language Transformers', (): void => {
 			const result = transformConfigLanguageUpdateRequest(validConfigLanguageUpdatePayload);
 
 			expect(result).toEqual({
-				type: ConfigModuleDataLanguageType.language,
+				type: ConfigModuleLanguageType.language,
 				language: ConfigModuleLanguageLanguage.en_US,
 				timezone: 'Europe/Prague',
-				time_format: ConfigModuleLanguageTime_format.Value24h,
+				time_format: ConfigModuleLanguageTimeFormat.Value24h,
 			});
 		});
 

@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigModuleDataWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi.constants';
+import { ConfigModuleWeatherCityNameLocationType, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi.constants';
 import type { IConfigWeather } from '../store/config-weather.store.types';
 
 import { useConfigWeather } from './useConfigWeather';
@@ -13,7 +13,7 @@ import { useConfigWeather } from './useConfigWeather';
 const mockWeather: IConfigWeather = {
 	type: ConfigModuleWeatherType.weather,
 	cityName: 'Prague,CZ',
-	locationType: ConfigModuleDataWeatherCityNameLocation_type.city_name,
+	locationType: ConfigModuleWeatherCityNameLocationType.city_name,
 	unit: ConfigModuleWeatherUnit.celsius,
 	openWeatherApiKey: null,
 };

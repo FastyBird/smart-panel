@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format } from '../../../openapi.constants';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat } from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IConfigLanguage } from '../store/config-language.store.types';
@@ -35,7 +35,7 @@ export const useConfigLanguageEditForm = ({ config, messages }: IUseLanguageEdit
 		label: t(`configModule.languages.${value}`),
 	}));
 
-	const timeFormatOptions: { value: ConfigModuleLanguageTime_format; label: string }[] = Object.values(ConfigModuleLanguageTime_format).map(
+	const timeFormatOptions: { value: ConfigModuleLanguageTimeFormat; label: string }[] = Object.values(ConfigModuleLanguageTimeFormat).map(
 		(value) => ({
 			value,
 			label: t(`configModule.timeFormats.${value}`),

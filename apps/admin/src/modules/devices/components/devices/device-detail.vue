@@ -41,7 +41,7 @@
 					:type="stateColor"
 					size="small"
 				>
-					{{ t(`devicesModule.states.${String(device.status?.status ?? DevicesModuleDeviceStatusStatus.unknown).toLowerCase()}`) }}
+					{{ t(`devicesModule.states.${String(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown).toLowerCase()}`) }}
 				</el-tag>
 			</el-text>
 		</dd>
@@ -82,7 +82,7 @@ import { I18nT, useI18n } from 'vue-i18n';
 
 import { ElTag, ElText } from 'element-plus';
 
-import { DevicesModuleChannelCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi.constants';
+import { DevicesModuleChannelCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
 import { useChannels } from '../../composables/composables';
 import { type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';
@@ -107,20 +107,20 @@ const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefine
 });
 
 const stateColor = computed<StateColor>((): StateColor => {
-	if ([DevicesModuleDeviceStatusStatus.unknown].includes(props.device.status.status)) {
+	if ([DevicesModuleDeviceConnectionStatus.unknown].includes(props.device.status.status)) {
 		return undefined;
 	}
 
 	if (
-		[DevicesModuleDeviceStatusStatus.connected, DevicesModuleDeviceStatusStatus.ready, DevicesModuleDeviceStatusStatus.running].includes(
+		[DevicesModuleDeviceConnectionStatus.connected, DevicesModuleDeviceConnectionStatus.ready, DevicesModuleDeviceConnectionStatus.running].includes(
 			props.device.status.status
 		)
 	) {
 		return 'success';
-	} else if ([DevicesModuleDeviceStatusStatus.init].includes(props.device.status.status)) {
+	} else if ([DevicesModuleDeviceConnectionStatus.init].includes(props.device.status.status)) {
 		return 'info';
 	} else if (
-		[DevicesModuleDeviceStatusStatus.disconnected, DevicesModuleDeviceStatusStatus.stopped, DevicesModuleDeviceStatusStatus.sleeping].includes(
+		[DevicesModuleDeviceConnectionStatus.disconnected, DevicesModuleDeviceConnectionStatus.stopped, DevicesModuleDeviceConnectionStatus.sleeping].includes(
 			props.device.status.status
 		)
 	) {

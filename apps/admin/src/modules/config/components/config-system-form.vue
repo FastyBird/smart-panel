@@ -48,7 +48,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElOption, ElSelect, ElTag, useNamespace } from 'element-plus';
 
-import { ConfigModuleSystemLog_levels } from '../../../openapi.constants';
+import { SystemModuleLogEntryType  } from '../../../openapi.constants';
 import { useConfigSystemEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
@@ -79,7 +79,7 @@ const { logLevelsOptions, model, formEl, formChanged, submit, formResult } = use
 	config: props.config,
 });
 
-const tagPropsFor = (lvl: ConfigModuleSystemLog_levels) => {
+const tagPropsFor = (lvl: SystemModuleLogEntryType) => {
 	const s = lvl.toLowerCase();
 
 	if (['fatal', 'error', 'fail'].includes(s)) {

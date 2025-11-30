@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleSystemLog_levels, ConfigModuleDataSystemType } from '../../../openapi.constants';
+import { SystemModuleLogEntryType, ConfigModuleSystemType  } from '../../../openapi.constants';
 import type { IConfigSystemEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigSystemStore } from '../store/config-system.store.types';
@@ -59,8 +59,8 @@ describe('ConfigSystemForm', (): void => {
 				remoteFormReset: false,
 				layout: Layout.DEFAULT,
 				config: {
-					type: ConfigModuleDataSystemType.system,
-					logLevels: [ConfigModuleSystemLog_levels.fatal],
+					type: ConfigModuleSystemType.system,
+					logLevels: [SystemModuleLogEntryType.fatal],
 				},
 			},
 		}) as VueWrapper<ConfigSystemFormInstance>;
@@ -76,7 +76,7 @@ describe('ConfigSystemForm', (): void => {
 	it('submits successfully and updates config', async (): Promise<void> => {
 		await wrapper
 			.find('input[name="logLevels"]')
-			.setValue([ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn, ConfigModuleSystemLog_levels.error]);
+			.setValue([SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn, SystemModuleLogEntryType.error]);
 
 		(mockConfigSystemStore.edit as Mock).mockResolvedValueOnce({});
 
@@ -95,7 +95,7 @@ describe('ConfigSystemForm', (): void => {
 	it('handles submission failure', async (): Promise<void> => {
 		await wrapper
 			.find('input[name="logLevels"]')
-			.setValue([ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn, ConfigModuleSystemLog_levels.error]);
+			.setValue([SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn, SystemModuleLogEntryType.error]);
 
 		(mockConfigSystemStore.edit as Mock).mockRejectedValueOnce(new Error());
 
@@ -114,12 +114,12 @@ describe('ConfigSystemForm', (): void => {
 	it('resets form when remoteFormReset is triggered', async (): Promise<void> => {
 		await wrapper
 			.find('input[name="logLevels"]')
-			.setValue([ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn, ConfigModuleSystemLog_levels.error]);
+			.setValue([SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn, SystemModuleLogEntryType.error]);
 
 		await wrapper.setProps({ remoteFormReset: true });
 
 		await flushPromises();
 
-		expect(wrapper.vm.model.logLevels).toStrictEqual([ConfigModuleSystemLog_levels.fatal]);
+		expect(wrapper.vm.model.logLevels).toStrictEqual([SystemModuleLogEntryType.fatal]);
 	});
 });

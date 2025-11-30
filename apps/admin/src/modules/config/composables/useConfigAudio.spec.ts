@@ -5,13 +5,13 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigModuleDataAudioType } from '../../../openapi.constants';
+import { ConfigModuleAudioType } from '../../../openapi.constants';
 import type { IConfigAudio } from '../store/config-audio.store.types';
 
 import { useConfigAudio } from './useConfigAudio';
 
 const mockAudio: IConfigAudio = {
-	type: ConfigModuleDataAudioType.audio,
+	type: ConfigModuleAudioType.audio,
 	speaker: true,
 	speakerVolume: 80,
 	microphone: false,

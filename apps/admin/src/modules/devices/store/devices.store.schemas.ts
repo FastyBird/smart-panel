@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../openapi.constants';
+import { DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus } from '../../../openapi.constants';
 import { type components } from '../../../openapi';
 
 import { ChannelCreateReqSchema, ChannelResSchema } from './channels.store.schemas';
@@ -26,7 +26,7 @@ export const DeviceSchema = z.object({
 	enabled: z.boolean().default(true),
 	status: z.object({
 		online: z.boolean().default(false),
-		status: z.nativeEnum(DevicesModuleDeviceStatusStatus).default(DevicesModuleDeviceStatusStatus.unknown),
+		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
 	}),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
@@ -73,7 +73,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 			enabled: z.boolean(),
 			status: z.object({
 				online: z.boolean(),
-				status: z.nativeEnum(DevicesModuleDeviceStatusStatus),
+				status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),
 			}),
 		})
 		.passthrough(),
@@ -177,7 +177,7 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	enabled: z.boolean(),
 	status: z.object({
 		online: z.boolean(),
-		status: z.nativeEnum(DevicesModuleDeviceStatusStatus),
+		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),
 	}),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),

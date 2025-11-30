@@ -5,13 +5,13 @@ import type { FormInstance } from 'element-plus';
 import type { IPlugin, IPluginElement } from '../../../common';
 import {
 	ConfigModuleLanguageLanguage,
-	ConfigModuleLanguageTime_format,
-	ConfigModuleSystemLog_levels,
-	ConfigModuleDataWeatherCityIdLocation_type,
-	ConfigModuleDataWeatherCityNameLocation_type,
-	ConfigModuleDataWeatherLatLonLocation_type,
-	ConfigModuleDataWeatherZipCodeLocation_type,
+	ConfigModuleLanguageTimeFormat,
+	ConfigModuleWeatherCityIdLocationType,
+	ConfigModuleWeatherCityNameLocationType,
+	ConfigModuleWeatherLatLonLocationType,
+	ConfigModuleWeatherZipCodeLocationType,
 } from '../../../openapi.constants';
+import { SystemModuleLogEntryType } from '../../../openapi.constants';
 import type { ConfigModuleWeatherUnit } from '../../../openapi.constants'; // Note: This enum doesn't exist in new schema
 import type { FormResultType } from '../config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
@@ -41,7 +41,7 @@ export interface IConfigDisplayEditForm {
 export interface IConfigLanguageEditForm {
 	language: ConfigModuleLanguageLanguage;
 	timezone: string;
-	timeFormat: ConfigModuleLanguageTime_format;
+	timeFormat: ConfigModuleLanguageTimeFormat;
 }
 
 export interface IConfigWeatherEditForm {
@@ -51,16 +51,16 @@ export interface IConfigWeatherEditForm {
 	cityName: string | null;
 	zipCode: string | null;
 	locationType:
-		| ConfigModuleDataWeatherLatLonLocation_type
-		| ConfigModuleDataWeatherCityNameLocation_type
-		| ConfigModuleDataWeatherCityIdLocation_type
-		| ConfigModuleDataWeatherZipCodeLocation_type;
+		| ConfigModuleWeatherLatLonLocationType
+		| ConfigModuleWeatherCityNameLocationType
+		| ConfigModuleWeatherCityIdLocationType
+		| ConfigModuleWeatherZipCodeLocationType;
 	unit: ConfigModuleWeatherUnit;
 	openWeatherApiKey: string;
 }
 
 export interface IConfigSystemEditForm {
-	logLevels: ConfigModuleSystemLog_levels[];
+	logLevels: SystemModuleLogEntryType[];
 }
 
 export interface IUseConfigApp {
@@ -109,7 +109,7 @@ export interface IUseConfigLanguage {
 export interface IUseConfigLanguageEditForm {
 	languageOptions: { value: ConfigModuleLanguageLanguage; label: string }[];
 	timezoneOptions: { value: string; label: string }[];
-	timeFormatOptions: { value: ConfigModuleLanguageTime_format; label: string }[];
+	timeFormatOptions: { value: ConfigModuleLanguageTimeFormat; label: string }[];
 	model: IConfigLanguageEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -127,10 +127,10 @@ export interface IUseConfigWeather {
 export interface IUseConfigWeatherEditForm {
 	locationTypeOptions: {
 		value:
-			| ConfigModuleDataWeatherLatLonLocation_type
-			| ConfigModuleDataWeatherCityNameLocation_type
-			| ConfigModuleDataWeatherCityIdLocation_type
-			| ConfigModuleDataWeatherZipCodeLocation_type;
+			| ConfigModuleWeatherLatLonLocationType
+			| ConfigModuleWeatherCityNameLocationType
+			| ConfigModuleWeatherCityIdLocationType
+			| ConfigModuleWeatherZipCodeLocationType;
 		label: string;
 	}[];
 	unitOptions: { value: ConfigModuleWeatherUnit; label: string }[];
@@ -149,7 +149,7 @@ export interface IUseConfigSystem {
 }
 
 export interface IUseConfigSystemEditForm {
-	logLevelsOptions: { value: ConfigModuleSystemLog_levels; label: string }[];
+	logLevelsOptions: { value: SystemModuleLogEntryType; label: string }[];
 	model: IConfigSystemEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;

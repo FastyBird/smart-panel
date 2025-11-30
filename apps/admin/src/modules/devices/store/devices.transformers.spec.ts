@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../openapi.constants';
+import { DevicesModuleDeviceCategory, DevicesModuleDeviceConnectionStatus } from '../../../openapi.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './devices.store.schemas';
@@ -34,7 +34,7 @@ const validDeviceResponse: IDeviceRes = {
 	enabled: true,
 	status: {
 		online: false,
-		status: DevicesModuleDeviceStatusStatus.unknown,
+		status: DevicesModuleDeviceConnectionStatus.unknown,
 	},
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
@@ -68,7 +68,7 @@ describe('Devices Transformers', (): void => {
 				enabled: true,
 				status: {
 					online: false,
-					status: DevicesModuleDeviceStatusStatus.unknown,
+					status: DevicesModuleDeviceConnectionStatus.unknown,
 				},
 				draft: false,
 				createdAt: new Date('2024-03-01T12:00:00Z'),

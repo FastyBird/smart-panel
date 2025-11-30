@@ -5,7 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleSystemLog_levels } from '../../../openapi.constants';
+import { SystemModuleLogEntryType  } from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IConfigSystem } from '../store/config-system.store.types';
@@ -31,7 +31,7 @@ export const useConfigSystemEditForm = ({ config, messages }: IUseSystemEditForm
 
 	let timer: number;
 
-	const logLevelsOptions: { value: ConfigModuleSystemLog_levels; label: string }[] = Object.values(ConfigModuleSystemLog_levels).map((value) => ({
+	const logLevelsOptions: { value: SystemModuleLogEntryType; label: string }[] = Object.values(SystemModuleLogEntryType).map((value) => ({
 		value,
 		label: t(`configModule.logLevels.${value}`),
 	}));

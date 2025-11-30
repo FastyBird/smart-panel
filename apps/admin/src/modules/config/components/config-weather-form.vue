@@ -37,7 +37,7 @@
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.locationType === ConfigModuleDataWeatherLatLonLocation_type.lat_lon"
+			v-if="model.locationType === ConfigModuleWeatherLatLonLocationType.lat_lon"
 			:label="t('configModule.fields.coordinates.title')"
 			prop="latitude"
 		>
@@ -58,7 +58,7 @@
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.locationType === ConfigModuleDataWeatherCityNameLocation_type.city_name"
+			v-if="model.locationType === ConfigModuleWeatherCityNameLocationType.city_name"
 			:label="t('configModule.fields.cityName.title')"
 			prop="cityName"
 		>
@@ -82,7 +82,7 @@
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.locationType === ConfigModuleDataWeatherCityIdLocation_type.city_id"
+			v-if="model.locationType === ConfigModuleWeatherCityIdLocationType.city_id"
 			:label="t('configModule.fields.cityId.title')"
 			prop="cityId"
 		>
@@ -106,7 +106,7 @@
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.locationType === ConfigModuleDataWeatherZipCodeLocation_type.zip_code"
+			v-if="model.locationType === ConfigModuleWeatherZipCodeLocationType.zip_code"
 			:label="t('configModule.fields.zipCode.title')"
 			prop="zipCode"
 		>
@@ -192,10 +192,10 @@ import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
 import { useBackend, useFlashMessage, useLogger } from '../../../common';
 import {
-	ConfigModuleDataWeatherCityIdLocation_type,
-	ConfigModuleDataWeatherCityNameLocation_type,
-	ConfigModuleDataWeatherLatLonLocation_type,
-	ConfigModuleDataWeatherZipCodeLocation_type,
+	ConfigModuleWeatherCityIdLocationType,
+	ConfigModuleWeatherCityNameLocationType,
+	ConfigModuleWeatherLatLonLocationType,
+	ConfigModuleWeatherZipCodeLocationType,
 } from '../../../openapi.constants';
 import { type components } from '../../../openapi';
 import { type City, cities } from '../../../spec/openweather-cities';
@@ -310,7 +310,7 @@ const filterCityId = (query: string): void => {
 };
 
 const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
-	if (model.locationType !== ConfigModuleDataWeatherLatLonLocation_type.lat_lon) {
+	if (model.locationType !== ConfigModuleWeatherLatLonLocationType.lat_lon) {
 		return;
 	}
 
@@ -337,7 +337,7 @@ const onUseMyLocation = (): void => {
 			model.latitude = lat;
 			model.longitude = lng;
 
-			model.locationType = ConfigModuleDataWeatherLatLonLocation_type.lat_lon;
+			model.locationType = ConfigModuleWeatherLatLonLocationType.lat_lon;
 
 			setMarker(lat, lng);
 		},
@@ -354,7 +354,7 @@ const onGeolocateLocation = async (query: string): Promise<void> => {
 		geolocationLoading.value = true;
 		geolocationOptions.value = [];
 
-		if (model.locationType === ConfigModuleDataWeatherCityNameLocation_type.city_name) {
+		if (model.locationType === ConfigModuleWeatherCityNameLocationType.city_name) {
 			const cityLocations = await fetchCityNameCoordinates(query);
 
 			for (const city of cityLocations) {
@@ -369,7 +369,7 @@ const onGeolocateLocation = async (query: string): Promise<void> => {
 					},
 				});
 			}
-		} else if (model.locationType === ConfigModuleDataWeatherZipCodeLocation_type.zip_code) {
+		} else if (model.locationType === ConfigModuleWeatherZipCodeLocationType.zip_code) {
 			const zipLocation = await fetchZipCodeCoordinates(query);
 
 			if (zipLocation !== null) {
@@ -396,7 +396,7 @@ const setMarker = (lat: number, lon: number): void => {
 	marker.value = [lat, lon];
 	center.value = [lat, lon];
 
-	if (model.locationType === ConfigModuleDataWeatherLatLonLocation_type.lat_lon) {
+	if (model.locationType === ConfigModuleWeatherLatLonLocationType.lat_lon) {
 		zoom.value = 18;
 	} else {
 		zoom.value = 13;
@@ -436,7 +436,7 @@ onBeforeMount(async (): Promise<void> => {
 		setMarker(model.latitude, model.longitude);
 	}
 
-	if (model.locationType === ConfigModuleDataWeatherCityNameLocation_type.city_name) {
+	if (model.locationType === ConfigModuleWeatherCityNameLocationType.city_name) {
 		if (model.cityName === null) {
 			return;
 		}
@@ -461,7 +461,7 @@ onBeforeMount(async (): Promise<void> => {
 		if (usedCity) {
 			geolocationSearch.value = `${usedCity.name}${usedCity.state ? ',' + usedCity.state : ''},${usedCity.country}`;
 		}
-	} else if (model.locationType === ConfigModuleDataWeatherCityIdLocation_type.city_id) {
+	} else if (model.locationType === ConfigModuleWeatherCityIdLocationType.city_id) {
 		if (model.cityId === null) {
 			return;
 		}
@@ -471,7 +471,7 @@ onBeforeMount(async (): Promise<void> => {
 		if (city != null) {
 			setMarker(city.coord.lat, city.coord.lon);
 		}
-	} else if (model.locationType === ConfigModuleDataWeatherZipCodeLocation_type.zip_code) {
+	} else if (model.locationType === ConfigModuleWeatherZipCodeLocationType.zip_code) {
 		if (model.zipCode === null) {
 			return;
 		}
@@ -557,9 +557,9 @@ watch(
 		if (option != null) {
 			setMarker(option.coord.lat, option.coord.lon);
 
-			if (model.locationType === ConfigModuleDataWeatherCityNameLocation_type.city_name) {
+			if (model.locationType === ConfigModuleWeatherCityNameLocationType.city_name) {
 				model.cityName = val;
-			} else if (model.locationType === ConfigModuleDataWeatherZipCodeLocation_type.zip_code) {
+			} else if (model.locationType === ConfigModuleWeatherZipCodeLocationType.zip_code) {
 				model.zipCode = val;
 			}
 

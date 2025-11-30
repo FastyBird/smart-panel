@@ -2,14 +2,14 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDataAudioType } from '../../../openapi.constants';
+import { ConfigModuleAudioType } from '../../../openapi.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigAudio } from './config-audio.store';
 import type { IConfigAudioEditActionPayload, IConfigAudioSetActionPayload } from './config-audio.store.types';
 
 const mockAudioRes = {
-	type: ConfigModuleDataAudioType.audio,
+	type: ConfigModuleAudioType.audio,
 	speaker: true,
 	speaker_volume: 80,
 	microphone: false,
@@ -17,7 +17,7 @@ const mockAudioRes = {
 };
 
 const mockAudio = {
-	type: ConfigModuleDataAudioType.audio,
+	type: ConfigModuleAudioType.audio,
 	speaker: true,
 	speakerVolume: 80,
 	microphone: false,

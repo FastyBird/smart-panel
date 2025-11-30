@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 } from '../../../openapi.constants';
 import { DevicesValidationException } from '../devices.exceptions';
@@ -46,7 +46,7 @@ const validChannelResponse: IChannelPropertyRes = {
 	identifier: null,
 	name: 'Some channel property',
 	permissions: [DevicesModuleChannelPropertyPermissions.ro],
-	data_type: DevicesModuleChannelPropertyData_type.string,
+	data_type: DevicesModuleChannelPropertyDataType.string,
 	unit: 'N/A',
 	format: null,
 	invalid: -1,
@@ -63,7 +63,7 @@ const validChannelCreatePayload: IChannelsPropertiesAddActionPayload['data'] & {
 	identifier: null,
 	name: 'Channel property name',
 	permissions: [DevicesModuleChannelPropertyPermissions.ro],
-	dataType: DevicesModuleChannelPropertyData_type.string,
+	dataType: DevicesModuleChannelPropertyDataType.string,
 	unit: 'N/A',
 	format: null,
 	invalid: -1,
@@ -89,7 +89,7 @@ describe('Channels Transformers', (): void => {
 				identifier: null,
 				name: 'Some channel property',
 				permissions: [DevicesModuleChannelPropertyPermissions.ro],
-				dataType: DevicesModuleChannelPropertyData_type.string,
+				dataType: DevicesModuleChannelPropertyDataType.string,
 				unit: 'N/A',
 				format: null,
 				invalid: -1,
@@ -118,7 +118,7 @@ describe('Channels Transformers', (): void => {
 				identifier: null,
 				name: 'Channel property name',
 				permissions: [DevicesModuleChannelPropertyPermissions.ro],
-				data_type: DevicesModuleChannelPropertyData_type.string,
+				data_type: DevicesModuleChannelPropertyDataType.string,
 				unit: 'N/A',
 				format: null,
 				invalid: -1,

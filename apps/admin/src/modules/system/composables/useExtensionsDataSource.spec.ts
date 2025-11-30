@@ -8,8 +8,8 @@ import { deepClone, injectStoresManager, useListQuery } from '../../../common';
 import {
 	SystemModuleExtensionSurface,
 	SystemModuleExtensionBackendSurface,
-	SystemModuleDataExtensionBaseKind,
-	SystemModuleDataExtensionBaseSource,
+	SystemModuleExtensionKind,
+	SystemModuleExtensionSource,
 } from '../../../openapi.constants';
 import type { IExtension, IExtensionsStateSemaphore } from '../store/extensions.store.types';
 
@@ -52,24 +52,24 @@ describe('useExtensionsDataSource', (): void => {
 			{
 				admin: {
 					name: '@fastybird/dummy-admin',
-					kind: SystemModuleDataExtensionBaseKind.plugin,
+					kind: SystemModuleExtensionKind.plugin,
 					surface: SystemModuleExtensionSurface.admin,
 					displayName: 'Some dummy admin plugin',
 					description: null,
 					version: '1.0.0',
-					source: SystemModuleDataExtensionBaseSource.runtime,
+					source: SystemModuleExtensionSource.runtime,
 					remoteUrl: 'http://admin.generated.url.local',
 				},
 			},
 			{
 				backend: {
 					name: '@fastybird/other-dummy-backend',
-					kind: SystemModuleDataExtensionBaseKind.plugin,
+					kind: SystemModuleExtensionKind.plugin,
 					surface: SystemModuleExtensionBackendSurface.backend,
 					displayName: 'Some other dummy backend plugin',
 					description: null,
 					version: '1.0.0',
-					source: SystemModuleDataExtensionBaseSource.bundled,
+					source: SystemModuleExtensionSource.bundled,
 					routePrefix: '/plugins/route-prefix',
 				},
 			},

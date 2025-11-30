@@ -134,7 +134,7 @@ import { useVModel } from '@vueuse/core';
 import { AppBarHeading } from '../../../../common';
 import {
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 } from '../../../../openapi.constants';
 import type { IDevicesFilter } from '../../composables/types';
@@ -157,7 +157,7 @@ const { t } = useI18n();
 
 const categories: string[] = Object.values(DevicesModuleChannelPropertyCategory);
 
-const dataTypes: string[] = Object.values(DevicesModuleChannelPropertyData_type);
+const dataTypes: string[] = Object.values(DevicesModuleChannelPropertyDataType);
 
 const permissions: string[] = Object.values(DevicesModuleChannelPropertyPermissions);
 

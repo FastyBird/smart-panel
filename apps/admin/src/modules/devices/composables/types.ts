@@ -7,10 +7,10 @@ import type { IPlugin, IPluginElement } from '../../../common';
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
-	DevicesModuleDeviceStatusStatus,
+	DevicesModuleDeviceConnectionStatus,
 } from '../../../openapi.constants';
 import type { FormResultType } from '../devices.constants';
 import type {
@@ -156,7 +156,7 @@ export interface IUseChannelPropertyAddForm<TForm extends IChannelPropertyAddFor
 	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelPropertyCategory; label: string }[]>;
 	channelsOptions: ComputedRef<{ value: IChannel['id']; label: string }[]>;
 	permissionsOptions: { value: DevicesModuleChannelPropertyPermissions; label: string }[];
-	dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[];
+	dataTypesOptions: { value: DevicesModuleChannelPropertyDataType; label: string }[];
 	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -170,7 +170,7 @@ export interface IUseChannelPropertyEditForm<TForm extends IChannelPropertyEditF
 	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelPropertyCategory; label: string }[]>;
 	channelsOptions: ComputedRef<{ value: IChannel['id']; label: string }[]>;
 	permissionsOptions: { value: DevicesModuleChannelPropertyPermissions; label: string }[];
-	dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[];
+	dataTypesOptions: { value: DevicesModuleChannelPropertyDataType; label: string }[];
 	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -242,7 +242,7 @@ export interface IUseDeviceSpecification {
 }
 
 export interface IUseDeviceState {
-	state: ComputedRef<DevicesModuleDeviceStatusStatus>;
+	state: ComputedRef<DevicesModuleDeviceConnectionStatus>;
 	isReady: ComputedRef<boolean>;
 }
 
