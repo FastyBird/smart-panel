@@ -30,11 +30,12 @@ export class RotatingFileConfigModel extends PluginConfigModel {
 		description: 'Directory path for log files',
 		type: 'string',
 		example: '/var/log/app',
+		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsString()
-	dir?: string = null;
+	dir?: string | null = null;
 
 	@ApiProperty({
 		description: 'Number of days to retain log files',
@@ -54,20 +55,22 @@ export class RotatingFileConfigModel extends PluginConfigModel {
 		name: 'cleanup_cron',
 		type: 'string',
 		example: '0 3 * * *',
+		nullable: true,
 	})
 	@Expose({ name: 'cleanup_cron' })
 	@IsOptional()
 	@IsString()
-	cleanupCron?: string = null;
+	cleanupCron?: string | null = null;
 
 	@ApiPropertyOptional({
 		description: 'Prefix for log file names',
 		name: 'file_prefix',
 		type: 'string',
 		example: 'app-log',
+		nullable: true,
 	})
 	@Expose({ name: 'file_prefix' })
 	@IsOptional()
 	@IsString()
-	filePrefix?: string = null;
+	filePrefix?: string | null = null;
 }

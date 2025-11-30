@@ -30,7 +30,7 @@ export const RotatingFileConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = Confi
 export const RotatingFileConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(LOGGER_ROTATING_FILE_TYPE),
-		dir: z.string().optional(),
+		dir: z.string().nullable(),
 		retention_days: z.number(),
 		cleanup_cron: z.string().nullable(),
 		file_prefix: z.string().nullable(),

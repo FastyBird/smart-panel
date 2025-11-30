@@ -19,7 +19,7 @@ export class WindModel {
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	gust?: number = null;
+	gust?: number | null = null;
 }
 
 @ApiSchema({ name: 'WeatherModuleDataWeather' })
@@ -51,37 +51,37 @@ export class ForecastTemperatureModel {
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	day?: number = null;
+	day?: number | null = null;
 
 	@ApiPropertyOptional({ description: 'Minimum temperature', type: 'number', example: 13.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	min?: number = null;
+	min?: number | null = null;
 
 	@ApiPropertyOptional({ description: 'Maximum temperature', type: 'number', example: 17.2, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	max?: number = null;
+	max?: number | null = null;
 
 	@ApiPropertyOptional({ description: 'Night temperature', type: 'number', example: 12.0, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	night?: number = null;
+	night?: number | null = null;
 
 	@ApiPropertyOptional({ description: 'Evening temperature', type: 'number', example: 14.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	eve?: number = null;
+	eve?: number | null = null;
 
 	@ApiPropertyOptional({ description: 'Morning temperature', type: 'number', example: 11.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	morn?: number = null;
+	morn?: number | null = null;
 }
 
 @ApiSchema({ name: 'WeatherModuleDataForecastFeelsLike' })
@@ -90,25 +90,25 @@ export class ForecastFeelsLikeModel {
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	day?: number = null;
+	day?: number | null = null;
 
 	@ApiPropertyOptional({ description: 'Night feels like temperature', type: 'number', example: 11.0, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	night?: number = null;
+	night?: number | null = null;
 
 	@ApiPropertyOptional({ description: 'Evening feels like temperature', type: 'number', example: 13.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	eve?: number = null;
+	eve?: number | null = null;
 
 	@ApiPropertyOptional({ description: 'Morning feels like temperature', type: 'number', example: 10.5, nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNumber()
-	morn?: number = null;
+	morn?: number | null = null;
 }
 
 @ApiSchema({ name: 'WeatherModuleDataForecastDay' })
@@ -187,7 +187,7 @@ export class ForecastDayModel {
 			toPlainOnly: true,
 		},
 	)
-	sunrise?: Date = null;
+	sunrise?: Date | null = null;
 
 	@ApiPropertyOptional({
 		description: 'Sunset time (ISO 8601)',
@@ -212,7 +212,7 @@ export class ForecastDayModel {
 			toPlainOnly: true,
 		},
 	)
-	sunset?: Date = null;
+	sunset?: Date | null = null;
 
 	@ApiPropertyOptional({
 		description: 'Moonrise time (ISO 8601)',
@@ -237,7 +237,7 @@ export class ForecastDayModel {
 			toPlainOnly: true,
 		},
 	)
-	moonrise?: Date = null;
+	moonrise?: Date | null = null;
 
 	@ApiPropertyOptional({
 		description: 'Moonset time (ISO 8601)',
@@ -262,7 +262,7 @@ export class ForecastDayModel {
 			toPlainOnly: true,
 		},
 	)
-	moonset?: Date = null;
+	moonset?: Date | null = null;
 
 	@ApiProperty({
 		name: 'day_time',
@@ -308,7 +308,7 @@ export class CurrentDayModel {
 			obj.temperature_min || obj.temperatureMin,
 		{ toClassOnly: true },
 	)
-	temperatureMin?: number = null;
+	temperatureMin?: number | null = null;
 
 	@ApiPropertyOptional({
 		name: 'temperature_max',
@@ -325,7 +325,7 @@ export class CurrentDayModel {
 			obj.temperature_max || obj.temperatureMax,
 		{ toClassOnly: true },
 	)
-	temperatureMax?: number = null;
+	temperatureMax?: number | null = null;
 
 	@ApiProperty({ name: 'feels_like', description: 'Feels like temperature', type: 'number', example: 14.2 })
 	@Expose({ name: 'feels_like' })
@@ -447,7 +447,7 @@ export class LocationModel {
 	@Expose()
 	@IsOptional()
 	@IsString()
-	country?: string = null;
+	country?: string | null = null;
 }
 
 @ApiSchema({ name: 'WeatherModuleDataLocationWeather' })

@@ -26,7 +26,7 @@ export class ShellyV1DeviceEntity extends DeviceEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
-	password: string = null;
+	password: string | null = null;
 
 	@ApiPropertyOptional({
 		description: 'Device hostname or IP address',
@@ -38,7 +38,7 @@ export class ShellyV1DeviceEntity extends DeviceEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
-	hostname: string = null;
+	hostname: string | null = null;
 
 	toString(): string {
 		return `Shelly V1 Device [${this.identifier}] -> FB Device [${this.id}]`;
