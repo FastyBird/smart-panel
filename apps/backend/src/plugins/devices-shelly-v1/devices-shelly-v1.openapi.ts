@@ -1,16 +1,16 @@
 /**
  * OpenAPI extra models for Devices Shelly V1 plugin
  */
-import { CreateShellyV1ChannelDto } from './dto/create-channel.dto';
 import { CreateShellyV1ChannelPropertyDto } from './dto/create-channel-property.dto';
+import { CreateShellyV1ChannelDto } from './dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from './dto/create-device.dto';
+import { UpdateShellyV1ChannelPropertyDto } from './dto/update-channel-property.dto';
+import { UpdateShellyV1ChannelDto } from './dto/update-channel.dto';
 import {
-	ShellyV1UpdatePluginConfigDto,
 	ShellyV1UpdatePluginConfigDiscoveryDto,
+	ShellyV1UpdatePluginConfigDto,
 	ShellyV1UpdatePluginConfigTimeoutsDto,
 } from './dto/update-config.dto';
-import { UpdateShellyV1ChannelDto } from './dto/update-channel.dto';
-import { UpdateShellyV1ChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateShellyV1DeviceDto } from './dto/update-device.dto';
 import {
 	ShellyV1ChannelEntity,

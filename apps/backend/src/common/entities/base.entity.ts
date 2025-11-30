@@ -2,7 +2,7 @@ import { Expose, Transform } from 'class-transformer';
 import { IsDate, IsOptional, IsString, IsUUID } from 'class-validator';
 import { Column, PrimaryGeneratedColumn } from 'typeorm';
 
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export abstract class BaseEntity {
 	@ApiProperty({
@@ -41,7 +41,7 @@ export abstract class BaseEntity {
 	@Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
 	createdAt: Date | string;
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		name: 'updated_at',
 		description: 'The timestamp when the entity was updated.',
 		type: 'string',

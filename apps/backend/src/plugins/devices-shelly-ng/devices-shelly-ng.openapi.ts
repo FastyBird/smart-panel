@@ -1,16 +1,16 @@
 /**
  * OpenAPI extra models for Devices Shelly NG plugin
  */
-import { CreateShellyNgChannelDto } from './dto/create-channel.dto';
 import { CreateShellyNgChannelPropertyDto } from './dto/create-channel-property.dto';
+import { CreateShellyNgChannelDto } from './dto/create-channel.dto';
 import { CreateShellyNgDeviceDto } from './dto/create-device.dto';
+import { UpdateShellyNgChannelPropertyDto } from './dto/update-channel-property.dto';
+import { UpdateShellyNgChannelDto } from './dto/update-channel.dto';
 import {
 	ShellyNgUpdatePluginConfigDto,
 	ShellyNgUpdatePluginConfigMdnsDto,
 	ShellyNgUpdatePluginConfigWebsocketsDto,
 } from './dto/update-config.dto';
-import { UpdateShellyNgChannelDto } from './dto/update-channel.dto';
-import { UpdateShellyNgChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateShellyNgDeviceDto } from './dto/update-device.dto';
 import {
 	ShellyNgChannelEntity,

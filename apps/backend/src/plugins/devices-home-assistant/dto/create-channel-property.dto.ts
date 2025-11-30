@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { CreateChannelPropertyDto } from '../../../modules/devices/dto/create-channel-property.dto';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
@@ -21,7 +21,7 @@ export class CreateHomeAssistantChannelPropertyDto extends CreateChannelProperty
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Home Assistant entity ID must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Home Assistant entity ID must be a non-empty string."}]' })
 	@ValidateIf((_, value) => value !== null)
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Home Assistant entity ID',
 		example: 'light.living_room',
 		nullable: true,
@@ -34,7 +34,7 @@ export class CreateHomeAssistantChannelPropertyDto extends CreateChannelProperty
 	@IsNotEmpty({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
 	@IsString({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
 	@ValidateIf((_, value) => value !== null)
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Home Assistant entity attribute name',
 		example: 'brightness',
 		nullable: true,
