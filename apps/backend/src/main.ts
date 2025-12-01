@@ -16,7 +16,7 @@ import { QueryFailedExceptionFilter } from './common/filters/query-failed-except
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
-import { SwaggerService } from './modules/swagger/services/swagger.service';
+import { SwaggerDocumentService } from './modules/swagger/services/swagger-document.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
@@ -93,8 +93,8 @@ async function bootstrap() {
 
 	app.enableCors();
 
-	// Setup Swagger UI using SwaggerService
-	const swaggerService = app.get(SwaggerService);
+	// Setup Swagger UI using SwaggerDocumentService
+	const swaggerService = app.get(SwaggerDocumentService);
 	swaggerService.setup(app);
 
 	sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);

@@ -34,15 +34,15 @@ export class ApiModule {
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly influxDbService: InfluxDbService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of API_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.influxDbService.registerSchema(ApiStatsInfluxDbSchema);
 
 		this.statsRegistryService.register(API_MODULE_NAME, this.apiStatsProvider);
+
+		for (const model of API_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

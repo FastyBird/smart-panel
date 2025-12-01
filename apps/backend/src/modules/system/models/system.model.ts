@@ -552,6 +552,11 @@ export class ExtensionAdminModel extends ExtensionBaseModel {
 	@Expose({ name: 'remote_url' })
 	@IsString()
 	remoteUrl: string;
+
+	@ApiProperty({ description: 'Extension type', type: 'string', example: 'admin' })
+	@Expose()
+	@IsString()
+	type: string = 'admin';
 }
 
 @ApiSchema({ name: 'SystemModuleDataExtensionBackend' })
@@ -560,6 +565,11 @@ export class ExtensionBackendModel extends ExtensionBaseModel {
 	@Expose({ name: 'route_prefix' })
 	@IsString()
 	routePrefix: string;
+
+	@ApiProperty({ description: 'Extension type', type: 'string', example: 'backend' })
+	@Expose()
+	@IsString()
+	type: string = 'backend';
 }
 
 @ApiSchema({ name: 'SystemModuleDataCpuLoad1m' })

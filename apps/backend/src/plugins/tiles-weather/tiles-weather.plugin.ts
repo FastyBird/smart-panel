@@ -27,11 +27,7 @@ export class TilesWeatherPlugin {
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly tilesMapper: TilesTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of TILES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<WeatherConfigModel, WeatherUpdateConfigDto>({
@@ -57,5 +53,9 @@ export class TilesWeatherPlugin {
 			createDto: CreateForecastWeatherTileDto,
 			updateDto: UpdateForecastWeatherTileDto,
 		});
+
+		for (const model of TILES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

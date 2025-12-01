@@ -53,11 +53,7 @@ export class DevicesThirdPartyPlugin {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly thirdPartyDevicePlatform: ThirdPartyDevicePlatform,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<ThirdPartyConfigModel, ThirdPartyUpdatePluginConfigDto>({
@@ -96,5 +92,9 @@ export class DevicesThirdPartyPlugin {
 		});
 
 		this.platformRegistryService.register(this.thirdPartyDevicePlatform);
+
+		for (const model of DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

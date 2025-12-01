@@ -29,11 +29,7 @@ export class PagesDeviceDetailPlugin {
 		private readonly pageRelationsLoaderRegistryService: PageRelationsLoaderRegistryService,
 		private readonly pageRelationsLoaderService: PageRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of PAGES_DEVICE_DETAIL_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<DeviceDetailConfigModel, DeviceDetailUpdatePluginConfigDto>({
@@ -50,5 +46,9 @@ export class PagesDeviceDetailPlugin {
 		});
 
 		this.pageRelationsLoaderRegistryService.register(this.pageRelationsLoaderService);
+
+		for (const model of PAGES_DEVICE_DETAIL_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

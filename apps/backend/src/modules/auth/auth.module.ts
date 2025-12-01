@@ -72,11 +72,7 @@ export class AuthModule {
 	constructor(
 		private readonly mapper: TokensTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of AUTH_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.mapper.registerMapping<AccessTokenEntity, CreateAccessTokenDto, UpdateAccessTokenDto>({
@@ -99,5 +95,9 @@ export class AuthModule {
 			createDto: CreateLongLiveTokenDto,
 			updateDto: UpdateLongLiveTokenDto,
 		});
+
+		for (const model of AUTH_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

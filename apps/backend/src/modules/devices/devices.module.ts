@@ -158,11 +158,7 @@ export class DevicesModule {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of DEVICES_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.influxDbService.registerSchema(PropertyInfluxDbSchema);
@@ -191,6 +187,10 @@ export class DevicesModule {
 		);
 
 		this.statsRegistryService.register(DEVICES_MODULE_NAME, this.devicesStatsProvider);
+
+		for (const model of DEVICES_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	async onApplicationBootstrap() {

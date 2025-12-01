@@ -6,7 +6,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { AppInstanceHolder } from '../../../common/services/app-instance-holder.service';
 import { openApiTagRegistry } from '../decorators/api-tag.decorator';
-import { SwaggerService } from '../services/swagger.service';
+import { SwaggerDocumentService } from '../services/swagger-document.service';
 
 @Command({
 	name: 'openapi:generate',
@@ -17,7 +17,7 @@ export class GenerateOpenapiCommand extends CommandRunner {
 	private readonly logger = new Logger(GenerateOpenapiCommand.name);
 
 	constructor(
-		private readonly swaggerService: SwaggerService,
+		private readonly swaggerService: SwaggerDocumentService,
 		private readonly appHolder: AppInstanceHolder,
 	) {
 		super();
@@ -34,7 +34,7 @@ export class GenerateOpenapiCommand extends CommandRunner {
 
 		// Remove /api/v1 prefix from paths to match original spec
 		// Also exclude example-extension paths (demo/test endpoints)
-		// Note: SwaggerService already filters example-extension, but we do it here again for safety
+		// Note: SwaggerDocumentService already filters example-extension, but we do it here again for safety
 		const originalPaths = document.paths;
 
 		const normalizedPaths: Record<string, unknown> = {};
@@ -65,8 +65,8 @@ export class GenerateOpenapiCommand extends CommandRunner {
 			}
 		}
 
-		// Update tag definitions (SwaggerService already sets them, but we need to ensure tag mapping is applied)
-		// The tags are already sorted by SwaggerService, so we just need to update the names if needed
+		// Update tag definitions (SwaggerDocumentService already sets them, but we need to ensure tag mapping is applied)
+		// The tags are already sorted by SwaggerDocumentService, so we just need to update the names if needed
 		document.tags = tagDefinitions;
 
 		// Define output path - align with lint:openapi script location

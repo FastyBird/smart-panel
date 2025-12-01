@@ -78,11 +78,7 @@ export class SystemModule {
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly configService: ConfigService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of SYSTEM_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.eventRegistry.register(
@@ -119,5 +115,9 @@ export class SystemModule {
 		const moduleConfig = this.configService.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
 
 		this.systemLoggerService.setAllowedTypes(moduleConfig.logLevels as unknown as LogEntryType[]);
+
+		for (const model of SYSTEM_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

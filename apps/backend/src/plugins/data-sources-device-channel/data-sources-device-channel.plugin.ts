@@ -37,11 +37,7 @@ export class DataSourcesDeviceChannelPlugin {
 		private readonly dataSourceRelationsLoaderRegistryService: DataSourceRelationsLoaderRegistryService,
 		private readonly dataSourceRelationsLoaderService: DataSourceRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<DeviceChannelConfigModel, DeviceChannelUpdatePluginConfigDto>({
@@ -62,5 +58,9 @@ export class DataSourcesDeviceChannelPlugin {
 		});
 
 		this.dataSourceRelationsLoaderRegistryService.register(this.dataSourceRelationsLoaderService);
+
+		for (const model of DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

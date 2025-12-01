@@ -23,11 +23,7 @@ export class LoggerRotatingFilePlugin {
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly systemLoggerService: SystemLoggerService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of LOGGER_ROTATING_FILE_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<RotatingFileConfigModel, RotatingFileUpdateConfigDto>({
@@ -37,6 +33,10 @@ export class LoggerRotatingFilePlugin {
 		});
 
 		this.systemLoggerService.register(this.fileLoggerService);
+
+		for (const model of LOGGER_ROTATING_FILE_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	async onApplicationBootstrap() {

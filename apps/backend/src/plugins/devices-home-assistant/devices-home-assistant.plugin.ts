@@ -111,11 +111,7 @@ export class DevicesHomeAssistantPlugin {
 		private readonly stateChangedEventService: StateChangedEventService,
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<HomeAssistantConfigModel, HomeAssistantUpdatePluginConfigDto>({
@@ -161,6 +157,10 @@ export class DevicesHomeAssistantPlugin {
 		});
 
 		this.platformRegistryService.register(this.homeAssistantDevicePlatform);
+
+		for (const model of DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantBinarySensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantClimateEntityMapper);

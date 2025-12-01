@@ -27,7 +27,9 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	exports: [WeatherService, GeolocationService],
 })
 export class WeatherModule {
-	constructor(private readonly swaggerRegistry: SwaggerModelsRegistryService) {
+	constructor(private readonly swaggerRegistry: SwaggerModelsRegistryService) {}
+
+	onModuleInit() {
 		for (const model of WEATHER_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}

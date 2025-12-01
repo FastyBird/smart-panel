@@ -46,16 +46,16 @@ export class WebsocketModule {
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly influxDbService: InfluxDbService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of WEBSOCKET_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.influxDbService.registerSchema(WsStatsInfluxDbSchema);
 		this.influxDbService.registerSchema(WsConnInfluxDbSchema);
 
 		this.statsRegistryService.register(WEBSOCKET_MODULE_NAME, this.wsStatsProvider);
+
+		for (const model of WEBSOCKET_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

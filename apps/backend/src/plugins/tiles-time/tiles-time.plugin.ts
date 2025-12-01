@@ -23,11 +23,7 @@ export class TilesTimePlugin {
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly tilesMapper: TilesTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of TILES_TIME_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<TimeConfigModel, TimeUpdateConfigDto>({
@@ -42,5 +38,9 @@ export class TilesTimePlugin {
 			createDto: CreateTimeTileDto,
 			updateDto: UpdateTimeTileDto,
 		});
+
+		for (const model of TILES_TIME_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

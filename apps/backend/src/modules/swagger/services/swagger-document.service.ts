@@ -1,15 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { INestApplication } from '@nestjs/common';
-import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
+import { DocumentBuilder, OpenAPIObject, SwaggerModule, getSchemaPath } from '@nestjs/swagger';
 
 import { API_PREFIX } from '../../../app.constants';
 import { openApiTagRegistry } from '../decorators/api-tag.decorator';
 
+import { ExtendedDiscriminatorRegistration, ExtendedDiscriminatorService } from './extended-discriminator.service';
 import { SwaggerModelsRegistryService } from './swagger-models-registry.service';
 
 @Injectable()
-export class SwaggerService {
-	constructor(private readonly registry: SwaggerModelsRegistryService) {}
+export class SwaggerDocumentService {
+	constructor(
+		private readonly registry: SwaggerModelsRegistryService,
+		private readonly extendedDiscriminatorRegistry: ExtendedDiscriminatorService,
+	) {}
+
 	/**
 	 * Create OpenAPI document from the NestJS application
 	 * @param app The NestJS application instance
@@ -87,6 +92,8 @@ export class SwaggerService {
 		}
 		document.paths = filteredPaths;
 
+		this.applyExtendedDiscriminators(document, this.extendedDiscriminatorRegistry.getAll());
+
 		this.adjustThirdPartyDemoWebhookPath(document);
 
 		return document;
@@ -125,6 +132,68 @@ export class SwaggerService {
 				delete paths[path];
 				break;
 			}
+		}
+	}
+
+	/**
+	 * Apply extended discriminator mappings to the OpenAPI document.
+	 * Groups registrations by parent schema and discriminator property,
+	 * then configures oneOf and discriminator properties accordingly.
+	 */
+	private applyExtendedDiscriminators(
+		document: OpenAPIObject,
+		registrations: ExtendedDiscriminatorRegistration[],
+	): void {
+		const schemas = document.components?.schemas;
+		if (!schemas) return;
+
+		// Group registrations by (parentClass + discriminatorProperty)
+		const groups = new Map<string, ExtendedDiscriminatorRegistration[]>();
+
+		for (const reg of registrations) {
+			const parentSchemaPath = getSchemaPath(reg.parentClass);
+			const key = `${parentSchemaPath}::${reg.discriminatorProperty}`;
+			const group = groups.get(key);
+			if (group) {
+				group.push(reg);
+			} else {
+				groups.set(key, [reg]);
+			}
+		}
+
+		for (const [groupKey, regs] of groups.entries()) {
+			const [parentSchemaPath, discriminatorProperty] = groupKey.split('::');
+
+			// Extract schema name from path (e.g., "#/components/schemas/PageEntity" -> "PageEntity")
+			const parentSchemaName = parentSchemaPath.replace('#/components/schemas/', '');
+
+			const parentSchema = schemas[parentSchemaName];
+			if (!parentSchema) {
+				// Parent schema not found - skip this registration
+				continue;
+			}
+
+			// Skip if parent schema is a reference (not a schema object)
+			if ('$ref' in parentSchema) {
+				continue;
+			}
+
+			// Configure oneOf: all variant schemas
+			parentSchema.oneOf = regs.map((r) => ({
+				$ref: getSchemaPath(r.modelClass),
+			}));
+
+			// Configure discriminator mapping
+			parentSchema.discriminator = {
+				propertyName: discriminatorProperty,
+				mapping: regs.reduce(
+					(acc, r) => {
+						acc[r.discriminatorValue] = getSchemaPath(r.modelClass);
+						return acc;
+					},
+					{} as Record<string, string>,
+				),
+			};
 		}
 	}
 }

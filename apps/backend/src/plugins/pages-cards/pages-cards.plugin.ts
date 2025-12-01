@@ -48,11 +48,7 @@ export class PagesCardsPlugin {
 		private readonly pluginReset: PluginResetService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of PAGES_CARDS_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<CardsConfigModel, CardsUpdatePluginConfigDto>({
@@ -77,5 +73,9 @@ export class PagesCardsPlugin {
 			},
 			90,
 		);
+
+		for (const model of PAGES_CARDS_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

@@ -77,11 +77,7 @@ export class DevicesShellyNgPlugin {
 		private readonly shellyNgDevicePlatform: ShellyNgDevicePlatform,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<ShellyNgConfigModel, ShellyNgUpdatePluginConfigDto>({
@@ -116,6 +112,10 @@ export class DevicesShellyNgPlugin {
 		});
 
 		this.platformRegistryService.register(this.shellyNgDevicePlatform);
+
+		for (const model of DEVICES_SHELLY_NG_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	async onApplicationBootstrap() {

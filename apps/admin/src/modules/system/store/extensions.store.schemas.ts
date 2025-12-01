@@ -66,7 +66,7 @@ export const ExtensionAdminResSchema: ZodType<ApiExtensionAdmin> = z.object({
 	version: z.string().nullable(),
 	source: z.nativeEnum(SystemModuleExtensionSource),
 	remote_url: z.string(),
-	location_type: z.nativeEnum(SystemModuleDataExtensionAdminType),
+	type: z.nativeEnum(SystemModuleDataExtensionAdminType),
 });
 
 export const ExtensionBackendResSchema: ZodType<ApiExtensionBackend> = z.object({
@@ -78,7 +78,7 @@ export const ExtensionBackendResSchema: ZodType<ApiExtensionBackend> = z.object(
 	version: z.string().nullable(),
 	source: z.nativeEnum(SystemModuleExtensionSource),
 	route_prefix: z.string(),
-	location_type: z.nativeEnum(SystemModuleDataExtensionBackendType),
+	type: z.nativeEnum(SystemModuleDataExtensionBackendType),
 });
 
 export const ExtensionResSchema: ZodType<ApiExtensionAdmin | ApiExtensionBackend> = z.union([ExtensionAdminResSchema, ExtensionBackendResSchema]);

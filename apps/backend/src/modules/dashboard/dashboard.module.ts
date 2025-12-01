@@ -97,11 +97,7 @@ export class DashboardModule {
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly dashboardStatsProvider: DashboardStatsProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of DASHBOARD_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.seedRegistry.register(
@@ -121,5 +117,9 @@ export class DashboardModule {
 		);
 
 		this.statsRegistryService.register(DASHBOARD_MODULE_NAME, this.dashboardStatsProvider);
+
+		for (const model of DASHBOARD_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

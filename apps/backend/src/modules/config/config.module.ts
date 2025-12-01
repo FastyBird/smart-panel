@@ -30,11 +30,7 @@ export class ConfigModule {
 		private readonly configService: ConfigService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of CONFIG_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.factoryResetRegistry.register(
@@ -48,5 +44,9 @@ export class ConfigModule {
 			},
 			500,
 		);
+
+		for (const model of CONFIG_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

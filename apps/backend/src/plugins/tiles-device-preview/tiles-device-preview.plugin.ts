@@ -29,11 +29,7 @@ export class TilesDevicePreviewPlugin {
 		private readonly tileRelationsLoaderRegistryService: TileRelationsLoaderRegistryService,
 		private readonly tileRelationsLoaderService: TileRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
-	) {
-		for (const model of TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS) {
-			this.swaggerRegistry.register(model);
-		}
-	}
+	) {}
 
 	onModuleInit() {
 		this.configMapper.registerMapping<DevicePreviewConfigModel, DevicePreviewUpdateConfigDto>({
@@ -50,5 +46,9 @@ export class TilesDevicePreviewPlugin {
 		});
 
 		this.tileRelationsLoaderRegistryService.register(this.tileRelationsLoaderService);
+
+		for (const model of TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }
