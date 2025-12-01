@@ -428,6 +428,7 @@ export class LogEntryModel {
 	@ApiPropertyOptional({ description: 'Log entry source', enum: LogEntrySource })
 	@Expose()
 	@IsOptional()
+	@IsString()
 	@IsEnum(LogEntrySource)
 	source?: LogEntrySource;
 
