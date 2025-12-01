@@ -7,12 +7,17 @@ import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { CreateDeviceDto } from '../../modules/devices/dto/create-device.dto';
+import { UpdateDeviceDto } from '../../modules/devices/dto/update-device.dto';
+import { DeviceEntity } from '../../modules/devices/entities/devices.entity';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { ShellyV1DevicesController } from './controllers/shelly-v1-devices.controller';
 import {
@@ -54,6 +59,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		TypeOrmModule.forFeature([ShellyV1DeviceEntity, ShellyV1ChannelEntity, ShellyV1ChannelPropertyEntity]),
 		DevicesModule,
 		ConfigModule,
+		SwaggerModule,
 	],
 	providers: [
 		ShelliesAdapterService,
@@ -77,6 +83,7 @@ export class DevicesShellyV1Plugin {
 		private readonly shellyV1DevicePlatform: ShellyV1DevicePlatform,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 	) {}
 
 	onModuleInit() {
@@ -116,6 +123,27 @@ export class DevicesShellyV1Plugin {
 		for (const model of DEVICES_SHELLY_V1_PLUGIN_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		this.discriminatorRegistry.register({
+			parentClass: DeviceEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_SHELLY_V1_TYPE,
+			modelClass: ShellyV1DeviceEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_SHELLY_V1_TYPE,
+			modelClass: CreateShellyV1DeviceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_SHELLY_V1_TYPE,
+			modelClass: UpdateShellyV1DeviceDto,
+		});
 	}
 
 	async onApplicationBootstrap() {

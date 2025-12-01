@@ -8,12 +8,17 @@ import { ConfigModule } from '../../modules/config/config.module';
 import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { CreateDeviceDto } from '../../modules/devices/dto/create-device.dto';
+import { UpdateDeviceDto } from '../../modules/devices/dto/update-device.dto';
+import { DeviceEntity } from '../../modules/devices/entities/devices.entity';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { HomeAssistantDiscoveredDevicesController } from './controllers/home-assistant-discovered-devices.controller';
 import { HomeAssistantRegistryController } from './controllers/home-assistant-registry.controller';
@@ -66,6 +71,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		]),
 		DevicesModule,
 		ConfigModule,
+		SwaggerModule,
 	],
 	providers: [
 		HomeAssistantHttpService,
@@ -111,6 +117,7 @@ export class DevicesHomeAssistantPlugin {
 		private readonly stateChangedEventService: StateChangedEventService,
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 	) {}
 
 	onModuleInit() {
@@ -167,6 +174,27 @@ export class DevicesHomeAssistantPlugin {
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantLightEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSwitchEntityMapper);
+
+		this.discriminatorRegistry.register({
+			parentClass: DeviceEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: HomeAssistantDeviceEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: CreateHomeAssistantDeviceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: UpdateHomeAssistantDeviceDto,
+		});
 	}
 
 	onApplicationBootstrap() {

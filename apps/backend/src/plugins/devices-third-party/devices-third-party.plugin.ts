@@ -4,12 +4,17 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { CreateDeviceDto } from '../../modules/devices/dto/create-device.dto';
+import { UpdateDeviceDto } from '../../modules/devices/dto/update-device.dto';
+import { DeviceEntity } from '../../modules/devices/entities/devices.entity';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { ThirdPartyDemoController } from './controllers/third-party-demo.controller';
 import {
@@ -40,7 +45,7 @@ import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platfor
 	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule],
+	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule, SwaggerModule],
 	providers: [ThirdPartyDevicePlatform],
 	controllers: [ThirdPartyDemoController],
 })
@@ -53,6 +58,7 @@ export class DevicesThirdPartyPlugin {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly thirdPartyDevicePlatform: ThirdPartyDevicePlatform,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 	) {}
 
 	onModuleInit() {
@@ -96,5 +102,26 @@ export class DevicesThirdPartyPlugin {
 		for (const model of DEVICES_THIRD_PARTY_PLUGIN_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		this.discriminatorRegistry.register({
+			parentClass: DeviceEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: ThirdPartyDeviceEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: CreateThirdPartyDeviceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: UpdateThirdPartyDeviceDto,
+		});
 	}
 }
