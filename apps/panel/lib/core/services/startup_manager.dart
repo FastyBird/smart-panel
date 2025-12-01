@@ -6,7 +6,7 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/models/auth_module_register_display.dart';
 import 'package:fastybird_smart_panel/api/models/auth_module_req_register_display.dart';
 import 'package:fastybird_smart_panel/api/models/system_module_create_display_profile.dart';
-import 'package:fastybird_smart_panel/api/models/system_module_display_profile.dart';
+import 'package:fastybird_smart_panel/api/models/system_module_data_display_profile.dart';
 import 'package:fastybird_smart_panel/api/models/system_module_req_create_display_profile.dart';
 import 'package:fastybird_smart_panel/api/models/users_module_req_update_display_instance.dart';
 import 'package:fastybird_smart_panel/api/models/users_module_update_display_instance.dart';
@@ -403,7 +403,7 @@ class StartupManagerService {
 
     final ScreenService screenService = locator.get<ScreenService>();
 
-    SystemModuleDisplayProfile? existingProfile;
+    SystemModuleDataDisplayProfile? existingProfile;
 
     try {
       final existingProfileResponse = await _apiClient.systemModule

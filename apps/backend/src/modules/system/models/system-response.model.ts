@@ -67,7 +67,7 @@ export class ExtensionsResponseModel extends BaseSuccessResponseModel<ExtensionB
 		items: {
 			oneOf: [{ $ref: getSchemaPath(ExtensionAdminModel) }, { $ref: getSchemaPath(ExtensionBackendModel) }],
 			discriminator: {
-				propertyName: 'location_type',
+				propertyName: 'type',
 				mapping: {
 					admin: getSchemaPath(ExtensionAdminModel),
 					backend: getSchemaPath(ExtensionBackendModel),
