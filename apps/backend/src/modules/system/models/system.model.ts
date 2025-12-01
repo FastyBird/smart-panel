@@ -1,5 +1,6 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import {
+	ArrayMaxSize,
 	IsArray,
 	IsBoolean,
 	IsDate,
@@ -480,6 +481,7 @@ export class LogEntryModel {
 	@Expose()
 	@IsOptional()
 	@IsArray()
+	@ArrayMaxSize(20)
 	args?: EntryLogArg[];
 
 	@ApiPropertyOptional({ description: 'User information', type: LogEntryUserModel })
