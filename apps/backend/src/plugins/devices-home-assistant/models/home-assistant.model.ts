@@ -33,7 +33,6 @@ export class HomeAssistantStateModel {
 		example: 'on',
 	})
 	@Expose()
-	@IsString()
 	state: string | number | boolean | null;
 
 	@ApiProperty({
