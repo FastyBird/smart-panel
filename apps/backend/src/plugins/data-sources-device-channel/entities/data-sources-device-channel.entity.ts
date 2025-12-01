@@ -94,6 +94,12 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@RelationId((entity: DeviceChannelDataSourceEntity) => entity.property)
 	propertyId: string;
 
+	@ApiProperty({
+		description: 'Data source type',
+		type: 'string',
+		default: DATA_SOURCES_DEVICE_TYPE,
+		example: DATA_SOURCES_DEVICE_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DATA_SOURCES_DEVICE_TYPE;

@@ -10,7 +10,12 @@ import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 @ApiSchema({ name: 'DevicesShellyNgPluginDataDevice' })
 @ChildEntity()
 export class ShellyNgDeviceEntity extends DeviceEntity {
-	@ApiProperty({ description: 'Device type', type: 'string', example: 'devices-shelly-ng' })
+	@ApiProperty({
+		description: 'Device type',
+		type: 'string',
+		default: DEVICES_SHELLY_NG_TYPE,
+		example: DEVICES_SHELLY_NG_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_SHELLY_NG_TYPE;
@@ -48,7 +53,12 @@ export class ShellyNgDeviceEntity extends DeviceEntity {
 @ApiSchema({ name: 'DevicesShellyNgPluginDataChannel' })
 @ChildEntity()
 export class ShellyNgChannelEntity extends ChannelEntity {
-	@ApiProperty({ description: 'Channel type', type: 'string', example: 'devices-shelly-ng' })
+	@ApiProperty({
+		description: 'Channel type',
+		type: 'string',
+		default: DEVICES_SHELLY_NG_TYPE,
+		example: DEVICES_SHELLY_NG_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_SHELLY_NG_TYPE;
@@ -62,7 +72,12 @@ export class ShellyNgChannelEntity extends ChannelEntity {
 @ApiSchema({ name: 'DevicesShellyNgPluginDataChannelProperty' })
 @ChildEntity()
 export class ShellyNgChannelPropertyEntity extends ChannelPropertyEntity {
-	@ApiProperty({ description: 'Channel property type', type: 'string', example: 'devices-shelly-ng' })
+	@ApiProperty({
+		description: 'Channel property type',
+		type: 'string',
+		default: DEVICES_SHELLY_NG_TYPE,
+		example: DEVICES_SHELLY_NG_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_SHELLY_NG_TYPE;

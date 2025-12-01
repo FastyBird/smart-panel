@@ -12,6 +12,7 @@ export class TimeTileEntity extends TileEntity {
 	@ApiProperty({
 		description: 'Tile type',
 		type: 'string',
+		default: TILES_TIME_TYPE,
 		example: TILES_TIME_TYPE,
 	})
 	@Expose()

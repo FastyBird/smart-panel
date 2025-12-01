@@ -1,13 +1,19 @@
 import { Expose } from 'class-transformer';
 import { IsInt, IsNotEmpty, IsOptional, Min } from 'class-validator';
 
-import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePageDto } from '../../../modules/dashboard/dto/update-page.dto';
 import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 @ApiSchema({ name: 'PagesTilesPluginUpdateTilesPage' })
 export class UpdateTilesPageDto extends UpdatePageDto {
+	@ApiProperty({
+		description: 'Page type',
+		type: 'string',
+		default: PAGES_TILES_TYPE,
+		example: PAGES_TILES_TYPE,
+	})
 	readonly type: typeof PAGES_TILES_TYPE;
 
 	@ApiPropertyOptional({

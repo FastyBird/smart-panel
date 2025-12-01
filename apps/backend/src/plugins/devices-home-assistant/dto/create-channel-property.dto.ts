@@ -8,12 +8,13 @@ import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginCreateChannelProperty' })
 export class CreateHomeAssistantChannelPropertyDto extends CreateChannelPropertyDto {
-	@Expose()
-	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel property type string."}]' })
 	@ApiProperty({
-		description: 'Channel property type identifier',
+		description: 'Channel property type',
+		type: 'string',
+		default: DEVICES_HOME_ASSISTANT_TYPE,
 		example: DEVICES_HOME_ASSISTANT_TYPE,
 	})
+	@Expose()
 	readonly type: typeof DEVICES_HOME_ASSISTANT_TYPE;
 
 	@Expose()

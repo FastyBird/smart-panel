@@ -38,6 +38,7 @@ export class DeviceDetailPageEntity extends PageEntity {
 	@ApiProperty({
 		description: 'Page type',
 		type: 'string',
+		default: PAGES_DEVICE_DETAIL_TYPE,
 		example: PAGES_DEVICE_DETAIL_TYPE,
 	})
 	@Expose()

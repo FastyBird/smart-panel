@@ -35,6 +35,7 @@ export class CardsPageEntity extends PageEntity {
 	@ApiProperty({
 		description: 'Page type',
 		type: 'string',
+		default: PAGES_CARDS_TYPE,
 		example: PAGES_CARDS_TYPE,
 	})
 	@Expose()

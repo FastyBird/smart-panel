@@ -8,12 +8,13 @@ import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginCreateDevice' })
 export class CreateHomeAssistantDeviceDto extends CreateDeviceDto {
-	@Expose()
-	@IsString({ message: '[{"field":"type","reason":"Type must be a valid device type string."}]' })
 	@ApiProperty({
-		description: 'Device type identifier',
+		description: 'Device type',
+		type: 'string',
+		default: DEVICES_HOME_ASSISTANT_TYPE,
 		example: DEVICES_HOME_ASSISTANT_TYPE,
 	})
+	@Expose()
 	readonly type: typeof DEVICES_HOME_ASSISTANT_TYPE;
 
 	@Expose()

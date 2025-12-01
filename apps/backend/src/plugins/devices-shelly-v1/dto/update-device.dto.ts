@@ -9,8 +9,10 @@ import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 @ApiSchema({ name: 'DevicesShellyV1PluginUpdateDevice' })
 export class UpdateShellyV1DeviceDto extends UpdateDeviceDto {
 	@ApiProperty({
-		description: 'Device type identifier',
-		example: 'devices-shelly-v1',
+		description: 'Device type',
+		type: 'string',
+		default: DEVICES_SHELLY_V1_TYPE,
+		example: DEVICES_SHELLY_V1_TYPE,
 	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid device type string."}]' })

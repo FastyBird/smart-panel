@@ -9,6 +9,12 @@ import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
 @ApiSchema({ name: 'TilesDevicePreviewPluginUpdateDevicePreviewTile' })
 export class UpdateDevicePreviewTileDto extends UpdateTileDto {
+	@ApiProperty({
+		description: 'Tile type',
+		type: 'string',
+		default: TILES_DEVICE_PREVIEW_TYPE,
+		example: TILES_DEVICE_PREVIEW_TYPE,
+	})
 	readonly type: typeof TILES_DEVICE_PREVIEW_TYPE;
 
 	@ApiPropertyOptional({

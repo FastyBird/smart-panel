@@ -26,7 +26,12 @@ export class ThirdPartyDeviceEntity extends DeviceEntity {
 	)
 	serviceAddress: string;
 
-	@ApiProperty({ description: 'Device type', type: 'string', example: DEVICES_THIRD_PARTY_TYPE })
+	@ApiProperty({
+		description: 'Device type',
+		type: 'string',
+		default: DEVICES_THIRD_PARTY_TYPE,
+		example: DEVICES_THIRD_PARTY_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_THIRD_PARTY_TYPE;
@@ -36,7 +41,12 @@ export class ThirdPartyDeviceEntity extends DeviceEntity {
 @ApiSchema({ name: 'DevicesThirdPartyPluginDataChannel' })
 @ChildEntity()
 export class ThirdPartyChannelEntity extends ChannelEntity {
-	@ApiProperty({ description: 'Channel type', type: 'string', example: DEVICES_THIRD_PARTY_TYPE })
+	@ApiProperty({
+		description: 'Channel type',
+		type: 'string',
+		default: DEVICES_THIRD_PARTY_TYPE,
+		example: DEVICES_THIRD_PARTY_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_THIRD_PARTY_TYPE;
@@ -46,7 +56,12 @@ export class ThirdPartyChannelEntity extends ChannelEntity {
 @ApiSchema({ name: 'DevicesThirdPartyPluginDataChannelProperty' })
 @ChildEntity()
 export class ThirdPartyChannelPropertyEntity extends ChannelPropertyEntity {
-	@ApiProperty({ description: 'Property type', type: 'string', example: DEVICES_THIRD_PARTY_TYPE })
+	@ApiProperty({
+		description: 'Channel property type',
+		type: 'string',
+		default: DEVICES_THIRD_PARTY_TYPE,
+		example: DEVICES_THIRD_PARTY_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_THIRD_PARTY_TYPE;

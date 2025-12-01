@@ -11,6 +11,12 @@ import { ValidateDeviceExists } from '../validators/device-exists-constraint.val
 
 @ApiSchema({ name: 'DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource' })
 export class CreateDeviceChannelDataSourceDto extends CreateSingleDataSourceDto {
+	@ApiProperty({
+		description: 'Data source type',
+		type: 'string',
+		default: DATA_SOURCES_DEVICE_TYPE,
+		example: DATA_SOURCES_DEVICE_TYPE,
+	})
 	readonly type: typeof DATA_SOURCES_DEVICE_TYPE;
 
 	@ApiProperty({

@@ -10,6 +10,8 @@ import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 export class CreateThirdPartyChannelDto extends CreateChannelDto {
 	@ApiProperty({
 		description: 'Channel type',
+		type: 'string',
+		default: DEVICES_THIRD_PARTY_TYPE,
 		example: DEVICES_THIRD_PARTY_TYPE,
 	})
 	@Expose()

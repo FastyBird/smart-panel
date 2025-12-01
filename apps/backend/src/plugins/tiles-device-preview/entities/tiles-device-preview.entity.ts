@@ -50,6 +50,7 @@ export class DevicePreviewTileEntity extends TileEntity {
 	@ApiProperty({
 		description: 'Tile type',
 		type: 'string',
+		default: TILES_DEVICE_PREVIEW_TYPE,
 		example: TILES_DEVICE_PREVIEW_TYPE,
 	})
 	@Expose()

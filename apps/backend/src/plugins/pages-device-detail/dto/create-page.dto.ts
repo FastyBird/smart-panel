@@ -9,6 +9,12 @@ import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
 @ApiSchema({ name: 'PagesDeviceDetailPluginCreateDeviceDetailPage' })
 export class CreateDeviceDetailPageDto extends CreatePageDto {
+	@ApiProperty({
+		description: 'Page type',
+		type: 'string',
+		default: PAGES_DEVICE_DETAIL_TYPE,
+		example: PAGES_DEVICE_DETAIL_TYPE,
+	})
 	readonly type: typeof PAGES_DEVICE_DETAIL_TYPE;
 
 	@ApiProperty({

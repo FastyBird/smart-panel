@@ -10,8 +10,10 @@ import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 @ApiSchema({ name: 'DevicesShellyV1PluginUpdateChannelProperty' })
 export class UpdateShellyV1ChannelPropertyDto extends UpdateChannelPropertyDto {
 	@ApiProperty({
-		description: 'Channel property type identifier',
-		example: 'devices-shelly-v1',
+		description: 'Channel property type',
+		type: 'string',
+		default: DEVICES_SHELLY_V1_TYPE,
+		example: DEVICES_SHELLY_V1_TYPE,
 	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel property type string."}]' })

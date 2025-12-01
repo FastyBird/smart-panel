@@ -4,9 +4,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { CreateChannelPropertyDto } from '../../modules/devices/dto/create-channel-property.dto';
+import { CreateChannelDto } from '../../modules/devices/dto/create-channel.dto';
 import { CreateDeviceDto } from '../../modules/devices/dto/create-device.dto';
+import { UpdateChannelPropertyDto } from '../../modules/devices/dto/update-channel-property.dto';
+import { UpdateChannelDto } from '../../modules/devices/dto/update-channel.dto';
 import { UpdateDeviceDto } from '../../modules/devices/dto/update-device.dto';
-import { DeviceEntity } from '../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../modules/devices/entities/devices.entity';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
@@ -122,6 +126,48 @@ export class DevicesThirdPartyPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
 			modelClass: UpdateThirdPartyDeviceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: ChannelEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: ThirdPartyChannelEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateChannelDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: CreateThirdPartyChannelDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateChannelDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: UpdateThirdPartyChannelDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: ChannelPropertyEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: ThirdPartyChannelPropertyEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateChannelPropertyDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: CreateThirdPartyChannelPropertyDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateChannelPropertyDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
+			modelClass: UpdateThirdPartyChannelPropertyDto,
 		});
 	}
 }

@@ -10,6 +10,8 @@ import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 export class UpdateShellyNgDeviceDto extends UpdateDeviceDto {
 	@ApiProperty({
 		description: 'Device type',
+		type: 'string',
+		default: DEVICES_SHELLY_NG_TYPE,
 		example: DEVICES_SHELLY_NG_TYPE,
 	})
 	@Expose()

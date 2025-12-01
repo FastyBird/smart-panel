@@ -161,7 +161,7 @@ export const PageUpdateReqSchema: ZodType<ApiUpdatePage> = z.object({
 
 export const PageResSchema: ZodType<ApiPage> = z.object({
 	id: z.string().uuid(),
-	type: z.string(),
+	type: z.string().trim().nonempty(),
 	title: z.string().trim().nonempty(),
 	icon: z.string().trim().nullable(),
 	order: z.number(),

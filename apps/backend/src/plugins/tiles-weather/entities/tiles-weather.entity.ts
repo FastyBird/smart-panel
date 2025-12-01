@@ -12,6 +12,7 @@ export class DayWeatherTileEntity extends TileEntity {
 	@ApiProperty({
 		description: 'Tile type',
 		type: 'string',
+		default: TILES_WEATHER_DAY_TYPE,
 		example: TILES_WEATHER_DAY_TYPE,
 	})
 	@Expose()
@@ -26,6 +27,7 @@ export class ForecastWeatherTileEntity extends TileEntity {
 	@ApiProperty({
 		description: 'Tile type',
 		type: 'string',
+		default: TILES_WEATHER_FORECAST_TYPE,
 		example: TILES_WEATHER_FORECAST_TYPE,
 	})
 	@Expose()

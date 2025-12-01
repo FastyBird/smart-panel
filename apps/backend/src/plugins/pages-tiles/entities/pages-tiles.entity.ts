@@ -60,6 +60,7 @@ export class TilesPageEntity extends PageEntity {
 	@ApiProperty({
 		description: 'Page type',
 		type: 'string',
+		default: PAGES_TILES_TYPE,
 		example: PAGES_TILES_TYPE,
 	})
 	@Expose()

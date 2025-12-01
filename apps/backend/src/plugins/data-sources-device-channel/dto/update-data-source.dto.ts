@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 
-import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateDataSourceDto } from '../../../modules/dashboard/dto/update-data-source.dto';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
@@ -11,6 +11,12 @@ import { ValidateDeviceExists } from '../validators/device-exists-constraint.val
 
 @ApiSchema({ name: 'DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource' })
 export class UpdateDeviceChannelDataSourceDto extends UpdateDataSourceDto {
+	@ApiProperty({
+		description: 'Data source type',
+		type: 'string',
+		default: DATA_SOURCES_DEVICE_TYPE,
+		example: DATA_SOURCES_DEVICE_TYPE,
+	})
 	readonly type: typeof DATA_SOURCES_DEVICE_TYPE;
 
 	@ApiPropertyOptional({

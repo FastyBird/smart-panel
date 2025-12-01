@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { IsOptional, IsUUID } from 'class-validator';
 
-import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePageDto } from '../../../modules/dashboard/dto/update-page.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
@@ -9,6 +9,12 @@ import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
 @ApiSchema({ name: 'PagesDeviceDetailPluginUpdateDeviceDetailPage' })
 export class UpdateDeviceDetailPageDto extends UpdatePageDto {
+	@ApiProperty({
+		description: 'Page type',
+		type: 'string',
+		default: PAGES_DEVICE_DETAIL_TYPE,
+		example: PAGES_DEVICE_DETAIL_TYPE,
+	})
 	readonly type: typeof PAGES_DEVICE_DETAIL_TYPE;
 
 	@ApiPropertyOptional({

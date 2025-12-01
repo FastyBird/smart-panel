@@ -96,6 +96,8 @@ export class SwaggerDocumentService {
 
 		this.adjustThirdPartyDemoWebhookPath(document);
 
+		this.transformAllOfToRef(document);
+
 		return document;
 	}
 
@@ -131,6 +133,54 @@ export class SwaggerDocumentService {
 				// a starou interní cestu odstraníme
 				delete paths[path];
 				break;
+			}
+		}
+	}
+
+	/**
+	 * Transform allOf arrays containing only a single $ref into direct $ref.
+	 * This fixes a bug in openapi-typescript that doesn't handle allOf with single $ref correctly.
+	 * The discriminator is removed as it's already applied to the referenced schema.
+	 */
+	private transformAllOfToRef(document: OpenAPIObject): void {
+		const schemas = document.components?.schemas;
+		if (!schemas) return;
+
+		for (const [schemaName, schema] of Object.entries(schemas)) {
+			if (typeof schema !== 'object' || schema === null || '$ref' in schema) {
+				continue;
+			}
+
+			// Process schema properties
+			if ('properties' in schema && typeof schema.properties === 'object') {
+				for (const [propName, propSchema] of Object.entries(schema.properties)) {
+					if (typeof propSchema === 'object' && propSchema !== null && 'allOf' in propSchema) {
+						const allOf = propSchema.allOf;
+						if (
+							Array.isArray(allOf) &&
+							allOf.length === 1 &&
+							typeof allOf[0] === 'object' &&
+							allOf[0] !== null &&
+							'$ref' in allOf[0]
+						) {
+							// Transform allOf with single $ref to direct $ref
+							const ref = allOf[0].$ref;
+							const description = 'description' in propSchema ? propSchema.description : undefined;
+
+							// Create new schema object with $ref and preserve description only
+							// Discriminator is removed as it's already applied to the referenced schema
+							const newPropSchema: Record<string, unknown> = {
+								$ref: ref,
+							};
+
+							if (description) {
+								newPropSchema.description = description;
+							}
+
+							schema.properties[propName] = newPropSchema;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -177,11 +227,6 @@ export class SwaggerDocumentService {
 			if ('$ref' in parentSchema) {
 				continue;
 			}
-
-			// Configure oneOf: all variant schemas
-			parentSchema.oneOf = regs.map((r) => ({
-				$ref: getSchemaPath(r.modelClass),
-			}));
 
 			// Configure discriminator mapping
 			parentSchema.discriminator = {

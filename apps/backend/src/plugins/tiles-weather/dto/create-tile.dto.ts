@@ -8,11 +8,23 @@ import { TILES_WEATHER_DAY_TYPE, TILES_WEATHER_FORECAST_TYPE } from '../tiles-we
 
 @ApiSchema({ name: 'TilesWeatherPluginCreateDayWeatherTile' })
 export class CreateDayWeatherTileDto extends CreateSingleTileDto {
+	@ApiProperty({
+		description: 'Tile type',
+		type: 'string',
+		default: TILES_WEATHER_DAY_TYPE,
+		example: TILES_WEATHER_DAY_TYPE,
+	})
 	readonly type: typeof TILES_WEATHER_DAY_TYPE;
 }
 
 @ApiSchema({ name: 'TilesWeatherPluginCreateForecastWeatherTile' })
 export class CreateForecastWeatherTileDto extends CreateSingleTileDto {
+	@ApiProperty({
+		description: 'Tile type',
+		type: 'string',
+		default: TILES_WEATHER_FORECAST_TYPE,
+		example: TILES_WEATHER_FORECAST_TYPE,
+	})
 	readonly type: typeof TILES_WEATHER_FORECAST_TYPE;
 }
 

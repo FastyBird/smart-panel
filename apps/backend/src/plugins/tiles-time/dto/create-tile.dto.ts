@@ -8,6 +8,12 @@ import { TILES_TIME_TYPE } from '../tiles-time.constants';
 
 @ApiSchema({ name: 'TilesTimePluginCreateTimeTile' })
 export class CreateTimeTileDto extends CreateSingleTileDto {
+	@ApiProperty({
+		description: 'Tile type',
+		type: 'string',
+		default: TILES_TIME_TYPE,
+		example: TILES_TIME_TYPE,
+	})
 	readonly type: typeof TILES_TIME_TYPE;
 }
 

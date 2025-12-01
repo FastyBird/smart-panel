@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsInt, IsNotEmpty, IsOptional, Min, ValidateNested } from 'class-validator';
 
-import { ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
@@ -10,6 +10,12 @@ import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 @ApiSchema({ name: 'PagesTilesPluginCreateTilesPage' })
 export class CreateTilesPageDto extends CreatePageDto {
+	@ApiProperty({
+		description: 'Page type',
+		type: 'string',
+		default: PAGES_TILES_TYPE,
+		example: PAGES_TILES_TYPE,
+	})
 	readonly type: typeof PAGES_TILES_TYPE;
 
 	@ApiPropertyOptional({

@@ -11,6 +11,8 @@ import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 export class UpdateShellyNgChannelDto extends UpdateChannelDto {
 	@ApiProperty({
 		description: 'Channel type',
+		type: 'string',
+		default: DEVICES_SHELLY_NG_TYPE,
 		example: DEVICES_SHELLY_NG_TYPE,
 	})
 	@Expose()

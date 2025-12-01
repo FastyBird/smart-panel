@@ -30,6 +30,12 @@ export class HomeAssistantDeviceEntity extends DeviceEntity {
 	@Column()
 	haDeviceId: string;
 
+	@ApiProperty({
+		description: 'Device type',
+		type: 'string',
+		default: DEVICES_HOME_ASSISTANT_TYPE,
+		example: DEVICES_HOME_ASSISTANT_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_HOME_ASSISTANT_TYPE;
@@ -43,6 +49,12 @@ export class HomeAssistantDeviceEntity extends DeviceEntity {
 @ApiSchema({ name: 'DevicesHomeAssistantPluginDataChannel' })
 @ChildEntity()
 export class HomeAssistantChannelEntity extends ChannelEntity {
+	@ApiProperty({
+		description: 'Channel type',
+		type: 'string',
+		default: DEVICES_HOME_ASSISTANT_TYPE,
+		example: DEVICES_HOME_ASSISTANT_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_HOME_ASSISTANT_TYPE;
@@ -102,6 +114,12 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 		return domain;
 	}
 
+	@ApiProperty({
+		description: 'Channel property type',
+		type: 'string',
+		default: DEVICES_HOME_ASSISTANT_TYPE,
+		example: DEVICES_HOME_ASSISTANT_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_HOME_ASSISTANT_TYPE;
