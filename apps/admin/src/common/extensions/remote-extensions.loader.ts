@@ -5,7 +5,7 @@ import type { Client } from 'openapi-fetch';
 
 import type { IExtensionOptions } from '../../app.types';
 import { SYSTEM_MODULE_PREFIX } from '../../modules/system';
-import { PathsSystemModuleExtensionsGetParametersQuerySurface, SystemModuleExtensionSurface } from '../../openapi.constants';
+import { SystemModuleQuerySurface, SystemModuleExtensionSurface } from '../../openapi.constants';
 import { type operations, type paths } from '../../openapi';
 import { getErrorReason } from '../utils/api-error.utils';
 
@@ -53,7 +53,7 @@ export const installRemoteExtensions = async (
 	} = await backendClient.GET(`/${SYSTEM_MODULE_PREFIX}/extensions`, {
 		params: {
 			query: {
-				surface: PathsSystemModuleExtensionsGetParametersQuerySurface.admin,
+				surface: SystemModuleQuerySurface.admin,
 			},
 		},
 	});
