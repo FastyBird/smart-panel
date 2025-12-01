@@ -138,7 +138,7 @@ export class DevicesChannelsControlsController {
 	@ApiCreatedSuccessResponse(
 		ChannelControlResponseModel,
 		'The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated channel, and timestamps.',
-		'/api/v1/devices-module/devices/{deviceId}/channels/{channelId}/controls/{controlId}',
+		'/api/v1/devices-module/devices/123e4567-e89b-12d3-a456-426614174000/channels/223e4567-e89b-12d3-a456-426614174000/controls/323e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Device or channel not found')

@@ -109,7 +109,7 @@ export class UsersController {
 	@ApiCreatedSuccessResponse(
 		UserResponseModel,
 		'The user was successfully created. The response includes the complete details of the newly created user, such as its unique identifier, username, email, role, and timestamps.',
-		'/api/v1/users-module/users/{id}',
+		'/api/v1/users-module/users/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported user data')
 	@ApiUnprocessableEntityResponse('Username or email already exists')

@@ -131,7 +131,7 @@ export class TilesController {
 	@ApiCreatedSuccessResponse(
 		TileResponseModel,
 		'The newly created tile was returned successfully.',
-		'/api/v1/dashboard-module/tiles/{id}',
+		'/api/v1/dashboard-module/tiles/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported tile type')
 	@ApiNotFoundResponse('Parent entity not found')

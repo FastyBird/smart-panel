@@ -144,7 +144,7 @@ export class DisplaysProfilesController {
 	@ApiCreatedSuccessResponse(
 		DisplayProfileResponseModel,
 		'Display profile created successfully',
-		'/api/v1/system-module/displays/{id}',
+		'/api/v1/system-module/displays/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data')
 	@ApiUnprocessableEntityResponse({ description: 'UID already exists' })

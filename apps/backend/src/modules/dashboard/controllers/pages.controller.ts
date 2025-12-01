@@ -112,7 +112,7 @@ export class PagesController {
 	@ApiCreatedSuccessResponse(
 		PageResponseModel,
 		'The newly created page was returned successfully.',
-		'/api/v1/dashboard-module/pages/{id}',
+		'/api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported page type')
 	@ApiUnprocessableEntityResponse('Page could not be created')

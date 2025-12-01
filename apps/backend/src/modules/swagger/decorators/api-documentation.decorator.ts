@@ -56,6 +56,21 @@ export const ApiCreatedSuccessResponse = <TModel extends Type<any> | (abstract n
 	description?: string,
 	locationExample?: string,
 ) => {
+	// If locationExample is provided and doesn't start with http:// or https://, add the base URL
+	let example: string;
+	if (locationExample) {
+		if (/^https?:\/\//.test(locationExample)) {
+			// Already a full URL, use as is
+			example = locationExample;
+		} else {
+			// Relative path, add base URL
+			example = `https://smart-panel.local${locationExample.startsWith('/') ? '' : '/'}${locationExample}`;
+		}
+	} else {
+		// Default example
+		example = 'https://smart-panel.local/api/v1/example-module/example-resource/123e4567-e89b-12d3-a456-426614174000';
+	}
+
 	return applyDecorators(
 		ApiResponse({
 			status: 201,
@@ -67,7 +82,7 @@ export const ApiCreatedSuccessResponse = <TModel extends Type<any> | (abstract n
 					schema: {
 						type: 'string',
 						format: 'uri',
-						example: locationExample || '/api/v1/{module}/{resource}/{id}',
+						example,
 					},
 				},
 			},

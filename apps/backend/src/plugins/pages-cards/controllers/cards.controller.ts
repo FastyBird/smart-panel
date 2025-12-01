@@ -115,7 +115,7 @@ export class CardsController {
 	@ApiCreatedSuccessResponse(
 		CardResponseModel,
 		'Card created successfully. The response includes the complete details of the newly created card with associated tiles and data sources.',
-		'/api/v1/plugins/pages-cards/cards/{id}',
+		'/api/v1/plugins/pages-cards/cards/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data')
 	@ApiNotFoundResponse('Page not found')

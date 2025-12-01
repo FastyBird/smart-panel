@@ -139,7 +139,7 @@ export class DataSourceController {
 	@ApiCreatedSuccessResponse(
 		DataSourceResponseModel,
 		'The newly created data source was returned successfully.',
-		'/api/v1/dashboard-module/data-source/{id}',
+		'/api/v1/dashboard-module/data-source/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported data source type')
 	@ApiNotFoundResponse('Parent entity not found')

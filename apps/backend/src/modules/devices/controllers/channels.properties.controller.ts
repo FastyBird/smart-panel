@@ -202,6 +202,7 @@ export class ChannelsPropertiesController {
 	@ApiCreatedSuccessResponse(
 		ChannelPropertyResponseModel,
 		'The property was successfully created. The response includes the complete details of the newly created property, such as its unique identifier, name, category, data type, unit, and value, associated channel, and timestamps.',
+		'/api/v1/devices-module/channels/123e4567-e89b-12d3-a456-426614174000/properties/223e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported property type')
 	@ApiNotFoundResponse('Channel not found')

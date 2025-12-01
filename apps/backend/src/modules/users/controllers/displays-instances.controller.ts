@@ -155,7 +155,7 @@ export class DisplaysInstancesController {
 	@ApiCreatedSuccessResponse(
 		DisplayInstanceResponseModel,
 		'The display instance was successfully created. The response includes the complete details of the newly created display instance, such as its unique identifier, UID, MAC address, version, build, and timestamps.',
-		'/api/v1/users-module/displays/{id}',
+		'/api/v1/users-module/displays/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data')
 	@ApiUnprocessableEntityResponse('UID already exists or user not found')
