@@ -25,7 +25,12 @@ import {
 import { TILES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-weather.openapi';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([DayWeatherTileEntity, ForecastWeatherTileEntity]), DashboardModule, ConfigModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([DayWeatherTileEntity, ForecastWeatherTileEntity]),
+		DashboardModule,
+		ConfigModule,
+		SwaggerModule,
+	],
 })
 export class TilesWeatherPlugin {
 	constructor(

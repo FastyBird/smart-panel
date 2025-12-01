@@ -146,7 +146,7 @@ export class SwaggerDocumentService {
 		const schemas = document.components?.schemas;
 		if (!schemas) return;
 
-		for (const [schemaName, schema] of Object.entries(schemas)) {
+		for (const [, schema] of Object.entries(schemas)) {
 			if (typeof schema !== 'object' || schema === null || '$ref' in schema) {
 				continue;
 			}

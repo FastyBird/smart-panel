@@ -39,7 +39,13 @@ import { PluginResetService } from './services/plugin-reset.service';
 	description: PAGES_CARDS_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([CardsPageEntity, CardEntity]), DashboardModule, ConfigModule, SystemModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([CardsPageEntity, CardEntity]),
+		DashboardModule,
+		ConfigModule,
+		SystemModule,
+		SwaggerModule,
+	],
 	providers: [CardsService, CardsPageNestedBuilderService, PluginResetService],
 	controllers: [CardsController],
 	exports: [CardsService],

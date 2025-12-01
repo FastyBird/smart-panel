@@ -24,7 +24,13 @@ import { TILES_DEVICE_PREVIEW_PLUGIN_NAME, TILES_DEVICE_PREVIEW_TYPE } from './t
 import { TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-device-preview.openapi';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([DevicePreviewTileEntity]), DashboardModule, DevicesModule, ConfigModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([DevicePreviewTileEntity]),
+		DashboardModule,
+		DevicesModule,
+		ConfigModule,
+		SwaggerModule,
+	],
 	providers: [TileRelationsLoaderService],
 })
 export class TilesDevicePreviewPlugin {

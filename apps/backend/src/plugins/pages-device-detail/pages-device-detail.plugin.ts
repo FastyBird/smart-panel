@@ -24,7 +24,13 @@ import { PAGES_DEVICE_DETAIL_PLUGIN_SWAGGER_EXTRA_MODELS } from './pages-device-
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([DeviceDetailPageEntity]), DashboardModule, DevicesModule, ConfigModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([DeviceDetailPageEntity]),
+		DashboardModule,
+		DevicesModule,
+		ConfigModule,
+		SwaggerModule,
+	],
 	providers: [PageRelationsLoaderService],
 })
 export class PagesDeviceDetailPlugin {
