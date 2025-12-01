@@ -181,6 +181,10 @@ export class TokenPairModel {
 			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
 	})
 	@Expose({ name: 'access_token' })
+	@Transform(
+		({ obj }: { obj: { access_token?: string; accessToken?: string } }) => obj.access_token ?? obj.accessToken,
+		{ toClassOnly: true },
+	)
 	accessToken: string;
 
 	@ApiProperty({
@@ -191,6 +195,10 @@ export class TokenPairModel {
 			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDMyfQ.ysGR_iIUp1O2wrUaKzIlr0eKufYUhdNFV156bA_FoFw',
 	})
 	@Expose({ name: 'refresh_token' })
+	@Transform(
+		({ obj }: { obj: { refresh_token?: string; refreshToken?: string } }) => obj.refresh_token ?? obj.refreshToken,
+		{ toClassOnly: true },
+	)
 	refreshToken: string;
 
 	@ApiProperty({
