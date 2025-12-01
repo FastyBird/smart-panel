@@ -8,12 +8,14 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Expose, Transform } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { useContainer } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { CreateSingleDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
@@ -174,10 +176,26 @@ describe('DataSourceController', () => {
 				updateDto: UpdateMockDataSourceDto,
 			});
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/dashboard/data-source',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
 
 			expect(result.data).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
 			expect(dataSourceService.create).toHaveBeenCalledWith(createDto, { parentType: 'page', parentId: mockPage.id });
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/${DASHBOARD_MODULE_PREFIX}/data-source/${mockDataSource.id}`),
+			);
 		});
 
 		it('should update a data source', async () => {

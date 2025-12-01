@@ -1,9 +1,10 @@
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+
 import {
 	Body,
 	Controller,
 	Delete,
 	Get,
-	Header,
 	Logger,
 	NotFoundException,
 	Param,
@@ -11,10 +12,13 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { setLocationHeader } from '../../../modules/api/utils/location-header.utils';
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
@@ -101,7 +105,6 @@ export class CardsController {
 		return response;
 	}
 
-	@Header('Location', `:baseUrl/${PAGES_CARDS_PLUGIN_PREFIX}/cards/:id`)
 	@ApiOperation({
 		tags: [PAGES_CARDS_PLUGIN_API_TAG_NAME],
 		summary: 'Create card',
@@ -112,19 +115,26 @@ export class CardsController {
 	@ApiCreatedSuccessResponse(
 		CardResponseModel,
 		'Card created successfully. The response includes the complete details of the newly created card with associated tiles and data sources.',
+		'/api/v1/plugins/pages-cards/cards/{id}',
 	)
 	@ApiBadRequestResponse('Invalid request data')
 	@ApiNotFoundResponse('Page not found')
 	@ApiUnprocessableEntityResponse('Card could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	async create(@Body() createDto: ReqCreateCardDto): Promise<CardResponseModel> {
+	async create(
+		@Body() createDto: ReqCreateCardDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<CardResponseModel> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to create a new page card`);
 
 		try {
 			const card = await this.cardsService.create(createDto.data);
 
 			this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully created page card id=${card.id}`);
+
+			setLocationHeader(req, res, PAGES_CARDS_PLUGIN_PREFIX, 'cards', card.id, { isPlugin: true });
 
 			const response = new CardResponseModel();
 			response.data = card;

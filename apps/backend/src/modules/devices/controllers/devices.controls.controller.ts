@@ -1,20 +1,24 @@
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+
 import {
 	Body,
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -123,16 +127,18 @@ export class DevicesControlsController {
 	@ApiCreatedSuccessResponse(
 		DeviceControlResponseModel,
 		'The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated device, and timestamps.',
+		'/api/v1/devices-module/devices/{deviceId}/controls/{controlId}',
 	)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Device not found')
 	@ApiUnprocessableEntityResponse('Device control could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/controls/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Body() createDto: ReqCreateDeviceControlDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
 	): Promise<DeviceControlResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new control for deviceId=${deviceId}`);
 
@@ -160,6 +166,8 @@ export class DevicesControlsController {
 			const control = await this.devicesControlsService.create(device.id, createDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for deviceId=${device.id}`);
+
+			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'devices', device.id, 'controls', control.id);
 
 			const response = new DeviceControlResponseModel();
 

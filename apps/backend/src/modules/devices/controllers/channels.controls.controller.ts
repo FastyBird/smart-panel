@@ -1,20 +1,24 @@
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+
 import {
 	Body,
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -123,16 +127,18 @@ export class ChannelsControlsController {
 	@ApiCreatedSuccessResponse(
 		ChannelControlResponseModel,
 		'The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated channel, and timestamps.',
+		'/api/v1/devices-module/channels/{channelId}/controls/{controlId}',
 	)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Channel not found')
 	@ApiUnprocessableEntityResponse('Channel control could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:channel/controls/:id`)
 	@Post()
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Body() createControlDto: ReqCreateChannelControlDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
 	): Promise<ChannelControlResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new control for channelId=${channelId}`);
 
@@ -160,6 +166,8 @@ export class ChannelsControlsController {
 			const control = await this.channelsControlsService.create(channel.id, createControlDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for channelId=${channel.id}`);
+
+			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'channels', channel.id, 'controls', control.id);
 
 			const response = new ChannelControlResponseModel();
 

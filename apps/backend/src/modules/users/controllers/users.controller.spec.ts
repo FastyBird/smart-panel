@@ -5,6 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -17,7 +18,7 @@ import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
 import { UsersService } from '../services/users.service';
-import { UserRole } from '../users.constants';
+import { USERS_MODULE_PREFIX, UserRole } from '../users.constants';
 
 import { UsersController } from './users.controller';
 
@@ -105,10 +106,26 @@ describe('UsersController', () => {
 				email: 'new@example.com',
 			};
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/users',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
 
 			expect(result.data).toEqual(toInstance(UserEntity, mockUser));
 			expect(service.create).toHaveBeenCalledWith(createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/${USERS_MODULE_PREFIX}/users/${mockUser.id}`),
+			);
 		});
 	});
 

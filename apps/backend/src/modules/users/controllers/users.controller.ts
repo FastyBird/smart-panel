@@ -1,9 +1,10 @@
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+
 import {
 	Body,
 	Controller,
 	Delete,
 	Get,
-	Header,
 	Logger,
 	NotFoundException,
 	Param,
@@ -11,10 +12,12 @@ import {
 	Patch,
 	Post,
 	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import { AuthenticatedRequest } from '../../auth/auth.constants';
 import {
 	ApiBadRequestResponse,
@@ -106,13 +109,17 @@ export class UsersController {
 	@ApiCreatedSuccessResponse(
 		UserResponseModel,
 		'The user was successfully created. The response includes the complete details of the newly created user, such as its unique identifier, username, email, role, and timestamps.',
+		'/api/v1/users-module/users/{id}',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported user data')
 	@ApiUnprocessableEntityResponse('Username or email already exists')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${USERS_MODULE_PREFIX}/users/:id`)
-	async create(@Body() createDto: ReqCreateUserDto): Promise<UserResponseModel> {
+	async create(
+		@Body() createDto: ReqCreateUserDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<UserResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new user');
 
 		const existingUsername = await this.usersService.findByUsername(createDto.data.username);
@@ -136,6 +143,8 @@ export class UsersController {
 		const user = await this.usersService.create(createDto.data);
 
 		this.logger.debug(`[CREATE] Successfully created user id=${user.id}`);
+
+		setLocationHeader(req, res, USERS_MODULE_PREFIX, 'users', user.id);
 
 		const response = new UserResponseModel();
 

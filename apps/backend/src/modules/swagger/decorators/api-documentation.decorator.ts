@@ -49,12 +49,30 @@ export const ApiSuccessResponse = <TModel extends Type<any> | (abstract new (...
  * Creates a Swagger decorator for successful creation responses with typed data
  * @param dataModel The model class for the response data
  * @param description Optional description for the response
+ * @param locationExample Optional example for the Location header (e.g., '/api/v1/devices/devices/{id}')
  */
 export const ApiCreatedSuccessResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
 	dataModel: TModel,
 	description?: string,
+	locationExample?: string,
 ) => {
-	return createSuccessResponseDecorator(201, 'Resource created successfully', dataModel, description);
+	return applyDecorators(
+		ApiResponse({
+			status: 201,
+			description: description || 'Resource created successfully',
+			schema: { $ref: getSchemaPath(dataModel) },
+			headers: {
+				Location: {
+					description: 'The URI of the newly created resource',
+					schema: {
+						type: 'string',
+						format: 'uri',
+						example: locationExample || '/api/v1/{module}/{resource}/{id}',
+					},
+				},
+			},
+		}),
+	);
 };
 
 /**

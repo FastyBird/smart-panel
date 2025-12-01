@@ -5,6 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
@@ -15,6 +16,7 @@ import { CreateDisplayProfileDto } from '../dto/create-display-profile.dto';
 import { UpdateDisplayProfileDto } from '../dto/update-display-profile.dto';
 import { DisplayProfileEntity } from '../entities/system.entity';
 import { DisplaysProfilesService } from '../services/displays-profiles.service';
+import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 import { DisplaysProfilesController } from './displays-profiles.controller';
 
@@ -108,10 +110,26 @@ describe('DisplaysProfilesController', () => {
 				cols: 4,
 			};
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/system/displays-profiles',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
 
 			expect(result.data).toEqual(toInstance(DisplayProfileEntity, mockDisplay));
 			expect(service.create).toHaveBeenCalledWith(createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/${SYSTEM_MODULE_PREFIX}/displays/${mockDisplay.id}`),
+			);
 		});
 
 		it('should throw UnprocessableEntityException if uid is reused', async () => {
@@ -127,7 +145,21 @@ describe('DisplaysProfilesController', () => {
 				cols: 4,
 			};
 
-			await expect(controller.create({ data: createDto })).rejects.toThrow(UnprocessableEntityException);
+			const mockRequest = {
+				url: '/api/v1/system/displays-profiles',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			await expect(controller.create({ data: createDto }, mockResponse, mockRequest)).rejects.toThrow(
+				UnprocessableEntityException,
+			);
 		});
 	});
 

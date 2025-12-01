@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -7,7 +8,6 @@ import {
 	Delete,
 	ForbiddenException,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -16,11 +16,13 @@ import {
 	Patch,
 	Post,
 	Req,
+	Res,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -104,12 +106,15 @@ export class TokensController {
 		description: 'Token creation data with discriminated type',
 		type: ReqCreateTokenDto,
 	})
-	@ApiCreatedSuccessResponse(TokenResponseModel, 'Token created successfully')
+	@ApiCreatedSuccessResponse(TokenResponseModel, 'Token created successfully', '/api/v1/auth-module/auth/{id}')
 	@ApiBadRequestResponse('Invalid token data or unsupported token type')
 	@ApiInternalServerErrorResponse('Internal server error')
-	@Header('Location', `:baseUrl/${AUTH_MODULE_PREFIX}/auth/:id`)
 	@Post()
-	async create(@Body() createDto: ReqCreateTokenDto): Promise<TokenResponseModel> {
+	async create(
+		@Body() createDto: ReqCreateTokenDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<TokenResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new token');
 
 		const type: string | undefined = createDto.data.type;
@@ -155,6 +160,8 @@ export class TokensController {
 		const token = await this.tokensService.create(createDto.data);
 
 		this.logger.debug(`[CREATE] Successfully created token id=${token.id}`);
+
+		setLocationHeader(req, res, AUTH_MODULE_PREFIX, 'auth', token.id);
 
 		const response = new TokenResponseModel();
 

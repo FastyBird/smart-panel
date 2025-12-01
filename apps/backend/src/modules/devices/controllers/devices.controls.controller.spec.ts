@@ -5,12 +5,13 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, DeviceCategory } from '../devices.constants';
+import { ConnectionState, DEVICES_MODULE_PREFIX, DeviceCategory } from '../devices.constants';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
@@ -116,10 +117,28 @@ describe('DevicesControlsController', () => {
 		it('should create a new device control', async () => {
 			const createDto: CreateDeviceControlDto = { name: 'New Control' };
 
-			const result = await controller.create(mockDevice.id, { data: createDto });
+			const mockRequest = {
+				url: '/api/v1/devices/test-device-id/controls',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create(mockDevice.id, { data: createDto }, mockResponse, mockRequest);
 
 			expect(result.data).toEqual(toInstance(DeviceControlEntity, mockDeviceControl));
 			expect(devicesControlsService.create).toHaveBeenCalledWith(mockDevice.id, createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(
+					`/api/v1/${DEVICES_MODULE_PREFIX}/devices/${mockDevice.id}/controls/${mockDeviceControl.id}`,
+				),
+			);
 		});
 
 		it('should delete a device control', async () => {

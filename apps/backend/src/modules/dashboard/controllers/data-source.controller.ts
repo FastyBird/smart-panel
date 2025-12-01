@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -15,12 +15,15 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -133,14 +136,21 @@ export class DataSourceController {
 		type: ReqCreateDataSourceWithParentDto,
 		description: 'Payload containing the attributes for the new data source.',
 	})
-	@ApiCreatedSuccessResponse(DataSourceResponseModel, 'The newly created data source was returned successfully.')
+	@ApiCreatedSuccessResponse(
+		DataSourceResponseModel,
+		'The newly created data source was returned successfully.',
+		'/api/v1/dashboard-module/data-source/{id}',
+	)
 	@ApiBadRequestResponse('Invalid request data or unsupported data source type')
 	@ApiNotFoundResponse('Parent entity not found')
 	@ApiUnprocessableEntityResponse('Data source could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
-	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/data-source/:id`)
 	@Post()
-	async create(@Body() createDto: { data: object }): Promise<DataSourceResponseModel> {
+	async create(
+		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<DataSourceResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new data source`);
 
 		const type: string | undefined =
@@ -221,6 +231,8 @@ export class DataSourceController {
 			});
 
 			this.logger.debug(`[CREATE] Successfully created data source id=${dataSource.id}`);
+
+			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'data-source', dataSource.id);
 
 			const response = new DataSourceResponseModel();
 			response.data = dataSource;

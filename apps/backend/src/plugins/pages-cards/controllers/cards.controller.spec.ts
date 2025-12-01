@@ -5,6 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -14,7 +15,7 @@ import { PagesService } from '../../../modules/dashboard/services/pages.service'
 import { CreateSingleCardDto } from '../dto/create-card.dto';
 import { UpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
-import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
+import { PAGES_CARDS_PLUGIN_PREFIX, PAGES_CARDS_TYPE } from '../pages-cards.constants';
 import { CardsService } from '../services/cards.service';
 
 import { CardsController } from './cards.controller';
@@ -118,10 +119,26 @@ describe('CardsController', () => {
 				page: mockCardsPage.id,
 			};
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/plugins/pages-cards/cards',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
 
 			expect(result.data).toEqual(mockCard);
 			expect(cardsService.create).toHaveBeenCalledWith(createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/${mockCard.id}`),
+			);
 		});
 
 		it('should update a card', async () => {

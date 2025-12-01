@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -14,12 +14,15 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -116,13 +119,17 @@ export class DevicesController {
 	@ApiCreatedSuccessResponse(
 		DeviceResponseModel,
 		'The device was successfully created. The response includes the complete details of the newly created device, such as its unique identifier, name, category, and timestamps.',
+		'/api/v1/devices-module/devices/{id}',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported device type')
 	@ApiUnprocessableEntityResponse('Device could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:id`)
-	async create(@Body() createDto: { data: object }): Promise<DeviceResponseModel> {
+	async create(
+		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<DeviceResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new device');
 
 		const type: string | undefined =
@@ -170,6 +177,8 @@ export class DevicesController {
 			const device = await this.devicesService.create(dtoInstance);
 
 			this.logger.debug(`[CREATE] Successfully created device id=${device.id}`);
+
+			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'devices', device.id);
 
 			const response = new DeviceResponseModel();
 

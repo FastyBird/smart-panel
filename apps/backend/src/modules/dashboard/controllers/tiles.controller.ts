@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -15,12 +15,15 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -125,14 +128,21 @@ export class TilesController {
 		type: ReqCreateTileWithParentDto,
 		description: 'Payload containing the tile metadata and layout information.',
 	})
-	@ApiCreatedSuccessResponse(TileResponseModel, 'The newly created tile was returned successfully.')
+	@ApiCreatedSuccessResponse(
+		TileResponseModel,
+		'The newly created tile was returned successfully.',
+		'/api/v1/dashboard-module/tiles/{id}',
+	)
 	@ApiBadRequestResponse('Invalid request data or unsupported tile type')
 	@ApiNotFoundResponse('Parent entity not found')
 	@ApiUnprocessableEntityResponse('Tile could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
-	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/tiles/:id`)
 	@Post()
-	async create(@Body() createDto: { data: object }): Promise<TileResponseModel> {
+	async create(
+		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<TileResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new tile`);
 
 		const type: string | undefined =
@@ -200,6 +210,8 @@ export class TilesController {
 			});
 
 			this.logger.debug(`[CREATE] Successfully created tile id=${tile.id}`);
+
+			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'tiles', tile.id);
 
 			const response = new TileResponseModel();
 			response.data = tile;

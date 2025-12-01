@@ -6,13 +6,14 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { useContainer } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, ConnectionState, DeviceCategory } from '../devices.constants';
+import { ChannelCategory, ConnectionState, DEVICES_MODULE_PREFIX, DeviceCategory } from '../devices.constants';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
@@ -146,10 +147,26 @@ describe('ChannelsController', () => {
 				updateDto: UpdateChannelDto,
 			});
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/devices/channels',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
 
 			expect(result.data).toEqual(toInstance(ChannelEntity, mockChannel));
 			expect(service.create).toHaveBeenCalledWith(createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/${DEVICES_MODULE_PREFIX}/channels/${mockChannel.id}`),
+			);
 		});
 
 		it('should update a channel', async () => {

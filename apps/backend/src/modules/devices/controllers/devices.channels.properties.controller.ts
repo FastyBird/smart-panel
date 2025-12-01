@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -15,12 +15,15 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -215,17 +218,19 @@ export class DevicesChannelsPropertiesController {
 	@ApiCreatedSuccessResponse(
 		ChannelPropertyResponseModel,
 		'The property was successfully created. The response includes the complete details of the newly created property, such as its unique identifier, name, category, data type, unit, and value, associated channel, and timestamps.',
+		'/api/v1/devices-module/devices/{deviceId}/channels/{channelId}/properties/{propertyId}',
 	)
 	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported property type')
 	@ApiNotFoundResponse('Device or channel not found')
 	@ApiUnprocessableEntityResponse('Channel property could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/channels/:channel/properties/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
 	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(
 			`[CREATE] Incoming request to create a new data source for deviceId=${deviceId} channelId=${channelId}`,
@@ -293,6 +298,18 @@ export class DevicesChannelsPropertiesController {
 
 			this.logger.debug(
 				`[CREATE] Successfully created data source id=${property.id} for deviceId=${device.id} channelId=${channel.id}`,
+			);
+
+			setLocationHeader(
+				req,
+				res,
+				DEVICES_MODULE_PREFIX,
+				'devices',
+				device.id,
+				'channels',
+				channel.id,
+				'properties',
+				property.id,
 			);
 
 			const response = new ChannelPropertyResponseModel();

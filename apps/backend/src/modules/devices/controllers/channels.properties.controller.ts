@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -15,12 +15,15 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -205,10 +208,11 @@ export class ChannelsPropertiesController {
 	@ApiUnprocessableEntityResponse('Channel property could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:channel/properties/:id`)
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
 	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new property for channelId=${channelId}`);
 
@@ -272,6 +276,8 @@ export class ChannelsPropertiesController {
 			const property = await this.channelsPropertiesService.create(channel.id, dtoInstance);
 
 			this.logger.debug(`[CREATE] Successfully created property id=${property.id} for channelId=${channel.id}`);
+
+			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'channels', channel.id, 'properties', property.id);
 
 			const response = new ChannelPropertyResponseModel();
 

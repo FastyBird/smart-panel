@@ -5,13 +5,14 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, ConnectionState, DeviceCategory } from '../devices.constants';
+import { ChannelCategory, ConnectionState, DEVICES_MODULE_PREFIX, DeviceCategory } from '../devices.constants';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 import { ChannelsControlsService } from '../services/channels.controls.service';
@@ -126,10 +127,28 @@ describe('ChannelsControlsController', () => {
 		it('should create a new control', async () => {
 			const createDto: CreateChannelControlDto = { name: 'New Control' };
 
-			const result = await controller.create(mockChannel.id, { data: createDto });
+			const mockRequest = {
+				url: '/api/v1/devices/channels/test-channel-id/controls',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create(mockChannel.id, { data: createDto }, mockResponse, mockRequest);
 
 			expect(result.data).toEqual(toInstance(ChannelControlEntity, mockChannelControl));
 			expect(channelsControlsService.create).toHaveBeenCalledWith(mockChannel.id, createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(
+					`/api/v1/${DEVICES_MODULE_PREFIX}/channels/${mockChannel.id}/controls/${mockChannelControl.id}`,
+				),
+			);
 		});
 
 		it('should delete a control', async () => {

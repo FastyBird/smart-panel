@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -14,12 +14,15 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -106,13 +109,20 @@ export class PagesController {
 		type: ReqCreatePageDto,
 		description: 'Payload containing the page attributes to create.',
 	})
-	@ApiCreatedSuccessResponse(PageResponseModel, 'The newly created page was returned successfully.')
+	@ApiCreatedSuccessResponse(
+		PageResponseModel,
+		'The newly created page was returned successfully.',
+		'/api/v1/dashboard-module/pages/{id}',
+	)
 	@ApiBadRequestResponse('Invalid request data or unsupported page type')
 	@ApiUnprocessableEntityResponse('Page could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
-	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:id`)
 	@Post()
-	async create(@Body() createDto: { data: object }): Promise<PageResponseModel> {
+	async create(
+		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<PageResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new page');
 
 		const type: string | undefined =
@@ -175,6 +185,8 @@ export class PagesController {
 			const page = await this.pagesService.create(dtoInstance);
 
 			this.logger.debug(`[CREATE] Successfully created page id=${page.id}`);
+
+			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'pages', page.id);
 
 			const response = new PageResponseModel();
 			response.data = page;

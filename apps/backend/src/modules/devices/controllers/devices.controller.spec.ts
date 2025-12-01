@@ -5,11 +5,13 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { ConnectionState, DeviceCategory } from '../devices.constants';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -106,10 +108,26 @@ describe('DevicesController', () => {
 				updateDto: UpdateDeviceDto,
 			});
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/devices',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
 
 			expect(result.data).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.create).toHaveBeenCalledWith(createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/${DEVICES_MODULE_PREFIX}/devices/${mockDevice.id}`),
+			);
 		});
 
 		it('should update a device', async () => {

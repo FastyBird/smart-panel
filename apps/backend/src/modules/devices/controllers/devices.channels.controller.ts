@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -14,12 +14,15 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -133,16 +136,18 @@ export class DevicesChannelsController {
 	@ApiCreatedSuccessResponse(
 		DeviceChannelResponseModel,
 		'The channel was successfully created. The response includes the complete details of the newly created channel, such as its unique identifier, name, category, and timestamps.',
+		'/api/v1/devices-module/devices/{deviceId}/channels/{channelId}',
 	)
 	@ApiBadRequestResponse('Invalid UUID format, invalid request data, or unsupported channel type')
 	@ApiNotFoundResponse('Device not found')
 	@ApiUnprocessableEntityResponse('Channel could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/channels/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
 	): Promise<DeviceChannelResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new channel for deviceId=${deviceId}`);
 
@@ -199,6 +204,8 @@ export class DevicesChannelsController {
 			const channel = await this.channelsService.create(dtoInstance);
 
 			this.logger.debug(`[CREATE] Successfully created channel id=${channel.id} for deviceId=${device.id}`);
+
+			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'devices', device.id, 'channels', channel.id);
 
 			const response = new DeviceChannelResponseModel();
 

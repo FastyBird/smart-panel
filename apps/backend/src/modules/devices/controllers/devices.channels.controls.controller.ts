@@ -1,20 +1,24 @@
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+
 import {
 	Body,
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -134,17 +138,19 @@ export class DevicesChannelsControlsController {
 	@ApiCreatedSuccessResponse(
 		ChannelControlResponseModel,
 		'The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated channel, and timestamps.',
+		'/api/v1/devices-module/devices/{deviceId}/channels/{channelId}/controls/{controlId}',
 	)
 	@ApiBadRequestResponse('Invalid UUID format or duplicate control name')
 	@ApiNotFoundResponse('Device or channel not found')
 	@ApiUnprocessableEntityResponse('Channel control could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/channels/:channel/controls/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Body() createDto: ReqCreateDeviceChannelControlDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
 	): Promise<ChannelControlResponseModel> {
 		this.logger.debug(
 			`[CREATE] Incoming request to create a new data source for deviceId=${deviceId} channelId=${channelId}`,
@@ -176,6 +182,18 @@ export class DevicesChannelsControlsController {
 
 			this.logger.debug(
 				`[CREATE] Successfully created data source id=${dataSource.id} for deviceId=${device.id} channelId=${channel.id}`,
+			);
+
+			setLocationHeader(
+				req,
+				res,
+				DEVICES_MODULE_PREFIX,
+				'devices',
+				device.id,
+				'channels',
+				channel.id,
+				'controls',
+				dataSource.id,
 			);
 
 			const response = new ChannelControlResponseModel();

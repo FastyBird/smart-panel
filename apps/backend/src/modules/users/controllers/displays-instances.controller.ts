@@ -1,19 +1,23 @@
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+
 import {
 	Body,
 	Controller,
 	Delete,
 	Get,
-	Header,
 	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -151,14 +155,18 @@ export class DisplaysInstancesController {
 	@ApiCreatedSuccessResponse(
 		DisplayInstanceResponseModel,
 		'The display instance was successfully created. The response includes the complete details of the newly created display instance, such as its unique identifier, UID, MAC address, version, build, and timestamps.',
+		'/api/v1/users-module/displays/{id}',
 	)
 	@ApiBadRequestResponse('Invalid request data')
 	@ApiUnprocessableEntityResponse('UID already exists or user not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${USERS_MODULE_PREFIX}/displays/:id`)
 	@Roles(UserRole.DISPLAY)
-	async create(@Body() createDto: ReqCreateDisplayInstanceDto): Promise<DisplayInstanceResponseModel> {
+	async create(
+		@Body() createDto: ReqCreateDisplayInstanceDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<DisplayInstanceResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new display instance');
 
 		const existingDisplay = await this.displaysService.findByUid(createDto.data.uid);
@@ -180,6 +188,8 @@ export class DisplaysInstancesController {
 		const display = await this.displaysService.create(displayUser.id, createDto.data);
 
 		this.logger.debug(`[CREATE] Successfully created display instance id=${display.id}`);
+
+		setLocationHeader(req, res, USERS_MODULE_PREFIX, 'displays', display.id);
 
 		const response = new DisplayInstanceResponseModel();
 

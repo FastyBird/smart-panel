@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -14,12 +14,15 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -116,13 +119,17 @@ export class ChannelsController {
 	@ApiCreatedSuccessResponse(
 		ChannelResponseModel,
 		'The channel was successfully created. The response includes the complete details of the newly created channel, such as its unique identifier, name, category, and timestamps.',
+		'/api/v1/devices-module/channels/{id}',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported channel type')
 	@ApiUnprocessableEntityResponse('Channel could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:id`)
-	async create(@Body() createDto: { data: object }): Promise<ChannelResponseModel> {
+	async create(
+		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<ChannelResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new channel');
 
 		const type: string | undefined =
@@ -170,6 +177,8 @@ export class ChannelsController {
 			const channel = await this.channelsService.create(dtoInstance);
 
 			this.logger.debug(`[CREATE] Successfully created channel id=${channel.id}`);
+
+			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'channels', channel.id);
 
 			const response = new ChannelResponseModel();
 

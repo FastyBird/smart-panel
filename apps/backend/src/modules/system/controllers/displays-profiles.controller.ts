@@ -1,9 +1,10 @@
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+
 import {
 	Body,
 	Controller,
 	Delete,
 	Get,
-	Header,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -11,6 +12,8 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import {
@@ -22,6 +25,7 @@ import {
 	ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 
+import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -137,14 +141,21 @@ export class DisplaysProfilesController {
 		operationId: 'create-system-module-display-profile',
 	})
 	@ApiBody({ type: ReqCreateDisplayProfileDto, description: 'Display profile creation data' })
-	@ApiCreatedSuccessResponse(DisplayProfileResponseModel, 'Display profile created successfully')
+	@ApiCreatedSuccessResponse(
+		DisplayProfileResponseModel,
+		'Display profile created successfully',
+		'/api/v1/system-module/displays/{id}',
+	)
 	@ApiBadRequestResponse('Invalid request data')
 	@ApiUnprocessableEntityResponse({ description: 'UID already exists' })
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${SYSTEM_MODULE_PREFIX}/displays/:id`)
 	@Roles(UserRole.DISPLAY)
-	async create(@Body() createDto: ReqCreateDisplayProfileDto): Promise<DisplayProfileResponseModel> {
+	async create(
+		@Body() createDto: ReqCreateDisplayProfileDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<DisplayProfileResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new display profile');
 
 		const existingDisplay = await this.displaysService.findByUid(createDto.data.uid);
@@ -158,6 +169,8 @@ export class DisplaysProfilesController {
 		const display = await this.displaysService.create(createDto.data);
 
 		this.logger.debug(`[CREATE] Successfully created display profile id=${display.id}`);
+
+		setLocationHeader(req, res, SYSTEM_MODULE_PREFIX, 'displays', display.id);
 
 		const response = new DisplayProfileResponseModel();
 		response.data = display;
