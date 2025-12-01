@@ -364,6 +364,8 @@ export class LogEntryAcceptedModel {
 	@Expose()
 	@IsOptional()
 	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => LogEntryErrorModel)
 	errors?: LogEntryErrorModel[];
 }
 
