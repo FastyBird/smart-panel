@@ -334,7 +334,7 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto {
 		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
 	@ValidateIf((_, value) => value !== null)
 	latitude?: number | null;
 
@@ -398,7 +398,7 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
 		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
 	@ValidateIf((_, value) => value !== null)
 	latitude?: number | null;
 
@@ -486,7 +486,7 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
 		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
 	@ValidateIf((_, value) => value !== null)
 	latitude?: number | null;
 
