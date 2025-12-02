@@ -55,7 +55,7 @@ I want the backend (NestJS) to become the authoritative source of API specificat
 - [x] All DTOs include `@ApiProperty` decorators with correct metadata.
 - [x] All API responses are documented with appropriate `@ApiResponse`.
 - [x] All request params and queries use `@ApiParam` / `@ApiQuery`.
-- [ ] Security definitions (Bearer JWT) are correctly defined in Swagger.
+- [x] Security definitions (Bearer JWT) are correctly defined in Swagger.
 - [x] A script exists to export OpenAPI into `spec/openapi.json`.
 - [x] Admin app & Flutter app continue to successfully generate models from the exported OpenAPI file.
 - [x] CI pipeline is updated to generate OpenAPI before typings/codegen steps.
