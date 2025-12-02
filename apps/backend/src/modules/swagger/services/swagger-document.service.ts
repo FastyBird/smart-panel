@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { INestApplication } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule, getSchemaPath } from '@nestjs/swagger';
 
 import { API_PREFIX } from '../../../app.constants';
-import { IS_PUBLIC_KEY } from '../../auth/guards/auth.guard';
 import { openApiTagRegistry } from '../decorators/api-tag.decorator';
 
 import { ExtendedDiscriminatorRegistration, ExtendedDiscriminatorService } from './extended-discriminator.service';
@@ -374,7 +372,7 @@ export class SwaggerDocumentService {
 	 * This ensures non-public routes have the required security schemes.
 	 * Public routes are marked with @ApiPublic() which sets security to a marker value.
 	 */
-	private addSecurityToNonPublicRoutes(document: OpenAPIObject, app: INestApplication): void {
+	private addSecurityToNonPublicRoutes(document: OpenAPIObject, _app: INestApplication): void {
 		const paths = document.paths;
 		if (!paths) return;
 
@@ -388,7 +386,7 @@ export class SwaggerDocumentService {
 			},
 		];
 
-		for (const [path, pathItem] of Object.entries(paths)) {
+		for (const pathItem of Object.values(paths)) {
 			if (!pathItem || typeof pathItem !== 'object') continue;
 
 			// Check all HTTP methods
