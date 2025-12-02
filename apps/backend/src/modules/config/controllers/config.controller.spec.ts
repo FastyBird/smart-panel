@@ -8,6 +8,8 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { BadRequestException, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ConfigException } from '../config.exceptions';
+
 import {
 	LanguageType,
 	LogLevelType,
@@ -20,6 +22,7 @@ import {
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
+	UpdateModuleConfigDto,
 	UpdateWeatherCityIdConfigDto,
 	UpdateWeatherCityNameConfigDto,
 	UpdateWeatherLatLonConfigDto,
@@ -30,12 +33,14 @@ import {
 	AudioConfigModel,
 	DisplayConfigModel,
 	LanguageConfigModel,
+	ModuleConfigModel,
 	WeatherCityIdConfigModel,
 	WeatherCityNameConfigModel,
 	WeatherLatLonConfigModel,
 	WeatherZipCodeConfigModel,
 } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
+import { ModulesTypeMapperService } from '../services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
 import { ConfigController } from './config.controller';
@@ -80,6 +85,12 @@ describe('ConfigController', () => {
 			logLevels: [LogLevelType.ERROR],
 		},
 		plugins: [],
+		modules: [
+			{
+				type: 'mock-module',
+				enabled: true,
+			} as ModuleConfigModel,
+		],
 	};
 
 	beforeEach(async () => {
@@ -92,12 +103,25 @@ describe('ConfigController', () => {
 						getConfig: jest.fn().mockReturnValue(mockConfig),
 						getConfigSection: jest.fn((key: keyof AppConfigModel) => mockConfig[key]),
 						setConfigSection: jest.fn(),
+						getModulesConfig: jest.fn().mockReturnValue(mockConfig.modules as ModuleConfigModel[]),
+						getModuleConfig: jest.fn((module: string) => mockConfig.modules[0] as ModuleConfigModel),
+						setModuleConfig: jest.fn(),
 					},
 				},
 				{
 					provide: PluginsTypeMapperService,
 					useValue: {
 						getMapping: jest.fn(),
+					},
+				},
+				{
+					provide: ModulesTypeMapperService,
+					useValue: {
+						getMapping: jest.fn(() => ({
+							type: 'mock-module',
+							class: ModuleConfigModel,
+							configDto: UpdateModuleConfigDto,
+						})),
 					},
 				},
 			],
@@ -242,6 +266,74 @@ describe('ConfigController', () => {
 				WeatherCityIdConfigModel,
 				WeatherZipCodeConfigModel,
 			]);
+		});
+	});
+
+	describe('getModulesConfig', () => {
+		it('should return all module configurations', () => {
+			const mockModules = mockConfig.modules as ModuleConfigModel[];
+			jest.spyOn(configService, 'getModulesConfig').mockReturnValue(mockModules);
+
+			const result = controller.getModulesConfig();
+
+			expect(result).toHaveProperty('data');
+			expect(result.data).toEqual(mockModules);
+			expect(configService.getModulesConfig).toHaveBeenCalled();
+		});
+	});
+
+	describe('getModuleConfig', () => {
+		it('should return a specific module configuration', () => {
+			const mockModule = mockConfig.modules[0] as ModuleConfigModel;
+			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(mockModule);
+
+			const result = controller.getModuleConfig('mock-module');
+
+			expect(result).toHaveProperty('data');
+			expect(result.data).toEqual(mockModule);
+			expect(configService.getModuleConfig).toHaveBeenCalledWith('mock-module');
+		});
+
+		it('should throw ConfigNotFoundException for a non-existent module', () => {
+			(configService.getModuleConfig as jest.Mock).mockImplementation(() => {
+				throw new ConfigException('Configuration module \'non-existent\' not found.');
+			});
+
+			expect(() => controller.getModuleConfig('non-existent')).toThrow();
+			expect(configService.getModuleConfig).toHaveBeenCalledWith('non-existent');
+		});
+	});
+
+	describe('updateModuleConfig', () => {
+		it('should update and return the module configuration', async () => {
+			const updateDto: UpdateModuleConfigDto = { type: 'mock-module', enabled: false };
+			const updatedModule = { ...mockConfig.modules[0], enabled: false } as ModuleConfigModel;
+
+			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(updatedModule);
+			jest.spyOn(configService, 'setModuleConfig').mockImplementation(() => {});
+
+			const result = await controller.updateModuleConfig('mock-module', { data: updateDto });
+
+			expect(result).toHaveProperty('data');
+			expect(result.data).toMatchObject({
+				type: 'mock-module',
+				enabled: false,
+			});
+			expect(configService.setModuleConfig).toHaveBeenCalledWith('mock-module', updateDto);
+			expect(configService.getModuleConfig).toHaveBeenCalledWith('mock-module');
+		});
+
+		it('should throw BadRequestException for an unsupported module type', async () => {
+			const updateDto: UpdateModuleConfigDto = { type: 'unsupported-module', enabled: false };
+
+			const modulesMapperService = controller['modulesMapperService'];
+			jest.spyOn(modulesMapperService, 'getMapping').mockImplementation(() => {
+				throw new ConfigException('Unsupported module type: unsupported-module');
+			});
+
+			await expect(controller.updateModuleConfig('unsupported-module', { data: updateDto })).rejects.toThrow(
+				BadRequestException,
+			);
 		});
 	});
 });
