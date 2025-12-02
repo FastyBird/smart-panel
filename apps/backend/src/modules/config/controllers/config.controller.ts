@@ -465,7 +465,7 @@ export class ConfigController {
 				stack: err.stack,
 			});
 
-			if (error instanceof DevicesException) {
+			if (error instanceof ConfigException) {
 				throw new BadRequestException([
 					JSON.stringify({ field: 'type', reason: `Unsupported plugin type: ${plugin}` }),
 				]);
