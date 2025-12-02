@@ -3,11 +3,11 @@ import { ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
+import { UpdateSingleTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
 import { TILES_TIME_TYPE } from '../tiles-time.constants';
 
 @ApiSchema({ name: 'TilesTimePluginUpdateTimeTile' })
-export class UpdateTimeTileDto extends UpdateTileDto {
+export class UpdateTimeTileDto extends UpdateSingleTileDto {
 	@ApiProperty({
 		description: 'Tile type',
 		type: 'string',

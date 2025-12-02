@@ -206,12 +206,6 @@ export abstract class WeatherConfigModel extends BaseConfigModel {
 	@IsOptional()
 	type = SectionType.WEATHER;
 
-	@ApiProperty({
-		name: 'location_type',
-		description: 'Type of location data',
-		enum: WeatherLocationType,
-		example: WeatherLocationType.CITY_NAME,
-	})
 	@Expose({ name: 'location_type' })
 	@IsEnum(WeatherLocationType)
 	locationType: WeatherLocationType = WeatherLocationType.CITY_NAME;

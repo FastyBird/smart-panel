@@ -3,11 +3,11 @@ import { ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
+import { UpdateSingleTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
 import { TILES_WEATHER_DAY_TYPE, TILES_WEATHER_FORECAST_TYPE } from '../tiles-weather.constants';
 
 @ApiSchema({ name: 'TilesWeatherPluginUpdateDayWeatherTile' })
-export class UpdateDayWeatherTileDto extends UpdateTileDto {
+export class UpdateDayWeatherTileDto extends UpdateSingleTileDto {
 	@ApiProperty({
 		description: 'Tile type',
 		type: 'string',
@@ -18,7 +18,7 @@ export class UpdateDayWeatherTileDto extends UpdateTileDto {
 }
 
 @ApiSchema({ name: 'TilesWeatherPluginUpdateForecastWeatherTile' })
-export class UpdateForecastWeatherTileDto extends UpdateTileDto {
+export class UpdateForecastWeatherTileDto extends UpdateSingleTileDto {
 	@ApiProperty({
 		description: 'Tile type',
 		type: 'string',

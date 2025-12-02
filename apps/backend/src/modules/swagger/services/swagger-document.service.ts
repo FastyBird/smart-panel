@@ -98,6 +98,8 @@ export class SwaggerDocumentService {
 
 		this.transformAllOfToRef(document);
 
+		this.removeDiscriminatorFromBaseSchemas(document);
+
 		return document;
 	}
 
@@ -182,6 +184,110 @@ export class SwaggerDocumentService {
 					}
 				}
 			}
+		}
+	}
+
+	/**
+	 * Remove discriminator property from variant schemas when they're used in discriminated unions.
+	 * This prevents duplicate property errors in code generators (e.g., Dart's json_serializable with Freezed).
+	 * Freezed handles the discriminator via unionKey, so we don't need it as a regular field in variants.
+	 */
+	private removeDiscriminatorFromBaseSchemas(document: OpenAPIObject): void {
+		const schemas = document.components?.schemas;
+		if (!schemas) return;
+
+		// Process all schemas to find oneOf with discriminators (both at schema level and in properties)
+		const processOneOf = (
+			oneOfSchema: unknown,
+			discriminatorProperty: string,
+		): void => {
+			if (
+				typeof oneOfSchema !== 'object' ||
+				oneOfSchema === null ||
+				!('oneOf' in oneOfSchema) ||
+				!Array.isArray(oneOfSchema.oneOf)
+			) {
+				return;
+			}
+
+			// Remove discriminator property from all variant schemas
+			for (const oneOfItem of oneOfSchema.oneOf) {
+				if (typeof oneOfItem === 'object' && oneOfItem !== null && '$ref' in oneOfItem) {
+					const ref = oneOfItem.$ref;
+					if (ref.startsWith('#/components/schemas/')) {
+						const variantSchemaName = ref.replace('#/components/schemas/', '');
+						const variantSchema = schemas[variantSchemaName];
+
+						if (
+							variantSchema &&
+							typeof variantSchema === 'object' &&
+							variantSchema !== null &&
+							!('$ref' in variantSchema) &&
+							'properties' in variantSchema &&
+							typeof variantSchema.properties === 'object'
+						) {
+							// Remove discriminator property from variant schema
+							// Freezed will handle it via unionKey
+							delete variantSchema.properties[discriminatorProperty];
+						}
+					}
+				}
+			}
+		};
+
+		// Find all schemas with oneOf and discriminator at schema level
+		for (const schema of Object.values(schemas)) {
+			if (typeof schema !== 'object' || schema === null || '$ref' in schema) {
+				continue;
+			}
+
+			// Check schema-level oneOf
+			if ('oneOf' in schema && 'discriminator' in schema) {
+				const discriminator = schema.discriminator;
+				if (
+					typeof discriminator === 'object' &&
+					discriminator !== null &&
+					'propertyName' in discriminator &&
+					typeof discriminator.propertyName === 'string'
+				) {
+					processOneOf(schema, discriminator.propertyName);
+				}
+			}
+
+			// Check properties for oneOf with discriminator
+			if ('properties' in schema && typeof schema.properties === 'object') {
+				for (const propSchema of Object.values(schema.properties)) {
+					if (
+						typeof propSchema === 'object' &&
+						propSchema !== null &&
+						'oneOf' in propSchema &&
+						'discriminator' in propSchema
+					) {
+						const discriminator = propSchema.discriminator;
+						if (
+							typeof discriminator === 'object' &&
+							discriminator !== null &&
+							'propertyName' in discriminator &&
+							typeof discriminator.propertyName === 'string'
+						) {
+							processOneOf(propSchema, discriminator.propertyName);
+						}
+					}
+				}
+			}
+		}
+
+		// Also remove from base schema if it exists
+		const weatherBaseSchema = schemas['ConfigModuleDataWeather'];
+		if (
+			weatherBaseSchema &&
+			typeof weatherBaseSchema === 'object' &&
+			weatherBaseSchema !== null &&
+			!('$ref' in weatherBaseSchema) &&
+			'properties' in weatherBaseSchema &&
+			typeof weatherBaseSchema.properties === 'object'
+		) {
+			delete weatherBaseSchema.properties['location_type'];
 		}
 	}
 

@@ -3,12 +3,12 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } 
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
+import { UpdateSingleTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
 import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
 @ApiSchema({ name: 'TilesDevicePreviewPluginUpdateDevicePreviewTile' })
-export class UpdateDevicePreviewTileDto extends UpdateTileDto {
+export class UpdateDevicePreviewTileDto extends UpdateSingleTileDto {
 	@ApiProperty({
 		description: 'Tile type',
 		type: 'string',
