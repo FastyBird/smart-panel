@@ -89,11 +89,6 @@ class ScreenService extends ChangeNotifier {
     }
 
     // 3️⃣ Fallback divisor if nothing matched
-    if (GridConfig.fallbackDivisor != null) {
-      return screenWidth / GridConfig.fallbackDivisor!;
-    }
-
-    // 4️⃣ Default scaling factor as last resort
-    return screenWidth * GridConfig.defaultScalingFactor;
+    return screenWidth / GridConfig.fallbackDivisor;
   }
 }
