@@ -14,6 +14,7 @@ void main() async {
   final outputFile = File(outputPath);
 
   if (!await inputFile.exists()) {
+    // ignore: avoid_print
     print('🚫 Grid config not found: ${inputFile.path}');
     return;
   }
@@ -60,7 +61,7 @@ void main() async {
 
   if (fallbackDivisor != null) {
     buffer.writeln(
-      '  static const int? fallbackDivisor = ${fallbackDivisor as int};',
+      '  static const int fallbackDivisor = ${fallbackDivisor as int};',
     );
   } else {
     buffer.writeln('  static const int? fallbackDivisor = null;');
@@ -68,7 +69,7 @@ void main() async {
 
   if (minUnitSize != null) {
     buffer.writeln(
-      '  static const double? minUnitSize = ${_asDouble(minUnitSize)};',
+      '  static const double minUnitSize = ${_asDouble(minUnitSize)};',
     );
   } else {
     buffer.writeln('  static const double? minUnitSize = null;');
@@ -76,20 +77,20 @@ void main() async {
 
   if (maxUnitSize != null) {
     buffer.writeln(
-      '  static const double? maxUnitSize = ${_asDouble(maxUnitSize)};',
+      '  static const double maxUnitSize = ${_asDouble(maxUnitSize)};',
     );
   } else {
     buffer.writeln('  static const double? maxUnitSize = null;');
   }
 
   if (defaultRows != null) {
-    buffer.writeln('  static const int? defaultRows = ${defaultRows as int};');
+    buffer.writeln('  static const int defaultRows = ${defaultRows as int};');
   } else {
     buffer.writeln('  static const int? defaultRows = null;');
   }
 
   if (defaultCols != null) {
-    buffer.writeln('  static const int? defaultCols = ${defaultCols as int};');
+    buffer.writeln('  static const int defaultCols = ${defaultCols as int};');
   } else {
     buffer.writeln('  static const int? defaultCols = null;');
   }
@@ -182,6 +183,7 @@ void main() async {
 
   await outputFile.writeAsString('${buffer.toString()}\n');
 
+  // ignore: avoid_print
   print('✅ Generated grid config to: ${outputFile.path}');
 }
 

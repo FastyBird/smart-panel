@@ -10,6 +10,7 @@ void main() async {
   final outputFile = File(outputPath);
 
   if (!await inputFile.exists()) {
+    // ignore: avoid_print
     print('🚫 Spec file not found: ${inputFile.path}');
 
     return;
@@ -83,6 +84,7 @@ void main() async {
 
   await outputFile.writeAsString(buffer.toString());
 
+  // ignore: avoid_print
   print('✅ Generated device specification to: ${outputFile.path}');
 }
 
