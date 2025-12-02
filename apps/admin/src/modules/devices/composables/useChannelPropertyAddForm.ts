@@ -101,12 +101,12 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		label: t(`devicesModule.permissions.${value}`),
 	}));
 
-	const dataTypesOptions: { value: DevicesModuleChannelPropertyDataType; label: string }[] = Object.values(
-		DevicesModuleChannelPropertyDataType
-	).map((value) => ({
-		value,
-		label: t(`devicesModule.dataTypes.${value}`),
-	}));
+	const dataTypesOptions: { value: DevicesModuleChannelPropertyDataType; label: string }[] = Object.values(DevicesModuleChannelPropertyDataType).map(
+		(value) => ({
+			value,
+			label: t(`devicesModule.dataTypes.${value}`),
+		})
+	);
 
 	const model = reactive<TForm>({
 		...getSchemaDefaults(element.value?.schemas?.channelPropertyAddFormSchema || ChannelPropertyAddFormSchema),

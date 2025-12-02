@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SystemModuleLogEntryType, ConfigModuleSystemType  } from '../../../openapi.constants';
+import { ConfigModuleSystemType, SystemModuleLogEntryType } from '../../../openapi.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigSystem } from './config-system.store';

@@ -197,10 +197,7 @@ export class SwaggerDocumentService {
 		if (!schemas) return;
 
 		// Process all schemas to find oneOf with discriminators (both at schema level and in properties)
-		const processOneOf = (
-			oneOfSchema: unknown,
-			discriminatorProperty: string,
-		): void => {
+		const processOneOf = (oneOfSchema: unknown, discriminatorProperty: string): void => {
 			if (
 				typeof oneOfSchema !== 'object' ||
 				oneOfSchema === null ||
@@ -212,8 +209,13 @@ export class SwaggerDocumentService {
 
 			// Remove discriminator property from all variant schemas
 			for (const oneOfItem of oneOfSchema.oneOf) {
-				if (typeof oneOfItem === 'object' && oneOfItem !== null && '$ref' in oneOfItem) {
-					const ref = oneOfItem.$ref;
+				if (
+					typeof oneOfItem === 'object' &&
+					oneOfItem !== null &&
+					'$ref' in oneOfItem &&
+					typeof (oneOfItem as { $ref: unknown }).$ref === 'string'
+				) {
+					const ref = (oneOfItem as { $ref: string }).$ref;
 					if (ref.startsWith('#/components/schemas/')) {
 						const variantSchemaName = ref.replace('#/components/schemas/', '');
 						const variantSchema = schemas[variantSchemaName];

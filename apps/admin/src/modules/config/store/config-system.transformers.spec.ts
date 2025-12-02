@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { SystemModuleLogEntryType, ConfigModuleSystemType  } from '../../../openapi.constants';
+import { ConfigModuleSystemType, SystemModuleLogEntryType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigSystemEditActionPayload, IConfigSystemRes } from './config-system.store.types';

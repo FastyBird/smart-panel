@@ -5,8 +5,8 @@ import type { Client } from 'openapi-fetch';
 
 import type { IExtensionOptions } from '../../app.types';
 import { SYSTEM_MODULE_PREFIX } from '../../modules/system';
-import { SystemModuleQuerySurface, SystemModuleExtensionSurface } from '../../openapi.constants';
 import { type operations, type paths } from '../../openapi';
+import { SystemModuleExtensionSurface, SystemModuleQuerySurface } from '../../openapi.constants';
 import { getErrorReason } from '../utils/api-error.utils';
 
 type PluginInstallFn<TOptions> = (app: App, options?: TOptions) => void;

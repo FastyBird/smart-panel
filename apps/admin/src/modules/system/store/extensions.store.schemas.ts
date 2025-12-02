@@ -1,15 +1,7 @@
 import { type ZodType, z } from 'zod';
 
-import {
-	SystemModuleExtensionSurface,
-	SystemModuleExtensionKind,
-	SystemModuleExtensionSource,
-} from '../../../openapi.constants';
-import {
-	type components,
-	SystemModuleDataExtensionAdminType,
-	SystemModuleDataExtensionBackendType,
-} from '../../../openapi';
+import { SystemModuleDataExtensionAdminType, SystemModuleDataExtensionBackendType, type components } from '../../../openapi';
+import { SystemModuleExtensionKind, SystemModuleExtensionSource, SystemModuleExtensionSurface } from '../../../openapi.constants';
 
 type ApiExtensionAdmin = components['schemas']['SystemModuleDataExtensionAdmin'];
 type ApiExtensionBackend = components['schemas']['SystemModuleDataExtensionBackend'];

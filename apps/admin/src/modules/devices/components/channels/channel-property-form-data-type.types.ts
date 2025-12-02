@@ -1,4 +1,8 @@
-import { type DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyDataType } from '../../../../openapi.constants';
+import {
+	type DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleChannelPropertyDataType,
+} from '../../../../openapi.constants';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 
 export interface IChannelPropertyFormDataTypeProps {

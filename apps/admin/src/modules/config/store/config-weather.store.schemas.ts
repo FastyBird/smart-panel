@@ -1,5 +1,6 @@
 import { type ZodType, z } from 'zod';
 
+import { type components } from '../../../openapi';
 import {
 	ConfigModuleWeatherCityIdLocationType,
 	ConfigModuleWeatherCityNameLocationType,
@@ -9,7 +10,6 @@ import {
 	ConfigModuleWeatherUnit,
 	ConfigModuleWeatherZipCodeLocationType,
 } from '../../../openapi.constants';
-import { type components } from '../../../openapi';
 
 type ApiConfigWeather = components['schemas']['ConfigModuleDataWeather'];
 type ApiConfigWeatherLatLon = components['schemas']['ConfigModuleDataWeatherLatLon'];

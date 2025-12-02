@@ -1,7 +1,7 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleAudioType } from '../../../openapi.constants';
 import { type components } from '../../../openapi';
+import { ConfigModuleAudioType } from '../../../openapi.constants';
 
 type ApiConfigAudio = components['schemas']['ConfigModuleDataAudio'];
 type ApiConfigUpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];

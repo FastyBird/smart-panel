@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { SystemModuleLogEntryType, ConfigModuleSystemType  } from '../../../openapi.constants';
+import { ConfigModuleSystemType, SystemModuleLogEntryType } from '../../../openapi.constants';
 import type { IConfigSystemEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigSystemStore } from '../store/config-system.store.types';

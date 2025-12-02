@@ -1,15 +1,7 @@
 import { z } from 'zod';
 
-import {
-	SystemModuleLogEntryType,
-	SystemModuleExtensionSurface,
-	SystemModuleLogEntrySource,
-} from '../../../openapi.constants';
-
-import {
-	SystemModuleExtensionKind,
-	SystemModuleExtensionSource,
-} from '../../../openapi.constants';
+import { SystemModuleExtensionSurface, SystemModuleLogEntrySource, SystemModuleLogEntryType } from '../../../openapi.constants';
+import { SystemModuleExtensionKind, SystemModuleExtensionSource } from '../../../openapi.constants';
 
 export const DisplaysProfilesFilterSchema = z.object({
 	search: z.string().optional(),

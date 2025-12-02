@@ -5,11 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
-import {
-	SystemModuleExtensionSurface,
-	SystemModuleExtensionKind,
-	SystemModuleExtensionSource,
-} from '../../../openapi.constants';
+import { SystemModuleExtensionKind, SystemModuleExtensionSource, SystemModuleExtensionSurface } from '../../../openapi.constants';
 import type { IExtension, IExtensionsStateSemaphore } from '../store/extensions.store.types';
 
 import { useExtensionsDataSource } from './useExtensionsDataSource';

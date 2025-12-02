@@ -191,13 +191,13 @@ import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
 import { useBackend, useFlashMessage, useLogger } from '../../../common';
+import { type components } from '../../../openapi';
 import {
 	ConfigModuleWeatherCityIdLocationType,
 	ConfigModuleWeatherCityNameLocationType,
 	ConfigModuleWeatherLatLonLocationType,
 	ConfigModuleWeatherZipCodeLocationType,
 } from '../../../openapi.constants';
-import { type components } from '../../../openapi';
 import { type City, cities } from '../../../spec/openweather-cities';
 import { useConfigWeatherEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';

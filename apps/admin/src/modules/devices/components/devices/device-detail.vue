@@ -120,9 +120,11 @@ const stateColor = computed<StateColor>((): StateColor => {
 	} else if ([DevicesModuleDeviceConnectionStatus.init].includes(props.device.status.status)) {
 		return 'info';
 	} else if (
-		[DevicesModuleDeviceConnectionStatus.disconnected, DevicesModuleDeviceConnectionStatus.stopped, DevicesModuleDeviceConnectionStatus.sleeping].includes(
-			props.device.status.status
-		)
+		[
+			DevicesModuleDeviceConnectionStatus.disconnected,
+			DevicesModuleDeviceConnectionStatus.stopped,
+			DevicesModuleDeviceConnectionStatus.sleeping,
+		].includes(props.device.status.status)
 	) {
 		return 'warning';
 	}

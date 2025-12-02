@@ -1,8 +1,8 @@
 import { type ZodType, z } from 'zod';
 
+import { type components } from '../../../openapi';
 import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat } from '../../../openapi.constants';
 import { ConfigModuleLanguageType } from '../../../openapi.constants';
-import { type components } from '../../../openapi';
 
 type ApiConfigLanguage = components['schemas']['ConfigModuleDataLanguage'];
 type ApiConfigUpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];

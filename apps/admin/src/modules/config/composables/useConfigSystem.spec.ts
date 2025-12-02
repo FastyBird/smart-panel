@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { SystemModuleLogEntryType, ConfigModuleSystemType  } from '../../../openapi.constants';
+import { ConfigModuleSystemType, SystemModuleLogEntryType } from '../../../openapi.constants';
 import type { IConfigSystem } from '../store/config-system.store.types';
 
 import { useConfigSystem } from './useConfigSystem';

@@ -97,12 +97,15 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 						(filters.value.enabled === 'all' ||
 							(filters.value.enabled === 'enabled' && device.enabled) ||
 							(filters.value.enabled === 'disabled' && !device.enabled)) &&
-						(filters.value.states.length === 0 || filters.value.states.includes(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown)) &&
+						(filters.value.states.length === 0 ||
+							filters.value.states.includes(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown)) &&
 						(filters.value.state === 'all' ||
 							(filters.value.state === 'online' &&
-								[DevicesModuleDeviceConnectionStatus.ready, DevicesModuleDeviceConnectionStatus.connected, DevicesModuleDeviceConnectionStatus.running].includes(
-									device.status.status
-								)) ||
+								[
+									DevicesModuleDeviceConnectionStatus.ready,
+									DevicesModuleDeviceConnectionStatus.connected,
+									DevicesModuleDeviceConnectionStatus.running,
+								].includes(device.status.status)) ||
 							(filters.value.state === 'offline' &&
 								[
 									DevicesModuleDeviceConnectionStatus.disconnected,

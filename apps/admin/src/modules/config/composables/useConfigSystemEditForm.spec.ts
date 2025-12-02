@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SystemModuleLogEntryType, ConfigModuleSystemType  } from '../../../openapi.constants';
+import { ConfigModuleSystemType, SystemModuleLogEntryType } from '../../../openapi.constants';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
@@ -55,11 +55,7 @@ describe('useConfigSystemEditForm', () => {
 	it('initializes model with config data', () => {
 		const form = useConfigSystemEditForm({ config: mockConfig });
 
-		expect(form.model.logLevels).toStrictEqual([
-			SystemModuleLogEntryType.info,
-			SystemModuleLogEntryType.warn,
-			SystemModuleLogEntryType.error,
-		]);
+		expect(form.model.logLevels).toStrictEqual([SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn, SystemModuleLogEntryType.error]);
 	});
 
 	it('sets formChanged to true when model changes', async () => {

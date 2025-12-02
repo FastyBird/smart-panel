@@ -1,12 +1,12 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
+import { type components } from '../../../openapi';
 import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 } from '../../../openapi.constants';
-import { type components } from '../../../openapi';
 
 import { ItemIdSchema } from './types';
 
