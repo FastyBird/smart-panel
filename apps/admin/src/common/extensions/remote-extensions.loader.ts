@@ -5,7 +5,7 @@ import type { Client } from 'openapi-fetch';
 
 import type { IExtensionOptions } from '../../app.types';
 import { SYSTEM_MODULE_PREFIX } from '../../modules/system';
-import { type operations, type paths } from '../../openapi';
+import { type operations, type paths } from '../../openapi.constants';
 import { SystemModuleExtensionSurface, SystemModuleQuerySurface } from '../../openapi.constants';
 import { getErrorReason } from '../utils/api-error.utils';
 

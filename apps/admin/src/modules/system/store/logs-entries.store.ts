@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { z } from 'zod';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { operations } from '../../../openapi.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
 

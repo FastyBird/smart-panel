@@ -8,7 +8,7 @@ import {
 	PageSchema,
 	PageUpdateReqSchema,
 } from '../../../modules/dashboard';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { PAGES_CARDS_TYPE } from '../pages-cards.contants';
 
 import { CardCreateReqSchema, CardResSchema } from './cards.store.schemas';

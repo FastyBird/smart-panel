@@ -6,7 +6,7 @@ import { type Pinia, defineStore } from 'pinia';
 import { jwtDecode } from 'jwt-decode';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { operations } from '../../../openapi.constants';
 import { type IUser, transformUserResponse } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthApiException, AuthException } from '../auth.exceptions';

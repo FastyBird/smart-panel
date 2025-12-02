@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 
 import { ChannelControlCreateReqSchema, ChannelControlResSchema } from './channels.controls.store.schemas';

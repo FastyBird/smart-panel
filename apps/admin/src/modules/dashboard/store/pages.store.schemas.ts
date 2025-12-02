@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 
 import { DataSourceResSchema } from './data-sources.store.schemas';
 import { ItemIdSchema } from './types';

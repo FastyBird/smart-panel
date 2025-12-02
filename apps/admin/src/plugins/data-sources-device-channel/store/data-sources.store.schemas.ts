@@ -7,7 +7,7 @@ import {
 	DataSourceUpdateReqSchema,
 	ItemIdSchema,
 } from '../../../modules/dashboard';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 
 type ApiCreateDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];

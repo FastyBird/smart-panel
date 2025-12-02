@@ -20,7 +20,7 @@ import {
 	useDataSourcesPlugins,
 	useTilesPlugins,
 } from '../../../modules/dashboard';
-import type { operations } from '../../../openapi';
+import type { operations } from '../../../openapi.constants';
 import { PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.contants';
 
 import { CardSchema, CardsAddActionPayloadSchema, CardsEditActionPayloadSchema } from './cards.store.schemas';

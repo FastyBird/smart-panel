@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
 import { DataSourceCreateReqSchema, DataSourceResSchema, ItemIdSchema, TileCreateReqSchema, TileResSchema } from '../../../modules/dashboard';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 
 type ApiCreateCard = components['schemas']['PagesCardsPluginCreateCard'];
 type ApiUpdateCard = components['schemas']['PagesCardsPluginUpdateCard'];

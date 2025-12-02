@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { operations } from '../../../openapi.constants';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 

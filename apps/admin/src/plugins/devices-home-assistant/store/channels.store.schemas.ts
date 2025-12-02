@@ -1,7 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateReqSchema } from '../../../modules/devices';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
 type ApiCreateChannel = components['schemas']['DevicesHomeAssistantPluginCreateChannel'];

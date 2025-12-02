@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { operations } from '../../../openapi.constants';
 import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
 import { useTilesPlugins } from '../composables/useTilesPlugins';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';

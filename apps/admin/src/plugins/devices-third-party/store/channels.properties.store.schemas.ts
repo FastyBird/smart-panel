@@ -6,7 +6,7 @@ import {
 	ChannelPropertySchema,
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
 type ApiCreateChannelProperty = components['schemas']['DevicesThirdPartyPluginCreateChannelProperty'];

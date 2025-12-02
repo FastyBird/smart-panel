@@ -1,6 +1,6 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { SystemModuleLogEntrySource, SystemModuleLogEntryType } from '../../../openapi.constants';
 import { DEFAULT_PAGE_SIZE } from '../system.constants';
 

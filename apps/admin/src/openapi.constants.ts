@@ -8,6 +8,10 @@
  * @module openapi.constants
  */
 
+// Core OpenAPI Types
+// ==================
+export type { components, operations, paths } from './openapi';
+
 // Auth & User Enums
 // =================
 export { AuthModuleRegisterRole as UsersModuleUserRole } from './openapi';
@@ -61,6 +65,10 @@ export { SystemModuleCreateLogEntrySource as SystemModuleLogEntrySource } from '
 export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './openapi';
 
 export { PathsSystemModuleExtensionsGetParametersQuerySurface as SystemModuleQuerySurface } from './openapi';
+
+export { SystemModuleDataExtensionAdminType } from './openapi';
+
+export { SystemModuleDataExtensionBackendType } from './openapi';
 
 // Weather Config Location Types
 // ==============================

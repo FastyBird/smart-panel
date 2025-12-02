@@ -6,7 +6,7 @@ import {
 	ChannelPropertySchema,
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_TYPE, DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 
 type ApiCreateChannelProperty = components['schemas']['DevicesHomeAssistantPluginCreateChannelProperty'];

@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-import type { paths } from '../../openapi';
+import type { paths } from '../../openapi.constants';
 import { injectBackendClient } from '../services/backend';
 
 import type { IUseBackend } from './types';

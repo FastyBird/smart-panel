@@ -10,7 +10,7 @@ import {
 	TileCreateReqSchema,
 	TileResSchema,
 } from '../../../modules/dashboard';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 type ApiCreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];

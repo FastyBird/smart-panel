@@ -1,7 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME } from '../devices-shelly-ng.constants';
 
 type ApiUpdateConfig = components['schemas']['DevicesShellyNgPluginUpdateConfig'];

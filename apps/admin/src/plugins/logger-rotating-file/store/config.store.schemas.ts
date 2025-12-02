@@ -1,7 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 
 type ApiUpdateConfig = components['schemas']['LoggerRotatingFilePluginUpdateConfig'];

@@ -2,7 +2,7 @@ import { type ZodType, z } from 'zod';
 
 import { PageCreateReqSchema, PageResSchema, PageSchema, PageUpdateReqSchema } from '../../../modules/dashboard';
 import { ItemIdSchema } from '../../../modules/devices';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
 type ApiCreateDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginCreateDeviceDetailPage'];

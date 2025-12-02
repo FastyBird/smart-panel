@@ -1,7 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { TILES_WEATHER_PLUGIN_DAY_TYPE, TILES_WEATHER_PLUGIN_FORECAST_TYPE } from '../tiles-weather.constants';
 
 type ApiCreateDayWeatherTile = components['schemas']['TilesWeatherPluginCreateDayWeatherTile'];

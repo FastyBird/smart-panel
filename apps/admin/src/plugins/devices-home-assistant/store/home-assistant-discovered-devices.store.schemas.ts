@@ -1,6 +1,6 @@
 import { type ZodType, z } from 'zod';
 
-import type { components } from '../../../openapi';
+import type { components } from '../../../openapi.constants';
 
 import { HomeAssistantStateResSchema } from './home-assistant-states.store.schemas';
 

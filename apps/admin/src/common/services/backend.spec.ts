@@ -6,7 +6,7 @@ import { createApp, hasInjectionContext, inject } from 'vue';
 import type { Client } from 'openapi-fetch';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { paths } from '../../openapi';
+import type { paths } from '../../openapi.constants';
 
 import { backendKey, injectBackendClient, provideBackendClient } from './backend';
 

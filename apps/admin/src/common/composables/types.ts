@@ -5,7 +5,7 @@ import type { Emitter, Handler } from 'mitt';
 import type { Client } from 'openapi-fetch';
 import type { Socket } from 'socket.io-client';
 
-import type { paths } from '../../openapi';
+import type { paths } from '../../openapi.constants';
 import type { Events } from '../services/event-bus';
 import type { ISortEntry } from '../store/list.query.store.types';
 

@@ -3,7 +3,7 @@ import { type App, type InjectionKey, inject as _inject, hasInjectionContext } f
 import type { Client } from 'openapi-fetch';
 import type { MediaType } from 'openapi-typescript-helpers';
 
-import type { paths } from '../../openapi';
+import type { paths } from '../../openapi.constants';
 
 export const backendKey: InjectionKey<Client<object, MediaType> | undefined> = Symbol('FB-App-Backend');
 

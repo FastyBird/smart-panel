@@ -41,7 +41,7 @@ import { StatsModule } from './modules/stats';
 import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import { WeatherModule } from './modules/weather';
-import type { paths } from './openapi';
+import type { paths } from './openapi.constants';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng';

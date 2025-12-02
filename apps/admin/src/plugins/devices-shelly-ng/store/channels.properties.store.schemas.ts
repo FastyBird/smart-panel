@@ -6,7 +6,7 @@ import {
 	ChannelPropertySchema,
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 type ApiCreateChannelProperty = components['schemas']['DevicesShellyNgPluginCreateChannelProperty'];

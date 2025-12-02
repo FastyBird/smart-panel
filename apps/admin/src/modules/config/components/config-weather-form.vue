@@ -191,7 +191,7 @@ import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
 import { useBackend, useFlashMessage, useLogger } from '../../../common';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import {
 	ConfigModuleWeatherCityIdLocationType,
 	ConfigModuleWeatherCityNameLocationType,

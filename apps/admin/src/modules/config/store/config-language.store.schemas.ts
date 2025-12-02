@@ -1,6 +1,6 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat } from '../../../openapi.constants';
 import { ConfigModuleLanguageType } from '../../../openapi.constants';
 

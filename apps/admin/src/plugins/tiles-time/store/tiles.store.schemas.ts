@@ -1,7 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { TILES_TIME_TYPE } from '../tiles-time.constants';
 
 type ApiCreateTimeTile = components['schemas']['TilesTimePluginCreateTimeTile'];

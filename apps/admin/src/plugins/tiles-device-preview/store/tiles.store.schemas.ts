@@ -1,7 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ItemIdSchema, TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
 type ApiCreateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginCreateDevicePreviewTile'];

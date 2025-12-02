@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { operations } from '../../../openapi.constants';
 import { STATS_MODULE_PREFIX } from '../stats.constants';
 import { StatsApiException, StatsValidationException } from '../stats.exceptions';
 

@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { operations } from '../../../openapi.constants';
 import { useChannelsPlugins } from '../composables/useChannelsPlugins';
 import { useChannelsPropertiesPlugins } from '../composables/useChannelsPropertiesPlugins';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';

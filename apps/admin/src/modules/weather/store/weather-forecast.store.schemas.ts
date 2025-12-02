@@ -1,6 +1,6 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import { type components } from '../../../openapi.constants';
 
 type ApiWeatherForecastDay = components['schemas']['WeatherModuleDataForecastDay'];
 

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { type Pinia, type Store, defineStore, storeToRefs } from 'pinia';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import { type operations } from '../../../openapi';
+import { type operations } from '../../../openapi.constants';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
