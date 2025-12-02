@@ -449,7 +449,7 @@ class StartupManagerService {
             screenWidth: screenService.screenWidth.toInt(),
             screenHeight: screenService.screenHeight.toInt(),
             pixelRatio: screenService.pixelRatio,
-            unitSize: screenService.unitSize,
+            unitSize: screenService.unitSize.toInt(),
             rows: screenService.rows,
             cols: screenService.columns,
           ),

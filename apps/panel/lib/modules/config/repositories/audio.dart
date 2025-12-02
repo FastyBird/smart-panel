@@ -1,7 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/config_module_req_update_section.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_module_update_audio_type.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/audio.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
@@ -111,7 +110,6 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
     final updated = await _updateConfiguration(
       section: Section.audio,
       data: ConfigModuleReqUpdateSectionDataUnionAudio(
-        type: ConfigModuleUpdateAudioType.audio,
         speaker: speaker ?? _getConfig().hasSpeakerEnabled,
         speakerVolume: speakerVolume ?? _getConfig().speakerVolume,
         microphone: microphone ?? _getConfig().hasMicrophoneEnabled,

@@ -1,11 +1,10 @@
-import 'package:fastybird_smart_panel/api/models/config_module_language_language.dart';
-import 'package:fastybird_smart_panel/api/models/config_module_language_time_format.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_data_language_language.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_data_language_time_format.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_req_update_section.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_update_language_language.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_update_language_time_format.dart';
-import 'package:fastybird_smart_panel/api/models/config_module_update_language_type.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/language.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
@@ -109,7 +108,6 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
     final updated = await _updateConfiguration(
       section: Section.language,
       data: ConfigModuleReqUpdateSectionDataUnionLanguage(
-        type: ConfigModuleUpdateLanguageType.language,
         language: _convertLanguageToApi(language ?? _getConfig().language),
         timezone: timezone ?? _getConfig().timezone,
         timeFormat:
@@ -164,9 +162,9 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
     );
   }
 
-  Language _convertLanguageFromApi(ConfigModuleLanguageLanguage language) {
+  Language _convertLanguageFromApi(ConfigModuleDataLanguageLanguage language) {
     switch (language) {
-      case ConfigModuleLanguageLanguage.csCz:
+      case ConfigModuleDataLanguageLanguage.csCz:
         return Language.czech;
       default:
         return Language.english;
@@ -183,9 +181,9 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
   }
 
   TimeFormat _convertTimeFormatFromApi(
-      ConfigModuleLanguageTimeFormat language) {
+      ConfigModuleDataLanguageTimeFormat language) {
     switch (language) {
-      case ConfigModuleLanguageTimeFormat.value12h:
+      case ConfigModuleDataLanguageTimeFormat.value12h:
         return TimeFormat.twelveHour;
       default:
         return TimeFormat.twentyFourHour;
