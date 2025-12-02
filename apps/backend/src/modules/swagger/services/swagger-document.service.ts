@@ -31,7 +31,22 @@ export class SwaggerDocumentService {
 			.setContact('Adam Kadlec', 'https://fastybird.com', 'info@fastybird.com')
 			.setTermsOfService('http://smart-panel.fastybird.com')
 			.addServer('http://localhost:3000/api/v1', 'Local development server')
-			.addBearerAuth()
+			.addBearerAuth(
+				{
+					type: 'http',
+					scheme: 'bearer',
+					bearerFormat: 'JWT',
+				},
+				'authentication',
+			)
+			.addApiKey(
+				{
+					type: 'apiKey',
+					in: 'header',
+					name: 'x-display-secret',
+				},
+				'x-display-secret',
+			)
 			.build();
 
 		const document = SwaggerModule.createDocument(app, swaggerConfig, {
@@ -99,6 +114,8 @@ export class SwaggerDocumentService {
 		this.transformAllOfToRef(document);
 
 		this.removeDiscriminatorFromBaseSchemas(document);
+
+		this.addSecurityToNonPublicRoutes(document, app);
 
 		return document;
 	}
@@ -347,6 +364,45 @@ export class SwaggerDocumentService {
 					{} as Record<string, string>,
 				),
 			};
+		}
+	}
+
+	/**
+	 * Add security requirements to all operations that don't already have security defined.
+	 * This ensures non-public routes have the required security schemes.
+	 * Public routes should explicitly set security to [] using @ApiSecurity([]) from @nestjs/swagger.
+	 */
+	private addSecurityToNonPublicRoutes(document: OpenAPIObject, app: INestApplication): void {
+		const paths = document.paths;
+		if (!paths) return;
+
+		// Security requirements: both authentication and x-display-secret
+		const securityRequirements = [
+			{
+				authentication: [] as string[],
+			},
+			{
+				'x-display-secret': [] as string[],
+			},
+		];
+
+		for (const [path, pathItem] of Object.entries(paths)) {
+			if (!pathItem || typeof pathItem !== 'object') continue;
+
+			// Check all HTTP methods
+			const operations = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as const;
+
+			for (const method of operations) {
+				const operation = pathItem[method];
+				if (!operation || typeof operation !== 'object') continue;
+
+				// Only add security if it's not already defined
+				// Routes with @Public() should explicitly set security to [] using @ApiSecurity([])
+				// to prevent security from being added automatically
+				if (!('security' in operation)) {
+					operation.security = securityRequirements;
+				}
+			}
 		}
 	}
 }

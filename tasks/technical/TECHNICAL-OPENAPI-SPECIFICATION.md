@@ -50,17 +50,17 @@ I want the backend (NestJS) to become the authoritative source of API specificat
 
 ## 4. Acceptance criteria
 
-- [ ] Backend exposes `GET /openapi.json` returning complete OpenAPI 3.x spec.
-- [ ] All controllers include Swagger metadata and are fully documented.
-- [ ] All DTOs include `@ApiProperty` decorators with correct metadata.
-- [ ] All API responses are documented with appropriate `@ApiResponse`.
-- [ ] All request params and queries use `@ApiParam` / `@ApiQuery`.
+- [x] Backend exposes `GET /openapi.json` returning complete OpenAPI 3.x spec.
+- [x] All controllers include Swagger metadata and are fully documented.
+- [x] All DTOs include `@ApiProperty` decorators with correct metadata.
+- [x] All API responses are documented with appropriate `@ApiResponse`.
+- [x] All request params and queries use `@ApiParam` / `@ApiQuery`.
 - [ ] Security definitions (Bearer JWT) are correctly defined in Swagger.
-- [ ] A script exists to export OpenAPI into `spec/openapi.json`.
-- [ ] Admin app & Flutter app continue to successfully generate models from the exported OpenAPI file.
-- [ ] CI pipeline is updated to generate OpenAPI before typings/codegen steps.
-- [ ] A new test compares generated and existing OpenAPI for parity.
-- [ ] Deviations from existing OpenAPI are explicitly reviewed or justified.
+- [x] A script exists to export OpenAPI into `spec/openapi.json`.
+- [x] Admin app & Flutter app continue to successfully generate models from the exported OpenAPI file.
+- [x] CI pipeline is updated to generate OpenAPI before typings/codegen steps.
+- [x] A new test compares generated and existing OpenAPI for parity.
+- [x] Deviations from existing OpenAPI are explicitly reviewed or justified.
 
 ## 5. Example scenarios (optional)
 
