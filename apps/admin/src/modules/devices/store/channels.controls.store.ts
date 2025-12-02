@@ -3,7 +3,12 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi.constants';
+import type {
+	DevicesModuleGetChannelControlOperation,
+	DevicesModuleGetChannelControlsOperation,
+	DevicesModuleCreateChannelControlOperation,
+	DevicesModuleDeleteChannelControlOperation,
+} from '../../../openapi.constants';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
@@ -157,7 +162,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 					let errorReason: string | null = 'Failed to fetch channel control.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-devices-module-channel-control']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetChannelControlOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -221,7 +226,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 					let errorReason: string | null = 'Failed to fetch channel controls.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-devices-module-channel-controls']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetChannelControlsOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -299,7 +304,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 					let errorReason: string | null = 'Failed to create channel control.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['create-devices-module-channel-control']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleCreateChannelControlOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -353,7 +358,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 				let errorReason: string | null = 'Failed to create channel control.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-devices-module-channel-control']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleCreateChannelControlOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);
@@ -397,7 +402,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 					let errorReason: string | null = 'Remove channel control failed.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['delete-devices-module-channel-control']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleDeleteChannelControlOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);

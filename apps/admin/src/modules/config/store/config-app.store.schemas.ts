@@ -1,6 +1,6 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi.constants';
+import type { ConfigModuleAppSchema } from '../../../openapi.constants';
 
 import { ConfigAudioResSchema, ConfigAudioSchema } from './config-audio.store.schemas';
 import { ConfigDisplayResSchema, ConfigDisplaySchema } from './config-display.store.schemas';
@@ -15,7 +15,7 @@ import {
 	ConfigWeatherZipCodeResSchema,
 } from './config-weather.store.schemas';
 
-type ApiConfigApp = components['schemas']['ConfigModuleDataApp'];
+type ApiConfigApp = ConfigModuleAppSchema;
 
 // STORE STATE
 // ===========

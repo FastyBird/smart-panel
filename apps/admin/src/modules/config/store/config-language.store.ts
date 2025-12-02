@@ -5,7 +5,10 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { type operations } from '../../../openapi.constants';
+import type {
+	ConfigModuleGetConfigSectionOperation,
+	ConfigModuleUpdateLanguageOperation,
+} from '../../../openapi.constants';
 import { ConfigModuleLanguageType, ConfigModuleSection } from '../../../openapi.constants';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
@@ -99,7 +102,7 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 					let errorReason: string | null = 'Failed to fetch language config.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
+						errorReason = getErrorReason<ConfigModuleGetConfigSectionOperation>(error, errorReason);
 					}
 
 					throw new ConfigApiException(errorReason, response.status);
@@ -171,7 +174,7 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 				let errorReason: string | null = 'Failed to update language config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-config-module-language']>(error, errorReason);
+					errorReason = getErrorReason<ConfigModuleUpdateLanguageOperation>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);

@@ -5,7 +5,17 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi.constants';
+import type {
+	DevicesModuleGetChannelOperation,
+	DevicesModuleGetDeviceChannelOperation,
+	DevicesModuleGetChannelsOperation,
+	DevicesModuleGetDeviceChannelsOperation,
+	DevicesModuleCreateDeviceChannelOperation,
+	DevicesModuleUpdateChannelOperation,
+	DevicesModuleUpdateDeviceChannelOperation,
+	DevicesModuleDeleteChannelOperation,
+	DevicesModuleDeleteDeviceChannelOperation,
+} from '../../../openapi.constants';
 import { useChannelsPlugins } from '../composables/useChannelsPlugins';
 import { useChannelsPropertiesPlugins } from '../composables/useChannelsPropertiesPlugins';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -201,9 +211,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 				if (error) {
 					if (payload.deviceId) {
-						errorReason = getErrorReason<operations['get-devices-module-device-channel']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetDeviceChannelOperation>(error, errorReason);
 					} else {
-						errorReason = getErrorReason<operations['get-devices-module-channel']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetChannelOperation>(error, errorReason);
 					}
 				}
 
@@ -287,9 +297,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 				if (error) {
 					if (payload?.deviceId) {
-						errorReason = getErrorReason<operations['get-devices-module-device-channels']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetDeviceChannelsOperation>(error, errorReason);
 					} else {
-						errorReason = getErrorReason<operations['get-devices-module-channels']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetChannelsOperation>(error, errorReason);
 					}
 				}
 
@@ -378,7 +388,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				let errorReason: string | null = 'Failed to create channel.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-devices-module-device-channel']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleCreateDeviceChannelOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);
@@ -475,9 +485,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 				if (error) {
 					if (payload.deviceId) {
-						errorReason = getErrorReason<operations['update-devices-module-device-channel']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleUpdateDeviceChannelOperation>(error, errorReason);
 					} else {
-						errorReason = getErrorReason<operations['update-devices-module-channel']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleUpdateChannelOperation>(error, errorReason);
 					}
 				}
 
@@ -542,7 +552,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			let errorReason: string | null = 'Failed to create channel.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-devices-module-device-channel']>(error, errorReason);
+				errorReason = getErrorReason<DevicesModuleCreateDeviceChannelOperation>(error, errorReason);
 			}
 
 			throw new DevicesApiException(errorReason, response.status);
@@ -607,9 +617,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 				if (error) {
 					if (payload.deviceId) {
-						errorReason = getErrorReason<operations['delete-devices-module-device-channel']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleDeleteDeviceChannelOperation>(error, errorReason);
 					} else {
-						errorReason = getErrorReason<operations['delete-devices-module-channel']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleDeleteChannelOperation>(error, errorReason);
 					}
 				}
 

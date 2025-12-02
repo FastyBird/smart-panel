@@ -1,8 +1,8 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi.constants';
+import type { SystemModuleSystemInfoSchema } from '../../../openapi.constants';
 
-type ApiSystemInfo = components['schemas']['SystemModuleDataSystemInfo'];
+type ApiSystemInfo = SystemModuleSystemInfoSchema;
 
 // STORE STATE
 // ===========

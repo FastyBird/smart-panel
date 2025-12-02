@@ -1,6 +1,17 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi.constants';
+import type {
+	ConfigModuleWeatherSchema,
+	ConfigModuleWeatherLatLonSchema,
+	ConfigModuleWeatherCityNameSchema,
+	ConfigModuleWeatherCityIdSchema,
+	ConfigModuleWeatherZipCodeSchema,
+	ConfigModuleUpdateWeatherSchema,
+	ConfigModuleUpdateWeatherLatLonSchema,
+	ConfigModuleUpdateWeatherCityNameSchema,
+	ConfigModuleUpdateWeatherCityIdSchema,
+	ConfigModuleUpdateWeatherZipCodeSchema,
+} from '../../../openapi.constants';
 import {
 	ConfigModuleWeatherCityIdLocationType,
 	ConfigModuleWeatherCityNameLocationType,
@@ -11,16 +22,16 @@ import {
 	ConfigModuleWeatherZipCodeLocationType,
 } from '../../../openapi.constants';
 
-type ApiConfigWeather = components['schemas']['ConfigModuleDataWeather'];
-type ApiConfigWeatherLatLon = components['schemas']['ConfigModuleDataWeatherLatLon'];
-type ApiConfigWeatherCityName = components['schemas']['ConfigModuleDataWeatherCityName'];
-type ApiConfigWeatherCityId = components['schemas']['ConfigModuleDataWeatherCityId'];
-type ApiConfigWeatherZipCode = components['schemas']['ConfigModuleDataWeatherZipCode'];
-type ApiConfigUpdateWeather = components['schemas']['ConfigModuleUpdateWeather'];
-type ApiConfigUpdateWeatherLatLon = components['schemas']['ConfigModuleUpdateWeatherLatLon'];
-type ApiConfigUpdateWeatherCityName = components['schemas']['ConfigModuleUpdateWeatherCityName'];
-type ApiConfigUpdateWeatherCityId = components['schemas']['ConfigModuleUpdateWeatherCityId'];
-type ApiConfigUpdateWeatherZipCode = components['schemas']['ConfigModuleUpdateWeatherZipCode'];
+type ApiConfigWeather = ConfigModuleWeatherSchema;
+type ApiConfigWeatherLatLon = ConfigModuleWeatherLatLonSchema;
+type ApiConfigWeatherCityName = ConfigModuleWeatherCityNameSchema;
+type ApiConfigWeatherCityId = ConfigModuleWeatherCityIdSchema;
+type ApiConfigWeatherZipCode = ConfigModuleWeatherZipCodeSchema;
+type ApiConfigUpdateWeather = ConfigModuleUpdateWeatherSchema;
+type ApiConfigUpdateWeatherLatLon = ConfigModuleUpdateWeatherLatLonSchema;
+type ApiConfigUpdateWeatherCityName = ConfigModuleUpdateWeatherCityNameSchema;
+type ApiConfigUpdateWeatherCityId = ConfigModuleUpdateWeatherCityIdSchema;
+type ApiConfigUpdateWeatherZipCode = ConfigModuleUpdateWeatherZipCodeSchema;
 
 // STORE STATE
 // ===========

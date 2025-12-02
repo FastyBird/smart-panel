@@ -5,7 +5,13 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi.constants';
+import type {
+	SystemModuleGetDisplayProfileOperation,
+	SystemModuleGetDisplayProfilesOperation,
+	SystemModuleCreateDisplayProfileOperation,
+	SystemModuleUpdateDisplayProfileOperation,
+	SystemModuleDeleteDisplayProfileOperation,
+} from '../../../openapi.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemException, SystemValidationException } from '../system.exceptions';
 
@@ -149,7 +155,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 					let errorReason: string | null = 'Failed to fetch display.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-system-module-display-profile']>(error, errorReason);
+						errorReason = getErrorReason<SystemModuleGetDisplayProfileOperation>(error, errorReason);
 					}
 
 					throw new SystemApiException(errorReason, response.status);
@@ -199,7 +205,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 					let errorReason: string | null = 'Failed to fetch displays.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-system-module-displays-profiles']>(error, errorReason);
+						errorReason = getErrorReason<SystemModuleGetDisplayProfilesOperation>(error, errorReason);
 					}
 
 					throw new SystemApiException(errorReason, response.status);
@@ -267,7 +273,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				let errorReason: string | null = 'Failed to create display.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-system-module-display-profile']>(error, errorReason);
+					errorReason = getErrorReason<SystemModuleCreateDisplayProfileOperation>(error, errorReason);
 				}
 
 				throw new SystemApiException(errorReason, response.status);
@@ -338,7 +344,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				let errorReason: string | null = 'Failed to update display.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-system-module-display-profile']>(error, errorReason);
+					errorReason = getErrorReason<SystemModuleUpdateDisplayProfileOperation>(error, errorReason);
 				}
 
 				throw new SystemApiException(errorReason, response.status);
@@ -388,7 +394,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				let errorReason: string | null = 'Failed to create display.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-system-module-display-profile']>(error, errorReason);
+					errorReason = getErrorReason<SystemModuleCreateDisplayProfileOperation>(error, errorReason);
 				}
 
 				throw new SystemApiException(errorReason, response.status);
@@ -429,7 +435,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				let errorReason: string | null = 'Remove account failed.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['delete-system-module-display-profile']>(error, errorReason);
+					errorReason = getErrorReason<SystemModuleDeleteDisplayProfileOperation>(error, errorReason);
 				}
 
 				throw new SystemApiException(errorReason, response.status);

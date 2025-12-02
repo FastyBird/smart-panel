@@ -5,7 +5,10 @@ import type { Client } from 'openapi-fetch';
 
 import type { IExtensionOptions } from '../../app.types';
 import { SYSTEM_MODULE_PREFIX } from '../../modules/system';
-import { type operations, type paths } from '../../openapi.constants';
+import type {
+	SystemModuleGetExtensionsOperation,
+	OpenApiPaths,
+} from '../../openapi.constants';
 import { SystemModuleExtensionSurface, SystemModuleQuerySurface } from '../../openapi.constants';
 import { getErrorReason } from '../utils/api-error.utils';
 
@@ -41,7 +44,7 @@ const resolveExtension = <TOptions>(mod: unknown): PluginLike<TOptions> | null =
 
 export const installRemoteExtensions = async (
 	app: App,
-	backendClient: Client<paths>,
+	backendClient: Client<OpenApiPaths>,
 	logger: ConsolaInstance,
 	options: IExtensionOptions,
 	installedNames?: Set<string>
@@ -105,7 +108,7 @@ export const installRemoteExtensions = async (
 	let errorReason: string | null = 'Failed to fetch extensions assets.';
 
 	if (error) {
-		errorReason = getErrorReason<operations['get-system-module-extensions']>(error, errorReason);
+		errorReason = getErrorReason<SystemModuleGetExtensionsOperation>(error, errorReason);
 	}
 
 	logger.error(`${errorReason}${response?.status ? ` (HTTP ${response.status})` : ''}`);

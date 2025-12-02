@@ -1,11 +1,17 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi.constants';
-import { SystemModuleLogEntrySource, SystemModuleLogEntryType } from '../../../openapi.constants';
+import type {
+	SystemModuleCreateLogEntrySchema,
+	SystemModuleLogEntrySchema,
+} from '../../../openapi.constants';
+import {
+	SystemModuleLogEntrySource,
+	SystemModuleLogEntryType,
+} from '../../../openapi.constants';
 import { DEFAULT_PAGE_SIZE } from '../system.constants';
 
-type ApiCreateLogEntry = components['schemas']['SystemModuleCreateLogEntry'];
-type ApiLogEntry = components['schemas']['SystemModuleDataLogEntry'];
+type ApiCreateLogEntry = SystemModuleCreateLogEntrySchema;
+type ApiLogEntry = SystemModuleLogEntrySchema;
 
 export const LogEntryIdSchema = z.string().ulid();
 

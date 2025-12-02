@@ -5,7 +5,13 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi.constants';
+import type {
+	DevicesModuleGetDeviceOperation,
+	DevicesModuleGetDevicesOperation,
+	DevicesModuleCreateDeviceOperation,
+	DevicesModuleUpdateDeviceOperation,
+	DevicesModuleDeleteDeviceOperation,
+} from '../../../openapi.constants';
 import { useChannelsPlugins, useChannelsPropertiesPlugins, useDevicesPlugins } from '../composables/composables';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
@@ -172,7 +178,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				let errorReason: string | null = 'Failed to fetch device.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-devices-module-device']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleGetDeviceOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);
@@ -227,7 +233,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				let errorReason: string | null = 'Failed to fetch devices.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-devices-module-devices']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleGetDevicesOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);
@@ -311,7 +317,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				let errorReason: string | null = 'Failed to create device.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-devices-module-device']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleCreateDeviceOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);
@@ -395,7 +401,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				let errorReason: string | null = 'Failed to update device.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-devices-module-device']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleUpdateDeviceOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);
@@ -453,7 +459,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			let errorReason: string | null = 'Failed to create device.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-devices-module-device']>(error, errorReason);
+				errorReason = getErrorReason<DevicesModuleCreateDeviceOperation>(error, errorReason);
 			}
 
 			throw new DevicesApiException(errorReason, response.status);
@@ -516,7 +522,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				let errorReason: string | null = 'Remove account failed.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['delete-devices-module-device']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleDeleteDeviceOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);

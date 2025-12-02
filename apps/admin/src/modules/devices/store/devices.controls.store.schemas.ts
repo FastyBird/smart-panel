@@ -1,12 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi.constants';
+import type {
+	DevicesModuleCreateDeviceControlSchema,
+	DevicesModuleDeviceControlSchema,
+} from '../../../openapi.constants';
 
 import { ItemIdSchema } from './types';
 
-type ApiCreateDeviceControl = components['schemas']['DevicesModuleCreateDeviceControl'];
-type ApiDeviceControl = components['schemas']['DevicesModuleDataDeviceControl'];
+type ApiCreateDeviceControl = DevicesModuleCreateDeviceControlSchema;
+type ApiDeviceControl = DevicesModuleDeviceControlSchema;
 
 // STORE STATE
 // ===========

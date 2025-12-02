@@ -1,11 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi.constants';
+import type {
+	UsersModuleCreateDisplayInstanceSchema,
+	UsersModuleUpdateDisplayInstanceSchema,
+	UsersModuleDisplayInstanceSchema,
+} from '../../../openapi.constants';
 
-type ApiCreateDisplayInstance = components['schemas']['UsersModuleCreateDisplayInstance'];
-type ApiUpdateDisplayInstance = components['schemas']['UsersModuleUpdateDisplayInstance'];
-type ApiDisplayInstance = components['schemas']['UsersModuleDataDisplayInstance'];
+type ApiCreateDisplayInstance = UsersModuleCreateDisplayInstanceSchema;
+type ApiUpdateDisplayInstance = UsersModuleUpdateDisplayInstanceSchema;
+type ApiDisplayInstance = UsersModuleDisplayInstanceSchema;
 
 export const DisplayIdSchema = z.string().uuid();
 

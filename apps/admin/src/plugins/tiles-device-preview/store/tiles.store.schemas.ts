@@ -1,12 +1,16 @@
 import { type ZodType, z } from 'zod';
 
 import { ItemIdSchema, TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { type components } from '../../../openapi.constants';
+import type {
+	TilesDevicePreviewPluginCreateDevicePreviewTileSchema,
+	TilesDevicePreviewPluginUpdateDevicePreviewTileSchema,
+	TilesDevicePreviewPluginDevicePreviewTileSchema,
+} from '../../../openapi.constants';
 import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
-type ApiCreateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginCreateDevicePreviewTile'];
-type ApiUpdateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginUpdateDevicePreviewTile'];
-type ApiDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginDataDevicePreviewTile'];
+type ApiCreateDevicePreviewTile = TilesDevicePreviewPluginCreateDevicePreviewTileSchema;
+type ApiUpdateDevicePreviewTile = TilesDevicePreviewPluginUpdateDevicePreviewTileSchema;
+type ApiDevicePreviewTile = TilesDevicePreviewPluginDevicePreviewTileSchema;
 
 // STORE STATE
 // ===========

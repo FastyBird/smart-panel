@@ -1,14 +1,18 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi.constants';
+import type {
+	DashboardModuleCreatePageSchema,
+	DashboardModuleUpdatePageSchema,
+	DashboardModulePageSchema,
+} from '../../../openapi.constants';
 
 import { DataSourceResSchema } from './data-sources.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreatePage = components['schemas']['DashboardModuleCreatePage'];
-type ApiUpdatePage = components['schemas']['DashboardModuleUpdatePage'];
-type ApiPage = components['schemas']['DashboardModuleDataPage'];
+type ApiCreatePage = DashboardModuleCreatePageSchema;
+type ApiUpdatePage = DashboardModuleUpdatePageSchema;
+type ApiPage = DashboardModulePageSchema;
 
 // STORE STATE
 // ===========

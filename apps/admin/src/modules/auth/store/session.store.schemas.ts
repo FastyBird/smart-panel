@@ -1,11 +1,14 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi.constants';
+import type {
+	AuthModuleLoginSchema,
+	AuthModuleTokenPairSchema,
+} from '../../../openapi.constants';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import { AccessTokenType } from '../auth.constants';
 
-type ApiLogin = components['schemas']['AuthModuleLogin'];
-type ApiTokenPair = components['schemas']['AuthModuleDataTokenPair'];
+type ApiLogin = AuthModuleLoginSchema;
+type ApiTokenPair = AuthModuleTokenPairSchema;
 
 export const TokenPayloadSchema = z.object({
 	sub: z.string().uuid(),

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { type Pinia, type Store, defineStore, storeToRefs } from 'pinia';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import { type operations } from '../../../openapi.constants';
+import type { ConfigModuleGetConfigSectionOperation } from '../../../openapi.constants';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
@@ -197,7 +197,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 				let errorReason: string | null = 'Failed to fetch app config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
+					errorReason = getErrorReason<ConfigModuleGetConfigSectionOperation>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);

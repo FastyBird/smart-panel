@@ -1,13 +1,17 @@
 import { type ZodType, z } from 'zod';
 
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
-import { type components } from '../../../openapi.constants';
+import type {
+	DevicesShellyNgPluginCreateDeviceSchema,
+	DevicesShellyNgPluginUpdateDeviceSchema,
+	DevicesShellyNgPluginDeviceSchema,
+} from '../../../openapi.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-type ApiCreateDevice = components['schemas']['DevicesShellyNgPluginCreateDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesShellyNgPluginUpdateDevice'];
-type ApiDevice = components['schemas']['DevicesShellyNgPluginDataDevice'];
+type ApiCreateDevice = DevicesShellyNgPluginCreateDeviceSchema;
+type ApiUpdateDevice = DevicesShellyNgPluginUpdateDeviceSchema;
+type ApiDevice = DevicesShellyNgPluginDeviceSchema;
 
 export const ShellyNgDeviceSchema = DeviceSchema.extend({
 	password: z.string().nullable(),

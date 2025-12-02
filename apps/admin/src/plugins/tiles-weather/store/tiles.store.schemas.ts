@@ -1,15 +1,22 @@
 import { type ZodType, z } from 'zod';
 
 import { TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { type components } from '../../../openapi.constants';
+import type {
+	TilesWeatherPluginCreateDayWeatherTileSchema,
+	TilesWeatherPluginCreateForecastWeatherTileSchema,
+	TilesWeatherPluginUpdateDayWeatherTileSchema,
+	TilesWeatherPluginUpdateForecastWeatherTileSchema,
+	TilesWeatherPluginDayWeatherTileSchema,
+	TilesWeatherPluginForecastWeatherTileSchema,
+} from '../../../openapi.constants';
 import { TILES_WEATHER_PLUGIN_DAY_TYPE, TILES_WEATHER_PLUGIN_FORECAST_TYPE } from '../tiles-weather.constants';
 
-type ApiCreateDayWeatherTile = components['schemas']['TilesWeatherPluginCreateDayWeatherTile'];
-type ApiCreateForecastWeatherTile = components['schemas']['TilesWeatherPluginCreateForecastWeatherTile'];
-type ApiUpdateDayWeatherTile = components['schemas']['TilesWeatherPluginUpdateDayWeatherTile'];
-type ApiUpdateForecastWeatherTile = components['schemas']['TilesWeatherPluginUpdateForecastWeatherTile'];
-type ApiDayWeatherTile = components['schemas']['TilesWeatherPluginDataDayWeatherTile'];
-type ApiForecastWeatherTile = components['schemas']['TilesWeatherPluginDataForecastWeatherTile'];
+type ApiCreateDayWeatherTile = TilesWeatherPluginCreateDayWeatherTileSchema;
+type ApiCreateForecastWeatherTile = TilesWeatherPluginCreateForecastWeatherTileSchema;
+type ApiUpdateDayWeatherTile = TilesWeatherPluginUpdateDayWeatherTileSchema;
+type ApiUpdateForecastWeatherTile = TilesWeatherPluginUpdateForecastWeatherTileSchema;
+type ApiDayWeatherTile = TilesWeatherPluginDayWeatherTileSchema;
+type ApiForecastWeatherTile = TilesWeatherPluginForecastWeatherTileSchema;
 
 // STORE STATE
 // ===========

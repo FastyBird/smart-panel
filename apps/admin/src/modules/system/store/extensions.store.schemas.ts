@@ -1,10 +1,19 @@
 import { type ZodType, z } from 'zod';
 
-import { SystemModuleDataExtensionAdminType, SystemModuleDataExtensionBackendType, type components } from '../../../openapi.constants';
-import { SystemModuleExtensionKind, SystemModuleExtensionSource, SystemModuleExtensionSurface } from '../../../openapi.constants';
+import type {
+	SystemModuleExtensionAdminSchema,
+	SystemModuleExtensionBackendSchema,
+} from '../../../openapi.constants';
+import {
+	SystemModuleDataExtensionAdminType,
+	SystemModuleDataExtensionBackendType,
+	SystemModuleExtensionKind,
+	SystemModuleExtensionSource,
+	SystemModuleExtensionSurface,
+} from '../../../openapi.constants';
 
-type ApiExtensionAdmin = components['schemas']['SystemModuleDataExtensionAdmin'];
-type ApiExtensionBackend = components['schemas']['SystemModuleDataExtensionBackend'];
+type ApiExtensionAdmin = SystemModuleExtensionAdminSchema;
+type ApiExtensionBackend = SystemModuleExtensionBackendSchema;
 
 export const ExtensionNameSchema = z.string();
 

@@ -1,12 +1,16 @@
 import { type ZodType, z } from 'zod';
 
 import { TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { type components } from '../../../openapi.constants';
+import type {
+	TilesTimePluginCreateTimeTileSchema,
+	TilesTimePluginUpdateTimeTileSchema,
+	TilesTimePluginTimeTileSchema,
+} from '../../../openapi.constants';
 import { TILES_TIME_TYPE } from '../tiles-time.constants';
 
-type ApiCreateTimeTile = components['schemas']['TilesTimePluginCreateTimeTile'];
-type ApiUpdateTimeTile = components['schemas']['TilesTimePluginUpdateTimeTile'];
-type ApiTimeTile = components['schemas']['TilesTimePluginDataTimeTile'];
+type ApiCreateTimeTile = TilesTimePluginCreateTimeTileSchema;
+type ApiUpdateTimeTile = TilesTimePluginUpdateTimeTileSchema;
+type ApiTimeTile = TilesTimePluginTimeTileSchema;
 
 // STORE STATE
 // ===========

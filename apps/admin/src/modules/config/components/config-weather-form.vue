@@ -191,7 +191,10 @@ import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
 import { useBackend, useFlashMessage, useLogger } from '../../../common';
-import { type components } from '../../../openapi.constants';
+import type {
+	WeatherModuleGeolocationCitySchema,
+	WeatherModuleGeolocationZipSchema,
+} from '../../../openapi.constants';
 import {
 	ConfigModuleWeatherCityIdLocationType,
 	ConfigModuleWeatherCityNameLocationType,
@@ -204,8 +207,8 @@ import { FormResult, type FormResultType, Layout } from '../config.constants';
 
 import type { IConfigWeatherFormProps } from './config-weather-form.types';
 
-type CityGeolocation = components['schemas']['WeatherModuleDataGeolocationCity'];
-type ZipGeolocation = components['schemas']['WeatherModuleDataGeolocationZip'];
+type CityGeolocation = WeatherModuleGeolocationCitySchema;
+type ZipGeolocation = WeatherModuleGeolocationZipSchema;
 
 type CityOption = {
 	value: City['id'];

@@ -5,7 +5,11 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { type operations } from '../../../openapi.constants';
+import type {
+	ConfigModuleGetConfigPluginOperation,
+	ConfigModuleGetConfigOperation,
+	ConfigModuleUpdateConfigPluginOperation,
+} from '../../../openapi.constants';
 import { usePlugins } from '../composables/usePlugins';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
@@ -138,7 +142,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 					let errorReason: string | null = 'Failed to fetch plugin config.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-config-module-config-plugin']>(error, errorReason);
+						errorReason = getErrorReason<ConfigModuleGetConfigPluginOperation>(error, errorReason);
 					}
 
 					throw new ConfigApiException(errorReason, response.status);
@@ -192,7 +196,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 					let errorReason: string | null = 'Failed to fetch plugins config.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-config-module-config']>(error, errorReason);
+						errorReason = getErrorReason<ConfigModuleGetConfigOperation>(error, errorReason);
 					}
 
 					throw new ConfigApiException(errorReason, response.status);
@@ -277,7 +281,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				let errorReason: string | null = 'Failed to update plugin config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-config-module-config-plugin']>(error, errorReason);
+					errorReason = getErrorReason<ConfigModuleUpdateConfigPluginOperation>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);

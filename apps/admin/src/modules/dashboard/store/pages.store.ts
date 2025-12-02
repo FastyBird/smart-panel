@@ -5,7 +5,13 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi.constants';
+import type {
+	DashboardModuleGetPageOperation,
+	DashboardModuleGetPagesOperation,
+	DashboardModuleCreatePageOperation,
+	DashboardModuleUpdatePageOperation,
+	DashboardModuleDeletePageOperation,
+} from '../../../openapi.constants';
 import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
 import { usePagesPlugins } from '../composables/usePagesPlugins';
 import { useTilesPlugins } from '../composables/useTilesPlugins';
@@ -177,7 +183,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				let errorReason: string | null = 'Failed to fetch page.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-dashboard-module-page']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleGetPageOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -239,7 +245,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				let errorReason: string | null = 'Failed to fetch pages.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-dashboard-module-pages']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleGetPagesOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -323,7 +329,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				let errorReason: string | null = 'Failed to create page.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-dashboard-module-page']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleCreatePageOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -402,7 +408,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				let errorReason: string | null = 'Failed to update page.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-dashboard-module-page']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleUpdatePageOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -463,7 +469,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			let errorReason: string | null = 'Failed to create page.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-dashboard-module-page']>(error, errorReason);
+				errorReason = getErrorReason<DashboardModuleCreatePageOperation>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -522,7 +528,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				let errorReason: string | null = 'Remove account failed.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['delete-dashboard-module-page']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleDeletePageOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);

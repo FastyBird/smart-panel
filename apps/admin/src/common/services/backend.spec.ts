@@ -6,7 +6,7 @@ import { createApp, hasInjectionContext, inject } from 'vue';
 import type { Client } from 'openapi-fetch';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { paths } from '../../openapi.constants';
+import type { OpenApiPaths } from '../../openapi.constants';
 
 import { backendKey, injectBackendClient, provideBackendClient } from './backend';
 
@@ -22,7 +22,7 @@ vi.mock('vue', async (importOriginal) => {
 describe('Backend Service', () => {
 	it('provides and injects backend client correctly', () => {
 		const app = createApp({});
-		const mockBackendClient = {} as Client<paths>; // Mock client
+		const mockBackendClient = {} as Client<OpenApiPaths>; // Mock client
 
 		// Provide backend client
 		provideBackendClient(app, mockBackendClient);
@@ -33,7 +33,7 @@ describe('Backend Service', () => {
 
 	it('injects backend client from app context', () => {
 		const app = createApp({});
-		const mockBackendClient = {} as Client<paths>;
+		const mockBackendClient = {} as Client<OpenApiPaths>;
 
 		// Provide backend client
 		provideBackendClient(app, mockBackendClient);
@@ -45,7 +45,7 @@ describe('Backend Service', () => {
 	});
 
 	it('injects backend client via Vue injection', () => {
-		const mockBackendClient = {} as Client<paths>;
+		const mockBackendClient = {} as Client<OpenApiPaths>;
 
 		vi.mocked(inject).mockReturnValue(mockBackendClient);
 		vi.mocked(hasInjectionContext).mockReturnValue(true);

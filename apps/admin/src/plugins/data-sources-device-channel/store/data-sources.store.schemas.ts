@@ -7,12 +7,16 @@ import {
 	DataSourceUpdateReqSchema,
 	ItemIdSchema,
 } from '../../../modules/dashboard';
-import { type components } from '../../../openapi.constants';
+import type {
+	DataSourcesDeviceChannelPluginCreateDeviceChannelDataSourceSchema,
+	DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSourceSchema,
+	DataSourcesDeviceChannelPluginDeviceChannelDataSourceSchema,
+} from '../../../openapi.constants';
 import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 
-type ApiCreateDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
-type ApiUpdateDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource'];
-type ApiDeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginDataDeviceChannelDataSource'];
+type ApiCreateDeviceChannelDataSource = DataSourcesDeviceChannelPluginCreateDeviceChannelDataSourceSchema;
+type ApiUpdateDeviceChannelDataSource = DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSourceSchema;
+type ApiDeviceChannelDataSource = DataSourcesDeviceChannelPluginDeviceChannelDataSourceSchema;
 
 // STORE STATE
 // ===========

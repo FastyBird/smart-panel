@@ -5,7 +5,10 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { type operations } from '../../../openapi.constants';
+import type {
+	ConfigModuleGetConfigSectionOperation,
+	ConfigModuleUpdateSystemOperation,
+} from '../../../openapi.constants';
 import { ConfigModuleSection, ConfigModuleSystemType } from '../../../openapi.constants';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
@@ -99,7 +102,7 @@ export const useConfigSystem = defineStore<'config-module_config_system', Config
 					let errorReason: string | null = 'Failed to fetch system config.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
+						errorReason = getErrorReason<ConfigModuleGetConfigSectionOperation>(error, errorReason);
 					}
 
 					throw new ConfigApiException(errorReason, response.status);
@@ -171,7 +174,7 @@ export const useConfigSystem = defineStore<'config-module_config_system', Config
 				let errorReason: string | null = 'Failed to update system config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-config-module-system']>(error, errorReason);
+					errorReason = getErrorReason<ConfigModuleUpdateSystemOperation>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);
