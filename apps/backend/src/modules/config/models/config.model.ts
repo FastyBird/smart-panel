@@ -465,6 +465,27 @@ export abstract class PluginConfigModel {
 	enabled: boolean = false;
 }
 
+@ApiSchema({ name: 'ConfigModuleDataModule' })
+export abstract class ModuleConfigModel {
+	@ApiProperty({
+		description: 'Module identifier',
+		type: 'string',
+		example: 'devices-module',
+	})
+	@Expose()
+	@IsString()
+	type: string;
+
+	@ApiProperty({
+		description: 'Module enabled state',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose()
+	@IsBoolean()
+	enabled: boolean = false;
+}
+
 @ApiSchema({ name: 'ConfigModuleDataApp' })
 export class AppConfigModel {
 	@ApiProperty({
@@ -561,4 +582,16 @@ export class AppConfigModel {
 	@ValidateNested({ each: true })
 	@Type(() => PluginConfigModel)
 	plugins: PluginConfigModel[] = [];
+
+	@ApiProperty({
+		description: 'Module configurations',
+		type: 'array',
+		items: {
+			$ref: getSchemaPath(ModuleConfigModel),
+		},
+	})
+	@Expose()
+	@ValidateNested({ each: true })
+	@Type(() => ModuleConfigModel)
+	modules: ModuleConfigModel[] = [];
 }
