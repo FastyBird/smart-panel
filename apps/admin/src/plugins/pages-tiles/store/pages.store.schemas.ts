@@ -10,12 +10,16 @@ import {
 	TileCreateReqSchema,
 	TileResSchema,
 } from '../../../modules/dashboard';
-import { type components } from '../../../openapi.constants';
+import type {
+	PagesTilesPluginCreateTilesPageSchema,
+	PagesTilesPluginUpdateTilesPageSchema,
+	PagesTilesPluginTilesPageSchema,
+} from '../../../openapi.constants';
 import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
-type ApiCreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];
-type ApiUpdateTilesPage = components['schemas']['PagesTilesPluginUpdateTilesPage'];
-type ApiTilesPage = components['schemas']['PagesTilesPluginDataTilesPage'];
+type ApiCreateTilesPage = PagesTilesPluginCreateTilesPageSchema;
+type ApiUpdateTilesPage = PagesTilesPluginUpdateTilesPageSchema;
+type ApiTilesPage = PagesTilesPluginTilesPageSchema;
 
 // STORE STATE
 // ===========

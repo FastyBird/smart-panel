@@ -2,12 +2,16 @@ import { type ZodType, z } from 'zod';
 
 import { PageCreateReqSchema, PageResSchema, PageSchema, PageUpdateReqSchema } from '../../../modules/dashboard';
 import { ItemIdSchema } from '../../../modules/devices';
-import { type components } from '../../../openapi.constants';
+import type {
+	PagesDeviceDetailPluginCreateDeviceDetailPageSchema,
+	PagesDeviceDetailPluginUpdateDeviceDetailPageSchema,
+	PagesDeviceDetailPluginDeviceDetailPageSchema,
+} from '../../../openapi.constants';
 import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
-type ApiCreateDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginCreateDeviceDetailPage'];
-type ApiUpdateDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginUpdateDeviceDetailPage'];
-type ApiDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginDataDeviceDetailPage'];
+type ApiCreateDeviceDetailPage = PagesDeviceDetailPluginCreateDeviceDetailPageSchema;
+type ApiUpdateDeviceDetailPage = PagesDeviceDetailPluginUpdateDeviceDetailPageSchema;
+type ApiDeviceDetailPage = PagesDeviceDetailPluginDeviceDetailPageSchema;
 
 // STORE STATE
 // ===========

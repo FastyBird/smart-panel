@@ -1,10 +1,10 @@
 import { type ZodType, z } from 'zod';
 
-import type { components } from '../../../openapi.constants';
+import type { DevicesHomeAssistantPluginDiscoveredDeviceSchema } from '../../../openapi.constants';
 
 import { HomeAssistantStateResSchema } from './home-assistant-states.store.schemas';
 
-type ApiDiscoveredDevice = components['schemas']['DevicesHomeAssistantPluginDataDiscoveredDevice'];
+type ApiDiscoveredDevice = DevicesHomeAssistantPluginDiscoveredDeviceSchema;
 
 // STORE STATE
 // ===========

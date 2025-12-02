@@ -1,12 +1,16 @@
 import { type ZodType, z } from 'zod';
 
 import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateReqSchema } from '../../../modules/devices';
-import { type components } from '../../../openapi.constants';
+import type {
+	DevicesThirdPartyPluginCreateChannelSchema,
+	DevicesThirdPartyPluginUpdateChannelSchema,
+	DevicesThirdPartyPluginChannelSchema,
+} from '../../../openapi.constants';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-type ApiCreateChannel = components['schemas']['DevicesThirdPartyPluginCreateChannel'];
-type ApiUpdateChannel = components['schemas']['DevicesThirdPartyPluginUpdateChannel'];
-type ApiChannel = components['schemas']['DevicesThirdPartyPluginDataChannel'];
+type ApiCreateChannel = DevicesThirdPartyPluginCreateChannelSchema;
+type ApiUpdateChannel = DevicesThirdPartyPluginUpdateChannelSchema;
+type ApiChannel = DevicesThirdPartyPluginChannelSchema;
 
 export const ThirdPartyChannelSchema = ChannelSchema;
 

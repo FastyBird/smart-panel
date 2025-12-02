@@ -143,6 +143,8 @@ export type DevicesHomeAssistantPluginUpdateChannelPropertySchema = components['
 export type DevicesHomeAssistantPluginChannelPropertySchema = components['schemas']['DevicesHomeAssistantPluginDataChannelProperty'];
 export type DevicesHomeAssistantPluginDiscoveredDeviceSchema = components['schemas']['DevicesHomeAssistantPluginDataDiscoveredDevice'];
 export type DevicesHomeAssistantPluginStateSchema = components['schemas']['DevicesHomeAssistantPluginDataState'];
+export type DevicesHomeAssistantPluginUpdateConfigSchema = components['schemas']['DevicesHomeAssistantPluginUpdateConfig'];
+export type DevicesHomeAssistantPluginConfigSchema = components['schemas']['DevicesHomeAssistantPluginDataConfig'];
 
 // Data Sources Device Channel Plugin Schemas
 export type DataSourcesDeviceChannelPluginCreateDeviceChannelDataSourceSchema = components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];

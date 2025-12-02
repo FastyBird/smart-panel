@@ -9,7 +9,7 @@ import { tryOnMounted } from '@vueuse/core';
 
 import { deepClone, getErrorReason, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { DevicesApiException, FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
-import { type operations } from '../../../openapi.constants';
+import type { DevicesShellyNgPluginCreateDeviceInfoOperation } from '../../../openapi.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgApiException, DevicesShellyNgValidationException } from '../devices-shelly-ng.exceptions';
@@ -123,7 +123,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				let errorReason: string | null = 'Failed to check device.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-devices-shelly-ng-plugin-device-info']>(error, errorReason);
+					errorReason = getErrorReason<DevicesShellyNgPluginCreateDeviceInfoOperation>(error, errorReason);
 				}
 
 				throw new DevicesShellyNgApiException(errorReason, response.status);

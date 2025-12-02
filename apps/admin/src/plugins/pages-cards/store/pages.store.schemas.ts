@@ -8,14 +8,18 @@ import {
 	PageSchema,
 	PageUpdateReqSchema,
 } from '../../../modules/dashboard';
-import { type components } from '../../../openapi.constants';
+import type {
+	PagesCardsPluginCreateCardsPageSchema,
+	PagesCardsPluginUpdateCardsPageSchema,
+	PagesCardsPluginCardsPageSchema,
+} from '../../../openapi.constants';
 import { PAGES_CARDS_TYPE } from '../pages-cards.contants';
 
 import { CardCreateReqSchema, CardResSchema } from './cards.store.schemas';
 
-type ApiCreateCardsPage = components['schemas']['PagesCardsPluginCreateCardsPage'];
-type ApiUpdateCardsPage = components['schemas']['PagesCardsPluginUpdateCardsPage'];
-type ApiCardsPage = components['schemas']['PagesCardsPluginDataCardsPage'];
+type ApiCreateCardsPage = PagesCardsPluginCreateCardsPageSchema;
+type ApiUpdateCardsPage = PagesCardsPluginUpdateCardsPageSchema;
+type ApiCardsPage = PagesCardsPluginCardsPageSchema;
 
 // STORE STATE
 // ===========

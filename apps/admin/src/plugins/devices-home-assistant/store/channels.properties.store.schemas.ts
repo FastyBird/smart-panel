@@ -6,12 +6,16 @@ import {
 	ChannelPropertySchema,
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
-import { type components } from '../../../openapi.constants';
+import type {
+	DevicesHomeAssistantPluginCreateChannelPropertySchema,
+	DevicesHomeAssistantPluginUpdateChannelPropertySchema,
+	DevicesHomeAssistantPluginChannelPropertySchema,
+} from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_TYPE, DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 
-type ApiCreateChannelProperty = components['schemas']['DevicesHomeAssistantPluginCreateChannelProperty'];
-type ApiUpdateChannelProperty = components['schemas']['DevicesHomeAssistantPluginUpdateChannelProperty'];
-type ApiChannelProperty = components['schemas']['DevicesHomeAssistantPluginDataChannelProperty'];
+type ApiCreateChannelProperty = DevicesHomeAssistantPluginCreateChannelPropertySchema;
+type ApiUpdateChannelProperty = DevicesHomeAssistantPluginUpdateChannelPropertySchema;
+type ApiChannelProperty = DevicesHomeAssistantPluginChannelPropertySchema;
 
 export const HomeAssistantChannelPropertySchema = ChannelPropertySchema.extend({
 	haEntityId: z
