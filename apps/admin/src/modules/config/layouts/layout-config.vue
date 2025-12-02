@@ -197,6 +197,27 @@
 				v-model:remote-form-result="remoteFormResult"
 			/>
 		</el-tab-pane>
+
+		<el-tab-pane
+			:label="t('configModule.tabs.configModules')"
+			:name="'modules'"
+			class="h-full"
+		>
+			<template #label>
+				<span class="flex flex-row items-center gap-2">
+					<el-icon>
+						<icon icon="mdi:package-variant" />
+					</el-icon>
+					<span>{{ t('configModule.tabs.configModules') }}</span>
+				</span>
+			</template>
+
+			<router-view
+				v-if="route.name === RouteNames.CONFIG_MODULES"
+				v-model:remote-form-submit="remoteFormSubmit"
+				v-model:remote-form-result="remoteFormResult"
+			/>
+		</el-tab-pane>
 	</el-tabs>
 
 	<router-view
@@ -219,7 +240,7 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { FormResult, RouteNames } from '../config.constants';
 
-type PageTabName = 'audio' | 'display' | 'language' | 'weather' | 'system' | 'plugins';
+type PageTabName = 'audio' | 'display' | 'language' | 'weather' | 'system' | 'plugins' | 'modules';
 
 defineOptions({
 	name: 'LayoutConfig',
@@ -286,6 +307,13 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 		});
 	}
 
+	if (route.name === RouteNames.CONFIG_MODULES) {
+		items.push({
+			label: t('configModule.breadcrumbs.configModules'),
+			route: router.resolve({ name: RouteNames.CONFIG_MODULES }),
+		});
+	}
+
 	return items;
 });
 
@@ -309,6 +337,9 @@ const onTabClick = (pane: TabsPaneContext): void => {
 		case 'plugins':
 			router.push({ name: RouteNames.CONFIG_PLUGINS });
 			break;
+		case 'modules':
+			router.push({ name: RouteNames.CONFIG_MODULES });
+			break;
 	}
 };
 
@@ -331,6 +362,8 @@ onMounted((): void => {
 		activeTab.value = 'system';
 	} else if (route.name === RouteNames.CONFIG_PLUGINS && activeTab.value !== 'plugins') {
 		activeTab.value = 'plugins';
+	} else if (route.name === RouteNames.CONFIG_MODULES && activeTab.value !== 'modules') {
+		activeTab.value = 'modules';
 	}
 });
 
@@ -350,6 +383,8 @@ watch(
 				activeTab.value = 'system';
 			} else if (val === RouteNames.CONFIG_PLUGINS && activeTab.value !== 'plugins') {
 				activeTab.value = 'plugins';
+			} else if (val === RouteNames.CONFIG_MODULES && activeTab.value !== 'modules') {
+				activeTab.value = 'modules';
 			}
 		}
 	}

@@ -109,6 +109,21 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					menu: 4100,
 				},
 			},
+			{
+				path: 'modules',
+				name: RouteNames.CONFIG_MODULES,
+				component: () => import('../views/view-config-modules.vue'),
+				props: true,
+				meta: {
+					guards: {
+						authenticated: true,
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+					},
+					title: 'Modules',
+					icon: 'mdi:package-variant',
+					menu: 4000,
+				},
+			},
 		],
 	},
 ];

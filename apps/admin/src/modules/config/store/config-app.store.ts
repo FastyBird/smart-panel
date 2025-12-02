@@ -23,6 +23,7 @@ import {
 	configAudioStoreKey,
 	configDisplayStoreKey,
 	configLanguageStoreKey,
+	configModulesStoreKey,
 	configPluginsStoreKey,
 	configSystemStoreKey,
 	configWeatherStoreKey,
@@ -51,6 +52,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 		const configSystemStore = storesManager.getStore(configSystemStoreKey);
 		const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 		const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+		const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
 		const { data: audio } = storeToRefs(configAudioStore);
 		const { data: display } = storeToRefs(configDisplayStore);
@@ -58,6 +60,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 		const { data: system } = storeToRefs(configSystemStore);
 		const { data: weather } = storeToRefs(configWeatherStore);
 		const { data: plugins } = storeToRefs(configPluginsStore);
+		const { data: modules } = storeToRefs(configModulesStore);
 
 		if (
 			dataPartial.value === null ||
@@ -78,6 +81,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 			system: system.value,
 			weather: weather.value,
 			plugins: Object.values(plugins.value),
+			modules: Object.values(modules.value),
 		};
 	});
 
@@ -108,6 +112,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 		const configSystemStore = storesManager.getStore(configSystemStoreKey);
 		const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 		const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+		const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
 		configAudioStore.set({
 			data: parsedConfigApp.data.audio,
@@ -128,6 +133,12 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 		for (const plugin of parsedConfigApp.data.plugins) {
 			configPluginsStore.set({
 				data: plugin,
+			});
+		}
+
+		for (const module of parsedConfigApp.data.modules) {
+			configModulesStore.set({
+				data: module,
 			});
 		}
 
@@ -164,6 +175,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 					const configSystemStore = storesManager.getStore(configSystemStoreKey);
 					const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 					const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+					const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
 					configAudioStore.set({
 						data: transformed.audio,
@@ -184,6 +196,12 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 					for (const plugin of transformed.plugins) {
 						configPluginsStore.set({
 							data: plugin,
+						});
+					}
+
+					for (const module of transformed.modules) {
+						configModulesStore.set({
+							data: module,
 						});
 					}
 

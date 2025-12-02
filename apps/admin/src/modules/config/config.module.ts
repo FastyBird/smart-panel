@@ -13,6 +13,7 @@ import { ModuleRoutes } from './router';
 import { registerConfigAudioStore } from './store/config-audio.store';
 import { registerConfigDisplayStore } from './store/config-display.store';
 import { registerConfigLanguageStore } from './store/config-language.store';
+import { registerConfigModuleStore } from './store/config-modules.store';
 import { registerConfigPluginStore } from './store/config-plugins.store';
 import { registerConfigWeatherStore } from './store/config-weather.store';
 import {
@@ -20,6 +21,7 @@ import {
 	configAudioStoreKey,
 	configDisplayStoreKey,
 	configLanguageStoreKey,
+	configModulesStoreKey,
 	configPluginsStoreKey,
 	configSystemStoreKey,
 	configWeatherStoreKey,
@@ -75,6 +77,11 @@ export default {
 
 		app.provide(configPluginsStoreKey, configPluginsStore);
 		storesManager.addStore(configPluginsStoreKey, configPluginsStore);
+
+		const configModulesStore = registerConfigModuleStore(options.store);
+
+		app.provide(configModulesStoreKey, configModulesStore);
+		storesManager.addStore(configModulesStoreKey, configModulesStore);
 
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 
@@ -135,6 +142,17 @@ export default {
 							}
 						});
 					}
+
+					if ('modules' in data.payload && Array.isArray(data.payload.modules)) {
+						data.payload.modules.forEach((module) => {
+							if (typeof module === 'object' && module !== null && 'type' in module && typeof module.type === 'string') {
+								configModulesStore.onEvent({
+									type: module.type,
+									data: module,
+								});
+							}
+						});
+					}
 					break;
 
 				default:
@@ -143,10 +161,18 @@ export default {
 		});
 
 		options.router.isReady().then(() => {
-			if (!ran && configPluginsStore.firstLoad === false) {
+			if (!ran && configPluginsStore.firstLoadFinished() === false) {
 				ran = true;
 
 				configPluginsStore.fetch().catch((): void => {
+					// Something went wrong
+				});
+			}
+
+			if (!ran && configModulesStore.firstLoadFinished() === false) {
+				ran = true;
+
+				configModulesStore.fetch().catch((): void => {
 					// Something went wrong
 				});
 			}
