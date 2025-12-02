@@ -184,17 +184,17 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Setup Flutter"
-        uses: "./.github/actions/setup-flutter-project"
-        with:
-          flutter-version: "${{ matrix.flutter-version }}"
-          flutter-channel: "${{ matrix.flutter-channel }}"
-
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
 
       - name: "Run Dart Analyzer"
         run: "melos run analyze"

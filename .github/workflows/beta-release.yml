@@ -235,21 +235,18 @@ jobs:
       - name: "Pull Updated Branch"
         run: git pull origin ${{ github.ref_name }}
 
-      - name: "Setup Flutter"
-        uses: "./.github/actions/setup-flutter-project"
-        with:
-          flutter-version: "${{ matrix.flutter-version }}"
-          flutter-channel: "${{ matrix.flutter-channel }}"
-
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
   
-      - name: "Run Panel Code Preparation"
-        run: "melos rebuild-all"
-    
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
+
       - name: "Build ARMv7 Flutter Bundle (32-bit)"
         env:
           FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"

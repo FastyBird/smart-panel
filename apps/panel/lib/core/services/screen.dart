@@ -28,8 +28,8 @@ class ScreenService extends ChangeNotifier {
     // 240; // 150.0; // 120.0;
     _defaultUnitSize = _calculateOptimalUnitSize(screenWidth) / pixelRatio;
 
-    _defaultColumns = GridConfig.defaultCols ?? screenWidth ~/ _defaultUnitSize;
-    _defaultRows = GridConfig.defaultRows ?? screenHeight ~/ _defaultUnitSize;
+    _defaultColumns = GridConfig.defaultCols;
+    _defaultRows = GridConfig.defaultRows;
 
     // Normalize the scale factor (e.g., assume DPR = 2.0)
     const targetDPR = 2.0;
