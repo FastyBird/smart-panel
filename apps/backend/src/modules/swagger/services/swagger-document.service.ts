@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { INestApplication } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule, getSchemaPath } from '@nestjs/swagger';
 
 import { API_PREFIX } from '../../../app.constants';
+import { IS_PUBLIC_KEY } from '../../auth/guards/auth.guard';
 import { openApiTagRegistry } from '../decorators/api-tag.decorator';
 
 import { ExtendedDiscriminatorRegistration, ExtendedDiscriminatorService } from './extended-discriminator.service';
@@ -370,7 +372,7 @@ export class SwaggerDocumentService {
 	/**
 	 * Add security requirements to all operations that don't already have security defined.
 	 * This ensures non-public routes have the required security schemes.
-	 * Public routes should explicitly set security to [] using @ApiSecurity([]) from @nestjs/swagger.
+	 * Public routes are marked with @ApiPublic() which sets security to a marker value.
 	 */
 	private addSecurityToNonPublicRoutes(document: OpenAPIObject, app: INestApplication): void {
 		const paths = document.paths;
@@ -396,9 +398,19 @@ export class SwaggerDocumentService {
 				const operation = pathItem[method];
 				if (!operation || typeof operation !== 'object') continue;
 
+				// Check if this is a public route (marked with __PUBLIC_ROUTE__)
+				if (operation.security && Array.isArray(operation.security)) {
+					const hasPublicMarker = operation.security.some(
+						(sec) => typeof sec === 'object' && sec !== null && '__PUBLIC_ROUTE__' in sec,
+					);
+					if (hasPublicMarker) {
+						// Set security to empty array for public routes
+						operation.security = [];
+						continue;
+					}
+				}
+
 				// Only add security if it's not already defined
-				// Routes with @Public() should explicitly set security to [] using @ApiSecurity([])
-				// to prevent security from being added automatically
 				if (!('security' in operation)) {
 					operation.security = securityRequirements;
 				}

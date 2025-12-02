@@ -11,11 +11,12 @@ import {
 	Logger,
 	SetMetadata,
 	UnauthorizedException,
+	applyDecorators,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ApiSecurity } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
-import { applyDecorators } from '@nestjs/common';
+
+import { ApiPublic } from '../../swagger/decorators/api-documentation.decorator';
 
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
@@ -29,9 +30,9 @@ export const IS_PUBLIC_KEY = 'isPublic';
 
 /**
  * Decorator to mark a route as public (no authentication required).
- * Also sets Swagger security to empty array to prevent automatic security addition.
+ * Also marks the route as public in Swagger documentation.
  */
-export const Public = () => applyDecorators(SetMetadata(IS_PUBLIC_KEY, true), ApiSecurity([]));
+export const Public = () => applyDecorators(SetMetadata(IS_PUBLIC_KEY, true), ApiPublic());
 
 @Injectable()
 export class AuthGuard implements CanActivate {

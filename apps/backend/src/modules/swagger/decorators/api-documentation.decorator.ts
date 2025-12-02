@@ -1,5 +1,5 @@
 import { Type, applyDecorators } from '@nestjs/common';
-import { ApiResponse, getSchemaPath } from '@nestjs/swagger';
+import { ApiResponse, ApiSecurity, getSchemaPath } from '@nestjs/swagger';
 
 import {
 	BadRequestErrorModel,
@@ -193,4 +193,16 @@ export const ApiServiceUnavailableResponse = (description?: string) => {
 			},
 		}),
 	);
+};
+
+/**
+ * Decorator to mark a route as public (no security required) in Swagger.
+ * This uses a custom metadata key that will be processed to set security to empty array.
+ */
+export const API_PUBLIC_METADATA_KEY = 'apiPublic';
+
+export const ApiPublic = () => {
+	// Use ApiSecurity with a special marker that will be processed later
+	// We'll use a non-existent security scheme name as a marker
+	return ApiSecurity('__PUBLIC_ROUTE__');
 };
