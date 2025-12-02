@@ -68,4 +68,3 @@ export class ModulesTypeMapperService {
 		return Array.from(this.mappings.values());
 	}
 }
-

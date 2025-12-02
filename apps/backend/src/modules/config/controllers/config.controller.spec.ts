@@ -8,8 +8,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { BadRequestException, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ConfigException } from '../config.exceptions';
-
 import {
 	LanguageType,
 	LogLevelType,
@@ -18,6 +16,7 @@ import {
 	TimeFormatType,
 	WeatherLocationType,
 } from '../config.constants';
+import { ConfigException } from '../config.exceptions';
 import {
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
@@ -94,7 +93,7 @@ describe('ConfigController', () => {
 	};
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		const testingModule: TestingModule = await Test.createTestingModule({
 			controllers: [ConfigController],
 			providers: [
 				{
@@ -103,8 +102,8 @@ describe('ConfigController', () => {
 						getConfig: jest.fn().mockReturnValue(mockConfig),
 						getConfigSection: jest.fn((key: keyof AppConfigModel) => mockConfig[key]),
 						setConfigSection: jest.fn(),
-						getModulesConfig: jest.fn().mockReturnValue(mockConfig.modules as ModuleConfigModel[]),
-						getModuleConfig: jest.fn((module: string) => mockConfig.modules[0] as ModuleConfigModel),
+						getModulesConfig: jest.fn().mockReturnValue(mockConfig.modules),
+						getModuleConfig: jest.fn((_module: string) => mockConfig.modules[0]),
 						setModuleConfig: jest.fn(),
 					},
 				},
@@ -127,8 +126,8 @@ describe('ConfigController', () => {
 			],
 		}).compile();
 
-		controller = module.get<ConfigController>(ConfigController);
-		configService = module.get<ConfigService>(ConfigService);
+		controller = testingModule.get<ConfigController>(ConfigController);
+		configService = testingModule.get<ConfigService>(ConfigService);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -271,7 +270,7 @@ describe('ConfigController', () => {
 
 	describe('getModulesConfig', () => {
 		it('should return all module configurations', () => {
-			const mockModules = mockConfig.modules as ModuleConfigModel[];
+			const mockModules = mockConfig.modules;
 			jest.spyOn(configService, 'getModulesConfig').mockReturnValue(mockModules);
 
 			const result = controller.getModulesConfig();
@@ -284,7 +283,7 @@ describe('ConfigController', () => {
 
 	describe('getModuleConfig', () => {
 		it('should return a specific module configuration', () => {
-			const mockModule = mockConfig.modules[0] as ModuleConfigModel;
+			const mockModule = mockConfig.modules[0];
 			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(mockModule);
 
 			const result = controller.getModuleConfig('mock-module');
@@ -296,7 +295,7 @@ describe('ConfigController', () => {
 
 		it('should throw ConfigNotFoundException for a non-existent module', () => {
 			(configService.getModuleConfig as jest.Mock).mockImplementation(() => {
-				throw new ConfigException('Configuration module \'non-existent\' not found.');
+				throw new ConfigException("Configuration module 'non-existent' not found.");
 			});
 
 			expect(() => controller.getModuleConfig('non-existent')).toThrow();

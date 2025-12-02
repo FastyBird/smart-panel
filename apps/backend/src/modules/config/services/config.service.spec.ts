@@ -29,7 +29,13 @@ import {
 } from '../config.constants';
 import { ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { UpdateAudioConfigDto, UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
-import { AppConfigModel, AudioConfigModel, BaseConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
+import {
+	AppConfigModel,
+	AudioConfigModel,
+	BaseConfigModel,
+	ModuleConfigModel,
+	PluginConfigModel,
+} from '../models/config.model';
 
 import { ConfigService } from './config.service';
 import { ModulesTypeMapperService } from './modules-type-mapper.service';
