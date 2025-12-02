@@ -192,10 +192,10 @@ describe('ExtensionsController', () => {
 	it('lists both admin and backend when surface=all (default)', async () => {
 		const result = await controller.list();
 
-		expect(result).toHaveLength(2);
+		expect(result.data).toHaveLength(2);
 
-		const admin = result.find((e) => e.surface === ExtensionSurfaceType.ADMIN);
-		const back = result.find((e) => e.surface === ExtensionSurfaceType.BACKEND);
+		const admin = result.data.find((e) => e.surface === ExtensionSurfaceType.ADMIN);
+		const back = result.data.find((e) => e.surface === ExtensionSurfaceType.BACKEND);
 
 		expect(admin).toMatchObject({
 			name: '@acme/admin-ext',
@@ -219,8 +219,8 @@ describe('ExtensionsController', () => {
 	it('lists only admin when surface=admin', async () => {
 		const result = await controller.list(ExtensionSurfaceType.ADMIN);
 
-		expect(result).toHaveLength(1);
-		expect(result[0]).toMatchObject({
+		expect(result.data).toHaveLength(1);
+		expect(result.data[0]).toMatchObject({
 			surface: ExtensionSurfaceType.ADMIN,
 			name: '@acme/admin-ext',
 		});
@@ -229,8 +229,8 @@ describe('ExtensionsController', () => {
 	it('lists only backend when surface=backend', async () => {
 		const result = await controller.list(ExtensionSurfaceType.BACKEND);
 
-		expect(result).toHaveLength(1);
-		expect(result[0]).toMatchObject({
+		expect(result.data).toHaveLength(1);
+		expect(result.data[0]).toMatchObject({
 			surface: ExtensionSurfaceType.BACKEND,
 			name: '@acme/backend-ext',
 		});
@@ -276,8 +276,8 @@ describe('ExtensionsController', () => {
 
 		const result = await controller.list(ExtensionSurfaceType.ADMIN);
 
-		expect(result).toHaveLength(1);
-		expect(result[0]).toMatchObject({
+		expect(result.data).toHaveLength(1);
+		expect(result.data[0]).toMatchObject({
 			name: '@acme/admin-ext',
 			source: ExtensionSourceType.BUNDLED,
 		});
@@ -287,6 +287,7 @@ describe('ExtensionsController', () => {
 		const req = {
 			params: {
 				pkg: '@acme/admin-ext',
+				asset_path: 'admin/index.js',
 				'*': 'admin/index.js',
 			},
 		} as any;
@@ -304,7 +305,7 @@ describe('ExtensionsController', () => {
 			backend: [],
 		});
 
-		const req = { params: { pkg: '@acme/unknown', '*': 'admin/index.js' } } as any;
+		const req = { params: { pkg: '@acme/unknown', asset_path: 'admin/index.js', '*': 'admin/index.js' } } as any;
 
 		await controller.asset('@acme/unknown', req, reply as any);
 
@@ -321,7 +322,7 @@ describe('ExtensionsController', () => {
 
 	it('returns 400 on path traversal attempt', async () => {
 		const req = {
-			params: { pkg: '@acme/admin-ext', '*': '../etc/passwd' },
+			params: { pkg: '@acme/admin-ext', asset_path: '../etc/passwd', '*': '../etc/passwd' },
 		} as any;
 
 		await controller.asset('@acme/admin-ext', req, reply as any);
@@ -346,7 +347,7 @@ describe('ExtensionsController', () => {
 		});
 
 		const req = {
-			params: { pkg: '@acme/admin-ext', '*': 'admin/index.js' },
+			params: { pkg: '@acme/admin-ext', asset_path: 'admin/index.js', '*': 'admin/index.js' },
 		} as any;
 
 		await controller.asset('@acme/admin-ext', req, reply as any);
@@ -362,7 +363,7 @@ describe('ExtensionsController', () => {
 		});
 
 		const req = {
-			params: { pkg: '@acme/admin-ext', '*': 'admin/index.js' },
+			params: { pkg: '@acme/admin-ext', asset_path: 'admin/index.js', '*': 'admin/index.js' },
 		} as any;
 
 		await controller.asset('@acme/admin-ext', req, reply as any);
@@ -374,7 +375,7 @@ describe('ExtensionsController', () => {
 		mockedMimeLookup.mockReturnValueOnce('text/javascript');
 
 		const req = {
-			params: { pkg: '@acme/admin-ext', '*': 'admin/index.js' },
+			params: { pkg: '@acme/admin-ext', asset_path: 'admin/index.js', '*': 'admin/index.js' },
 		} as any;
 
 		await controller.asset('@acme/admin-ext', req, reply as any);

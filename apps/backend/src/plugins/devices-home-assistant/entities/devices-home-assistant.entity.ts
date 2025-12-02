@@ -2,6 +2,8 @@ import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 import { ChildEntity, Column, Index } from 'typeorm';
 
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import {
 	DEVICES_HOME_ASSISTANT_TYPE,
@@ -10,8 +12,15 @@ import {
 } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataDevice' })
 @ChildEntity()
 export class HomeAssistantDeviceEntity extends DeviceEntity {
+	@ApiProperty({
+		description: 'Home Assistant device ID',
+		type: 'string',
+		name: 'ha_device_id',
+		example: 'abcd1234efgh5678',
+	})
 	@Expose({ name: 'ha_device_id' })
 	@IsString({ message: '[{"field":"ha_device_id","reason":"Home Assistant device ID must be provided."}]' })
 	@Transform(({ obj }: { obj: { ha_device_id?: string; haDeviceId?: string } }) => obj.ha_device_id || obj.haDeviceId, {
@@ -21,6 +30,12 @@ export class HomeAssistantDeviceEntity extends DeviceEntity {
 	@Column()
 	haDeviceId: string;
 
+	@ApiProperty({
+		description: 'Device type',
+		type: 'string',
+		default: DEVICES_HOME_ASSISTANT_TYPE,
+		example: DEVICES_HOME_ASSISTANT_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_HOME_ASSISTANT_TYPE;
@@ -31,16 +46,31 @@ export class HomeAssistantDeviceEntity extends DeviceEntity {
 	}
 }
 
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataChannel' })
 @ChildEntity()
 export class HomeAssistantChannelEntity extends ChannelEntity {
+	@ApiProperty({
+		description: 'Channel type',
+		type: 'string',
+		default: DEVICES_HOME_ASSISTANT_TYPE,
+		example: DEVICES_HOME_ASSISTANT_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_HOME_ASSISTANT_TYPE;
 	}
 }
 
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataChannelProperty' })
 @ChildEntity()
 export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
+	@ApiPropertyOptional({
+		description: 'Home Assistant entity ID',
+		type: 'string',
+		name: 'ha_entity_id',
+		nullable: true,
+		example: 'light.living_room',
+	})
 	@Expose({ name: 'ha_entity_id' })
 	@IsOptional()
 	@IsString({ message: '[{"field":"ha_entity_id","reason":"Home Assistant entity ID must be provided."}]' })
@@ -54,6 +84,13 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	@Column({ nullable: true })
 	haEntityId: string | null;
 
+	@ApiPropertyOptional({
+		description: 'Home Assistant entity attribute',
+		type: 'string',
+		name: 'ha_attribute',
+		nullable: true,
+		example: 'brightness',
+	})
 	@Expose({ name: 'ha_attribute' })
 	@IsOptional()
 	@IsString({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
@@ -77,6 +114,12 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 		return domain;
 	}
 
+	@ApiProperty({
+		description: 'Channel property type',
+		type: 'string',
+		default: DEVICES_HOME_ASSISTANT_TYPE,
+		example: DEVICES_HOME_ASSISTANT_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return DEVICES_HOME_ASSISTANT_TYPE;

@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { StatsModuleGetStatsOperation } from '../../../openapi.constants';
 import { STATS_MODULE_PREFIX } from '../stats.constants';
 import { StatsApiException, StatsValidationException } from '../stats.exceptions';
 
@@ -86,7 +86,7 @@ export const useStats = defineStore<'stats_module-stats', StatsStoreSetup>('stat
 				let errorReason: string | null = 'Failed to fetch stats.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-stats-module-stats']>(error, errorReason);
+					errorReason = getErrorReason<StatsModuleGetStatsOperation>(error, errorReason);
 				}
 
 				throw new StatsApiException(errorReason, response.status);

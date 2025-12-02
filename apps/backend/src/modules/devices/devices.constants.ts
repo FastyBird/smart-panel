@@ -4,6 +4,11 @@ export const DEVICES_MODULE_PREFIX = 'devices-module';
 
 export const DEVICES_MODULE_NAME = 'devices-module';
 
+export const DEVICES_MODULE_API_TAG_NAME = 'Devices module';
+
+export const DEVICES_MODULE_API_TAG_DESCRIPTION =
+	'A collection of endpoints that provide device-related functionalities, acting as a central module for handling device interactions.';
+
 export enum EventHandlerName {
 	/**
 	 * Internal command sent from the UI (Flutter Display App or Vue Admin Panel)

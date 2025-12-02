@@ -1,16 +1,21 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleSystemLog_levels, ConfigModuleSystemType, type components } from '../../../openapi';
+import type {
+	ConfigModuleSystemSchema,
+	ConfigModuleUpdateSystemSchema,
+} from '../../../openapi.constants';
+import { SystemModuleLogEntryType } from '../../../openapi.constants';
+import { ConfigModuleSystemType } from '../../../openapi.constants';
 
-type ApiConfigSystem = components['schemas']['ConfigModuleSystem'];
-type ApiConfigUpdateSystem = components['schemas']['ConfigModuleUpdateSystem'];
+type ApiConfigSystem = ConfigModuleSystemSchema;
+type ApiConfigUpdateSystem = ConfigModuleUpdateSystemSchema;
 
 // STORE STATE
 // ===========
 
 export const ConfigSystemSchema = z.object({
 	type: z.nativeEnum(ConfigModuleSystemType),
-	logLevels: z.array(z.nativeEnum(ConfigModuleSystemLog_levels)),
+	logLevels: z.array(z.nativeEnum(SystemModuleLogEntryType)),
 });
 
 export const ConfigSystemStateSemaphoreSchema = z.object({
@@ -27,13 +32,13 @@ export const ConfigSystemOnEventActionPayloadSchema = z.object({
 
 export const ConfigSystemSetActionPayloadSchema = z.object({
 	data: z.object({
-		logLevels: z.array(z.nativeEnum(ConfigModuleSystemLog_levels)),
+		logLevels: z.array(z.nativeEnum(SystemModuleLogEntryType)),
 	}),
 });
 
 export const ConfigSystemEditActionPayloadSchema = z.object({
 	data: z.object({
-		logLevels: z.array(z.nativeEnum(ConfigModuleSystemLog_levels)),
+		logLevels: z.array(z.nativeEnum(SystemModuleLogEntryType)),
 	}),
 });
 
@@ -42,10 +47,10 @@ export const ConfigSystemEditActionPayloadSchema = z.object({
 
 export const ConfigSystemUpdateReqSchema: ZodType<ApiConfigUpdateSystem> = z.object({
 	type: z.nativeEnum(ConfigModuleSystemType),
-	log_levels: z.array(z.nativeEnum(ConfigModuleSystemLog_levels)),
+	log_levels: z.array(z.nativeEnum(SystemModuleLogEntryType)),
 });
 
 export const ConfigSystemResSchema: ZodType<ApiConfigSystem> = z.object({
 	type: z.nativeEnum(ConfigModuleSystemType),
-	log_levels: z.array(z.nativeEnum(ConfigModuleSystemLog_levels)),
+	log_levels: z.array(z.nativeEnum(SystemModuleLogEntryType)),
 });

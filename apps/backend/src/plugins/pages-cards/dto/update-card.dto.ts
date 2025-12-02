@@ -1,18 +1,27 @@
 import { Expose, Type } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
-import type { components } from '../../../openapi';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-type ReqUpdateCard = components['schemas']['PagesCardsPluginReqUpdateCard'];
-type UpdateCard = components['schemas']['PagesCardsPluginUpdateCard'];
-
-export class UpdateCardDto implements UpdateCard {
+@ApiSchema({ name: 'PagesCardsPluginUpdateCard' })
+export class UpdateCardDto {
+	@ApiPropertyOptional({
+		description: 'Card title',
+		type: 'string',
+		example: 'Living Room',
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	title?: string;
 
+	@ApiPropertyOptional({
+		description: 'Card icon name',
+		type: 'string',
+		nullable: true,
+		example: 'mdi-home',
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
@@ -20,6 +29,11 @@ export class UpdateCardDto implements UpdateCard {
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
 
+	@ApiPropertyOptional({
+		description: 'Card order position',
+		type: 'integer',
+		example: 1,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -29,7 +43,12 @@ export class UpdateCardDto implements UpdateCard {
 	order?: number;
 }
 
-export class ReqUpdateCardDto implements ReqUpdateCard {
+@ApiSchema({ name: 'PagesCardsPluginReqUpdateCard' })
+export class ReqUpdateCardDto {
+	@ApiProperty({
+		description: 'Card update data',
+		type: UpdateCardDto,
+	})
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdateCardDto)

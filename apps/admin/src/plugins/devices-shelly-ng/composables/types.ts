@@ -3,7 +3,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import type { FormResultType } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IShellyNgDeviceAddForm, IShellyNgDeviceEditForm, IShellyNgDeviceInfo, IShellyNgSupportedDevice } from '../schemas/devices.types';
 
 export interface IUseDeviceAddForm {

@@ -1,13 +1,17 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import type { components } from '../../../openapi';
+import type {
+	DashboardModuleCreateDataSourceSchema,
+	DashboardModuleUpdateDataSourceSchema,
+	DashboardModuleDataSourceSchema,
+} from '../../../openapi.constants';
 
 import { ItemIdSchema } from './types';
 
-type ApiCreateDataSource = components['schemas']['DashboardModuleCreateDataSource'];
-type ApiUpdateDataSource = components['schemas']['DashboardModuleUpdateDataSource'];
-type ApiDataSource = components['schemas']['DashboardModuleDataSource'];
+type ApiCreateDataSource = DashboardModuleCreateDataSourceSchema;
+type ApiUpdateDataSource = DashboardModuleUpdateDataSourceSchema;
+type ApiDataSource = DashboardModuleDataSourceSchema;
 
 // STORE STATE
 // ===========
@@ -144,8 +148,12 @@ export const DataSourceCreateReqSchema: ZodType<ApiCreateDataSource & { parent: 
 	}),
 });
 
-export const DataSourceUpdateReqSchema: ZodType<ApiUpdateDataSource> = z.object({
+export const DataSourceUpdateReqSchema: ZodType<ApiUpdateDataSource & { parent: { type: string; id: string } }> = z.object({
 	type: z.string().trim().nonempty(),
+	parent: z.object({
+		id: z.string().uuid(),
+		type: z.string().trim().nonempty(),
+	}),
 });
 
 export const DataSourceResSchema: ZodType<ApiDataSource> = z.object({

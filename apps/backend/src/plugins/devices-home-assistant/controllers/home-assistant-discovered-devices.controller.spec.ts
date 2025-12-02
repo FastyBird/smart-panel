@@ -44,7 +44,7 @@ describe('HomeAssistantDiscoveredDevicesController', () => {
 			homeAssistantHttpService.getDiscoveredDevices.mockResolvedValue(mockDevices);
 
 			const result = await controller.findAll();
-			expect(result).toEqual(mockDevices);
+			expect(result.data).toEqual(mockDevices);
 		});
 
 		it('should throw UnprocessableEntityException if plugin misconfigured', async () => {
@@ -70,7 +70,7 @@ describe('HomeAssistantDiscoveredDevicesController', () => {
 			homeAssistantHttpService.getDiscoveredDevice.mockResolvedValue(mockDevice);
 
 			const result = await controller.findOne('device1');
-			expect(result).toEqual(mockDevice);
+			expect(result.data).toEqual(mockDevice);
 		});
 
 		it('should throw UnprocessableEntityException if plugin misconfigured', async () => {

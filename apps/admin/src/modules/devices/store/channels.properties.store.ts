@@ -5,7 +5,13 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omit, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type {
+	DevicesModuleGetChannelPropertyOperation,
+	DevicesModuleGetChannelPropertiesOperation,
+	DevicesModuleCreateChannelPropertyOperation,
+	DevicesModuleUpdateChannelPropertyOperation,
+	DevicesModuleDeleteChannelPropertyOperation,
+} from '../../../openapi.constants';
 import { useChannelsPropertiesPlugins } from '../composables/useChannelsPropertiesPlugins';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
@@ -184,7 +190,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					let errorReason: string | null = 'Failed to fetch channel property.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-devices-module-channel-property']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetChannelPropertyOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -250,7 +256,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					let errorReason: string | null = 'Failed to fetch channel properties.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-devices-module-channel-properties']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetChannelPropertiesOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -335,7 +341,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					let errorReason: string | null = 'Failed to create channel property.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['create-devices-module-channel-property']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleCreateChannelPropertyOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -419,7 +425,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					let errorReason: string | null = 'Failed to update channel property.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['update-devices-module-channel-property']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleUpdateChannelPropertyOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -480,7 +486,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				let errorReason: string | null = 'Failed to create channel property.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-devices-module-channel-property']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleCreateChannelPropertyOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);
@@ -524,7 +530,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					let errorReason: string | null = 'Remove property failed.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['delete-devices-module-channel-property']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleDeleteChannelPropertyOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);

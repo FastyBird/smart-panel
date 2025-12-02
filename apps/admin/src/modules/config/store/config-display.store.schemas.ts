@@ -1,9 +1,13 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleDisplayType, type components } from '../../../openapi';
+import type {
+	ConfigModuleDisplaySchema,
+	ConfigModuleUpdateDisplaySchema,
+} from '../../../openapi.constants';
+import { ConfigModuleDisplayType } from '../../../openapi.constants';
 
-type ApiConfigDisplay = components['schemas']['ConfigModuleDisplay'];
-type ApiConfigUpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];
+type ApiConfigDisplay = ConfigModuleDisplaySchema;
+type ApiConfigUpdateDisplay = ConfigModuleUpdateDisplaySchema;
 
 // STORE STATE
 // ===========

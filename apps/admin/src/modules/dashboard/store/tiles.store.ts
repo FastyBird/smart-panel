@@ -5,7 +5,13 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type {
+	DashboardModuleGetTileOperation,
+	DashboardModuleGetTilesOperation,
+	DashboardModuleCreateTileOperation,
+	DashboardModuleUpdateTileOperation,
+	DashboardModuleDeleteTileOperation,
+} from '../../../openapi.constants';
 import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
 import { useTilesPlugins } from '../composables/useTilesPlugins';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
@@ -203,7 +209,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				let errorReason: string | null = 'Failed to fetch tile.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-dashboard-module-tile']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleGetTileOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -270,7 +276,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				let errorReason: string | null = 'Failed to fetch tiles.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-dashboard-module-tiles']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleGetTilesOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -350,7 +356,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				let errorReason: string | null = 'Failed to create tile.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-dashboard-module-tile']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleCreateTileOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -429,7 +435,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				let errorReason: string | null = 'Failed to update tile.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-dashboard-module-tile']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleUpdateTileOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -484,7 +490,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			let errorReason: string | null = 'Failed to create tile.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-dashboard-module-tile']>(error, errorReason);
+				errorReason = getErrorReason<DashboardModuleCreateTileOperation>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -534,7 +540,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				let errorReason: string | null = 'Remove tile failed.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['delete-dashboard-module-tile']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleDeleteTileOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);

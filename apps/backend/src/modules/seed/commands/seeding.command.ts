@@ -1,19 +1,21 @@
 import inquirer from 'inquirer';
-import { Command } from 'nestjs-command';
+import { Command, CommandRunner } from 'nest-commander';
 
 import { Injectable } from '@nestjs/common';
 
 import { SeedService } from '../services/seed.service';
 
+@Command({
+	name: 'seed:run',
+	description: 'Populate the database with sample data',
+})
 @Injectable()
-export class SeedCommand {
-	constructor(private readonly seedService: SeedService) {}
+export class SeedCommand extends CommandRunner {
+	constructor(private readonly seedService: SeedService) {
+		super();
+	}
 
-	@Command({
-		command: 'seed:run',
-		describe: 'Populate the database with sample data',
-	})
-	async seed() {
+	async run(_passedParams: string[], _options?: Record<string, any>): Promise<void> {
 		const { proceed } = await inquirer.prompt<{ proceed: boolean }>([
 			{
 				type: 'confirm',

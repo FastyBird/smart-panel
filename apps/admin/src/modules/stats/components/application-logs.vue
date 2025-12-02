@@ -142,7 +142,7 @@ import { Icon } from '@iconify/vue';
 import { formatTimeAgo, useVModel } from '@vueuse/core';
 
 import { IconWithChild } from '../../../common';
-import { ConfigModuleSystemLog_levels } from '../../../openapi';
+import { SystemModuleLogEntryType } from '../../../openapi.constants';
 
 import type { IApplicationLogsProps } from './application-logs.types';
 
@@ -165,15 +165,15 @@ const { t } = useI18n();
 const innerFilters = useVModel(props, 'filters', emit);
 
 const levels = [
-	ConfigModuleSystemLog_levels.silent,
-	ConfigModuleSystemLog_levels.fatal,
-	ConfigModuleSystemLog_levels.error,
-	ConfigModuleSystemLog_levels.warn,
-	ConfigModuleSystemLog_levels.log,
-	ConfigModuleSystemLog_levels.info,
-	ConfigModuleSystemLog_levels.success,
-	ConfigModuleSystemLog_levels.fail,
-	ConfigModuleSystemLog_levels.debug,
+	SystemModuleLogEntryType.silent,
+	SystemModuleLogEntryType.fatal,
+	SystemModuleLogEntryType.error,
+	SystemModuleLogEntryType.warn,
+	SystemModuleLogEntryType.log,
+	SystemModuleLogEntryType.info,
+	SystemModuleLogEntryType.success,
+	SystemModuleLogEntryType.fail,
+	SystemModuleLogEntryType.debug,
 ];
 
 const formatRelative = (iso: string): string => {
@@ -184,16 +184,16 @@ const formatFull = (iso: string): string => {
 	return new Date(iso).toISOString();
 };
 
-const levelTagProps = (lvl: ConfigModuleSystemLog_levels) => {
-	if ([ConfigModuleSystemLog_levels.fatal, ConfigModuleSystemLog_levels.error, ConfigModuleSystemLog_levels.fail].includes(lvl)) {
+const levelTagProps = (lvl: SystemModuleLogEntryType) => {
+	if ([SystemModuleLogEntryType.fatal, SystemModuleLogEntryType.error, SystemModuleLogEntryType.fail].includes(lvl)) {
 		return { type: 'danger' as const, effect: 'light' as const };
 	}
 
-	if ([ConfigModuleSystemLog_levels.warn].includes(lvl)) {
+	if ([SystemModuleLogEntryType.warn].includes(lvl)) {
 		return { type: 'warning' as const, effect: 'light' as const };
 	}
 
-	if ([ConfigModuleSystemLog_levels.success, ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.log].includes(lvl)) {
+	if ([SystemModuleLogEntryType.success, SystemModuleLogEntryType.info, SystemModuleLogEntryType.log].includes(lvl)) {
 		return { type: 'success' as const, effect: 'light' as const };
 	}
 

@@ -8,9 +8,9 @@ import { type IPluginElement, deepClone, getSchemaDefaults, injectStoresManager,
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { type ChannelPropertySpec, channelChannelsPropertiesSpecificationMappers, getChannelPropertySpecification } from '../devices.mapping';
@@ -101,12 +101,12 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		label: t(`devicesModule.permissions.${value}`),
 	}));
 
-	const dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[] = Object.values(
-		DevicesModuleChannelPropertyData_type
-	).map((value) => ({
-		value,
-		label: t(`devicesModule.dataTypes.${value}`),
-	}));
+	const dataTypesOptions: { value: DevicesModuleChannelPropertyDataType; label: string }[] = Object.values(DevicesModuleChannelPropertyDataType).map(
+		(value) => ({
+			value,
+			label: t(`devicesModule.dataTypes.${value}`),
+		})
+	);
 
 	const model = reactive<TForm>({
 		...getSchemaDefaults(element.value?.schemas?.channelPropertyAddFormSchema || ChannelPropertyAddFormSchema),
@@ -116,7 +116,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		category: DevicesModuleChannelPropertyCategory.generic,
 		name: '',
 		permissions: [] as DevicesModuleChannelPropertyPermissions[],
-		dataType: DevicesModuleChannelPropertyData_type.unknown,
+		dataType: DevicesModuleChannelPropertyDataType.unknown,
 		unit: null,
 		format: null,
 		invalid: null,
@@ -155,17 +155,17 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 			throw new DevicesValidationException('Missing data type definition');
 		}
 
-		if (model.dataType === DevicesModuleChannelPropertyData_type.enum) {
+		if (model.dataType === DevicesModuleChannelPropertyDataType.enum) {
 			model.format = model.enumValues;
 		} else if (
 			[
-				DevicesModuleChannelPropertyData_type.char,
-				DevicesModuleChannelPropertyData_type.uchar,
-				DevicesModuleChannelPropertyData_type.short,
-				DevicesModuleChannelPropertyData_type.ushort,
-				DevicesModuleChannelPropertyData_type.int,
-				DevicesModuleChannelPropertyData_type.uint,
-				DevicesModuleChannelPropertyData_type.float,
+				DevicesModuleChannelPropertyDataType.char,
+				DevicesModuleChannelPropertyDataType.uchar,
+				DevicesModuleChannelPropertyDataType.short,
+				DevicesModuleChannelPropertyDataType.ushort,
+				DevicesModuleChannelPropertyDataType.int,
+				DevicesModuleChannelPropertyDataType.uint,
+				DevicesModuleChannelPropertyDataType.float,
 			].includes(model.dataType)
 		) {
 			model.format = [
@@ -278,7 +278,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 				model.step = spec.step;
 			}
 
-			if (initialModel.dataType === DevicesModuleChannelPropertyData_type.enum) {
+			if (initialModel.dataType === DevicesModuleChannelPropertyDataType.enum) {
 				initialModel.enumValues = (spec.format ?? []) as string[];
 				initialModel.minValue = undefined;
 				initialModel.maxValue = undefined;
@@ -287,13 +287,13 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 				model.maxValue = undefined;
 			} else if (
 				[
-					DevicesModuleChannelPropertyData_type.char,
-					DevicesModuleChannelPropertyData_type.uchar,
-					DevicesModuleChannelPropertyData_type.short,
-					DevicesModuleChannelPropertyData_type.ushort,
-					DevicesModuleChannelPropertyData_type.int,
-					DevicesModuleChannelPropertyData_type.uint,
-					DevicesModuleChannelPropertyData_type.float,
+					DevicesModuleChannelPropertyDataType.char,
+					DevicesModuleChannelPropertyDataType.uchar,
+					DevicesModuleChannelPropertyDataType.short,
+					DevicesModuleChannelPropertyDataType.ushort,
+					DevicesModuleChannelPropertyDataType.int,
+					DevicesModuleChannelPropertyDataType.uint,
+					DevicesModuleChannelPropertyDataType.float,
 				].includes(model.dataType)
 			) {
 				initialModel.enumValues = [];

@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IDevice } from '../store/devices.store.types';
 
 import { defaultDevicesFilter, useDevicesDataSource } from './useDevicesDataSource';

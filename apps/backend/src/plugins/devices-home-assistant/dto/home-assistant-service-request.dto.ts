@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { IsString } from 'class-validator';
 
-export class ServiceRequestDto {
+export class HomeAssistantServiceRequestDto {
 	@Expose()
 	@IsString()
 	entity_id: string;

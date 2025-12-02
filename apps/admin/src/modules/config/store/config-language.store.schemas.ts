@@ -1,9 +1,14 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType, type components } from '../../../openapi';
+import type {
+	ConfigModuleLanguageSchema,
+	ConfigModuleUpdateLanguageSchema,
+} from '../../../openapi.constants';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat } from '../../../openapi.constants';
+import { ConfigModuleLanguageType } from '../../../openapi.constants';
 
-type ApiConfigLanguage = components['schemas']['ConfigModuleLanguage'];
-type ApiConfigUpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];
+type ApiConfigLanguage = ConfigModuleLanguageSchema;
+type ApiConfigUpdateLanguage = ConfigModuleUpdateLanguageSchema;
 
 // STORE STATE
 // ===========
@@ -12,7 +17,7 @@ export const ConfigLanguageSchema = z.object({
 	type: z.nativeEnum(ConfigModuleLanguageType),
 	language: z.nativeEnum(ConfigModuleLanguageLanguage),
 	timezone: z.string(),
-	timeFormat: z.nativeEnum(ConfigModuleLanguageTime_format),
+	timeFormat: z.nativeEnum(ConfigModuleLanguageTimeFormat),
 });
 
 export const ConfigLanguageStateSemaphoreSchema = z.object({
@@ -31,7 +36,7 @@ export const ConfigLanguageSetActionPayloadSchema = z.object({
 	data: z.object({
 		language: z.nativeEnum(ConfigModuleLanguageLanguage),
 		timezone: z.string(),
-		timeFormat: z.nativeEnum(ConfigModuleLanguageTime_format),
+		timeFormat: z.nativeEnum(ConfigModuleLanguageTimeFormat),
 	}),
 });
 
@@ -39,7 +44,7 @@ export const ConfigLanguageEditActionPayloadSchema = z.object({
 	data: z.object({
 		language: z.nativeEnum(ConfigModuleLanguageLanguage),
 		timezone: z.string(),
-		timeFormat: z.nativeEnum(ConfigModuleLanguageTime_format),
+		timeFormat: z.nativeEnum(ConfigModuleLanguageTimeFormat),
 	}),
 });
 
@@ -50,12 +55,12 @@ export const ConfigLanguageUpdateReqSchema: ZodType<ApiConfigUpdateLanguage> = z
 	type: z.nativeEnum(ConfigModuleLanguageType),
 	language: z.nativeEnum(ConfigModuleLanguageLanguage),
 	timezone: z.string(),
-	time_format: z.nativeEnum(ConfigModuleLanguageTime_format),
+	time_format: z.nativeEnum(ConfigModuleLanguageTimeFormat),
 });
 
 export const ConfigLanguageResSchema: ZodType<ApiConfigLanguage> = z.object({
 	type: z.nativeEnum(ConfigModuleLanguageType),
 	language: z.nativeEnum(ConfigModuleLanguageLanguage),
 	timezone: z.string(),
-	time_format: z.nativeEnum(ConfigModuleLanguageTime_format),
+	time_format: z.nativeEnum(ConfigModuleLanguageTimeFormat),
 });

@@ -20,7 +20,13 @@ import {
 	useDataSourcesPlugins,
 	useTilesPlugins,
 } from '../../../modules/dashboard';
-import type { operations } from '../../../openapi';
+import type {
+	PagesCardsPluginGetPageCardOperation,
+	PagesCardsPluginGetPageCardsOperation,
+	PagesCardsPluginCreatePageCardOperation,
+	PagesCardsPluginUpdatePageCardOperation,
+	PagesCardsPluginDeletePageCardOperation,
+} from '../../../openapi.constants';
 import { PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.contants';
 
 import { CardSchema, CardsAddActionPayloadSchema, CardsEditActionPayloadSchema } from './cards.store.schemas';
@@ -177,7 +183,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				let errorReason: string | null = 'Failed to fetch card.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-pages-cards-plugin-page-card']>(error, errorReason);
+					errorReason = getErrorReason<PagesCardsPluginGetPageCardOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -246,7 +252,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				let errorReason: string | null = 'Failed to fetch cards.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-pages-cards-plugin-page-cards']>(error, errorReason);
+					errorReason = getErrorReason<PagesCardsPluginGetPageCardsOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -324,7 +330,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				let errorReason: string | null = 'Failed to create card.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-pages-cards-plugin-page-card']>(error, errorReason);
+					errorReason = getErrorReason<PagesCardsPluginCreatePageCardOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -397,7 +403,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				let errorReason: string | null = 'Failed to update card.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-pages-cards-plugin-page-card']>(error, errorReason);
+					errorReason = getErrorReason<PagesCardsPluginUpdatePageCardOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -451,7 +457,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			let errorReason: string | null = 'Failed to create card.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-pages-cards-plugin-page-card']>(error, errorReason);
+				errorReason = getErrorReason<PagesCardsPluginCreatePageCardOperation>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -510,7 +516,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				let errorReason: string | null = 'Remove card failed.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['delete-pages-cards-plugin-page-card']>(error, errorReason);
+					errorReason = getErrorReason<PagesCardsPluginDeletePageCardOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);

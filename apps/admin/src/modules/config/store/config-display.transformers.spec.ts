@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDisplayType } from '../../../openapi';
+import { ConfigModuleDisplayType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigDisplayEditActionPayload, IConfigDisplayRes } from './config-display.store.types';

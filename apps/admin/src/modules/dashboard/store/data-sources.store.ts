@@ -5,7 +5,13 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type {
+	DashboardModuleGetDataSourceOperation,
+	DashboardModuleGetDataSourcesOperation,
+	DashboardModuleCreateDataSourceOperation,
+	DashboardModuleUpdateDataSourceOperation,
+	DashboardModuleDeleteDataSourceOperation,
+} from '../../../openapi.constants';
 import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
@@ -195,7 +201,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					let errorReason: string | null = 'Failed to fetch data source.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-dashboard-module-data-source']>(error, errorReason);
+						errorReason = getErrorReason<DashboardModuleGetDataSourceOperation>(error, errorReason);
 					}
 
 					throw new DashboardApiException(errorReason, response.status);
@@ -260,7 +266,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					let errorReason: string | null = 'Failed to fetch data sources.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-dashboard-module-data-sources']>(error, errorReason);
+						errorReason = getErrorReason<DashboardModuleGetDataSourcesOperation>(error, errorReason);
 					}
 
 					throw new DashboardApiException(errorReason, response.status);
@@ -341,7 +347,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					let errorReason: string | null = 'Failed to create data source.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['create-dashboard-module-data-source']>(error, errorReason);
+						errorReason = getErrorReason<DashboardModuleCreateDataSourceOperation>(error, errorReason);
 					}
 
 					throw new DashboardApiException(errorReason, response.status);
@@ -421,7 +427,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					let errorReason: string | null = 'Failed to update data source.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['update-dashboard-module-data-source']>(error, errorReason);
+						errorReason = getErrorReason<DashboardModuleUpdateDataSourceOperation>(error, errorReason);
 					}
 
 					throw new DashboardApiException(errorReason, response.status);
@@ -477,7 +483,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				let errorReason: string | null = 'Failed to create data source.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-dashboard-module-data-source']>(error, errorReason);
+					errorReason = getErrorReason<DashboardModuleCreateDataSourceOperation>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
@@ -521,7 +527,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					let errorReason: string | null = 'Remove data source failed.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['delete-dashboard-module-data-source']>(error, errorReason);
+						errorReason = getErrorReason<DashboardModuleDeleteDataSourceOperation>(error, errorReason);
 					}
 
 					throw new DashboardApiException(errorReason, response.status);

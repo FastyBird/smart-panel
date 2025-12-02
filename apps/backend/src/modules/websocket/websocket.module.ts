@@ -9,6 +9,7 @@ import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { UsersModule } from '../users/users.module';
 
 import { WebsocketGateway } from './gateway/websocket.gateway';
@@ -17,6 +18,7 @@ import { CommandEventRegistryService } from './services/command-event-registry.s
 import { WsAuthService } from './services/ws-auth.service';
 import { WsMetricsService } from './services/ws-metrics.service';
 import { WEBSOCKET_MODULE_NAME, WsConnInfluxDbSchema, WsStatsInfluxDbSchema } from './websocket.constants';
+import { WEBSOCKET_SWAGGER_EXTRA_MODELS } from './websocket.openapi';
 
 @Module({
 	imports: [
@@ -43,6 +45,7 @@ export class WebsocketModule {
 		private readonly wsStatsProvider: WsStatsProvider,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly influxDbService: InfluxDbService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -50,5 +53,9 @@ export class WebsocketModule {
 		this.influxDbService.registerSchema(WsConnInfluxDbSchema);
 
 		this.statsRegistryService.register(WEBSOCKET_MODULE_NAME, this.wsStatsProvider);
+
+		for (const model of WEBSOCKET_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

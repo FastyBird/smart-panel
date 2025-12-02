@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
+import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyDataType } from '../../../openapi.constants';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 
 import { defaultChannelsPropertiesFilter, useChannelsPropertiesDataSource } from './useChannelsPropertiesDataSource';
@@ -142,7 +142,7 @@ describe('useChannelsPropertiesDataSource', () => {
 	it('resets filters', () => {
 		const { filters, resetFilter } = useChannelsPropertiesDataSource({ channelId: 'channel-1' });
 
-		filters.value.dataTypes = [DevicesModuleChannelPropertyData_type.bool];
+		filters.value.dataTypes = [DevicesModuleChannelPropertyDataType.bool];
 
 		resetFilter();
 

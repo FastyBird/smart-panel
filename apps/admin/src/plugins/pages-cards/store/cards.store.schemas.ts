@@ -2,11 +2,15 @@ import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
 import { DataSourceCreateReqSchema, DataSourceResSchema, ItemIdSchema, TileCreateReqSchema, TileResSchema } from '../../../modules/dashboard';
-import { type components } from '../../../openapi';
+import type {
+	PagesCardsPluginCreateCardSchema,
+	PagesCardsPluginUpdateCardSchema,
+	PagesCardsPluginCardSchema,
+} from '../../../openapi.constants';
 
-type ApiCreateCard = components['schemas']['PagesCardsPluginCreateCard'];
-type ApiUpdateCard = components['schemas']['PagesCardsPluginUpdateCard'];
-type ApiCard = components['schemas']['PagesCardsPluginCard'];
+type ApiCreateCard = PagesCardsPluginCreateCardSchema;
+type ApiUpdateCard = PagesCardsPluginUpdateCardSchema;
+type ApiCard = PagesCardsPluginCardSchema;
 
 // STORE STATE
 // ===========
@@ -104,7 +108,7 @@ export const CardsEditActionPayloadSchema = z.object({
 			.transform((val) => (val === '' ? null : val))
 			.nullable()
 			.optional(),
-		order: z.number().optional(),
+		order: z.number().default(0),
 	}),
 });
 
@@ -130,7 +134,7 @@ export const CardCreateReqSchema: ZodType<ApiCreateCard> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	order: z.number().optional(),
+	order: z.number(),
 	tiles: z.array(TileCreateReqSchema).optional(),
 	data_source: z.array(DataSourceCreateReqSchema).optional(),
 });

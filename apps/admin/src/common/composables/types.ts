@@ -5,11 +5,11 @@ import type { Emitter, Handler } from 'mitt';
 import type { Client } from 'openapi-fetch';
 import type { Socket } from 'socket.io-client';
 
-import type { paths } from '../../openapi';
+import type { OpenApiPaths } from '../../openapi.constants';
 import type { Events } from '../services/event-bus';
 import type { ISortEntry } from '../store/list.query.store.types';
 
-export interface IUseBackend<Paths extends object = paths> {
+export interface IUseBackend<Paths extends object = OpenApiPaths> {
 	pendingRequests: Ref<number>;
 	client: Client<Paths>;
 }

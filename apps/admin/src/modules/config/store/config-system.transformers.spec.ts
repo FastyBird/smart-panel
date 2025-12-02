@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleSystemLog_levels, ConfigModuleSystemType } from '../../../openapi';
+import { ConfigModuleSystemType, SystemModuleLogEntryType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigSystemEditActionPayload, IConfigSystemRes } from './config-system.store.types';
@@ -22,11 +22,11 @@ vi.mock('../../../common', async () => {
 
 const validConfigSystemResponse: IConfigSystemRes = {
 	type: ConfigModuleSystemType.system,
-	log_levels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+	log_levels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 };
 
 const validConfigSystemUpdatePayload: IConfigSystemEditActionPayload['data'] = {
-	logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+	logLevels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 };
 
 describe('Config System Transformers', (): void => {
@@ -36,7 +36,7 @@ describe('Config System Transformers', (): void => {
 
 			expect(result).toEqual({
 				type: ConfigModuleSystemType.system,
-				logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+				logLevels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 			});
 		});
 
@@ -53,7 +53,7 @@ describe('Config System Transformers', (): void => {
 
 			expect(result).toEqual({
 				type: ConfigModuleSystemType.system,
-				log_levels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn],
+				log_levels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn],
 			});
 		});
 

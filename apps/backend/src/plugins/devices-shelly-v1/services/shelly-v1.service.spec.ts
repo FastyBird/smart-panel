@@ -10,6 +10,7 @@ import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -24,6 +25,7 @@ import {
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
 import { NormalizedDeviceChangeEvent, NormalizedDeviceEvent } from '../interfaces/shellies.interface';
+import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
@@ -492,11 +494,13 @@ describe('ShellyV1Service', () => {
 		it('should ignore new devices when discovery is disabled', async () => {
 			// Update config to disable discovery
 			const configService = module.get(ConfigService);
-			jest.spyOn(configService, 'getPluginConfig').mockReturnValue({
+			const mockConfig: ShellyV1ConfigModel = {
 				enabled: true,
+				type: 'devices-shelly-v1',
 				discovery: { enabled: false, interface: null },
 				timeouts: { requestTimeout: 10, staleTimeout: 30 },
-			} as any);
+			} as ShellyV1ConfigModel;
+			jest.spyOn(configService, 'getPluginConfig').mockReturnValue(mockConfig);
 
 			const discoveryEvent: NormalizedDeviceEvent = {
 				id: 'shelly1pm-NEW123',
@@ -519,11 +523,13 @@ describe('ShellyV1Service', () => {
 		it('should still process existing devices when discovery is disabled', async () => {
 			// Update config to disable discovery
 			const configService = module.get(ConfigService);
-			jest.spyOn(configService, 'getPluginConfig').mockReturnValue({
+			const mockConfig: ShellyV1ConfigModel = {
 				enabled: true,
+				type: 'devices-shelly-v1',
 				discovery: { enabled: false, interface: null },
 				timeouts: { requestTimeout: 10, staleTimeout: 30 },
-			} as any);
+			} as ShellyV1ConfigModel;
+			jest.spyOn(configService, 'getPluginConfig').mockReturnValue(mockConfig);
 
 			const discoveryEvent: NormalizedDeviceEvent = {
 				id: 'shelly1pm-ABC123',

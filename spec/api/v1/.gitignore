@@ -1,0 +1,7 @@
+# Ignore the generated OpenAPI spec in version control
+openapi.json
+
+# Ignore any temporary or generated client files
+generated/
+*.tmp
+*.bak

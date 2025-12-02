@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { usersStoreKey } from '../store/keys';
 import type { IUser } from '../store/users.store.types';
 import { FormResult, type FormResultType } from '../users.constants';

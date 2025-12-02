@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -7,7 +8,7 @@ import {
 	Delete,
 	ForbiddenException,
 	Get,
-	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -15,18 +16,32 @@ import {
 	Patch,
 	Post,
 	Req,
+	Res,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { AUTH_MODULE_PREFIX, AuthenticatedRequest } from '../auth.constants';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiForbiddenResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+} from '../../swagger/decorators/api-documentation.decorator';
+import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
+import { AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
 import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
 
+@ApiTags(AUTH_MODULE_API_TAG_NAME)
 @Controller('tokens')
 export class TokensController {
 	private readonly logger = new Logger(TokensController.name);
@@ -36,31 +51,74 @@ export class TokensController {
 		private readonly tokensMapperService: TokensTypeMapperService,
 	) {}
 
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Get all tokens',
+		description: 'Retrieve all authentication tokens',
+		operationId: 'get-auth-module-tokens',
+	})
+	@ApiSuccessResponse(TokensResponseModel, 'Tokens retrieved successfully')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	async findAll(): Promise<TokenEntity[]> {
+	async findAll(): Promise<TokensResponseModel> {
 		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
 
 		const tokens = await this.tokensService.findAll<TokenEntity>();
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${tokens.length} tokens`);
+		const response = new TokensResponseModel();
+		response.data = tokens;
 
-		return tokens;
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Get token by ID',
+		description: 'Retrieve a specific authentication token by its ID',
+		operationId: 'get-auth-module-token',
+	})
+	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
+	@ApiSuccessResponse(TokenResponseModel, 'Token retrieved successfully')
+	@ApiNotFoundResponse('Token not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TokenEntity> {
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TokenResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching token id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found token id=${token.id}`);
 
-		return token;
+		const response = new TokenResponseModel();
+		response.data = token;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Create new token',
+		description: 'Create a new authentication token',
+		operationId: 'create-auth-module-token',
+	})
+	@ApiBody({
+		description: 'Token creation data with discriminated type',
+		type: ReqCreateTokenDto,
+	})
+	@ApiCreatedSuccessResponse(
+		TokenResponseModel,
+		'Token created successfully',
+		'/api/v1/auth-module/auth/123e4567-e89b-12d3-a456-426614174000',
+	)
+	@ApiBadRequestResponse('Invalid token data or unsupported token type')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${AUTH_MODULE_PREFIX}/auth/:id`)
-	async create(@Body() createDto: ReqCreateTokenDto): Promise<TokenEntity> {
+	async create(
+		@Body() createDto: ReqCreateTokenDto,
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<TokenResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new token');
 
 		const type: string | undefined = createDto.data.type;
@@ -75,8 +133,8 @@ export class TokensController {
 
 		try {
 			mapping = this.tokensMapperService.getMapping<TokenEntity, CreateTokenDto, UpdateTokenDto>(type);
-		} catch (error) {
-			const err = error as Error;
+		} catch (error: unknown) {
+			const err = error instanceof Error ? error : new Error('Unknown token mapping error');
 
 			this.logger.error(`[ERROR] Unsupported token type: ${type}`, { message: err.message, stack: err.stack });
 
@@ -107,14 +165,35 @@ export class TokensController {
 
 		this.logger.debug(`[CREATE] Successfully created token id=${token.id}`);
 
-		return token;
+		setLocationHeader(req, res, AUTH_MODULE_PREFIX, 'auth', token.id);
+
+		const response = new TokenResponseModel();
+
+		response.data = token;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Update token',
+		description: 'Update an existing authentication token',
+		operationId: 'update-auth-module-token',
+	})
+	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
+	@ApiBody({
+		description: 'Token update data (only certain fields can be updated)',
+		type: ReqUpdateTokenDto,
+	})
+	@ApiSuccessResponse(TokenResponseModel, 'Token updated successfully')
+	@ApiBadRequestResponse('Invalid token data or unsupported token type')
+	@ApiNotFoundResponse('Token not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateTokenDto,
-	): Promise<TokenEntity> {
+	): Promise<TokenResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for token id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
@@ -123,8 +202,8 @@ export class TokensController {
 
 		try {
 			mapping = this.tokensMapperService.getMapping<TokenEntity, CreateTokenDto, UpdateTokenDto>(token.type);
-		} catch (error) {
-			const err = error as Error;
+		} catch (error: unknown) {
+			const err = error instanceof Error ? error : new Error('Unknown token mapping error');
 
 			this.logger.error(`[ERROR] Unsupported token type for update: ${token.type}`, {
 				message: err.message,
@@ -160,9 +239,25 @@ export class TokensController {
 
 		this.logger.debug(`[UPDATE] Successfully updated token id=${updatedToken.id}`);
 
-		return updatedToken;
+		const response = new TokenResponseModel();
+
+		response.data = updatedToken;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [AUTH_MODULE_API_TAG_NAME],
+		summary: 'Delete token',
+		description: 'Delete an authentication token',
+		operationId: 'delete-auth-module-token',
+	})
+	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
+	@ApiNoContentResponse({ description: 'Token deleted successfully' })
+	@ApiForbiddenResponse('Cannot delete your own access token')
+	@ApiNotFoundResponse('Token not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@HttpCode(204)
 	@Delete(':id')
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

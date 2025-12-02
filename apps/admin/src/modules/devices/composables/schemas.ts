@@ -3,17 +3,17 @@ import { z } from 'zod';
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
-	DevicesModuleDeviceStatusStatus,
-} from '../../../openapi';
+	DevicesModuleDeviceConnectionStatus,
+} from '../../../openapi.constants';
 
 export const DevicesFilterSchema = z.object({
 	search: z.string().optional(),
 	types: z.array(z.string()),
 	state: z.enum(['all', 'offline', 'online']).default('all'),
-	states: z.array(z.nativeEnum(DevicesModuleDeviceStatusStatus)),
+	states: z.array(z.nativeEnum(DevicesModuleDeviceConnectionStatus)),
 	categories: z.array(z.nativeEnum(DevicesModuleDeviceCategory)),
 	enabled: z.enum(['all', 'enabled', 'disabled']).default('all'),
 });
@@ -29,5 +29,5 @@ export const ChannelsPropertiesFilterSchema = z.object({
 	channels: z.array(z.string()),
 	categories: z.array(z.nativeEnum(DevicesModuleChannelPropertyCategory)),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	dataTypes: z.array(z.nativeEnum(DevicesModuleChannelPropertyData_type)),
+	dataTypes: z.array(z.nativeEnum(DevicesModuleChannelPropertyDataType)),
 });

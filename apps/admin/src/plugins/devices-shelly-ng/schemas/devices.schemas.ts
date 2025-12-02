@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { DeviceAddFormSchema, DeviceEditFormSchema } from '../../../modules/devices';
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 
 export const ShellyNgDeviceAddFormSchema = DeviceAddFormSchema.extend({
 	password: z.string().nullable().optional(),

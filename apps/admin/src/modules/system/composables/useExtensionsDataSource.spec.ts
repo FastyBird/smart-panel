@@ -5,12 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deepClone, injectStoresManager, useListQuery } from '../../../common';
-import {
-	SystemModuleExtensionAdminSurface,
-	SystemModuleExtensionBackendSurface,
-	SystemModuleExtensionBaseKind,
-	SystemModuleExtensionBaseSource,
-} from '../../../openapi';
+import { SystemModuleExtensionKind, SystemModuleExtensionSource, SystemModuleExtensionSurface } from '../../../openapi.constants';
 import type { IExtension, IExtensionsStateSemaphore } from '../store/extensions.store.types';
 
 import { useExtensionsDataSource } from './useExtensionsDataSource';
@@ -52,24 +47,24 @@ describe('useExtensionsDataSource', (): void => {
 			{
 				admin: {
 					name: '@fastybird/dummy-admin',
-					kind: SystemModuleExtensionBaseKind.plugin,
-					surface: SystemModuleExtensionAdminSurface.admin,
+					kind: SystemModuleExtensionKind.plugin,
+					surface: SystemModuleExtensionSurface.admin,
 					displayName: 'Some dummy admin plugin',
 					description: null,
 					version: '1.0.0',
-					source: SystemModuleExtensionBaseSource.runtime,
+					source: SystemModuleExtensionSource.runtime,
 					remoteUrl: 'http://admin.generated.url.local',
 				},
 			},
 			{
 				backend: {
 					name: '@fastybird/other-dummy-backend',
-					kind: SystemModuleExtensionBaseKind.plugin,
-					surface: SystemModuleExtensionBackendSurface.backend,
+					kind: SystemModuleExtensionKind.plugin,
+					surface: SystemModuleExtensionSurface.backend,
 					displayName: 'Some other dummy backend plugin',
 					description: null,
 					version: '1.0.0',
-					source: SystemModuleExtensionBaseSource.bundled,
+					source: SystemModuleExtensionSource.bundled,
 					routePrefix: '/plugins/route-prefix',
 				},
 			},

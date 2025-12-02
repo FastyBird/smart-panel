@@ -1,22 +1,28 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
-import type { components } from '../../../openapi';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+
 import { ChannelCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
 
 import { CreateDeviceChannelControlDto } from './create-device-channel-control.dto';
 import { CreateDeviceChannelPropertyDto } from './create-device-channel-property.dto';
 
-type ReqCreateDeviceChannel = components['schemas']['DevicesModuleReqCreateDeviceChannel'];
-type CreateDeviceChannel = components['schemas']['DevicesModuleCreateDeviceChannel'];
-
-export class CreateDeviceChannelDto implements CreateDeviceChannel {
+@ApiSchema({ name: 'DevicesModuleCreateDeviceChannel' })
+export class CreateDeviceChannelDto {
+	@ApiPropertyOptional({
+		description: 'Channel ID',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
 
+	@ApiProperty({ description: 'Channel type', type: 'string', example: 'generic' })
 	@Expose()
 	@IsNotEmpty({
 		message: '[{"field":"type","reason":"Type must be a valid string representing a supported channel type."}]',
@@ -26,6 +32,11 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	})
 	type: string;
 
+	@ApiProperty({
+		description: 'Channel category',
+		enum: ChannelCategory,
+		example: ChannelCategory.GENERIC,
+	})
 	@Expose()
 	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid channel category."}]',
@@ -35,6 +46,12 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	})
 	category: ChannelCategory;
 
+	@ApiPropertyOptional({
+		description: 'Channel identifier',
+		type: 'string',
+		example: 'main',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({
@@ -46,13 +63,20 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel unique identifier."}]',
 	})
 	@ValidateIf((_, value) => value !== null)
-	identifier?: string;
+	identifier?: string | null;
 
+	@ApiProperty({ description: 'Channel name', type: 'string', example: 'Main Channel' })
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;
 
+	@ApiPropertyOptional({
+		description: 'Channel description',
+		type: 'string',
+		nullable: true,
+		example: 'Main device channel',
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
@@ -60,6 +84,11 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	@ValidateIf((_, value) => value !== null)
 	description?: string | null;
 
+	@ApiPropertyOptional({
+		description: 'Channel controls',
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateDeviceChannelControlDto) },
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"controls","reason":"Controls must be an array."}]' })
@@ -70,6 +99,11 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	})
 	controls?: CreateDeviceChannelControlDto[];
 
+	@ApiPropertyOptional({
+		description: 'Channel properties',
+		type: 'array',
+		items: { $ref: getSchemaPath(CreateDeviceChannelPropertyDto) },
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"properties","reason":"Properties must be an array."}]' })
@@ -78,7 +112,9 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	properties?: CreateDeviceChannelPropertyDto[];
 }
 
-export class ReqCreateDeviceChannelDto implements ReqCreateDeviceChannel {
+@ApiSchema({ name: 'DevicesModuleReqCreateDeviceChannel' })
+export class ReqCreateDeviceChannelDto {
+	@ApiProperty({ description: 'Device channel data', type: () => CreateDeviceChannelDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateDeviceChannelDto)

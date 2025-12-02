@@ -1,7 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/config_module_req_update_section.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_module_update_display_type.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/display.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
@@ -119,7 +118,6 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
     final updated = await _updateConfiguration(
       section: Section.display,
       data: ConfigModuleReqUpdateSectionDataUnionDisplay(
-        type: ConfigModuleUpdateDisplayType.display,
         darkMode: darkMode ?? _getConfig().hasDarkMode,
         brightness: brightness ?? _getConfig().brightness,
         screenLockDuration:

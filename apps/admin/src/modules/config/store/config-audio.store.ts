@@ -5,7 +5,11 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import { ConfigModuleAudioType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
+import type {
+	ConfigModuleGetConfigSectionOperation,
+	ConfigModuleUpdateAudioOperation,
+} from '../../../openapi.constants';
+import { ConfigModuleAudioType, ConfigModuleSection } from '../../../openapi.constants';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -82,7 +86,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 					const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
 						params: {
 							path: {
-								section: PathsConfigModuleConfigSectionGetParametersPathSection.audio,
+								section: ConfigModuleSection.audio,
 							},
 						},
 					});
@@ -98,7 +102,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 					let errorReason: string | null = 'Failed to fetch audio config.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
+						errorReason = getErrorReason<ConfigModuleGetConfigSectionOperation>(error, errorReason);
 					}
 
 					throw new ConfigApiException(errorReason, response.status);
@@ -148,7 +152,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 				const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
 					params: {
 						path: {
-							section: PathsConfigModuleConfigSectionGetParametersPathSection.audio,
+							section: ConfigModuleSection.audio,
 						},
 					},
 					body: {
@@ -170,7 +174,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 				let errorReason: string | null = 'Failed to update audio config.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
+					errorReason = getErrorReason<ConfigModuleUpdateAudioOperation>(error, errorReason);
 				}
 
 				throw new ConfigApiException(errorReason, response.status);

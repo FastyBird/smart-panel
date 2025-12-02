@@ -250,7 +250,7 @@
 					:property="scope.row"
 					:filters="innerFilters"
 					:with-filters="props.withFilters"
-					@filter-by="(value: DevicesModuleChannelPropertyData_type, add: boolean) => onFilterBy('dataType', value, add)"
+					@filter-by="(value: DevicesModuleChannelPropertyDataType, add: boolean) => onFilterBy('dataType', value, add)"
 				/>
 			</template>
 		</el-table-column>
@@ -311,9 +311,9 @@ import { useVModel } from '@vueuse/core';
 import { IconWithChild, useBreakpoints } from '../../../../common';
 import {
 	DevicesModuleChannelPropertyCategory,
-	type DevicesModuleChannelPropertyData_type,
+	type DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../../openapi';
+} from '../../../../openapi.constants';
 import type { IChannelsPropertiesFilter } from '../../composables/types';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 import type { IChannel } from '../../store/channels.store.types';
@@ -398,7 +398,7 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		let filteredDataTypes = innerFilters.value.dataTypes;
 
 		if (add === true) {
-			filteredDataTypes.push(data as DevicesModuleChannelPropertyData_type);
+			filteredDataTypes.push(data as DevicesModuleChannelPropertyDataType);
 		} else {
 			filteredDataTypes = innerFilters.value.dataTypes.filter((item) => item !== data);
 		}

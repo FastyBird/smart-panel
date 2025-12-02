@@ -27,7 +27,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElFormItem, ElOption, ElSelect } from 'element-plus';
 
-import type { DevicesModuleChannelPropertyPermissions } from '../../../../openapi';
+import type { DevicesModuleChannelPropertyPermissions } from '../../../../openapi.constants';
 import { useChannelPropertyFormSpec } from '../../composables/useChannelPropertyFormSpec';
 
 import type { IChannelPropertyFormPermissionsProps } from './channel-property-form-permissions.types';

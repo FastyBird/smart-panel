@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigModuleAudioType } from '../../../openapi';
+import { ConfigModuleAudioType } from '../../../openapi.constants';
 import type { IConfigAudio } from '../store/config-audio.store.types';
 
 import { useConfigAudio } from './useConfigAudio';

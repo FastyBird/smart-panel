@@ -1,23 +1,45 @@
 import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
 import {
-	HomeAssistantDeviceRegistryResponseResultModel,
-	HomeAssistantEntityRegistryResponseResultModel,
-} from '../models/home-assistant.model';
+	HomeAssistantDeviceRegistryResponseModel,
+	HomeAssistantEntityRegistryResponseModel,
+} from '../models/home-assistant-response.model';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 
+@ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME)
 @Controller('registry')
 export class HomeAssistantRegistryController {
 	private readonly logger = new Logger(HomeAssistantRegistryController.name);
 
 	constructor(private readonly homeAssistantWsService: HomeAssistantWsService) {}
 
+	@ApiOperation({
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
+		summary: 'Retrieve all Home Assistant devices from registry',
+		description: 'Fetches a list of all devices registered in the Home Assistant device registry.',
+		operationId: 'get-devices-home-assistant-plugin-device-registry',
+	})
+	@ApiSuccessResponse(
+		HomeAssistantDeviceRegistryResponseModel,
+		'A list of Home Assistant devices from registry successfully retrieved',
+	)
+	@ApiNotFoundResponse('Home Assistant devices registry could not be loaded')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('devices')
-	async findAllDevices(): Promise<HomeAssistantDeviceRegistryResponseResultModel[]> {
+	async findAllDevices(): Promise<HomeAssistantDeviceRegistryResponseModel> {
 		this.logger.debug('[HOME ASSISTANT][REGISTRY CONTROLLER] Fetching all Home Assistant devices from registry');
 
 		try {
@@ -25,7 +47,9 @@ export class HomeAssistantRegistryController {
 
 			this.logger.debug(`[HOME ASSISTANT][REGISTRY CONTROLLER] Retrieved ${devices.length} devices from registry`);
 
-			return devices;
+			const response = new HomeAssistantDeviceRegistryResponseModel();
+			response.data = devices;
+			return response;
 		} catch (error) {
 			const err = error as Error;
 
@@ -52,8 +76,21 @@ export class HomeAssistantRegistryController {
 		}
 	}
 
+	@ApiOperation({
+		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
+		summary: 'Retrieve all Home Assistant entities from registry',
+		description: 'Fetches a list of all entities registered in the Home Assistant entity registry.',
+		operationId: 'get-devices-home-assistant-plugin-entity-registry',
+	})
+	@ApiSuccessResponse(
+		HomeAssistantEntityRegistryResponseModel,
+		'A list of Home Assistant entities from registry successfully retrieved',
+	)
+	@ApiNotFoundResponse('Home Assistant entities registry could not be loaded')
+	@ApiUnprocessableEntityResponse('Devices Home Assistant plugin is not properly configured')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('entities')
-	async findAllEntities(): Promise<HomeAssistantEntityRegistryResponseResultModel[]> {
+	async findAllEntities(): Promise<HomeAssistantEntityRegistryResponseModel> {
 		this.logger.debug('[HOME ASSISTANT][REGISTRY CONTROLLER] Fetching all Home Assistant entities from registry');
 
 		try {
@@ -61,7 +98,9 @@ export class HomeAssistantRegistryController {
 
 			this.logger.debug(`[HOME ASSISTANT][REGISTRY CONTROLLER] Retrieved ${entities.length} entities from registry`);
 
-			return entities;
+			const response = new HomeAssistantEntityRegistryResponseModel();
+			response.data = entities;
+			return response;
 		} catch (error) {
 			const err = error as Error;
 

@@ -278,7 +278,7 @@ import {
 	useFlashMessage,
 	useUuid,
 } from '../../../common';
-import type { DevicesModuleChannelCategory } from '../../../openapi';
+import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { ChannelDetail, DeviceDetail } from '../components/components';
 import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification } from '../composables/composables';
 import { RouteNames } from '../devices.constants';

@@ -4,9 +4,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
+import { CreatePageDto } from '../../modules/dashboard/dto/create-page.dto';
+import { UpdatePageDto } from '../../modules/dashboard/dto/update-page.dto';
+import { PageEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { PageCreateBuilderRegistryService } from '../../modules/dashboard/services/page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from '../../modules/dashboard/services/page-relations-loader-registry.service';
 import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-type-mapper.service';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { CreateTilesPageDto } from './dto/create-page.dto';
 import { TilesUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -14,11 +20,12 @@ import { UpdateTilesPageDto } from './dto/update-page.dto';
 import { TilesPageEntity } from './entities/pages-tiles.entity';
 import { TilesConfigModel } from './models/config.model';
 import { PAGES_TILES_PLUGIN_NAME, PAGES_TILES_TYPE } from './pages-tiles.constants';
+import { PAGES_TILES_PLUGIN_SWAGGER_EXTRA_MODELS } from './pages-tiles.openapi';
 import { TilesPageNestedBuilderService } from './services/page-create-nested-builder.service';
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([TilesPageEntity]), DashboardModule, ConfigModule],
+	imports: [TypeOrmModule.forFeature([TilesPageEntity]), DashboardModule, ConfigModule, SwaggerModule],
 	providers: [PageRelationsLoaderService, TilesPageNestedBuilderService, TilesPageNestedBuilderService],
 })
 export class PagesTilesPlugin {
@@ -29,6 +36,8 @@ export class PagesTilesPlugin {
 		private readonly pageRelationsLoaderService: PageRelationsLoaderService,
 		private readonly pageCreateBuilderRegistryService: PageCreateBuilderRegistryService,
 		private readonly tilesPageNestedBuilderService: TilesPageNestedBuilderService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 	) {}
 
 	onModuleInit() {
@@ -48,5 +57,30 @@ export class PagesTilesPlugin {
 		this.pageRelationsLoaderRegistryService.register(this.pageRelationsLoaderService);
 
 		this.pageCreateBuilderRegistryService.register(this.tilesPageNestedBuilderService);
+
+		for (const model of PAGES_TILES_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
+
+		this.discriminatorRegistry.register({
+			parentClass: PageEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: PAGES_TILES_TYPE,
+			modelClass: TilesPageEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreatePageDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: PAGES_TILES_TYPE,
+			modelClass: CreateTilesPageDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdatePageDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: PAGES_TILES_TYPE,
+			modelClass: UpdateTilesPageDto,
+		});
 	}
 }

@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDisplayType } from '../../../openapi';
+import { ConfigModuleDisplayType } from '../../../openapi.constants';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 

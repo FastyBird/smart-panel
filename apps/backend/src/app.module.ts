@@ -1,4 +1,3 @@
-import { CommandModule } from 'nestjs-command';
 import path from 'path';
 
 import { CacheModule } from '@nestjs/cache-manager';
@@ -25,6 +24,7 @@ import { PlatformModule } from './modules/platform/platform.module';
 import { SeedModule } from './modules/seed/seeding.module';
 import { STATS_MODULE_PREFIX } from './modules/stats/stats.constants';
 import { StatsModule } from './modules/stats/stats.module';
+import { SwaggerModule } from './modules/swagger/swagger.module';
 import { SYSTEM_MODULE_PREFIX } from './modules/system/system.constants';
 import { SystemModule } from './modules/system/system.module';
 import { USERS_MODULE_PREFIX } from './modules/users/users.constants';
@@ -172,7 +172,6 @@ export class AppModule {
 				]),
 				AuthModule,
 				ApiModule,
-				CommandModule,
 				ConfigModule,
 				DashboardModule,
 				DevicesModule,
@@ -183,6 +182,7 @@ export class AppModule {
 				UsersModule,
 				WeatherModule,
 				WebsocketModule,
+				SwaggerModule,
 				DevicesThirdPartyPlugin,
 				DevicesHomeAssistantPlugin,
 				DevicesShellyNgPlugin,

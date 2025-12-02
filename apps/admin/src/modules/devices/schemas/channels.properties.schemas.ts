@@ -2,9 +2,9 @@ import { z } from 'zod';
 
 import {
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 export const ChannelPropertyAddFormSchema = z.object({
 	id: z.string().uuid().optional(),
@@ -14,7 +14,7 @@ export const ChannelPropertyAddFormSchema = z.object({
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
@@ -43,7 +43,7 @@ export const ChannelPropertyEditFormSchema = z.object({
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty().nullable().optional(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),

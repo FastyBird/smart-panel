@@ -8,15 +8,32 @@ import { ConfigModule } from '../../modules/config/config.module';
 import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { CreateChannelPropertyDto } from '../../modules/devices/dto/create-channel-property.dto';
+import { CreateChannelDto } from '../../modules/devices/dto/create-channel.dto';
+import { CreateDeviceDto } from '../../modules/devices/dto/create-device.dto';
+import { UpdateChannelPropertyDto } from '../../modules/devices/dto/update-channel-property.dto';
+import { UpdateChannelDto } from '../../modules/devices/dto/update-channel.dto';
+import { UpdateDeviceDto } from '../../modules/devices/dto/update-device.dto';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../modules/devices/entities/devices.entity';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { HomeAssistantDiscoveredDevicesController } from './controllers/home-assistant-discovered-devices.controller';
 import { HomeAssistantRegistryController } from './controllers/home-assistant-registry.controller';
 import { HomeAssistantStatesController } from './controllers/home-assistant-states.controller';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from './devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	DEVICES_HOME_ASSISTANT_TYPE,
+} from './devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-home-assistant.openapi';
 import { CreateHomeAssistantChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateHomeAssistantChannelDto } from './dto/create-channel.dto';
 import { CreateHomeAssistantDeviceDto } from './dto/create-device.dto';
@@ -43,6 +60,11 @@ import { HomeAssistantWsService } from './services/home-assistant.ws.service';
 import { StateChangedEventService } from './services/state-changed.event.service';
 import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
 
+@ApiTag({
+	tagName: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	displayName: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	description: DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		NestConfigModule,
@@ -53,6 +75,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		]),
 		DevicesModule,
 		ConfigModule,
+		SwaggerModule,
 	],
 	providers: [
 		HomeAssistantHttpService,
@@ -97,6 +120,8 @@ export class DevicesHomeAssistantPlugin {
 		private readonly homeAssistantWsService: HomeAssistantWsService,
 		private readonly stateChangedEventService: StateChangedEventService,
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 	) {}
 
 	onModuleInit() {
@@ -144,11 +169,78 @@ export class DevicesHomeAssistantPlugin {
 
 		this.platformRegistryService.register(this.homeAssistantDevicePlatform);
 
+		for (const model of DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
+
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantBinarySensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantClimateEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantLightEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSwitchEntityMapper);
+
+		this.discriminatorRegistry.register({
+			parentClass: DeviceEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: HomeAssistantDeviceEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: CreateHomeAssistantDeviceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateDeviceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: UpdateHomeAssistantDeviceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: ChannelEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: HomeAssistantChannelEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateChannelDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: CreateHomeAssistantChannelDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateChannelDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: UpdateHomeAssistantChannelDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: ChannelPropertyEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: HomeAssistantChannelPropertyEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateChannelPropertyDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: CreateHomeAssistantChannelPropertyDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateChannelPropertyDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
+			modelClass: UpdateHomeAssistantChannelPropertyDto,
+		});
 	}
 
 	onApplicationBootstrap() {

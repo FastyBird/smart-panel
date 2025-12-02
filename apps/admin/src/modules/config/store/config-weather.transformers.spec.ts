@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi';
+import { ConfigModuleWeatherCityNameLocationType, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigWeatherEditActionPayload, IConfigWeatherRes } from './config-weather.store.types';
@@ -23,14 +23,14 @@ vi.mock('../../../common', async () => {
 const validConfigWeatherResponse: IConfigWeatherRes = {
 	type: ConfigModuleWeatherType.weather,
 	city_name: 'Prague,CZ',
-	location_type: ConfigModuleWeatherCityNameLocation_type.city_name,
+	location_type: ConfigModuleWeatherCityNameLocationType.city_name,
 	unit: ConfigModuleWeatherUnit.celsius,
 	open_weather_api_key: null,
 } as IConfigWeatherRes;
 
 const validConfigWeatherUpdatePayload: IConfigWeatherEditActionPayload['data'] = {
 	cityName: 'Prague,CZ',
-	locationType: ConfigModuleWeatherCityNameLocation_type.city_name,
+	locationType: ConfigModuleWeatherCityNameLocationType.city_name,
 	unit: ConfigModuleWeatherUnit.celsius,
 	openWeatherApiKey: null,
 };
@@ -43,7 +43,7 @@ describe('Config Weather Transformers', (): void => {
 			expect(result).toEqual({
 				type: ConfigModuleWeatherType.weather,
 				cityName: 'Prague,CZ',
-				locationType: ConfigModuleWeatherCityNameLocation_type.city_name,
+				locationType: ConfigModuleWeatherCityNameLocationType.city_name,
 				unit: ConfigModuleWeatherUnit.celsius,
 				openWeatherApiKey: null,
 			});
@@ -63,7 +63,7 @@ describe('Config Weather Transformers', (): void => {
 			expect(result).toEqual({
 				type: ConfigModuleWeatherType.weather,
 				city_name: 'Prague,CZ',
-				location_type: ConfigModuleWeatherCityNameLocation_type.city_name,
+				location_type: ConfigModuleWeatherCityNameLocationType.city_name,
 				unit: ConfigModuleWeatherUnit.celsius,
 				open_weather_api_key: null,
 			});

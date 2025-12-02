@@ -3,12 +3,14 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.mod
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SystemLoggerService } from '../../modules/system/services/system-logger.service';
 import { SystemModule } from '../../modules/system/system.module';
 
-import { RotatingFileLoggerUpdatePluginConfigDto } from './dto/update-config.dto';
+import { RotatingFileUpdateConfigDto } from './dto/update-config.dto';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from './logger-rotating-file.constants';
-import { RotatingFileLoggerConfigModel } from './models/config.model';
+import { LOGGER_ROTATING_FILE_PLUGIN_SWAGGER_EXTRA_MODELS } from './logger-rotating-file.openapi';
+import { RotatingFileConfigModel } from './models/config.model';
 import { FileLoggerService } from './services/file-logger.service';
 
 @Module({
@@ -20,16 +22,21 @@ export class LoggerRotatingFilePlugin {
 		private readonly fileLoggerService: FileLoggerService,
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly systemLoggerService: SystemLoggerService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {}
 
 	onModuleInit() {
-		this.configMapper.registerMapping<RotatingFileLoggerConfigModel, RotatingFileLoggerUpdatePluginConfigDto>({
+		this.configMapper.registerMapping<RotatingFileConfigModel, RotatingFileUpdateConfigDto>({
 			type: LOGGER_ROTATING_FILE_PLUGIN_NAME,
-			class: RotatingFileLoggerConfigModel,
-			configDto: RotatingFileLoggerUpdatePluginConfigDto,
+			class: RotatingFileConfigModel,
+			configDto: RotatingFileUpdateConfigDto,
 		});
 
 		this.systemLoggerService.register(this.fileLoggerService);
+
+		for (const model of LOGGER_ROTATING_FILE_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	async onApplicationBootstrap() {

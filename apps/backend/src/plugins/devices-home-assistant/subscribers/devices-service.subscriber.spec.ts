@@ -13,7 +13,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { HomeAssistantChannelEntity, HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
-import { HomeAssistantDeviceRegistryResponseResultModel } from '../models/home-assistant.model';
+import { HomeAssistantDeviceRegistryResultModel } from '../models/home-assistant.model';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 
 import { DevicesServiceSubscriber } from './devices-service.subscriber';
@@ -55,6 +55,7 @@ describe('DevicesServiceSubscriber', () => {
 		channelsService = module.get(ChannelsService);
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {
@@ -93,7 +94,7 @@ describe('DevicesServiceSubscriber', () => {
 			swVersion: '1.2.3',
 			hwVersion: 'A1',
 			connections: [['mac', 'c0:ff:ee:00:00:01']],
-		} as HomeAssistantDeviceRegistryResponseResultModel;
+		} as HomeAssistantDeviceRegistryResultModel;
 
 		haWsService.getDevicesRegistry.mockResolvedValue([haDevice]);
 

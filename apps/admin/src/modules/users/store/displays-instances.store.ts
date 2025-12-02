@@ -5,7 +5,13 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type {
+	UsersModuleGetDisplayInstanceOperation,
+	UsersModuleGetDisplayInstancesOperation,
+	UsersModuleCreateDisplayInstanceOperation,
+	UsersModuleUpdateDisplayInstanceOperation,
+	UsersModuleDeleteDisplayInstanceOperation,
+} from '../../../openapi.constants';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 import { UsersApiException, UsersException, UsersValidationException } from '../users.exceptions';
 
@@ -140,7 +146,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 				let errorReason: string | null = 'Failed to fetch display.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-users-module-display-instance']>(error, errorReason);
+					errorReason = getErrorReason<UsersModuleGetDisplayInstanceOperation>(error, errorReason);
 				}
 
 				throw new UsersApiException(errorReason, response.status);
@@ -177,7 +183,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 			let errorReason: string | null = 'Failed to fetch displays.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['get-users-module-displays-instances']>(error, errorReason);
+				errorReason = getErrorReason<UsersModuleGetDisplayInstancesOperation>(error, errorReason);
 			}
 
 			throw new UsersApiException(errorReason, response.status);
@@ -239,7 +245,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 					let errorReason: string | null = 'Failed to create display.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['create-users-module-display-instance']>(error, errorReason);
+						errorReason = getErrorReason<UsersModuleCreateDisplayInstanceOperation>(error, errorReason);
 					}
 
 					throw new UsersApiException(errorReason, response.status);
@@ -316,7 +322,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 					let errorReason: string | null = 'Failed to update display.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['update-users-module-display-instance']>(error, errorReason);
+						errorReason = getErrorReason<UsersModuleUpdateDisplayInstanceOperation>(error, errorReason);
 					}
 
 					throw new UsersApiException(errorReason, response.status);
@@ -367,7 +373,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 				let errorReason: string | null = 'Failed to create display.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-users-module-display-instance']>(error, errorReason);
+					errorReason = getErrorReason<UsersModuleCreateDisplayInstanceOperation>(error, errorReason);
 				}
 
 				throw new UsersApiException(errorReason, response.status);
@@ -413,7 +419,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 					let errorReason: string | null = 'Remove account failed.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['delete-users-module-display-instance']>(error, errorReason);
+						errorReason = getErrorReason<UsersModuleDeleteDisplayInstanceOperation>(error, errorReason);
 					}
 
 					throw new UsersApiException(errorReason, response.status);

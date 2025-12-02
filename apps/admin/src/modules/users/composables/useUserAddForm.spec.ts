@@ -4,7 +4,7 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { FormResult } from '../../auth';
 import type { UsersStore } from '../store/users.store.types';
 import { UsersApiException } from '../users.exceptions';

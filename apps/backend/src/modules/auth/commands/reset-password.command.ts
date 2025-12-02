@@ -1,34 +1,32 @@
-import { Command, Positional } from 'nestjs-command';
+import { Command, CommandRunner } from 'nest-commander';
 
 import { Injectable, Logger } from '@nestjs/common';
 
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 
+@Command({
+	name: 'auth:reset',
+	description: 'Reset application owner password',
+	arguments: '<username> <password>',
+})
 @Injectable()
-export class ResetPasswordCommand {
+export class ResetPasswordCommand extends CommandRunner {
 	private readonly logger = new Logger(ResetPasswordCommand.name);
 
-	constructor(private readonly service: UsersService) {}
+	constructor(private readonly service: UsersService) {
+		super();
+	}
 
-	@Command({
-		command: 'auth:reset <username> <password>',
-		describe: 'Reset application owner password',
-	})
-	async reset(
-		@Positional({
-			name: 'username',
-			describe: 'the owner username',
-			type: 'string',
-		})
-		username: string,
-		@Positional({
-			name: 'password',
-			describe: 'the new password',
-			type: 'string',
-		})
-		password: string,
-	) {
+	async run(passedParams: string[], _options?: Record<string, any>): Promise<void> {
+		const username = passedParams[0];
+		const password = passedParams[1];
+
+		if (!username || !password) {
+			console.error('\x1b[31m❌ Error: username and password are required\n');
+			console.error('Usage: auth:reset <username> <password>');
+			process.exit(1);
+		}
 		const user = await this.service.findByUsername(username);
 
 		if (user === null || user.role !== UserRole.OWNER) {

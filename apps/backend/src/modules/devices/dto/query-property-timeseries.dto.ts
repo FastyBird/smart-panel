@@ -8,6 +8,8 @@ import {
 	ValidatorConstraintInterface,
 } from 'class-validator';
 
+import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 /**
  * Custom validator to ensure:
  * - either both `from` and `to` are provided, or neither
@@ -41,17 +43,35 @@ export class TimeRangeValidator implements ValidatorConstraintInterface {
 	}
 }
 
+@ApiSchema({ name: 'DevicesModuleQueryPropertyTimeseries' })
 export class QueryPropertyTimeseriesDto {
+	@ApiPropertyOptional({
+		description: 'Start date for timeseries query',
+		type: 'string',
+		format: 'date-time',
+		example: '2024-01-01T00:00:00Z',
+	})
 	@IsOptional()
 	@IsDateString()
 	@Validate(TimeRangeValidator)
 	from?: string;
 
+	@ApiPropertyOptional({
+		description: 'End date for timeseries query',
+		type: 'string',
+		format: 'date-time',
+		example: '2024-01-31T23:59:59Z',
+	})
 	@IsOptional()
 	@IsDateString()
 	@Validate(TimeRangeValidator)
 	to?: string;
 
+	@ApiPropertyOptional({
+		description: 'Time bucket aggregation interval',
+		enum: ['1m', '5m', '15m', '1h'],
+		example: '1h',
+	})
 	@IsOptional()
 	@IsIn(['1m', '5m', '15m', '1h'])
 	bucket?: '1m' | '5m' | '15m' | '1h';

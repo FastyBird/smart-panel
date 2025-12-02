@@ -5,7 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
-import { DevicesModuleChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';

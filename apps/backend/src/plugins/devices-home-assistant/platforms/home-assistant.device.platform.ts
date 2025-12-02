@@ -10,7 +10,7 @@ import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
-import { ServiceRequestDto } from '../dto/home-assistant-service-request.dto';
+import { HomeAssistantServiceRequestDto } from '../dto/home-assistant-service-request.dto';
 import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
@@ -84,7 +84,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 					...(setState.attributes ? Object.fromEntries(setState.attributes) : []),
 				};
 
-				if (!(await this.validateDto(ServiceRequestDto, payload))) {
+				if (!(await this.validateDto(HomeAssistantServiceRequestDto, payload))) {
 					return false;
 				}
 

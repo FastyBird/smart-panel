@@ -4,20 +4,33 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
+import { CreateTileDto } from '../../modules/dashboard/dto/create-tile.dto';
+import { UpdateTileDto } from '../../modules/dashboard/dto/update-tile.dto';
+import { TileEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { TileRelationsLoaderRegistryService } from '../../modules/dashboard/services/tile-relations-loader-registry.service';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { CreateDevicePreviewTileDto } from './dto/create-tile.dto';
-import { DevicePreviewUpdatePluginConfigDto } from './dto/update-config.dto';
+import { DevicePreviewUpdateConfigDto } from './dto/update-config.dto';
 import { UpdateDevicePreviewTileDto } from './dto/update-tile.dto';
 import { DevicePreviewTileEntity } from './entities/tiles-device-preview.entity';
 import { DevicePreviewConfigModel } from './models/config.model';
 import { TileRelationsLoaderService } from './services/tile-relations-loader.service';
 import { TILES_DEVICE_PREVIEW_PLUGIN_NAME, TILES_DEVICE_PREVIEW_TYPE } from './tiles-device-preview.constants';
+import { TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-device-preview.openapi';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([DevicePreviewTileEntity]), DashboardModule, DevicesModule, ConfigModule],
+	imports: [
+		TypeOrmModule.forFeature([DevicePreviewTileEntity]),
+		DashboardModule,
+		DevicesModule,
+		ConfigModule,
+		SwaggerModule,
+	],
 	providers: [TileRelationsLoaderService],
 })
 export class TilesDevicePreviewPlugin {
@@ -26,13 +39,15 @@ export class TilesDevicePreviewPlugin {
 		private readonly tilesMapper: TilesTypeMapperService,
 		private readonly tileRelationsLoaderRegistryService: TileRelationsLoaderRegistryService,
 		private readonly tileRelationsLoaderService: TileRelationsLoaderService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 	) {}
 
 	onModuleInit() {
-		this.configMapper.registerMapping<DevicePreviewConfigModel, DevicePreviewUpdatePluginConfigDto>({
+		this.configMapper.registerMapping<DevicePreviewConfigModel, DevicePreviewUpdateConfigDto>({
 			type: TILES_DEVICE_PREVIEW_PLUGIN_NAME,
 			class: DevicePreviewConfigModel,
-			configDto: DevicePreviewUpdatePluginConfigDto,
+			configDto: DevicePreviewUpdateConfigDto,
 		});
 
 		this.tilesMapper.registerMapping<DevicePreviewTileEntity, CreateDevicePreviewTileDto, UpdateDevicePreviewTileDto>({
@@ -43,5 +58,30 @@ export class TilesDevicePreviewPlugin {
 		});
 
 		this.tileRelationsLoaderRegistryService.register(this.tileRelationsLoaderService);
+
+		for (const model of TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
+
+		this.discriminatorRegistry.register({
+			parentClass: TileEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: TILES_DEVICE_PREVIEW_TYPE,
+			modelClass: DevicePreviewTileEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateTileDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: TILES_DEVICE_PREVIEW_TYPE,
+			modelClass: CreateDevicePreviewTileDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateTileDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: TILES_DEVICE_PREVIEW_TYPE,
+			modelClass: UpdateDevicePreviewTileDto,
+		});
 	}
 }

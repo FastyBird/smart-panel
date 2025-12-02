@@ -34,7 +34,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElFormItem, ElOption, ElSelect } from 'element-plus';
 
-import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelPropertyDataType } from '../../../../openapi.constants';
 import { useChannelPropertyFormSpec } from '../../composables/useChannelPropertyFormSpec';
 
 import type { IChannelPropertyFormDataTypeProps } from './channel-property-form-data-type.types';
@@ -48,12 +48,12 @@ const props = withDefaults(defineProps<IChannelPropertyFormDataTypeProps>(), {
 });
 
 const emit = defineEmits<{
-	(e: 'update:modelValue', value: DevicesModuleChannelPropertyData_type): void;
+	(e: 'update:modelValue', value: DevicesModuleChannelPropertyDataType): void;
 }>();
 
 const { t } = useI18n();
 
-const { value } = useChannelPropertyFormSpec<DevicesModuleChannelPropertyData_type>({
+const { value } = useChannelPropertyFormSpec<DevicesModuleChannelPropertyDataType>({
 	channel: props.channelCategory,
 	property: props.propertyCategory,
 	field: 'data_type',
@@ -61,13 +61,13 @@ const { value } = useChannelPropertyFormSpec<DevicesModuleChannelPropertyData_ty
 
 const hidden = ref<boolean>(typeof value !== 'undefined');
 
-const dataType = ref<DevicesModuleChannelPropertyData_type>(
-	!hidden.value && props.modelValue ? props.modelValue : (value ?? DevicesModuleChannelPropertyData_type.unknown)
+const dataType = ref<DevicesModuleChannelPropertyDataType>(
+	!hidden.value && props.modelValue ? props.modelValue : (value ?? DevicesModuleChannelPropertyDataType.unknown)
 );
 
 watch(
-	(): DevicesModuleChannelPropertyData_type => dataType.value,
-	(val: DevicesModuleChannelPropertyData_type) => {
+	(): DevicesModuleChannelPropertyDataType => dataType.value,
+	(val: DevicesModuleChannelPropertyDataType) => {
 		emit('update:modelValue', val);
 	},
 	{

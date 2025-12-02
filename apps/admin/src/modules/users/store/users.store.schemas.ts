@@ -1,11 +1,16 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { UsersModuleUserRole, type components } from '../../../openapi';
+import type {
+	UsersModuleCreateUserSchema,
+	UsersModuleUpdateUserSchema,
+	UsersModuleUserSchema,
+} from '../../../openapi.constants';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 
-type ApiCreateUser = components['schemas']['UsersModuleCreateUser'];
-type ApiUpdateUser = components['schemas']['UsersModuleUpdateUser'];
-type ApiUser = components['schemas']['UsersModuleUser'];
+type ApiCreateUser = UsersModuleCreateUserSchema;
+type ApiUpdateUser = UsersModuleUpdateUserSchema;
+type ApiUser = UsersModuleUserSchema;
 
 export const UserIdSchema = z.string().uuid();
 

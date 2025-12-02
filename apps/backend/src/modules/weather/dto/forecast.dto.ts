@@ -138,7 +138,7 @@ export class ForecastListItemDto {
 
 	@Expose()
 	@IsNumber()
-	pop: number; // Probability of precipitation
+	pop: number;
 
 	@Expose()
 	@IsOptional()

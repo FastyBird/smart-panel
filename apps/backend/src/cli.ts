@@ -1,12 +1,11 @@
-import { useContainer } from 'class-validator';
-import { CommandModule, CommandService } from 'nestjs-command';
+import { CommandFactory } from 'nest-commander';
 
 import { NestFactory } from '@nestjs/core';
-import { SchedulerRegistry } from '@nestjs/schedule';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { AppModule } from './app.module';
 import { getDiscoveredExtensions } from './common/extensions/extensions.discovery-cache';
-import { SystemLoggerService } from './modules/system/services/system-logger.service';
+import { setGlobalAppInstance } from './common/services/app-instance-holder.service';
 
 async function bootstrap() {
 	process.env.FB_CLI = 'on';
@@ -28,33 +27,31 @@ async function bootstrap() {
 			})),
 	});
 
-	const app = await NestFactory.createApplicationContext(appModule, { bufferLogs: true });
+	// Create INestApplication for commands that need it (e.g., OpenAPI generation)
+	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), {
+		bufferLogs: true,
+	});
 
-	const sysLogger = app.get(SystemLoggerService);
+	// Set global app instance so AppInstanceHolder can access it when initialized in command context
+	setGlobalAppInstance(app);
 
-	app.useLogger(sysLogger);
-
-	// Optional: Make class-transformer aware of NestJS context
-	useContainer(app.select(appModule), { fallbackOnErrors: true });
-
+	// Run commands using nest-commander
+	// CommandFactory.run creates its own application context, but AppInstanceHolder
+	// will use the global app instance in its onModuleInit hook
 	try {
-		const schedulerRegistry = app.get(SchedulerRegistry);
-
-		const jobs = schedulerRegistry.getCronJobs();
-
-		jobs.forEach((job) => {
-			job.stop();
+		await CommandFactory.run(appModule, {
+			logger: ['log', 'error', 'warn', 'debug', 'verbose'],
 		});
-
-		await app.select(CommandModule).get(CommandService).exec();
-		await app.close();
 	} catch (error) {
 		console.error(error);
 		await app.close();
 		process.exit(1);
 	}
+
+	await app.close();
 }
 
 bootstrap().catch((error: Error) => {
 	console.error(error);
+	process.exit(1);
 });

@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { WeatherModuleGetCurrentOperation } from '../../../openapi.constants';
 import { WEATHER_MODULE_PREFIX } from '../weather.constants';
 import { WeatherApiException, WeatherValidationException } from '../weather.exceptions';
 
@@ -88,7 +88,7 @@ export const useWeatherForecast = defineStore<'weather_module-weather-forecast',
 					let errorReason: string | null = 'Failed to fetch weather forecast.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-weather-module-current']>(error, errorReason);
+						errorReason = getErrorReason<WeatherModuleGetCurrentOperation>(error, errorReason);
 					}
 
 					throw new WeatherApiException(errorReason, response.status);

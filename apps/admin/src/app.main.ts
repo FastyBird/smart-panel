@@ -41,7 +41,7 @@ import { StatsModule } from './modules/stats';
 import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import { WeatherModule } from './modules/weather';
-import type { paths } from './openapi';
+import type { OpenApiPaths } from './openapi.constants';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng';
@@ -74,7 +74,7 @@ app.config.globalProperties['pluginsManager'] = pluginsManager;
 providePluginsManager(app, pluginsManager);
 
 // Backend
-const backendClient = createClient<paths>({
+const backendClient = createClient<OpenApiPaths>({
 	baseUrl: `${window.location.protocol}//${window.location.hostname}:${import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT}/api/v1`,
 });
 app.config.globalProperties['backend'] = backendClient;

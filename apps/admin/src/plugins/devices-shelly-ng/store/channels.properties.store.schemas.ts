@@ -6,11 +6,16 @@ import {
 	ChannelPropertySchema,
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
-import { DevicesShellyNgPluginShellyNgDeviceType, type components } from '../../../openapi';
+import type {
+	DevicesShellyNgPluginCreateChannelPropertySchema,
+	DevicesShellyNgPluginUpdateChannelPropertySchema,
+	DevicesShellyNgPluginChannelPropertySchema,
+} from '../../../openapi.constants';
+import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-type ApiCreateChannelProperty = components['schemas']['DevicesShellyNgPluginCreateShellyNgChannelProperty'];
-type ApiUpdateChannelProperty = components['schemas']['DevicesShellyNgPluginUpdateShellyNgChannelProperty'];
-type ApiChannelProperty = components['schemas']['DevicesShellyNgPluginShellyNgChannelProperty'];
+type ApiCreateChannelProperty = DevicesShellyNgPluginCreateChannelPropertySchema;
+type ApiUpdateChannelProperty = DevicesShellyNgPluginUpdateChannelPropertySchema;
+type ApiChannelProperty = DevicesShellyNgPluginChannelPropertySchema;
 
 export const ShellyNgChannelPropertySchema = ChannelPropertySchema;
 
@@ -19,18 +24,18 @@ export const ShellyNgChannelPropertySchema = ChannelPropertySchema;
 
 export const ShellyNgChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> = ChannelPropertyCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesShellyNgPluginShellyNgDeviceType),
+		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 	})
 );
 
 export const ShellyNgChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> = ChannelPropertyUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesShellyNgPluginShellyNgDeviceType),
+		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 	})
 );
 
 export const ShellyNgChannelPropertyResSchema: ZodType<ApiChannelProperty> = ChannelPropertyResSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesShellyNgPluginShellyNgDeviceType),
+		type: z.literal(DEVICES_SHELLY_NG_TYPE),
 	})
 );

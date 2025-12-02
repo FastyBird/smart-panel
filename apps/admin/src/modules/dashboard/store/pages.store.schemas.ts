@@ -1,14 +1,18 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import type {
+	DashboardModuleCreatePageSchema,
+	DashboardModuleUpdatePageSchema,
+	DashboardModulePageSchema,
+} from '../../../openapi.constants';
 
 import { DataSourceResSchema } from './data-sources.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreatePage = components['schemas']['DashboardModuleCreatePage'];
-type ApiUpdatePage = components['schemas']['DashboardModuleUpdatePage'];
-type ApiPage = components['schemas']['DashboardModulePage'];
+type ApiCreatePage = DashboardModuleCreatePageSchema;
+type ApiUpdatePage = DashboardModuleUpdatePageSchema;
+type ApiPage = DashboardModulePageSchema;
 
 // STORE STATE
 // ===========
@@ -92,7 +96,7 @@ export const PagesAddActionPayloadSchema = z.object({
 				.nullable()
 				.default(null)
 				.optional(),
-			order: z.number().default(0).optional(),
+			order: z.number().default(0),
 			showTopBar: z.boolean().default(true).optional(),
 			display: z.string().uuid().nullable().optional(),
 		})
@@ -140,7 +144,7 @@ export const PageCreateReqSchema: ZodType<ApiCreatePage> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	order: z.number().optional(),
+	order: z.number(),
 	show_top_bar: z.boolean().optional(),
 	display: z.string().uuid().nullable().optional(),
 });
@@ -161,7 +165,7 @@ export const PageUpdateReqSchema: ZodType<ApiUpdatePage> = z.object({
 
 export const PageResSchema: ZodType<ApiPage> = z.object({
 	id: z.string().uuid(),
-	type: z.string(),
+	type: z.string().trim().nonempty(),
 	title: z.string().trim().nonempty(),
 	icon: z.string().trim().nullable(),
 	order: z.number(),

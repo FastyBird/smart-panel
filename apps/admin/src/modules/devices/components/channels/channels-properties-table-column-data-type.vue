@@ -107,7 +107,7 @@ import { ElButton, ElIcon, ElLink, ElPopover, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelPropertyDataType } from '../../../../openapi.constants';
 
 import type { IChannelsPropertiesTableColumnDataTypeProps } from './channels-properties-table-column-data-type.types';
 
@@ -120,24 +120,24 @@ const props = withDefaults(defineProps<IChannelsPropertiesTableColumnDataTypePro
 });
 
 const emit = defineEmits<{
-	(e: 'filter-by', value: DevicesModuleChannelPropertyData_type, add: boolean): void;
+	(e: 'filter-by', value: DevicesModuleChannelPropertyDataType, add: boolean): void;
 }>();
 
 const { t } = useI18n();
 
 const isEnum = computed<boolean>((): boolean => {
-	return props.property.dataType === DevicesModuleChannelPropertyData_type.enum;
+	return props.property.dataType === DevicesModuleChannelPropertyDataType.enum;
 });
 
 const isNumeric = computed<boolean>((): boolean => {
 	return (
-		props.property.dataType === DevicesModuleChannelPropertyData_type.char ||
-		props.property.dataType === DevicesModuleChannelPropertyData_type.uchar ||
-		props.property.dataType === DevicesModuleChannelPropertyData_type.short ||
-		props.property.dataType === DevicesModuleChannelPropertyData_type.ushort ||
-		props.property.dataType === DevicesModuleChannelPropertyData_type.int ||
-		props.property.dataType === DevicesModuleChannelPropertyData_type.uint ||
-		props.property.dataType === DevicesModuleChannelPropertyData_type.float
+		props.property.dataType === DevicesModuleChannelPropertyDataType.char ||
+		props.property.dataType === DevicesModuleChannelPropertyDataType.uchar ||
+		props.property.dataType === DevicesModuleChannelPropertyDataType.short ||
+		props.property.dataType === DevicesModuleChannelPropertyDataType.ushort ||
+		props.property.dataType === DevicesModuleChannelPropertyDataType.int ||
+		props.property.dataType === DevicesModuleChannelPropertyDataType.uint ||
+		props.property.dataType === DevicesModuleChannelPropertyDataType.float
 	);
 });
 

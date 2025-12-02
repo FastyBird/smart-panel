@@ -21,6 +21,7 @@ const validDisplayResponse: IDisplayInstanceRes = {
 	version: '1.0.0',
 	build: '42',
 	user: userUid,
+	display_profile: null,
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
 };

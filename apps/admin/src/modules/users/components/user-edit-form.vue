@@ -175,7 +175,7 @@ import { ElButton, ElDialog, ElDivider, ElForm, ElFormItem, ElInput, ElOption, E
 
 import { Icon } from '@iconify/vue';
 
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { type IUserEditForm, useUserEditForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 

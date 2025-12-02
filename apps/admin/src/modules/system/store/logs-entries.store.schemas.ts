@@ -1,10 +1,17 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigModuleSystemLog_levels, SystemModuleLogEntrySource, type components } from '../../../openapi';
+import type {
+	SystemModuleCreateLogEntrySchema,
+	SystemModuleLogEntrySchema,
+} from '../../../openapi.constants';
+import {
+	SystemModuleLogEntrySource,
+	SystemModuleLogEntryType,
+} from '../../../openapi.constants';
 import { DEFAULT_PAGE_SIZE } from '../system.constants';
 
-type ApiCreateLogEntry = components['schemas']['SystemModuleCreateLogEntry'];
-type ApiLogEntry = components['schemas']['SystemModuleLogEntry'];
+type ApiCreateLogEntry = SystemModuleCreateLogEntrySchema;
+type ApiLogEntry = SystemModuleLogEntrySchema;
 
 export const LogEntryIdSchema = z.string().ulid();
 
@@ -18,7 +25,7 @@ export const LogEntrySchema = z.object({
 	seq: z.number().int().min(0).optional(),
 	source: z.nativeEnum(SystemModuleLogEntrySource),
 	level: z.number().int().min(0).max(6),
-	type: z.nativeEnum(ConfigModuleSystemLog_levels),
+	type: z.nativeEnum(SystemModuleLogEntryType),
 	tag: z.string().max(128).optional(),
 	message: z.string().max(2000).optional(),
 	args: z
@@ -48,7 +55,7 @@ export const LogEntrySchema = z.object({
 export const AddLogEntrySchema = z.object({
 	ts: z.string().datetime(),
 	level: z.number().int().min(0).max(6),
-	type: z.nativeEnum(ConfigModuleSystemLog_levels),
+	type: z.nativeEnum(SystemModuleLogEntryType),
 	tag: z.string().max(128).optional(),
 	message: z.string().max(2000).optional(),
 	args: z
@@ -104,7 +111,7 @@ export const LogsEntriesSetActionPayloadSchema = z.object({
 		seq: z.number().int().min(0).optional(),
 		source: z.nativeEnum(SystemModuleLogEntrySource),
 		level: z.number().int().min(0).max(6),
-		type: z.nativeEnum(ConfigModuleSystemLog_levels),
+		type: z.nativeEnum(SystemModuleLogEntryType),
 		tag: z.string().max(128).optional(),
 		message: z.string().max(2000).optional(),
 		args: z
@@ -153,7 +160,7 @@ export const LogEntryCreateReqSchema: ZodType<ApiCreateLogEntry> = z.object({
 	ts: z.string(),
 	source: z.nativeEnum(SystemModuleLogEntrySource),
 	level: z.number(),
-	type: z.nativeEnum(ConfigModuleSystemLog_levels),
+	type: z.nativeEnum(SystemModuleLogEntryType),
 	tag: z.string().optional(),
 	message: z.string().optional(),
 	args: z
@@ -186,11 +193,11 @@ export const LogEntryCreateReqSchema: ZodType<ApiCreateLogEntry> = z.object({
 export const LogEntryResSchema: ZodType<ApiLogEntry> = z.object({
 	id: z.string().ulid(),
 	ts: z.string(),
-	ingested_at: z.string().optional(),
+	ingested_at: z.string(),
 	seq: z.number().optional(),
 	source: z.nativeEnum(SystemModuleLogEntrySource),
 	level: z.number(),
-	type: z.nativeEnum(ConfigModuleSystemLog_levels),
+	type: z.nativeEnum(SystemModuleLogEntryType),
 	tag: z.string().optional(),
 	message: z.string().optional(),
 	args: z

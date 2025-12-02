@@ -1,9 +1,30 @@
+import { Expose, Type } from 'class-transformer';
+import { ValidateNested } from 'class-validator';
+
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+
 import { CreateSingleTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
-import type { components } from '../../../openapi';
 import { TILES_TIME_TYPE } from '../tiles-time.constants';
 
-type CreateTimeTile = components['schemas']['TilesTimePluginCreateTimeTile'];
-
-export class CreateTimeTileDto extends CreateSingleTileDto implements CreateTimeTile {
+@ApiSchema({ name: 'TilesTimePluginCreateTimeTile' })
+export class CreateTimeTileDto extends CreateSingleTileDto {
+	@ApiProperty({
+		description: 'Tile type',
+		type: 'string',
+		default: TILES_TIME_TYPE,
+		example: TILES_TIME_TYPE,
+	})
 	readonly type: typeof TILES_TIME_TYPE;
+}
+
+@ApiSchema({ name: 'TilesTimePluginReqCreateTimeTile' })
+export class ReqCreateTimeTileDto {
+	@ApiProperty({
+		description: 'Time tile creation data',
+		type: () => CreateTimeTileDto,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateTimeTileDto)
+	data: CreateTimeTileDto;
 }

@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { getErrorReason, useBackend, useFlashMessage } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { DevicesShellyNgPluginGetSupportedOperation } from '../../../openapi.constants';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from '../devices-shelly-ng.constants';
 import type { IShellyNgSupportedDevice } from '../schemas/devices.types';
 import { transformSupportedDevicesResponse } from '../utils/devices.transformers';
@@ -39,7 +39,7 @@ export const useSupportedDevices = (): IUseSupportedDevices => {
 			let errorMessage: string | null = 'Failed to fetch supported devices.';
 
 			if (error) {
-				errorMessage = getErrorReason<operations['get-devices-shelly-ng-plugin-supported']>(error, errorMessage);
+				errorMessage = getErrorReason<DevicesShellyNgPluginGetSupportedOperation>(error, errorMessage);
 			}
 
 			flashMessage.error(errorMessage);

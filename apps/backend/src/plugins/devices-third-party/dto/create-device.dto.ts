@@ -1,17 +1,28 @@
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsString } from 'class-validator';
 
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+
 import { CreateDeviceDto } from '../../../modules/devices/dto/create-device.dto';
-import type { components } from '../../../openapi';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-type CreateThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyDevice'];
-
-export class CreateThirdPartyDeviceDto extends CreateDeviceDto implements CreateThirdPartyDevice {
+@ApiSchema({ name: 'DevicesThirdPartyPluginCreateDevice' })
+export class CreateThirdPartyDeviceDto extends CreateDeviceDto {
+	@ApiProperty({
+		description: 'Device type',
+		type: 'string',
+		default: DEVICES_THIRD_PARTY_TYPE,
+		example: DEVICES_THIRD_PARTY_TYPE,
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid device type string."}]' })
 	readonly type: typeof DEVICES_THIRD_PARTY_TYPE;
 
+	@ApiProperty({
+		description: 'Service address for third-party device',
+		name: 'service_address',
+		example: 'http://192.168.1.100:8080',
+	})
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
 	@IsString({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })

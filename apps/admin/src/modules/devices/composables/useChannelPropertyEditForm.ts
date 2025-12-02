@@ -7,9 +7,9 @@ import { isEqual } from 'lodash';
 import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import {
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { channelChannelsPropertiesSpecificationMappers } from '../devices.mapping';
@@ -53,17 +53,17 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 	let minValue: number | undefined = undefined;
 	let maxValue: number | undefined = undefined;
 
-	if (property.dataType === DevicesModuleChannelPropertyData_type.enum) {
+	if (property.dataType === DevicesModuleChannelPropertyDataType.enum) {
 		enumValues = property.format ? property.format.map((item) => item?.toString() || '') : [];
 	} else if (
 		[
-			DevicesModuleChannelPropertyData_type.char,
-			DevicesModuleChannelPropertyData_type.uchar,
-			DevicesModuleChannelPropertyData_type.short,
-			DevicesModuleChannelPropertyData_type.ushort,
-			DevicesModuleChannelPropertyData_type.int,
-			DevicesModuleChannelPropertyData_type.uint,
-			DevicesModuleChannelPropertyData_type.float,
+			DevicesModuleChannelPropertyDataType.char,
+			DevicesModuleChannelPropertyDataType.uchar,
+			DevicesModuleChannelPropertyDataType.short,
+			DevicesModuleChannelPropertyDataType.ushort,
+			DevicesModuleChannelPropertyDataType.int,
+			DevicesModuleChannelPropertyDataType.uint,
+			DevicesModuleChannelPropertyDataType.float,
 		].includes(property.dataType)
 	) {
 		if (Array.isArray(property.format) && property.format.length === 2) {
@@ -126,12 +126,12 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 		label: t(`devicesModule.permissions.${value}`),
 	}));
 
-	const dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[] = Object.values(
-		DevicesModuleChannelPropertyData_type
-	).map((value) => ({
-		value,
-		label: t(`devicesModule.dataTypes.${value}`),
-	}));
+	const dataTypesOptions: { value: DevicesModuleChannelPropertyDataType; label: string }[] = Object.values(DevicesModuleChannelPropertyDataType).map(
+		(value) => ({
+			value,
+			label: t(`devicesModule.dataTypes.${value}`),
+		})
+	);
 
 	const model = reactive<TForm>({
 		...property,
@@ -174,17 +174,17 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 			model.name = null;
 		}
 
-		if (property.dataType === DevicesModuleChannelPropertyData_type.enum) {
+		if (property.dataType === DevicesModuleChannelPropertyDataType.enum) {
 			model.format = model.enumValues;
 		} else if (
 			[
-				DevicesModuleChannelPropertyData_type.char,
-				DevicesModuleChannelPropertyData_type.uchar,
-				DevicesModuleChannelPropertyData_type.short,
-				DevicesModuleChannelPropertyData_type.ushort,
-				DevicesModuleChannelPropertyData_type.int,
-				DevicesModuleChannelPropertyData_type.uint,
-				DevicesModuleChannelPropertyData_type.float,
+				DevicesModuleChannelPropertyDataType.char,
+				DevicesModuleChannelPropertyDataType.uchar,
+				DevicesModuleChannelPropertyDataType.short,
+				DevicesModuleChannelPropertyDataType.ushort,
+				DevicesModuleChannelPropertyDataType.int,
+				DevicesModuleChannelPropertyDataType.uint,
+				DevicesModuleChannelPropertyDataType.float,
 			].includes(property.dataType)
 		) {
 			model.format = [model.minValue ?? null, model.maxValue ?? null];

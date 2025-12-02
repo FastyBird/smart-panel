@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleAudioType } from '../../../openapi';
+import { ConfigModuleAudioType } from '../../../openapi.constants';
 import type { IConfigAudioEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigAudioStore } from '../store/config-audio.store.types';

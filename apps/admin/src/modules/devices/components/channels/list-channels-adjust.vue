@@ -77,7 +77,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { DevicesModuleChannelCategory } from '../../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
 import type { IDevicesFilter } from '../../composables/types';
 
 import { type IListChannelsAdjustProps } from './list-channels-adjust.types';

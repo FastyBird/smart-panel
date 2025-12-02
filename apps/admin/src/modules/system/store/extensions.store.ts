@@ -3,7 +3,11 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { SystemModuleExtensionAdminSurface, SystemModuleExtensionBackendSurface, type operations } from '../../../openapi';
+import type {
+	SystemModuleGetExtensionOperation,
+	SystemModuleGetLogsOperation,
+} from '../../../openapi.constants';
+import { SystemModuleExtensionSurface } from '../../../openapi.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException } from '../system.exceptions';
 
@@ -83,7 +87,7 @@ export const useExtensions = defineStore<'system_module-logs', ExtensionsStoreSe
 							throw new SystemApiException('Received extension name is different');
 						}
 
-						if (transformedExtension.surface === SystemModuleExtensionAdminSurface.admin) {
+						if (transformedExtension.surface === SystemModuleExtensionSurface.admin) {
 							merged[transformedExtension.name].admin = transformedExtension;
 						} else {
 							merged[transformedExtension.name].backend = transformedExtension;
@@ -98,7 +102,7 @@ export const useExtensions = defineStore<'system_module-logs', ExtensionsStoreSe
 				let errorReason: string | null = 'Failed to fetch extension.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-system-module-extension']>(error, errorReason);
+					errorReason = getErrorReason<SystemModuleGetExtensionOperation>(error, errorReason);
 				}
 
 				throw new SystemApiException(errorReason, response.status);
@@ -141,9 +145,9 @@ export const useExtensions = defineStore<'system_module-logs', ExtensionsStoreSe
 							merged[transformedExtension.name] = {};
 						}
 
-						if (transformedExtension.surface === SystemModuleExtensionAdminSurface.admin) {
+						if (transformedExtension.surface === SystemModuleExtensionSurface.admin) {
 							merged[transformedExtension.name].admin = transformedExtension;
-						} else if (transformedExtension.surface === SystemModuleExtensionBackendSurface.backend) {
+						} else if (transformedExtension.surface === SystemModuleExtensionSurface.backend) {
 							merged[transformedExtension.name].backend = transformedExtension;
 						}
 					}
@@ -158,7 +162,7 @@ export const useExtensions = defineStore<'system_module-logs', ExtensionsStoreSe
 				let errorReason: string | null = 'Failed to fetch logs entries.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-system-module-logs']>(error, errorReason);
+					errorReason = getErrorReason<SystemModuleGetLogsOperation>(error, errorReason);
 				}
 
 				throw new SystemApiException(errorReason, response.status);

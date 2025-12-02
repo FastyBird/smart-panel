@@ -13,6 +13,7 @@ import {
 } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
 import { GeolocationCityDto, GeolocationZipDto } from '../dto/geolocation.dto';
+import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
 
 @Injectable()
 export class GeolocationService {
@@ -26,7 +27,7 @@ export class GeolocationService {
 		this.apiKey = this.getConfig().openWeatherApiKey;
 	}
 
-	async getCoordinatesByCity(city: string): Promise<GeolocationCityDto[] | null> {
+	async getCoordinatesByCity(city: string): Promise<GeolocationCityModel[] | null> {
 		try {
 			const url = `${this.API_URL}/direct?q=${encodeURIComponent(city)}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -60,7 +61,7 @@ export class GeolocationService {
 				return null;
 			}
 
-			return locations;
+			return locations.map((location) => toInstance(GeolocationCityModel, location));
 		} catch (error) {
 			this.logger.error(`[GEOLOCATION] Failed to fetch coordinates for city=${city}`, error);
 
@@ -68,7 +69,7 @@ export class GeolocationService {
 		}
 	}
 
-	async getCoordinatesByZip(zip: string): Promise<GeolocationZipDto | null> {
+	async getCoordinatesByZip(zip: string): Promise<GeolocationZipModel | null> {
 		try {
 			const url = `${this.API_URL}/zip?zip=${encodeURIComponent(zip)}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -88,7 +89,7 @@ export class GeolocationService {
 				return null;
 			}
 
-			return location;
+			return toInstance(GeolocationZipModel, location);
 		} catch (error) {
 			this.logger.error(`[GEOLOCATION] Failed to fetch coordinates for zip=${zip}`, error);
 
@@ -96,7 +97,7 @@ export class GeolocationService {
 		}
 	}
 
-	async getCityByCoordinates(lat: number, lon: number): Promise<GeolocationCityDto[] | null> {
+	async getCityByCoordinates(lat: number, lon: number): Promise<GeolocationCityModel[] | null> {
 		try {
 			const url = `${this.API_URL}/reverse?lat=${lat}&lon=${lon}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -129,6 +130,8 @@ export class GeolocationService {
 
 				return null;
 			}
+
+			return locations.map((location) => toInstance(GeolocationCityModel, location));
 		} catch (error) {
 			this.logger.error(`[GEOLOCATION] Failed to fetch city for lat=${lat}, lon=${lon}`, error);
 

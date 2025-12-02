@@ -9,6 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { RequestResultState } from '../../../app.constants';
 import { getResponseMeta } from '../../../common/utils/http.utils';
 import { RAW_ROUTE } from '../decorators/raw-route.decorator';
+import { BaseSuccessResponseModel } from '../models/api-response.model';
 
 @Injectable()
 export class OpenApiResponseInterceptor<T> implements NestInterceptor<T, any> {
@@ -38,13 +39,29 @@ export class OpenApiResponseInterceptor<T> implements NestInterceptor<T, any> {
 					return null;
 				}
 
+				if (data instanceof BaseSuccessResponseModel) {
+					data.status = RequestResultState.SUCCESS;
+					data.timestamp = new Date().toISOString();
+					data.request_id = requestId;
+					data.path = request.originalUrl;
+					data.method = request.method;
+					data.metadata = {
+						...(getResponseMeta(request) ?? {}),
+						request_duration_ms: responseTime,
+						server_time: new Date().toISOString(),
+						cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
+					};
+
+					return data;
+				}
+
 				return {
 					status: RequestResultState.SUCCESS,
 					timestamp: new Date().toISOString(),
 					request_id: requestId,
 					path: request.originalUrl,
 					method: request.method,
-					data,
+					data: typeof data === 'object' && 'data' in data ? data.data : data,
 					metadata: {
 						...(getResponseMeta(request) ?? {}),
 						request_duration_ms: responseTime,

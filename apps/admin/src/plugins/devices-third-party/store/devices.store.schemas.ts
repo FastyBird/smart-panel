@@ -1,11 +1,16 @@
 import { type ZodType, z } from 'zod';
 
 import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from '../../../modules/devices';
-import { DevicesThirdPartyPluginThirdPartyDeviceType, type components } from '../../../openapi';
+import type {
+	DevicesThirdPartyPluginCreateDeviceSchema,
+	DevicesThirdPartyPluginUpdateDeviceSchema,
+	DevicesThirdPartyPluginDeviceSchema,
+} from '../../../openapi.constants';
+import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
-type ApiCreateDevice = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyDevice'];
-type ApiDevice = components['schemas']['DevicesThirdPartyPluginThirdPartyDevice'];
+type ApiCreateDevice = DevicesThirdPartyPluginCreateDeviceSchema;
+type ApiUpdateDevice = DevicesThirdPartyPluginUpdateDeviceSchema;
+type ApiDevice = DevicesThirdPartyPluginDeviceSchema;
 
 export const ThirdPartyDeviceSchema = DeviceSchema.extend({
 	serviceAddress: z.string().trim().url(),
@@ -16,21 +21,21 @@ export const ThirdPartyDeviceSchema = DeviceSchema.extend({
 
 export const ThirdPartyDeviceCreateReqSchema: ZodType<ApiCreateDevice> = DeviceCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesThirdPartyPluginThirdPartyDeviceType),
+		type: z.literal(DEVICES_THIRD_PARTY_TYPE),
 		service_address: z.string().trim().url(),
 	})
 );
 
 export const ThirdPartyDeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = DeviceUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesThirdPartyPluginThirdPartyDeviceType),
+		type: z.literal(DEVICES_THIRD_PARTY_TYPE),
 		service_address: z.string().trim().url().optional(),
 	})
 );
 
 export const ThirdPartyDeviceResSchema: ZodType<ApiDevice> = DeviceResSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesThirdPartyPluginThirdPartyDeviceType),
+		type: z.literal(DEVICES_THIRD_PARTY_TYPE),
 		service_address: z.string().trim().url(),
 	})
 );

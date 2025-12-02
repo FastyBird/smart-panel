@@ -6,12 +6,16 @@ import {
 	ChannelPropertySchema,
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
-import { DevicesHomeAssistantPluginHomeAssistantDeviceType, type components } from '../../../openapi';
-import { DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
+import type {
+	DevicesHomeAssistantPluginCreateChannelPropertySchema,
+	DevicesHomeAssistantPluginUpdateChannelPropertySchema,
+	DevicesHomeAssistantPluginChannelPropertySchema,
+} from '../../../openapi.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE, DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 
-type ApiCreateChannelProperty = components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty'];
-type ApiUpdateChannelProperty = components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty'];
-type ApiChannelProperty = components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannelProperty'];
+type ApiCreateChannelProperty = DevicesHomeAssistantPluginCreateChannelPropertySchema;
+type ApiUpdateChannelProperty = DevicesHomeAssistantPluginUpdateChannelPropertySchema;
+type ApiChannelProperty = DevicesHomeAssistantPluginChannelPropertySchema;
 
 export const HomeAssistantChannelPropertySchema = ChannelPropertySchema.extend({
 	haEntityId: z
@@ -33,7 +37,7 @@ export const HomeAssistantChannelPropertySchema = ChannelPropertySchema.extend({
 
 export const HomeAssistantChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> = ChannelPropertyCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesHomeAssistantPluginHomeAssistantDeviceType),
+		type: z.literal(DEVICES_HOME_ASSISTANT_TYPE),
 		ha_entity_id: z
 			.string()
 			.trim()
@@ -51,27 +55,25 @@ export const HomeAssistantChannelPropertyCreateReqSchema: ZodType<ApiCreateChann
 
 export const HomeAssistantChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> = ChannelPropertyUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesHomeAssistantPluginHomeAssistantDeviceType),
+		type: z.literal(DEVICES_HOME_ASSISTANT_TYPE),
 		ha_entity_id: z
 			.string()
 			.trim()
 			.nonempty()
 			.nullable()
-			.transform((val) => (val === DEVICE_NO_ENTITY ? null : val))
-			.optional(),
+			.transform((val) => (val === DEVICE_NO_ENTITY ? null : val)),
 		ha_attribute: z
 			.string()
 			.trim()
 			.nonempty()
 			.nullable()
-			.transform((val) => (val === ENTITY_NO_ATTRIBUTE ? null : val))
-			.optional(),
+			.transform((val) => (val === ENTITY_NO_ATTRIBUTE ? null : val)),
 	})
 );
 
 export const HomeAssistantChannelPropertyResSchema: ZodType<ApiChannelProperty> = ChannelPropertyResSchema.and(
 	z.object({
-		type: z.nativeEnum(DevicesHomeAssistantPluginHomeAssistantDeviceType),
+		type: z.literal(DEVICES_HOME_ASSISTANT_TYPE),
 		ha_entity_id: z.string().trim().nonempty().nullable(),
 		ha_attribute: z.string().trim().nonempty().nullable(),
 	})

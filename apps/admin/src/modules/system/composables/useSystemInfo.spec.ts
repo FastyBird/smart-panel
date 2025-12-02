@@ -32,7 +32,6 @@ const mockAudio: ISystemInfo = {
 	},
 	temperature: {
 		cpu: 55,
-		gpu: null,
 	},
 	os: {
 		platform: 'linux',

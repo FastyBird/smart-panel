@@ -3,7 +3,12 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type {
+	DevicesModuleGetDeviceControlOperation,
+	DevicesModuleGetDeviceControlsOperation,
+	DevicesModuleCreateDeviceControlOperation,
+	DevicesModuleDeleteDeviceControlOperation,
+} from '../../../openapi.constants';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
@@ -157,7 +162,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					let errorReason: string | null = 'Failed to fetch device control.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-devices-module-device-control']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetDeviceControlOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -221,7 +226,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					let errorReason: string | null = 'Failed to fetch device controls.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['get-devices-module-device-controls']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleGetDeviceControlsOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -299,7 +304,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					let errorReason: string | null = 'Failed to create device control.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['create-devices-module-device-control']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleCreateDeviceControlOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);
@@ -353,7 +358,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 				let errorReason: string | null = 'Failed to create device control.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-devices-module-device-control']>(error, errorReason);
+					errorReason = getErrorReason<DevicesModuleCreateDeviceControlOperation>(error, errorReason);
 				}
 
 				throw new DevicesApiException(errorReason, response.status);
@@ -397,7 +402,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					let errorReason: string | null = 'Remove device control failed.';
 
 					if (error) {
-						errorReason = getErrorReason<operations['delete-devices-module-device-control']>(error, errorReason);
+						errorReason = getErrorReason<DevicesModuleDeleteDeviceControlOperation>(error, errorReason);
 					}
 
 					throw new DevicesApiException(errorReason, response.status);

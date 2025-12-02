@@ -53,7 +53,7 @@ describe('HomeAssistantStatesController', () => {
 			homeAssistantHttpService.getStates.mockResolvedValue(mockStates);
 
 			const result = await controller.findAll();
-			expect(result).toEqual(mockStates);
+			expect(result.data).toEqual(mockStates);
 		});
 
 		it('should throw UnprocessableEntityException on validation error', async () => {
@@ -82,7 +82,7 @@ describe('HomeAssistantStatesController', () => {
 			homeAssistantHttpService.getState.mockResolvedValue(mockState);
 
 			const result = await controller.findOne('sensor.temp');
-			expect(result).toEqual(mockState);
+			expect(result.data).toEqual(mockState);
 		});
 
 		it('should throw UnprocessableEntityException on validation error', async () => {

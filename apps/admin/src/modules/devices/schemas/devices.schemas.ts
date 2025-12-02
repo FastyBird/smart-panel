@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 
 export const DeviceAddFormSchema = z.object({
 	id: z.string().uuid().optional(),

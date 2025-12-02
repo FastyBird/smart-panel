@@ -4,7 +4,7 @@ import type { FormInstance } from 'element-plus';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
+import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyDataType } from '../../../openapi.constants';
 import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import { ChannelPropertySchema } from '../store/channels.properties.store.schemas';
@@ -22,7 +22,7 @@ const mockProperty: IChannelProperty = {
 	name: 'My Property',
 	category: DevicesModuleChannelPropertyCategory.brightness,
 	identifier: null,
-	dataType: DevicesModuleChannelPropertyData_type.float,
+	dataType: DevicesModuleChannelPropertyDataType.float,
 	permissions: [],
 	unit: '',
 	format: [],

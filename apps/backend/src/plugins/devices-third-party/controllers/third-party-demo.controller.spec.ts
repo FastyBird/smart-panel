@@ -5,12 +5,14 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyReply } from 'fastify';
+
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
+import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
 
 import { ThirdPartyDemoController } from './third-party-demo.controller';
 
@@ -49,13 +51,13 @@ describe('ThirdPartyDemoController', () => {
 		expect(controller).toBeDefined();
 	});
 
-	it('should return response with SUCCESS status and queue property update', async () => {
+	it('should return 204 No Content when all properties succeed and queue property update', async () => {
 		const mockProperty = {
 			id: 'property-123',
 			type: 'string',
 		};
 
-		const body: PropertiesUpdateRequestDto = {
+		const body: ReqUpdatePropertiesDto = {
 			properties: [
 				{
 					device: 'device-123',
@@ -66,21 +68,17 @@ describe('ThirdPartyDemoController', () => {
 			],
 		};
 
+		const mockReply = {
+			status: jest.fn().mockReturnThis(),
+			send: jest.fn().mockReturnThis(),
+		} as unknown as FastifyReply;
+
 		(propertiesService.findOne as jest.Mock).mockResolvedValue(mockProperty);
 
-		const response = await controller.controlDevice(body);
+		await controller.controlDevice(body, mockReply);
 
-		expect(response).toEqual({
-			properties: [
-				{
-					device: 'device-123',
-					channel: 'channel-123',
-					property: 'property-123',
-					status: ThirdPartyPropertiesUpdateStatus.SUCCESS,
-				},
-			],
-		});
-
+		expect(mockReply.status).toHaveBeenCalledWith(204);
+		expect(mockReply.send).toHaveBeenCalled();
 		expect(propertiesService.findOne).toHaveBeenCalledWith('property-123');
 		expect(propertiesService.update).not.toHaveBeenCalled();
 
@@ -92,10 +90,10 @@ describe('ThirdPartyDemoController', () => {
 		});
 	});
 
-	it('should skip unknown properties', async () => {
+	it('should return 207 Multi-Status when properties are not found', async () => {
 		(propertiesService.findOne as jest.Mock).mockResolvedValue(null);
 
-		const body: PropertiesUpdateRequestDto = {
+		const body: ReqUpdatePropertiesDto = {
 			properties: [
 				{
 					device: 'device-123',
@@ -106,9 +104,24 @@ describe('ThirdPartyDemoController', () => {
 			],
 		};
 
-		const response = await controller.controlDevice(body);
+		const mockReply = {
+			status: jest.fn().mockReturnThis(),
+			send: jest.fn().mockReturnThis(),
+		} as unknown as FastifyReply;
 
-		expect(response.properties[0].status).toBe(ThirdPartyPropertiesUpdateStatus.SUCCESS);
+		await controller.controlDevice(body, mockReply);
+
+		expect(mockReply.status).toHaveBeenCalledWith(207);
+		expect(mockReply.send).toHaveBeenCalledWith({
+			properties: [
+				{
+					device: 'device-123',
+					channel: 'channel-123',
+					property: 'unknown-prop',
+					status: ThirdPartyPropertiesUpdateStatus.RESOURCE_NOT_FOUND,
+				},
+			],
+		});
 		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
 });

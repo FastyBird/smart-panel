@@ -4,7 +4,7 @@ import type { Router } from 'vue-router';
 import type { Pinia } from 'pinia';
 
 import type { MessageSchema } from './locales';
-import { UsersModuleUserRole } from './openapi';
+import { UsersModuleUserRole } from './openapi.constants';
 
 export type IExtensionOptions = IModuleOptions & IPluginOptions;
 

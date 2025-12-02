@@ -6,7 +6,7 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleDeviceStatusStatus } from '../../../openapi';
+import { DevicesModuleDeviceConnectionStatus } from '../../../openapi.constants';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { devicesStoreKey } from '../store/keys';
@@ -97,24 +97,27 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 						(filters.value.enabled === 'all' ||
 							(filters.value.enabled === 'enabled' && device.enabled) ||
 							(filters.value.enabled === 'disabled' && !device.enabled)) &&
-						(filters.value.states.length === 0 || filters.value.states.includes(device.status?.status ?? DevicesModuleDeviceStatusStatus.unknown)) &&
+						(filters.value.states.length === 0 ||
+							filters.value.states.includes(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown)) &&
 						(filters.value.state === 'all' ||
 							(filters.value.state === 'online' &&
-								[DevicesModuleDeviceStatusStatus.ready, DevicesModuleDeviceStatusStatus.connected, DevicesModuleDeviceStatusStatus.running].includes(
-									device.status.status
-								)) ||
+								[
+									DevicesModuleDeviceConnectionStatus.ready,
+									DevicesModuleDeviceConnectionStatus.connected,
+									DevicesModuleDeviceConnectionStatus.running,
+								].includes(device.status.status)) ||
 							(filters.value.state === 'offline' &&
 								[
-									DevicesModuleDeviceStatusStatus.disconnected,
-									DevicesModuleDeviceStatusStatus.stopped,
-									DevicesModuleDeviceStatusStatus.lost,
-									DevicesModuleDeviceStatusStatus.unknown,
+									DevicesModuleDeviceConnectionStatus.disconnected,
+									DevicesModuleDeviceConnectionStatus.stopped,
+									DevicesModuleDeviceConnectionStatus.lost,
+									DevicesModuleDeviceConnectionStatus.unknown,
 								].includes(device.status.status)))
 				),
 			[
 				(device: IDevice) =>
 					sortBy.value === 'state'
-						? (device.status?.status ?? DevicesModuleDeviceStatusStatus.unknown)
+						? (device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown)
 						: (device[sortBy.value as keyof IDevice] ?? ''),
 			],
 			[sortDir.value === 'asc' ? 'asc' : 'desc']

@@ -5,6 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
@@ -16,7 +17,7 @@ import { UpdateDisplayInstanceDto } from '../dto/update-display-instance.dto';
 import { DisplayInstanceEntity, UserEntity } from '../entities/users.entity';
 import { DisplaysInstancesService } from '../services/displays-instances.service';
 import { UsersService } from '../services/users.service';
-import { UserRole } from '../users.constants';
+import { USERS_MODULE_PREFIX, UserRole } from '../users.constants';
 
 import { DisplaysInstancesController } from './displays-instances.controller';
 
@@ -99,7 +100,7 @@ describe('DisplaysInstancesController', () => {
 		it('should return all displays instances', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([toInstance(DisplayInstanceEntity, mockDisplayInstance)]);
+			expect(result.data).toEqual([toInstance(DisplayInstanceEntity, mockDisplayInstance)]);
 			expect(service.findAll).toHaveBeenCalledTimes(1);
 		});
 	});
@@ -108,7 +109,7 @@ describe('DisplaysInstancesController', () => {
 		it('should return a display instance by id', async () => {
 			const result = await controller.findOne(mockDisplayInstance.id);
 
-			expect(result).toEqual(toInstance(DisplayInstanceEntity, mockDisplayInstance));
+			expect(result.data).toEqual(toInstance(DisplayInstanceEntity, mockDisplayInstance));
 			expect(service.findOne).toHaveBeenCalledWith(mockDisplayInstance.id);
 		});
 
@@ -131,10 +132,26 @@ describe('DisplaysInstancesController', () => {
 				user: mockUser.id,
 			};
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/users/displays-instances',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
 
-			expect(result).toEqual(toInstance(DisplayInstanceEntity, mockDisplayInstance));
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
+
+			expect(result.data).toEqual(toInstance(DisplayInstanceEntity, mockDisplayInstance));
 			expect(service.create).toHaveBeenCalledWith(mockUser.id, createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/${USERS_MODULE_PREFIX}/displays/${mockDisplayInstance.id}`),
+			);
 		});
 
 		it('should throw UnprocessableEntityException if uid is reused', async () => {
@@ -148,7 +165,21 @@ describe('DisplaysInstancesController', () => {
 				user: mockUser.id,
 			};
 
-			await expect(controller.create({ data: createDto })).rejects.toThrow(UnprocessableEntityException);
+			const mockRequest = {
+				url: '/api/v1/users/displays-instances',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
+
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			await expect(controller.create({ data: createDto }, mockResponse, mockRequest)).rejects.toThrow(
+				UnprocessableEntityException,
+			);
 		});
 	});
 
@@ -160,7 +191,7 @@ describe('DisplaysInstancesController', () => {
 
 			const updatedDisplay = await controller.update(mockDisplayInstance.id, { data: updateDto });
 
-			expect(updatedDisplay.version).toBe('2.0.0');
+			expect(updatedDisplay.data.version).toBe('2.0.0');
 			expect(service.update).toHaveBeenCalledWith(mockDisplayInstance.id, updateDto);
 		});
 

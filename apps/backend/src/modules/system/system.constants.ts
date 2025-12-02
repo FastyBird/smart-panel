@@ -2,6 +2,11 @@ export const SYSTEM_MODULE_PREFIX = 'system-module';
 
 export const SYSTEM_MODULE_NAME = 'system-module';
 
+export const SYSTEM_MODULE_API_TAG_NAME = 'System module';
+
+export const SYSTEM_MODULE_API_TAG_DESCRIPTION =
+	'Provides endpoints to retrieve system-related information, including CPU load, memory usage, and system health status.';
+
 export enum EventHandlerName {
 	INTERNAL_PLATFORM_ACTION = 'SystemModule.Internal.PlatformAction',
 }

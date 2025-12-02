@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat, ConfigModuleLanguageType } from '../../../openapi.constants';
 import type { IConfigLanguageEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigLanguageStore } from '../store/config-language.store.types';
@@ -62,7 +62,7 @@ describe('ConfigLanguageForm', (): void => {
 					type: ConfigModuleLanguageType.language,
 					language: ConfigModuleLanguageLanguage.en_US,
 					timezone: 'Europe/Prague',
-					timeFormat: ConfigModuleLanguageTime_format.Value24h,
+					timeFormat: ConfigModuleLanguageTimeFormat.Value24h,
 				},
 			},
 		}) as VueWrapper<ConfigLanguageFormInstance>;
@@ -78,7 +78,7 @@ describe('ConfigLanguageForm', (): void => {
 	it('submits successfully and updates config', async (): Promise<void> => {
 		await wrapper.find('input[name="language"]').setValue(ConfigModuleLanguageLanguage.cs_CZ);
 		await wrapper.find('input[name="timezone"]').setValue('Africa/Cairo');
-		await wrapper.find('input[name="timeFormat"]').setValue(ConfigModuleLanguageTime_format.Value12h);
+		await wrapper.find('input[name="timeFormat"]').setValue(ConfigModuleLanguageTimeFormat.Value12h);
 
 		(mockConfigLanguageStore.edit as Mock).mockResolvedValueOnce({});
 
@@ -97,7 +97,7 @@ describe('ConfigLanguageForm', (): void => {
 	it('handles submission failure', async (): Promise<void> => {
 		await wrapper.find('input[name="language"]').setValue(ConfigModuleLanguageLanguage.cs_CZ);
 		await wrapper.find('input[name="timezone"]').setValue('Africa/Cairo');
-		await wrapper.find('input[name="timeFormat"]').setValue(ConfigModuleLanguageTime_format.Value12h);
+		await wrapper.find('input[name="timeFormat"]').setValue(ConfigModuleLanguageTimeFormat.Value12h);
 
 		(mockConfigLanguageStore.edit as Mock).mockRejectedValueOnce(new Error());
 
@@ -116,7 +116,7 @@ describe('ConfigLanguageForm', (): void => {
 	it('resets form when remoteFormReset is triggered', async (): Promise<void> => {
 		await wrapper.find('input[name="language"]').setValue(ConfigModuleLanguageLanguage.cs_CZ);
 		await wrapper.find('input[name="timezone"]').setValue('Africa/Cairo');
-		await wrapper.find('input[name="timeFormat"]').setValue(ConfigModuleLanguageTime_format.Value12h);
+		await wrapper.find('input[name="timeFormat"]').setValue(ConfigModuleLanguageTimeFormat.Value12h);
 
 		await wrapper.setProps({ remoteFormReset: true });
 
@@ -124,6 +124,6 @@ describe('ConfigLanguageForm', (): void => {
 
 		expect(wrapper.vm.model.language).toBe(ConfigModuleLanguageLanguage.en_US);
 		expect(wrapper.vm.model.timezone).toBe('Europe/Prague');
-		expect(wrapper.vm.model.timeFormat).toBe(ConfigModuleLanguageTime_format.Value24h);
+		expect(wrapper.vm.model.timeFormat).toBe(ConfigModuleLanguageTimeFormat.Value24h);
 	});
 });

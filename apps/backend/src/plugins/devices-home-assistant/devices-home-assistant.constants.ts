@@ -1,8 +1,13 @@
 export const DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX = 'devices-home-assistant';
 
-export const DEVICES_HOME_ASSISTANT_PLUGIN_NAME = 'devices-home-assistant';
+export const DEVICES_HOME_ASSISTANT_PLUGIN_NAME = 'devices-home-assistant-plugin';
 
 export const DEVICES_HOME_ASSISTANT_TYPE = 'devices-home-assistant';
+
+export const DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME = 'Devices Home-Assistant plugin';
+
+export const DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_DESCRIPTION =
+	'Endpoints for interacting with Home Assistant devices and their states. This plugin allows discovery, inspection, and potential adoption of Home Assistant devices into the Smart Panel ecosystem.';
 
 export enum HomeAssistantDomain {
 	ALARM_CONTROL_PANEL = 'alarm_control_panel',

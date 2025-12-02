@@ -3,7 +3,10 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type {
+	DevicesHomeAssistantPluginGetDeviceOperation,
+	DevicesHomeAssistantPluginGetDevicesOperation,
+} from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
@@ -127,7 +130,7 @@ export const useHomeAssistantDiscoveredDevices = defineStore<
 				let errorReason: string | null = 'Failed to fetch HomeAssistantDiscoveredDevice.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-devices-home-assistant-plugin-device']>(error, errorReason);
+					errorReason = getErrorReason<DevicesHomeAssistantPluginGetDeviceOperation>(error, errorReason);
 				}
 
 				throw new DevicesHomeAssistantApiException(errorReason, response.status);
@@ -183,7 +186,7 @@ export const useHomeAssistantDiscoveredDevices = defineStore<
 				let errorReason: string | null = 'Failed to fetch Home Assistant devices.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-devices-home-assistant-plugin-devices']>(error, errorReason);
+					errorReason = getErrorReason<DevicesHomeAssistantPluginGetDevicesOperation>(error, errorReason);
 				}
 
 				throw new DevicesHomeAssistantApiException(errorReason, response.status);

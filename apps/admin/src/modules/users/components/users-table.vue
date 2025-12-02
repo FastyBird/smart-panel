@@ -228,7 +228,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, UserAvatar, useBreakpoints } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import type { IUsersFilter } from '../composables/types';
 import type { IUser } from '../store/users.store.types';
 

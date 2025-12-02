@@ -1,18 +1,22 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
+import type {
+	DevicesModuleCreateChannelPropertySchema,
+	DevicesModuleUpdateChannelPropertySchema,
+	DevicesModuleChannelPropertySchema,
+} from '../../../openapi.constants';
 import {
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
-	type components,
-} from '../../../openapi';
+} from '../../../openapi.constants';
 
 import { ItemIdSchema } from './types';
 
-type ApiCreateChannelProperty = components['schemas']['DevicesModuleCreateChannelProperty'];
-type ApiUpdateChannelProperty = components['schemas']['DevicesModuleUpdateChannelProperty'];
-type ApiChannelProperty = components['schemas']['DevicesModuleChannelProperty'];
+type ApiCreateChannelProperty = DevicesModuleCreateChannelPropertySchema;
+type ApiUpdateChannelProperty = DevicesModuleUpdateChannelPropertySchema;
+type ApiChannelProperty = DevicesModuleChannelPropertySchema;
 
 // STORE STATE
 // ===========
@@ -26,12 +30,12 @@ export const ChannelPropertySchema = z.object({
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).default(null),
+	value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -68,12 +72,12 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 		identifier: z.string().trim().nonempty().nullable(),
 		name: z.string().trim().nullable(),
 		permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-		dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+		dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 		unit: z.string().nullable(),
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-		invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z.number().nullable(),
-		value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+		value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	}),
 });
 
@@ -101,15 +105,15 @@ export const ChannelsPropertiesAddActionPayloadSchema = z.object({
 		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().nullable(),
 		permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-		dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+		dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 		unit: z.string().nullable(),
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-		invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z
 			.union([z.string(), z.number()])
 			.transform((val) => (val === '' ? undefined : Number(val)))
 			.nullable(),
-		value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+		value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	}),
 });
 
@@ -126,12 +130,12 @@ export const ChannelsPropertiesEditActionPayloadSchema = z.object({
 			.array(z.union([z.string(), z.union([z.number(), z.null()])]))
 			.nullable()
 			.optional(),
-		invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 		step: z
 			.union([z.string(), z.number()])
 			.transform((val) => (val === '' ? undefined : Number(val)))
 			.nullable(),
-		value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+		value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	}),
 });
 
@@ -155,12 +159,12 @@ export const ChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> =
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	data_type: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+	data_type: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 });
 
 export const ChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> = z.object({
@@ -172,9 +176,9 @@ export const ChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> =
 		.array(z.union([z.string(), z.union([z.number(), z.null()])]))
 		.nullable()
 		.optional(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 	step: z.number().nullable().optional(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+	value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 });
 
 export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
@@ -185,12 +189,12 @@ export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
 	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	data_type: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+	data_type: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).nullable(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

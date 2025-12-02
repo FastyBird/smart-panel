@@ -117,13 +117,13 @@
 		<channel-property-form-min-max
 			v-if="
 				[
-					DevicesModuleChannelPropertyData_type.char,
-					DevicesModuleChannelPropertyData_type.uchar,
-					DevicesModuleChannelPropertyData_type.short,
-					DevicesModuleChannelPropertyData_type.ushort,
-					DevicesModuleChannelPropertyData_type.int,
-					DevicesModuleChannelPropertyData_type.uint,
-					DevicesModuleChannelPropertyData_type.float,
+					DevicesModuleChannelPropertyDataType.char,
+					DevicesModuleChannelPropertyDataType.uchar,
+					DevicesModuleChannelPropertyDataType.short,
+					DevicesModuleChannelPropertyDataType.ushort,
+					DevicesModuleChannelPropertyDataType.int,
+					DevicesModuleChannelPropertyDataType.uint,
+					DevicesModuleChannelPropertyDataType.float,
 				].includes(model.dataType)
 			"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-min-max`"
@@ -134,7 +134,7 @@
 		/>
 
 		<channel-property-form-enum
-			v-if="[DevicesModuleChannelPropertyData_type.enum].includes(model.dataType)"
+			v-if="[DevicesModuleChannelPropertyDataType.enum].includes(model.dataType)"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-enum`"
 			v-model="model.enumValues"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
@@ -151,13 +151,13 @@
 		<channel-property-form-step
 			v-if="
 				[
-					DevicesModuleChannelPropertyData_type.char,
-					DevicesModuleChannelPropertyData_type.uchar,
-					DevicesModuleChannelPropertyData_type.short,
-					DevicesModuleChannelPropertyData_type.ushort,
-					DevicesModuleChannelPropertyData_type.int,
-					DevicesModuleChannelPropertyData_type.uint,
-					DevicesModuleChannelPropertyData_type.float,
+					DevicesModuleChannelPropertyDataType.char,
+					DevicesModuleChannelPropertyDataType.uchar,
+					DevicesModuleChannelPropertyDataType.short,
+					DevicesModuleChannelPropertyDataType.ushort,
+					DevicesModuleChannelPropertyDataType.int,
+					DevicesModuleChannelPropertyDataType.uint,
+					DevicesModuleChannelPropertyDataType.float,
 				].includes(model.dataType)
 			"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-step`"
@@ -204,7 +204,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
 
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyDataType } from '../../../../openapi.constants';
 import { useChannel, useChannelPropertyEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 

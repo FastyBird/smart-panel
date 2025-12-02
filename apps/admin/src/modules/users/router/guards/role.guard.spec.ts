@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { RouteNames as AppRouteNames } from '../../../../app.constants';
 import type { IAppUser } from '../../../../app.types';
-import { UsersModuleUserRole } from '../../../../openapi';
+import { UsersModuleUserRole } from '../../../../openapi.constants';
 
 import roleGuard from './role.guard';
 

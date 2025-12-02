@@ -123,7 +123,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElDescriptions, ElDescriptionsItem, ElTabPane, ElTabs, ElTag, useNamespace } from 'element-plus';
 
-import { ConfigModuleSystemLog_levels } from '../../../../openapi';
+import { SystemModuleLogEntryType } from '../../../../openapi.constants';
 
 import type { ISystemLogsDetailProps } from './system-log-detail.types';
 
@@ -148,7 +148,7 @@ const copy = (text: string): void => {
 	navigator.clipboard?.writeText(text);
 };
 
-const levelTagProps = (lvl: ConfigModuleSystemLog_levels) => {
+const levelTagProps = (lvl: SystemModuleLogEntryType) => {
 	const s = lvl.toLowerCase();
 
 	if (['fatal', 'error', 'fail'].includes(s)) {

@@ -1,5 +1,5 @@
 import { camelToSnake, logger, snakeToCamel } from '../../../common';
-import { ConfigModuleAudioType } from '../../../openapi';
+import { ConfigModuleAudioType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import { ConfigAudioSchema, ConfigAudioUpdateReqSchema } from './config-audio.store.schemas';

@@ -5,7 +5,13 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type {
+	UsersModuleGetUserOperation,
+	UsersModuleGetUsersOperation,
+	UsersModuleCreateUserOperation,
+	UsersModuleUpdateUserOperation,
+	UsersModuleDeleteUserOperation,
+} from '../../../openapi.constants';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 import { UsersApiException, UsersException, UsersValidationException } from '../users.exceptions';
 
@@ -130,7 +136,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			let errorReason: string | null = 'Failed to fetch user.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['get-users-module-user']>(error, errorReason);
+				errorReason = getErrorReason<UsersModuleGetUserOperation>(error, errorReason);
 			}
 
 			throw new UsersApiException(errorReason, response.status);
@@ -166,7 +172,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			let errorReason: string | null = 'Failed to fetch users.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['get-users-module-users']>(error, errorReason);
+				errorReason = getErrorReason<UsersModuleGetUsersOperation>(error, errorReason);
 			}
 
 			throw new UsersApiException(errorReason, response.status);
@@ -237,7 +243,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				let errorReason: string | null = 'Failed to create user.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['create-users-module-user']>(error, errorReason);
+					errorReason = getErrorReason<UsersModuleCreateUserOperation>(error, errorReason);
 				}
 
 				throw new UsersApiException(errorReason, response.status);
@@ -314,7 +320,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				let errorReason: string | null = 'Failed to update user.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['update-users-module-user']>(error, errorReason);
+					errorReason = getErrorReason<UsersModuleUpdateUserOperation>(error, errorReason);
 				}
 
 				throw new UsersApiException(errorReason, response.status);
@@ -371,7 +377,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			let errorReason: string | null = 'Failed to create user.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-users-module-user']>(error, errorReason);
+				errorReason = getErrorReason<UsersModuleCreateUserOperation>(error, errorReason);
 			}
 
 			throw new UsersApiException(errorReason, response.status);
@@ -417,7 +423,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				let errorReason: string | null = 'Remove account failed.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['delete-users-module-user']>(error, errorReason);
+					errorReason = getErrorReason<UsersModuleDeleteUserOperation>(error, errorReason);
 				}
 
 				throw new UsersApiException(errorReason, response.status);

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat, ConfigModuleLanguageType } from '../../../openapi.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigLanguage } from './config-language.store';
@@ -12,14 +12,14 @@ const mockLanguageRes = {
 	type: ConfigModuleLanguageType.language,
 	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	time_format: ConfigModuleLanguageTime_format.Value24h,
+	time_format: ConfigModuleLanguageTimeFormat.Value24h,
 };
 
 const mockLanguage = {
 	type: ConfigModuleLanguageType.language,
 	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	timeFormat: ConfigModuleLanguageTime_format.Value24h,
+	timeFormat: ConfigModuleLanguageTimeFormat.Value24h,
 };
 
 const backendClient = {

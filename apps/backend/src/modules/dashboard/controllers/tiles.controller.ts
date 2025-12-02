@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
 	BadRequestException,
@@ -6,7 +7,7 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Header,
+	HttpCode,
 	Logger,
 	NotFoundException,
 	Param,
@@ -14,19 +15,33 @@ import {
 	Patch,
 	Post,
 	Query,
+	Req,
+	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+import { setLocationHeader } from '../../api/utils/location-header.utils';
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../swagger/decorators/api-documentation.decorator';
+import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateSingleTileDto, CreateTileDto } from '../dto/create-tile.dto';
-import { UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
+import { CreateSingleTileDto, CreateTileDto, ReqCreateTileWithParentDto } from '../dto/create-tile.dto';
+import { ReqUpdateTileWithParentDto, UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
 import { TileEntity } from '../entities/dashboard.entity';
+import { TileResponseModel, TilesResponseModel } from '../models/dashboard-response.model';
 import { TileTypeMapping, TilesTypeMapperService } from '../services/tiles-type-mapper.service';
 import { TilesService } from '../services/tiles.service';
 
+@ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
 @Controller('tiles')
 export class TilesController {
 	private readonly logger = new Logger(TilesController.name);
@@ -36,11 +51,29 @@ export class TilesController {
 		private readonly tilesMapperService: TilesTypeMapperService,
 	) {}
 
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Retrieve all tiles',
+		description: 'Retrieves all dashboard tiles with optional filtering by parent entity.',
+		operationId: 'get-dashboard-module-tiles',
+	})
+	@ApiQuery({ name: 'parent_type', type: 'string', required: false, description: 'Filter by parent entity type' })
+	@ApiQuery({
+		name: 'parent_id',
+		type: 'string',
+		format: 'uuid',
+		required: false,
+		description: 'Filter by parent entity ID',
+	})
+	@ApiSuccessResponse(TilesResponseModel, 'All configured tiles were retrieved successfully.')
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiNotFoundResponse('Parent entity not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
-	): Promise<TileEntity[]> {
+	): Promise<TilesResponseModel> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all tiles`);
 
 		const tiles = await this.tilesService.findAll(
@@ -54,23 +87,62 @@ export class TilesController {
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${tiles.length} tiles`);
 
-		return tiles;
+		const response = new TilesResponseModel();
+		response.data = tiles;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Retrieve a specific tile by ID',
+		description: 'Fetches a dashboard tile using its unique identifier.',
+		operationId: 'get-dashboard-module-tile',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Tile ID' })
+	@ApiSuccessResponse(TileResponseModel, 'The requested tile was retrieved successfully.')
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Tile not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
-	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TileEntity> {
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TileResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
 
 		this.logger.debug(`[LOOKUP] Found tile id=${tile.id}`);
 
-		return tile;
+		const response = new TileResponseModel();
+		response.data = tile;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Create a new tile',
+		description: 'Creates a new dashboard tile with the provided configuration.',
+		operationId: 'create-dashboard-module-tile',
+	})
+	@ApiBody({
+		type: ReqCreateTileWithParentDto,
+		description: 'Payload containing the tile metadata and layout information.',
+	})
+	@ApiCreatedSuccessResponse(
+		TileResponseModel,
+		'The newly created tile was returned successfully.',
+		'/api/v1/dashboard-module/tiles/123e4567-e89b-12d3-a456-426614174000',
+	)
+	@ApiBadRequestResponse('Invalid request data or unsupported tile type')
+	@ApiNotFoundResponse('Parent entity not found')
+	@ApiUnprocessableEntityResponse('Tile could not be created')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
-	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/tiles/:id`)
-	async create(@Body() createDto: { data: object }): Promise<TileEntity> {
+	async create(
+		@Body() createDto: { data: object },
+		@Res({ passthrough: true }) res: Response,
+		@Req() req: Request,
+	): Promise<TileResponseModel> {
 		this.logger.debug(`[CREATE] Incoming request to create a new tile`);
 
 		const type: string | undefined =
@@ -139,7 +211,12 @@ export class TilesController {
 
 			this.logger.debug(`[CREATE] Successfully created tile id=${tile.id}`);
 
-			return tile;
+			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'tiles', tile.id);
+
+			const response = new TileResponseModel();
+			response.data = tile;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Tile could not be created. Please try again later');
@@ -149,11 +226,27 @@ export class TilesController {
 		}
 	}
 
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Update an existing tile',
+		description: 'Partially updates the values of a dashboard tile identified by UUID.',
+		operationId: 'update-dashboard-module-tile',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Tile ID' })
+	@ApiBody({
+		type: ReqUpdateTileWithParentDto,
+		description: 'Payload describing the updates to the tile and its parent.',
+	})
+	@ApiSuccessResponse(TileResponseModel, 'The updated tile was returned successfully.')
+	@ApiBadRequestResponse('Invalid UUID format, request data, or unsupported tile type')
+	@ApiNotFoundResponse('Tile not found')
+	@ApiUnprocessableEntityResponse('Tile could not be updated')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
-	): Promise<TileEntity> {
+	): Promise<TileResponseModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
@@ -217,7 +310,10 @@ export class TilesController {
 
 			this.logger.debug(`[UPDATE] Successfully updated tile id=${updatedTile.id}`);
 
-			return updatedTile;
+			const response = new TileResponseModel();
+			response.data = updatedTile;
+
+			return response;
 		} catch (error) {
 			if (error instanceof DashboardException) {
 				throw new UnprocessableEntityException('Tile could not be updated. Please try again later');
@@ -227,6 +323,18 @@ export class TilesController {
 		}
 	}
 
+	@ApiOperation({
+		tags: [DASHBOARD_MODULE_API_TAG_NAME],
+		summary: 'Delete a tile',
+		description: 'Deletes the dashboard tile identified by the provided UUID.',
+		operationId: 'delete-dashboard-module-tile',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Tile ID' })
+	@ApiNoContentResponse({ description: 'Tile deleted successfully' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Tile not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@HttpCode(204)
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete tile id=${id}`);

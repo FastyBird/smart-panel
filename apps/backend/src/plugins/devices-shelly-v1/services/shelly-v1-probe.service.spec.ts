@@ -136,7 +136,7 @@ describe('ShellyV1ProbeService', () => {
 			httpClient.getDeviceStatus.mockResolvedValue(mockStatus);
 			httpClient.getDeviceSettings.mockResolvedValue(mockSettings);
 
-			const result = await service.probeDevice({ host: '192.168.1.100' });
+			const result = await service.probeDevice({ hostname: '192.168.1.100' });
 
 			expect(result.reachable).toBe(true);
 			expect(result.authRequired).toBe(false);
@@ -159,7 +159,7 @@ describe('ShellyV1ProbeService', () => {
 			httpClient.getDeviceInfo.mockResolvedValue(shellyInfoWithAuth);
 			httpClient.getDeviceStatus.mockResolvedValue(mockStatus);
 
-			const result = await service.probeDevice({ host: '192.168.1.100', password: 'secret' });
+			const result = await service.probeDevice({ hostname: '192.168.1.100', password: 'secret' });
 
 			expect(result.reachable).toBe(true);
 			expect(result.authRequired).toBe(true);
@@ -184,7 +184,7 @@ describe('ShellyV1ProbeService', () => {
 				new DevicesShellyV1Exception('HTTP request failed: 401 Unauthorized'),
 			);
 
-			const result = await service.probeDevice({ host: '192.168.1.100', password: 'wrong' });
+			const result = await service.probeDevice({ hostname: '192.168.1.100', password: 'wrong' });
 
 			expect(result.reachable).toBe(true);
 			expect(result.authRequired).toBe(true);
@@ -197,7 +197,7 @@ describe('ShellyV1ProbeService', () => {
 
 			httpClient.getDeviceInfo.mockResolvedValue(shellyInfoWithAuth);
 
-			const result = await service.probeDevice({ host: '192.168.1.100' });
+			const result = await service.probeDevice({ hostname: '192.168.1.100' });
 
 			expect(result.reachable).toBe(true);
 			expect(result.authRequired).toBe(true);
@@ -210,7 +210,7 @@ describe('ShellyV1ProbeService', () => {
 		it('returns unreachable when device info fetch fails', async () => {
 			httpClient.getDeviceInfo.mockRejectedValue(new DevicesShellyV1Exception('Request timeout'));
 
-			const result = await service.probeDevice({ host: '192.168.1.200' });
+			const result = await service.probeDevice({ hostname: '192.168.1.200' });
 
 			expect(result.reachable).toBe(false);
 			expect(result.authRequired).toBe(false);
@@ -224,7 +224,7 @@ describe('ShellyV1ProbeService', () => {
 			httpClient.getDeviceStatus.mockRejectedValue(new DevicesShellyV1Exception('Connection refused'));
 			httpClient.getDeviceSettings.mockResolvedValue(mockSettings);
 
-			const result = await service.probeDevice({ host: '192.168.1.100' });
+			const result = await service.probeDevice({ hostname: '192.168.1.100' });
 
 			expect(result.reachable).toBe(true);
 			expect(result.ip).toBeUndefined(); // No IP from status
@@ -235,7 +235,7 @@ describe('ShellyV1ProbeService', () => {
 			httpClient.getDeviceStatus.mockResolvedValue(mockStatus);
 			httpClient.getDeviceSettings.mockRejectedValue(new DevicesShellyV1Exception('Connection refused'));
 
-			const result = await service.probeDevice({ host: '192.168.1.100' });
+			const result = await service.probeDevice({ hostname: '192.168.1.100' });
 
 			expect(result.reachable).toBe(true);
 			expect(result.ip).toBe('192.168.1.100');
@@ -248,7 +248,7 @@ describe('ShellyV1ProbeService', () => {
 			httpClient.getDeviceStatus.mockResolvedValue(mockStatus);
 			httpClient.getDeviceSettings.mockResolvedValue(mockSettings);
 
-			const result = await service.probeDevice({ host: '192.168.1.100' });
+			const result = await service.probeDevice({ hostname: '192.168.1.100' });
 
 			expect(result.deviceType).toBe('Shelly 2.5');
 		});
@@ -260,7 +260,7 @@ describe('ShellyV1ProbeService', () => {
 			httpClient.getDeviceStatus.mockResolvedValue(mockStatus);
 			httpClient.getDeviceSettings.mockResolvedValue(mockSettings);
 
-			const result = await service.probeDevice({ host: '192.168.1.100' });
+			const result = await service.probeDevice({ hostname: '192.168.1.100' });
 
 			expect(result.reachable).toBe(true);
 			expect(result.model).toBe('UNKNOWN-DEVICE');

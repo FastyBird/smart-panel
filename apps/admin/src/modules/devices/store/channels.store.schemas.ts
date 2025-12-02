@@ -1,15 +1,20 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { DevicesModuleChannelCategory, type components } from '../../../openapi';
+import type {
+	DevicesModuleCreateChannelSchema,
+	DevicesModuleUpdateChannelSchema,
+	DevicesModuleChannelSchema,
+} from '../../../openapi.constants';
+import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 
 import { ChannelControlCreateReqSchema, ChannelControlResSchema } from './channels.controls.store.schemas';
 import { ChannelPropertyCreateReqSchema, ChannelPropertyResSchema } from './channels.properties.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreateChannel = components['schemas']['DevicesModuleCreateChannel'];
-type ApiUpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
-type ApiChannel = components['schemas']['DevicesModuleChannel'];
+type ApiCreateChannel = DevicesModuleCreateChannelSchema;
+type ApiUpdateChannel = DevicesModuleUpdateChannelSchema;
+type ApiChannel = DevicesModuleChannelSchema;
 
 // STORE STATE
 // ===========

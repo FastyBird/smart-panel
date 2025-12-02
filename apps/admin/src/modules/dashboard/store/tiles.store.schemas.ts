@@ -1,14 +1,18 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import type {
+	DashboardModuleCreateTileSchema,
+	DashboardModuleUpdateTileSchema,
+	DashboardModuleTileSchema,
+} from '../../../openapi.constants';
 
 import { DataSourceCreateReqSchema, DataSourceResSchema } from './data-sources.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreateTile = components['schemas']['DashboardModuleCreateTile'];
-type ApiUpdateTile = components['schemas']['DashboardModuleUpdateTile'];
-type ApiTile = components['schemas']['DashboardModuleTile'];
+type ApiCreateTile = DashboardModuleCreateTileSchema;
+type ApiUpdateTile = DashboardModuleUpdateTileSchema;
+type ApiTile = DashboardModuleTileSchema;
 
 // STORE STATE
 // ===========
@@ -174,8 +178,12 @@ export const TileCreateReqSchema: ZodType<ApiCreateTile & { parent: { type: stri
 	data_source: z.array(DataSourceCreateReqSchema).optional(),
 });
 
-export const TileUpdateReqSchema: ZodType<ApiUpdateTile> = z.object({
+export const TileUpdateReqSchema: ZodType<ApiUpdateTile & { parent: { type: string; id: string } }> = z.object({
 	type: z.string().trim().nonempty(),
+	parent: z.object({
+		id: z.string().uuid(),
+		type: z.string().trim().nonempty(),
+	}),
 	row: z.number().optional(),
 	col: z.number().optional(),
 	row_span: z.number().optional(),

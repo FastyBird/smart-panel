@@ -3,8 +3,7 @@ import 'package:fastybird_smart_panel/api/models/config_module_req_update_sectio
 import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_update_weather_location_type.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_update_weather_unit.dart';
-import 'package:fastybird_smart_panel/api/models/config_module_weather_location_type.dart';
-import 'package:fastybird_smart_panel/api/models/config_module_weather_unit.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_data_weather_unit.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/weather.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
@@ -88,9 +87,6 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
 
     if (updated is ConfigModuleResSectionDataUnionWeather) {
       data = _getConfig().copyWith(
-        locationType: _convertWeatherLocationTypeFromApi(
-          updated.locationType,
-        ),
         unit: _convertWeatherUnitFromApi(
           updated.unit,
         ),
@@ -131,20 +127,6 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
     }, 'update weather configuration');
   }
 
-  WeatherLocationType _convertWeatherLocationTypeFromApi(
-    ConfigModuleWeatherLocationType locationType,
-  ) {
-    switch (locationType) {
-      case ConfigModuleWeatherLocationType.latLon:
-        return WeatherLocationType.latLon;
-      case ConfigModuleWeatherLocationType.cityId:
-        return WeatherLocationType.cityId;
-      case ConfigModuleWeatherLocationType.zipCode:
-        return WeatherLocationType.zipCode;
-      default:
-        return WeatherLocationType.cityName;
-    }
-  }
 
   ConfigModuleUpdateWeatherLocationType _convertWeatherLocationTypeToApi(
     WeatherLocationType locationType,
@@ -161,9 +143,9 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
     }
   }
 
-  WeatherUnit _convertWeatherUnitFromApi(ConfigModuleWeatherUnit unit) {
+  WeatherUnit _convertWeatherUnitFromApi(ConfigModuleDataWeatherUnit unit) {
     switch (unit) {
-      case ConfigModuleWeatherUnit.fahrenheit:
+      case ConfigModuleDataWeatherUnit.fahrenheit:
         return WeatherUnit.fahrenheit;
       default:
         return WeatherUnit.celsius;

@@ -6,7 +6,10 @@ import { type Pinia, defineStore } from 'pinia';
 import { jwtDecode } from 'jwt-decode';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type {
+	AuthModuleGetProfileOperation,
+	AuthModuleRegisterOperation,
+} from '../../../openapi.constants';
 import { type IUser, transformUserResponse } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthApiException, AuthException } from '../auth.exceptions';
@@ -156,7 +159,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 				let errorReason: string | null = 'Failed to get profile.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-auth-module-profile']>(error, errorReason);
+					errorReason = getErrorReason<AuthModuleGetProfileOperation>(error, errorReason);
 				}
 
 				throw new AuthException(errorReason);
@@ -204,7 +207,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			let errorReason: string | null = 'Failed to create user session.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-auth-module-register']>(error, errorReason);
+				errorReason = getErrorReason<AuthModuleRegisterOperation>(error, errorReason);
 			}
 
 			throw new AuthException(errorReason);

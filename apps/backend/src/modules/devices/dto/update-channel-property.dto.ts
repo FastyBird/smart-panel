@@ -1,16 +1,16 @@
 import { Expose, Type } from 'class-transformer';
 import { ValidateNested } from 'class-validator';
 
-import type { components } from '../../../openapi';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateDeviceChannelPropertyDto } from './update-device-channel-property.dto';
 
-type ReqUpdateChannelProperty = components['schemas']['DevicesModuleReqUpdateChannelProperty'];
-type UpdateChannelProperty = components['schemas']['DevicesModuleUpdateChannelProperty'];
+@ApiSchema({ name: 'DevicesModuleUpdateChannelProperty' })
+export class UpdateChannelPropertyDto extends UpdateDeviceChannelPropertyDto {}
 
-export class UpdateChannelPropertyDto extends UpdateDeviceChannelPropertyDto implements UpdateChannelProperty {}
-
-export class ReqUpdateChannelPropertyDto implements ReqUpdateChannelProperty {
+@ApiSchema({ name: 'DevicesModuleReqUpdateChannelProperty' })
+export class ReqUpdateChannelPropertyDto {
+	@ApiProperty({ description: 'Channel property data', type: () => UpdateChannelPropertyDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdateChannelPropertyDto)

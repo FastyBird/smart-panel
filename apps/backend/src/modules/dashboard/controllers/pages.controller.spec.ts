@@ -7,6 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DisplayProfileEntity } from '../../system/entities/system.entity';
+import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { CreatePageDto } from '../dto/create-page.dto';
 import { UpdatePageDto } from '../dto/update-page.dto';
 import { PageEntity } from '../entities/dashboard.entity';
@@ -153,14 +155,14 @@ describe('PagesController', () => {
 		it('should return all pages', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([toInstance(MockPageEntity, mockPageOne)]);
+			expect(result.data).toEqual([toInstance(MockPageEntity, mockPageOne)]);
 			expect(service.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single page', async () => {
 			const result = await controller.findOne(mockPageOne.id);
 
-			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
+			expect(result.data).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.findOne).toHaveBeenCalledWith(mockPageOne.id);
 		});
 
@@ -179,10 +181,26 @@ describe('PagesController', () => {
 				updateDto: UpdateMockPageDto,
 			});
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/dashboard/pages',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
 
-			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
+
+			expect(result.data).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.create).toHaveBeenCalledWith(createDto);
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/${DASHBOARD_MODULE_PREFIX}/pages/${mockPageOne.id}`),
+			);
 		});
 
 		it('should update a page', async () => {
@@ -200,7 +218,7 @@ describe('PagesController', () => {
 
 			const result = await controller.update(mockPageOne.id, { data: updateDto });
 
-			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
+			expect(result.data).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.update).toHaveBeenCalledWith(mockPageOne.id, updateDto);
 		});
 

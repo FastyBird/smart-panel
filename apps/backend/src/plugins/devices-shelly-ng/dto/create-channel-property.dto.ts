@@ -1,16 +1,19 @@
 import { Expose } from 'class-transformer';
 import { IsString } from 'class-validator';
 
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+
 import { CreateChannelPropertyDto } from '../../../modules/devices/dto/create-channel-property.dto';
-import type { components } from '../../../openapi';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-type CreateShellyNgChannelProperty = components['schemas']['DevicesShellyNgPluginCreateShellyNgChannelProperty'];
-
-export class CreateShellyNgChannelPropertyDto
-	extends CreateChannelPropertyDto
-	implements CreateShellyNgChannelProperty
-{
+@ApiSchema({ name: 'DevicesShellyNgPluginCreateChannelProperty' })
+export class CreateShellyNgChannelPropertyDto extends CreateChannelPropertyDto {
+	@ApiProperty({
+		description: 'Channel property type',
+		type: 'string',
+		default: DEVICES_SHELLY_NG_TYPE,
+		example: DEVICES_SHELLY_NG_TYPE,
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel property type string."}]' })
 	readonly type: typeof DEVICES_SHELLY_NG_TYPE;

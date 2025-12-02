@@ -1,8 +1,13 @@
 export const DEVICES_THIRD_PARTY_PLUGIN_PREFIX = 'devices-third-party';
 
-export const DEVICES_THIRD_PARTY_PLUGIN_NAME = 'devices-third-party';
+export const DEVICES_THIRD_PARTY_PLUGIN_NAME = 'devices-third-party-plugin';
 
 export const DEVICES_THIRD_PARTY_TYPE = 'devices-third-party';
+
+export const DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME = 'Devices Third-Party plugin';
+
+export const DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION =
+	'Endpoints for interacting with Third-party devices and their states.';
 
 export enum ThirdPartyPropertiesUpdateStatus {
 	SUCCESS = 0, // The request was processed successfully.

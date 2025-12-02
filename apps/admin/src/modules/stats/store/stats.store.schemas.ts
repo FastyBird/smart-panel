@@ -1,8 +1,8 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import type { StatsModuleStatsSchema } from '../../../openapi.constants';
 
-type ApiStats = components['schemas']['StatsModuleStats'];
+type ApiStats = StatsModuleStatsSchema;
 
 // STORE STATE
 // ===========

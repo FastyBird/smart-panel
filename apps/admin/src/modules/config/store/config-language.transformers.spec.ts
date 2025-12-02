@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTimeFormat, ConfigModuleLanguageType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigLanguageEditActionPayload, IConfigLanguageRes } from './config-language.store.types';
@@ -24,13 +24,13 @@ const validConfigLanguageResponse: IConfigLanguageRes = {
 	type: ConfigModuleLanguageType.language,
 	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	time_format: ConfigModuleLanguageTime_format.Value24h,
+	time_format: ConfigModuleLanguageTimeFormat.Value24h,
 };
 
 const validConfigLanguageUpdatePayload: IConfigLanguageEditActionPayload['data'] = {
 	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	timeFormat: ConfigModuleLanguageTime_format.Value24h,
+	timeFormat: ConfigModuleLanguageTimeFormat.Value24h,
 };
 
 describe('Config Language Transformers', (): void => {
@@ -42,7 +42,7 @@ describe('Config Language Transformers', (): void => {
 				type: ConfigModuleLanguageType.language,
 				language: ConfigModuleLanguageLanguage.en_US,
 				timezone: 'Europe/Prague',
-				timeFormat: ConfigModuleLanguageTime_format.Value24h,
+				timeFormat: ConfigModuleLanguageTimeFormat.Value24h,
 			});
 		});
 
@@ -61,7 +61,7 @@ describe('Config Language Transformers', (): void => {
 				type: ConfigModuleLanguageType.language,
 				language: ConfigModuleLanguageLanguage.en_US,
 				timezone: 'Europe/Prague',
-				time_format: ConfigModuleLanguageTime_format.Value24h,
+				time_format: ConfigModuleLanguageTimeFormat.Value24h,
 			});
 		});
 

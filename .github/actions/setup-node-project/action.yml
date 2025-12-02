@@ -51,4 +51,4 @@ runs:
 
     - name: "Build generated code"
       shell: bash
-      run: pnpm generate:openapi && pnpm generate:spec
+      run: pnpm generate:spec && pnpm generate:openapi

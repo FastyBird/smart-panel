@@ -4,11 +4,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
+import { CreateDataSourceDto } from '../../modules/dashboard/dto/create-data-source.dto';
+import { UpdateDataSourceDto } from '../../modules/dashboard/dto/update-data-source.dto';
+import { DataSourceEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { DataSourceRelationsLoaderRegistryService } from '../../modules/dashboard/services/data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from '../../modules/dashboard/services/data-source-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { DATA_SOURCES_DEVICE_PLUGIN_NAME, DATA_SOURCES_DEVICE_TYPE } from './data-sources-device-channel.constants';
+import { DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS } from './data-sources-device-channel.openapi';
 import { CreateDeviceChannelDataSourceDto } from './dto/create-data-source.dto';
 import { DeviceChannelUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateDeviceChannelDataSourceDto } from './dto/update-data-source.dto';
@@ -20,7 +27,13 @@ import { DeviceChannelExistsConstraintValidator } from './validators/device-chan
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([DeviceChannelDataSourceEntity]), DashboardModule, DevicesModule, ConfigModule],
+	imports: [
+		TypeOrmModule.forFeature([DeviceChannelDataSourceEntity]),
+		DashboardModule,
+		DevicesModule,
+		ConfigModule,
+		SwaggerModule,
+	],
 	providers: [
 		DeviceExistsConstraintValidator,
 		DeviceChannelExistsConstraintValidator,
@@ -34,6 +47,8 @@ export class DataSourcesDeviceChannelPlugin {
 		private readonly dataSourcesMapper: DataSourcesTypeMapperService,
 		private readonly dataSourceRelationsLoaderRegistryService: DataSourceRelationsLoaderRegistryService,
 		private readonly dataSourceRelationsLoaderService: DataSourceRelationsLoaderService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 	) {}
 
 	onModuleInit() {
@@ -55,5 +70,30 @@ export class DataSourcesDeviceChannelPlugin {
 		});
 
 		this.dataSourceRelationsLoaderRegistryService.register(this.dataSourceRelationsLoaderService);
+
+		for (const model of DATA_SOURCES_DEVICE_CHANNEL_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
+
+		this.discriminatorRegistry.register({
+			parentClass: DataSourceEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: DATA_SOURCES_DEVICE_TYPE,
+			modelClass: DeviceChannelDataSourceEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateDataSourceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DATA_SOURCES_DEVICE_TYPE,
+			modelClass: CreateDeviceChannelDataSourceDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateDataSourceDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: DATA_SOURCES_DEVICE_TYPE,
+			modelClass: UpdateDeviceChannelDataSourceDto,
+		});
 	}
 }

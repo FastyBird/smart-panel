@@ -10,6 +10,8 @@ import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
@@ -26,9 +28,22 @@ import { ModuleResetService } from './services/module-reset.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
 import { SystemService } from './services/system.service';
-import { EventHandlerName, EventType, LogEntryType, SYSTEM_MODULE_NAME } from './system.constants';
+import {
+	EventHandlerName,
+	EventType,
+	LogEntryType,
+	SYSTEM_MODULE_API_TAG_DESCRIPTION,
+	SYSTEM_MODULE_API_TAG_NAME,
+	SYSTEM_MODULE_NAME,
+} from './system.constants';
+import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 import { DisplayProfileExistsConstraintValidator } from './validators/display-profile-exists-constraint.validator';
 
+@ApiTag({
+	tagName: SYSTEM_MODULE_NAME,
+	displayName: SYSTEM_MODULE_API_TAG_NAME,
+	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([DisplayProfileEntity]),
@@ -62,6 +77,7 @@ export class SystemModule {
 		private readonly systemStatsProvider: SystemStatsProvider,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly configService: ConfigService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -99,5 +115,9 @@ export class SystemModule {
 		const moduleConfig = this.configService.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
 
 		this.systemLoggerService.setAllowedTypes(moduleConfig.logLevels as unknown as LogEntryType[]);
+
+		for (const model of SYSTEM_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 }

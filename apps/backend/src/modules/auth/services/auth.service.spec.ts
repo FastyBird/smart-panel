@@ -12,11 +12,10 @@ import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { ACCESS_TOKEN_TYPE } from '../auth.constants';
 import { AuthException, AuthNotFoundException } from '../auth.exceptions';
-import { CheckResponseDto } from '../dto/check-response.dto';
-import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { AccessTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
+import { CheckModel, LoggedInModel } from '../models/auth.model';
 
 import { AuthService } from './auth.service';
 import { TokensService } from './tokens.service';
@@ -116,17 +115,17 @@ describe('AuthService', () => {
 		it('should return valid false if username exists', async () => {
 			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(toInstance(UserEntity, mockUser));
 
-			const result: CheckResponseDto = await authService.checkUsername({ username: 'testuser' });
+			const result = await authService.checkUsername({ username: 'testuser' });
 
-			expect(result).toEqual({ valid: false });
+			expect(result).toEqual(toInstance(CheckModel, { valid: false }));
 		});
 
 		it('should return valid true if username does not exist', async () => {
 			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(null);
 
-			const result: CheckResponseDto = await authService.checkUsername({ username: 'newUser' });
+			const result = await authService.checkUsername({ username: 'newUser' });
 
-			expect(result).toEqual({ valid: true });
+			expect(result).toEqual(toInstance(CheckModel, { valid: true }));
 		});
 	});
 
@@ -134,17 +133,17 @@ describe('AuthService', () => {
 		it('should return valid false if email exists', async () => {
 			jest.spyOn(usersService, 'findByEmail').mockResolvedValue(toInstance(UserEntity, mockUser));
 
-			const result: CheckResponseDto = await authService.checkEmail({ email: 'test@example.com' });
+			const result = await authService.checkEmail({ email: 'test@example.com' });
 
-			expect(result).toEqual({ valid: false });
+			expect(result).toEqual(toInstance(CheckModel, { valid: false }));
 		});
 
 		it('should return valid true if email does not exist', async () => {
 			jest.spyOn(usersService, 'findByEmail').mockResolvedValue(null);
 
-			const result: CheckResponseDto = await authService.checkEmail({ email: 'new@example.com' });
+			const result = await authService.checkEmail({ email: 'new@example.com' });
 
-			expect(result).toEqual({ valid: true });
+			expect(result).toEqual(toInstance(CheckModel, { valid: true }));
 		});
 	});
 
@@ -192,7 +191,7 @@ describe('AuthService', () => {
 			const result = await authService.login(loginDto);
 
 			expect(result).toEqual(
-				toInstance(LoggedInResponseDto, {
+				toInstance(LoggedInModel, {
 					accessToken: 'mocked-jwt-token',
 					refreshToken: 'mocked-jwt-token',
 					type: ACCESS_TOKEN_TYPE,

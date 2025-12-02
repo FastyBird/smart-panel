@@ -1,34 +1,37 @@
-import { Command, Positional } from 'nestjs-command';
+import { Command, CommandRunner } from 'nest-commander';
 
 import { Injectable, Logger } from '@nestjs/common';
 
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 
+interface RegisterOwnerOptions {
+	username?: string;
+	password?: string;
+}
+
+@Command({
+	name: 'auth:onboarding',
+	description: 'Create application owner account',
+	arguments: '<username> <password>',
+})
 @Injectable()
-export class RegisterOwnerCommand {
+export class RegisterOwnerCommand extends CommandRunner {
 	private readonly logger = new Logger(RegisterOwnerCommand.name);
 
-	constructor(private readonly service: UsersService) {}
+	constructor(private readonly service: UsersService) {
+		super();
+	}
 
-	@Command({
-		command: 'auth:onboarding <username> <password>',
-		describe: 'Create application owner account',
-	})
-	async reset(
-		@Positional({
-			name: 'username',
-			describe: 'the owner username',
-			type: 'string',
-		})
-		username: string,
-		@Positional({
-			name: 'password',
-			describe: 'the owner password',
-			type: 'string',
-		})
-		password: string,
-	) {
+	async run(passedParams: string[], options?: RegisterOwnerOptions): Promise<void> {
+		const username = passedParams[0] || options?.username;
+		const password = passedParams[1] || options?.password;
+
+		if (!username || !password) {
+			console.error('\x1b[31m❌ Error: username and password are required\n');
+			console.error('Usage: auth:onboarding <username> <password>');
+			process.exit(1);
+		}
 		const owner = await this.service.findOwner();
 
 		if (owner !== null) {

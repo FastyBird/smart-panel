@@ -1,11 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import type {
+	UsersModuleCreateDisplayInstanceSchema,
+	UsersModuleUpdateDisplayInstanceSchema,
+	UsersModuleDisplayInstanceSchema,
+} from '../../../openapi.constants';
 
-type ApiCreateDisplayInstance = components['schemas']['UsersModuleCreateDisplayInstance'];
-type ApiUpdateDisplayInstance = components['schemas']['UsersModuleUpdateDisplayInstance'];
-type ApiDisplayInstance = components['schemas']['UsersModuleDisplayInstance'];
+type ApiCreateDisplayInstance = UsersModuleCreateDisplayInstanceSchema;
+type ApiUpdateDisplayInstance = UsersModuleUpdateDisplayInstanceSchema;
+type ApiDisplayInstance = UsersModuleDisplayInstanceSchema;
 
 export const DisplayIdSchema = z.string().uuid();
 
@@ -122,7 +126,7 @@ export const DisplayInstanceResSchema: ZodType<ApiDisplayInstance> = z.object({
 	version: z.string().trim().nonempty(),
 	build: z.string().trim().nonempty(),
 	user: z.string().uuid(),
-	displayProfile: z.string().uuid().nullable(),
+	display_profile: z.string().uuid().nullable(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

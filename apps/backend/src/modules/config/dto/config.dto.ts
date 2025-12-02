@@ -10,10 +10,12 @@ import {
 	IsString,
 	Max,
 	Min,
+	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
 
-import type { components } from '../../../openapi';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+
 import {
 	LanguageType,
 	LogLevelType,
@@ -22,18 +24,6 @@ import {
 	TimeFormatType,
 	WeatherLocationType,
 } from '../config.constants';
-
-type ReqUpdateSection = components['schemas']['ConfigModuleReqUpdateSection'];
-type ReqUpdatePlugin = components['schemas']['ConfigModuleReqUpdatePlugin'];
-type UpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];
-type UpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];
-type UpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];
-type UpdateWeatherLatLon = components['schemas']['ConfigModuleUpdateWeatherLatLon'];
-type UpdateWeatherCityName = components['schemas']['ConfigModuleUpdateWeatherCityName'];
-type UpdateWeatherCityId = components['schemas']['ConfigModuleUpdateWeatherCityId'];
-type UpdateWeatherZipCode = components['schemas']['ConfigModuleUpdateWeatherZipCode'];
-type UpdateSystem = components['schemas']['ConfigModuleUpdateSystem'];
-type UpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
 
 const determineConfigDto = (obj: unknown): new () => object => {
 	if (
@@ -90,16 +80,35 @@ export class BaseConfigDto {
 	type: SectionType.AUDIO | SectionType.DISPLAY | SectionType.LANGUAGE | SectionType.WEATHER | SectionType.SYSTEM;
 }
 
-export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
+@ApiSchema({ name: 'ConfigModuleUpdateAudio' })
+export class UpdateAudioConfigDto extends BaseConfigDto {
+	@ApiProperty({
+		description: 'Configuration section type',
+		enum: [SectionType.AUDIO],
+		example: 'audio',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a audio string."}]' })
 	type: SectionType.AUDIO;
 
+	@ApiPropertyOptional({
+		description: 'Enables or disables the speaker.',
+		type: 'boolean',
+		example: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"speaker","reason":"Speaker must be a boolean value."}]' })
 	speaker?: boolean;
 
+	@ApiPropertyOptional({
+		description: 'Sets the speaker volume (0-100).',
+		type: 'integer',
+		format: 'int32',
+		minimum: 0,
+		maximum: 100,
+		example: 34,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -110,11 +119,24 @@ export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
 	@Max(100, { message: '[{"field":"speaker_volume","reason":"Speaker volume cannot exceed 100."}]' })
 	speaker_volume?: number;
 
+	@ApiPropertyOptional({
+		description: 'Enables or disables the microphone.',
+		type: 'boolean',
+		example: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"microphone","reason":"Microphone must be a boolean value."}]' })
 	microphone?: boolean;
 
+	@ApiPropertyOptional({
+		description: 'Sets the microphone volume (0-100).',
+		type: 'integer',
+		format: 'int32',
+		minimum: 0,
+		maximum: 100,
+		example: 55,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -126,16 +148,35 @@ export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
 	microphone_volume?: number;
 }
 
-export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDisplay {
+@ApiSchema({ name: 'ConfigModuleUpdateDisplay' })
+export class UpdateDisplayConfigDto extends BaseConfigDto {
+	@ApiProperty({
+		description: 'Configuration section type',
+		enum: [SectionType.DISPLAY],
+		example: 'display',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a display string."}]' })
 	type: SectionType.DISPLAY;
 
+	@ApiPropertyOptional({
+		description: 'Enables or disables dark mode.',
+		type: 'boolean',
+		example: false,
+	})
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"dark_mode","reason":"Dark mode must be a boolean value."}]' })
 	dark_mode?: boolean;
 
+	@ApiPropertyOptional({
+		description: 'Sets the display brightness (0-100).',
+		type: 'integer',
+		format: 'int32',
+		minimum: 0,
+		maximum: 100,
+		example: 50,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -146,6 +187,14 @@ export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDispl
 	@Max(100, { message: '[{"field":"brightness","reason":"Brightness cannot exceed 100."}]' })
 	brightness?: number;
 
+	@ApiPropertyOptional({
+		description: 'Sets the screen lock duration in seconds (0-3600).',
+		type: 'integer',
+		format: 'int32',
+		minimum: 0,
+		maximum: 3600,
+		example: 30,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -161,38 +210,75 @@ export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDispl
 	})
 	screen_lock_duration?: number;
 
+	@ApiPropertyOptional({
+		description: 'Enables or disables the screen saver.',
+		type: 'boolean',
+		example: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"screen_saver","reason":"Screen saver must be a boolean value."}]' })
 	screen_saver?: boolean;
 }
 
-export class UpdateLanguageConfigDto extends BaseConfigDto implements UpdateLanguage {
+@ApiSchema({ name: 'ConfigModuleUpdateLanguage' })
+export class UpdateLanguageConfigDto extends BaseConfigDto {
+	@ApiProperty({
+		description: 'Configuration section type',
+		enum: [SectionType.LANGUAGE],
+		example: 'language',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a language string."}]' })
 	type: SectionType.LANGUAGE;
 
+	@ApiPropertyOptional({
+		description: 'Sets the application language.',
+		enum: LanguageType,
+		example: LanguageType.ENGLISH,
+	})
 	@Expose()
 	@IsOptional()
 	@IsEnum(LanguageType, { message: '[{"field":"language","reason":"Language must be a valid string."}]' })
 	language?: LanguageType;
 
+	@ApiPropertyOptional({
+		description: 'Sets the timezone.',
+		type: 'string',
+		example: 'Europe/Prague',
+	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"timezone","reason":"Timezone must be a valid string."}]' })
 	timezone?: string;
 
+	@ApiPropertyOptional({
+		description: 'Sets the time format.',
+		enum: TimeFormatType,
+		example: TimeFormatType.HOUR_24,
+	})
 	@Expose()
 	@IsOptional()
 	@IsEnum(TimeFormatType, { message: '[{"field":"time_format","reason":"Time format must be a valid string."}]' })
 	time_format?: TimeFormatType;
 }
 
+@ApiSchema({ name: 'ConfigModuleUpdateWeather' })
 export abstract class UpdateWeatherConfigDto extends BaseConfigDto {
+	@ApiProperty({
+		description: 'Configuration section type',
+		enum: [SectionType.WEATHER],
+		example: 'weather',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a weather string."}]' })
 	type: SectionType.WEATHER;
 
+	@ApiPropertyOptional({
+		description: 'Type of location data provided.',
+		enum: WeatherLocationType,
+		example: WeatherLocationType.CITY_NAME,
+	})
 	@Expose()
 	@IsOptional()
 	@IsEnum(WeatherLocationType, {
@@ -200,21 +286,47 @@ export abstract class UpdateWeatherConfigDto extends BaseConfigDto {
 	})
 	location_type?: WeatherLocationType;
 
+	@ApiPropertyOptional({
+		description: 'Temperature unit preference.',
+		enum: TemperatureUnitType,
+		example: TemperatureUnitType.CELSIUS,
+	})
 	@Expose()
 	@IsEnum(TemperatureUnitType, { message: '[{"field":"unit","reason":"Unit must be a valid string."}]' })
 	unit?: TemperatureUnitType;
 
+	@ApiPropertyOptional({
+		description: 'OpenWeatherMap API key.',
+		type: 'string',
+		example: 'your-api-key-here',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"open_weather_api_key","reason":"OpenWeather API key must be a valid string."}]' })
-	open_weather_api_key?: string;
+	open_weather_api_key?: string | null;
 }
 
-export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherLatLon {
+@ApiSchema({ name: 'ConfigModuleUpdateWeatherLatLon' })
+export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto {
+	@ApiProperty({
+		description: 'Location type',
+		enum: [WeatherLocationType.LAT_LON],
+		example: 'lat_lon',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
 	location_type: WeatherLocationType.LAT_LON;
 
+	@ApiPropertyOptional({
+		description: 'Latitude coordinate (-90 to 90).',
+		type: 'number',
+		format: 'float',
+		minimum: -90,
+		maximum: 90,
+		example: 50.0755,
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -222,9 +334,19 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto impleme
 		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
-	latitude?: number;
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
+	@ValidateIf((_, value) => value !== null)
+	latitude?: number | null;
 
+	@ApiPropertyOptional({
+		description: 'Longitude coordinate (-180 to 180).',
+		type: 'number',
+		format: 'float',
+		minimum: -180,
+		maximum: 180,
+		example: 14.4378,
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -233,19 +355,42 @@ export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto impleme
 	)
 	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
 	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	longitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	longitude?: number | null;
 }
 
-export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherCityName {
+@ApiSchema({ name: 'ConfigModuleUpdateWeatherCityName' })
+export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
+	@ApiProperty({
+		description: 'Location type',
+		enum: [WeatherLocationType.CITY_NAME],
+		example: 'city_name',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
 	location_type: WeatherLocationType.CITY_NAME;
 
+	@ApiPropertyOptional({
+		description: 'City name with optional country code (e.g., "Prague,CZ").',
+		type: 'string',
+		example: 'Prague,CZ',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"city_name","reason":"City name must be a valid string."}]' })
-	city_name?: string;
+	@ValidateIf((_, value) => value !== null)
+	city_name?: string | null;
 
+	@ApiPropertyOptional({
+		description: 'Latitude coordinate (-90 to 90).',
+		type: 'number',
+		format: 'float',
+		minimum: -90,
+		maximum: 90,
+		example: 50.0755,
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -253,9 +398,19 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto imple
 		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
-	latitude?: number;
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
+	@ValidateIf((_, value) => value !== null)
+	latitude?: number | null;
 
+	@ApiPropertyOptional({
+		description: 'Longitude coordinate (-180 to 180).',
+		type: 'number',
+		format: 'float',
+		minimum: -180,
+		maximum: 180,
+		example: 14.4378,
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -264,30 +419,66 @@ export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto imple
 	)
 	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
 	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	longitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	longitude?: number | null;
 }
 
-export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherCityId {
+@ApiSchema({ name: 'ConfigModuleUpdateWeatherCityId' })
+export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto {
+	@ApiProperty({
+		description: 'Location type',
+		enum: [WeatherLocationType.CITY_ID],
+		example: 'city_id',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
 	location_type: WeatherLocationType.CITY_ID;
 
+	@ApiPropertyOptional({
+		description: 'OpenWeatherMap city ID.',
+		type: 'integer',
+		example: 3067696,
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"city_id","reason":"City ID must be a valid number."}]' })
-	city_id?: number;
+	@ValidateIf((_, value) => value !== null)
+	city_id?: number | null;
 }
 
-export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherZipCode {
+@ApiSchema({ name: 'ConfigModuleUpdateWeatherZipCode' })
+export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
+	@ApiProperty({
+		description: 'Location type',
+		enum: [WeatherLocationType.ZIP_CODE],
+		example: 'zip_code',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
 	location_type: WeatherLocationType.ZIP_CODE;
 
+	@ApiPropertyOptional({
+		description: 'ZIP/postal code with optional country code (e.g., "11000,CZ").',
+		type: 'string',
+		example: '11000,CZ',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"zip_code","reason":"ZIP code must be a valid string."}]' })
-	zip_code?: string;
+	@ValidateIf((_, value) => value !== null)
+	zip_code?: string | null;
 
+	@ApiPropertyOptional({
+		description: 'Latitude coordinate (-90 to 90).',
+		type: 'number',
+		format: 'float',
+		minimum: -90,
+		maximum: 90,
+		example: 50.0755,
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -295,9 +486,19 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implem
 		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
 	)
 	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
-	latitude?: number;
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
+	@ValidateIf((_, value) => value !== null)
+	latitude?: number | null;
 
+	@ApiPropertyOptional({
+		description: 'Longitude coordinate (-180 to 180).',
+		type: 'number',
+		format: 'float',
+		minimum: -180,
+		maximum: 180,
+		example: 14.4378,
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -306,14 +507,30 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implem
 	)
 	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
 	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	longitude?: number;
+	@ValidateIf((_, value) => value !== null)
+	longitude?: number | null;
 }
 
-export class UpdateSystemConfigDto extends BaseConfigDto implements UpdateSystem {
+@ApiSchema({ name: 'ConfigModuleUpdateSystem' })
+export class UpdateSystemConfigDto extends BaseConfigDto {
+	@ApiProperty({
+		description: 'Configuration section type',
+		enum: [SectionType.SYSTEM],
+		example: 'system',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a language string."}]' })
 	type: SectionType.SYSTEM;
 
+	@ApiPropertyOptional({
+		description: 'Array of log levels to enable.',
+		type: 'array',
+		items: {
+			type: 'string',
+			enum: Object.values(LogLevelType),
+		},
+		example: ['error', 'warn', 'info'],
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"log_levels","reason":"Log levels must be provided as an array."}]' })
@@ -325,7 +542,28 @@ export class UpdateSystemConfigDto extends BaseConfigDto implements UpdateSystem
 	log_levels?: LogLevelType[];
 }
 
-export class ReqUpdateSectionDto implements ReqUpdateSection {
+@ApiSchema({ name: 'ConfigModuleReqUpdateSection' })
+export class ReqUpdateSectionDto {
+	@ApiProperty({
+		description: 'Configuration section data',
+		oneOf: [
+			{ $ref: getSchemaPath(UpdateAudioConfigDto) },
+			{ $ref: getSchemaPath(UpdateDisplayConfigDto) },
+			{ $ref: getSchemaPath(UpdateLanguageConfigDto) },
+			{ $ref: getSchemaPath(UpdateWeatherConfigDto) },
+			{ $ref: getSchemaPath(UpdateSystemConfigDto) },
+		],
+		discriminator: {
+			propertyName: 'type',
+			mapping: {
+				audio: getSchemaPath(UpdateAudioConfigDto),
+				display: getSchemaPath(UpdateDisplayConfigDto),
+				language: getSchemaPath(UpdateLanguageConfigDto),
+				weather: getSchemaPath(UpdateWeatherConfigDto),
+				system: getSchemaPath(UpdateSystemConfigDto),
+			},
+		},
+	})
 	@Expose()
 	@ValidateNested()
 	@Type((options) => determineConfigDto(options?.object ?? {}))
@@ -340,18 +578,34 @@ export class ReqUpdateSectionDto implements ReqUpdateSection {
 		| UpdateSystemConfigDto;
 }
 
-export class UpdatePluginConfigDto implements UpdatePlugin {
+@ApiSchema({ name: 'ConfigModuleUpdatePlugin' })
+export class UpdatePluginConfigDto {
+	@ApiProperty({
+		description: 'Plugin identifier',
+		type: 'string',
+		example: 'devices-shelly',
+	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
 	type: string;
 
+	@ApiPropertyOptional({
+		description: 'Enables or disables the plugin.',
+		type: 'boolean',
+		example: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
 	enabled?: boolean;
 }
 
-export class ReqUpdatePluginDto implements ReqUpdatePlugin {
+@ApiSchema({ name: 'ConfigModuleReqUpdatePlugin' })
+export class ReqUpdatePluginDto {
+	@ApiProperty({
+		description: 'Plugin configuration data',
+		type: () => UpdatePluginConfigDto,
+	})
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdatePluginConfigDto)

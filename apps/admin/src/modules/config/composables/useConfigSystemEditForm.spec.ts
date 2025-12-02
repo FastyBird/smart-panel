@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleSystemLog_levels, ConfigModuleSystemType } from '../../../openapi';
+import { ConfigModuleSystemType, SystemModuleLogEntryType } from '../../../openapi.constants';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
@@ -11,7 +11,7 @@ import { useConfigSystemEditForm } from './useConfigSystemEditForm';
 
 const mockConfig = {
 	type: ConfigModuleSystemType.system,
-	logLevels: [ConfigModuleSystemLog_levels.info, ConfigModuleSystemLog_levels.warn, ConfigModuleSystemLog_levels.error],
+	logLevels: [SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn, SystemModuleLogEntryType.error],
 };
 
 const mockEdit = vi.fn();
@@ -55,17 +55,13 @@ describe('useConfigSystemEditForm', () => {
 	it('initializes model with config data', () => {
 		const form = useConfigSystemEditForm({ config: mockConfig });
 
-		expect(form.model.logLevels).toStrictEqual([
-			ConfigModuleSystemLog_levels.info,
-			ConfigModuleSystemLog_levels.warn,
-			ConfigModuleSystemLog_levels.error,
-		]);
+		expect(form.model.logLevels).toStrictEqual([SystemModuleLogEntryType.info, SystemModuleLogEntryType.warn, SystemModuleLogEntryType.error]);
 	});
 
 	it('sets formChanged to true when model changes', async () => {
 		const form = useConfigSystemEditForm({ config: mockConfig });
 
-		form.model.logLevels = [ConfigModuleSystemLog_levels.debug];
+		form.model.logLevels = [SystemModuleLogEntryType.debug];
 		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);

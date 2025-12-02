@@ -10,6 +10,8 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+import { ApiProperty } from '@nestjs/swagger';
+
 import { ValidateChannelExists } from '../validators/channel-exists-constraint.validator';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
@@ -32,6 +34,11 @@ export class PropertyCommandValueDto {
 	})
 	property: string;
 
+	@ApiProperty({
+		description: 'Property value (string, boolean, or number)',
+		oneOf: [{ type: 'string' }, { type: 'boolean' }, { type: 'number' }],
+		example: 'on',
+	})
 	@Expose()
 	@ValidateIf((o: { value: unknown }) => typeof o.value === 'string')
 	@IsString()

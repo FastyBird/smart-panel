@@ -111,7 +111,8 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { ConfigModuleSystemLog_levels, SystemModuleLogEntrySource } from '../../../../openapi';
+import { SystemModuleLogEntrySource } from '../../../../openapi.constants';
+import { SystemModuleLogEntryType } from '../../../../openapi.constants';
 import { type ISystemLogsFilter } from '../../composables/types';
 
 import { type IListSystemLogsAdjustProps } from './list-system-logs-adjust.types';
@@ -130,16 +131,16 @@ const emit = defineEmits<{
 const ns = useNamespace('list-system-logs-adjust');
 const { t } = useI18n();
 
-const levels: ConfigModuleSystemLog_levels[] = [
-	ConfigModuleSystemLog_levels.silent,
-	ConfigModuleSystemLog_levels.fatal,
-	ConfigModuleSystemLog_levels.error,
-	ConfigModuleSystemLog_levels.warn,
-	ConfigModuleSystemLog_levels.log,
-	ConfigModuleSystemLog_levels.info,
-	ConfigModuleSystemLog_levels.success,
-	ConfigModuleSystemLog_levels.fail,
-	ConfigModuleSystemLog_levels.debug,
+const levels: SystemModuleLogEntryType[] = [
+	SystemModuleLogEntryType.silent,
+	SystemModuleLogEntryType.fatal,
+	SystemModuleLogEntryType.error,
+	SystemModuleLogEntryType.warn,
+	SystemModuleLogEntryType.log,
+	SystemModuleLogEntryType.info,
+	SystemModuleLogEntryType.success,
+	SystemModuleLogEntryType.fail,
+	SystemModuleLogEntryType.debug,
 ];
 
 const sources: string[] = Object.values(SystemModuleLogEntrySource);

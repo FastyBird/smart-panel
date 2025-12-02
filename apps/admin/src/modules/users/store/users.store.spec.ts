@@ -5,7 +5,7 @@ import { type Mock, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
 import { type IUseBackend, useBackend } from '../../../common';
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { UsersApiException } from '../users.exceptions';
 
 import { useUsers } from './users.store';

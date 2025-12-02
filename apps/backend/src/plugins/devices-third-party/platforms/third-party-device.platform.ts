@@ -6,8 +6,11 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
 import { DEVICES_THIRD_PARTY_TYPE, ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
-import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
-import { PropertiesUpdateResponseDto, PropertyUpdateResultDto } from '../dto/third-party-property-update-response.dto';
+import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
+import {
+	PropertiesUpdateResultModel,
+	PropertyUpdateResultModel,
+} from '../dto/third-party-property-update-response.dto';
 import { ThirdPartyDeviceEntity } from '../entities/devices-third-party.entity';
 
 export type IThirdPartyDevicePropertyData = IDevicePropertyData & {
@@ -40,7 +43,7 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 				})),
 			};
 
-			if (!(await this.validateDto(PropertiesUpdateRequestDto, payload, 'request'))) {
+			if (!(await this.validateDto(ReqUpdatePropertiesDto, payload, 'request'))) {
 				return false;
 			}
 
@@ -57,14 +60,14 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 			} else if (response.status === 207) {
 				const responseBody = (await response.json()) as unknown;
 
-				if (!(await this.validateDto(PropertiesUpdateResponseDto, responseBody, 'response'))) {
+				if (!(await this.validateDto(PropertiesUpdateResultModel, responseBody, 'response'))) {
 					return false;
 				}
 
-				const responseDto = toInstance(PropertiesUpdateResponseDto, responseBody);
+				const responseModel = toInstance(PropertiesUpdateResultModel, responseBody);
 
-				const failedProperties = responseDto.properties.filter(
-					(p: PropertyUpdateResultDto) => p.status != ThirdPartyPropertiesUpdateStatus.SUCCESS,
+				const failedProperties = responseModel.properties.filter(
+					(p: PropertyUpdateResultModel) => p.status != ThirdPartyPropertiesUpdateStatus.SUCCESS,
 				);
 
 				if (failedProperties.length > 0) {

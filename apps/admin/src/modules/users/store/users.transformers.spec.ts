@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it } from 'vitest';
 
-import { UsersModuleUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { UsersValidationException } from '../users.exceptions';
 
 import type { IUserRes, IUsersAddActionPayload, IUsersEditActionPayload } from './users.store.types';

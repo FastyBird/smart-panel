@@ -10,24 +10,26 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import type { components } from '../../../openapi';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
 
-type ReqUpdatePage = components['schemas']['DashboardModuleReqUpdatePage'];
-type UpdatePage = components['schemas']['DashboardModuleUpdatePage'];
-
-export abstract class UpdatePageDto implements UpdatePage {
+@ApiSchema({ name: 'DashboardModuleUpdatePage' })
+export abstract class UpdatePageDto {
+	@ApiProperty({ description: 'Page type', type: 'string', example: 'default' })
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported page type."}]' })
 	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported page type."}]' })
 	readonly type: string;
 
+	@ApiPropertyOptional({ description: 'Page title', type: 'string', example: 'Dashboard' })
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	title?: string;
 
+	@ApiPropertyOptional({ description: 'Page icon name', type: 'string', example: 'mdi:home', nullable: true })
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
@@ -35,6 +37,7 @@ export abstract class UpdatePageDto implements UpdatePage {
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
 
+	@ApiPropertyOptional({ description: 'Display order', type: 'integer', example: 1 })
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -43,19 +46,34 @@ export abstract class UpdatePageDto implements UpdatePage {
 	)
 	order?: number;
 
+	@ApiPropertyOptional({
+		description: 'Whether to show top bar',
+		type: 'boolean',
+		example: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"show_top_bar","reason":"Show top bar attribute must be a valid true or false."}]' })
 	show_top_bar?: boolean;
 
+	@ApiPropertyOptional({
+		description: 'Display profile ID',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
 	@ValidateDisplayProfileExists({ message: '[{"field":"display","reason":"The specified display does not exist."}]' })
-	display?: string;
+	@ValidateIf((_, value) => value !== null)
+	display?: string | null;
 }
 
-export class ReqUpdatePageDto implements ReqUpdatePage {
+@ApiSchema({ name: 'DashboardModuleReqUpdatePage' })
+export class ReqUpdatePageDto {
+	@ApiProperty({ description: 'Page data', type: () => UpdatePageDto })
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdatePageDto)

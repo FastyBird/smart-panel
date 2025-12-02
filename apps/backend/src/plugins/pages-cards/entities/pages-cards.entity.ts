@@ -11,12 +11,20 @@ import {
 } from 'class-validator';
 import { ChildEntity, Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 
+import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { DataSourceEntity, PageEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 
+@ApiSchema({ name: 'PagesCardsPluginDataCardsPage' })
 @ChildEntity()
 export class CardsPageEntity extends PageEntity {
+	@ApiProperty({
+		description: 'Page cards',
+		type: 'array',
+		items: { $ref: '#/components/schemas/PagesCardsPluginDataCard' },
+	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -24,30 +32,60 @@ export class CardsPageEntity extends PageEntity {
 	@OneToMany(() => CardEntity, (card) => card.page, { cascade: true, onDelete: 'CASCADE' })
 	cards: CardEntity[];
 
+	@ApiProperty({
+		description: 'Page type',
+		type: 'string',
+		default: PAGES_CARDS_TYPE,
+		example: PAGES_CARDS_TYPE,
+	})
 	@Expose()
 	get type(): string {
 		return PAGES_CARDS_TYPE;
 	}
 }
 
+@ApiSchema({ name: 'PagesCardsPluginDataCard' })
 @Entity('dashboard_module_cards')
 export class CardEntity extends BaseEntity {
+	@ApiProperty({
+		description: 'Card title',
+		type: 'string',
+		example: 'Living Room',
+	})
 	@Expose()
 	@IsString()
 	@Column()
 	title: string;
 
+	@ApiProperty({
+		description: 'Card icon name',
+		type: 'string',
+		nullable: true,
+		example: 'mdi-home',
+	})
 	@Expose()
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
 	icon?: string | null;
 
+	@ApiProperty({
+		description: 'Card order position',
+		type: 'number',
+		example: 1,
+	})
 	@Expose()
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
 	@Column({ type: 'int', default: 0 })
 	order: number;
 
+	@ApiProperty({
+		description: 'Page identifier',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
 	@Expose()
 	@IsOptional()
 	@ValidateIf((_, value) => typeof value === 'string')
@@ -63,11 +101,22 @@ export class CardEntity extends BaseEntity {
 	})
 	page: CardsPageEntity | string | null;
 
+	@ApiProperty({
+		description: 'Card tiles',
+		type: 'array',
+		items: { $ref: getSchemaPath(TileEntity) },
+	})
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	tiles: TileEntity[] = [];
 
+	@ApiProperty({
+		description: 'Card data sources',
+		name: 'data_source',
+		type: 'array',
+		items: { $ref: getSchemaPath(DataSourceEntity) },
+	})
 	@Expose({ name: 'data_source' })
 	@IsArray()
 	@ValidateNested({ each: true })

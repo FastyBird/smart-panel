@@ -6,17 +6,26 @@ import path from 'node:path';
 import { DiscoveredAdminExtension } from '@fastybird/smart-panel-extension-sdk';
 import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
+import { ApiExcludeEndpoint, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+} from '../../swagger/decorators/api-documentation.decorator';
+import { ExtensionsResponseModel } from '../models/system-response.model';
 import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
 import {
 	ExtensionKindType,
 	ExtensionSourceType,
 	ExtensionSurfaceType,
+	SYSTEM_MODULE_API_TAG_NAME,
 	SYSTEM_MODULE_PREFIX,
 } from '../system.constants';
 
@@ -30,17 +39,31 @@ interface BundledManifest {
 	}>;
 }
 
+@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
 @Controller('extensions')
 export class ExtensionsController {
 	private readonly logger = new Logger(ExtensionsController.name);
 
 	constructor(private readonly configService: NestConfigService) {}
 
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'List all extensions',
+		description: 'Retrieve a list of all registered extensions, optionally filtered by surface',
+		operationId: 'get-system-module-extensions',
+	})
+	@ApiQuery({
+		name: 'surface',
+		required: false,
+		description: 'Filter by extension surface',
+		enum: [...Object.values(ExtensionSurfaceType), 'all'],
+	})
+	@ApiSuccessResponse(ExtensionsResponseModel, 'Extensions retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get()
-	async list(
-		@Query('surface') surface: ExtensionSurfaceType | 'all' = 'all',
-	): Promise<(ExtensionAdminModel | ExtensionBackendModel)[]> {
+	async list(@Query('surface') surface: ExtensionSurfaceType | 'all' = 'all'): Promise<ExtensionsResponseModel> {
 		const { admin, backend } = await getDiscoveredExtensions();
 
 		const bundledSet = this.loadBundledSet();
@@ -90,12 +113,26 @@ export class ExtensionsController {
 			}
 		}
 
-		return out;
+		const response = new ExtensionsResponseModel();
+		response.data = out;
+
+		return response;
 	}
 
+	@ApiOperation({
+		tags: [SYSTEM_MODULE_API_TAG_NAME],
+		summary: 'Get extension by name',
+		description: 'Retrieve a specific extension by its name',
+		operationId: 'get-system-module-extension',
+	})
+	@ApiParam({ name: 'name', description: 'Extension name', type: 'string' })
+	@ApiSuccessResponse(ExtensionsResponseModel, 'Extension retrieved successfully')
+	@ApiBadRequestResponse('Invalid extension name')
+	@ApiNotFoundResponse('Extension not found')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get(':name')
-	async findOne(@Param('name') name: string): Promise<(ExtensionAdminModel | ExtensionBackendModel)[]> {
+	async findOne(@Param('name') name: string): Promise<ExtensionsResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching extension name=${name}`);
 
 		const { admin, backend } = await getDiscoveredExtensions();
@@ -147,9 +184,13 @@ export class ExtensionsController {
 
 		this.logger.debug(`[LOOKUP] Found extension name=${name}`);
 
-		return out;
+		const response = new ExtensionsResponseModel();
+		response.data = out;
+
+		return response;
 	}
 
+	@ApiExcludeEndpoint()
 	@RawRoute()
 	@Public()
 	@Get('assets/:pkg/*')

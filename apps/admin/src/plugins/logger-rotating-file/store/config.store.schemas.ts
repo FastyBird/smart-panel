@@ -1,10 +1,14 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import { LoggerRotatingFilePluginConfigType, type components } from '../../../openapi';
+import type {
+	LoggerRotatingFilePluginUpdateConfigSchema,
+	LoggerRotatingFilePluginConfigSchema,
+} from '../../../openapi.constants';
+import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 
-type ApiUpdateConfig = components['schemas']['LoggerRotatingFilePluginUpdateConfig'];
-type ApiConfig = components['schemas']['LoggerRotatingFilePluginConfig'];
+type ApiUpdateConfig = LoggerRotatingFilePluginUpdateConfigSchema;
+type ApiConfig = LoggerRotatingFilePluginConfigSchema;
 
 export const RotatingFileConfigSchema = ConfigPluginSchema.extend({
 	dir: z.string().nullable(),
@@ -18,7 +22,7 @@ export const RotatingFileConfigSchema = ConfigPluginSchema.extend({
 
 export const RotatingFileConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = ConfigPluginUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(LoggerRotatingFilePluginConfigType),
+		type: z.literal(LOGGER_ROTATING_FILE_PLUGIN_NAME),
 		dir: z.string().nullable().optional(),
 		retention_days: z.number().optional(),
 		cleanup_cron: z.string().nullable().optional(),
@@ -28,7 +32,7 @@ export const RotatingFileConfigUpdateReqSchema: ZodType<ApiUpdateConfig> = Confi
 
 export const RotatingFileConfigResSchema: ZodType<ApiConfig> = ConfigPluginResSchema.and(
 	z.object({
-		type: z.nativeEnum(LoggerRotatingFilePluginConfigType),
+		type: z.literal(LOGGER_ROTATING_FILE_PLUGIN_NAME),
 		dir: z.string().nullable(),
 		retention_days: z.number(),
 		cleanup_cron: z.string().nullable(),

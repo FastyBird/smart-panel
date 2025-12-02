@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DevicesException } from '../devices.exceptions';
 
 import { useDeviceSpecification } from './useDeviceSpecification';

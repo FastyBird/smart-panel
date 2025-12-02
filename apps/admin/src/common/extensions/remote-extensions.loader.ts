@@ -5,7 +5,11 @@ import type { Client } from 'openapi-fetch';
 
 import type { IExtensionOptions } from '../../app.types';
 import { SYSTEM_MODULE_PREFIX } from '../../modules/system';
-import { PathsSystemModuleExtensionsGetParametersQuerySurface, SystemModuleExtensionAdminSurface, type operations, type paths } from '../../openapi';
+import type {
+	SystemModuleGetExtensionsOperation,
+	OpenApiPaths,
+} from '../../openapi.constants';
+import { SystemModuleExtensionSurface, SystemModuleQuerySurface } from '../../openapi.constants';
 import { getErrorReason } from '../utils/api-error.utils';
 
 type PluginInstallFn<TOptions> = (app: App, options?: TOptions) => void;
@@ -40,7 +44,7 @@ const resolveExtension = <TOptions>(mod: unknown): PluginLike<TOptions> | null =
 
 export const installRemoteExtensions = async (
 	app: App,
-	backendClient: Client<paths>,
+	backendClient: Client<OpenApiPaths>,
 	logger: ConsolaInstance,
 	options: IExtensionOptions,
 	installedNames?: Set<string>
@@ -52,7 +56,7 @@ export const installRemoteExtensions = async (
 	} = await backendClient.GET(`/${SYSTEM_MODULE_PREFIX}/extensions`, {
 		params: {
 			query: {
-				surface: PathsSystemModuleExtensionsGetParametersQuerySurface.admin,
+				surface: SystemModuleQuerySurface.admin,
 			},
 		},
 	});
@@ -61,13 +65,17 @@ export const installRemoteExtensions = async (
 		const entries = responseData.data;
 
 		for (const ext of entries) {
-			if (ext.surface !== SystemModuleExtensionAdminSurface.admin) {
+			if (ext.surface !== SystemModuleExtensionSurface.admin) {
 				continue;
 			}
 
 			try {
 				// tell Vite to leave this alone at build time
-				const mod: unknown = await import(/* @vite-ignore */ ext.remote_url);
+				const remoteUrl = 'remote_url' in ext ? ext.remote_url : undefined;
+				if (!remoteUrl) {
+					continue;
+				}
+				const mod: unknown = await import(/* @vite-ignore */ remoteUrl);
 
 				const extension = resolveExtension<IExtensionOptions>(mod);
 
@@ -89,7 +97,8 @@ export const installRemoteExtensions = async (
 			} catch (e: unknown) {
 				const msg = e instanceof Error ? e.message : String(e);
 
-				logger.error(`Failed to import ${ext.name} from ${ext.remote_url}: ${msg}`);
+				const remoteUrl = 'remote_url' in ext ? ext.remote_url : 'unknown';
+				logger.error(`Failed to import ${ext.name} from ${remoteUrl}: ${msg}`);
 			}
 		}
 
@@ -99,7 +108,7 @@ export const installRemoteExtensions = async (
 	let errorReason: string | null = 'Failed to fetch extensions assets.';
 
 	if (error) {
-		errorReason = getErrorReason<operations['get-system-module-extensions']>(error, errorReason);
+		errorReason = getErrorReason<SystemModuleGetExtensionsOperation>(error, errorReason);
 	}
 
 	logger.error(`${errorReason}${response?.status ? ` (HTTP ${response.status})` : ''}`);

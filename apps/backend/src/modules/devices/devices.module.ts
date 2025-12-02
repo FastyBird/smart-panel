@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -8,6 +8,8 @@ import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
@@ -23,12 +25,15 @@ import { DevicesChannelsPropertiesController } from './controllers/devices.chann
 import { DevicesController } from './controllers/devices.controller';
 import { DevicesControlsController } from './controllers/devices.controls.controller';
 import {
+	DEVICES_MODULE_API_TAG_DESCRIPTION,
+	DEVICES_MODULE_API_TAG_NAME,
 	DEVICES_MODULE_NAME,
 	DeviceStatusInfluxDbSchema,
 	EventHandlerName,
 	EventType,
 	PropertyInfluxDbSchema,
 } from './devices.constants';
+import { DEVICES_SWAGGER_EXTRA_MODELS } from './devices.openapi';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -63,6 +68,11 @@ import { ChannelExistsConstraintValidator } from './validators/channel-exists-co
 import { ChannelPropertyExistsConstraintValidator } from './validators/channel-property-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
 
+@ApiTag({
+	tagName: DEVICES_MODULE_NAME,
+	displayName: DEVICES_MODULE_API_TAG_NAME,
+	description: DEVICES_MODULE_API_TAG_DESCRIPTION,
+})
 @Module({
 	imports: [
 		NestConfigModule,
@@ -135,6 +145,8 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 	],
 })
 export class DevicesModule {
+	private readonly logger = new Logger(DevicesModule.name);
+
 	constructor(
 		private readonly eventRegistry: CommandEventRegistryService,
 		private readonly moduleSeeder: DevicesSeederService,
@@ -145,6 +157,7 @@ export class DevicesModule {
 		private readonly seedRegistry: SeedRegistryService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly statsRegistryService: StatsRegistryService,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -174,37 +187,65 @@ export class DevicesModule {
 		);
 
 		this.statsRegistryService.register(DEVICES_MODULE_NAME, this.devicesStatsProvider);
+
+		for (const model of DEVICES_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 	}
 
 	async onApplicationBootstrap() {
-		await this.influxDbService.createContinuousQuery(
-			'cq_prop_counts_1m',
-			`SELECT COUNT("numberValue") AS cn, COUNT("stringValue") AS cs
+		try {
+			await this.influxDbService.createContinuousQuery(
+				'cq_prop_counts_1m',
+				`SELECT COUNT("numberValue") AS cn, COUNT("stringValue") AS cs
            INTO "min_14d"."property_value_counts_1m"
            FROM "raw_24h"."property_value"
            GROUP BY time(1m)`,
-			undefined,
-			'RESAMPLE EVERY 1m FOR 24h',
-		);
+				undefined,
+				'RESAMPLE EVERY 1m FOR 24h',
+			);
+		} catch (error) {
+			const err = error as Error;
 
-		await this.influxDbService.createContinuousQuery(
-			'cq_dev_state_1m',
-			`SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
+			this.logger.warn('[INFLUXDB] Failed to create continuous query cq_prop_counts_1m', {
+				message: err.message,
+			});
+		}
+
+		try {
+			await this.influxDbService.createContinuousQuery(
+				'cq_dev_state_1m',
+				`SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
            INTO "min_14d"."device_status_1m"
            FROM "raw_24h"."device_status"
            GROUP BY time(1m), "deviceId" fill(previous)`,
-			undefined,
-			'RESAMPLE EVERY 1m FOR 24h',
-		);
+				undefined,
+				'RESAMPLE EVERY 1m FOR 24h',
+			);
+		} catch (error) {
+			const err = error as Error;
 
-		await this.influxDbService.createContinuousQuery(
-			'cq_online_count_1m',
-			`SELECT SUM("onlineI") AS online_count
+			this.logger.warn('[INFLUXDB] Failed to create continuous query cq_dev_state_1m', {
+				message: err.message,
+			});
+		}
+
+		try {
+			await this.influxDbService.createContinuousQuery(
+				'cq_online_count_1m',
+				`SELECT SUM("onlineI") AS online_count
            INTO "min_14d"."online_count_1m"
            FROM "min_14d"."device_status_1m"
            GROUP BY time(1m) fill(previous)`,
-			undefined,
-			'RESAMPLE EVERY 1m FOR 24h',
-		);
+				undefined,
+				'RESAMPLE EVERY 1m FOR 24h',
+			);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.warn('[INFLUXDB] Failed to create continuous query cq_online_count_1m', {
+				message: err.message,
+			});
+		}
 	}
 }

@@ -1,8 +1,8 @@
 import { type ZodType, z } from 'zod';
 
-import { type components } from '../../../openapi';
+import type { SystemModuleThrottleStatusSchema } from '../../../openapi.constants';
 
-type ApiThrottleStatus = components['schemas']['SystemModuleThrottleStatus'];
+type ApiThrottleStatus = SystemModuleThrottleStatusSchema;
 
 // STORE STATE
 // ===========

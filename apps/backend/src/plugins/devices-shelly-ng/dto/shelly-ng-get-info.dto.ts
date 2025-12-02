@@ -1,15 +1,39 @@
-import { Expose } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsOptional, IsString, ValidateNested } from 'class-validator';
 
-export class ShellyNgGetInfoDto {
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+@ApiSchema({ name: 'DevicesShellyNgPluginGetInfo' })
+export class DevicesShellyNgPluginGetInfo {
+	@ApiProperty({
+		description: 'Device hostname or IP address',
+		example: '192.168.1.100',
+	})
 	@Expose()
 	@IsString({
 		message: '[{"field":"hostname","reason":"Hostname attribute must be a valid IP address or network hostname."}]',
 	})
 	hostname: string;
 
+	@ApiPropertyOptional({
+		description: 'Device password',
+		example: 'password123',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"password","reason":"Password attribute must be a valid string."}]' })
 	password?: string | null = null;
+}
+
+@ApiSchema({ name: 'DevicesShellyNgPluginReqGetInfo' })
+export class DevicesShellyNgPluginReqGetInfo {
+	@ApiProperty({
+		description: 'Device info request data',
+		type: () => DevicesShellyNgPluginGetInfo,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => DevicesShellyNgPluginGetInfo)
+	data: DevicesShellyNgPluginGetInfo;
 }

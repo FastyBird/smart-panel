@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type { operations } from '../../../openapi';
+import type { SystemModuleGetSystemInfoOperation } from '../../../openapi.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
 
@@ -86,7 +86,7 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 				let errorReason: string | null = 'Failed to fetch system info.';
 
 				if (error) {
-					errorReason = getErrorReason<operations['get-system-module-system-info']>(error, errorReason);
+					errorReason = getErrorReason<SystemModuleGetSystemInfoOperation>(error, errorReason);
 				}
 
 				throw new SystemApiException(errorReason, response.status);

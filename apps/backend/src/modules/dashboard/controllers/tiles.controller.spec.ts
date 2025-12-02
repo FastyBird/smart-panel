@@ -7,12 +7,14 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { CreateSingleTileDto } from '../dto/create-tile.dto';
 import { UpdateTileDto } from '../dto/update-tile.dto';
 import { PageEntity, TileEntity } from '../entities/dashboard.entity';
@@ -151,14 +153,14 @@ describe('TilesController', () => {
 		it('should return all tiles', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([toInstance(MockTileEntity, mockTile)]);
+			expect(result.data).toEqual([toInstance(MockTileEntity, mockTile)]);
 			expect(tilesService.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single tile', async () => {
 			const result = await controller.findOne(mockTile.id);
 
-			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
+			expect(result.data).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.findOne).toHaveBeenCalledWith(mockTile.id);
 		});
 
@@ -178,10 +180,26 @@ describe('TilesController', () => {
 				updateDto: UpdateMockTileDto,
 			});
 
-			const result = await controller.create({ data: createDto });
+			const mockRequest = {
+				url: '/api/v1/dashboard/tiles',
+				protocol: 'http',
+				hostname: 'localhost',
+				headers: { host: 'localhost:3000' },
+				socket: { localPort: 3000 },
+			} as unknown as Request;
 
-			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
+			const mockResponse = {
+				header: jest.fn().mockReturnThis(),
+			} as unknown as Response;
+
+			const result = await controller.create({ data: createDto }, mockResponse, mockRequest);
+
+			expect(result.data).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.create).toHaveBeenCalledWith(createDto, { parentType: 'page', parentId: mockPage.id });
+			expect(mockResponse.header).toHaveBeenCalledWith(
+				'Location',
+				expect.stringContaining(`/api/v1/${DASHBOARD_MODULE_PREFIX}/tiles/${mockTile.id}`),
+			);
 		});
 
 		it('should update a tile', async () => {
@@ -200,7 +218,7 @@ describe('TilesController', () => {
 
 			const result = await controller.update(mockTile.id, { data: updateDto });
 
-			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
+			expect(result.data).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.update).toHaveBeenCalledWith(mockTile.id, updateDto);
 		});
 
