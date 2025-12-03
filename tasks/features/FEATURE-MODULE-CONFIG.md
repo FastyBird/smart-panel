@@ -1,18 +1,136 @@
-# Feature: Module Configuration Support
+# Task: Module Configuration Support
+ID: FEATURE-MODULE-CONFIG
+Type: feature
+Scope: backend, admin
+Size: large
+Parent: (none)
+Status: done
 
-## Status: ✅ COMPLETED
+## 1. Business goal
+
+In order to provide a consistent way to configure both core modules and extensible plugins,  
+as a system administrator using the Smart Panel,  
+I want each module to have its own configuration schema that can be viewed and edited in the same way as plugins.
+
+## 2. Context
+
+- Plugins already support custom configuration schemas through the backend `PluginsTypeMapperService` and the admin `PluginsManager`.
+- Modules (`devices`, `dashboard`, `system`, `users`, `config`, `weather`, `stats`, `auth`) are core parts of the system but previously had no unified configuration mechanism.
+- This task extends the existing plugin pattern to modules on both backend (NestJS) and admin (Vue + Pinia) while keeping API and OpenAPI conventions.
+- Detailed implementation notes and file-level breakdowns are kept **below this template block** as an appendix.
+
+## 3. Scope
+
+**In scope**
+
+- Backend support for module configuration:
+  - YAML persistence under a new `modules` section.
+  - Type mapping and validation for module configs.
+  - REST API endpoints for listing, reading, and updating module configs.
+- Admin app support:
+  - A `ModulesManager` for registering modules with UI metadata and optional schemas/components.
+  - Config module store, composables, components, and views for module configuration.
+  - OpenAPI / TypeScript types for new config-module endpoints.
+
+**Out of scope**
+
+- Adding real-world configuration fields for specific modules (beyond the base structure).
+- Non-config UI changes unrelated to module configuration.
+- Mobile / panel-specific UI; this task focuses on the admin web app.
+
+## 4. Acceptance criteria
+
+- [x] Backend exposes:
+  - [x] `GET /config/modules` to list all module configs.
+  - [x] `GET /config/module/:module` to get a single module config.
+  - [x] `PATCH /config/module/:module` to update a module config with validation.
+  - [x] Module configs are stored and loaded from `config.yaml` under `modules`.
+- [x] Backend provides a `ModulesTypeMapperService` that:
+  - [x] Allows modules to register their config model + DTO pairs.
+  - [x] Throws well-defined exceptions for unknown module types.
+  - [x] Is covered by unit tests.
+- [x] Admin app:
+  - [x] Has a `ModulesManager` and all core modules are registered in it.
+  - [x] Has a Pinia store to fetch, cache, and update module configs (including WebSocket updates).
+  - [x] Renders a “Modules” config screen listing all registered modules with an “enabled” flag and edit forms.
+  - [x] Uses OpenAPI-generated types for module config operations.
+- [x] Documentation in this file explains how to register a new module configuration (backend + admin).
+- [ ] Admin unit tests for stores/composables/components are planned and tracked as a follow‑up task.
+
+## 5. Example scenarios (optional, Gherkin-style)
+
+### Scenario: Admin edits a module’s configuration
+
+Given a running system with modules registered in `ModulesManager`  
+And the backend `config.yaml` contains a `modules` section with at least one module config  
+When the admin opens the “Configuration → Modules” screen in the admin app  
+And edits a module’s configuration and saves the form  
+Then the admin app sends a `PATCH /config/module/:module` request with a validated body  
+And the backend updates the YAML file and emits a `ConfigModule.Configuration.Changed` event  
+And the updated configuration is reflected in the UI without a full page reload.
+
+### Scenario: Unknown module type
+
+Given the backend is running  
+When a client calls `GET /config/module/unknown-module`  
+Then the backend responds with a well-defined configuration error (mapped to an HTTP error)  
+And the admin app displays a user-friendly error message in the UI.
+
+## 6. Technical constraints
+
+- Follow the existing structure and conventions of:
+  - Backend `config` module (reusing patterns from plugin configuration).
+  - Admin `config` module (reusing patterns from plugin configuration views/stores).
+- Do not introduce new third-party dependencies unless strictly necessary.
+- Do not modify generated OpenAPI files directly; always regenerate them via `pnpm generate:openapi`.
+- New logic must be covered by unit tests on the backend; admin tests are planned but not yet implemented.
+- Keep module configuration compatible with existing `config.yaml` files (graceful handling when `modules` is missing).
+
+## 7. Implementation hints (optional)
+
+- Treat modules as “first-class citizens” similar to plugins:
+  - Backend: mirror `PluginsTypeMapperService` to create `ModulesTypeMapperService`.
+  - Admin: mirror `PluginsManager` to create `ModulesManager`.
+- Start by wiring the backend (models, DTOs, mapper, service, controller, OpenAPI) and only then update the admin app.
+- For the admin store/composables:
+  - Reuse the patterns from `config-plugins.store.ts`, `usePlugins.ts`, and related composables.
+  - Use Zod schemas as the single source of truth for module config validation on the client.
+- When adding new modules in the future:
+  - Backend: register the module config schema in `ModulesTypeMapperService` in the module’s NestJS module.
+  - Admin: register the module with `ModulesManager` and optionally provide custom schemas/components.
+
+## 8. AI instructions (for Junie / AI)
+
+- Read this file entirely (including the detailed design sections below) before making any code changes.
+- Start by replying with a short implementation plan (max 10 steps) that maps directly to the acceptance criteria.
+- Keep changes scoped to:
+  - Backend `config` module and any module that needs configuration.
+  - Admin `config` module and common services used for module/plugin registration.
+- For each acceptance criterion in section 4, either:
+  - Implement it fully, or
+  - Explain in this file why it is not implemented and, if relevant, create a follow‑up task.
+- Do not edit generated OpenAPI artifacts manually; always use `pnpm generate:openapi`.
+- Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
+
+---
+
+## 9. Detailed design & implementation
+
+This section captures the detailed design, implementation plan, and notes for the module configuration feature.
+
+### Status: ✅ COMPLETED
 
 **Implementation completed on**: 2025-12-02
 
-## Overview
+### Overview
 
 Add support for modules to register their own configuration schemas, similar to how plugins currently work. This will allow modules (like `devices`, `dashboard`, `system`, etc.) to define custom configuration that can be stored, retrieved, and updated through the config module.
 
 **Current Status**: Both backend and admin app implementations are complete. Modules can now register their configuration schemas and manage them through the admin UI, following the same pattern as plugins.
 
-## Current State
+### Current State
 
-### Plugin Configuration System
+#### Plugin Configuration System
 
 Plugins can register their configuration schemas using:
 - `PluginsTypeMapperService.registerMapping()` - registers plugin type, model class, and DTO class
@@ -31,11 +149,11 @@ onModuleInit() {
 }
 ```
 
-### Modules
+#### Modules
 
 Modules are core functionality components (e.g., `devices`, `dashboard`, `system`, `users`, etc.) that are NestJS modules. Currently, they don't have a mechanism to register custom configuration schemas.
 
-## Requirements
+### Requirements
 
 1. Modules should be able to register their configuration schema (model class and DTO class)
 2. Module configurations should be stored in YAML under a `modules` key (similar to `plugins`)
@@ -43,7 +161,7 @@ Modules are core functionality components (e.g., `devices`, `dashboard`, `system
 4. API endpoints should be provided for module configuration management
 5. The system should work the same way as plugin configuration
 
-## Implementation Status
+### Implementation Status
 
 ✅ **Phase 1: Core Infrastructure** - COMPLETED
 ✅ **Phase 2: API Endpoints** - COMPLETED
@@ -51,9 +169,9 @@ Modules are core functionality components (e.g., `devices`, `dashboard`, `system
 ✅ **Phase 4: Testing & Documentation** - COMPLETED (Backend unit tests)
 ✅ **Phase 5: Admin App Implementation** - COMPLETED
 
-## Implementation Plan
+### Implementation Plan
 
-### Phase 1: Core Infrastructure ✅ COMPLETED
+#### Phase 1: Core Infrastructure ✅ COMPLETED
 
 #### 1.1 Create Module Configuration Base Classes
 
@@ -244,9 +362,9 @@ To demonstrate the feature, add a simple configuration to the `devices` module:
 - Add example usage in module documentation
 - Document the pattern for other modules
 
-## File Structure
+### File Structure
 
-### Backend
+#### Backend
 
 ```
 apps/backend/src/modules/config/
@@ -264,7 +382,7 @@ apps/backend/src/modules/config/
 └── config.module.ts                        # Export ModulesTypeMapperService
 ```
 
-### Admin App
+#### Admin App
 
 ```
 apps/admin/src/modules/config/
@@ -299,28 +417,28 @@ apps/admin/src/common/
     └── modules-manager.service.ts           # NEW: Module registration service
 ```
 
-## API Endpoints
+### API Endpoints
 
-### Get All Module Configurations
+#### Get All Module Configurations
 ```
 GET /config/modules
 Response: ConfigModuleResModules
 ```
 
-### Get Module Configuration
+#### Get Module Configuration
 ```
 GET /config/module/:module
 Response: ConfigModuleResModuleConfig
 ```
 
-### Update Module Configuration
+#### Update Module Configuration
 ```
 PATCH /config/module/:module
 Body: ReqUpdateModuleDto
 Response: ConfigModuleResModuleConfig
 ```
 
-## YAML Structure
+### YAML Structure
 
 ```yaml
 # Current structure
@@ -342,15 +460,15 @@ modules:
     # dashboard-specific config
 ```
 
-## Migration Considerations
+### Migration Considerations
 
 1. **Backward Compatibility**: Existing config files without `modules` key should work (default to empty array)
 2. **Default Values**: Modules should provide sensible defaults if config is missing
 3. **Validation**: Module configs should be validated on load (same as plugins)
 
-## Testing Checklist
+### Testing Checklist
 
-### Backend
+#### Backend
 - [x] Module can register its configuration schema
 - [x] Module configuration is persisted to YAML
 - [x] Module configuration is loaded on startup
@@ -362,7 +480,7 @@ modules:
 - [x] Multiple modules can register configs independently
 - [x] Unit tests for all new code
 
-### Admin App
+#### Admin App
 - [x] Module can register with ModulesManager
 - [x] Module store can fetch module configs from API
 - [x] Module store handles WebSocket events
@@ -375,9 +493,9 @@ modules:
 - [x] Error handling for missing modules
 - [ ] Unit tests for stores, composables, components (TODO: Add unit tests)
 
-## Phase 5: Admin App Implementation ✅ COMPLETED
+### Phase 5: Admin App Implementation ✅ COMPLETED
 
-### 5.1 Module Registration System ✅ COMPLETED
+#### 5.1 Module Registration System ✅ COMPLETED
 
 Modules need to register their configuration schemas similar to how plugins do. However, modules are core components, not plugins, so we need a different registration mechanism.
 
@@ -677,14 +795,14 @@ Modules can now register their configuration schemas following the pattern descr
 3. Register the module with `ModulesManager` in the module's install function
 4. Provide the custom form component and schemas in the module's element definition
 
-## Future Enhancements
+### Future Enhancements
 
 1. Module configuration validation rules
 2. Module configuration change events/hooks
 3. Module configuration migration system
 4. Module configuration templates/presets
 
-## Notes
+### Notes
 
 - This feature mirrors the plugin configuration system to maintain consistency
 - Modules are different from plugins: modules are core functionality, plugins are extensions
@@ -694,7 +812,7 @@ Modules can now register their configuration schemas following the pattern descr
 - Error handling should use `ConfigException` and its subclasses (`ConfigNotFoundException`, `ConfigValidationException`, `ConfigCorruptedException`)
 - The `setConfigSection()` method needs to be updated to handle modules in the plain config transformation (similar to how it handles plugins)
 
-### Admin App Notes
+#### Admin App Notes
 
 - Module registration follows the same pattern as plugin registration for consistency ✅ IMPLEMENTED
 - Modules can optionally provide custom form components (similar to plugins) ✅ IMPLEMENTED
@@ -705,9 +823,9 @@ Modules can now register their configuration schemas following the pattern descr
 - Module config forms should support both desktop and mobile layouts (similar to plugin forms) ✅ IMPLEMENTED
 - Consider using form builders for default forms if no custom form is provided (TODO: Future enhancement)
 
-## Implementation Summary
+### Implementation Summary
 
-### Backend (✅ COMPLETED)
+#### Backend (✅ COMPLETED)
 - Module configuration base classes (`ModuleConfigModel`, `UpdateModuleConfigDto`)
 - `ModulesTypeMapperService` for schema registration
 - `ConfigService` methods for module config management
@@ -715,7 +833,7 @@ Modules can now register their configuration schemas following the pattern descr
 - YAML persistence for module configurations
 - Unit tests (45 tests passing)
 
-### Admin App (✅ COMPLETED)
+#### Admin App (✅ COMPLETED)
 - `ModulesManager` service for module registration
 - Module store (`config-modules.store.ts`) with full CRUD operations
 - Composables: `useModules`, `useModule`, `useConfigModule`, `useConfigModules`, `useConfigModuleEditForm`
@@ -726,7 +844,7 @@ Modules can now register their configuration schemas following the pattern descr
 - WebSocket event handling for module config updates
 - Locale strings for module configuration UI
 
-### Files Created
+#### Files Created
 **Backend**: 
 - 1 new file: `modules-type-mapper.service.ts`
 - 8 modified files: `config.model.ts`, `config.dto.ts`, `config.service.ts`, `config.module.ts`, `config.controller.ts`, `config-response.model.ts`, `config.openapi.ts`, unit test files
@@ -735,7 +853,7 @@ Modules can now register their configuration schemas following the pattern descr
 - 16 new files: Module store files, composables, components, views, schemas, types, and `ModulesManager` service
 - 15 modified files: Constants, types, module registration, router, layout, app initialization, and locale files
 
-### Next Steps
+#### Next Steps
 1. Add unit tests for admin app stores, composables, and components
 2. Modules can now register their configuration schemas using `ModulesManager`
 3. Example module configuration can be added when needed (following the pattern in section 5.1.12)
