@@ -6,7 +6,15 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectAccountManager, injectLogger, injectSockets, injectStoresManager } from '../../common';
+import {
+	injectAccountManager,
+	injectLogger,
+	injectModulesManager,
+	injectSockets,
+	injectStoresManager,
+	type IModule,
+	type ModuleInjectionKey,
+} from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
@@ -20,7 +28,9 @@ import {
 	registerSystemInfoStore,
 	registerThrottleStatusStore,
 } from './store/stores';
-import { EventType, SYSTEM_MODULE_EVENT_PREFIX } from './system.constants';
+import { EventType, SYSTEM_MODULE_EVENT_PREFIX, SYSTEM_MODULE_NAME } from './system.constants';
+
+const systemAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-System');
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
@@ -28,6 +38,7 @@ export default {
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
 		const accountManager = injectAccountManager(app);
+		const modulesManager = injectModulesManager(app);
 
 		const isTest = import.meta.env.NODE_ENV === 'test' || ('VITEST' in import.meta.env && import.meta.env.VITEST);
 
@@ -80,6 +91,13 @@ export default {
 
 		const systemLogsReporter = new SystemLogsReporterService(logger, logsEntriesStore, options.i18n, accountManager);
 		provideSystemLogsReporter(app, systemLogsReporter);
+
+		modulesManager.addModule(systemAdminModuleKey, {
+			type: SYSTEM_MODULE_NAME,
+			name: 'System',
+			description: 'Monitor system health, review logs, and perform maintenance tasks.',
+			elements: [],
+		});
 
 		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {
 			if (!data?.event?.startsWith(SYSTEM_MODULE_EVENT_PREFIX)) {

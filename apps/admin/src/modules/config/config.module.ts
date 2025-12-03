@@ -5,9 +5,16 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectLogger, injectSockets, injectStoresManager } from '../../common';
+import {
+	injectLogger,
+	injectModulesManager,
+	injectSockets,
+	injectStoresManager,
+	type IModule,
+	type ModuleInjectionKey,
+} from '../../common';
 
-import { CONFIG_MODULE_EVENT_PREFIX, EventType } from './config.constants';
+import { CONFIG_MODULE_EVENT_PREFIX, CONFIG_MODULE_NAME, EventType } from './config.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import { registerConfigAudioStore } from './store/config-audio.store';
@@ -28,11 +35,14 @@ import {
 } from './store/keys';
 import { registerConfigAppStore, registerConfigSystemStore } from './store/stores';
 
+const configAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Config');
+
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
+		const modulesManager = injectModulesManager(app);
 
 		let ran = false;
 
@@ -47,6 +57,13 @@ export default {
 
 		app.provide(configAppStoreKey, configAppStore);
 		storesManager.addStore(configAppStoreKey, configAppStore);
+
+		modulesManager.addModule(configAdminModuleKey, {
+			type: CONFIG_MODULE_NAME,
+			name: 'Configuration',
+			description: 'Adjust system behaviour, appearance, language, and integrations.',
+			elements: [],
+		});
 
 		const configAudioStore = registerConfigAudioStore(options.store);
 

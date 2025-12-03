@@ -5,9 +5,16 @@ import { defaultsDeep, get } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectLogger, injectSockets, injectStoresManager } from '../../common';
+import {
+	injectLogger,
+	injectModulesManager,
+	injectSockets,
+	injectStoresManager,
+	type IModule,
+	type ModuleInjectionKey,
+} from '../../common';
 
-import { DEVICES_MODULE_EVENT_PREFIX, EventType } from './devices.constants';
+import { DEVICES_MODULE_EVENT_PREFIX, DEVICES_MODULE_NAME, EventType } from './devices.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import { registerChannelsControlsStore } from './store/channels.controls.store';
@@ -15,13 +22,22 @@ import { registerChannelsPropertiesStore } from './store/channels.properties.sto
 import { registerChannelsStore } from './store/channels.store';
 import { registerDevicesControlsStore } from './store/devices.controls.store';
 import { registerDevicesStore } from './store/devices.store';
-import { channelsControlsStoreKey, channelsPropertiesStoreKey, channelsStoreKey, devicesControlsStoreKey, devicesStoreKey } from './store/keys';
+import {
+	channelsControlsStoreKey,
+	channelsPropertiesStoreKey,
+	channelsStoreKey,
+	devicesControlsStoreKey,
+	devicesStoreKey,
+} from './store/keys';
+
+const devicesAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Devices');
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
+		const modulesManager = injectModulesManager(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -54,6 +70,13 @@ export default {
 
 		app.provide(channelsPropertiesStoreKey, channelsPropertiesStore);
 		storesManager.addStore(channelsPropertiesStoreKey, channelsPropertiesStore);
+
+		modulesManager.addModule(devicesAdminModuleKey, {
+			type: DEVICES_MODULE_NAME,
+			name: 'Devices',
+			description: 'Manage your devices, channels, properties, and controls in one place.',
+			elements: [],
+		});
 
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 

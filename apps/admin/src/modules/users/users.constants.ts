@@ -1,5 +1,7 @@
 export const USERS_MODULE_PREFIX = 'users-module';
 
+export const USERS_MODULE_NAME = 'users-module';
+
 export const USERS_MODULE_EVENT_PREFIX = 'UsersModule.';
 
 export enum EventType {

@@ -1,5 +1,7 @@
 export const AUTH_MODULE_PREFIX = 'auth-module';
 
+export const AUTH_MODULE_NAME = 'auth-module';
+
 export enum AccessTokenType {
 	BEARER = 'Bearer',
 }
