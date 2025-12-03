@@ -5,6 +5,7 @@ import type { ComponentOptionsMixin, DefineComponent } from 'vue';
 
 import type { FormResultType } from './config.constants';
 import type { ConfigPluginEditFormSchema } from './schemas/plugins.schemas';
+import type { ConfigModuleEditFormSchema } from './schemas/modules.schemas';
 import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from './store/config-plugins.store.schemas';
 import type { IConfigPlugin } from './store/config-plugins.store.types';
 import { ConfigModuleSchema, ConfigModuleUpdateReqSchema } from './store/config-modules.store.schemas';
@@ -74,6 +75,6 @@ export type IModulesComponents = {
 
 export type IModulesSchemas = {
 	moduleConfigSchema?: typeof ConfigModuleSchema;
-	moduleConfigEditFormSchema?: typeof ConfigPluginEditFormSchema;
+	moduleConfigEditFormSchema?: typeof ConfigModuleEditFormSchema;
 	moduleConfigUpdateReqSchema?: typeof ConfigModuleUpdateReqSchema;
 };

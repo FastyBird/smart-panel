@@ -13,7 +13,7 @@ export const useConfigModules = (): IUseConfigModules => {
 
 	const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
-	const { data, semaphore } = storeToRefs(configModulesStore);
+	const { semaphore } = storeToRefs(configModulesStore);
 
 	const configModules = computed<IConfigModule[]>((): IConfigModule[] => {
 		return configModulesStore.findAll();

@@ -44,8 +44,6 @@ export default {
 		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
-		let ran = false;
-
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { configModule: translations });
@@ -178,17 +176,13 @@ export default {
 		});
 
 		options.router.isReady().then(() => {
-			if (!ran && configPluginsStore.firstLoadFinished() === false) {
-				ran = true;
-
+			if (configPluginsStore.firstLoadFinished() === false) {
 				configPluginsStore.fetch().catch((): void => {
 					// Something went wrong
 				});
 			}
 
-			if (!ran && configModulesStore.firstLoadFinished() === false) {
-				ran = true;
-
+			if (configModulesStore.firstLoadFinished() === false) {
 				configModulesStore.fetch().catch((): void => {
 					// Something went wrong
 				});
