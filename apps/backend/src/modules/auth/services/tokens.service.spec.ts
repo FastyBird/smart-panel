@@ -16,7 +16,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { TokenType } from '../auth.constants';
+import { TokenOwnerType, TokenType } from '../auth.constants';
 import { AuthException, AuthNotFoundException } from '../auth.exceptions';
 import { CreateLongLiveTokenDto, CreateTokenDto } from '../dto/create-token.dto';
 import { UpdateLongLiveTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
@@ -48,7 +48,8 @@ describe('TokensService', () => {
 		hashedToken: 'hashed-test-token',
 		expiresAt: new Date(),
 		createdAt: new Date(),
-		owner: null,
+		ownerType: TokenOwnerType.USER,
+		ownerId: null,
 		revoked: false,
 		updateToken: (): void => {},
 	};
@@ -146,7 +147,8 @@ describe('TokensService', () => {
 				token: 'test-token',
 				name: 'Token name',
 				description: 'Token description',
-				owner: null,
+				ownerType: TokenOwnerType.USER,
+				ownerId: null,
 				expiresAt: new Date(),
 			};
 			const mockCreateToken: Partial<LongLiveTokenEntity> = {
@@ -155,7 +157,8 @@ describe('TokensService', () => {
 				name: createDto.name,
 				description: createDto.description,
 				expiresAt: createDto.expiresAt,
-				owner: null,
+				ownerType: TokenOwnerType.USER,
+				ownerId: null,
 			};
 			const mockCreatedToken: LongLiveTokenEntity = {
 				id: uuid().toString(),
@@ -167,7 +170,8 @@ describe('TokensService', () => {
 				expiresAt: mockCreateToken.expiresAt,
 				revoked: false,
 				createdAt: new Date(),
-				owner: null,
+				ownerType: TokenOwnerType.USER,
+				ownerId: null,
 				updateToken: (): void => {},
 			};
 
@@ -194,7 +198,6 @@ describe('TokensService', () => {
 			saveToken.hashedToken = mockCreateToken.token;
 			expect(repository.save).toHaveBeenCalledWith(saveToken);
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('token');
-			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('token.owner', 'owner');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('token.id = :fieldValue', {
 				fieldValue: mockCreatedToken.id,
 			});
@@ -228,7 +231,8 @@ describe('TokensService', () => {
 				expiresAt: mockToken.expiresAt,
 				revoked: updateDto.revoked,
 				createdAt: mockToken.createdAt,
-				owner: null,
+				ownerType: TokenOwnerType.USER,
+				ownerId: null,
 				updateToken: (): void => {},
 			};
 			const mockUpdatedToken: LongLiveTokenEntity = {
@@ -241,7 +245,8 @@ describe('TokensService', () => {
 				revoked: mockUpdateToken.revoked,
 				createdAt: mockUpdateToken.createdAt,
 				updatedAt: new Date(),
-				owner: null,
+				ownerType: TokenOwnerType.USER,
+				ownerId: null,
 				updateToken: (): void => {},
 			};
 
@@ -265,7 +270,6 @@ describe('TokensService', () => {
 			expect(result).toEqual(toInstance(LongLiveTokenEntity, mockUpdatedToken));
 			expect(repository.save).toHaveBeenCalledWith(toInstance(LongLiveTokenEntity, mockUpdateToken));
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('token');
-			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('token.owner', 'owner');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('token.id = :fieldValue', { fieldValue: mockToken.id });
 			expect(queryBuilderMock.getOne).toHaveBeenCalledTimes(2);
 		});

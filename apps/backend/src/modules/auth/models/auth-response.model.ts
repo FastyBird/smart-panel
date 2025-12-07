@@ -6,14 +6,7 @@ import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { UserEntity } from '../../users/entities/users.entity';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 
-import {
-	CheckModel,
-	DisplaySecretModel,
-	LoggedInModel,
-	RefreshTokenModel,
-	RegisteredDisplayModel,
-	TokenPairModel,
-} from './auth.model';
+import { CheckModel, LoggedInModel, RefreshTokenModel, TokenPairModel } from './auth.model';
 
 /**
  * Response wrapper for UserEntity (profile)
@@ -55,19 +48,6 @@ export class RefreshResponseModel extends BaseSuccessResponseModel<RefreshTokenM
 }
 
 /**
- * Response wrapper for RegisteredDisplayModel
- */
-@ApiSchema({ name: 'AuthModuleResRegisteredDisplay' })
-export class RegisterDisplayResponseModel extends BaseSuccessResponseModel<RegisteredDisplayModel> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => RegisteredDisplayModel,
-	})
-	@Expose()
-	declare data: RegisteredDisplayModel;
-}
-
-/**
  * Response wrapper for CheckModel
  */
 @ApiSchema({ name: 'AuthModuleResCheck' })
@@ -104,19 +84,6 @@ export class CheckUsernameResponseModel extends BaseSuccessResponseModel<CheckMo
 	})
 	@Expose()
 	declare data: CheckModel;
-}
-
-/**
- * Response wrapper for DisplaySecretModel
- */
-@ApiSchema({ name: 'AuthModuleResDisplaySecret' })
-export class DisplaySecretResponseModel extends BaseSuccessResponseModel<DisplaySecretModel> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => DisplaySecretModel,
-	})
-	@Expose()
-	declare data: DisplaySecretModel;
 }
 
 /**

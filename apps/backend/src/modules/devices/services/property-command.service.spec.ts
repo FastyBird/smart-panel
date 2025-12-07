@@ -137,7 +137,8 @@ describe('PropertyCommandService', () => {
 
 	const mockWsUser: ClientUserDto = {
 		id: null,
-		role: UserRole.DISPLAY,
+		role: UserRole.USER,
+		type: 'display',
 	};
 
 	beforeEach(async () => {

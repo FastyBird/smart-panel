@@ -12,7 +12,7 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
+import { ValidateDisplayExists } from '../../displays/validators/display-exists-constraint.validator';
 
 @ApiSchema({ name: 'DashboardModuleUpdatePage' })
 export abstract class UpdatePageDto {
@@ -57,7 +57,7 @@ export abstract class UpdatePageDto {
 	show_top_bar?: boolean;
 
 	@ApiPropertyOptional({
-		description: 'Display profile ID',
+		description: 'Display ID',
 		type: 'string',
 		format: 'uuid',
 		example: '123e4567-e89b-12d3-a456-426614174000',
@@ -66,7 +66,7 @@ export abstract class UpdatePageDto {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
-	@ValidateDisplayProfileExists({ message: '[{"field":"display","reason":"The specified display does not exist."}]' })
+	@ValidateDisplayExists({ message: '[{"field":"display","reason":"The specified display does not exist."}]' })
 	@ValidateIf((_, value) => value !== null)
 	display?: string | null;
 }

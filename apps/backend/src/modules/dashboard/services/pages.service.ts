@@ -8,7 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DisplaysProfilesService } from '../../system/services/displays-profiles.service';
+import { DisplaysService } from '../../displays/services/displays.service';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
@@ -34,7 +34,7 @@ export class PagesService {
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 		private readonly relationsRegistryService: PageRelationsLoaderRegistryService,
 		private readonly nestedCreateBuilders: PageCreateBuilderRegistryService,
-		private readonly displaysService: DisplaysProfilesService,
+		private readonly displaysService: DisplaysService,
 		private readonly dataSource: OrmDataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}

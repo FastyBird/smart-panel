@@ -17,11 +17,13 @@ export enum TokenType {
 	LONG_LIVE = 'long-live',
 }
 
+export enum TokenOwnerType {
+	USER = 'user',
+	DISPLAY = 'display',
+	THIRD_PARTY = 'third_party',
+}
+
 export const ACCESS_TOKEN_TYPE = 'Bearer';
-
-export const DISPLAY_SECRET_HEADER = 'x-display-secret';
-
-export const DISPLAY_SECRET_CACHE_KEY = 'display-secret';
 
 export interface AuthenticatedRequest extends Request {
 	user?: { id: string | null; role: UserRole };

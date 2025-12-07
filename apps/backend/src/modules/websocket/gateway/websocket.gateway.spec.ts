@@ -31,7 +31,8 @@ describe('WebsocketGateway', () => {
 
 	const mockClientUser: ClientUserDto = {
 		id: null,
-		role: UserRole.DISPLAY,
+		role: UserRole.USER,
+		type: 'display',
 	};
 
 	const mockSocket = {

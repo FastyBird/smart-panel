@@ -1,11 +1,7 @@
 /**
  * OpenAPI extra models for System module
  */
-import { DisplayProfileEntity } from './entities/system.entity';
 import {
-	DisplayProfileByUidResponseModel,
-	DisplayProfileResponseModel,
-	DisplayProfilesResponseModel,
 	ExtensionsResponseModel,
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
@@ -41,9 +37,6 @@ import {
  */
 export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	// Response models
-	DisplayProfileResponseModel,
-	DisplayProfilesResponseModel,
-	DisplayProfileByUidResponseModel,
 	ExtensionsResponseModel,
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
@@ -71,6 +64,4 @@ export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	TemperatureCpuModel,
 	TemperatureGpuModel,
 	ModuleStatsModel,
-	// Entities
-	DisplayProfileEntity,
 ];

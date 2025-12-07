@@ -1,12 +1,10 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, IsUUID, Validate, ValidateIf } from 'class-validator';
-import { Column, Entity, JoinColumn, OneToOne } from 'typeorm';
+import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
+import { Column, Entity } from 'typeorm';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
-import { DisplayProfileEntity } from '../../system/entities/system.entity';
 import { UserRole } from '../users.constants';
 
 @ApiSchema({ name: 'UsersModuleDataUser' })
@@ -86,8 +84,7 @@ export class UserEntity extends BaseEntity {
 	username: string;
 
 	@ApiProperty({
-		description:
-			"User role: 'owner' has full access, 'admin' can manage users, 'user' has limited access, 'display' is read-only.",
+		description: "User role: 'owner' has full access, 'admin' can manage users, 'user' has limited access.",
 		enum: UserRole,
 		default: UserRole.USER,
 	})
@@ -99,92 +96,4 @@ export class UserEntity extends BaseEntity {
 		default: UserRole.USER,
 	})
 	role: UserRole;
-}
-
-@ApiSchema({ name: 'UsersModuleDataDisplayInstance' })
-@Entity('users_module_displays_instances')
-export class DisplayInstanceEntity extends BaseEntity {
-	@ApiProperty({
-		description: 'Unique identifier for the display device (e.g., UUID).',
-		type: 'string',
-		format: 'uuid',
-		example: 'fcab917a-f889-47cf-9ace-ef085774864e',
-	})
-	@Expose()
-	@IsString()
-	@IsUUID()
-	@Column({ type: 'uuid' })
-	uid: string;
-
-	@ApiProperty({
-		description: 'MAC address of the device network interface.',
-		type: 'string',
-		format: 'mac',
-		example: '00:1A:2B:3C:4D:5E',
-	})
-	@Expose()
-	@IsString()
-	@Column({ nullable: false })
-	mac: string;
-
-	@ApiProperty({
-		description: 'Application version running on the display.',
-		type: 'string',
-		example: '1.0.0',
-	})
-	@Expose()
-	@IsString()
-	@Column({ nullable: false })
-	version: string;
-
-	@ApiProperty({
-		description: 'Build number or identifier of the app.',
-		type: 'string',
-		example: '42',
-	})
-	@Expose()
-	@IsString()
-	@Column({ nullable: false })
-	build: string;
-
-	@ApiProperty({
-		description: 'Unique identifier for the user.',
-		type: 'string',
-		format: 'uuid',
-		readOnly: true,
-		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
-	})
-	@Expose()
-	@ValidateIf((_, value) => typeof value === 'string')
-	@IsUUID('4', { message: '[{"field":"user","reason":"User must be a valid UUID (version 4)."}]' })
-	@ValidateIf((_, value) => typeof value === 'object')
-	@Validate(AbstractInstanceValidator, [UserEntity], {
-		message: '[{"field":"user","reason":"User must be a valid subclass of UserEntity."}]',
-	})
-	@Transform(({ value }: { value: UserEntity }) => value.id, { toPlainOnly: true })
-	@OneToOne(() => UserEntity, { cascade: true, onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'userId' })
-	user: UserEntity | string;
-
-	@ApiProperty({
-		name: 'display_profile',
-		description: 'Unique identifier for the display profile.',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		readOnly: true,
-		example: 'e328b39a-92db-4ea4-a34d-7ec3ba81fe64',
-	})
-	@Expose({ name: 'display_profile' })
-	@ValidateIf((_, value) => typeof value === 'string')
-	@IsUUID('4', { message: '[{"field":"displayProfile","reason":"System display must be a valid UUID (version 4)."}]' })
-	@ValidateIf((_, value) => typeof value === 'object')
-	@Validate(AbstractInstanceValidator, [DisplayProfileEntity], {
-		message:
-			'[{"field":"displayProfile","reason":"System display profile must be a valid subclass of DisplayProfileEntity."}]',
-	})
-	@Transform(({ value }: { value: DisplayProfileEntity | null }) => value?.id ?? null, { toPlainOnly: true })
-	@OneToOne(() => DisplayProfileEntity, { cascade: true, onDelete: 'CASCADE', nullable: true })
-	@JoinColumn({ name: 'displayProfileId' })
-	displayProfile: DisplayProfileEntity | string | null;
 }

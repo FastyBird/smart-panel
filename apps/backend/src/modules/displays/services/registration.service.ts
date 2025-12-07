@@ -1,0 +1,129 @@
+import { validate } from 'class-validator';
+
+import { Injectable, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+
+import { toInstance } from '../../../common/utils/transform.utils';
+import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
+import { TokensService } from '../../auth/services/tokens.service';
+import { DisplaysValidationException } from '../displays.exceptions';
+import { RegisterDisplayDto } from '../dto/register-display.dto';
+import { DisplayEntity } from '../entities/displays.entity';
+
+import { DisplaysService } from './displays.service';
+
+export interface RegistrationResult {
+	display: DisplayEntity;
+	accessToken: string;
+}
+
+@Injectable()
+export class RegistrationService {
+	private readonly logger = new Logger(RegistrationService.name);
+
+	constructor(
+		private readonly displaysService: DisplaysService,
+		private readonly tokensService: TokensService,
+		private readonly jwtService: JwtService,
+	) {}
+
+	async registerDisplay(registerDto: RegisterDisplayDto, _userAgent: string): Promise<RegistrationResult> {
+		this.logger.debug(`[REGISTER] Registering display with MAC=${registerDto.macAddress}`);
+
+		const dtoInstance = await this.validateDto(RegisterDisplayDto, registerDto);
+
+		// Check if display already exists by MAC address
+		let display = await this.displaysService.findByMacAddress(dtoInstance.macAddress);
+
+		if (display) {
+			// Update existing display
+			this.logger.debug(`[REGISTER] Display already exists, updating`);
+
+			display = await this.displaysService.update(display.id, {
+				version: dtoInstance.version,
+				build: dtoInstance.build ?? null,
+				screenWidth: dtoInstance.screenWidth,
+				screenHeight: dtoInstance.screenHeight,
+				pixelRatio: dtoInstance.pixelRatio,
+				unitSize: dtoInstance.unitSize,
+				rows: dtoInstance.rows,
+				cols: dtoInstance.cols,
+			});
+
+			// Revoke existing tokens for this display
+			await this.tokensService.revokeByOwnerId(display.id, TokenOwnerType.DISPLAY);
+		} else {
+			// Create new display
+			this.logger.debug(`[REGISTER] Creating new display`);
+
+			display = await this.displaysService.create({
+				macAddress: dtoInstance.macAddress,
+				version: dtoInstance.version,
+				build: dtoInstance.build ?? null,
+				screenWidth: dtoInstance.screenWidth ?? 0,
+				screenHeight: dtoInstance.screenHeight ?? 0,
+				pixelRatio: dtoInstance.pixelRatio ?? 1,
+				unitSize: dtoInstance.unitSize ?? 8,
+				rows: dtoInstance.rows ?? 12,
+				cols: dtoInstance.cols ?? 24,
+			});
+		}
+
+		// Generate long-lived token for the display
+		const accessToken = await this.generateDisplayToken(display);
+
+		this.logger.debug(`[REGISTER] Successfully registered display with id=${display.id}`);
+
+		return { display, accessToken };
+	}
+
+	private async generateDisplayToken(display: DisplayEntity): Promise<string> {
+		this.logger.debug(`[TOKEN] Generating token for display=${display.id}`);
+
+		// Generate JWT token with display info
+		const token = this.jwtService.sign(
+			{
+				sub: display.id,
+				type: 'display',
+				mac: display.macAddress,
+			},
+			{
+				expiresIn: '365d', // Long-lived token (1 year)
+			},
+		);
+
+		// Store token in database
+		await this.tokensService.create<any, any>({
+			type: TokenType.LONG_LIVE,
+			token: token,
+			ownerType: TokenOwnerType.DISPLAY,
+			ownerId: display.id,
+			name: `Display Token - ${display.macAddress}`,
+			description: `Auto-generated token for display ${display.name ?? display.macAddress}`,
+		});
+
+		this.logger.debug(`[TOKEN] Successfully generated token for display=${display.id}`);
+
+		return token;
+	}
+
+	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
+		});
+
+		const errors = await validate(dtoInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
+		});
+
+		if (errors.length > 0) {
+			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+
+			throw new DisplaysValidationException('Provided registration data is invalid.');
+		}
+
+		return dtoInstance;
+	}
+}

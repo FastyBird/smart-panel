@@ -7,7 +7,6 @@ import { BaseSuccessResponseModel } from '../../../modules/api/models/api-respon
 import {
 	AppConfigModel,
 	AudioConfigModel,
-	DisplayConfigModel,
 	LanguageConfigModel,
 	PluginConfigModel,
 	SystemConfigModel,
@@ -68,16 +67,6 @@ export class ConfigModuleResAudio extends BaseSuccessResponseModel<AudioConfigMo
 	declare data: AudioConfigModel;
 }
 
-@ApiSchema({ name: 'ConfigModuleResDisplay' })
-export class ConfigModuleResDisplay extends BaseSuccessResponseModel<DisplayConfigModel> {
-	@ApiProperty({
-		description: 'Single configuration section payload',
-		type: () => DisplayConfigModel,
-	})
-	@Expose()
-	declare data: DisplayConfigModel;
-}
-
 @ApiSchema({ name: 'ConfigModuleResLanguage' })
 export class ConfigModuleResLanguage extends BaseSuccessResponseModel<LanguageConfigModel> {
 	@ApiProperty({
@@ -133,7 +122,6 @@ export class ConfigModuleResSystem extends BaseSuccessResponseModel<SystemConfig
 @ApiSchema({ name: 'ConfigModuleResSection' })
 export class ConfigModuleResSection extends BaseSuccessResponseModel<
 	| AudioConfigModel
-	| DisplayConfigModel
 	| LanguageConfigModel
 	| WeatherCityIdConfigModel
 	| WeatherCityNameConfigModel
@@ -145,7 +133,6 @@ export class ConfigModuleResSection extends BaseSuccessResponseModel<
 		description: 'Single configuration section payload',
 		oneOf: [
 			{ $ref: getSchemaPath(AudioConfigModel) },
-			{ $ref: getSchemaPath(DisplayConfigModel) },
 			{ $ref: getSchemaPath(LanguageConfigModel) },
 			{ $ref: getSchemaPath(WeatherConfigModel) },
 			{ $ref: getSchemaPath(SystemConfigModel) },
@@ -154,7 +141,6 @@ export class ConfigModuleResSection extends BaseSuccessResponseModel<
 			propertyName: 'type',
 			mapping: {
 				audio: getSchemaPath(AudioConfigModel),
-				display: getSchemaPath(DisplayConfigModel),
 				language: getSchemaPath(LanguageConfigModel),
 				weather: getSchemaPath(WeatherConfigModel),
 				system: getSchemaPath(SystemConfigModel),
@@ -164,7 +150,6 @@ export class ConfigModuleResSection extends BaseSuccessResponseModel<
 	@Expose()
 	declare data:
 		| AudioConfigModel
-		| DisplayConfigModel
 		| LanguageConfigModel
 		| WeatherCityIdConfigModel
 		| WeatherCityNameConfigModel

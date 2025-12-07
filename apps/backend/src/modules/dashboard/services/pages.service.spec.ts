@@ -17,9 +17,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DisplayProfileEntity } from '../../system/entities/system.entity';
-import { DisplaysProfilesService } from '../../system/services/displays-profiles.service';
-import { DisplayProfileExistsConstraintValidator } from '../../system/validators/display-profile-exists-constraint.validator';
+import { DisplayEntity } from '../../displays/entities/displays.entity';
+import { DisplaysService } from '../../displays/services/displays.service';
+import { DisplayExistsConstraint } from '../../displays/validators/display-exists-constraint.validator';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException } from '../dashboard.exceptions';
 import { CreatePageDto } from '../dto/create-page.dto';
@@ -69,16 +69,22 @@ describe('PagesService', () => {
 	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 
-	const mockDisplay: DisplayProfileEntity = {
+	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
-		uid: uuid().toString(),
+		macAddress: 'AA:BB:CC:DD:EE:FF',
+		name: 'Test Display',
+		version: '1.0.0',
+		build: 'test',
 		screenWidth: 1280,
 		screenHeight: 720,
 		pixelRatio: 2,
 		unitSize: 120,
 		rows: 6,
 		cols: 4,
-		primary: true,
+		darkMode: false,
+		brightness: 100,
+		screenLockDuration: 30,
+		screenSaver: true,
 		createdAt: new Date(),
 		updatedAt: undefined,
 	};
@@ -110,11 +116,11 @@ describe('PagesService', () => {
 	};
 
 	const mockDisplaysService = {
-		findAll: jest.fn().mockResolvedValue([toInstance(DisplayProfileEntity, mockDisplay)]),
-		findOne: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
-		findByUid: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
-		findPrimary: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
-		getOneOrThrow: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
+		findAll: jest.fn().mockResolvedValue([toInstance(DisplayEntity, mockDisplay)]),
+		findOne: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
+		findByMacAddress: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
+		findPrimary: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
+		getOneOrThrow: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
 	};
 
 	const mockManager: jest.Mocked<Partial<EntityManager>> = {
@@ -142,7 +148,7 @@ describe('PagesService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				PagesService,
-				DisplayProfileExistsConstraintValidator,
+				DisplayExistsConstraint,
 				{ provide: getRepositoryToken(PageEntity), useFactory: mockRepository },
 				{
 					provide: DataSourcesService,
@@ -177,7 +183,7 @@ describe('PagesService', () => {
 					},
 				},
 				{
-					provide: DisplaysProfilesService,
+					provide: DisplaysService,
 					useValue: mockDisplaysService,
 				},
 				{

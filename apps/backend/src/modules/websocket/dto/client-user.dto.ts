@@ -3,6 +3,8 @@ import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { UserRole } from '../../users/users.constants';
 
+export type ClientType = 'user' | 'display' | 'third_party';
+
 export class ClientUserDto {
 	@Expose()
 	@IsOptional()
@@ -12,4 +14,9 @@ export class ClientUserDto {
 	@Expose()
 	@IsEnum(UserRole)
 	role: UserRole;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	type?: ClientType;
 }

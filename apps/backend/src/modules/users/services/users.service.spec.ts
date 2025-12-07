@@ -153,13 +153,9 @@ describe('UsersService', () => {
 
 			expect(result).toEqual(toInstance(UserEntity, mockCreatedUser));
 			expect(repository.create).toHaveBeenCalledWith(
-				toInstance(
-					UserEntity,
-					{ ...mockCreateUser, isHidden: false },
-					{
-						groups: ['internal'],
-					},
-				),
+				toInstance(UserEntity, mockCreateUser, {
+					groups: ['internal'],
+				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(toInstance(UserEntity, mockCreatedUser));
 			expect(repository.findOne).toHaveBeenCalledWith({
