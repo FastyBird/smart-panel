@@ -12,7 +12,7 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
+import { channelsSchema } from '../../../spec/channels';
 import {
 	ComponentType,
 	DESCRIPTORS,

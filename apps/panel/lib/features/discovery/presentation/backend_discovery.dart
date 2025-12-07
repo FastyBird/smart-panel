@@ -166,7 +166,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     return Column(
       children: [
         Icon(
-          MdiIcons.accessPointNetwork,
+          MdiIcons.accessPoint,
           size: _screenService.scale(48),
           color: Theme.of(context).primaryColor,
         ),
@@ -209,7 +209,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       child: Row(
         children: [
           Icon(
-            MdiIcons.alertCircleOutline,
+            MdiIcons.alert,
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.warning
                 : AppColorsDark.warning,
@@ -313,7 +313,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
-          MdiIcons.serverNetworkOff,
+          MdiIcons.serverOff,
           size: _screenService.scale(64),
           color: AppTextColorLight.placeholder,
         ),
@@ -482,7 +482,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                       _showManualEntry = true;
                     });
                   },
-                  icon: Icon(MdiIcons.keyboardOutline),
+                  icon: Icon(MdiIcons.keyboard),
                   label: const Text('Enter Manually'),
                 ),
               ),
@@ -542,7 +542,7 @@ class _BackendListItem extends StatelessWidget {
               Icon(
                 isSelected
                     ? MdiIcons.checkCircle
-                    : MdiIcons.serverNetworkOutline,
+                    : MdiIcons.server,
                 color: isSelected
                     ? Theme.of(context).primaryColor
                     : Theme.of(context).brightness == Brightness.light
