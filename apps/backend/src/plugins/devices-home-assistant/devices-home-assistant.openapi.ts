@@ -11,6 +11,13 @@ import {
 	HomeAssistantStateChangedEventDto,
 	HomeAssistantStateDto,
 } from './dto/home-assistant-state.dto';
+import {
+	AdoptChannelDefinitionDto,
+	AdoptDeviceRequestDto,
+	AdoptPropertyDefinitionDto,
+	MappingEntityOverrideDto,
+	MappingPreviewRequestDto,
+} from './dto/mapping-preview.dto';
 import { UpdateHomeAssistantChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateHomeAssistantChannelDto } from './dto/update-channel.dto';
 import { HomeAssistantUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -37,6 +44,15 @@ import {
 	HomeAssistantEntityRegistryResultModel,
 	HomeAssistantStateModel,
 } from './models/home-assistant.model';
+import {
+	EntityMappingPreviewModel,
+	HaDeviceInfoModel,
+	MappingPreviewResponseModel,
+	MappingWarningModel,
+	PropertyMappingPreviewModel,
+	SuggestedChannelModel,
+	SuggestedDeviceModel,
+} from './models/mapping-preview.model';
 
 export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// DTOs
@@ -52,6 +68,12 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HomeAssistantStateChangedEventDataDto,
 	HomeAssistantStateChangedEventDto,
 	HomeAssistantServiceRequestDto,
+	// Mapping preview DTOs
+	MappingPreviewRequestDto,
+	MappingEntityOverrideDto,
+	AdoptDeviceRequestDto,
+	AdoptChannelDefinitionDto,
+	AdoptPropertyDefinitionDto,
 	// Response models
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,
@@ -67,6 +89,14 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HomeAssistantDeviceRegistryResultModel,
 	HomeAssistantDeviceRegistryModel,
 	HomeAssistantConfigModel,
+	// Mapping preview models
+	MappingPreviewResponseModel,
+	EntityMappingPreviewModel,
+	PropertyMappingPreviewModel,
+	SuggestedChannelModel,
+	SuggestedDeviceModel,
+	MappingWarningModel,
+	HaDeviceInfoModel,
 	// Entities
 	HomeAssistantDeviceEntity,
 	HomeAssistantChannelEntity,

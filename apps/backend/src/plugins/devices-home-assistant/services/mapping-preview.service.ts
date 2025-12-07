@@ -1,0 +1,511 @@
+import { Injectable, Logger } from '@nestjs/common';
+
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	PropertyMetadata,
+	getPropertyMetadata,
+	getRequiredProperties,
+} from '../../../modules/devices/utils/schema.utils';
+import { devicesSchema } from '../../../spec/devices';
+import { ENTITY_MAIN_STATE_ATTRIBUTE, HomeAssistantDomain } from '../devices-home-assistant.constants';
+import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant.exceptions';
+import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
+import { HomeAssistantDeviceRegistryResultModel, HomeAssistantStateModel } from '../models/home-assistant.model';
+import {
+	EntityMappingPreviewModel,
+	HaDeviceInfoModel,
+	MappingPreviewResponseModel,
+	MappingWarningModel,
+	PropertyMappingPreviewModel,
+	SuggestedDeviceModel,
+} from '../models/mapping-preview.model';
+
+import {
+	HaEntityMappingRule,
+	HaPropertyBinding,
+	findMatchingRule,
+	inferDeviceCategory,
+} from './ha-entity-mapping.rules';
+import { HomeAssistantHttpService } from './home-assistant.http.service';
+import { HomeAssistantWsService } from './home-assistant.ws.service';
+
+/**
+ * Service for generating mapping previews for Home Assistant devices
+ *
+ * This service analyzes a Home Assistant device and its entities,
+ * then suggests how they could be mapped to Smart Panel device/channel/property structure.
+ */
+@Injectable()
+export class MappingPreviewService {
+	private readonly logger = new Logger(MappingPreviewService.name);
+
+	constructor(
+		private readonly homeAssistantHttpService: HomeAssistantHttpService,
+		private readonly homeAssistantWsService: HomeAssistantWsService,
+	) {}
+
+	/**
+	 * Generate a mapping preview for a Home Assistant device
+	 */
+	async generatePreview(haDeviceId: string, options?: MappingPreviewRequestDto): Promise<MappingPreviewResponseModel> {
+		this.logger.debug(`[MAPPING PREVIEW] Generating preview for HA device: ${haDeviceId}`);
+
+		// Fetch device information and states
+		const [devicesRegistry, entitiesRegistry, discoveredDevice] = await Promise.all([
+			this.homeAssistantWsService.getDevicesRegistry(),
+			this.homeAssistantWsService.getEntitiesRegistry(),
+			this.homeAssistantHttpService.getDiscoveredDevice(haDeviceId),
+		]);
+
+		// Find device in registry
+		const deviceRegistry = devicesRegistry.find((d) => d.id === haDeviceId);
+		if (!deviceRegistry) {
+			throw new DevicesHomeAssistantNotFoundException(`Home Assistant device with ID ${haDeviceId} not found`);
+		}
+
+		// Find entities for this device
+		const deviceEntities = entitiesRegistry.filter((e) => e.deviceId === haDeviceId);
+		const entityOverrides = new Map(options?.entityOverrides?.map((o) => [o.entityId, o]) ?? []);
+
+		const warnings: MappingWarningModel[] = [];
+		const entityPreviews: EntityMappingPreviewModel[] = [];
+		const mappedChannelCategories: ChannelCategory[] = [];
+
+		// Process each entity
+		for (const entityRegistry of deviceEntities) {
+			const entityState = discoveredDevice.states.find((s) => s.entityId === entityRegistry.entityId);
+			const override = entityOverrides.get(entityRegistry.entityId);
+
+			// Skip if explicitly skipped
+			if (override?.skip) {
+				entityPreviews.push(this.createSkippedEntityPreview(entityRegistry.entityId, entityState));
+				continue;
+			}
+
+			const entityPreview = this.processEntity(entityRegistry.entityId, entityState, override?.channelCategory);
+			entityPreviews.push(entityPreview);
+
+			if (entityPreview.suggestedChannel) {
+				mappedChannelCategories.push(entityPreview.suggestedChannel.category);
+			}
+
+			// Add warnings for unmapped entities
+			if (entityPreview.status === 'unmapped') {
+				warnings.push({
+					type: 'unsupported_entity',
+					entityId: entityRegistry.entityId,
+					message: `Entity "${entityRegistry.entityId}" could not be automatically mapped`,
+					suggestion: 'You can manually select a channel category for this entity',
+				});
+			}
+		}
+
+		// Determine suggested device category
+		const suggestedDeviceCategory = options?.deviceCategory ?? inferDeviceCategory(mappedChannelCategories);
+
+		// Check for missing required channels
+		const deviceSpec = devicesSchema[suggestedDeviceCategory as keyof typeof devicesSchema];
+		if (deviceSpec && 'channels' in deviceSpec) {
+			const requiredChannels = Object.entries(deviceSpec.channels)
+				.filter(([, spec]) => (spec as { required?: boolean }).required)
+				.map(([key]) => key as ChannelCategory);
+
+			for (const requiredChannel of requiredChannels) {
+				// Skip device_information as it's auto-created
+				if (requiredChannel === ChannelCategory.DEVICE_INFORMATION) {
+					continue;
+				}
+
+				if (!mappedChannelCategories.includes(requiredChannel)) {
+					warnings.push({
+						type: 'missing_required_channel',
+						message: `Required channel "${requiredChannel}" is not mapped`,
+						suggestion: 'You may need to select an entity to map to this channel',
+					});
+				}
+			}
+		}
+
+		// Determine if ready to adopt (all required elements mapped and no critical warnings)
+		const readyToAdopt = warnings.filter((w) => w.type === 'missing_required_channel').length === 0;
+
+		return {
+			haDevice: this.createHaDeviceInfo(deviceRegistry),
+			suggestedDevice: this.createSuggestedDevice(deviceRegistry, suggestedDeviceCategory, mappedChannelCategories),
+			entities: entityPreviews,
+			warnings,
+			readyToAdopt,
+		};
+	}
+
+	/**
+	 * Process a single entity and generate its mapping preview
+	 */
+	private processEntity(
+		entityId: string,
+		state: HomeAssistantStateModel | undefined,
+		overrideChannelCategory?: ChannelCategory,
+	): EntityMappingPreviewModel {
+		const domain = this.extractDomain(entityId);
+		const deviceClass = state?.attributes?.device_class as string | null | undefined;
+		const friendlyName = state?.attributes?.friendly_name as string | undefined;
+
+		// Find matching rule
+		const rule = overrideChannelCategory
+			? this.findRuleForChannel(domain, overrideChannelCategory)
+			: findMatchingRule(domain, deviceClass);
+
+		if (!rule) {
+			return this.createUnmappedEntityPreview(entityId, domain, deviceClass, state);
+		}
+
+		// Generate property mappings
+		const { suggestedProperties, unmappedAttributes, missingRequired } = this.generatePropertyMappings(
+			rule,
+			state,
+			overrideChannelCategory ?? rule.channel_category,
+		);
+
+		// Determine mapping status
+		let status: 'mapped' | 'partial' | 'unmapped' = 'mapped';
+		if (missingRequired.length > 0) {
+			status = 'partial';
+		}
+
+		return {
+			entityId,
+			domain: domain as string,
+			deviceClass: deviceClass ?? null,
+			currentState: state?.state ?? null,
+			attributes: state?.attributes ?? {},
+			status,
+			suggestedChannel: {
+				category: overrideChannelCategory ?? rule.channel_category,
+				name: friendlyName ?? this.generateChannelName(entityId, rule.channel_category),
+				confidence: overrideChannelCategory ? 'high' : this.determineConfidence(rule, deviceClass),
+			},
+			suggestedProperties,
+			unmappedAttributes,
+			missingRequiredProperties: missingRequired,
+		};
+	}
+
+	/**
+	 * Generate property mappings for an entity based on its rule and state
+	 */
+	private generatePropertyMappings(
+		rule: HaEntityMappingRule,
+		state: HomeAssistantStateModel | undefined,
+		channelCategory: ChannelCategory,
+	): {
+		suggestedProperties: PropertyMappingPreviewModel[];
+		unmappedAttributes: string[];
+		missingRequired: PropertyCategory[];
+	} {
+		const suggestedProperties: PropertyMappingPreviewModel[] = [];
+		const mappedAttributes = new Set<string>();
+		const mappedPropertyCategories = new Set<PropertyCategory>();
+
+		// Apply property bindings from the rule
+		for (const binding of rule.property_bindings) {
+			const propertyMetadata = getPropertyMetadata(channelCategory, binding.property_category);
+			if (!propertyMetadata) {
+				// Property not defined in channel spec, skip
+				continue;
+			}
+
+			// Check if attribute exists in state
+			const attributeValue = this.getAttributeValue(binding, state);
+			const hasValue = attributeValue !== undefined && attributeValue !== null;
+
+			if (hasValue || propertyMetadata.required) {
+				suggestedProperties.push(this.createPropertyPreview(binding, propertyMetadata, attributeValue));
+				mappedAttributes.add(binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.ha_attribute);
+				mappedPropertyCategories.add(binding.property_category);
+			}
+		}
+
+		// Find unmapped attributes (excluding internal ones)
+		const internalAttributes = [
+			'friendly_name',
+			'device_class',
+			'unit_of_measurement',
+			'icon',
+			'entity_picture',
+			'supported_features',
+			'supported_color_modes',
+			'color_mode',
+			'min_color_temp_kelvin',
+			'max_color_temp_kelvin',
+			'min_mireds',
+			'max_mireds',
+			'effect_list',
+			'effect',
+			'min_temp',
+			'max_temp',
+			'target_temp_step',
+			'hvac_modes',
+			'hvac_action',
+			'fan_modes',
+			'swing_modes',
+			'preset_modes',
+			'state_class',
+			'attribution',
+		];
+
+		const unmappedAttributes: string[] = [];
+		if (state?.attributes) {
+			for (const attr of Object.keys(state.attributes)) {
+				if (!mappedAttributes.has(attr) && !internalAttributes.includes(attr)) {
+					unmappedAttributes.push(attr);
+				}
+			}
+		}
+
+		// Find missing required properties
+		const requiredProperties = getRequiredProperties(channelCategory);
+		const missingRequired = requiredProperties.filter((prop) => !mappedPropertyCategories.has(prop));
+
+		return { suggestedProperties, unmappedAttributes, missingRequired };
+	}
+
+	/**
+	 * Get attribute value from state, handling array indices and transforms
+	 */
+	private getAttributeValue(binding: HaPropertyBinding, state: HomeAssistantStateModel | undefined): unknown {
+		if (!state) return undefined;
+
+		let value: unknown;
+
+		if (binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE) {
+			value = state.state;
+		} else {
+			value = state.attributes?.[binding.ha_attribute];
+		}
+
+		// Handle array index
+		if (binding.array_index !== undefined && Array.isArray(value)) {
+			value = value[binding.array_index];
+		}
+
+		// Apply transform
+		if (binding.transform && value !== undefined && value !== null) {
+			value = this.applyTransform(value, binding.transform);
+		}
+
+		return value;
+	}
+
+	/**
+	 * Apply value transformation
+	 */
+	private applyTransform(value: unknown, transform: string): unknown {
+		switch (transform) {
+			case 'brightness_to_percent':
+				if (typeof value === 'number') {
+					return Math.round((value / 255) * 100);
+				}
+				break;
+			case 'percent_to_brightness':
+				if (typeof value === 'number') {
+					return Math.round((value / 100) * 255);
+				}
+				break;
+			case 'invert_boolean':
+				if (typeof value === 'boolean') {
+					return !value;
+				}
+				if (value === 'on') return false;
+				if (value === 'off') return true;
+				break;
+			case 'kelvin_to_mireds':
+				if (typeof value === 'number' && value > 0) {
+					return Math.round(1000000 / value);
+				}
+				break;
+		}
+		return value;
+	}
+
+	/**
+	 * Create a property preview model
+	 */
+	private createPropertyPreview(
+		binding: HaPropertyBinding,
+		metadata: PropertyMetadata,
+		currentValue: unknown,
+	): PropertyMappingPreviewModel {
+		return {
+			category: binding.property_category,
+			name: this.propertyNameFromCategory(binding.property_category),
+			haAttribute: binding.ha_attribute,
+			dataType: metadata.data_type,
+			permissions: metadata.permissions,
+			unit: metadata.unit,
+			format: metadata.format,
+			required: metadata.required,
+			currentValue: this.normalizeValue(currentValue),
+		};
+	}
+
+	/**
+	 * Create a skipped entity preview
+	 */
+	private createSkippedEntityPreview(
+		entityId: string,
+		state: HomeAssistantStateModel | undefined,
+	): EntityMappingPreviewModel {
+		const domain = this.extractDomain(entityId);
+		const deviceClass = state?.attributes?.device_class as string | null | undefined;
+
+		return {
+			entityId,
+			domain: domain as string,
+			deviceClass: deviceClass ?? null,
+			currentState: state?.state ?? null,
+			attributes: state?.attributes ?? {},
+			status: 'skipped',
+			suggestedChannel: null,
+			suggestedProperties: [],
+			unmappedAttributes: [],
+			missingRequiredProperties: [],
+		};
+	}
+
+	/**
+	 * Create an unmapped entity preview
+	 */
+	private createUnmappedEntityPreview(
+		entityId: string,
+		domain: HomeAssistantDomain,
+		deviceClass: string | null | undefined,
+		state: HomeAssistantStateModel | undefined,
+	): EntityMappingPreviewModel {
+		return {
+			entityId,
+			domain: domain as string,
+			deviceClass: deviceClass ?? null,
+			currentState: state?.state ?? null,
+			attributes: state?.attributes ?? {},
+			status: 'unmapped',
+			suggestedChannel: null,
+			suggestedProperties: [],
+			unmappedAttributes: Object.keys(state?.attributes ?? {}),
+			missingRequiredProperties: [],
+		};
+	}
+
+	/**
+	 * Create HA device info model
+	 */
+	private createHaDeviceInfo(device: HomeAssistantDeviceRegistryResultModel): HaDeviceInfoModel {
+		return {
+			id: device.id,
+			name: device.nameByUser ?? device.name,
+			manufacturer: device.manufacturer ?? null,
+			model: device.model ?? null,
+		};
+	}
+
+	/**
+	 * Create suggested device model
+	 */
+	private createSuggestedDevice(
+		device: HomeAssistantDeviceRegistryResultModel,
+		category: DeviceCategory,
+		mappedChannels: ChannelCategory[],
+	): SuggestedDeviceModel {
+		// Determine confidence based on mapping coverage
+		let confidence: 'high' | 'medium' | 'low' = 'medium';
+		if (mappedChannels.length > 0) {
+			confidence = 'high';
+		}
+		if (category === DeviceCategory.GENERIC) {
+			confidence = 'low';
+		}
+
+		return {
+			category,
+			name: device.nameByUser ?? device.name,
+			confidence,
+		};
+	}
+
+	/**
+	 * Extract domain from entity ID (e.g., 'light.living_room' -> HomeAssistantDomain.LIGHT)
+	 */
+	private extractDomain(entityId: string): HomeAssistantDomain {
+		const domain = entityId.split('.')[0];
+		return domain as HomeAssistantDomain;
+	}
+
+	/**
+	 * Find a rule that matches a specific channel category
+	 */
+	private findRuleForChannel(
+		domain: HomeAssistantDomain,
+		channelCategory: ChannelCategory,
+	): HaEntityMappingRule | null {
+		const rule = findMatchingRule(domain, null);
+		if (rule) {
+			// Create a modified rule with the overridden channel category
+			return {
+				...rule,
+				channel_category: channelCategory,
+			};
+		}
+		return null;
+	}
+
+	/**
+	 * Determine mapping confidence based on rule specificity
+	 */
+	private determineConfidence(
+		rule: HaEntityMappingRule,
+		deviceClass: string | null | undefined,
+	): 'high' | 'medium' | 'low' {
+		if (rule.device_class !== null && deviceClass) {
+			return 'high';
+		}
+		if (rule.device_class === null) {
+			return 'medium';
+		}
+		return 'low';
+	}
+
+	/**
+	 * Generate a channel name from entity ID
+	 */
+	private generateChannelName(entityId: string, channelCategory: ChannelCategory): string {
+		// Extract the entity name part (after the domain)
+		const parts = entityId.split('.');
+		if (parts.length > 1) {
+			return parts[1].replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+		}
+		return channelCategory.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+	}
+
+	/**
+	 * Convert property category to human-readable name
+	 */
+	private propertyNameFromCategory(category: PropertyCategory): string {
+		return category.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+	}
+
+	/**
+	 * Normalize value to acceptable types
+	 */
+	private normalizeValue(value: unknown): string | number | boolean | null {
+		if (value === undefined || value === null) {
+			return null;
+		}
+		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+			return value;
+		}
+		// For objects/arrays, serialize to JSON string
+		if (typeof value === 'object') {
+			return JSON.stringify(value);
+		}
+		return String(value as string | number);
+	}
+}
