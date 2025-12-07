@@ -10,17 +10,21 @@ import type {
 	IDisplaysInstancesEditActionPayload,
 } from './displays-instances.store.types';
 
-export const transformDisplayInstanceResponse = (response: IDisplayInstanceRes): IDisplayInstance => {
+// Note: Display instances have been consolidated into the DisplaysModule
+// The transformer now maps from the unified Display entity
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const transformDisplayInstanceResponse = (response: any): IDisplayInstance => {
 	const parsedDisplay = DisplayInstanceSchema.safeParse({
 		id: response.id,
-		uid: response.uid,
-		mac: response.mac,
+		uid: response.id, // Using ID as UID for backward compatibility
+		mac: response.mac_address, // Field renamed
 		version: response.version,
-		build: response.build,
-		user: response.user,
-		displayProfile: response.display_profile,
+		build: response.build || '',
+		user: '', // User no longer tied to display
+		displayProfile: null, // Display profile no longer a separate entity
 		createdAt: response.created_at,
-		updatedAt: response.updated_at,
+		updatedAt: response.updated_at ?? null,
 	});
 
 	if (!parsedDisplay.success) {
@@ -34,12 +38,9 @@ export const transformDisplayInstanceCreateRequest = (
 	display: IDisplaysInstancesAddActionPayload['data'] & { id?: string }
 ): IDisplayInstanceCreateReq => {
 	const parsedRequest = DisplayInstanceCreateReqSchema.safeParse({
-		id: display.id,
-		uid: display.uid,
-		mac: display.mac,
+		mac_address: display.mac, // Field renamed
 		version: display.version,
 		build: display.build,
-		user: display.user,
 	});
 
 	if (!parsedRequest.success) {
@@ -53,7 +54,6 @@ export const transformDisplayInstanceUpdateRequest = (display: IDisplaysInstance
 	const parsedRequest = DisplayInstanceUpdateReqSchema.safeParse({
 		version: display.version,
 		build: display.build,
-		display_profile: display.displayProfile,
 	});
 
 	if (!parsedRequest.success) {

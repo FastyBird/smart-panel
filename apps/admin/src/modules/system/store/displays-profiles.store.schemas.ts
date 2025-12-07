@@ -1,15 +1,8 @@
 import { v4 as uuid } from 'uuid';
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
-import type {
-	SystemModuleCreateDisplayProfileSchema,
-	SystemModuleUpdateDisplayProfileSchema,
-	SystemModuleDisplayProfileSchema,
-} from '../../../openapi.constants';
-
-type ApiCreateDisplay = SystemModuleCreateDisplayProfileSchema;
-type ApiUpdateDisplay = SystemModuleUpdateDisplayProfileSchema;
-type ApiDisplay = SystemModuleDisplayProfileSchema;
+// Note: Display profiles have been consolidated into the DisplaysModule
+// These types are kept for backward compatibility but now map to the unified Display entity
 
 export const DisplayProfileIdSchema = z.string().uuid();
 
@@ -109,36 +102,47 @@ export const DisplaysProfilesRemoveActionPayloadSchema = z.object({
 
 // BACKEND API
 // ===========
+// Note: These now map to the DisplaysModule API types
 
-export const DisplayProfileCreateReqSchema: ZodType<ApiCreateDisplay> = z.object({
-	id: z.string().uuid().optional(),
-	uid: z.string().uuid(),
-	screen_width: z.number(),
-	screen_height: z.number(),
-	pixel_ratio: z.number(),
-	unit_size: z.number(),
-	rows: z.number(),
-	cols: z.number(),
-	primary: z.boolean().optional(),
-});
-
-export const DisplayProfileUpdateReqSchema: ZodType<ApiUpdateDisplay> = z.object({
+export const DisplayProfileCreateReqSchema = z.object({
+	mac_address: z.string().trim().nonempty(),
+	version: z.string().trim().nonempty(),
+	build: z.string().trim().nonempty().optional(),
+	screen_width: z.number().optional(),
+	screen_height: z.number().optional(),
+	pixel_ratio: z.number().optional(),
 	unit_size: z.number().optional(),
 	rows: z.number().optional(),
 	cols: z.number().optional(),
-	primary: z.boolean().optional(),
 });
 
-export const DisplayProfileResSchema: ZodType<ApiDisplay> = z.object({
+export const DisplayProfileUpdateReqSchema = z.object({
+	name: z.string().trim().optional(),
+	dark_mode: z.boolean().optional(),
+	brightness: z.number().min(0).max(100).optional(),
+	screen_lock_duration: z.number().optional(),
+	screen_saver: z.boolean().optional(),
+	unit_size: z.number().optional(),
+	rows: z.number().optional(),
+	cols: z.number().optional(),
+});
+
+export const DisplayProfileResSchema = z.object({
 	id: z.string().uuid(),
-	uid: z.string().uuid(),
+	mac_address: z.string().trim().nonempty(),
+	name: z.string().nullable().optional().default(null),
+	version: z.string().trim().nonempty(),
+	build: z.string().trim().nonempty().nullable().optional().default(null),
 	screen_width: z.number(),
 	screen_height: z.number(),
 	pixel_ratio: z.number(),
 	unit_size: z.number(),
 	rows: z.number(),
 	cols: z.number(),
-	primary: z.boolean(),
-	created_at: z.string().date(),
-	updated_at: z.string().date().nullable(),
+	dark_mode: z.boolean(),
+	brightness: z.number(),
+	screen_lock_duration: z.number(),
+	screen_saver: z.boolean(),
+	created_at: z.string(),
+	updated_at: z.string().nullable().optional().default(null),
 });

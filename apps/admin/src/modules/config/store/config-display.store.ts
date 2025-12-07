@@ -4,13 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type {
-	ConfigModuleGetConfigSectionOperation,
-	ConfigModuleUpdateDisplayOperation,
-} from '../../../openapi.constants';
-import { ConfigModuleDisplayType, ConfigModuleSection } from '../../../openapi.constants';
-import { CONFIG_MODULE_PREFIX } from '../config.constants';
+import { useBackend, useLogger } from '../../../common';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
 import { ConfigDisplayEditActionPayloadSchema, ConfigDisplaySchema } from './config-display.store.schemas';
@@ -26,6 +20,9 @@ import type {
 	IConfigDisplayStoreState,
 } from './config-display.store.types';
 import { transformConfigDisplayResponse, transformConfigDisplayUpdateRequest } from './config-display.transformers';
+
+// Display configuration is now managed via the DisplaysModule
+const DISPLAYS_MODULE_PREFIX = 'displays-module';
 
 const defaultSemaphore: IConfigDisplayStateSemaphore = {
 	getting: false,
@@ -44,144 +41,151 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 
 		const data = ref<IConfigDisplay | null>(null);
 
+		const currentDisplayId = ref<string | null>(null);
+
 		const firstLoadFinished = (): boolean => firstLoad.value;
 
 		const getting = (): boolean => semaphore.value.getting;
 
 		let pendingGetPromises: Promise<IConfigDisplay> | null = null;
 
-		const onEvent = (payload: IConfigDisplayOnEventActionPayload): IConfigDisplay => {
-			return set({
-				data: transformConfigDisplayResponse(payload.data as unknown as IConfigDisplayRes),
-			});
-		};
+	const onEvent = (payload: IConfigDisplayOnEventActionPayload): IConfigDisplay => {
+		return set({
+			data: transformConfigDisplayResponse(payload.data as unknown as IConfigDisplayRes),
+		});
+	};
 
-		const set = (payload: IConfigDisplaySetActionPayload): IConfigDisplay => {
-			const parsedConfigDisplay = ConfigDisplaySchema.safeParse({ ...payload.data, type: ConfigModuleDisplayType.display });
+	const set = (payload: IConfigDisplaySetActionPayload): IConfigDisplay => {
+		const parsedConfigDisplay = ConfigDisplaySchema.safeParse(payload.data);
 
-			if (!parsedConfigDisplay.success) {
-				logger.error('Schema validation failed with:', parsedConfigDisplay.error);
+		if (!parsedConfigDisplay.success) {
+			logger.error('Schema validation failed with:', parsedConfigDisplay.error);
 
-				throw new ConfigValidationException('Failed to insert display config.');
+			throw new ConfigValidationException('Failed to insert display config.');
+		}
+
+		data.value = data.value ?? null;
+
+		return (data.value = parsedConfigDisplay.data);
+	};
+
+	const get = async (): Promise<IConfigDisplay> => {
+		if (pendingGetPromises) {
+			return pendingGetPromises;
+		}
+
+		const fetchPromise = (async (): Promise<IConfigDisplay> => {
+			if (semaphore.value.getting) {
+				throw new ConfigApiException('Already getting display config.');
 			}
 
-			data.value = data.value ?? null;
-
-			return (data.value = parsedConfigDisplay.data);
-		};
-
-		const get = async (): Promise<IConfigDisplay> => {
-			if (pendingGetPromises) {
-				return pendingGetPromises;
-			}
-
-			const fetchPromise = (async (): Promise<IConfigDisplay> => {
-				if (semaphore.value.getting) {
-					throw new ConfigApiException('Already getting display config.');
-				}
-
-				semaphore.value.getting = true;
-
-				try {
-					const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
-						params: {
-							path: {
-								section: ConfigModuleSection.display,
-							},
-						},
-					});
-
-					const { data: responseData, error, response } = apiResponse;
-
-					if (typeof responseData !== 'undefined') {
-						data.value = transformConfigDisplayResponse(responseData.data);
-
-						return data.value;
-					}
-
-					let errorReason: string | null = 'Failed to fetch display config.';
-
-					if (error) {
-						errorReason = getErrorReason<ConfigModuleGetConfigSectionOperation>(error, errorReason);
-					}
-
-					throw new ConfigApiException(errorReason, response.status);
-				} finally {
-					semaphore.value.getting = false;
-				}
-			})();
-
-			pendingGetPromises = fetchPromise;
+			semaphore.value.getting = true;
 
 			try {
-				return await fetchPromise;
-			} finally {
-				pendingGetPromises = null;
-			}
-		};
-
-		const edit = async (payload: IConfigDisplayEditActionPayload): Promise<IConfigDisplay> => {
-			const parsedPayload = ConfigDisplayEditActionPayloadSchema.safeParse(payload);
-
-			if (!parsedPayload.success) {
-				logger.error('Schema validation failed with:', parsedPayload.error);
-
-				throw new ConfigValidationException('Failed to edit display config.');
-			}
-
-			if (semaphore.value.updating) {
-				throw new ConfigException('Display config is already being updated.');
-			}
-
-			const parsedEditedConfig = ConfigDisplaySchema.safeParse({
-				...data.value,
-				...omitBy(parsedPayload.data.data, isUndefined),
-			});
-
-			if (!parsedEditedConfig.success) {
-				logger.error('Schema validation failed with:', parsedEditedConfig.error);
-
-				throw new ConfigValidationException('Failed to edit display config.');
-			}
-
-			semaphore.value.updating = true;
-
-			data.value = parsedEditedConfig.data;
-
-			try {
-				const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
-					params: {
-						path: {
-							section: ConfigModuleSection.display,
-						},
-					},
-					body: {
-						data: transformConfigDisplayUpdateRequest(parsedEditedConfig.data),
-					},
-				});
+				// Get the list of displays and use the first one (primary display)
+				const apiResponse = await backend.client.GET(`/${DISPLAYS_MODULE_PREFIX}/displays`);
 
 				const { data: responseData, error, response } = apiResponse;
 
-				if (typeof responseData !== 'undefined') {
-					data.value = transformConfigDisplayResponse(responseData.data);
+				if (typeof responseData !== 'undefined' && responseData.data && responseData.data.length > 0) {
+					const primaryDisplay = responseData.data[0];
+					data.value = transformConfigDisplayResponse({
+						dark_mode: primaryDisplay.dark_mode,
+						brightness: primaryDisplay.brightness,
+						screen_lock_duration: primaryDisplay.screen_lock_duration,
+						screen_saver: primaryDisplay.screen_saver,
+					});
+
+					// Store the display ID for later updates
+					currentDisplayId.value = primaryDisplay.id;
 
 					return data.value;
 				}
 
-				// Updating the record on api failed, we need to refresh the record
-				await get();
-
-				let errorReason: string | null = 'Failed to update display config.';
-
-				if (error) {
-					errorReason = getErrorReason<ConfigModuleUpdateDisplayOperation>(error, errorReason);
-				}
+				const errorReason: string | null = 'Failed to fetch display config.';
 
 				throw new ConfigApiException(errorReason, response.status);
 			} finally {
-				semaphore.value.updating = false;
+				semaphore.value.getting = false;
 			}
-		};
+		})();
+
+		pendingGetPromises = fetchPromise;
+
+		try {
+			return await fetchPromise;
+		} finally {
+			pendingGetPromises = null;
+		}
+	};
+
+	const edit = async (payload: IConfigDisplayEditActionPayload): Promise<IConfigDisplay> => {
+		const parsedPayload = ConfigDisplayEditActionPayloadSchema.safeParse(payload);
+
+		if (!parsedPayload.success) {
+			logger.error('Schema validation failed with:', parsedPayload.error);
+
+			throw new ConfigValidationException('Failed to edit display config.');
+		}
+
+		if (semaphore.value.updating) {
+			throw new ConfigException('Display config is already being updated.');
+		}
+
+		if (!currentDisplayId.value) {
+			throw new ConfigException('No display ID available. Please fetch display config first.');
+		}
+
+		const parsedEditedConfig = ConfigDisplaySchema.safeParse({
+			...data.value,
+			...omitBy(parsedPayload.data.data, isUndefined),
+		});
+
+		if (!parsedEditedConfig.success) {
+			logger.error('Schema validation failed with:', parsedEditedConfig.error);
+
+			throw new ConfigValidationException('Failed to edit display config.');
+		}
+
+		semaphore.value.updating = true;
+
+		data.value = parsedEditedConfig.data;
+
+		try {
+			const apiResponse = await backend.client.PATCH(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
+				params: {
+					path: {
+						id: currentDisplayId.value,
+					},
+				},
+				body: {
+					data: transformConfigDisplayUpdateRequest(parsedEditedConfig.data),
+				},
+			});
+
+			const { data: responseData, response } = apiResponse;
+
+			if (typeof responseData !== 'undefined') {
+				data.value = transformConfigDisplayResponse({
+					dark_mode: responseData.data.dark_mode,
+					brightness: responseData.data.brightness,
+					screen_lock_duration: responseData.data.screen_lock_duration,
+					screen_saver: responseData.data.screen_saver,
+				});
+
+				return data.value;
+			}
+
+			// Updating the record on api failed, we need to refresh the record
+			await get();
+
+			const errorReason: string | null = 'Failed to update display config.';
+
+			throw new ConfigApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.updating = false;
+		}
+	};
 
 		return {
 			semaphore,

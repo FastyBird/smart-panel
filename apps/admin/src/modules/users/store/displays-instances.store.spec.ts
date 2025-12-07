@@ -53,16 +53,26 @@ describe('Displays Instances Store', (): void => {
 	});
 
 	it('should fetch displays instances successfully', async (): Promise<void> => {
+		// Response from DisplaysModule uses mac_address and full display schema
 		(backendMock.client.GET as Mock).mockResolvedValue({
 			data: {
 				data: [
 					{
 						id: displayId,
-						uid: displayUid,
-						mac: '00:1A:2B:3C:4D:5E',
+						mac_address: '00:1A:2B:3C:4D:5E',
+						name: 'Test Display',
 						version: '1.0.0',
 						build: '42',
-						user: uuid(),
+						screen_width: 1920,
+						screen_height: 1080,
+						pixel_ratio: 1.5,
+						unit_size: 8,
+						rows: 12,
+						cols: 24,
+						dark_mode: false,
+						brightness: 100,
+						screen_lock_duration: 30,
+						screen_saver: true,
 						created_at: '2024-03-01T12:00:00Z',
 						updated_at: '2024-03-02T12:00:00Z',
 					},
@@ -84,17 +94,30 @@ describe('Displays Instances Store', (): void => {
 	});
 
 	it('should add a display instances successfully', async (): Promise<void> => {
+		// DisplaysModule /register returns { data: { display: {...}, access_token: "..." } }
 		(backendMock.client.POST as Mock).mockResolvedValue({
 			data: {
 				data: {
-					id: displayId,
-					uid: displayUid,
-					mac: '00:1A:2B:3C:4D:5E',
-					version: '1.0.0',
-					build: '42',
-					user: uuid(),
-					created_at: '2024-03-01T12:00:00Z',
-					updated_at: '2024-03-02T12:00:00Z',
+					display: {
+						id: displayId,
+						mac_address: '00:1A:2B:3C:4D:5E',
+						name: 'Test Display',
+						version: '1.0.0',
+						build: '42',
+						screen_width: 1920,
+						screen_height: 1080,
+						pixel_ratio: 1.5,
+						unit_size: 8,
+						rows: 12,
+						cols: 24,
+						dark_mode: false,
+						brightness: 100,
+						screen_lock_duration: 30,
+						screen_saver: true,
+						created_at: '2024-03-01T12:00:00Z',
+						updated_at: '2024-03-02T12:00:00Z',
+					},
+					access_token: 'test-access-token',
 				},
 			},
 		});
@@ -134,14 +157,15 @@ describe('Displays Instances Store', (): void => {
 	});
 
 	it('should edit a display instance successfully', async (): Promise<void> => {
+		// Note: uid is now mapped to id in the new DisplaysModule
 		displaysStore.data[displayId] = {
 			id: displayId,
 			draft: false,
-			uid: displayUid,
+			uid: displayId, // uid equals id in new schema
 			mac: '00:1A:2B:3C:4D:5E',
 			version: '1.0.0',
 			build: '42',
-			user: uuid(),
+			user: '', // user no longer tied to display
 			displayProfile: null,
 			createdAt: new Date(),
 			updatedAt: null,
@@ -151,11 +175,20 @@ describe('Displays Instances Store', (): void => {
 			data: {
 				data: {
 					id: displayId,
-					uid: displayUid,
-					mac: '00:1A:2B:3C:4D:5E',
+					mac_address: '00:1A:2B:3C:4D:5E',
+					name: 'Test Display',
 					version: '2.0.0',
 					build: '42',
-					user: uuid(),
+					screen_width: 1920,
+					screen_height: 1080,
+					pixel_ratio: 1.5,
+					unit_size: 8,
+					rows: 12,
+					cols: 24,
+					dark_mode: false,
+					brightness: 100,
+					screen_lock_duration: 30,
+					screen_saver: true,
 					created_at: '2024-03-01T12:00:00Z',
 					updated_at: '2024-03-02T12:00:00Z',
 				},
@@ -168,17 +201,18 @@ describe('Displays Instances Store', (): void => {
 		});
 
 		expect(updatedDisplay.version).toBe('2.0.0');
-		expect(displaysStore.findById(displayId)?.uid).toBe(displayUid);
+		// uid now equals id after transformer mapping
+		expect(displaysStore.findById(displayId)?.uid).toBe(displayId);
 	});
 
 	it('should throw an error when editing a display instance fails', async (): Promise<void> => {
 		displaysStore.data[displayId] = {
 			id: displayId,
-			uid: displayUid,
+			uid: displayId,
 			mac: '00:1A:2B:3C:4D:5E',
 			version: '1.0.0',
 			build: '42',
-			user: uuid(),
+			user: '',
 			draft: false,
 			displayProfile: null,
 			createdAt: new Date(),
@@ -193,11 +227,11 @@ describe('Displays Instances Store', (): void => {
 	it('should remove a display instance successfully', async (): Promise<void> => {
 		displaysStore.data[displayId] = {
 			id: displayId,
-			uid: displayUid,
+			uid: displayId,
 			mac: '00:1A:2B:3C:4D:5E',
 			version: '1.0.0',
 			build: '42',
-			user: uuid(),
+			user: '',
 			displayProfile: null,
 			draft: false,
 			createdAt: new Date(),
@@ -215,11 +249,11 @@ describe('Displays Instances Store', (): void => {
 	it('should throw an error when removing a display instance fails', async (): Promise<void> => {
 		displaysStore.data[displayId] = {
 			id: displayId,
-			uid: displayUid,
+			uid: displayId,
 			mac: '00:1A:2B:3C:4D:5E',
 			version: '1.0.0',
 			build: '42',
-			user: uuid(),
+			user: '',
 			displayProfile: null,
 			draft: false,
 			createdAt: new Date(),
