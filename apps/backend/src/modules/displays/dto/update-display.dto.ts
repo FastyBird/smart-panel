@@ -1,0 +1,196 @@
+import { Expose, Transform } from 'class-transformer';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
+
+import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+@ApiSchema({ name: 'DisplaysModuleUpdateDisplay' })
+export class UpdateDisplayDto {
+	@ApiPropertyOptional({
+		description: 'Application version running on the display',
+		type: 'string',
+		example: '1.0.0',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"version","reason":"Version must be a string."}]' })
+	version?: string;
+
+	@ApiPropertyOptional({
+		description: 'Build number or identifier of the app',
+		type: 'string',
+		nullable: true,
+		example: '42',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"build","reason":"Build must be a string."}]' })
+	@ValidateIf((_, value) => value !== null)
+	build?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'screen_width',
+		description: 'Display screen width in pixels',
+		type: 'integer',
+		example: 1920,
+	})
+	@Expose({ name: 'screen_width' })
+	@IsOptional()
+	@IsInt({ message: '[{"field":"screen_width","reason":"Screen width must be an integer."}]' })
+	@Transform(
+		({ obj }: { obj: { screen_width?: number; screenWidth?: number } }) => obj.screen_width ?? obj.screenWidth,
+		{
+			toClassOnly: true,
+		},
+	)
+	screenWidth?: number;
+
+	@ApiPropertyOptional({
+		name: 'screen_height',
+		description: 'Display screen height in pixels',
+		type: 'integer',
+		example: 1080,
+	})
+	@Expose({ name: 'screen_height' })
+	@IsOptional()
+	@IsInt({ message: '[{"field":"screen_height","reason":"Screen height must be an integer."}]' })
+	@Transform(
+		({ obj }: { obj: { screen_height?: number; screenHeight?: number } }) => obj.screen_height ?? obj.screenHeight,
+		{ toClassOnly: true },
+	)
+	screenHeight?: number;
+
+	@ApiPropertyOptional({
+		name: 'pixel_ratio',
+		description: 'Display pixel ratio',
+		type: 'number',
+		example: 1.5,
+	})
+	@Expose({ name: 'pixel_ratio' })
+	@IsOptional()
+	@IsNumber({}, { message: '[{"field":"pixel_ratio","reason":"Pixel ratio must be a number."}]' })
+	@Transform(({ obj }: { obj: { pixel_ratio?: number; pixelRatio?: number } }) => obj.pixel_ratio ?? obj.pixelRatio, {
+		toClassOnly: true,
+	})
+	pixelRatio?: number;
+
+	@ApiPropertyOptional({
+		name: 'unit_size',
+		description: 'Display unit size',
+		type: 'number',
+		example: 8,
+	})
+	@Expose({ name: 'unit_size' })
+	@IsOptional()
+	@IsNumber({}, { message: '[{"field":"unit_size","reason":"Unit size must be a number."}]' })
+	@Transform(({ obj }: { obj: { unit_size?: number; unitSize?: number } }) => obj.unit_size ?? obj.unitSize, {
+		toClassOnly: true,
+	})
+	unitSize?: number;
+
+	@ApiPropertyOptional({
+		description: 'Number of grid rows',
+		type: 'integer',
+		example: 12,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"rows","reason":"Rows must be an integer."}]' })
+	rows?: number;
+
+	@ApiPropertyOptional({
+		description: 'Number of grid columns',
+		type: 'integer',
+		example: 24,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"cols","reason":"Cols must be an integer."}]' })
+	cols?: number;
+
+	@ApiPropertyOptional({
+		name: 'dark_mode',
+		description: 'Dark mode enabled state',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'dark_mode' })
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"dark_mode","reason":"Dark mode must be a boolean."}]' })
+	@Transform(({ obj }: { obj: { dark_mode?: boolean; darkMode?: boolean } }) => obj.dark_mode ?? obj.darkMode, {
+		toClassOnly: true,
+	})
+	darkMode?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Display brightness level (0-100)',
+		type: 'integer',
+		minimum: 0,
+		maximum: 100,
+		example: 100,
+	})
+	@Expose()
+	@IsOptional()
+	@IsNumber({}, { message: '[{"field":"brightness","reason":"Brightness must be a number."}]' })
+	@Min(0, { message: '[{"field":"brightness","reason":"Brightness must be at least 0."}]' })
+	@Max(100, { message: '[{"field":"brightness","reason":"Brightness must be at most 100."}]' })
+	brightness?: number;
+
+	@ApiPropertyOptional({
+		name: 'screen_lock_duration',
+		description: 'Screen lock duration in seconds (0-3600, 0 = disabled)',
+		type: 'integer',
+		minimum: 0,
+		maximum: 3600,
+		example: 30,
+	})
+	@Expose({ name: 'screen_lock_duration' })
+	@IsOptional()
+	@IsNumber({}, { message: '[{"field":"screen_lock_duration","reason":"Screen lock duration must be a number."}]' })
+	@Min(0, { message: '[{"field":"screen_lock_duration","reason":"Screen lock duration must be at least 0."}]' })
+	@Max(3600, {
+		message: '[{"field":"screen_lock_duration","reason":"Screen lock duration must be at most 3600."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { screen_lock_duration?: number; screenLockDuration?: number } }) =>
+			obj.screen_lock_duration ?? obj.screenLockDuration,
+		{ toClassOnly: true },
+	)
+	screenLockDuration?: number;
+
+	@ApiPropertyOptional({
+		name: 'screen_saver',
+		description: 'Screen saver enabled state',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'screen_saver' })
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"screen_saver","reason":"Screen saver must be a boolean."}]' })
+	@Transform(
+		({ obj }: { obj: { screen_saver?: boolean; screenSaver?: boolean } }) => obj.screen_saver ?? obj.screenSaver,
+		{ toClassOnly: true },
+	)
+	screenSaver?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Display friendly name',
+		type: 'string',
+		nullable: true,
+		example: 'Living Room Panel',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"name","reason":"Name must be a string."}]' })
+	@ValidateIf((_, value) => value !== null)
+	name?: string | null;
+}
+
+@ApiSchema({ name: 'DisplaysModuleReqUpdateDisplay' })
+export class ReqUpdateDisplayDto {
+	@ApiPropertyOptional({
+		description: 'Display update data',
+		type: () => UpdateDisplayDto,
+	})
+	@Expose()
+	data: UpdateDisplayDto;
+}

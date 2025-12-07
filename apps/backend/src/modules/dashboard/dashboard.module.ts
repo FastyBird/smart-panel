@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { DisplaysModule } from '../displays/displays.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
@@ -51,6 +52,7 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 		SeedModule,
 		SystemModule,
 		StatsModule,
+		DisplaysModule,
 	],
 	providers: [
 		PagesService,

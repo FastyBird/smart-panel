@@ -19,7 +19,6 @@ import {
 import { ConfigException } from '../config.exceptions';
 import {
 	UpdateAudioConfigDto,
-	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
 	UpdateModuleConfigDto,
 	UpdateWeatherCityIdConfigDto,
@@ -30,7 +29,6 @@ import {
 import {
 	AppConfigModel,
 	AudioConfigModel,
-	DisplayConfigModel,
 	LanguageConfigModel,
 	ModuleConfigModel,
 	WeatherCityIdConfigModel,
@@ -56,13 +54,6 @@ describe('ConfigController', () => {
 			speakerVolume: 50,
 			microphone: false,
 			microphoneVolume: 30,
-		},
-		display: {
-			type: SectionType.DISPLAY,
-			darkMode: true,
-			brightness: 80,
-			screenLockDuration: 5,
-			screenSaver: true,
 		},
 		language: {
 			type: SectionType.LANGUAGE,
@@ -161,13 +152,6 @@ describe('ConfigController', () => {
 			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.AUDIO, AudioConfigModel);
 		});
 
-		it('should return the display configuration section', () => {
-			const result = controller.getConfigSection(SectionType.DISPLAY);
-			expect(result).toHaveProperty('data');
-			expect(result.data).toEqual(mockConfig.display);
-			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.DISPLAY, DisplayConfigModel);
-		});
-
 		it('should throw BadRequestException for an invalid section', () => {
 			expect(() => controller.getConfigSection('invalid' as keyof AppConfigModel)).toThrow(BadRequestException);
 		});
@@ -190,26 +174,6 @@ describe('ConfigController', () => {
 			});
 			expect(configService.setConfigSection).toHaveBeenCalledWith('audio', updateDto, UpdateAudioConfigDto);
 			expect(configService.getConfigSection).toHaveBeenCalledWith('audio', AudioConfigModel);
-		});
-	});
-
-	describe('updateDisplayConfig', () => {
-		it('should update and return the display configuration', async () => {
-			const updateDto: UpdateDisplayConfigDto = { type: SectionType.DISPLAY, brightness: 60, dark_mode: false };
-			const updatedConfig = { ...mockConfig.display, brightness: 60, darkMode: false };
-
-			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
-
-			const result = await controller.updateDisplayConfig({ data: updateDto });
-
-			expect(result).toHaveProperty('data');
-			expect(result.data).toMatchObject({
-				type: SectionType.DISPLAY,
-				brightness: 60,
-				darkMode: false,
-			});
-			expect(configService.setConfigSection).toHaveBeenCalledWith('display', updateDto, UpdateDisplayConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('display', DisplayConfigModel);
 		});
 	});
 

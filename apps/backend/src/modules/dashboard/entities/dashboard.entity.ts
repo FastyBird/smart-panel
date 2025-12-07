@@ -16,7 +16,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
-import { DisplayProfileEntity } from '../../system/entities/system.entity';
+import { DisplayEntity } from '../../displays/entities/displays.entity';
 
 @ApiSchema({ name: 'DashboardModuleDataPage' })
 @Entity('dashboard_module_pages')
@@ -72,7 +72,7 @@ export abstract class PageEntity extends BaseEntity {
 	dataSource: DataSourceEntity[] = [];
 
 	@ApiProperty({
-		description: 'Associated display profile ID',
+		description: 'Associated display ID',
 		type: 'string',
 		format: 'uuid',
 		example: '123e4567-e89b-12d3-a456-426614174000',
@@ -82,13 +82,13 @@ export abstract class PageEntity extends BaseEntity {
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => typeof value === 'object')
-	@Validate(AbstractInstanceValidator, [DisplayProfileEntity], {
-		message: '[{"field":"display","reason":"Display must be a valid subclass of DisplayProfileEntity."}]',
+	@Validate(AbstractInstanceValidator, [DisplayEntity], {
+		message: '[{"field":"display","reason":"Display must be a valid subclass of DisplayEntity."}]',
 	})
-	@Transform(({ value }: { value: DisplayProfileEntity | null }) => value?.id ?? null, { toPlainOnly: true })
-	@ManyToOne(() => DisplayProfileEntity, { cascade: true, onDelete: 'CASCADE' })
+	@Transform(({ value }: { value: DisplayEntity | null }) => value?.id ?? null, { toPlainOnly: true })
+	@ManyToOne(() => DisplayEntity, { cascade: true, onDelete: 'CASCADE', nullable: true })
 	@JoinColumn({ name: 'displayId' })
-	display: DisplayProfileEntity | string | null;
+	display: DisplayEntity | string | null;
 
 	@ApiProperty({ description: 'Page type', type: 'string', example: 'default' })
 	@Expose()

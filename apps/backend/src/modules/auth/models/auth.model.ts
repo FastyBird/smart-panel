@@ -127,20 +127,6 @@ export class RefreshTokenModel {
 }
 
 /**
- * Register display data model
- */
-@ApiSchema({ name: 'AuthModuleDataRegisteredDisplay' })
-export class RegisteredDisplayModel {
-	@ApiProperty({
-		description: 'Display account secret',
-		type: 'string',
-		example: 'IwMj3jfHdRVIxCck6DBgcQi3zXDNAHUu',
-	})
-	@Expose()
-	secret: string;
-}
-
-/**
  * Validation data model
  */
 @ApiSchema({ name: 'AuthModuleDataValidation' })
@@ -152,20 +138,6 @@ export class CheckModel {
 	})
 	@Expose()
 	valid: boolean;
-}
-
-/**
- * Display secret schema (data part, not full response wrapper)
- */
-@ApiSchema({ name: 'AuthModuleDataDisplaySecret' })
-export class DisplaySecretModel {
-	@ApiProperty({
-		description: 'Display account secret',
-		type: 'string',
-		example: 'IwMj3jfHdRVIxCck6DBgcQi3zXDNAHUu',
-	})
-	@Expose()
-	secret: string;
 }
 
 /**

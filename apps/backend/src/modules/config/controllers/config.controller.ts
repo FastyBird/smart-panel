@@ -19,7 +19,6 @@ import {
 	ReqUpdatePluginDto,
 	ReqUpdateSectionDto,
 	UpdateAudioConfigDto,
-	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
 	UpdateModuleConfigDto,
 	UpdatePluginConfigDto,
@@ -32,7 +31,6 @@ import {
 import {
 	ConfigModuleResAppConfig,
 	ConfigModuleResAudio,
-	ConfigModuleResDisplay,
 	ConfigModuleResLanguage,
 	ConfigModuleResModuleConfig,
 	ConfigModuleResModules,
@@ -45,7 +43,6 @@ import {
 import {
 	AppConfigModel,
 	AudioConfigModel,
-	DisplayConfigModel,
 	LanguageConfigModel,
 	ModuleConfigModel,
 	PluginConfigModel,
@@ -120,13 +117,6 @@ export class ConfigController {
 
 				return this.createSectionResponse(config);
 			}
-			case SectionType.DISPLAY: {
-				const config = this.service.getConfigSection<DisplayConfigModel>(section, DisplayConfigModel);
-
-				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
 			case SectionType.LANGUAGE: {
 				const config = this.service.getConfigSection<LanguageConfigModel>(section, LanguageConfigModel);
 
@@ -191,15 +181,6 @@ export class ConfigController {
 				await this.service.setConfigSection(SectionType.AUDIO, dto.data, UpdateAudioConfigDto);
 
 				const config = this.service.getConfigSection<AudioConfigModel>(SectionType.AUDIO, AudioConfigModel);
-
-				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
-			case SectionType.DISPLAY: {
-				await this.service.setConfigSection(SectionType.DISPLAY, dto.data, UpdateDisplayConfigDto);
-
-				const config = this.service.getConfigSection<DisplayConfigModel>(SectionType.DISPLAY, DisplayConfigModel);
 
 				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
 
@@ -272,29 +253,6 @@ export class ConfigController {
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.AUDIO}`);
 
 		return this.createSectionResponse(config) as ConfigModuleResAudio;
-	}
-
-	@Patch(SectionType.DISPLAY)
-	@ApiOperation({
-		tags: [CONFIG_MODULE_API_TAG_NAME],
-		summary: 'Update display configuration',
-		description: 'Update the display section configuration',
-		operationId: 'update-config-module-display',
-	})
-	@ApiBody({ type: ReqUpdateSectionDto, description: 'Display configuration data' })
-	@ApiSuccessResponse(ConfigModuleResDisplay, 'Display configuration updated successfully')
-	@ApiBadRequestResponse('Invalid display configuration data')
-	@ApiInternalServerErrorResponse('Internal server error')
-	async updateDisplayConfig(@Body() displayConfig: ReqUpdateSectionDto): Promise<ConfigModuleResDisplay> {
-		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.DISPLAY}`);
-
-		await this.service.setConfigSection(SectionType.DISPLAY, displayConfig.data, UpdateDisplayConfigDto);
-
-		const config = this.service.getConfigSection<DisplayConfigModel>(SectionType.DISPLAY, DisplayConfigModel);
-
-		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.DISPLAY}`);
-
-		return this.createSectionResponse(config) as ConfigModuleResDisplay;
 	}
 
 	@Patch(SectionType.LANGUAGE)

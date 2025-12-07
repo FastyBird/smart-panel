@@ -119,13 +119,6 @@ describe('ConfigService', () => {
 			microphone: false,
 			microphoneVolume: 30,
 		},
-		display: {
-			type: SectionType.DISPLAY,
-			brightness: 0,
-			darkMode: false,
-			screenLockDuration: 30,
-			screenSaver: true,
-		},
 		language: {
 			type: SectionType.LANGUAGE,
 			language: LanguageType.ENGLISH,

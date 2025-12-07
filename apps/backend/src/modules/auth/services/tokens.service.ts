@@ -7,10 +7,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { TokenOwnerType } from '../auth.constants';
 import { AuthException, AuthNotFoundException, AuthValidationException } from '../auth.exceptions';
 import { CreateTokenDto } from '../dto/create-token.dto';
 import { UpdateTokenDto } from '../dto/update-token.dto';
-import { TokenEntity } from '../entities/auth.entity';
+import { LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { hashToken } from '../utils/token.utils';
 
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
@@ -30,13 +31,19 @@ export class TokensService {
 		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
+		const isLongLiveToken = type?.name === LongLiveTokenEntity.name;
 
-		const tokens = (await repository
-			.createQueryBuilder('token')
-			.innerJoinAndSelect('token.owner', 'owner')
-			.leftJoinAndSelect('token.parent', 'parent')
-			.leftJoinAndSelect('token.children', 'children')
-			.getMany()) as TToken[];
+		let queryBuilder = repository.createQueryBuilder('token');
+
+		// LongLiveTokenEntity doesn't have owner relation, others do
+		if (!isLongLiveToken) {
+			queryBuilder = queryBuilder
+				.leftJoinAndSelect('token.owner', 'owner')
+				.leftJoinAndSelect('token.parent', 'parent')
+				.leftJoinAndSelect('token.children', 'children');
+		}
+
+		const tokens = (await queryBuilder.getMany()) as TToken[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} tokens`);
 
@@ -47,25 +54,90 @@ export class TokensService {
 		owner: string,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken[]> {
-		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
+		this.logger.debug('[LOOKUP ALL] Fetching all tokens by owner');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
+		const isLongLiveToken = type?.name === LongLiveTokenEntity.name;
 
-		const tokens = (await repository
-			.createQueryBuilder('token')
-			.innerJoinAndSelect('token.owner', 'owner')
-			.leftJoinAndSelect('token.parent', 'parent')
-			.leftJoinAndSelect('token.children', 'children')
-			.where(`token.owner = :ownerId`, { ownerId: owner })
-			.getMany()) as TToken[];
+		let queryBuilder = repository.createQueryBuilder('token');
+
+		if (isLongLiveToken) {
+			// LongLiveTokenEntity uses ownerId field directly
+			queryBuilder = queryBuilder.where('token.ownerId = :ownerId', { ownerId: owner });
+		} else {
+			// AccessToken/RefreshToken use owner relation
+			queryBuilder = queryBuilder
+				.leftJoinAndSelect('token.owner', 'owner')
+				.leftJoinAndSelect('token.parent', 'parent')
+				.leftJoinAndSelect('token.children', 'children')
+				.where('token.owner = :ownerId', { ownerId: owner });
+		}
+
+		const tokens = (await queryBuilder.getMany()) as TToken[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} tokens`);
 
 		return tokens;
 	}
 
+	async findAllByOwnerType(ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
+		this.logger.debug(`[LOOKUP ALL] Fetching all long-live tokens by owner type=${ownerType}`);
+
+		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+
+		const tokens = await repository.find({
+			where: { ownerType },
+		});
+
+		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} long-live tokens`);
+
+		return tokens;
+	}
+
+	async findByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
+		this.logger.debug(`[LOOKUP ALL] Fetching long-live tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
+
+		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+
+		const tokens = await repository.find({
+			where: { ownerId, ownerType },
+		});
+
+		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} long-live tokens`);
+
+		return tokens;
+	}
+
+	async revokeByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<void> {
+		this.logger.debug(`[REVOKE] Revoking all tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
+
+		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
+
+		await repository.update({ ownerId, ownerType }, { revoked: true });
+
+		this.logger.debug(`[REVOKE] Successfully revoked tokens for ownerId=${ownerId}`);
+	}
+
 	async findOne<TToken extends TokenEntity>(id: string, type?: new (...args: any[]) => TToken): Promise<TToken | null> {
 		return this.findByField('id', id, type);
+	}
+
+	async findByHashedToken<TToken extends TokenEntity>(
+		token: string,
+		type?: new (...args: any[]) => TToken,
+	): Promise<TToken | null> {
+		this.logger.debug('[LOOKUP] Finding token by hashed value');
+
+		const hashedToken = hashToken(token);
+		const allTokens = await this.findAll(type);
+
+		for (const storedToken of allTokens) {
+			if (hashedToken === storedToken.hashedToken) {
+				return storedToken;
+			}
+		}
+
+		return null;
 	}
 
 	async create<TToken extends TokenEntity, TCreateDTO extends CreateTokenDto>(createDto: TCreateDTO): Promise<TToken> {
@@ -181,14 +253,21 @@ export class TokensService {
 		this.logger.debug('[LOOKUP] Fetching token');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
+		const isLongLiveToken = type?.name === LongLiveTokenEntity.name;
 
-		const token = (await repository
-			.createQueryBuilder('token')
-			.innerJoinAndSelect('token.owner', 'owner')
-			.leftJoinAndSelect('token.parent', 'parent')
-			.leftJoinAndSelect('token.children', 'children')
-			.where(`token.${field} = :fieldValue`, { fieldValue: value })
-			.getOne()) as TToken;
+		let queryBuilder = repository.createQueryBuilder('token');
+
+		// LongLiveTokenEntity doesn't have owner relation, others do
+		if (!isLongLiveToken) {
+			queryBuilder = queryBuilder
+				.leftJoinAndSelect('token.owner', 'owner')
+				.leftJoinAndSelect('token.parent', 'parent')
+				.leftJoinAndSelect('token.children', 'children');
+		}
+
+		queryBuilder = queryBuilder.where(`token.${field} = :fieldValue`, { fieldValue: value });
+
+		const token = (await queryBuilder.getOne()) as TToken;
 
 		if (!token) {
 			this.logger.warn('[LOOKUP] Token not found');

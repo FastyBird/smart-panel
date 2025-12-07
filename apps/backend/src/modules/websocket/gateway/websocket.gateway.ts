@@ -16,7 +16,6 @@ import {
 } from '@nestjs/websockets';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandResultDto } from '../dto/command-result.dto';
@@ -87,7 +86,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 			const clientData = client.data as ClientData;
 
-			if (clientData.user && clientData.user.role === UserRole.DISPLAY) {
+			if (clientData.user && clientData.user.type === 'display') {
 				await client.join(DISPLAY_INTERNAL_ROOM);
 			}
 		} catch (error) {

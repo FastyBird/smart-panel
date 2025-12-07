@@ -3,7 +3,6 @@ import { Expose } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel, SuccessPaginatedMetadataModel } from '../../api/models/api-response.model';
-import { DisplayProfileEntity } from '../entities/system.entity';
 
 import {
 	ExtensionAdminModel,
@@ -15,46 +14,6 @@ import {
 	SystemInfoModel,
 	ThrottleStatusModel,
 } from './system.model';
-
-/**
- * Response wrapper for DisplayProfileEntity
- */
-@ApiSchema({ name: 'SystemModuleResDisplayProfile' })
-export class DisplayProfileResponseModel extends BaseSuccessResponseModel<DisplayProfileEntity> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => DisplayProfileEntity,
-	})
-	@Expose()
-	declare data: DisplayProfileEntity;
-}
-
-/**
- * Response wrapper for array of DisplayProfileEntity
- */
-@ApiSchema({ name: 'SystemModuleResDisplayProfiles' })
-export class DisplayProfilesResponseModel extends BaseSuccessResponseModel<DisplayProfileEntity[]> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: 'array',
-		items: { $ref: getSchemaPath(DisplayProfileEntity) },
-	})
-	@Expose()
-	declare data: DisplayProfileEntity[];
-}
-
-/**
- * Response wrapper for DisplayProfileEntity by UID
- */
-@ApiSchema({ name: 'SystemModuleResDisplayProfileByUid' })
-export class DisplayProfileByUidResponseModel extends BaseSuccessResponseModel<DisplayProfileEntity> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => DisplayProfileEntity,
-	})
-	@Expose()
-	declare data: DisplayProfileEntity;
-}
 
 /**
  * Response wrapper for array of ExtensionBaseModel

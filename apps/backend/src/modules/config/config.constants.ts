@@ -16,7 +16,6 @@ export enum EventType {
 
 export enum SectionType {
 	AUDIO = 'audio',
-	DISPLAY = 'display',
 	LANGUAGE = 'language',
 	WEATHER = 'weather',
 	SYSTEM = 'system',

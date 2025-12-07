@@ -15,9 +15,9 @@ import { DataSourcesTypeMapperService } from '../../../modules/dashboard/service
 import { TilesTypeMapperService } from '../../../modules/dashboard/services/tiles-type-mapper.service';
 import { DataSourceTypeConstraintValidator } from '../../../modules/dashboard/validators/data-source-type-constraint.validator';
 import { TileTypeConstraintValidator } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
-import { DisplayProfileEntity } from '../../../modules/system/entities/system.entity';
-import { DisplaysProfilesService } from '../../../modules/system/services/displays-profiles.service';
-import { DisplayProfileExistsConstraintValidator } from '../../../modules/system/validators/display-profile-exists-constraint.validator';
+import { DisplayEntity } from '../../../modules/displays/entities/displays.entity';
+import { DisplaysService } from '../../../modules/displays/services/displays.service';
+import { DisplayExistsConstraint } from '../../../modules/displays/validators/display-exists-constraint.validator';
 import { CreateCardsPageDto } from '../dto/create-page.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
 import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
@@ -31,16 +31,22 @@ describe('CardsPageNestedBuilderService', () => {
 	let dataSourceMapperService: DataSourcesTypeMapperService;
 	let ormDataSource: OrmDataSource;
 
-	const mockDisplay: DisplayProfileEntity = {
+	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
-		uid: uuid().toString(),
+		macAddress: 'AA:BB:CC:DD:EE:FF',
+		name: 'Test Display',
+		version: '1.0.0',
+		build: 'test',
 		screenWidth: 1280,
 		screenHeight: 720,
 		pixelRatio: 2,
 		unitSize: 120,
 		rows: 6,
 		cols: 4,
-		primary: true,
+		darkMode: false,
+		brightness: 100,
+		screenLockDuration: 30,
+		screenSaver: true,
 		createdAt: new Date(),
 		updatedAt: undefined,
 	};
@@ -95,14 +101,14 @@ describe('CardsPageNestedBuilderService', () => {
 					},
 				},
 				{
-					provide: DisplaysProfilesService,
+					provide: DisplaysService,
 					useValue: {
 						findOne: jest.fn().mockResolvedValue(mockDisplay),
 					},
 				},
 				TileTypeConstraintValidator,
 				DataSourceTypeConstraintValidator,
-				DisplayProfileExistsConstraintValidator,
+				DisplayExistsConstraint,
 			],
 		}).compile();
 

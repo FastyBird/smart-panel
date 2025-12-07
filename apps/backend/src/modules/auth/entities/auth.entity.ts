@@ -1,12 +1,12 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsBoolean, IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDate, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { BeforeInsert, ChildEntity, Column, Entity, Index, ManyToOne, OneToMany, TableInheritance } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { UserEntity } from '../../users/entities/users.entity';
-import { TokenType } from '../auth.constants';
+import { TokenOwnerType, TokenType } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { hashToken } from '../utils/token.utils';
 
@@ -178,19 +178,36 @@ export class RefreshTokenEntity extends TokenEntity {
 @ChildEntity()
 export class LongLiveTokenEntity extends TokenEntity {
 	@ApiProperty({
-		description: 'Token owner ID',
+		name: 'owner_type',
+		description: 'Type of token owner',
+		enum: TokenOwnerType,
+		example: TokenOwnerType.USER,
+	})
+	@Expose({ name: 'owner_type' })
+	@IsEnum(TokenOwnerType)
+	@Transform(
+		({ obj }: { obj: { owner_type?: TokenOwnerType; ownerType?: TokenOwnerType } }) => obj.owner_type ?? obj.ownerType,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', default: TokenOwnerType.USER })
+	ownerType: TokenOwnerType;
+
+	@ApiPropertyOptional({
+		name: 'owner_id',
+		description: 'Owner entity ID (user, display, or null for third-party)',
 		type: 'string',
 		format: 'uuid',
+		nullable: true,
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@Expose()
+	@Expose({ name: 'owner_id' })
 	@IsOptional()
-	@Type(() => UserEntity)
-	@Transform(({ value }: { value: UserEntity | string }) => (typeof value === 'string' ? value : value?.id), {
-		toPlainOnly: true,
+	@IsUUID('4')
+	@Transform(({ obj }: { obj: { owner_id?: string; ownerId?: string } }) => obj.owner_id ?? obj.ownerId, {
+		toClassOnly: true,
 	})
-	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
-	owner: UserEntity;
+	@Column({ type: 'uuid', nullable: true })
+	ownerId: string | null;
 
 	@ApiProperty({
 		description: 'Token name',

@@ -94,67 +94,6 @@ export class AudioConfigModel extends BaseConfigModel {
 	microphoneVolume: number = 0;
 }
 
-@ApiSchema({ name: 'ConfigModuleDataDisplay' })
-export class DisplayConfigModel extends BaseConfigModel {
-	@ApiProperty({
-		description: 'Configuration section type',
-		enum: [SectionType.DISPLAY],
-		example: 'display',
-	})
-	@Expose()
-	@IsOptional()
-	type = SectionType.DISPLAY;
-
-	@ApiProperty({
-		name: 'dark_mode',
-		description: 'Dark mode enabled state',
-		type: 'boolean',
-		example: false,
-	})
-	@Expose({ name: 'dark_mode' })
-	@IsBoolean()
-	darkMode: boolean = false;
-
-	@ApiProperty({
-		description: 'Display brightness level (0-100)',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 100,
-		example: 0,
-	})
-	@Expose()
-	@IsNumber()
-	@Min(0)
-	@Max(100)
-	brightness: number = 0;
-
-	@ApiProperty({
-		name: 'screen_lock_duration',
-		description: 'Screen lock duration in seconds (0-3600)',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 3600,
-		example: 30,
-	})
-	@Expose({ name: 'screen_lock_duration' })
-	@IsNumber()
-	@Min(0)
-	@Max(3600)
-	screenLockDuration: number = 30;
-
-	@ApiProperty({
-		name: 'screen_saver',
-		description: 'Screen saver enabled state',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose({ name: 'screen_saver' })
-	@IsBoolean()
-	screenSaver: boolean = true;
-}
-
 @ApiSchema({ name: 'ConfigModuleDataLanguage' })
 export class LanguageConfigModel extends BaseConfigModel {
 	@ApiProperty({
@@ -505,15 +444,6 @@ export class AppConfigModel {
 	@ValidateNested()
 	@Type(() => AudioConfigModel)
 	audio: AudioConfigModel = new AudioConfigModel();
-
-	@ApiProperty({
-		description: 'Display configuration section',
-		type: () => DisplayConfigModel,
-	})
-	@Expose()
-	@ValidateNested()
-	@Type(() => DisplayConfigModel)
-	display: DisplayConfigModel = new DisplayConfigModel();
 
 	@ApiProperty({
 		description: 'Language configuration section',

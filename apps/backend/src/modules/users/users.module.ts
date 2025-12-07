@@ -8,14 +8,11 @@ import { FactoryResetRegistryService } from '../system/services/factory-reset-re
 import { SystemModule } from '../system/system.module';
 
 import { ListUsersCommand } from './commands/list-users.command';
-import { DisplaysInstancesController } from './controllers/displays-instances.controller';
 import { UsersController } from './controllers/users.controller';
-import { DisplayInstanceEntity, UserEntity } from './entities/users.entity';
+import { UserEntity } from './entities/users.entity';
 import { RolesGuard } from './guards/roles.guard';
-import { DisplaysInstancesService } from './services/displays-instances.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { UsersService } from './services/users.service';
-import { SystemDisplayEntitySubscriber } from './subscribers/system-display-entity.subscriber';
 import { USERS_MODULE_API_TAG_DESCRIPTION, USERS_MODULE_API_TAG_NAME, USERS_MODULE_NAME } from './users.constants';
 import { USERS_SWAGGER_EXTRA_MODELS } from './users.openapi';
 import { UserExistsConstraintValidator } from './validators/user-exists-constraint.validator';
@@ -26,10 +23,9 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 	description: USERS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([UserEntity, DisplayInstanceEntity]), SystemModule],
+	imports: [TypeOrmModule.forFeature([UserEntity]), SystemModule],
 	providers: [
 		UsersService,
-		DisplaysInstancesService,
 		UserExistsConstraintValidator,
 		ListUsersCommand,
 		{
@@ -37,10 +33,9 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 			useClass: RolesGuard,
 		},
 		ModuleResetService,
-		SystemDisplayEntitySubscriber,
 	],
-	controllers: [UsersController, DisplaysInstancesController],
-	exports: [UsersService, DisplaysInstancesService, UserExistsConstraintValidator],
+	controllers: [UsersController],
+	exports: [UsersService, UserExistsConstraintValidator],
 })
 export class UsersModule {
 	constructor(

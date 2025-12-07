@@ -1,9 +1,9 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsDate, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
+import { IsDate, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { TokenType } from '../auth.constants';
+import { TokenOwnerType, TokenType } from '../auth.constants';
 
 const determineTokenDto = (obj: unknown): new () => object => {
 	if (
@@ -145,14 +145,36 @@ export class CreateLongLiveTokenDto extends CreateTokenDto {
 	type: TokenType.LONG_LIVE;
 
 	@ApiProperty({
-		description: 'Token owner user ID',
+		name: 'owner_type',
+		description: 'Type of token owner',
+		enum: TokenOwnerType,
+		example: TokenOwnerType.USER,
+	})
+	@Expose({ name: 'owner_type' })
+	@IsEnum(TokenOwnerType, {
+		message: '[{"field":"owner_type","reason":"Owner type must be one of: user, display, third_party."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { owner_type?: TokenOwnerType; ownerType?: TokenOwnerType } }) => obj.owner_type ?? obj.ownerType,
+		{ toClassOnly: true },
+	)
+	ownerType: TokenOwnerType;
+
+	@ApiPropertyOptional({
+		name: 'owner_id',
+		description: 'Owner entity ID (user ID, display ID, or null for third-party)',
 		type: 'string',
 		format: 'uuid',
+		nullable: true,
 	})
-	@Expose()
+	@Expose({ name: 'owner_id' })
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"owner","reason":"Token owner must be a valid UUID (version 4)."}]' })
-	owner: string;
+	@IsUUID('4', { message: '[{"field":"owner_id","reason":"Owner ID must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => value !== null)
+	@Transform(({ obj }: { obj: { owner_id?: string; ownerId?: string } }) => obj.owner_id ?? obj.ownerId, {
+		toClassOnly: true,
+	})
+	ownerId: string | null;
 
 	@ApiProperty({
 		description: 'Token name',
@@ -164,7 +186,7 @@ export class CreateLongLiveTokenDto extends CreateTokenDto {
 	@IsString({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;
 
-	@ApiProperty({
+	@ApiPropertyOptional({
 		description: 'Token description',
 		type: 'string',
 		nullable: true,
