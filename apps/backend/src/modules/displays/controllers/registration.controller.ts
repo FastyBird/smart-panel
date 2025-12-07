@@ -7,20 +7,20 @@ import {
 	ApiCreatedSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { ALLOWED_USER_AGENTS, DISPLAYS_MODULE_PREFIX } from '../displays.constants';
+import { ALLOWED_USER_AGENTS } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { DisplayRegistrationResponseModel } from '../models/displays-response.model';
 import { RegistrationService } from '../services/registration.service';
 
 @ApiTags('Displays Module - Registration')
-@Controller(DISPLAYS_MODULE_PREFIX)
+@Controller('register')
 export class RegistrationController {
 	private readonly logger = new Logger(RegistrationController.name);
 
 	constructor(private readonly registrationService: RegistrationService) {}
 
-	@Post('/register')
+	@Post()
 	@Public()
 	@ApiOperation({
 		summary: 'Register display',

@@ -402,10 +402,7 @@ describe('TokensService', () => {
 
 			await service.revokeByOwnerId(ownerId, TokenOwnerType.DISPLAY);
 
-			expect(mockRepo.update).toHaveBeenCalledWith(
-				{ ownerId, ownerType: TokenOwnerType.DISPLAY },
-				{ revoked: true },
-			);
+			expect(mockRepo.update).toHaveBeenCalledWith({ ownerId, ownerType: TokenOwnerType.DISPLAY }, { revoked: true });
 		});
 	});
 

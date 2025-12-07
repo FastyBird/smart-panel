@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Logger, Param, Patch } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Logger, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
+import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiNotFoundResponse,
@@ -8,19 +8,18 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
-import { DISPLAYS_MODULE_PREFIX } from '../displays.constants';
 import { ReqUpdateDisplayDto } from '../dto/update-display.dto';
 import { DisplayResponseModel, DisplaysResponseModel } from '../models/displays-response.model';
 import { DisplaysService } from '../services/displays.service';
 
 @ApiTags('Displays Module - Displays')
-@Controller(DISPLAYS_MODULE_PREFIX)
+@Controller('displays')
 export class DisplaysController {
 	private readonly logger = new Logger(DisplaysController.name);
 
 	constructor(private readonly displaysService: DisplaysService) {}
 
-	@Get('/displays')
+	@Get()
 	@ApiOperation({
 		summary: 'List all displays',
 		description: 'Retrieves a list of all registered displays.',
@@ -34,7 +33,7 @@ export class DisplaysController {
 		return { success: true, data: displays };
 	}
 
-	@Get('/displays/:id')
+	@Get(':id')
 	@ApiOperation({
 		summary: 'Get display by ID',
 		description: 'Retrieves a specific display by its unique identifier.',
@@ -49,7 +48,7 @@ export class DisplaysController {
 		return { success: true, data: display };
 	}
 
-	@Patch('/displays/:id')
+	@Patch(':id')
 	@ApiOperation({
 		summary: 'Update display',
 		description: 'Updates an existing display configuration.',
@@ -65,19 +64,21 @@ export class DisplaysController {
 		return { success: true, data: display };
 	}
 
-	@Delete('/displays/:id')
+	@Delete(':id')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Delete display',
 		description: 'Removes a display from the system. Requires owner or admin role.',
 	})
-	@ApiSuccessResponse(Boolean, 'Display successfully deleted')
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display ID' })
+	@ApiNoContentResponse({ description: 'Display deleted successfully' })
 	@ApiNotFoundResponse('Display not found')
-	async remove(@Param('id') id: string): Promise<{ success: boolean }> {
+	@HttpCode(204)
+	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Removing display with id=${id}`);
 
 		await this.displaysService.remove(id);
 
-		return { success: true };
+		this.logger.debug(`[DELETE] Successfully removed display with id=${id}`);
 	}
 }

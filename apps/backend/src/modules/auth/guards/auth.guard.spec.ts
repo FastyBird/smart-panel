@@ -5,7 +5,6 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Cache } from 'cache-manager';
 import { v4 as uuid } from 'uuid';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -17,10 +16,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { TokenOwnerType, TokenType } from '../auth.constants';
-import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { TokenOwnerType } from '../auth.constants';
+import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
 import { TokensService } from '../services/tokens.service';
-import { hashToken } from '../utils/token.utils';
 
 import { AuthGuard, AuthenticatedRequest, IS_PUBLIC_KEY } from './auth.guard';
 
@@ -34,7 +32,6 @@ describe('AuthGuard', () => {
 	let reflector: Reflector;
 	let tokensService: TokensService;
 	let usersService: UsersService;
-	let cacheManager: Cache;
 
 	const mockUserId = uuid().toString();
 	const mockDisplayId = uuid().toString();
@@ -105,12 +102,9 @@ describe('AuthGuard', () => {
 		ownerId: null,
 	} as unknown as LongLiveTokenEntity;
 
-	const createMockExecutionContext = (
-		headers: Record<string, string> = {},
-		isPublic: boolean = false,
-	): ExecutionContext => {
+	const createMockExecutionContext = (headers: Record<string, string> = {}): ExecutionContext => {
 		const request: Partial<AuthenticatedRequest> = {
-			headers: headers as any,
+			headers: headers as unknown as AuthenticatedRequest['headers'],
 		};
 
 		return {
@@ -168,7 +162,6 @@ describe('AuthGuard', () => {
 		reflector = module.get<Reflector>(Reflector);
 		tokensService = module.get<TokensService>(TokensService);
 		usersService = module.get<UsersService>(UsersService);
-		cacheManager = module.get<Cache>(CACHE_MANAGER);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -350,7 +343,10 @@ describe('AuthGuard', () => {
 		});
 
 		it('should throw UnauthorizedException when display token is expired', async () => {
-			const expiredToken = { ...mockDisplayLongLiveToken, expiresAt: new Date(Date.now() - 1000) } as unknown as LongLiveTokenEntity;
+			const expiredToken = {
+				...mockDisplayLongLiveToken,
+				expiresAt: new Date(Date.now() - 1000),
+			} as unknown as LongLiveTokenEntity;
 
 			const context = createMockExecutionContext({
 				authorization: `Bearer ${mockDisplayToken}`,
@@ -375,7 +371,7 @@ describe('AuthGuard', () => {
 			// JWT verify returns a payload that doesn't indicate display or user type
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([mockThirdPartyLongLiveToken as LongLiveTokenEntity]);
+			jest.spyOn(tokensService, 'findAll').mockResolvedValue([mockThirdPartyLongLiveToken]);
 
 			const result = await guard.canActivate(context);
 
@@ -413,7 +409,10 @@ describe('AuthGuard', () => {
 		});
 
 		it('should throw UnauthorizedException when long-live token is expired', async () => {
-			const expiredToken = { ...mockThirdPartyLongLiveToken, expiresAt: new Date(Date.now() - 1000) } as unknown as LongLiveTokenEntity;
+			const expiredToken = {
+				...mockThirdPartyLongLiveToken,
+				expiresAt: new Date(Date.now() - 1000),
+			} as unknown as LongLiveTokenEntity;
 
 			const context = createMockExecutionContext({
 				authorization: `Bearer ${mockLongLiveToken}`,

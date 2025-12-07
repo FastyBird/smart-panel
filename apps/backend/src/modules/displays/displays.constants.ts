@@ -1,3 +1,4 @@
+export const DISPLAYS_MODULE_NAME = 'displays';
 export const DISPLAYS_MODULE_PREFIX = 'displays-module';
 
 export enum EventType {

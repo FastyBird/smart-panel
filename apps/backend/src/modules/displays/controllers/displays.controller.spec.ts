@@ -164,9 +164,8 @@ describe('DisplaysController', () => {
 		it('should remove a display', async () => {
 			jest.spyOn(service, 'remove').mockResolvedValue(undefined);
 
-			const result = await controller.remove(mockDisplay.id);
+			await controller.remove(mockDisplay.id);
 
-			expect(result.success).toBe(true);
 			expect(service.remove).toHaveBeenCalledWith(mockDisplay.id);
 		});
 
