@@ -301,4 +301,154 @@ describe('TokensService', () => {
 			await expect(service.remove('invalid-id')).rejects.toThrow(AuthNotFoundException);
 		});
 	});
+
+	describe('findAllByOwnerType', () => {
+		it('should return all tokens for a specific owner type', async () => {
+			const mockDisplayTokens: LongLiveTokenEntity[] = [
+				{
+					...mockToken,
+					id: uuid().toString(),
+					type: TokenType.LONG_LIVE,
+					ownerType: TokenOwnerType.DISPLAY,
+					ownerId: uuid().toString(),
+					updateToken: (): void => {},
+				},
+				{
+					...mockToken,
+					id: uuid().toString(),
+					type: TokenType.LONG_LIVE,
+					ownerType: TokenOwnerType.DISPLAY,
+					ownerId: uuid().toString(),
+					updateToken: (): void => {},
+				},
+			];
+
+			const mockRepo = {
+				find: jest.fn().mockResolvedValue(mockDisplayTokens.map((t) => toInstance(LongLiveTokenEntity, t))),
+			};
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(mockRepo as any);
+
+			const result = await service.findAllByOwnerType(TokenOwnerType.DISPLAY);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].ownerType).toBe(TokenOwnerType.DISPLAY);
+			expect(mockRepo.find).toHaveBeenCalledWith({ where: { ownerType: TokenOwnerType.DISPLAY } });
+		});
+
+		it('should return empty array when no tokens for owner type', async () => {
+			const mockRepo = {
+				find: jest.fn().mockResolvedValue([]),
+			};
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(mockRepo as any);
+
+			const result = await service.findAllByOwnerType(TokenOwnerType.THIRD_PARTY);
+
+			expect(result).toHaveLength(0);
+		});
+	});
+
+	describe('findByOwnerId', () => {
+		it('should return tokens for a specific owner ID and type', async () => {
+			const ownerId = uuid().toString();
+			const mockDisplayTokens: LongLiveTokenEntity[] = [
+				{
+					...mockToken,
+					id: uuid().toString(),
+					type: TokenType.LONG_LIVE,
+					ownerType: TokenOwnerType.DISPLAY,
+					ownerId,
+					updateToken: (): void => {},
+				},
+			];
+
+			const mockRepo = {
+				find: jest.fn().mockResolvedValue(mockDisplayTokens.map((t) => toInstance(LongLiveTokenEntity, t))),
+			};
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(mockRepo as any);
+
+			const result = await service.findByOwnerId(ownerId, TokenOwnerType.DISPLAY);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].ownerId).toBe(ownerId);
+			expect(result[0].ownerType).toBe(TokenOwnerType.DISPLAY);
+			expect(mockRepo.find).toHaveBeenCalledWith({ where: { ownerId, ownerType: TokenOwnerType.DISPLAY } });
+		});
+
+		it('should return empty array when no tokens for owner ID', async () => {
+			const mockRepo = {
+				find: jest.fn().mockResolvedValue([]),
+			};
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(mockRepo as any);
+
+			const result = await service.findByOwnerId('non-existent-id', TokenOwnerType.DISPLAY);
+
+			expect(result).toHaveLength(0);
+		});
+	});
+
+	describe('revokeByOwnerId', () => {
+		it('should revoke all tokens for a specific owner', async () => {
+			const ownerId = uuid().toString();
+
+			const mockRepo = {
+				update: jest.fn().mockResolvedValue({ affected: 2 }),
+			};
+
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(mockRepo as any);
+
+			await service.revokeByOwnerId(ownerId, TokenOwnerType.DISPLAY);
+
+			expect(mockRepo.update).toHaveBeenCalledWith(
+				{ ownerId, ownerType: TokenOwnerType.DISPLAY },
+				{ revoked: true },
+			);
+		});
+	});
+
+	describe('findByHashedToken', () => {
+		it('should find a token by its hash', async () => {
+			const tokenValue = 'test-token-value';
+			const mockTokenWithHash: LongLiveTokenEntity = {
+				...mockToken,
+				type: TokenType.LONG_LIVE,
+				hashedToken: `hashed-${tokenValue}`,
+				updateToken: (): void => {},
+			};
+
+			// Return the mock directly without toInstance transformation to preserve hashedToken
+			jest.spyOn(service, 'findAll').mockResolvedValue([mockTokenWithHash]);
+
+			const result = await service.findByHashedToken(tokenValue, LongLiveTokenEntity);
+
+			expect(result).toEqual(mockTokenWithHash);
+		});
+
+		it('should return null when token not found', async () => {
+			jest.spyOn(service, 'findAll').mockResolvedValue([]);
+
+			const result = await service.findByHashedToken('non-existent-token', LongLiveTokenEntity);
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null when hash does not match', async () => {
+			const mockTokenWithHash: LongLiveTokenEntity = {
+				...mockToken,
+				type: TokenType.LONG_LIVE,
+				hashedToken: 'different-hash',
+				updateToken: (): void => {},
+			};
+
+			// Return the mock directly without toInstance transformation to preserve hashedToken
+			jest.spyOn(service, 'findAll').mockResolvedValue([mockTokenWithHash]);
+
+			const result = await service.findByHashedToken('test-token', LongLiveTokenEntity);
+
+			expect(result).toBeNull();
+		});
+	});
 });
