@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/api/models/system_module_req_create_displa
 import 'package:fastybird_smart_panel/api/models/users_module_req_update_display_instance.dart';
 import 'package:fastybird_smart_panel/api/models/users_module_update_display_instance.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -27,9 +28,36 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
+/// Result of the initialization attempt
+enum InitializationResult {
+  /// Initialization was successful
+  success,
+
+  /// No backend URL configured - needs discovery
+  needsDiscovery,
+
+  /// Backend connection failed - should retry discovery
+  connectionFailed,
+
+  /// Initialization failed with error
+  error,
+}
+
+/// Exception with additional context for initialization failures
+class InitializationException implements Exception {
+  final String message;
+  final InitializationResult result;
+
+  InitializationException(this.message, this.result);
+
+  @override
+  String toString() => message;
+}
+
 class StartupManagerService {
   static const String _apiSecretKey = 'api_secret';
   static const String _appUniqueIdentifierKey = 'app_uid';
+  static const String _backendUrlKey = 'backend_url';
 
   final double screenWidth;
   final double screenHeight;
@@ -45,6 +73,8 @@ class StartupManagerService {
 
   late FlutterSecureStorage _securedStorage;
   late SecureStorageFallback _securedStorageFallback;
+
+  String? _currentBackendUrl;
 
   StartupManagerService({
     required this.screenWidth,
@@ -62,36 +92,6 @@ class StartupManagerService {
     } else {
       _securedStorageFallback = SecureStorageFallback();
     }
-
-    final bool isAndroidEmulator = Platform.isAndroid && !kReleaseMode;
-
-    const String appHost = String.fromEnvironment(
-      'FB_APP_HOST',
-      defaultValue: 'http://localhost',
-    );
-    const String backendPort = String.fromEnvironment(
-      'FB_BACKEND_PORT',
-      defaultValue: '3000',
-    );
-
-    final String host = isAndroidEmulator ? 'http://10.0.2.2' : appHost;
-
-    final String baseUrl = '$host:$backendPort/api/v1';
-
-    if (kDebugMode) {
-      debugPrint(
-        '[STARTUP MANAGER] API base URL: $baseUrl',
-      );
-    }
-
-    _apiIoService = Dio(
-      BaseOptions(
-        baseUrl: baseUrl,
-        contentType: 'application/json',
-      ),
-    );
-
-    _apiClient = ApiClient(_apiIoService);
 
     _socketClient = SocketService();
 
@@ -120,50 +120,99 @@ class StartupManagerService {
       locator.registerSingleton(_securedStorageFallback);
     }
     locator.registerSingleton(_eventBus);
-
-    // Register modules
-    var configModuleService = ConfigModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-    var systemModuleService = SystemModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-      eventBus: _eventBus,
-    );
-    var weatherModuleService = WeatherModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-    var devicesModuleService = DevicesModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-    var dashboardModuleService = DashboardModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-
-    locator.registerSingleton(configModuleService);
-    locator.registerSingleton(systemModuleService);
-    locator.registerSingleton(weatherModuleService);
-    locator.registerSingleton(devicesModuleService);
-    locator.registerSingleton(dashboardModuleService);
-
-    // Api client
-    locator.registerSingleton(_apiIoService);
-    locator.registerSingleton(_apiClient);
-
-    // Sockets client
-    locator.registerSingleton(_socketClient);
-
-    // Misc services
-    locator.registerSingleton<SystemActionsService>(
-      SystemActionsService(_eventBus),
-    );
   }
 
-  Future<void> initialize() async {
+  /// Get the currently configured backend URL
+  String? get currentBackendUrl => _currentBackendUrl;
+
+  /// Check if there's a stored backend URL
+  Future<bool> hasStoredBackendUrl() async {
+    final storedUrl = await _readStoredBackendUrl();
+    return storedUrl != null && storedUrl.isNotEmpty;
+  }
+
+  /// Get the effective backend URL (from environment or storage)
+  Future<String?> getEffectiveBackendUrl() async {
+    // Priority 1: Environment variable (for embedded deployments)
+    final bool isAndroidEmulator = Platform.isAndroid && !kReleaseMode;
+
+    const String appHost = String.fromEnvironment(
+      'FB_APP_HOST',
+      defaultValue: '',
+    );
+    const String backendPort = String.fromEnvironment(
+      'FB_BACKEND_PORT',
+      defaultValue: '3000',
+    );
+
+    if (appHost.isNotEmpty) {
+      final String host = isAndroidEmulator ? 'http://10.0.2.2' : appHost;
+      return '$host:$backendPort/api/v1';
+    }
+
+    // Priority 2: Stored URL from previous discovery
+    final storedUrl = await _readStoredBackendUrl();
+    if (storedUrl != null && storedUrl.isNotEmpty) {
+      return storedUrl;
+    }
+
+    return null;
+  }
+
+  /// Initialize with a specific backend URL
+  Future<InitializationResult> initializeWithUrl(String backendUrl) async {
+    if (kDebugMode) {
+      debugPrint('[STARTUP MANAGER] Initializing with URL: $backendUrl');
+    }
+
+    _currentBackendUrl = backendUrl;
+
+    // Initialize API client with this URL
+    _apiIoService = Dio(
+      BaseOptions(
+        baseUrl: backendUrl,
+        contentType: 'application/json',
+      ),
+    );
+
+    _apiClient = ApiClient(_apiIoService);
+
+    return _performInitialization();
+  }
+
+  /// Initialize with a discovered backend
+  Future<InitializationResult> initializeWithBackend(
+    DiscoveredBackend backend,
+  ) async {
+    if (kDebugMode) {
+      debugPrint(
+        '[STARTUP MANAGER] Initializing with discovered backend: ${backend.name} at ${backend.baseUrl}',
+      );
+    }
+
+    // Store the backend URL for future use
+    await _storeBackendUrl(backend.baseUrl);
+
+    return initializeWithUrl(backend.baseUrl);
+  }
+
+  /// Try to initialize with stored/configured URL
+  Future<InitializationResult> tryInitialize() async {
+    final backendUrl = await getEffectiveBackendUrl();
+
+    if (backendUrl == null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[STARTUP MANAGER] No backend URL configured, needs discovery',
+        );
+      }
+      return InitializationResult.needsDiscovery;
+    }
+
+    return initializeWithUrl(backendUrl);
+  }
+
+  Future<InitializationResult> _performInitialization() async {
     if (Platform.isAndroid || Platform.isIOS) {
       _apiSecret = await _securedStorage.read(key: _apiSecretKey);
     } else {
@@ -181,10 +230,14 @@ class StartupManagerService {
         debugPrint('[BACKEND INIT] Backend initialization failed: $e');
       }
 
-      throw StateError(
-        'Backend initialization failed. Ensure the server is running.',
-      );
+      // Clear stored URL on connection failure to allow rediscovery
+      await _clearStoredBackendUrl();
+
+      return InitializationResult.connectionFailed;
     }
+
+    // Register modules after successful connection
+    _registerModules();
 
     final appUid = await _getAppUid();
 
@@ -201,15 +254,60 @@ class StartupManagerService {
         debugPrint('[REPOS INIT] Data storage initialization failed: $e');
       }
 
-      throw ArgumentError(
-        'Data storage initialization failed. Ensure the server is running.',
-      );
+      return InitializationResult.error;
     }
 
     String? apiSecret = _apiSecret;
 
     if (apiSecret != null) {
       _socketClient.initialize(apiSecret);
+    }
+
+    return InitializationResult.success;
+  }
+
+  void _registerModules() {
+    // Register modules (only if not already registered)
+    if (!locator.isRegistered<ConfigModuleService>()) {
+      var configModuleService = ConfigModuleService(
+        apiClient: _apiClient,
+        socketService: _socketClient,
+      );
+      var systemModuleService = SystemModuleService(
+        apiClient: _apiClient,
+        socketService: _socketClient,
+        eventBus: _eventBus,
+      );
+      var weatherModuleService = WeatherModuleService(
+        apiClient: _apiClient,
+        socketService: _socketClient,
+      );
+      var devicesModuleService = DevicesModuleService(
+        apiClient: _apiClient,
+        socketService: _socketClient,
+      );
+      var dashboardModuleService = DashboardModuleService(
+        apiClient: _apiClient,
+        socketService: _socketClient,
+      );
+
+      locator.registerSingleton(configModuleService);
+      locator.registerSingleton(systemModuleService);
+      locator.registerSingleton(weatherModuleService);
+      locator.registerSingleton(devicesModuleService);
+      locator.registerSingleton(dashboardModuleService);
+
+      // Api client
+      locator.registerSingleton(_apiIoService);
+      locator.registerSingleton(_apiClient);
+
+      // Sockets client
+      locator.registerSingleton(_socketClient);
+
+      // Misc services
+      locator.registerSingleton<SystemActionsService>(
+        SystemActionsService(_eventBus),
+      );
     }
   }
 
@@ -546,5 +644,29 @@ class StartupManagerService {
     }
 
     return appUid;
+  }
+
+  Future<String?> _readStoredBackendUrl() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      return await _securedStorage.read(key: _backendUrlKey);
+    } else {
+      return await _securedStorageFallback.read(key: _backendUrlKey);
+    }
+  }
+
+  Future<void> _storeBackendUrl(String url) async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      await _securedStorage.write(key: _backendUrlKey, value: url);
+    } else {
+      await _securedStorageFallback.write(key: _backendUrlKey, value: url);
+    }
+  }
+
+  Future<void> _clearStoredBackendUrl() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      await _securedStorage.delete(key: _backendUrlKey);
+    } else {
+      await _securedStorageFallback.delete(key: _backendUrlKey);
+    }
   }
 }

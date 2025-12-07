@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel
 Size: medium
 Parent: (none)
-Status: in-progress
+Status: completed
 Created: 2025-12-07
 
 ## 1. Business goal
@@ -72,30 +72,30 @@ I want the panel application to automatically discover the backend server on my 
 
 ### Backend
 
-- [ ] New `MdnsModule` created following existing module patterns
-- [ ] Service advertised with correct type `_fastybird-panel._tcp`
-- [ ] TXT records include: `version`, `api_prefix`, `secure` (http/https)
-- [ ] Service is unpublished on graceful shutdown
-- [ ] mDNS can be disabled via `FB_MDNS_ENABLED=false` environment variable
-- [ ] Service name configurable via `FB_MDNS_SERVICE_NAME` environment variable
-- [ ] Unit tests for mDNS service
-- [ ] Logging for mDNS events (advertisement start/stop, errors)
+- [x] New `MdnsModule` created following existing module patterns
+- [x] Service advertised with correct type `_fastybird-panel._tcp`
+- [x] TXT records include: `version`, `api_prefix`, `secure` (http/https)
+- [x] Service is unpublished on graceful shutdown
+- [x] mDNS can be disabled via `FB_MDNS_ENABLED=false` environment variable
+- [x] Service name configurable via `FB_MDNS_SERVICE_NAME` environment variable
+- [x] Unit tests for mDNS service
+- [x] Logging for mDNS events (advertisement start/stop, errors)
 
 ### Panel
 
-- [ ] New `MdnsDiscoveryService` implemented
-- [ ] Discovery screen shows:
-  - [ ] Searching animation while scanning
-  - [ ] List of discovered backends (name, address, port)
-  - [ ] Manual URL entry option
-  - [ ] Refresh/rescan button
-- [ ] `StartupManagerService` integration:
-  - [ ] Attempts stored URL first
-  - [ ] Falls back to mDNS discovery on failure
-  - [ ] Persists discovered URL in secure storage
-- [ ] Discovery timeout configurable (default: 10 seconds)
-- [ ] Works on Android, iOS, Linux, and Windows platforms
-- [ ] Proper error handling for platforms without mDNS support
+- [x] New `MdnsDiscoveryService` implemented
+- [x] Discovery screen shows:
+  - [x] Searching animation while scanning
+  - [x] List of discovered backends (name, address, port)
+  - [x] Manual URL entry option
+  - [x] Refresh/rescan button
+- [x] `StartupManagerService` integration:
+  - [x] Attempts stored URL first
+  - [x] Falls back to mDNS discovery on failure
+  - [x] Persists discovered URL in secure storage
+- [x] Discovery timeout configurable (default: 10 seconds)
+- [x] Works on Android, iOS, Linux, and Windows platforms
+- [x] Proper error handling for platforms without mDNS support
 
 ## 5. Example scenarios
 
