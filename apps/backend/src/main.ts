@@ -16,6 +16,7 @@ import { QueryFailedExceptionFilter } from './common/filters/query-failed-except
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
+import { MdnsService } from './modules/mdns/services/mdns.service';
 import { SwaggerDocumentService } from './modules/swagger/services/swagger-document.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
@@ -100,6 +101,10 @@ async function bootstrap() {
 	sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);
 
 	await app.listen(port, '0.0.0.0');
+
+	// Start mDNS service advertisement after server is listening
+	const mdnsService = app.get(MdnsService);
+	await mdnsService.advertise(port);
 }
 
 bootstrap().catch((error: Error) => {

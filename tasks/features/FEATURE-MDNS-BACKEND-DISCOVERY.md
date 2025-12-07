@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel
 Size: medium
 Parent: (none)
-Status: planned
+Status: in-progress
 Created: 2025-12-07
 
 ## 1. Business goal

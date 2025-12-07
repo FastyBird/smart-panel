@@ -993,7 +993,7 @@ export class DeviceManagerService {
 		let channel = await this.channelsService.findOneBy(column, identifierOrCategory, device.id, DEVICES_SHELLY_NG_TYPE);
 
 		if (channel === null) {
-			const channelSpec = channelsSchema[category] as ChannelDefinition | undefined;
+			const channelSpec = channelsSchema[category];
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
 				this.logger.warn(
@@ -1051,7 +1051,7 @@ export class DeviceManagerService {
 		);
 
 		if (prop === null) {
-			const channelSpec = channelsSchema[channel.category] as ChannelDefinition | undefined;
+			const channelSpec = channelsSchema[channel.category];
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
 				this.logger.warn(
