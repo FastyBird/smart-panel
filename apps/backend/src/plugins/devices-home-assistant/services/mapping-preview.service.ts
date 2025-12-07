@@ -129,6 +129,30 @@ export class MappingPreviewService {
 		// Determine if ready to adopt (all required elements mapped and no critical warnings)
 		const readyToAdopt = warnings.filter((w) => w.type === 'missing_required_channel').length === 0;
 
+		// Log mapping summary for observability
+		const mappedCount = entityPreviews.filter((e) => e.status === 'mapped').length;
+		const partialCount = entityPreviews.filter((e) => e.status === 'partial').length;
+		const unmappedCount = entityPreviews.filter((e) => e.status === 'unmapped').length;
+		const skippedCount = entityPreviews.filter((e) => e.status === 'skipped').length;
+
+		this.logger.log(
+			`[MAPPING PREVIEW] Summary for device "${deviceRegistry.name}" (${haDeviceId}): ` +
+				`total_entities=${entityPreviews.length}, mapped=${mappedCount}, partial=${partialCount}, ` +
+				`unmapped=${unmappedCount}, skipped=${skippedCount}, suggested_category=${suggestedDeviceCategory}, ` +
+				`ready_to_adopt=${readyToAdopt}`,
+		);
+
+		if (unmappedCount > 0) {
+			const unmappedDomains = entityPreviews
+				.filter((e) => e.status === 'unmapped')
+				.map((e) => `${e.domain}${e.deviceClass ? '.' + e.deviceClass : ''}`)
+				.join(', ');
+			this.logger.warn(
+				`[MAPPING PREVIEW] ${unmappedCount} entities could not be mapped. ` +
+					`Consider adding mapping rules for: ${unmappedDomains}`,
+			);
+		}
+
 		return {
 			haDevice: this.createHaDeviceInfo(deviceRegistry),
 			suggestedDevice: this.createSuggestedDevice(deviceRegistry, suggestedDeviceCategory, mappedChannelCategories),
@@ -381,6 +405,18 @@ export class MappingPreviewService {
 		deviceClass: string | null | undefined,
 		state: HomeAssistantStateModel | undefined,
 	): EntityMappingPreviewModel {
+		// Log unmapped entity for observability - helps identify gaps in mapping rules
+		this.logger.warn(
+			`[MAPPING PREVIEW] Entity could not be automatically mapped: ` +
+				`entity_id="${entityId}", domain="${domain}", device_class="${deviceClass ?? 'none'}"`,
+			{
+				entityId,
+				domain,
+				deviceClass: deviceClass ?? null,
+				availableAttributes: Object.keys(state?.attributes ?? {}),
+			},
+		);
+
 		return {
 			entityId,
 			domain: domain as string,

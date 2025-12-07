@@ -106,6 +106,67 @@ describe('HaEntityMappingRules', () => {
 
 			expect(rule).toBeNull();
 		});
+
+		it('should find a rule for alarm control panel', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.ALARM_CONTROL_PANEL, null);
+
+			expect(rule).not.toBeNull();
+			expect(rule?.channel_category).toBe(ChannelCategory.ALARM);
+		});
+
+		it('should find a rule for siren', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.SIREN, null);
+
+			expect(rule).not.toBeNull();
+			expect(rule?.channel_category).toBe(ChannelCategory.ALARM);
+		});
+
+		it('should find a rule for input boolean', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.INPUT_BOOLEAN, null);
+
+			expect(rule).not.toBeNull();
+			expect(rule?.channel_category).toBe(ChannelCategory.SWITCHER);
+		});
+
+		it('should find a rule for water heater', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.WATER_HEATER, null);
+
+			expect(rule).not.toBeNull();
+			expect(rule?.channel_category).toBe(ChannelCategory.HEATER);
+		});
+
+		it('should find a fallback rule for media player', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.MEDIA_PLAYER, null);
+
+			expect(rule).not.toBeNull();
+			expect(rule?.channel_category).toBe(ChannelCategory.MEDIA_PLAYBACK);
+		});
+
+		it('should find a rule for vibration sensor', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.BINARY_SENSOR, 'vibration');
+
+			expect(rule).not.toBeNull();
+			expect(rule?.channel_category).toBe(ChannelCategory.MOTION);
+		});
+
+		it('should find a rule for tamper sensor', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.BINARY_SENSOR, 'tamper');
+
+			expect(rule).not.toBeNull();
+		});
+
+		it('should find a rule for button entity', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.BUTTON, null);
+
+			expect(rule).not.toBeNull();
+			expect(rule?.channel_category).toBe(ChannelCategory.GENERIC);
+		});
+
+		it('should find a rule for remote entity', () => {
+			const rule = findMatchingRule(HomeAssistantDomain.REMOTE, null);
+
+			expect(rule).not.toBeNull();
+		});
 	});
 
 	describe('inferDeviceCategory', () => {
