@@ -10,19 +10,23 @@ import type {
 	IDisplaysProfilesEditActionPayload,
 } from './displays-profiles.store.types';
 
-export const transformDisplayProfileResponse = (response: IDisplayProfileRes): IDisplayProfile => {
+// Note: Display profiles have been consolidated into the DisplaysModule
+// The transformer now maps from the unified Display entity
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const transformDisplayProfileResponse = (response: any): IDisplayProfile => {
 	const parsedDisplay = DisplayProfileSchema.safeParse({
 		id: response.id,
-		uid: response.uid,
+		uid: response.id, // Using ID as UID for backward compatibility
 		screenWidth: response.screen_width,
 		screenHeight: response.screen_height,
 		pixelRatio: response.pixel_ratio,
 		unitSize: response.unit_size,
 		rows: response.rows,
 		cols: response.cols,
-		primary: response.primary,
+		primary: false, // Primary flag no longer exists, default to false
 		createdAt: response.created_at,
-		updatedAt: response.updated_at,
+		updatedAt: response.updated_at ?? null,
 	});
 
 	if (!parsedDisplay.success) {
@@ -36,15 +40,14 @@ export const transformDisplayProfileCreateRequest = (
 	display: IDisplaysProfilesAddActionPayload['data'] & { id?: string }
 ): IDisplayProfileCreateReq => {
 	const parsedRequest = DisplayProfileCreateReqSchema.safeParse({
-		id: display.id,
-		uid: display.uid,
+		mac_address: display.uid || '', // Using UID as mac_address for backward compatibility
+		version: '1.0.0', // Default version since it's required
 		screen_width: display.screenWidth,
 		screen_height: display.screenHeight,
 		pixel_ratio: display.pixelRatio,
 		unit_size: display.unitSize,
 		rows: display.rows,
 		cols: display.cols,
-		primary: display.primary,
 	});
 
 	if (!parsedRequest.success) {
@@ -59,7 +62,6 @@ export const transformDisplayProfileUpdateRequest = (display: IDisplaysProfilesE
 		unit_size: display.unitSize,
 		rows: display.rows,
 		cols: display.cols,
-		primary: display.primary,
 	});
 
 	if (!parsedRequest.success) {

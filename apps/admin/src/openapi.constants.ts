@@ -26,9 +26,6 @@ export type AuthModuleTokenPairSchema = components['schemas']['AuthModuleDataTok
 export type UsersModuleCreateUserSchema = components['schemas']['UsersModuleCreateUser'];
 export type UsersModuleUpdateUserSchema = components['schemas']['UsersModuleUpdateUser'];
 export type UsersModuleUserSchema = components['schemas']['UsersModuleDataUser'];
-export type UsersModuleCreateDisplayInstanceSchema = components['schemas']['UsersModuleCreateDisplayInstance'];
-export type UsersModuleUpdateDisplayInstanceSchema = components['schemas']['UsersModuleUpdateDisplayInstance'];
-export type UsersModuleDisplayInstanceSchema = components['schemas']['UsersModuleDataDisplayInstance'];
 
 // Devices Module Schemas
 export type DevicesModuleCreateDeviceSchema = components['schemas']['DevicesModuleCreateDevice'];
@@ -74,17 +71,18 @@ export type ConfigModuleUpdateSystemSchema = components['schemas']['ConfigModule
 export type ConfigModuleAppSchema = components['schemas']['ConfigModuleDataApp'];
 export type ConfigModuleLanguageSchema = components['schemas']['ConfigModuleDataLanguage'];
 export type ConfigModuleUpdateLanguageSchema = components['schemas']['ConfigModuleUpdateLanguage'];
-export type ConfigModuleDisplaySchema = components['schemas']['ConfigModuleDataDisplay'];
-export type ConfigModuleUpdateDisplaySchema = components['schemas']['ConfigModuleUpdateDisplay'];
 export type ConfigModulePluginSchema = components['schemas']['ConfigModuleDataPlugin'];
 export type ConfigModuleUpdatePluginSchema = components['schemas']['ConfigModuleUpdatePlugin'];
+
+// Displays Module Schemas
+export type DisplaysModuleDisplaySchema = components['schemas']['DisplaysModuleDataDisplay'];
+export type DisplaysModuleUpdateDisplaySchema = components['schemas']['DisplaysModuleUpdateDisplay'];
+export type DisplaysModuleRegisterDisplaySchema = components['schemas']['DisplaysModuleRegisterDisplay'];
+export type DisplaysModuleRegistrationSchema = components['schemas']['DisplaysModuleDataRegistration'];
 
 // System Module Schemas
 export type SystemModuleExtensionAdminSchema = components['schemas']['SystemModuleDataExtensionAdmin'];
 export type SystemModuleExtensionBackendSchema = components['schemas']['SystemModuleDataExtensionBackend'];
-export type SystemModuleCreateDisplayProfileSchema = components['schemas']['SystemModuleCreateDisplayProfile'];
-export type SystemModuleUpdateDisplayProfileSchema = components['schemas']['SystemModuleUpdateDisplayProfile'];
-export type SystemModuleDisplayProfileSchema = components['schemas']['SystemModuleDataDisplayProfile'];
 export type SystemModuleCreateLogEntrySchema = components['schemas']['SystemModuleCreateLogEntry'];
 export type SystemModuleLogEntrySchema = components['schemas']['SystemModuleDataLogEntry'];
 export type SystemModuleSystemInfoSchema = components['schemas']['SystemModuleDataSystemInfo'];
@@ -196,11 +194,6 @@ export type UsersModuleGetUsersOperation = operations['get-users-module-users'];
 export type UsersModuleCreateUserOperation = operations['create-users-module-user'];
 export type UsersModuleUpdateUserOperation = operations['update-users-module-user'];
 export type UsersModuleDeleteUserOperation = operations['delete-users-module-user'];
-export type UsersModuleGetDisplayInstanceOperation = operations['get-users-module-display-instance'];
-export type UsersModuleGetDisplayInstancesOperation = operations['get-users-module-displays-instances'];
-export type UsersModuleCreateDisplayInstanceOperation = operations['create-users-module-display-instance'];
-export type UsersModuleUpdateDisplayInstanceOperation = operations['update-users-module-display-instance'];
-export type UsersModuleDeleteDisplayInstanceOperation = operations['delete-users-module-display-instance'];
 
 // Devices Module Operations
 export type DevicesModuleGetDeviceOperation = operations['get-devices-module-device'];
@@ -250,7 +243,6 @@ export type DashboardModuleDeleteDataSourceOperation = operations['delete-dashbo
 
 // Config Module Operations
 export type ConfigModuleGetConfigSectionOperation = operations['get-config-module-config-section'];
-export type ConfigModuleUpdateDisplayOperation = operations['update-config-module-display'];
 export type ConfigModuleUpdateLanguageOperation = operations['update-config-module-language'];
 export type ConfigModuleUpdateAudioOperation = operations['update-config-module-audio'];
 export type ConfigModuleUpdateWeatherOperation = operations['update-config-module-weather'];
@@ -262,11 +254,6 @@ export type ConfigModuleGetConfigOperation = operations['get-config-module-confi
 // System Module Operations
 export type SystemModuleGetExtensionOperation = operations['get-system-module-extension'];
 export type SystemModuleGetExtensionsOperation = operations['get-system-module-extensions'];
-export type SystemModuleGetDisplayProfileOperation = operations['get-system-module-display-profile'];
-export type SystemModuleGetDisplayProfilesOperation = operations['get-system-module-displays-profiles'];
-export type SystemModuleCreateDisplayProfileOperation = operations['create-system-module-display-profile'];
-export type SystemModuleUpdateDisplayProfileOperation = operations['update-system-module-display-profile'];
-export type SystemModuleDeleteDisplayProfileOperation = operations['delete-system-module-display-profile'];
 export type SystemModuleGetLogsOperation = operations['get-system-module-logs'];
 export type SystemModuleCreateLogsOperation = operations['create-system-module-logs'];
 export type SystemModuleGetSystemInfoOperation = operations['get-system-module-system-info'];
@@ -327,8 +314,6 @@ export { ConfigModuleUpdateLanguageTime_format as ConfigModuleLanguageTimeFormat
 export { ConfigModuleUpdateWeatherUnit as ConfigModuleWeatherUnit } from './openapi';
 
 export { ConfigModuleUpdateAudioType as ConfigModuleAudioType } from './openapi';
-
-export { ConfigModuleUpdateDisplayType as ConfigModuleDisplayType } from './openapi';
 
 export { ConfigModuleUpdateLanguageType as ConfigModuleLanguageType } from './openapi';
 

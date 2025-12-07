@@ -58,14 +58,20 @@ describe('Displays Profiles Store', (): void => {
 				data: [
 					{
 						id: displayId,
-						uid: displayUid,
+						mac_address: '00:1A:2B:3C:4D:5E',
+						name: 'Test Display',
+						version: '1.0.0',
+						build: '42',
 						screen_width: 1280,
 						screen_height: 720,
 						pixel_ratio: 2,
 						unit_size: 120,
 						rows: 6,
 						cols: 4,
-						primary: true,
+						dark_mode: false,
+						brightness: 100,
+						screen_lock_duration: 30,
+						screen_saver: true,
 						created_at: '2024-03-01T12:00:00Z',
 						updated_at: '2024-03-02T12:00:00Z',
 					},
@@ -87,20 +93,30 @@ describe('Displays Profiles Store', (): void => {
 	});
 
 	it('should add a display profile successfully', async (): Promise<void> => {
+		// DisplaysModule /register returns { data: { display: {...}, access_token: "..." } }
 		(backendMock.client.POST as Mock).mockResolvedValue({
 			data: {
 				data: {
-					id: displayId,
-					uid: displayUid,
-					screen_width: 1280,
-					screen_height: 720,
-					pixel_ratio: 2,
-					unit_size: 120,
-					rows: 6,
-					cols: 4,
-					primary: true,
-					created_at: '2024-03-01T12:00:00Z',
-					updated_at: '2024-03-02T12:00:00Z',
+					display: {
+						id: displayId,
+						mac_address: displayUid,
+						name: 'Test Display',
+						version: '1.0.0',
+						build: '42',
+						screen_width: 1280,
+						screen_height: 720,
+						pixel_ratio: 2,
+						unit_size: 120,
+						rows: 6,
+						cols: 4,
+						dark_mode: false,
+						brightness: 100,
+						screen_lock_duration: 30,
+						screen_saver: true,
+						created_at: '2024-03-01T12:00:00Z',
+						updated_at: '2024-03-02T12:00:00Z',
+					},
+					access_token: 'test-access-token',
 				},
 			},
 		});
@@ -144,16 +160,17 @@ describe('Displays Profiles Store', (): void => {
 	});
 
 	it('should edit a display profile successfully', async (): Promise<void> => {
+		// Note: uid is now mapped to id in the new DisplaysModule
 		displaysStore.data[displayId] = {
 			id: displayId,
-			uid: displayUid,
+			uid: displayId, // uid equals id in new schema
 			screenWidth: 1280,
 			screenHeight: 720,
 			pixelRatio: 2,
 			unitSize: 120,
 			rows: 6,
 			cols: 4,
-			primary: true,
+			primary: false, // primary no longer exists, defaults to false
 			createdAt: new Date(),
 			updatedAt: null,
 		};
@@ -162,14 +179,20 @@ describe('Displays Profiles Store', (): void => {
 			data: {
 				data: {
 					id: displayId,
-					uid: displayUid,
+					mac_address: '00:1A:2B:3C:4D:5E',
+					name: 'Test Display',
+					version: '1.0.0',
+					build: '42',
 					screen_width: 1280,
 					screen_height: 720,
 					pixel_ratio: 2,
 					unit_size: 120,
 					rows: 4,
 					cols: 4,
-					primary: true,
+					dark_mode: false,
+					brightness: 100,
+					screen_lock_duration: 30,
+					screen_saver: true,
 					created_at: '2024-03-01T12:00:00Z',
 					updated_at: '2024-03-02T12:00:00Z',
 				},
@@ -182,20 +205,21 @@ describe('Displays Profiles Store', (): void => {
 		});
 
 		expect(updatedDisplay.rows).toBe(4);
-		expect(displaysStore.findById(displayId)?.uid).toBe(displayUid);
+		// uid now equals id after transformer mapping
+		expect(displaysStore.findById(displayId)?.uid).toBe(displayId);
 	});
 
 	it('should throw an error when editing a display profile fails', async (): Promise<void> => {
 		displaysStore.data[displayId] = {
 			id: displayId,
-			uid: displayUid,
+			uid: displayId,
 			screenWidth: 1280,
 			screenHeight: 720,
 			pixelRatio: 2,
 			unitSize: 120,
 			rows: 6,
 			cols: 4,
-			primary: true,
+			primary: false,
 			createdAt: new Date(),
 			updatedAt: null,
 		};
@@ -208,14 +232,14 @@ describe('Displays Profiles Store', (): void => {
 	it('should remove a display profile successfully', async (): Promise<void> => {
 		displaysStore.data[displayId] = {
 			id: displayId,
-			uid: displayUid,
+			uid: displayId,
 			screenWidth: 1280,
 			screenHeight: 720,
 			pixelRatio: 2,
 			unitSize: 120,
 			rows: 6,
 			cols: 4,
-			primary: true,
+			primary: false,
 			createdAt: new Date(),
 			updatedAt: null,
 		};
@@ -231,14 +255,14 @@ describe('Displays Profiles Store', (): void => {
 	it('should throw an error when removing a display profile fails', async (): Promise<void> => {
 		displaysStore.data[displayId] = {
 			id: displayId,
-			uid: displayUid,
+			uid: displayId,
 			screenWidth: 1280,
 			screenHeight: 720,
 			pixelRatio: 2,
 			unitSize: 120,
 			rows: 6,
 			cols: 4,
-			primary: true,
+			primary: false,
 			createdAt: new Date(),
 			updatedAt: null,
 		};

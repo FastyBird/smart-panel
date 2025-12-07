@@ -59,21 +59,15 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 		const { data: weather } = storeToRefs(configWeatherStore);
 		const { data: plugins } = storeToRefs(configPluginsStore);
 
-		if (
-			dataPartial.value === null ||
-			audio.value === null ||
-			display.value === null ||
-			language.value === null ||
-			system.value === null ||
-			weather.value === null
-		) {
+		// Display is now optional as it's managed by DisplaysModule
+		if (dataPartial.value === null || audio.value === null || language.value === null || system.value === null || weather.value === null) {
 			return null;
 		}
 
 		return {
 			path: dataPartial.value.path,
 			audio: audio.value,
-			display: display.value,
+			display: display.value ?? undefined,
 			language: language.value,
 			system: system.value,
 			weather: weather.value,
@@ -112,9 +106,12 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 		configAudioStore.set({
 			data: parsedConfigApp.data.audio,
 		});
-		configDisplayStore.set({
-			data: parsedConfigApp.data.display,
-		});
+		// Display is now managed by DisplaysModule, only set if provided
+		if (parsedConfigApp.data.display) {
+			configDisplayStore.set({
+				data: parsedConfigApp.data.display,
+			});
+		}
 		configLanguageStore.set({
 			data: parsedConfigApp.data.language,
 		});
@@ -168,9 +165,12 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 					configAudioStore.set({
 						data: transformed.audio,
 					});
-					configDisplayStore.set({
-						data: transformed.display,
-					});
+					// Display is now managed by DisplaysModule, only set if provided
+					if (transformed.display) {
+						configDisplayStore.set({
+							data: transformed.display,
+						});
+					}
 					configLanguageStore.set({
 						data: transformed.language,
 					});

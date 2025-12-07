@@ -1,17 +1,12 @@
 import { camelToSnake, logger, snakeToCamel } from '../../../common';
-import { ConfigModuleDisplayType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
-import type { IConfigAudioRes } from './config-audio.store.types';
 import { ConfigDisplaySchema, ConfigDisplayUpdateReqSchema } from './config-display.store.schemas';
 import type { IConfigDisplay, IConfigDisplayEditActionPayload, IConfigDisplayRes, IConfigDisplayUpdateReq } from './config-display.store.types';
-import type { IConfigLanguageRes } from './config-language.store.types';
-import type { IConfigSystemRes } from './config-system.store.types';
-import type { IConfigWeatherRes } from './config-weather.store.types';
 
-export const transformConfigDisplayResponse = (
-	response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes | IConfigSystemRes
-): IConfigDisplay => {
+// Note: Display configuration is now managed via the DisplaysModule
+
+export const transformConfigDisplayResponse = (response: IConfigDisplayRes): IConfigDisplay => {
 	const parsed = ConfigDisplaySchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
@@ -24,7 +19,7 @@ export const transformConfigDisplayResponse = (
 };
 
 export const transformConfigDisplayUpdateRequest = (config: IConfigDisplayEditActionPayload['data']): IConfigDisplayUpdateReq => {
-	const parsedRequest = ConfigDisplayUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleDisplayType.display });
+	const parsedRequest = ConfigDisplayUpdateReqSchema.safeParse(camelToSnake(config));
 
 	if (!parsedRequest.success) {
 		logger.error('Schema validation failed with:', parsedRequest.error);

@@ -1,5 +1,5 @@
-import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsMACAddress, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Expose, Transform, Type } from 'class-transformer';
+import { IsInt, IsMACAddress, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -127,5 +127,7 @@ export class ReqRegisterDisplayDto {
 		type: () => RegisterDisplayDto,
 	})
 	@Expose()
+	@ValidateNested()
+	@Type(() => RegisterDisplayDto)
 	data: RegisterDisplayDto;
 }

@@ -137,24 +137,27 @@ describe('FastyBird Smart Panel (e2e)', () => {
 	});
 
 	// ✅ Register Display Device
-	it('/auth-module/auth/register-display (POST) - should register a display device', async () => {
+	it('/displays-module/register (POST) - should register a display device', async () => {
 		const response = await request(app.getHttpServer())
-			.post('/auth-module/auth/register-display')
-			.set('User-Agent', 'FlutterApp')
+			.post('/displays-module/register')
+			.set('User-Agent', 'FastyBird Smart Panel')
 			.send({
 				data: {
-					uid: uuid(),
-					mac: '00:1A:2B:3C:4D:5E',
+					mac_address: '00:1A:2B:3C:4D:5E',
 					version: '1.0.0',
 					build: '42',
+					screen_width: 1920,
+					screen_height: 1080,
+					pixel_ratio: 1.5,
 				},
 			})
 			.expect(201);
 
-		const responseBody = response.body as { data: { secret: string } };
+		const responseBody = response.body as { data: { display: { id: string }; access_token: string } };
 
 		expect(responseBody).toHaveProperty('data');
-		expect(responseBody.data).toHaveProperty('secret');
+		expect(responseBody.data).toHaveProperty('display');
+		expect(responseBody.data).toHaveProperty('access_token');
 	});
 
 	// ✅ Unauthorized Access Test

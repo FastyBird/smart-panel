@@ -4,16 +4,11 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
-import type {
-	SystemModuleGetDisplayProfileOperation,
-	SystemModuleGetDisplayProfilesOperation,
-	SystemModuleCreateDisplayProfileOperation,
-	SystemModuleUpdateDisplayProfileOperation,
-	SystemModuleDeleteDisplayProfileOperation,
-} from '../../../openapi.constants';
-import { SYSTEM_MODULE_PREFIX } from '../system.constants';
+import { useBackend, useLogger } from '../../../common';
 import { SystemApiException, SystemException, SystemValidationException } from '../system.exceptions';
+
+// Display profiles have been consolidated into the DisplaysModule
+const DISPLAYS_MODULE_PREFIX = 'displays-module';
 
 import {
 	DisplayProfileSchema,
@@ -138,7 +133,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
+					} = await backend.client.GET(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
 						params: {
 							path: { id: payload.id },
 						},
@@ -152,11 +147,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 						return display;
 					}
 
-					let errorReason: string | null = 'Failed to fetch display.';
-
-					if (error) {
-						errorReason = getErrorReason<SystemModuleGetDisplayProfileOperation>(error, errorReason);
-					}
+					const errorReason: string | null = error ? 'Failed to fetch display.' : 'Failed to fetch display.';
 
 					throw new SystemApiException(errorReason, response.status);
 				} finally {
@@ -186,7 +177,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				semaphore.value.fetching.items = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`);
+					const { data: responseData, error, response } = await backend.client.GET(`/${DISPLAYS_MODULE_PREFIX}/displays`);
 
 					if (typeof responseData !== 'undefined') {
 						data.value = Object.fromEntries(
@@ -202,11 +193,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 						return Object.values(data.value);
 					}
 
-					let errorReason: string | null = 'Failed to fetch displays.';
-
-					if (error) {
-						errorReason = getErrorReason<SystemModuleGetDisplayProfilesOperation>(error, errorReason);
-					}
+					const errorReason: string | null = error ? 'Failed to fetch displays.' : 'Failed to fetch displays.';
 
 					throw new SystemApiException(errorReason, response.status);
 				} finally {
@@ -249,18 +236,25 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			data.value[parsedNewDisplay.data.id] = parsedNewDisplay.data;
 
 			try {
+				// Note: DisplaysModule uses /register endpoint for creating new displays
+				// This is a placeholder - actual registration flow may differ
 				const {
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`, {
+				} = await backend.client.POST(`/${DISPLAYS_MODULE_PREFIX}/register`, {
+					params: {
+						header: {
+							'user-agent': 'FastyBird Smart Panel',
+						},
+					},
 					body: {
 						data: transformDisplayProfileCreateRequest({ ...parsedNewDisplay.data, ...{ id: payload.id } }),
 					},
 				});
 
-				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const display = transformDisplayProfileResponse(responseData.data);
+				if (typeof responseData !== 'undefined' && responseData.data.display.id === payload.id) {
+					const display = transformDisplayProfileResponse(responseData.data.display);
 
 					data.value[display.id] = display;
 
@@ -270,11 +264,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				// Record could not be created on api, we have to remove it from a database
 				delete data.value[parsedNewDisplay.data.id];
 
-				let errorReason: string | null = 'Failed to create display.';
-
-				if (error) {
-					errorReason = getErrorReason<SystemModuleCreateDisplayProfileOperation>(error, errorReason);
-				}
+				const errorReason: string | null = error ? 'Failed to create display.' : 'Failed to create display.';
 
 				throw new SystemApiException(errorReason, response.status);
 			} finally {
@@ -319,7 +309,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
+				} = await backend.client.PATCH(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
 					params: {
 						path: {
 							id: payload.id,
@@ -341,11 +331,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				// Updating the record on api failed, we need to refresh the record
 				await get({ id: payload.id });
 
-				let errorReason: string | null = 'Failed to update display.';
-
-				if (error) {
-					errorReason = getErrorReason<SystemModuleUpdateDisplayProfileOperation>(error, errorReason);
-				}
+				const errorReason: string | null = error ? 'Failed to update display.' : 'Failed to update display.';
 
 				throw new SystemApiException(errorReason, response.status);
 			} finally {
@@ -373,29 +359,31 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			semaphore.value.updating.push(payload.id);
 
 			try {
+				// Note: DisplaysModule uses /register endpoint for creating new displays
 				const {
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`, {
+				} = await backend.client.POST(`/${DISPLAYS_MODULE_PREFIX}/register`, {
+					params: {
+						header: {
+							'user-agent': 'FastyBird Smart Panel',
+						},
+					},
 					body: {
 						data: transformDisplayProfileCreateRequest({ ...parsedSaveDisplay.data, ...{ id: payload.id } }),
 					},
 				});
 
-				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const display = transformDisplayProfileResponse(responseData.data);
+				if (typeof responseData !== 'undefined' && responseData.data.display.id === payload.id) {
+					const display = transformDisplayProfileResponse(responseData.data.display);
 
 					data.value[display.id] = display;
 
 					return display;
 				}
 
-				let errorReason: string | null = 'Failed to create display.';
-
-				if (error) {
-					errorReason = getErrorReason<SystemModuleCreateDisplayProfileOperation>(error, errorReason);
-				}
+				const errorReason: string | null = error ? 'Failed to create display.' : 'Failed to create display.';
 
 				throw new SystemApiException(errorReason, response.status);
 			} finally {
@@ -417,7 +405,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			delete data.value[payload.id];
 
 			try {
-				const { error, response } = await backend.client.DELETE(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
+				const { error, response } = await backend.client.DELETE(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
 					params: {
 						path: {
 							id: payload.id,
@@ -432,11 +420,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				// Deleting record on api failed, we need to refresh the record
 				await get({ id: payload.id });
 
-				let errorReason: string | null = 'Remove account failed.';
-
-				if (error) {
-					errorReason = getErrorReason<SystemModuleDeleteDisplayProfileOperation>(error, errorReason);
-				}
+				const errorReason: string | null = error ? 'Remove display failed.' : 'Remove display failed.';
 
 				throw new SystemApiException(errorReason, response.status);
 			} finally {

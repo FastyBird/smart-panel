@@ -1,23 +1,37 @@
 import { createPinia, setActivePinia } from 'pinia';
 
+import { v4 as uuid } from 'uuid';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleDisplayType } from '../../../openapi.constants';
-import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
+import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigDisplay } from './config-display.store';
 import type { IConfigDisplayEditActionPayload, IConfigDisplaySetActionPayload } from './config-display.store.types';
 
+const displayId = uuid();
+
+// Mock response from /displays-module/displays endpoint (returns array of displays)
 const mockDisplayRes = {
-	type: ConfigModuleDisplayType.display,
+	id: displayId,
 	dark_mode: true,
 	brightness: 80,
 	screen_lock_duration: 300,
 	screen_saver: true,
+	mac_address: '00:1A:2B:3C:4D:5E',
+	name: 'Test Display',
+	version: '1.0.0',
+	build: '42',
+	screen_width: 1920,
+	screen_height: 1080,
+	pixel_ratio: 1.5,
+	unit_size: 8,
+	rows: 12,
+	cols: 24,
+	created_at: '2024-03-01T12:00:00Z',
+	updated_at: '2024-03-02T12:00:00Z',
 };
 
 const mockDisplay = {
-	type: ConfigModuleDisplayType.display,
 	darkMode: true,
 	brightness: 80,
 	screenLockDuration: 300,
@@ -74,7 +88,7 @@ describe('ConfigDisplay Store', () => {
 
 	it('should fetch config display successfully', async () => {
 		(backendClient.GET as Mock).mockResolvedValue({
-			data: { data: mockDisplayRes },
+			data: { data: [mockDisplayRes] },
 			error: undefined,
 			response: { status: 200 },
 		});
@@ -96,7 +110,14 @@ describe('ConfigDisplay Store', () => {
 	});
 
 	it('should update config display successfully', async () => {
-		store.data = { ...mockDisplay };
+		// First fetch to set currentDisplayId
+		(backendClient.GET as Mock).mockResolvedValue({
+			data: { data: [mockDisplayRes] },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await store.get();
 
 		(backendClient.PATCH as Mock).mockResolvedValue({
 			data: { data: { ...mockDisplayRes, brightness: 50 } },
@@ -131,7 +152,14 @@ describe('ConfigDisplay Store', () => {
 	});
 
 	it('should refresh data and throw if API update fails', async () => {
-		store.data = { ...mockDisplay };
+		// First fetch to set currentDisplayId
+		(backendClient.GET as Mock).mockResolvedValueOnce({
+			data: { data: [mockDisplayRes] },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await store.get();
 
 		(backendClient.PATCH as Mock).mockResolvedValue({
 			data: undefined,
@@ -139,8 +167,9 @@ describe('ConfigDisplay Store', () => {
 			response: { status: 500 },
 		});
 
+		// Mock for the refresh call inside edit when PATCH fails
 		(backendClient.GET as Mock).mockResolvedValue({
-			data: { data: mockDisplayRes },
+			data: { data: [mockDisplayRes] },
 			error: undefined,
 			response: { status: 200 },
 		});
