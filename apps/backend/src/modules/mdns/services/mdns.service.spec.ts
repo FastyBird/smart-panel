@@ -6,25 +6,29 @@ import { MDNS_DEFAULT_SERVICE_NAME, MDNS_DEFAULT_SERVICE_TYPE } from '../mdns.co
 
 import { MdnsService } from './mdns.service';
 
-// Create mock functions
-const mockAdvertise = jest.fn();
-const mockEnd = jest.fn();
-const mockOn = jest.fn();
-const mockGetPort = jest.fn();
-const mockShutdown = jest.fn();
-const mockCreateService = jest.fn();
-const mockGetResponder = jest.fn();
+// Create mock functions at the top level, before jest.mock
+const mockPublish = jest.fn();
+const mockUnpublishAll = jest.fn();
+const mockDestroy = jest.fn();
+const mockBonjourConstructor = jest.fn();
 
-// Mock the @homebridge/ciao module before imports
-jest.mock('@homebridge/ciao', () => ({
-	__esModule: true,
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	getResponder: (...args: unknown[]) => mockGetResponder(...args),
-	Protocol: {
-		TCP: 'tcp',
-		UDP: 'udp',
-	},
-}));
+// Mock bonjour-service module
+jest.mock('bonjour-service', () => {
+	// Return a factory that returns our mocks
+	return {
+		__esModule: true,
+		Bonjour: function () {
+			mockBonjourConstructor();
+
+			return {
+				publish: mockPublish,
+				unpublishAll: mockUnpublishAll,
+				destroy: mockDestroy,
+			};
+		},
+		Service: jest.fn(),
+	};
+});
 
 describe('MdnsService', () => {
 	let service: MdnsService;
@@ -32,24 +36,24 @@ describe('MdnsService', () => {
 
 	beforeEach(async () => {
 		// Reset all mocks before each test
-		jest.clearAllMocks();
+		mockPublish.mockReset();
+		mockUnpublishAll.mockReset();
+		mockDestroy.mockReset();
+		mockBonjourConstructor.mockReset();
 
-		// Set up mock service
+		// Set up mock service object returned by publish
 		const mockService = {
-			advertise: mockAdvertise.mockResolvedValue(undefined),
-			end: mockEnd.mockResolvedValue(undefined),
-			on: mockOn,
-			getPort: mockGetPort.mockReturnValue(3000),
+			name: MDNS_DEFAULT_SERVICE_NAME,
+			type: MDNS_DEFAULT_SERVICE_TYPE,
+			port: 3000,
+			published: true,
 		};
 
-		// Set up mock responder
-		const mockResponder = {
-			createService: mockCreateService.mockReturnValue(mockService),
-			shutdown: mockShutdown.mockResolvedValue(undefined),
-		};
-
-		// Configure getResponder to return our mock
-		mockGetResponder.mockReturnValue(mockResponder);
+		mockPublish.mockReturnValue(mockService);
+		mockUnpublishAll.mockImplementation((callback?: () => void) => {
+			if (callback) callback();
+		});
+		mockDestroy.mockReturnValue(undefined);
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -82,7 +86,7 @@ describe('MdnsService', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		jest.restoreAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -150,12 +154,13 @@ describe('MdnsService', () => {
 	});
 
 	describe('advertise', () => {
-		it('should advertise service successfully', async () => {
+		it('should advertise service successfully', () => {
 			const port = 3000;
 
-			await service.advertise(port);
+			service.advertise(port);
 
-			expect(mockCreateService).toHaveBeenCalledWith(
+			expect(mockBonjourConstructor).toHaveBeenCalled();
+			expect(mockPublish).toHaveBeenCalledWith(
 				expect.objectContaining({
 					name: MDNS_DEFAULT_SERVICE_NAME,
 					type: MDNS_DEFAULT_SERVICE_TYPE,
@@ -168,73 +173,74 @@ describe('MdnsService', () => {
 					}),
 				}),
 			);
-			expect(mockAdvertise).toHaveBeenCalled();
 			expect(service.isCurrentlyAdvertising()).toBe(true);
 		});
 
-		it('should not advertise when mDNS is disabled', async () => {
+		it('should not advertise when mDNS is disabled', () => {
 			jest.spyOn(service, 'isEnabled').mockReturnValue(false);
 
-			await service.advertise(3000);
+			service.advertise(3000);
 
-			expect(mockCreateService).not.toHaveBeenCalled();
-			expect(mockAdvertise).not.toHaveBeenCalled();
+			expect(mockPublish).not.toHaveBeenCalled();
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 
-		it('should not advertise twice', async () => {
-			await service.advertise(3000);
-			await service.advertise(3000);
+		it('should not advertise twice', () => {
+			service.advertise(3000);
+			service.advertise(3000);
 
-			expect(mockCreateService).toHaveBeenCalledTimes(1);
-			expect(mockAdvertise).toHaveBeenCalledTimes(1);
+			expect(mockPublish).toHaveBeenCalledTimes(1);
 		});
 
-		it('should handle advertisement errors gracefully', async () => {
-			mockAdvertise.mockRejectedValueOnce(new Error('Network error'));
+		it('should handle advertisement errors gracefully', () => {
+			mockPublish.mockImplementationOnce(() => {
+				throw new Error('Network error');
+			});
 
 			// Should not throw
-			await expect(service.advertise(3000)).resolves.not.toThrow();
+			expect(() => service.advertise(3000)).not.toThrow();
 
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 	});
 
 	describe('stopAdvertising', () => {
-		it('should stop advertising and clean up resources', async () => {
+		it('should stop advertising and clean up resources', () => {
 			// First start advertising
-			await service.advertise(3000);
+			service.advertise(3000);
 
 			expect(service.isCurrentlyAdvertising()).toBe(true);
 
 			// Then stop
-			await service.stopAdvertising();
+			service.stopAdvertising();
 
-			expect(mockEnd).toHaveBeenCalled();
-			expect(mockShutdown).toHaveBeenCalled();
+			expect(mockUnpublishAll).toHaveBeenCalled();
+			expect(mockDestroy).toHaveBeenCalled();
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 
-		it('should do nothing if not currently advertising', async () => {
-			await service.stopAdvertising();
+		it('should do nothing if not currently advertising', () => {
+			service.stopAdvertising();
 
-			expect(mockEnd).not.toHaveBeenCalled();
-			expect(mockShutdown).not.toHaveBeenCalled();
+			expect(mockUnpublishAll).not.toHaveBeenCalled();
+			expect(mockDestroy).not.toHaveBeenCalled();
 		});
 
-		it('should handle stop errors gracefully', async () => {
-			await service.advertise(3000);
+		it('should handle stop errors gracefully', () => {
+			service.advertise(3000);
 
-			mockEnd.mockRejectedValueOnce(new Error('Stop error'));
+			mockUnpublishAll.mockImplementationOnce(() => {
+				throw new Error('Stop error');
+			});
 
 			// Should not throw
-			await expect(service.stopAdvertising()).resolves.not.toThrow();
+			expect(() => service.stopAdvertising()).not.toThrow();
 		});
 	});
 
 	describe('getServiceInfo', () => {
-		it('should return service info when advertising', async () => {
-			await service.advertise(3000);
+		it('should return service info when advertising', () => {
+			service.advertise(3000);
 
 			const info = service.getServiceInfo();
 
@@ -262,34 +268,34 @@ describe('MdnsService', () => {
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 
-		it('should return true after successful advertisement', async () => {
-			await service.advertise(3000);
+		it('should return true after successful advertisement', () => {
+			service.advertise(3000);
 
 			expect(service.isCurrentlyAdvertising()).toBe(true);
 		});
 
-		it('should return false after stopping advertisement', async () => {
-			await service.advertise(3000);
-			await service.stopAdvertising();
+		it('should return false after stopping advertisement', () => {
+			service.advertise(3000);
+			service.stopAdvertising();
 
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 	});
 
 	describe('onApplicationShutdown', () => {
-		it('should stop advertising on application shutdown', async () => {
-			await service.advertise(3000);
+		it('should stop advertising on application shutdown', () => {
+			service.advertise(3000);
 
-			await service.onApplicationShutdown('SIGTERM');
+			service.onApplicationShutdown('SIGTERM');
 
-			expect(mockEnd).toHaveBeenCalled();
-			expect(mockShutdown).toHaveBeenCalled();
+			expect(mockUnpublishAll).toHaveBeenCalled();
+			expect(mockDestroy).toHaveBeenCalled();
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 
-		it('should handle shutdown without advertising', async () => {
+		it('should handle shutdown without advertising', () => {
 			// Should not throw
-			await expect(service.onApplicationShutdown('SIGTERM')).resolves.not.toThrow();
+			expect(() => service.onApplicationShutdown('SIGTERM')).not.toThrow();
 		});
 	});
 });
