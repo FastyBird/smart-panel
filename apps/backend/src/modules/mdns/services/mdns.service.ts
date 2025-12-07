@@ -1,8 +1,8 @@
+import { Bonjour, Service } from 'bonjour-service';
 import { readFileSync } from 'fs';
 import { hostname } from 'os';
 import { join } from 'path';
 
-import { CiaoService, Protocol, Responder, getResponder } from '@homebridge/ciao';
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
@@ -28,9 +28,10 @@ export interface MdnsServiceInfo {
 @Injectable()
 export class MdnsService implements OnApplicationShutdown {
 	private readonly logger = new Logger(MdnsService.name);
-	private responder: Responder | null = null;
-	private service: CiaoService | null = null;
+	private bonjour: Bonjour | null = null;
+	private service: Service | null = null;
 	private isAdvertising = false;
+	private advertisedPort: number = 0;
 
 	constructor(private readonly configService: NestConfigService) {}
 
@@ -77,7 +78,7 @@ export class MdnsService implements OnApplicationShutdown {
 	/**
 	 * Start advertising the backend service via mDNS
 	 */
-	async advertise(port: number): Promise<void> {
+	advertise(port: number): void {
 		if (!this.isEnabled()) {
 			this.logger.log('[MDNS] mDNS advertising is disabled via configuration');
 
@@ -93,8 +94,8 @@ export class MdnsService implements OnApplicationShutdown {
 		try {
 			this.logger.log('[MDNS] Starting mDNS service advertisement');
 
-			// Create the responder instance
-			this.responder = getResponder();
+			// Create the Bonjour instance
+			this.bonjour = new Bonjour();
 
 			const serviceName = this.getServiceName();
 			const serviceType = this.getServiceType();
@@ -109,23 +110,16 @@ export class MdnsService implements OnApplicationShutdown {
 				hostname: host,
 			};
 
-			// Create and publish the service
-			this.service = this.responder.createService({
+			// Publish the service
+			this.service = this.bonjour.publish({
 				name: serviceName,
 				type: serviceType,
-				protocol: MDNS_DEFAULT_PROTOCOL as Protocol,
+				protocol: MDNS_DEFAULT_PROTOCOL,
 				port,
 				txt: txtRecord,
 			});
 
-			// Set up event handlers
-			this.service.on('name-change', (newName: string) => {
-				this.logger.log(`[MDNS] Service name changed to: ${newName}`);
-			});
-
-			// Advertise the service
-			await this.service.advertise();
-
+			this.advertisedPort = port;
 			this.isAdvertising = true;
 
 			this.logger.log(
@@ -144,7 +138,7 @@ export class MdnsService implements OnApplicationShutdown {
 	/**
 	 * Stop advertising and clean up mDNS resources
 	 */
-	async stopAdvertising(): Promise<void> {
+	stopAdvertising(): void {
 		if (!this.isAdvertising) {
 			return;
 		}
@@ -152,17 +146,19 @@ export class MdnsService implements OnApplicationShutdown {
 		try {
 			this.logger.log('[MDNS] Stopping mDNS service advertisement');
 
-			if (this.service) {
-				await this.service.end();
-				this.service = null;
+			if (this.bonjour) {
+				// unpublishAll will stop all published services and destroy the bonjour instance
+				this.bonjour.unpublishAll(() => {
+					this.logger.debug('[MDNS] All services unpublished');
+				});
+
+				this.bonjour.destroy();
+				this.bonjour = null;
 			}
 
-			if (this.responder) {
-				await this.responder.shutdown();
-				this.responder = null;
-			}
-
+			this.service = null;
 			this.isAdvertising = false;
+			this.advertisedPort = 0;
 
 			this.logger.log('[MDNS] Service advertisement stopped successfully');
 		} catch (error) {
@@ -183,7 +179,7 @@ export class MdnsService implements OnApplicationShutdown {
 		return {
 			name: this.getServiceName(),
 			type: `_${this.getServiceType()}._${MDNS_DEFAULT_PROTOCOL}`,
-			port: this.service.getPort(),
+			port: this.advertisedPort,
 			hostname: hostname(),
 			txt: {
 				version: this.getVersion(),
@@ -203,9 +199,9 @@ export class MdnsService implements OnApplicationShutdown {
 	/**
 	 * NestJS lifecycle hook - called when application is shutting down
 	 */
-	async onApplicationShutdown(signal?: string): Promise<void> {
+	onApplicationShutdown(signal?: string): void {
 		this.logger.log(`[MDNS] Application shutdown triggered (signal: ${signal ?? 'unknown'})`);
 
-		await this.stopAdvertising();
+		this.stopAdvertising();
 	}
 }

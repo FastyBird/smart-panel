@@ -139,7 +139,7 @@ And clients are notified that the service is no longer available.
 
 ### Backend
 
-- Use `@homebridge/ciao` or `bonjour-service` npm package for mDNS (both are well-maintained, pure JavaScript, cross-platform)
+- Use `bonjour-service` npm package for mDNS (well-maintained, pure JavaScript, cross-platform, simple API)
 - Follow existing module structure in `/apps/backend/src/modules/`
 - Register mDNS service after HTTP server starts listening
 - Use NestJS lifecycle hooks (`OnApplicationBootstrap`, `OnApplicationShutdown`)
@@ -241,7 +241,7 @@ apps/panel/lib/core/services/
 | `bonjour-service` | Simple API, pure JS, actively maintained | Fewer features than ciao |
 | `mdns` | Native bindings, fast | Requires native compilation, platform issues |
 
-**Recommendation:** Use `@homebridge/ciao` - it's battle-tested in Homebridge ecosystem.
+**Recommendation:** Use `bonjour-service` - it's a neutral, pure JavaScript library with a simple API.
 
 ### Recommended Flutter packages
 

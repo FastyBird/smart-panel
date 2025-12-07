@@ -104,7 +104,7 @@ async function bootstrap() {
 
 	// Start mDNS service advertisement after server is listening
 	const mdnsService = app.get(MdnsService);
-	await mdnsService.advertise(port);
+	mdnsService.advertise(port);
 }
 
 bootstrap().catch((error: Error) => {
