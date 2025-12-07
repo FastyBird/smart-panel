@@ -666,9 +666,144 @@ private async validateLongLiveToken(token: string): Promise<AuthenticatedEntity 
 
 ### Phase 8: Update Dashboard Module
 
-Update display references:
-- Change FK from old entities to new `DisplayEntity`
-- Update imports in `pages.service.ts`, `dashboard.entity.ts`
+The `PageEntity` has a `@ManyToOne` relation to `DisplayProfileEntity` that must be updated.
+
+#### 8.1 Update Entity (`entities/dashboard.entity.ts`)
+
+```typescript
+// CURRENT
+import { DisplayProfileEntity } from '../../system/entities/system.entity';
+
+@Validate(AbstractInstanceValidator, [DisplayProfileEntity], {
+  message: '[{"field":"display","reason":"Display must be a valid subclass of DisplayProfileEntity."}]',
+})
+@Transform(({ value }: { value: DisplayProfileEntity | null }) => value?.id ?? null, { toPlainOnly: true })
+@ManyToOne(() => DisplayProfileEntity, { cascade: true, onDelete: 'CASCADE' })
+@JoinColumn({ name: 'displayId' })
+display: DisplayProfileEntity | string | null;
+
+// TARGET
+import { DisplayEntity } from '../../displays/entities/displays.entity';
+
+@Validate(AbstractInstanceValidator, [DisplayEntity], {
+  message: '[{"field":"display","reason":"Display must be a valid subclass of DisplayEntity."}]',
+})
+@Transform(({ value }: { value: DisplayEntity | null }) => value?.id ?? null, { toPlainOnly: true })
+@ManyToOne(() => DisplayEntity, { cascade: true, onDelete: 'CASCADE' })
+@JoinColumn({ name: 'displayId' })
+display: DisplayEntity | string | null;
+```
+
+#### 8.2 Update Service (`services/pages.service.ts`)
+
+```typescript
+// CURRENT
+import { DisplaysProfilesService } from '../../system/services/displays-profiles.service';
+
+constructor(
+  // ...
+  private readonly displaysService: DisplaysProfilesService,
+) {}
+
+// TARGET
+import { DisplaysService } from '../../displays/services/displays.service';
+
+constructor(
+  // ...
+  private readonly displaysService: DisplaysService,
+) {}
+```
+
+#### 8.3 Update DTOs
+
+**`dto/create-page.dto.ts`**:
+```typescript
+// CURRENT
+import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
+
+@ValidateDisplayProfileExists({ message: '...' })
+display?: string | null;
+
+// TARGET
+import { ValidateDisplayExists } from '../../displays/validators/display-exists-constraint.validator';
+
+@ValidateDisplayExists({ message: '[{"field":"display","reason":"The specified display does not exist."}]' })
+display?: string | null;
+```
+
+**`dto/update-page.dto.ts`**:
+```typescript
+// Same change as create-page.dto.ts
+```
+
+#### 8.4 Update Tests
+
+Files to update:
+- `services/pages.service.spec.ts`
+- `services/tiles.service.spec.ts`
+- `services/data-sources.service.spec.ts`
+- `controllers/pages.controller.spec.ts`
+- `controllers/tiles.controller.spec.ts`
+- `controllers/data-source.controller.spec.ts`
+
+Changes:
+```typescript
+// CURRENT
+import { DisplayProfileEntity } from '../../system/entities/system.entity';
+import { DisplaysProfilesService } from '../../system/services/displays-profiles.service';
+
+const mockDisplay: DisplayProfileEntity = { ... };
+
+// TARGET
+import { DisplayEntity } from '../../displays/entities/displays.entity';
+import { DisplaysService } from '../../displays/services/displays.service';
+
+const mockDisplay: DisplayEntity = {
+  id: uuid().toString(),
+  uid: uuid().toString(),
+  mac: '00:1A:2B:3C:4D:5E',
+  version: '1.0.0',
+  build: '42',
+  screenWidth: 1280,
+  screenHeight: 720,
+  pixelRatio: 1.0,
+  unitSize: 8,
+  rows: 12,
+  cols: 24,
+  primary: true,
+  darkMode: false,
+  brightness: 100,
+  screenLockDuration: 30,
+  screenSaver: true,
+  lastSeenAt: new Date(),
+  createdAt: new Date(),
+  updatedAt: null,
+};
+```
+
+#### 8.5 Update Module Imports (`dashboard.module.ts`)
+
+```typescript
+// CURRENT
+import { SystemModule } from '../system/system.module';
+
+@Module({
+  imports: [
+    // ...
+    SystemModule,  // For DisplaysProfilesService
+  ],
+})
+
+// TARGET
+import { DisplaysModule } from '../displays/displays.module';
+
+@Module({
+  imports: [
+    // ...
+    DisplaysModule,  // For DisplaysService
+  ],
+})
+```
 
 ---
 
@@ -706,7 +841,7 @@ Update display references:
 ```typescript
 export class ConsolidateDisplaysModule implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. Create displays table
+    // 1. Create new unified displays table
     await queryRunner.query(`
       CREATE TABLE "displays_module_displays" (
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -731,7 +866,30 @@ export class ConsolidateDisplaysModule implements MigrationInterface {
       )
     `);
 
-    // 2. Add columns to auth_module_tokens
+    // 2. Migrate data from old tables to new unified table
+    // Merge display profiles and instances by UID
+    await queryRunner.query(`
+      INSERT INTO "displays_module_displays" (
+        "id", "uid", "mac", "version", "build",
+        "screenWidth", "screenHeight", "pixelRatio", "unitSize",
+        "rows", "cols", "primary", "createdAt"
+      )
+      SELECT 
+        p.id, p.uid, 
+        COALESCE(i.mac, '00:00:00:00:00:00'),
+        COALESCE(i.version, '0.0.0'),
+        COALESCE(i.build, '0'),
+        p.screenWidth, p.screenHeight, p.pixelRatio, p.unitSize,
+        p.rows, p.cols, p.primary, p.createdAt
+      FROM "system_module_displays_profiles" p
+      LEFT JOIN "users_module_displays_instances" i ON p.uid = i.uid
+    `);
+
+    // 3. Update dashboard_module_pages FK to reference new table
+    // Note: The FK column name stays 'displayId', just points to new table
+    // TypeORM will handle this through entity relation update
+
+    // 4. Add columns to auth_module_tokens for flexible ownership
     await queryRunner.query(`
       ALTER TABLE "auth_module_tokens"
       ADD COLUMN "ownerType" varchar DEFAULT 'user'
@@ -742,19 +900,25 @@ export class ConsolidateDisplaysModule implements MigrationInterface {
       ADD COLUMN "ownerId" uuid
     `);
 
-    // 3. Migrate existing long-live tokens
+    // 5. Migrate existing long-live tokens (set ownerType for existing user tokens)
     await queryRunner.query(`
       UPDATE "auth_module_tokens"
       SET "ownerType" = 'user', "ownerId" = "ownerId"
       WHERE "type" = 'LongLiveTokenEntity'
     `);
 
-    // 4. Update user role constraint (remove 'display')
-    // SQLite doesn't support ALTER CHECK, may need table recreation
+    // 6. Update user role constraint (remove 'display')
+    // SQLite approach: recreate table without 'display' in CHECK constraint
+    // For production, this needs careful handling
 
-    // 5. Drop old tables
+    // 7. Drop old tables
     await queryRunner.query(`DROP TABLE IF EXISTS "users_module_displays_instances"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "system_module_displays_profiles"`);
+  }
+
+  async down(queryRunner: QueryRunner): Promise<void> {
+    // Reverse migration - recreate old tables and migrate data back
+    // ... implementation
   }
 }
 ```
@@ -786,7 +950,122 @@ export class ConsolidateDisplaysModule implements MigrationInterface {
 | Displays Module | 4-5 hours |
 | Token Management | 2 hours |
 | WebSocket Updates | 2 hours |
-| Dashboard Updates | 1-2 hours |
+| Dashboard Updates | 2-3 hours |
 | Database Migration | 2-3 hours |
 | Testing | 4-5 hours |
-| **Total** | **22-29 hours** |
+| **Total** | **23-31 hours** |
+
+---
+
+## Files Changed Summary
+
+### New Files (Displays Module)
+
+```
+apps/backend/src/modules/displays/
+├── controllers/
+│   ├── displays.controller.ts
+│   ├── displays.controller.spec.ts
+│   ├── registration.controller.ts
+│   └── registration.controller.spec.ts
+├── dto/
+│   ├── register-display.dto.ts
+│   └── update-display.dto.ts
+├── entities/
+│   └── displays.entity.ts
+├── models/
+│   └── displays-response.model.ts
+├── services/
+│   ├── displays.service.ts
+│   ├── displays.service.spec.ts
+│   ├── registration.service.ts
+│   ├── registration.service.spec.ts
+│   └── module-reset.service.ts
+├── validators/
+│   └── display-exists-constraint.validator.ts
+├── displays.constants.ts
+├── displays.exceptions.ts
+├── displays.module.ts
+└── displays.openapi.ts
+```
+
+### Modified Files
+
+**Auth Module:**
+- `auth/auth.constants.ts` - Add `TokenOwnerType` enum
+- `auth/entities/auth.entity.ts` - Update `LongLiveTokenEntity`
+- `auth/dto/create-token.dto.ts` - Add `ownerType`, `ownerId`
+- `auth/dto/update-token.dto.ts` - Add `ownerType`, `ownerId`
+- `auth/services/tokens.service.ts` - Add owner type queries
+- `auth/guards/auth.guard.ts` - Support display token validation
+- `auth/controllers/auth.controller.ts` - Remove `registerDisplay`
+- `auth/controllers/tokens.controller.ts` - Add display token management
+
+**Users Module:**
+- `users/users.constants.ts` - Remove `UserRole.DISPLAY`
+- `users/entities/users.entity.ts` - Remove `DisplayInstanceEntity`
+- `users/users.module.ts` - Remove display-related providers
+- `users/users.openapi.ts` - Remove display models
+- `users/models/users-response.model.ts` - Remove display response models
+- `users/services/module-reset.service.ts` - Remove display reset
+
+**System Module:**
+- `system/entities/system.entity.ts` - Remove `DisplayProfileEntity`
+- `system/system.module.ts` - Remove display-related providers
+- `system/system.constants.ts` - Remove display events
+- `system/system.openapi.ts` - Remove display models
+- `system/models/system-response.model.ts` - Remove display response models
+- `system/services/module-reset.service.ts` - Remove display reset
+
+**Config Module:**
+- `config/config.constants.ts` - Remove `SectionType.DISPLAY`
+- `config/models/config.model.ts` - Remove `DisplayConfigModel`
+- `config/dto/config.dto.ts` - Remove display DTO
+- `config/services/config.service.ts` - Remove display config handling
+
+**Dashboard Module:**
+- `dashboard/entities/dashboard.entity.ts` - Update display relation
+- `dashboard/services/pages.service.ts` - Update imports
+- `dashboard/dto/create-page.dto.ts` - Update validator import
+- `dashboard/dto/update-page.dto.ts` - Update validator import
+- `dashboard/dashboard.module.ts` - Update imports
+- `dashboard/services/pages.service.spec.ts` - Update tests
+- `dashboard/services/tiles.service.spec.ts` - Update tests
+- `dashboard/services/data-sources.service.spec.ts` - Update tests
+- `dashboard/controllers/pages.controller.spec.ts` - Update tests
+- `dashboard/controllers/tiles.controller.spec.ts` - Update tests
+- `dashboard/controllers/data-source.controller.spec.ts` - Update tests
+
+**WebSocket Module:**
+- `websocket/services/ws-auth.service.ts` - Support display auth
+- `websocket/gateway/websocket.gateway.ts` - Handle display connections
+- `websocket/dto/client-user.dto.ts` - Update for auth types
+
+**Devices Module:**
+- `devices/services/property-command.service.ts` - Update auth check
+
+**App Module:**
+- `app.module.ts` - Add DisplaysModule import
+
+### Deleted Files
+
+**Users Module:**
+- `users/controllers/displays-instances.controller.ts`
+- `users/controllers/displays-instances.controller.spec.ts`
+- `users/services/displays-instances.service.ts`
+- `users/services/displays-instances.service.spec.ts`
+- `users/dto/create-display-instance.dto.ts`
+- `users/dto/update-display-instance.dto.ts`
+- `users/subscribers/system-display-entity.subscriber.ts`
+
+**System Module:**
+- `system/controllers/displays-profiles.controller.ts`
+- `system/controllers/displays-profiles.controller.spec.ts`
+- `system/services/displays-profiles.service.ts`
+- `system/services/displays-profiles.service.spec.ts`
+- `system/dto/create-display-profile.dto.ts`
+- `system/dto/update-display-profile.dto.ts`
+- `system/validators/display-profile-exists-constraint.validator.ts`
+
+**Auth Module:**
+- `auth/dto/register-display.dto.ts`
