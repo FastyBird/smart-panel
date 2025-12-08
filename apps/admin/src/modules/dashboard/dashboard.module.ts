@@ -5,9 +5,16 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectLogger, injectSockets, injectStoresManager } from '../../common';
+import {
+	injectLogger,
+	injectModulesManager,
+	injectSockets,
+	injectStoresManager,
+	type IModule,
+	type ModuleInjectionKey,
+} from '../../common';
 
-import { DASHBOARD_MODULE_EVENT_PREFIX, EventType } from './dashboard.constants';
+import { DASHBOARD_MODULE_EVENT_PREFIX, DASHBOARD_MODULE_NAME, EventType } from './dashboard.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import { registerDataSourcesStore } from './store/data-sources.store';
@@ -15,11 +22,14 @@ import { dataSourcesStoreKey, pagesStoreKey, tilesStoreKey } from './store/keys'
 import { registerPagesStore } from './store/pages.store';
 import { registerTilesStore } from './store/tiles.store';
 
+const dashboardAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Dashboard');
+
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
+		const modulesManager = injectModulesManager(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -42,6 +52,13 @@ export default {
 
 		app.provide(dataSourcesStoreKey, dataSourcesStore);
 		storesManager.addStore(dataSourcesStoreKey, dataSourcesStore);
+
+		modulesManager.addModule(dashboardAdminModuleKey, {
+			type: DASHBOARD_MODULE_NAME,
+			name: 'Dashboards',
+			description: 'Design pages and tiles that show the information you care about most.',
+			elements: [],
+		});
 
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 

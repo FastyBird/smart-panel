@@ -5,14 +5,22 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectLogger, injectSockets, injectStoresManager } from '../../common';
+import {
+	injectLogger,
+	injectModulesManager,
+	injectSockets,
+	injectStoresManager,
+	type IModule,
+	type ModuleInjectionKey,
+} from '../../common';
 
-import { CONFIG_MODULE_EVENT_PREFIX, EventType } from './config.constants';
+import { CONFIG_MODULE_EVENT_PREFIX, CONFIG_MODULE_NAME, EventType } from './config.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import { registerConfigAudioStore } from './store/config-audio.store';
 import { registerConfigDisplayStore } from './store/config-display.store';
 import { registerConfigLanguageStore } from './store/config-language.store';
+import { registerConfigModuleStore } from './store/config-modules.store';
 import { registerConfigPluginStore } from './store/config-plugins.store';
 import { registerConfigWeatherStore } from './store/config-weather.store';
 import {
@@ -20,19 +28,21 @@ import {
 	configAudioStoreKey,
 	configDisplayStoreKey,
 	configLanguageStoreKey,
+	configModulesStoreKey,
 	configPluginsStoreKey,
 	configSystemStoreKey,
 	configWeatherStoreKey,
 } from './store/keys';
 import { registerConfigAppStore, registerConfigSystemStore } from './store/stores';
 
+const configAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Config');
+
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
-
-		let ran = false;
+		const modulesManager = injectModulesManager(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -45,6 +55,13 @@ export default {
 
 		app.provide(configAppStoreKey, configAppStore);
 		storesManager.addStore(configAppStoreKey, configAppStore);
+
+		modulesManager.addModule(configAdminModuleKey, {
+			type: CONFIG_MODULE_NAME,
+			name: 'Configuration',
+			description: 'Adjust system behaviour, appearance, language, and integrations.',
+			elements: [],
+		});
 
 		const configAudioStore = registerConfigAudioStore(options.store);
 
@@ -75,6 +92,11 @@ export default {
 
 		app.provide(configPluginsStoreKey, configPluginsStore);
 		storesManager.addStore(configPluginsStoreKey, configPluginsStore);
+
+		const configModulesStore = registerConfigModuleStore(options.store);
+
+		app.provide(configModulesStoreKey, configModulesStore);
+		storesManager.addStore(configModulesStoreKey, configModulesStore);
 
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 
@@ -135,6 +157,17 @@ export default {
 							}
 						});
 					}
+
+					if ('modules' in data.payload && Array.isArray(data.payload.modules)) {
+						data.payload.modules.forEach((module) => {
+							if (typeof module === 'object' && module !== null && 'type' in module && typeof module.type === 'string') {
+								configModulesStore.onEvent({
+									type: module.type,
+									data: module,
+								});
+							}
+						});
+					}
 					break;
 
 				default:
@@ -143,10 +176,14 @@ export default {
 		});
 
 		options.router.isReady().then(() => {
-			if (!ran && configPluginsStore.firstLoad === false) {
-				ran = true;
-
+			if (configPluginsStore.firstLoadFinished() === false) {
 				configPluginsStore.fetch().catch((): void => {
+					// Something went wrong
+				});
+			}
+
+			if (configModulesStore.firstLoadFinished() === false) {
+				configModulesStore.fetch().catch((): void => {
 					// Something went wrong
 				});
 			}

@@ -5,7 +5,6 @@ import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DevicesException } from '../../devices/devices.exceptions';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
@@ -14,12 +13,15 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { CONFIG_MODULE_API_TAG_NAME } from '../config.constants';
 import { SectionType } from '../config.constants';
+import { ConfigException } from '../config.exceptions';
 import {
+	ReqUpdateModuleDto,
 	ReqUpdatePluginDto,
 	ReqUpdateSectionDto,
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
+	UpdateModuleConfigDto,
 	UpdatePluginConfigDto,
 	UpdateSystemConfigDto,
 	UpdateWeatherCityIdConfigDto,
@@ -32,6 +34,8 @@ import {
 	ConfigModuleResAudio,
 	ConfigModuleResDisplay,
 	ConfigModuleResLanguage,
+	ConfigModuleResModuleConfig,
+	ConfigModuleResModules,
 	ConfigModuleResPluginConfig,
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
@@ -43,6 +47,7 @@ import {
 	AudioConfigModel,
 	DisplayConfigModel,
 	LanguageConfigModel,
+	ModuleConfigModel,
 	PluginConfigModel,
 	SystemConfigModel,
 	WeatherCityIdConfigModel,
@@ -51,6 +56,7 @@ import {
 	WeatherZipCodeConfigModel,
 } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
+import { ModuleTypeMapping, ModulesTypeMapperService } from '../services/modules-type-mapper.service';
 import { PluginTypeMapping, PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
 @ApiTags(CONFIG_MODULE_API_TAG_NAME)
@@ -61,6 +67,7 @@ export class ConfigController {
 	constructor(
 		private readonly service: ConfigService,
 		private readonly pluginsMapperService: PluginsTypeMapperService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
 	) {}
 
 	@Get()
@@ -458,7 +465,7 @@ export class ConfigController {
 				stack: err.stack,
 			});
 
-			if (error instanceof DevicesException) {
+			if (error instanceof ConfigException) {
 				throw new BadRequestException([
 					JSON.stringify({ field: 'type', reason: `Unsupported plugin type: ${plugin}` }),
 				]);
@@ -492,6 +499,125 @@ export class ConfigController {
 		this.logger.debug(`[UPDATE] Successfully updated configuration plugin=${plugin}`);
 
 		const response = new ConfigModuleResPluginConfig();
+		response.data = config;
+		return response;
+	}
+
+	@Get('modules')
+	@ApiOperation({
+		tags: [CONFIG_MODULE_API_TAG_NAME],
+		summary: 'Get all module configurations',
+		description: 'Retrieve configuration for all registered modules',
+		operationId: 'get-config-module-config-modules',
+	})
+	@ApiSuccessResponse(ConfigModuleResModules, 'Module configurations retrieved successfully')
+	@ApiBadRequestResponse('Invalid request')
+	@ApiNotFoundResponse('Module configurations not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	getModulesConfig(): ConfigModuleResModules {
+		this.logger.debug('[LOOKUP] Fetching configuration for all modules');
+
+		const config: ModuleConfigModel[] = this.service.getModulesConfig();
+
+		this.logger.debug('[LOOKUP] Found configuration for all modules');
+
+		const response = new ConfigModuleResModules();
+		response.data = config;
+		return response;
+	}
+
+	@Get('module/:module')
+	@ApiOperation({
+		tags: [CONFIG_MODULE_API_TAG_NAME],
+		summary: 'Get module configuration',
+		description: 'Retrieve configuration for a specific module',
+		operationId: 'get-config-module-config-module',
+	})
+	@ApiParam({ name: 'module', description: 'Module identifier', type: 'string', example: 'devices-module' })
+	@ApiSuccessResponse(ConfigModuleResModuleConfig, 'Module configuration retrieved successfully')
+	@ApiBadRequestResponse('Invalid module identifier')
+	@ApiNotFoundResponse('Module configuration not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	getModuleConfig(@Param('module') module: string): ConfigModuleResModuleConfig {
+		this.logger.debug(`[LOOKUP] Fetching configuration module=${module}`);
+
+		const config: ModuleConfigModel = this.service.getModuleConfig(module);
+
+		this.logger.debug(`[LOOKUP] Found configuration module=${module}`);
+
+		const response = new ConfigModuleResModuleConfig();
+		response.data = config;
+		return response;
+	}
+
+	@Patch('module/:module')
+	@ApiOperation({
+		tags: [CONFIG_MODULE_API_TAG_NAME],
+		summary: 'Update module configuration',
+		description: 'Update configuration for a specific module',
+		operationId: 'update-config-module-config-module',
+	})
+	@ApiParam({ name: 'module', description: 'Module identifier', type: 'string', example: 'devices-module' })
+	@ApiBody({
+		type: ReqUpdateModuleDto,
+		description: 'Module configuration data',
+	})
+	@ApiSuccessResponse(ConfigModuleResModuleConfig, 'Module configuration updated successfully')
+	@ApiBadRequestResponse('Invalid module configuration data or unsupported module type')
+	@ApiNotFoundResponse('Module configuration not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	async updateModuleConfig(
+		@Param('module') module: string,
+		@Body() moduleConfig: { data: object },
+	): Promise<ConfigModuleResModuleConfig> {
+		this.logger.debug(`[UPDATE] Incoming update request for module=${module}`);
+
+		let mapping: ModuleTypeMapping<ModuleConfigModel, UpdateModuleConfigDto>;
+
+		try {
+			mapping = this.modulesMapperService.getMapping<ModuleConfigModel, UpdateModuleConfigDto>(module);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`[ERROR] Unsupported module type for update: ${module} `, {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			if (error instanceof ConfigException) {
+				throw new BadRequestException([
+					JSON.stringify({ field: 'type', reason: `Unsupported module type: ${module}` }),
+				]);
+			}
+
+			throw error;
+		}
+
+		const dtoInstance = toInstance(mapping.configDto, moduleConfig.data, {
+			excludeExtraneousValues: false,
+		});
+
+		const errors = await validate(dtoInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
+		});
+
+		if (errors.length > 0) {
+			this.logger.error(
+				`[VALIDATION FAILED] Validation failed for module modification error=${JSON.stringify(errors)} module=${module} `,
+			);
+
+			throw ValidationExceptionFactory.createException(errors);
+		}
+
+		this.service.setModuleConfig(module, dtoInstance);
+
+		const config = this.service.getModuleConfig(module);
+
+		this.logger.debug(`[UPDATE] Successfully updated configuration module=${module}`);
+
+		const response = new ConfigModuleResModuleConfig();
 		response.data = config;
 		return response;
 	}

@@ -5,6 +5,7 @@ import type { ConfigModuleAppSchema } from '../../../openapi.constants';
 import { ConfigAudioResSchema, ConfigAudioSchema } from './config-audio.store.schemas';
 import { ConfigDisplayResSchema, ConfigDisplaySchema } from './config-display.store.schemas';
 import { ConfigLanguageResSchema, ConfigLanguageSchema } from './config-language.store.schemas';
+import { ConfigModuleResSchema, ConfigModuleSchema } from './config-modules.store.schemas';
 import { ConfigPluginResSchema, ConfigPluginSchema } from './config-plugins.store.schemas';
 import { ConfigSystemResSchema, ConfigSystemSchema } from './config-system.store.schemas';
 import {
@@ -28,6 +29,7 @@ export const ConfigAppSchema = z.object({
 	system: ConfigSystemSchema,
 	weather: ConfigWeatherSchema,
 	plugins: z.array(ConfigPluginSchema),
+	modules: z.array(ConfigModuleSchema),
 });
 
 export const ConfigAppStateSemaphoreSchema = z.object({
@@ -46,6 +48,7 @@ export const ConfigAppOnEventActionPayloadSchema = z.object({
 		system: ConfigSystemSchema,
 		weather: ConfigWeatherSchema,
 		plugins: z.array(ConfigPluginSchema),
+		modules: z.array(ConfigModuleSchema),
 	}),
 });
 
@@ -58,6 +61,7 @@ export const ConfigAppSetActionPayloadSchema = z.object({
 		system: ConfigSystemSchema,
 		weather: ConfigWeatherSchema,
 		plugins: z.array(ConfigPluginSchema),
+		modules: z.array(ConfigModuleSchema),
 	}),
 });
 
@@ -72,4 +76,5 @@ export const ConfigAppResSchema: ZodType<ApiConfigApp> = z.object({
 	system: ConfigSystemResSchema,
 	weather: z.union([ConfigWeatherLatLonResSchema, ConfigWeatherCityNameResSchema, ConfigWeatherCityIdResSchema, ConfigWeatherZipCodeResSchema]),
 	plugins: z.array(ConfigPluginResSchema),
+	modules: z.array(ConfigModuleResSchema),
 });

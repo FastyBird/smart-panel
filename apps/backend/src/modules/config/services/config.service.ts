@@ -13,9 +13,10 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import { EventType, SectionType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
-import { BaseConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
-import { AppConfigModel, BaseConfigModel, PluginConfigModel } from '../models/config.model';
+import { BaseConfigDto, UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
+import { AppConfigModel, BaseConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 
+import { ModulesTypeMapperService } from './modules-type-mapper.service';
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
 @Injectable()
@@ -27,11 +28,18 @@ export class ConfigService {
 	constructor(
 		private readonly configService: NestConfigService,
 		private readonly pluginsMapperService: PluginsTypeMapperService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly platform: PlatformService,
 		private readonly eventEmitter: EventEmitter2,
 	) {
 		this.pluginsMapperService.onMappingsRegistered(() => {
 			this.logger.log('[REFRESH] Configuration plugins mappings updated. Reloading configuration');
+
+			this.config = null;
+		});
+
+		this.modulesMapperService.onMappingsRegistered(() => {
+			this.logger.log('[REFRESH] Configuration modules mappings updated. Reloading configuration');
 
 			this.config = null;
 		});
@@ -76,6 +84,7 @@ export class ConfigService {
 				},
 			);
 			appConfigInstance.plugins = this.loadPlugins(parsedConfig);
+			appConfigInstance.modules = this.loadModules(parsedConfig);
 
 			// Validate the transformed configuration
 			const errors = validateSync(appConfigInstance, {
@@ -100,6 +109,7 @@ export class ConfigService {
 				path: path.resolve(this.configPath, this.filename),
 			});
 			config.plugins = this.loadPlugins({});
+			config.modules = this.loadModules({});
 
 			this.saveConfig(config);
 
@@ -123,6 +133,22 @@ export class ConfigService {
 				}
 
 				acc[plugin.type] = pluginConfig;
+
+				return acc;
+			},
+			{} as Record<string, any>,
+		);
+
+		// Transform modules
+		plainAppConfig.modules = appConfig.modules.reduce(
+			(acc, module) => {
+				const moduleConfig = instanceToPlain(module);
+
+				if ('type' in moduleConfig) {
+					delete moduleConfig['type'];
+				}
+
+				acc[module.type] = moduleConfig;
 
 				return acc;
 			},
@@ -180,6 +206,51 @@ export class ConfigService {
 		}
 
 		return pluginsArray;
+	}
+
+	private loadModules(parsedConfig: { [keys: string]: unknown }): ModuleConfigModel[] {
+		const modulesArray: ModuleConfigModel[] = [];
+
+		const existingModules =
+			'modules' in parsedConfig && parsedConfig.modules && typeof parsedConfig.modules === 'object'
+				? parsedConfig.modules
+				: {};
+
+		for (const mapping of this.modulesMapperService.getMappings()) {
+			const moduleType = mapping.type;
+			const moduleConfig = existingModules?.[moduleType] as object | undefined;
+
+			try {
+				const instance = toInstance(
+					mapping.class,
+					{ ...moduleConfig, type: moduleType }, // if moduleConfig is undefined, it still works
+					{
+						excludeExtraneousValues: false,
+					},
+				);
+
+				const errors = validateSync(instance, {
+					whitelist: true,
+					forbidNonWhitelisted: true,
+					stopAtFirstError: false,
+				});
+
+				if (errors.length > 0) {
+					this.logger.warn(`[VALIDATION] Module '${moduleType}' is invalid, initializing with defaults`);
+
+					// If validation fails, still push a default
+					modulesArray.push(toInstance(mapping.class, {}));
+
+					continue;
+				}
+
+				modulesArray.push(instance);
+			} catch {
+				this.logger.warn(`[MAPPING] Module '${moduleType}' mapping failed, skipping`);
+			}
+		}
+
+		return modulesArray;
 	}
 
 	getConfig(): AppConfigModel {
@@ -267,12 +338,19 @@ export class ConfigService {
 			const plainAppConfig = instanceToPlain(this.appConfig) as {
 				[key: string]: object;
 				plugins: { [key: string]: object };
+				modules: { [key: string]: object };
 			};
 
 			plainAppConfig.plugins = {} as { [key: string]: object };
 
 			for (const plugin of this.appConfig.plugins) {
 				plainAppConfig.plugins[plugin.type] = instanceToPlain(plugin);
+			}
+
+			plainAppConfig.modules = {} as { [key: string]: object };
+
+			for (const module of this.appConfig.modules) {
+				plainAppConfig.modules[module.type] = instanceToPlain(module);
 			}
 
 			Object.assign(plainAppConfig, { [key]: { ...instanceToPlain(configSection), ...instance } });
@@ -288,6 +366,7 @@ export class ConfigService {
 				},
 			);
 			appConfig.plugins = this.loadPlugins(plainAppConfig);
+			appConfig.modules = this.loadModules(plainAppConfig);
 
 			this.logger.log(`[SAVE] Saving updated configuration for section=${key}`);
 
@@ -463,6 +542,125 @@ export class ConfigService {
 		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
 
 		this.logger.log(`[UPDATE] Configuration update for plugin=${plugin} completed successfully`);
+	}
+
+	getModulesConfig<TConfig extends ModuleConfigModel>(): TConfig[] {
+		this.logger.debug('[LOOKUP] Fetching configuration for modules');
+
+		const configSection = this.appConfig['modules'];
+
+		if (!configSection) {
+			this.logger.error('[ERROR] Configuration section=modules not found');
+
+			throw new ConfigNotFoundException("Configuration section 'modules' not found.");
+		}
+
+		const configs: TConfig[] = [];
+
+		for (const moduleConfig of configSection) {
+			const mapping = this.modulesMapperService.getMapping<TConfig, UpdateModuleConfigDto>(moduleConfig.type);
+
+			const instance = toInstance(mapping.class, moduleConfig, {
+				excludeExtraneousValues: false,
+			});
+
+			const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+
+			if (errors.length > 0) {
+				this.logger.error(
+					`[VALIDATION] Configuration module=${moduleConfig.type} is corrupted error=${JSON.stringify(errors)}`,
+				);
+
+				throw new ConfigCorruptedException(
+					`Configuration module '${moduleConfig.type}' is corrupted and can not be loaded.`,
+				);
+			}
+
+			configs.push(instance);
+		}
+
+		this.logger.log('[LOOKUP] Successfully retrieved configuration for all modules');
+
+		return configs;
+	}
+
+	getModuleConfig<TConfig extends ModuleConfigModel>(module: string): TConfig {
+		this.logger.debug(`[LOOKUP] Fetching configuration module=${module}`);
+
+		const configSection = this.appConfig['modules'];
+
+		if (!configSection) {
+			this.logger.error(`[ERROR] Configuration section=modules not found`);
+
+			throw new ConfigNotFoundException(`Configuration section 'modules' not found.`);
+		}
+
+		const mapping = this.modulesMapperService.getMapping<TConfig, UpdateModuleConfigDto>(module);
+
+		const moduleConfig = configSection.find((cfg) => cfg.type === module);
+
+		if (!moduleConfig) {
+			this.logger.error(`[ERROR] Configuration module=${module} not found`);
+
+			throw new ConfigNotFoundException(`Configuration module '${module}' not found.`);
+		}
+
+		const instance = toInstance(mapping.class, moduleConfig, {
+			excludeExtraneousValues: false,
+		});
+
+		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+
+		if (errors.length > 0) {
+			this.logger.error(`[VALIDATION] Configuration module=${module} is corrupted error=${JSON.stringify(errors)}`);
+
+			throw new ConfigCorruptedException(`Configuration module '${module}' is corrupted and can not be loaded.`);
+		}
+
+		this.logger.debug(`[LOOKUP] Successfully retrieved configuration module=${module}`);
+
+		return instance;
+	}
+
+	setModuleConfig<TUpdateDto extends UpdateModuleConfigDto>(module: string, value: TUpdateDto): void {
+		const mapping = this.modulesMapperService.getMapping<ModuleConfigModel, TUpdateDto>(module);
+
+		const existingModule = (this.appConfig.modules ?? []).find((existingModule) => existingModule.type === module);
+
+		const instance = toInstance(mapping.configDto, value, {
+			excludeExtraneousValues: false,
+		});
+
+		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+
+		if (errors.length > 0) {
+			this.logger.error(`[VALIDATION] Validation failed for module=${module} error=${JSON.stringify(errors)}`);
+
+			throw new ConfigValidationException(`New configuration for module '${module}' is invalid.`);
+		}
+
+		this.logger.log(`[UPDATE] Updating configuration for module=${module}`);
+
+		const appConfig = this.appConfig;
+
+		// Remove the old module if it exists
+		appConfig.modules = (appConfig.modules ?? []).filter((existingModule) => existingModule.type !== module);
+		// Add the new module config
+		appConfig.modules.push(
+			toInstance(mapping.class, {
+				type: module,
+				...instanceToPlain(existingModule),
+				...instance,
+			}),
+		);
+
+		this.logger.log(`[SAVE] Saving updated configuration for module=${module}`);
+		this.saveConfig(appConfig);
+
+		this.logger.log(`[EVENT] Broadcasting configuration change for module=${module}`);
+		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
+
+		this.logger.log(`[UPDATE] Configuration update for module=${module} completed successfully`);
 	}
 
 	async resetConfig(): Promise<void> {

@@ -16,6 +16,7 @@ import type { IModuleOptions } from './app.types';
 import './assets/styles/base.scss';
 import {
 	type Events,
+	ModulesManager,
 	PluginsManager,
 	RouterGuards,
 	SocketsPlugin,
@@ -24,6 +25,7 @@ import {
 	logger,
 	provideBackendClient,
 	provideEventBus,
+	provideModulesManager,
 	providePluginsManager,
 	provideRouterGuards,
 	provideStoresManager,
@@ -72,6 +74,11 @@ provideStoresManager(app, storesManager);
 const pluginsManager = new PluginsManager();
 app.config.globalProperties['pluginsManager'] = pluginsManager;
 providePluginsManager(app, pluginsManager);
+
+// Modules
+const modulesManager = new ModulesManager();
+app.config.globalProperties['modulesManager'] = modulesManager;
+provideModulesManager(app, modulesManager);
 
 // Backend
 const backendClient = createClient<OpenApiPaths>({

@@ -5,14 +5,26 @@ import { defaultsDeep, get } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IAppUser, IModuleOptions } from '../../app.types';
-import { injectBackendClient, injectLogger, injectRouterGuard, injectSockets, injectStoresManager, provideAccountManager } from '../../common';
+import {
+	injectBackendClient,
+	injectLogger,
+	injectModulesManager,
+	injectRouterGuard,
+	injectSockets,
+	injectStoresManager,
+	provideAccountManager,
+	type IModule,
+	type ModuleInjectionKey,
+} from '../../common';
 import type { IUser } from '../users';
 
-import { RouteNames } from './auth.constants';
+import { AUTH_MODULE_NAME, RouteNames } from './auth.constants';
 import enUS from './locales/en-US.json';
 import { ModuleAccountRoutes, ModuleAnonymousRoutes, anonymousGuard, authenticatedGuard, profileGuard, sessionGuard } from './router';
 import { sessionStoreKey } from './store/keys';
 import { registerSessionStore } from './store/session.store';
+
+const authAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Auth');
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
@@ -21,6 +33,7 @@ export default {
 		const backendClient = injectBackendClient(app);
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
+		const modulesManager = injectModulesManager(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -85,6 +98,13 @@ export default {
 
 		app.provide(sessionStoreKey, sessionStore);
 		storesManager.addStore(sessionStoreKey, sessionStore);
+
+		modulesManager.addModule(authAdminModuleKey, {
+			type: AUTH_MODULE_NAME,
+			name: 'Sign‑in & Security',
+			description: 'Sign in, secure your account, and manage your personal profile.',
+			elements: [],
+		});
 
 		// Register router guards
 		options.router.beforeEach(async (): Promise<boolean | RouteLocation | undefined> => {

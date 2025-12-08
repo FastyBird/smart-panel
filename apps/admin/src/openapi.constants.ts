@@ -78,6 +78,8 @@ export type ConfigModuleDisplaySchema = components['schemas']['ConfigModuleDataD
 export type ConfigModuleUpdateDisplaySchema = components['schemas']['ConfigModuleUpdateDisplay'];
 export type ConfigModulePluginSchema = components['schemas']['ConfigModuleDataPlugin'];
 export type ConfigModuleUpdatePluginSchema = components['schemas']['ConfigModuleUpdatePlugin'];
+export type ConfigModuleModuleSchema = components['schemas']['ConfigModuleDataModule'];
+export type ConfigModuleUpdateModuleSchema = components['schemas']['ConfigModuleUpdateModule'];
 
 // System Module Schemas
 export type SystemModuleExtensionAdminSchema = components['schemas']['SystemModuleDataExtensionAdmin'];
@@ -257,6 +259,8 @@ export type ConfigModuleUpdateWeatherOperation = operations['update-config-modul
 export type ConfigModuleUpdateSystemOperation = operations['update-config-module-system'];
 export type ConfigModuleGetConfigPluginOperation = operations['get-config-module-config-plugin'];
 export type ConfigModuleUpdateConfigPluginOperation = operations['update-config-module-config-plugin'];
+export type ConfigModuleGetConfigModuleOperation = operations['get-config-module-config-module'];
+export type ConfigModuleUpdateConfigModuleOperation = operations['update-config-module-config-module'];
 export type ConfigModuleGetConfigOperation = operations['get-config-module-config'];
 
 // System Module Operations

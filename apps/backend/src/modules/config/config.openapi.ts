@@ -2,10 +2,12 @@
  * OpenAPI extra models for Config module
  */
 import {
+	ReqUpdateModuleDto,
 	ReqUpdateSectionDto,
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
+	UpdateModuleConfigDto,
 	UpdateSystemConfigDto,
 	UpdateWeatherCityIdConfigDto,
 	UpdateWeatherCityNameConfigDto,
@@ -18,6 +20,8 @@ import {
 	ConfigModuleResAudio,
 	ConfigModuleResDisplay,
 	ConfigModuleResLanguage,
+	ConfigModuleResModuleConfig,
+	ConfigModuleResModules,
 	ConfigModuleResPluginConfig,
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
@@ -29,6 +33,7 @@ import {
 	AudioConfigModel,
 	DisplayConfigModel,
 	LanguageConfigModel,
+	ModuleConfigModel,
 	SystemConfigModel,
 	WeatherCityIdConfigModel,
 	WeatherCityNameConfigModel,
@@ -48,11 +53,15 @@ export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	UpdateWeatherCityIdConfigDto,
 	UpdateWeatherZipCodeConfigDto,
 	UpdateSystemConfigDto,
+	UpdateModuleConfigDto,
 	ReqUpdateSectionDto,
+	ReqUpdateModuleDto,
 	// Response models
 	ConfigModuleResAppConfig,
 	ConfigModuleResPluginConfig,
 	ConfigModuleResPlugins,
+	ConfigModuleResModuleConfig,
+	ConfigModuleResModules,
 	ConfigModuleResSection,
 	ConfigModuleResAudio,
 	ConfigModuleResDisplay,
@@ -69,5 +78,6 @@ export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	WeatherCityIdConfigModel,
 	WeatherZipCodeConfigModel,
 	SystemConfigModel,
+	ModuleConfigModel,
 	AppConfigModel,
 ];

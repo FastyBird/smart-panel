@@ -5,7 +5,15 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IAppUser, IModuleOptions } from '../../app.types';
-import { injectLogger, injectRouterGuard, injectSockets, injectStoresManager } from '../../common';
+import {
+	injectLogger,
+	injectModulesManager,
+	injectRouterGuard,
+	injectSockets,
+	injectStoresManager,
+	type IModule,
+	type ModuleInjectionKey,
+} from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
@@ -13,7 +21,9 @@ import roleGuard from './router/guards/role.guard';
 import { displaysInstancesStoreKey, usersStoreKey } from './store/keys';
 import { registerDisplaysInstancesStore } from './store/stores';
 import { registerUsersStore } from './store/users.store';
-import { EventType, USERS_MODULE_EVENT_PREFIX } from './users.constants';
+import { EventType, USERS_MODULE_EVENT_PREFIX, USERS_MODULE_NAME } from './users.constants';
+
+const usersAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Users');
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
@@ -21,6 +31,7 @@ export default {
 		const routerGuard = injectRouterGuard(app);
 		const sockets = injectSockets(app);
 		const logger = injectLogger(app);
+		const modulesManager = injectModulesManager(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -38,6 +49,13 @@ export default {
 
 		app.provide(displaysInstancesStoreKey, displaysInstancesStore);
 		storesManager.addStore(displaysInstancesStoreKey, displaysInstancesStore);
+
+		modulesManager.addModule(usersAdminModuleKey, {
+			type: USERS_MODULE_NAME,
+			name: 'Users',
+			description: 'Create and manage user accounts and their profiles.',
+			elements: [],
+		});
 
 		routerGuard.register((appUser: IAppUser | undefined, route: RouteRecordRaw): Error | boolean | RouteLocationRaw => {
 			return roleGuard(appUser, route);

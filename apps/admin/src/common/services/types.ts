@@ -84,3 +84,30 @@ export interface IPluginsManager {
 
 	getPlugins<T extends IPlugin>(): T[];
 }
+
+export interface IModuleElement<Components = {}, Schemas = {}> {
+	type: string;
+	name?: string;
+	description?: string;
+	components?: Components;
+	schemas?: Schemas;
+	modules?: string[];
+}
+
+export interface IModule<Components = {}, Schemas = {}> {
+	type: string;
+	name: string;
+	description?: string;
+	elements: IModuleElement<Components, Schemas>[];
+	modules?: string[];
+}
+
+export type ModuleInjectionKey<T extends IModule = IModule> = InjectionKey<T>;
+
+export interface IModulesManager {
+	addModule<T extends IModule>(key: ModuleInjectionKey<T>, module: T): void;
+
+	getModule<T extends IModule>(key: ModuleInjectionKey<T>): T;
+
+	getModules<T extends IModule>(): T[];
+}

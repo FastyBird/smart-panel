@@ -4,7 +4,6 @@ import type {
 	ConfigModulePluginSchema,
 	ConfigModuleUpdatePluginSchema,
 } from '../../../openapi.constants';
-import { ItemIdSchema } from '../../devices';
 
 type ApiConfigPlugin = ConfigModulePluginSchema;
 type ApiConfigUpdatePlugin = ConfigModuleUpdatePluginSchema;
@@ -20,7 +19,7 @@ export const ConfigPluginSchema = z.object({
 export const ConfigPluginsStateSemaphoreSchema = z.object({
 	fetching: z.object({
 		items: z.boolean().default(false),
-		item: z.array(ItemIdSchema),
+		item: z.array(z.string()),
 	}),
 	updating: z.array(z.string()),
 });

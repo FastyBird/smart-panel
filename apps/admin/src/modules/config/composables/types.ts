@@ -2,7 +2,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
-import type { IPlugin, IPluginElement } from '../../../common';
+import type { IModule, IModuleElement, IPlugin, IPluginElement } from '../../../common';
 import {
 	ConfigModuleLanguageLanguage,
 	ConfigModuleLanguageTimeFormat,
@@ -15,13 +15,15 @@ import { SystemModuleLogEntryType } from '../../../openapi.constants';
 import type { ConfigModuleWeatherUnit } from '../../../openapi.constants';
 // Note: This enum doesn't exist in new schema
 import type { FormResultType } from '../config.constants';
-import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
+import type { IModulesComponents, IModulesSchemas, IPluginsComponents, IPluginsSchemas } from '../config.types';
+import type { IConfigModuleEditForm } from '../schemas/modules.types';
 import type { IConfigPluginEditForm } from '../schemas/plugins.types';
 import type { IConfigApp } from '../store/config-app.store.types';
 import type { IConfigAudio } from '../store/config-audio.store.types';
 import type { IConfigDisplay } from '../store/config-display.store.types';
 import type { IConfigLanguage } from '../store/config-language.store.types';
 import type { IConfigPlugin } from '../store/config-plugins.store.types';
+import type { IConfigModule } from '../store/config-modules.store.types';
 import type { IConfigSystem } from '../store/config-system.store.types';
 import type { IConfigWeather } from '../store/config-weather.store.types';
 
@@ -192,4 +194,39 @@ export interface IUsePlugins {
 	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
 	getByName: (type: IPlugin['type']) => IPlugin<IPluginsComponents, IPluginsSchemas> | undefined;
 	getElement: (type: IPlugin['type']) => IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined;
+}
+
+export interface IUseConfigModule {
+	configModule: ComputedRef<IConfigModule | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchConfigModule: () => Promise<void>;
+}
+
+export interface IUseConfigModules {
+	configModules: ComputedRef<IConfigModule[]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	enabled: (type: IConfigModule['type']) => boolean;
+	fetchConfigModules: (force?: boolean) => Promise<void>;
+}
+
+export interface IUseConfigModuleEditForm<TForm extends IConfigModuleEditForm = IConfigModuleEditForm> {
+	model: Reactive<TForm>;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'saved'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUseModule {
+	module: ComputedRef<IModule<IModulesComponents, IModulesSchemas> | undefined>;
+	element: ComputedRef<IModuleElement<IModulesComponents, IModulesSchemas> | undefined>;
+}
+
+export interface IUseModules {
+	modules: ComputedRef<IModule<IModulesComponents, IModulesSchemas>[]>;
+	options: ComputedRef<{ value: IModule['type']; label: IModule['name'] }[]>;
+	getByName: (type: IModule['type']) => IModule<IModulesComponents, IModulesSchemas> | undefined;
+	getElement: (type: IModule['type']) => IModuleElement<IModulesComponents, IModulesSchemas> | undefined;
 }

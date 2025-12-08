@@ -9,6 +9,7 @@ import {
 	AudioConfigModel,
 	DisplayConfigModel,
 	LanguageConfigModel,
+	ModuleConfigModel,
 	PluginConfigModel,
 	SystemConfigModel,
 	WeatherCityIdConfigModel,
@@ -56,6 +57,33 @@ export class ConfigModuleResPlugins extends BaseSuccessResponseModel<PluginConfi
 	})
 	@Expose()
 	declare data: PluginConfigModel[];
+}
+
+/**
+ * Response wrapper for ModuleConfigModel
+ */
+@ApiSchema({ name: 'ConfigModuleResModuleConfig' })
+export class ConfigModuleResModuleConfig extends BaseSuccessResponseModel<ModuleConfigModel> {
+	@ApiProperty({
+		description: 'Module configuration',
+		type: () => ModuleConfigModel,
+	})
+	@Expose()
+	declare data: ModuleConfigModel;
+}
+
+/**
+ * Response wrapper for array of ModuleConfigModel
+ */
+@ApiSchema({ name: 'ConfigModuleResModules' })
+export class ConfigModuleResModules extends BaseSuccessResponseModel<ModuleConfigModel[]> {
+	@ApiProperty({
+		description: 'List of module configurations',
+		type: 'array',
+		items: { $ref: getSchemaPath(ModuleConfigModel) },
+	})
+	@Expose()
+	declare data: ModuleConfigModel[];
 }
 
 @ApiSchema({ name: 'ConfigModuleResAudio' })

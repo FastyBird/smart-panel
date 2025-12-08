@@ -20,6 +20,9 @@
     },
     "configPlugins": {
       "title": "Plugins config"
+    },
+    "configModules": {
+      "title": "Modules config"
     }
   },
   "breadcrumbs": {
@@ -29,7 +32,8 @@
     "configLanguage": "language config",
     "configWeather": "weather config",
     "configSystem": "system config",
-    "configPlugins": "plugins config"
+    "configPlugins": "plugins config",
+    "configModules": "modules config"
   },
   "headings": {
     "config": "Configuration"
@@ -43,7 +47,8 @@
     "configLanguage": "Language config",
     "configWeather": "Weather config",
     "configSystem": "System config",
-    "configPlugins": "Plugins config"
+    "configPlugins": "Plugins config",
+    "configModules": "Modules config"
   },
   "messages": {
     "configAudio": {
@@ -69,6 +74,10 @@
     "configPlugin": {
       "edited": "Changes saved! The plugin config has been updated.",
       "notEdited": "Something went wrong. Plugin config update was not successful."
+    },
+    "configModule": {
+      "edited": "Changes saved! The module config has been updated.",
+      "notEdited": "Something went wrong. Module config update was not successful."
     }
   },
   "texts": {
@@ -77,7 +86,8 @@
     "loadingLanguageConfig": "Loading language config...",
     "loadingWeatherConfig": "Loading weather config...",
     "loadingSystemConfig": "Loading system config...",
-    "loadingPluginConfig": "Loading plugin config..."
+    "loadingPluginConfig": "Loading plugin config...",
+    "loadingModuleConfig": "Loading module config..."
   },
   "fields": {
     "speaker": {

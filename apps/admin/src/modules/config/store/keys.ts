@@ -4,6 +4,7 @@ import type { IConfigAppStoreActions, IConfigAppStoreState } from './config-app.
 import type { IConfigAudioStoreActions, IConfigAudioStoreState } from './config-audio.store.types';
 import type { IConfigDisplayStoreActions, IConfigDisplayStoreState } from './config-display.store.types';
 import type { IConfigLanguageStoreActions, IConfigLanguageStoreState } from './config-language.store.types';
+import type { IConfigModulesStoreActions, IConfigModulesStoreState } from './config-modules.store.types';
 import type { IConfigPluginsStoreActions, IConfigPluginsStoreState } from './config-plugins.store.types';
 import type { IConfigSystemStoreActions, IConfigSystemStoreState } from './config-system.store.types';
 import type { IConfigWeatherStoreActions, IConfigWeatherStoreState } from './config-weather.store.types';
@@ -28,3 +29,6 @@ export const configSystemStoreKey: StoreInjectionKey<string, IConfigSystemStoreS
 
 export const configPluginsStoreKey: StoreInjectionKey<string, IConfigPluginsStoreState, object, IConfigPluginsStoreActions> =
 	Symbol('FB-Module-Config-ConfigPlugins');
+
+export const configModulesStoreKey: StoreInjectionKey<string, IConfigModulesStoreState, object, IConfigModulesStoreActions> =
+	Symbol('FB-Module-Config-ConfigModules');

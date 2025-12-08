@@ -33,6 +33,7 @@ import {
 	WeatherZipCodeConfigModel,
 } from './models/config.model';
 import { ConfigService } from './services/config.service';
+import { ModulesTypeMapperService } from './services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from './services/plugins-type-mapper.service';
 
 @ApiTag({
@@ -42,9 +43,9 @@ import { PluginsTypeMapperService } from './services/plugins-type-mapper.service
 })
 @Module({
 	imports: [NestConfigModule, PlatformModule, forwardRef(() => SystemModule), SwaggerModule],
-	providers: [ConfigService, PluginsTypeMapperService, GenerateAdminExtensionsCommand],
+	providers: [ConfigService, PluginsTypeMapperService, ModulesTypeMapperService, GenerateAdminExtensionsCommand],
 	controllers: [ConfigController],
-	exports: [ConfigService, PluginsTypeMapperService],
+	exports: [ConfigService, PluginsTypeMapperService, ModulesTypeMapperService],
 })
 export class ConfigModule {
 	constructor(
