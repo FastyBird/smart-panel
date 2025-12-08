@@ -267,48 +267,87 @@ class StartupManagerService {
   }
 
   void _registerModules() {
-    // Register modules (only if not already registered)
-    if (!locator.isRegistered<ConfigModuleService>()) {
-      var configModuleService = ConfigModuleService(
-        apiClient: _apiClient,
-        socketService: _socketClient,
-      );
-      var systemModuleService = SystemModuleService(
-        apiClient: _apiClient,
-        socketService: _socketClient,
-        eventBus: _eventBus,
-      );
-      var weatherModuleService = WeatherModuleService(
-        apiClient: _apiClient,
-        socketService: _socketClient,
-      );
-      var devicesModuleService = DevicesModuleService(
-        apiClient: _apiClient,
-        socketService: _socketClient,
-      );
-      var dashboardModuleService = DashboardModuleService(
-        apiClient: _apiClient,
-        socketService: _socketClient,
-      );
+    // If modules are already registered, unregister them first
+    // This ensures that when retrying initialization with a new URL,
+    // the modules use the new _apiClient instead of the old one
+    if (locator.isRegistered<ConfigModuleService>()) {
+      if (kDebugMode) {
+        debugPrint(
+          '[STARTUP MANAGER] Modules already registered, unregistering to use new API client',
+        );
+      }
 
-      locator.registerSingleton(configModuleService);
-      locator.registerSingleton(systemModuleService);
-      locator.registerSingleton(weatherModuleService);
-      locator.registerSingleton(devicesModuleService);
-      locator.registerSingleton(dashboardModuleService);
+      // Unregister all module services
+      try {
+        locator.unregister<ConfigModuleService>();
+      } catch (_) {}
+      try {
+        locator.unregister<SystemModuleService>();
+      } catch (_) {}
+      try {
+        locator.unregister<WeatherModuleService>();
+      } catch (_) {}
+      try {
+        locator.unregister<DevicesModuleService>();
+      } catch (_) {}
+      try {
+        locator.unregister<DashboardModuleService>();
+      } catch (_) {}
 
-      // Api client
-      locator.registerSingleton(_apiIoService);
-      locator.registerSingleton(_apiClient);
+      // Unregister API client and Dio instance
+      try {
+        locator.unregister<ApiClient>();
+      } catch (_) {}
+      try {
+        locator.unregister<Dio>();
+      } catch (_) {}
 
-      // Sockets client
-      locator.registerSingleton(_socketClient);
-
-      // Misc services
-      locator.registerSingleton<SystemActionsService>(
-        SystemActionsService(_eventBus),
-      );
+      // Unregister SystemActionsService
+      try {
+        locator.unregister<SystemActionsService>();
+      } catch (_) {}
     }
+
+    // Register modules with the new API client
+    var configModuleService = ConfigModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var systemModuleService = SystemModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+      eventBus: _eventBus,
+    );
+    var weatherModuleService = WeatherModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var devicesModuleService = DevicesModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var dashboardModuleService = DashboardModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+
+    locator.registerSingleton(configModuleService);
+    locator.registerSingleton(systemModuleService);
+    locator.registerSingleton(weatherModuleService);
+    locator.registerSingleton(devicesModuleService);
+    locator.registerSingleton(dashboardModuleService);
+
+    // Api client
+    locator.registerSingleton(_apiIoService);
+    locator.registerSingleton(_apiClient);
+
+    // Sockets client
+    locator.registerSingleton(_socketClient);
+
+    // Misc services
+    locator.registerSingleton<SystemActionsService>(
+      SystemActionsService(_eventBus),
+    );
   }
 
   Future<void> _initialize() async {

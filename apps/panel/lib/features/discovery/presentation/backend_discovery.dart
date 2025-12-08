@@ -5,7 +5,23 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart'
+    show
+        AppBorderColorDark,
+        AppBorderColorLight,
+        AppBorderRadius,
+        AppColorsDark,
+        AppColorsLight,
+        AppFillColorDark,
+        AppFillColorLight,
+        AppFilledButtonsDarkThemes,
+        AppFilledButtonsLightThemes,
+        AppFontSize,
+        AppOutlinedButtonsDarkThemes,
+        AppOutlinedButtonsLightThemes,
+        AppSpacings,
+        AppTextColorDark,
+        AppTextColorLight;
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Discovery state enum
@@ -378,43 +394,45 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     BuildContext context,
     AppLocalizations localizations,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Enter Backend URL',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          'Enter the full URL of your FastyBird Smart Panel backend:',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTextColorLight.secondary,
-              ),
-        ),
-        AppSpacings.spacingLgVertical,
-        TextField(
-          controller: _manualUrlController,
-          decoration: InputDecoration(
-            hintText: 'http://192.168.1.100:3000',
-            labelText: 'Backend URL',
-            prefixIcon: Icon(MdiIcons.web),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Enter Backend URL',
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
-          keyboardType: TextInputType.url,
-          autocorrect: false,
-          onSubmitted: (_) => _submitManualUrl(),
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          'Example: http://192.168.1.100:3000',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTextColorLight.placeholder,
+          AppSpacings.spacingSmVertical,
+          Text(
+            'Enter the full URL of your FastyBird Smart Panel backend:',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTextColorLight.secondary,
+                ),
+          ),
+          AppSpacings.spacingLgVertical,
+          TextField(
+            controller: _manualUrlController,
+            decoration: InputDecoration(
+              hintText: 'http://192.168.1.100:3000',
+              labelText: 'Backend URL',
+              prefixIcon: Icon(MdiIcons.web),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
               ),
-        ),
-      ],
+            ),
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            onSubmitted: (_) => _submitManualUrl(),
+          ),
+          AppSpacings.spacingMdVertical,
+          Text(
+            'Example: http://192.168.1.100:3000',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTextColorLight.placeholder,
+                ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -476,23 +494,39 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed:
-                      _state == DiscoveryState.searching ? null : _startDiscovery,
-                  icon: Icon(MdiIcons.refresh),
-                  label: const Text('Rescan'),
+                child: Theme(
+                  data: ThemeData(
+                    outlinedButtonTheme:
+                        Theme.of(context).brightness == Brightness.light
+                            ? AppOutlinedButtonsLightThemes.base
+                            : AppOutlinedButtonsDarkThemes.base,
+                  ),
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        _state == DiscoveryState.searching ? null : _startDiscovery,
+                    icon: Icon(MdiIcons.refresh),
+                    label: const Text('Rescan'),
+                  ),
                 ),
               ),
               AppSpacings.spacingMdHorizontal,
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _showManualEntry = true;
-                    });
-                  },
-                  icon: Icon(MdiIcons.keyboard),
-                  label: const Text('Enter Manually'),
+                child: Theme(
+                  data: ThemeData(
+                    outlinedButtonTheme:
+                        Theme.of(context).brightness == Brightness.light
+                            ? AppOutlinedButtonsLightThemes.base
+                            : AppOutlinedButtonsDarkThemes.base,
+                  ),
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _showManualEntry = true;
+                      });
+                    },
+                    icon: Icon(MdiIcons.keyboard),
+                    label: const Text('Enter Manually'),
+                  ),
                 ),
               ),
             ],

@@ -221,7 +221,39 @@ class MdnsDiscoveryService {
   }
 
   /// Dispose resources
+  ///
+  /// Immediately cancels subscriptions and nullifies references to prevent
+  /// callbacks, then performs async cleanup. Uses unawaited() to signal
+  /// intentional fire-and-forget pattern since dispose() must be synchronous.
   void dispose() {
-    stop();
+    // Store references before nullifying to allow async cleanup
+    final subscription = _subscription;
+    final discovery = _discovery;
+
+    // Immediately nullify to prevent further callbacks and operations
+    _subscription = null;
+    _discovery = null;
+
+    // Perform async cleanup in background (fire-and-forget)
+    // Using unawaited() to signal intentionality
+    unawaited(_performAsyncCleanup(subscription, discovery));
+  }
+
+  /// Perform asynchronous cleanup operations
+  Future<void> _performAsyncCleanup(
+    StreamSubscription<BonsoirDiscoveryEvent>? subscription,
+    BonsoirDiscovery? discovery,
+  ) async {
+    try {
+      // Cancel subscription if it exists
+      await subscription?.cancel();
+
+      // Stop discovery if it exists
+      await discovery?.stop();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[MDNS DISCOVERY] Error during async cleanup: $e');
+      }
+    }
   }
 }
