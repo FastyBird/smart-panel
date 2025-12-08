@@ -4,18 +4,16 @@ import { hostname } from 'os';
 import { join } from 'path';
 
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { API_PREFIX } from '../../../app.constants';
-import { getEnvValue } from '../../../common/utils/config.utils';
+import { ConfigService } from '../../config/services/config.service';
 import {
 	MDNS_DEFAULT_PROTOCOL,
 	MDNS_DEFAULT_SERVICE_NAME,
 	MDNS_DEFAULT_SERVICE_TYPE,
-	MDNS_ENV_ENABLED,
-	MDNS_ENV_SERVICE_NAME,
-	MDNS_ENV_SERVICE_TYPE,
+	MDNS_MODULE_NAME,
 } from '../mdns.constants';
+import { MdnsConfigModel } from '../models/config.model';
 
 export interface MdnsServiceInfo {
 	name: string;
@@ -33,29 +31,53 @@ export class MdnsService implements OnApplicationShutdown {
 	private isAdvertising = false;
 	private advertisedPort: number = 0;
 
-	constructor(private readonly configService: NestConfigService) {}
+	constructor(private readonly configService: ConfigService) {}
 
 	/**
-	 * Check if mDNS is enabled via environment configuration
+	 * Get mDNS configuration from app config
+	 */
+	private getConfig(): MdnsConfigModel {
+		try {
+			return this.configService.getModuleConfig<MdnsConfigModel>(MDNS_MODULE_NAME);
+		} catch (error) {
+			this.logger.warn('[MDNS] Failed to load mDNS configuration, using defaults', error);
+
+			// Return default configuration
+			const defaultConfig = new MdnsConfigModel();
+			defaultConfig.type = MDNS_MODULE_NAME;
+			defaultConfig.enabled = true;
+			defaultConfig.serviceName = MDNS_DEFAULT_SERVICE_NAME;
+			defaultConfig.serviceType = MDNS_DEFAULT_SERVICE_TYPE;
+
+			return defaultConfig;
+		}
+	}
+
+	/**
+	 * Check if mDNS is enabled via app configuration
 	 */
 	isEnabled(): boolean {
-		const enabled = getEnvValue<string>(this.configService, MDNS_ENV_ENABLED, 'true');
+		const config = this.getConfig();
 
-		return enabled.toLowerCase() === 'true' || enabled === '1';
+		return config.enabled;
 	}
 
 	/**
 	 * Get the configured service name
 	 */
 	getServiceName(): string {
-		return getEnvValue<string>(this.configService, MDNS_ENV_SERVICE_NAME, MDNS_DEFAULT_SERVICE_NAME);
+		const config = this.getConfig();
+
+		return config.serviceName;
 	}
 
 	/**
 	 * Get the configured service type
 	 */
 	getServiceType(): string {
-		return getEnvValue<string>(this.configService, MDNS_ENV_SERVICE_TYPE, MDNS_DEFAULT_SERVICE_TYPE);
+		const config = this.getConfig();
+
+		return config.serviceType;
 	}
 
 	/**

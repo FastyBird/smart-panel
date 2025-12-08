@@ -1,8 +1,9 @@
 import { Logger } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { MDNS_DEFAULT_SERVICE_NAME, MDNS_DEFAULT_SERVICE_TYPE } from '../mdns.constants';
+import { ConfigService } from '../../config/services/config.service';
+import { MDNS_DEFAULT_SERVICE_NAME, MDNS_DEFAULT_SERVICE_TYPE, MDNS_MODULE_NAME } from '../mdns.constants';
+import { MdnsConfigModel } from '../models/config.model';
 
 import { MdnsService } from './mdns.service';
 
@@ -32,7 +33,18 @@ jest.mock('bonjour-service', () => {
 
 describe('MdnsService', () => {
 	let service: MdnsService;
-	let configService: NestConfigService;
+	let configService: ConfigService;
+
+	const createMockConfig = (overrides?: Partial<MdnsConfigModel>): MdnsConfigModel => {
+		const config = new MdnsConfigModel();
+		config.type = MDNS_MODULE_NAME;
+		config.enabled = true;
+		config.serviceName = MDNS_DEFAULT_SERVICE_NAME;
+		config.serviceType = MDNS_DEFAULT_SERVICE_TYPE;
+		Object.assign(config, overrides);
+
+		return config;
+	};
 
 	beforeEach(async () => {
 		// Reset all mocks before each test
@@ -55,28 +67,22 @@ describe('MdnsService', () => {
 		});
 		mockDestroy.mockReturnValue(undefined);
 
+		const defaultConfig = createMockConfig();
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MdnsService,
 				{
-					provide: NestConfigService,
+					provide: ConfigService,
 					useValue: {
-						get: jest.fn((key: string) => {
-							const config: Record<string, string> = {
-								FB_MDNS_ENABLED: 'true',
-								FB_MDNS_SERVICE_NAME: MDNS_DEFAULT_SERVICE_NAME,
-								FB_MDNS_SERVICE_TYPE: MDNS_DEFAULT_SERVICE_TYPE,
-							};
-
-							return config[key];
-						}),
+						getModuleConfig: jest.fn(() => defaultConfig),
 					},
 				},
 			],
 		}).compile();
 
 		service = module.get<MdnsService>(MdnsService);
-		configService = module.get<NestConfigService>(NestConfigService);
+		configService = module.get<ConfigService>(ConfigService);
 
 		// Silence logger during tests
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -94,32 +100,22 @@ describe('MdnsService', () => {
 	});
 
 	describe('isEnabled', () => {
-		it('should return true when FB_MDNS_ENABLED is true', () => {
-			jest.spyOn(configService, 'get').mockReturnValue('true');
+		it('should return true when enabled is true', () => {
+			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(createMockConfig({ enabled: true }));
 
 			expect(service.isEnabled()).toBe(true);
 		});
 
-		it('should return true when FB_MDNS_ENABLED is 1', () => {
-			jest.spyOn(configService, 'get').mockReturnValue('1');
-
-			expect(service.isEnabled()).toBe(true);
-		});
-
-		it('should return false when FB_MDNS_ENABLED is false', () => {
-			jest.spyOn(configService, 'get').mockReturnValue('false');
+		it('should return false when enabled is false', () => {
+			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(createMockConfig({ enabled: false }));
 
 			expect(service.isEnabled()).toBe(false);
 		});
 
-		it('should return false when FB_MDNS_ENABLED is 0', () => {
-			jest.spyOn(configService, 'get').mockReturnValue('0');
-
-			expect(service.isEnabled()).toBe(false);
-		});
-
-		it('should return true by default when FB_MDNS_ENABLED is not set', () => {
-			jest.spyOn(configService, 'get').mockReturnValue(undefined);
+		it('should return true by default when config is not available', () => {
+			jest.spyOn(configService, 'getModuleConfig').mockImplementation(() => {
+				throw new Error('Config not found');
+			});
 
 			expect(service.isEnabled()).toBe(true);
 		});
@@ -127,13 +123,15 @@ describe('MdnsService', () => {
 
 	describe('getServiceName', () => {
 		it('should return configured service name', () => {
-			jest.spyOn(configService, 'get').mockReturnValue('Custom Panel Name');
+			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(createMockConfig({ serviceName: 'Custom Panel Name' }));
 
 			expect(service.getServiceName()).toBe('Custom Panel Name');
 		});
 
-		it('should return default service name when not configured', () => {
-			jest.spyOn(configService, 'get').mockReturnValue(undefined);
+		it('should return default service name when config is not available', () => {
+			jest.spyOn(configService, 'getModuleConfig').mockImplementation(() => {
+				throw new Error('Config not found');
+			});
 
 			expect(service.getServiceName()).toBe(MDNS_DEFAULT_SERVICE_NAME);
 		});
@@ -141,13 +139,15 @@ describe('MdnsService', () => {
 
 	describe('getServiceType', () => {
 		it('should return configured service type', () => {
-			jest.spyOn(configService, 'get').mockReturnValue('custom-type');
+			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(createMockConfig({ serviceType: 'custom-type' }));
 
 			expect(service.getServiceType()).toBe('custom-type');
 		});
 
-		it('should return default service type when not configured', () => {
-			jest.spyOn(configService, 'get').mockReturnValue(undefined);
+		it('should return default service type when config is not available', () => {
+			jest.spyOn(configService, 'getModuleConfig').mockImplementation(() => {
+				throw new Error('Config not found');
+			});
 
 			expect(service.getServiceType()).toBe(MDNS_DEFAULT_SERVICE_TYPE);
 		});

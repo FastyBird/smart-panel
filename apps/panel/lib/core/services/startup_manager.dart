@@ -236,7 +236,11 @@ class StartupManagerService {
       return InitializationResult.connectionFailed;
     }
 
-    // Register modules after successful connection
+    // Unregister any existing modules before registering new ones
+    // This ensures modules always use the current _apiClient, especially on retries
+    _unregisterModulesIfNeeded();
+
+    // Register modules with the new API client after successful connection
     _registerModules();
 
     final appUid = await _getAppUid();
@@ -254,6 +258,10 @@ class StartupManagerService {
         debugPrint('[REPOS INIT] Data storage initialization failed: $e');
       }
 
+      // Clean up registered modules if initialization failed
+      // This ensures they don't remain registered with a stale API client
+      _unregisterModulesIfNeeded();
+
       return InitializationResult.error;
     }
 
@@ -266,48 +274,53 @@ class StartupManagerService {
     return InitializationResult.success;
   }
 
-  void _registerModules() {
-    // If modules are already registered, unregister them first
-    // This ensures that when retrying initialization with a new URL,
-    // the modules use the new _apiClient instead of the old one
-    if (locator.isRegistered<ConfigModuleService>()) {
-      if (kDebugMode) {
-        debugPrint(
-          '[STARTUP MANAGER] Modules already registered, unregistering to use new API client',
-        );
-      }
-
-      // Unregister all module services
-      try {
-        locator.unregister<ConfigModuleService>();
-      } catch (_) {}
-      try {
-        locator.unregister<SystemModuleService>();
-      } catch (_) {}
-      try {
-        locator.unregister<WeatherModuleService>();
-      } catch (_) {}
-      try {
-        locator.unregister<DevicesModuleService>();
-      } catch (_) {}
-      try {
-        locator.unregister<DashboardModuleService>();
-      } catch (_) {}
-
-      // Unregister API client and Dio instance
-      try {
-        locator.unregister<ApiClient>();
-      } catch (_) {}
-      try {
-        locator.unregister<Dio>();
-      } catch (_) {}
-
-      // Unregister SystemActionsService
-      try {
-        locator.unregister<SystemActionsService>();
-      } catch (_) {}
+  /// Unregister modules if they are already registered
+  /// This ensures modules are cleaned up on retries or initialization failures
+  void _unregisterModulesIfNeeded() {
+    if (!locator.isRegistered<ConfigModuleService>()) {
+      return;
     }
 
+    if (kDebugMode) {
+      debugPrint(
+        '[STARTUP MANAGER] Modules already registered, unregistering to use new API client',
+      );
+    }
+
+    // Unregister all module services
+    try {
+      locator.unregister<ConfigModuleService>();
+    } catch (_) {}
+    try {
+      locator.unregister<SystemModuleService>();
+    } catch (_) {}
+    try {
+      locator.unregister<WeatherModuleService>();
+    } catch (_) {}
+    try {
+      locator.unregister<DevicesModuleService>();
+    } catch (_) {}
+    try {
+      locator.unregister<DashboardModuleService>();
+    } catch (_) {}
+
+    // Unregister API client and Dio instance
+    try {
+      locator.unregister<ApiClient>();
+    } catch (_) {}
+    try {
+      locator.unregister<Dio>();
+    } catch (_) {}
+
+    // Unregister SystemActionsService
+    try {
+      locator.unregister<SystemActionsService>();
+    } catch (_) {}
+  }
+
+  /// Register modules with the current API client
+  /// This should only be called after successful backend connection
+  void _registerModules() {
     // Register modules with the new API client
     var configModuleService = ConfigModuleService(
       apiClient: _apiClient,

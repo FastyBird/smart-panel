@@ -50,6 +50,42 @@ class MdnsDiscoveryService {
   List<DiscoveredBackend> get discoveredBackends =>
       List.unmodifiable(_discoveredBackends);
 
+  /// Get fallback backend from environment variables (for dev mode)
+  DiscoveredBackend? _getFallbackBackend() {
+    final bool isAndroidEmulator = Platform.isAndroid && !kReleaseMode;
+
+    const String appHost = String.fromEnvironment(
+      'FB_APP_HOST',
+      defaultValue: '',
+    );
+    const String backendPort = String.fromEnvironment(
+      'FB_BACKEND_PORT',
+      defaultValue: '3000',
+    );
+
+    if (appHost.isNotEmpty) {
+      final String host = isAndroidEmulator ? '10.0.2.2' : appHost;
+      final int port = int.tryParse(backendPort) ?? 3000;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[MDNS DISCOVERY] Using fallback backend from environment: $host:$port',
+        );
+      }
+
+      return DiscoveredBackend(
+        name: 'FastyBird Smart Panel (Dev)',
+        host: host,
+        port: port,
+        apiPath: '/api/v1',
+        version: null,
+        isSecure: false,
+      );
+    }
+
+    return null;
+  }
+
   /// Start mDNS discovery and return discovered backends
   ///
   /// [onBackendFound] - Optional callback called when a new backend is found
@@ -65,6 +101,19 @@ class MdnsDiscoveryService {
         debugPrint(
           '[MDNS DISCOVERY] mDNS discovery is disabled or not supported on this platform',
         );
+      }
+      // If mDNS is disabled, try fallback backend (dev mode)
+      final fallbackBackend = _getFallbackBackend();
+      if (fallbackBackend != null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[MDNS DISCOVERY] Using fallback backend (mDNS disabled)',
+          );
+        }
+        _discoveredBackends.clear();
+        _discoveredBackends.add(fallbackBackend);
+        onBackendFound?.call(fallbackBackend);
+        return [fallbackBackend];
       }
       return [];
     }
@@ -141,6 +190,20 @@ class MdnsDiscoveryService {
         );
       }
 
+      // If no backends found, try fallback
+      if (_discoveredBackends.isEmpty) {
+        final fallback = _getFallbackBackend();
+        if (fallback != null) {
+          if (kDebugMode) {
+            debugPrint(
+              '[MDNS DISCOVERY] No backends found via mDNS, using fallback backend',
+            );
+          }
+          _discoveredBackends.add(fallback);
+          onBackendFound?.call(fallback);
+        }
+      }
+
       if (!completer.isCompleted) {
         completer.complete(_discoveredBackends);
       }
@@ -151,6 +214,18 @@ class MdnsDiscoveryService {
         debugPrint('[MDNS DISCOVERY] Error during discovery: $e');
       }
       await stop();
+
+      // If discovery failed, try fallback
+      final fallback = _getFallbackBackend();
+      if (fallback != null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[MDNS DISCOVERY] Discovery failed, using fallback backend',
+          );
+        }
+        return [fallback];
+      }
+
       return [];
     }
   }
