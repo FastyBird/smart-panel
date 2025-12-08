@@ -58,6 +58,17 @@
   "pnpm": {
     "overrides": {
       "@types/node": "^20.17.0"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@parcel/watcher",
+      "@scarf/scarf",
+      "@swc/core",
+      "bcrypt",
+      "esbuild",
+      "sharp",
+      "sqlite3",
+      "vue-demi"
+    ]
   }
 }
