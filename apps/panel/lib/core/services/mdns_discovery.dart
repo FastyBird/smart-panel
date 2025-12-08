@@ -120,6 +120,10 @@ class MdnsDiscoveryService {
     void Function(DiscoveredBackend)? onBackendFound,
     Duration? timeoutDuration,
   }) async {
+    // Stop any ongoing discovery before starting a new one
+    // This prevents memory leaks and interference from previous discovery sessions
+    await stop();
+
     if (!isEnabled) {
       if (kDebugMode) {
         debugPrint(
