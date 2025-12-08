@@ -3,9 +3,6 @@ import { ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { injectStoresManager } from '../../../common';
-import { configModulesStoreKey } from '../store/keys';
-
 import { useConfigModule } from './useConfigModule';
 
 const mockData = ref<Record<string, { type: string; enabled: boolean }>>({

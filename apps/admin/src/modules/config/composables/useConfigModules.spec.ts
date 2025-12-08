@@ -3,9 +3,6 @@ import { ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { injectStoresManager } from '../../../common';
-import { configModulesStoreKey } from '../store/keys';
-
 import { useConfigModules } from './useConfigModules';
 
 const mockData = {

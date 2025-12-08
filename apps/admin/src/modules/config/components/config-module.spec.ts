@@ -1,8 +1,9 @@
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { IConfigModule } from '../store/config-modules.store.types';
 import { FormResult, Layout } from '../config.constants';
-import { ConfigException } from '../config.exceptions';
+import type { IModulesComponents } from '../config.types';
 
 import ConfigModule from './config-module.vue';
 
@@ -16,13 +17,13 @@ const mockElement = {
 		moduleConfigEditForm: {
 			name: 'MockModuleConfigEditForm',
 			template: '<div>Mock Form</div>',
-		},
-	},
+		} as IModulesComponents['moduleConfigEditForm'],
+	} as IModulesComponents,
 };
 
 const mockFetchConfigModule = vi.fn().mockResolvedValue(undefined);
 const mockUseConfigModule = vi.fn(() => ({
-	configModule: { value: mockConfigModule },
+	configModule: { value: mockConfigModule as IConfigModule },
 	isLoading: { value: false },
 	fetchConfigModule: mockFetchConfigModule,
 }));
@@ -117,10 +118,10 @@ describe('ConfigModule', () => {
 
 	it('shows loading state when configModule is null', () => {
 		mockUseConfigModule.mockReturnValue({
-			configModule: { value: null as any },
+			configModule: { value: null as IConfigModule | null },
 			isLoading: { value: false },
 			fetchConfigModule: mockFetchConfigModule,
-		});
+		} as unknown as ReturnType<typeof mockUseConfigModule>);
 
 		const wrapper = mount(ConfigModule, {
 			props: {
@@ -134,7 +135,11 @@ describe('ConfigModule', () => {
 
 	it('does not render form when element has no moduleConfigEditForm', () => {
 		mockUseModule.mockReturnValue({
-			element: { value: { components: {} } as any },
+			element: {
+				value: {
+					components: {} as IModulesComponents,
+				} as { components: IModulesComponents },
+			},
 		});
 
 		const wrapper = mount(ConfigModule, {
