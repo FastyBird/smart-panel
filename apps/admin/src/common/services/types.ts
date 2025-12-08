@@ -100,6 +100,7 @@ export interface IModule<Components = {}, Schemas = {}> {
 	description?: string;
 	elements: IModuleElement<Components, Schemas>[];
 	modules?: string[];
+	isCore?: boolean;
 }
 
 export type ModuleInjectionKey<T extends IModule = IModule> = InjectionKey<T>;

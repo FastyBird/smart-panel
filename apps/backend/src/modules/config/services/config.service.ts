@@ -120,10 +120,10 @@ export class ConfigService {
 	private saveConfig(appConfig: AppConfigModel) {
 		this.logger.log('[SAVE] Writing configuration to file');
 
-		// Prepare main app config
+		// Prepare main app config - use recursive transformation to handle arrays correctly
 		const plainAppConfig = instanceToPlain(appConfig);
 
-		// Transform plugins
+		// Transform plugins - use recursive function to handle nested objects correctly
 		plainAppConfig.plugins = appConfig.plugins.reduce(
 			(acc, plugin) => {
 				const pluginConfig = instanceToPlain(plugin);
@@ -139,7 +139,7 @@ export class ConfigService {
 			{} as Record<string, any>,
 		);
 
-		// Transform modules
+		// Transform modules - use recursive function to handle nested objects correctly
 		plainAppConfig.modules = appConfig.modules.reduce(
 			(acc, module) => {
 				const moduleConfig = instanceToPlain(module);
