@@ -174,8 +174,8 @@ class _MyAppState extends State<MyApp> {
       }
     }
     
-    // Ensure it has the API path
-    if (!normalizedUrl.contains('/api/')) {
+    // Ensure it has the API path (case-insensitive check)
+    if (!lowerUrl.contains('/api/')) {
       // Remove trailing slash if present
       if (normalizedUrl.endsWith('/')) {
         normalizedUrl = normalizedUrl.substring(0, normalizedUrl.length - 1);
