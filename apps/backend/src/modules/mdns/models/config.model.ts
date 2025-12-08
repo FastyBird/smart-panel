@@ -1,9 +1,10 @@
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsString } from 'class-validator';
+
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ModuleConfigModel } from '../../config/models/config.model';
-import { MDNS_MODULE_NAME, MDNS_DEFAULT_SERVICE_NAME, MDNS_DEFAULT_SERVICE_TYPE } from '../mdns.constants';
+import { MDNS_DEFAULT_SERVICE_NAME, MDNS_DEFAULT_SERVICE_TYPE, MDNS_MODULE_NAME } from '../mdns.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataMdns' })
 export class MdnsConfigModel extends ModuleConfigModel {

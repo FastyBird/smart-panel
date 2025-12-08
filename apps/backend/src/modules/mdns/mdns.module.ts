@@ -1,12 +1,11 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 
-import { ApiTag } from '../swagger/decorators/api-tag.decorator';
-import { ExtendedDiscriminatorService } from '../swagger/services/extended-discriminator.service';
-import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
-import { SwaggerModule } from '../swagger/swagger.module';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ApiTag } from '../swagger/decorators/api-tag.decorator';
+import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../swagger/swagger.module';
 
 import { UpdateMdnsConfigDto } from './dto/update-config.dto';
 import { MDNS_MODULE_NAME } from './mdns.constants';

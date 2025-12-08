@@ -1,5 +1,6 @@
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
+
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';

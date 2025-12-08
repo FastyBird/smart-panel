@@ -123,7 +123,9 @@ describe('MdnsService', () => {
 
 	describe('getServiceName', () => {
 		it('should return configured service name', () => {
-			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(createMockConfig({ serviceName: 'Custom Panel Name' }));
+			jest
+				.spyOn(configService, 'getModuleConfig')
+				.mockReturnValue(createMockConfig({ serviceName: 'Custom Panel Name' }));
 
 			expect(service.getServiceName()).toBe('Custom Panel Name');
 		});
