@@ -12,7 +12,7 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { channelsSchema } from '../../../spec/channels';
+import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
 import {
 	ComponentType,
 	DESCRIPTORS,
@@ -993,7 +993,7 @@ export class DeviceManagerService {
 		let channel = await this.channelsService.findOneBy(column, identifierOrCategory, device.id, DEVICES_SHELLY_NG_TYPE);
 
 		if (channel === null) {
-			const channelSpec = channelsSchema[category];
+			const channelSpec = channelsSchema[category] as ChannelDefinition | undefined;
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
 				this.logger.warn(
@@ -1051,7 +1051,7 @@ export class DeviceManagerService {
 		);
 
 		if (prop === null) {
-			const channelSpec = channelsSchema[channel.category];
+			const channelSpec = channelsSchema[channel.category] as ChannelDefinition | undefined;
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
 				this.logger.warn(
