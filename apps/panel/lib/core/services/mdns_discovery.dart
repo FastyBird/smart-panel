@@ -64,22 +64,46 @@ class MdnsDiscoveryService {
     );
 
     if (appHost.isNotEmpty) {
-      final String host = isAndroidEmulator ? '10.0.2.2' : appHost;
+      // Parse the appHost to extract protocol and hostname
+      // appHost may include protocol (e.g., "http://localhost" or "https://192.168.1.100")
+      String hostname;
+      bool isSecure = false;
+
+      if (isAndroidEmulator) {
+        // For Android emulator, use the special IP
+        hostname = '10.0.2.2';
+      } else {
+        // Parse URL to extract hostname and protocol
+        // appHost may be:
+        // - Full URL: "http://localhost" or "https://192.168.1.100"
+        // - Just hostname: "localhost" or "192.168.1.100"
+        final uri = Uri.tryParse(appHost);
+        if (uri != null && uri.hasScheme) {
+          // URL has a protocol scheme (http:// or https://)
+          hostname = uri.host.isNotEmpty ? uri.host : uri.authority.split(':').first;
+          isSecure = uri.scheme == 'https';
+        } else {
+          // No protocol scheme, assume it's just a hostname/IP
+          // Remove any trailing slashes or paths
+          hostname = appHost.split('/').first.split(':').first;
+        }
+      }
+
       final int port = int.tryParse(backendPort) ?? 3000;
 
       if (kDebugMode) {
         debugPrint(
-          '[MDNS DISCOVERY] Using fallback backend from environment: $host:$port',
+          '[MDNS DISCOVERY] Using fallback backend from environment: $hostname:$port (secure: $isSecure)',
         );
       }
 
       return DiscoveredBackend(
         name: 'FastyBird Smart Panel (Dev)',
-        host: host,
+        host: hostname,
         port: port,
         apiPath: '/api/v1',
         version: null,
-        isSecure: false,
+        isSecure: isSecure,
       );
     }
 
