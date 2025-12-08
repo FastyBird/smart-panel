@@ -160,7 +160,7 @@ export class MdnsService implements OnApplicationShutdown {
 	/**
 	 * Stop advertising and clean up mDNS resources
 	 */
-	stopAdvertising(): void {
+	async stopAdvertising(): Promise<void> {
 		if (!this.isAdvertising) {
 			return;
 		}
@@ -169,9 +169,26 @@ export class MdnsService implements OnApplicationShutdown {
 			this.logger.log('[MDNS] Stopping mDNS service advertisement');
 
 			if (this.bonjour) {
-				// unpublishAll will stop all published services and destroy the bonjour instance
-				this.bonjour.unpublishAll(() => {
-					this.logger.debug('[MDNS] All services unpublished');
+				// Wait for unpublishAll to complete before destroying the bonjour instance
+				// This prevents race conditions where destroy() is called while unpublishing is in progress
+				const bonjourInstance = this.bonjour;
+
+				await new Promise<void>((resolve, reject) => {
+					try {
+						bonjourInstance.unpublishAll((error?: Error) => {
+							if (error) {
+								this.logger.warn(`[MDNS] Error during unpublishAll: ${error.message}`);
+								// Continue with cleanup even if unpublishAll had an error
+							} else {
+								this.logger.debug('[MDNS] All services unpublished');
+							}
+							resolve();
+						});
+					} catch (err) {
+						const error = err instanceof Error ? err : new Error(String(err));
+
+						reject(error);
+					}
 				});
 
 				this.bonjour.destroy();
@@ -221,9 +238,9 @@ export class MdnsService implements OnApplicationShutdown {
 	/**
 	 * NestJS lifecycle hook - called when application is shutting down
 	 */
-	onApplicationShutdown(signal?: string): void {
+	async onApplicationShutdown(signal?: string): Promise<void> {
 		this.logger.log(`[MDNS] Application shutdown triggered (signal: ${signal ?? 'unknown'})`);
 
-		this.stopAdvertising();
+		await this.stopAdvertising();
 	}
 }

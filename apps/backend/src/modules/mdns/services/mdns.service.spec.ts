@@ -62,8 +62,11 @@ describe('MdnsService', () => {
 		};
 
 		mockPublish.mockReturnValue(mockService);
-		mockUnpublishAll.mockImplementation((callback?: () => void) => {
-			if (callback) callback();
+		mockUnpublishAll.mockImplementation((callback?: (error?: Error) => void) => {
+			// Simulate async behavior - call callback asynchronously to match real behavior
+			if (callback) {
+				setImmediate(() => callback());
+			}
 		});
 		mockDestroy.mockReturnValue(undefined);
 
@@ -207,36 +210,62 @@ describe('MdnsService', () => {
 	});
 
 	describe('stopAdvertising', () => {
-		it('should stop advertising and clean up resources', () => {
+		it('should stop advertising and clean up resources', async () => {
 			// First start advertising
 			service.advertise(3000);
 
 			expect(service.isCurrentlyAdvertising()).toBe(true);
 
 			// Then stop
-			service.stopAdvertising();
+			await service.stopAdvertising();
 
 			expect(mockUnpublishAll).toHaveBeenCalled();
 			expect(mockDestroy).toHaveBeenCalled();
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 
-		it('should do nothing if not currently advertising', () => {
-			service.stopAdvertising();
+		it('should do nothing if not currently advertising', async () => {
+			await service.stopAdvertising();
 
 			expect(mockUnpublishAll).not.toHaveBeenCalled();
 			expect(mockDestroy).not.toHaveBeenCalled();
 		});
 
-		it('should handle stop errors gracefully', () => {
+		it('should handle stop errors gracefully', async () => {
 			service.advertise(3000);
 
-			mockUnpublishAll.mockImplementationOnce(() => {
-				throw new Error('Stop error');
+			mockUnpublishAll.mockImplementationOnce((callback?: (error?: Error) => void) => {
+				if (callback) {
+					setImmediate(() => callback(new Error('Stop error')));
+				}
 			});
 
 			// Should not throw
-			expect(() => service.stopAdvertising()).not.toThrow();
+			await expect(service.stopAdvertising()).resolves.not.toThrow();
+		});
+
+		it('should wait for unpublishAll before calling destroy', async () => {
+			let destroyCalled = false;
+			let unpublishAllCompleted = false;
+
+			service.advertise(3000);
+
+			mockUnpublishAll.mockImplementationOnce((callback?: (error?: Error) => void) => {
+				setTimeout(() => {
+					unpublishAllCompleted = true;
+					if (callback) callback();
+				}, 10);
+			});
+
+			mockDestroy.mockImplementationOnce(() => {
+				destroyCalled = true;
+				expect(unpublishAllCompleted).toBe(true);
+			});
+
+			await service.stopAdvertising();
+
+			expect(destroyCalled).toBe(true);
+			expect(unpublishAllCompleted).toBe(true);
 		});
 	});
 
@@ -276,28 +305,28 @@ describe('MdnsService', () => {
 			expect(service.isCurrentlyAdvertising()).toBe(true);
 		});
 
-		it('should return false after stopping advertisement', () => {
+		it('should return false after stopping advertisement', async () => {
 			service.advertise(3000);
-			service.stopAdvertising();
+			await service.stopAdvertising();
 
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 	});
 
 	describe('onApplicationShutdown', () => {
-		it('should stop advertising on application shutdown', () => {
+		it('should stop advertising on application shutdown', async () => {
 			service.advertise(3000);
 
-			service.onApplicationShutdown('SIGTERM');
+			await service.onApplicationShutdown('SIGTERM');
 
 			expect(mockUnpublishAll).toHaveBeenCalled();
 			expect(mockDestroy).toHaveBeenCalled();
 			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 
-		it('should handle shutdown without advertising', () => {
+		it('should handle shutdown without advertising', async () => {
 			// Should not throw
-			expect(() => service.onApplicationShutdown('SIGTERM')).not.toThrow();
+			await expect(service.onApplicationShutdown('SIGTERM')).resolves.not.toThrow();
 		});
 	});
 });
