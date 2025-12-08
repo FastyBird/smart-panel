@@ -158,10 +158,20 @@ class _MyAppState extends State<MyApp> {
     // Normalize URL - ensure it has protocol and API path
     String normalizedUrl = url.trim();
     
+    // Normalize protocol to lowercase for case-insensitive check
+    final lowerUrl = normalizedUrl.toLowerCase();
+    
     // Add protocol if missing (default to http://)
-    if (!normalizedUrl.startsWith('http://') && 
-        !normalizedUrl.startsWith('https://')) {
+    if (!lowerUrl.startsWith('http://') && 
+        !lowerUrl.startsWith('https://')) {
       normalizedUrl = 'http://$normalizedUrl';
+    } else {
+      // Normalize the protocol to lowercase if present
+      if (lowerUrl.startsWith('https://')) {
+        normalizedUrl = 'https://${normalizedUrl.substring(8)}';
+      } else if (lowerUrl.startsWith('http://')) {
+        normalizedUrl = 'http://${normalizedUrl.substring(7)}';
+      }
     }
     
     // Ensure it has the API path
