@@ -8,14 +8,20 @@ import { configModulesStoreKey } from '../store/keys';
 
 import { useConfigModule } from './useConfigModule';
 
-const mockData = ref({
+const mockData = ref<Record<string, { type: string; enabled: boolean }>>({
 	'test-module': {
 		type: 'test-module',
 		enabled: true,
 	},
 });
 
-const mockSemaphore = ref({
+const mockSemaphore = ref<{
+	fetching: {
+		items: boolean;
+		item: string[];
+	};
+	updating: string[];
+}>({
 	fetching: {
 		items: false,
 		item: [],
@@ -95,11 +101,11 @@ describe('useConfigModule', () => {
 
 	it('isLoading returns true when module is being fetched', () => {
 		// Module should not be in data, but should be in fetching.item
-		mockData.value = {};
+		mockData.value = {} as Record<string, { type: string; enabled: boolean }>;
 		mockSemaphore.value = {
 			fetching: {
 				items: false,
-				item: ['test-module'],
+				item: ['test-module'] as string[],
 			},
 			updating: [],
 		};
@@ -109,7 +115,7 @@ describe('useConfigModule', () => {
 
 	it('isLoading returns false when module is not in data and not being fetched', () => {
 		// Ensure the module is not in data and not being fetched
-		mockData.value = {};
+		mockData.value = {} as Record<string, { type: string; enabled: boolean }>;
 		mockSemaphore.value = {
 			fetching: {
 				items: false,

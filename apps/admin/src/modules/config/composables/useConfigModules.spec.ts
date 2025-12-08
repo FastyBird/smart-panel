@@ -18,7 +18,7 @@ const mockData = {
 			type: 'another-module',
 			enabled: false,
 		},
-	},
+	} as Record<string, { type: string; enabled: boolean }>,
 };
 
 const mockSemaphore = ref({

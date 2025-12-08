@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FormResult } from '../config.constants';
+import { FormResult, Layout } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 
 import ConfigModule from './config-module.vue';
@@ -117,7 +117,7 @@ describe('ConfigModule', () => {
 
 	it('shows loading state when configModule is null', () => {
 		mockUseConfigModule.mockReturnValue({
-			configModule: { value: null },
+			configModule: { value: null as any },
 			isLoading: { value: false },
 			fetchConfigModule: mockFetchConfigModule,
 		});
@@ -134,7 +134,7 @@ describe('ConfigModule', () => {
 
 	it('does not render form when element has no moduleConfigEditForm', () => {
 		mockUseModule.mockReturnValue({
-			element: { value: { components: {} } },
+			element: { value: { components: {} } as any },
 		});
 
 		const wrapper = mount(ConfigModule, {
@@ -196,7 +196,7 @@ describe('ConfigModule', () => {
 		const wrapper = mount(ConfigModule, {
 			props: {
 				type: 'test-module',
-				layout: 'phone',
+				layout: Layout.PHONE,
 			},
 		});
 
@@ -208,8 +208,8 @@ describe('ConfigModule', () => {
 		if (formComponent.exists()) {
 			expect(formComponent.props('layout')).toBe('phone');
 		} else {
-			// If component doesn't exist, verify the props are set correctly
-			expect(wrapper.props('layout')).toBe('phone');
+		// If component doesn't exist, verify the props are set correctly
+		expect(wrapper.props('layout')).toBe(Layout.PHONE);
 		}
 	});
 });
