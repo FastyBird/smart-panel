@@ -654,6 +654,15 @@ class StartupManagerService {
     }
   }
 
+  /// Store a backend URL for future use
+  Future<void> storeBackendUrl(String url) async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      await _securedStorage.write(key: _backendUrlKey, value: url);
+    } else {
+      await _securedStorageFallback.write(key: _backendUrlKey, value: url);
+    }
+  }
+
   Future<void> _storeBackendUrl(String url) async {
     if (Platform.isAndroid || Platform.isIOS) {
       await _securedStorage.write(key: _backendUrlKey, value: url);

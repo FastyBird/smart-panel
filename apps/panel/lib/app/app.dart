@@ -172,6 +172,8 @@ class _MyAppState extends State<MyApp> {
 
       switch (result) {
         case InitializationResult.success:
+          // Store the URL for future use
+          await _startupManager.storeBackendUrl(normalizedUrl);
           _appState.value = AppState.ready;
           break;
 

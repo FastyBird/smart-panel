@@ -58,10 +58,20 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   void initState() {
     super.initState();
     _startDiscovery();
+    // Add listener to update button state when text changes
+    _manualUrlController.addListener(_onManualUrlChanged);
+  }
+
+  void _onManualUrlChanged() {
+    // Trigger rebuild when manual URL text changes to update button state
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _manualUrlController.removeListener(_onManualUrlChanged);
     _discoveryService.dispose();
     _manualUrlController.dispose();
     super.dispose();
