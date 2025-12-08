@@ -407,31 +407,51 @@ const setMarker = (lat: number, lon: number): void => {
 };
 
 const fetchCityNameCoordinates = async (query: string): Promise<CityGeolocation[]> => {
-	const apiResponse = await backend.client.GET(`/weather-module/geolocation/city-to-coordinates`, {
-		params: {
-			query: {
-				city: query,
+	try {
+		const apiResponse = await backend.client.GET(`/weather-module/geolocation/city-to-coordinates`, {
+			params: {
+				query: {
+					city: query,
+				},
 			},
-		},
-	});
+		});
 
-	const { data: responseData } = apiResponse;
+		if (!apiResponse) {
+			return [];
+		}
 
-	return typeof responseData !== 'undefined' && Array.isArray(responseData.data) ? responseData.data : [];
+		const { data: responseData } = apiResponse;
+
+		return typeof responseData !== 'undefined' && Array.isArray(responseData.data) ? responseData.data : [];
+	} catch (error) {
+		logger.error(error as unknown as Error);
+
+		return [];
+	}
 };
 
 const fetchZipCodeCoordinates = async (query: string): Promise<ZipGeolocation | null> => {
-	const apiResponse = await backend.client.GET(`/weather-module/geolocation/zip-to-coordinates`, {
-		params: {
-			query: {
-				zip: query,
+	try {
+		const apiResponse = await backend.client.GET(`/weather-module/geolocation/zip-to-coordinates`, {
+			params: {
+				query: {
+					zip: query,
+				},
 			},
-		},
-	});
+		});
 
-	const { data: responseData } = apiResponse;
+		if (!apiResponse) {
+			return null;
+		}
 
-	return typeof responseData !== 'undefined' && responseData.data ? responseData.data : null;
+		const { data: responseData } = apiResponse;
+
+		return typeof responseData !== 'undefined' && responseData.data ? responseData.data : null;
+	} catch (error) {
+		logger.error(error as unknown as Error);
+
+		return null;
+	}
 };
 
 onBeforeMount(async (): Promise<void> => {
