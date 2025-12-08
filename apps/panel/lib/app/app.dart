@@ -208,6 +208,12 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
+  void dispose() {
+    _appState.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<AppState>(
       valueListenable: _appState,
