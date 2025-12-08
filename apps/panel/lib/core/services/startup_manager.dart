@@ -146,7 +146,16 @@ class StartupManagerService {
     );
 
     if (appHost.isNotEmpty) {
-      final String host = isAndroidEmulator ? 'http://10.0.2.2' : appHost;
+      String host;
+      if (isAndroidEmulator) {
+        host = 'http://10.0.2.2';
+      } else {
+        // Ensure appHost has a protocol prefix
+        host = appHost;
+        if (!host.startsWith('http://') && !host.startsWith('https://')) {
+          host = 'http://$host';
+        }
+      }
       return '$host:$backendPort/api/v1';
     }
 
