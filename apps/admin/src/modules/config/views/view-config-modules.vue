@@ -94,7 +94,7 @@ const { t } = useI18n();
 
 const { isMDDevice } = useBreakpoints();
 
-const { modules } = useModules();
+const { modules, getElement } = useModules();
 
 const remoteFormSubmit = ref<Record<IModule['type'], boolean>>(makeInitialRecord<boolean>(props.remoteFormSubmit));
 const remoteFormResult = ref<Record<IModule['type'], FormResultType>>(makeInitialRecord<FormResultType>(props.remoteFormResult));
@@ -104,6 +104,14 @@ const activeNames = ref(modules.value.map((module) => module.type));
 const activeName = ref(activeNames.value ? activeNames.value[0] : undefined);
 
 const waitForModuleToFinish = (type: IModule['type']): Promise<void> => {
+	const element = getElement(type);
+
+	// If the module doesn't have a config form component, immediately resolve
+	// since there's nothing to save
+	if (!element?.components?.moduleConfigEditForm) {
+		return Promise.resolve();
+	}
+
 	return new Promise((resolve) => {
 		const stop = watch(
 			() => remoteFormResult.value[type],
@@ -125,18 +133,23 @@ watch(
 	async (val: boolean): Promise<void> => {
 		if (val) {
 			for (const { type } of modules.value) {
-				setTimeout(() => {
-					remoteFormSubmit.value[type] = true;
-				}, 500);
+				const element = getElement(type);
 
-				await waitForModuleToFinish(type);
+				// Only trigger form submit for modules that have a config form component
+				if (element?.components?.moduleConfigEditForm) {
+					setTimeout(() => {
+						remoteFormSubmit.value[type] = true;
+					}, 500);
 
-				if (remoteFormResult.value[type] === FormResult.ERROR) {
-					// Stop on first error
-					emit('update:remoteFormResult', FormResult.ERROR);
-					emit('update:remoteFormSubmit', false);
+					await waitForModuleToFinish(type);
 
-					return;
+					if (remoteFormResult.value[type] === FormResult.ERROR) {
+						// Stop on first error
+						emit('update:remoteFormResult', FormResult.ERROR);
+						emit('update:remoteFormSubmit', false);
+
+						return;
+					}
 				}
 			}
 
