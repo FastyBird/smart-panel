@@ -312,6 +312,11 @@ class StartupManagerService {
       locator.unregister<Dio>();
     } catch (_) {}
 
+    // Unregister SocketService
+    try {
+      locator.unregister<SocketService>();
+    } catch (_) {}
+
     // Unregister SystemActionsService
     try {
       locator.unregister<SystemActionsService>();
