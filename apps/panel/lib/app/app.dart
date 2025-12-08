@@ -155,8 +155,16 @@ class _MyAppState extends State<MyApp> {
   Future<void> _onManualUrlEntered(String url) async {
     _appState.value = AppState.loading;
 
-    // Normalize URL - ensure it has the API path
+    // Normalize URL - ensure it has protocol and API path
     String normalizedUrl = url.trim();
+    
+    // Add protocol if missing (default to http://)
+    if (!normalizedUrl.startsWith('http://') && 
+        !normalizedUrl.startsWith('https://')) {
+      normalizedUrl = 'http://$normalizedUrl';
+    }
+    
+    // Ensure it has the API path
     if (!normalizedUrl.contains('/api/')) {
       // Remove trailing slash if present
       if (normalizedUrl.endsWith('/')) {
