@@ -98,7 +98,7 @@ import { orderBy } from 'natural-orderby';
 import { IconPicker } from '../../../common';
 import { DashboardException, FormResult, type FormResultType, type IPageAddFormProps, usePageAddForm } from '../../../modules/dashboard';
 import { type IDevice, useDevices } from '../../../modules/devices';
-import { DisplayProfileSelect } from '../../../modules/system';
+import { DisplayProfileSelect } from '../../../modules/displays';
 import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 import type { IDeviceDetailPageAddForm } from '../schemas/pages.types';
 

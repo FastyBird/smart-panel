@@ -99,7 +99,7 @@ import { orderBy } from 'natural-orderby';
 import { IconPicker } from '../../../common';
 import { DashboardException, FormResult, type FormResultType, type IPageEditFormProps, usePageEditForm } from '../../../modules/dashboard';
 import { type IDevice, useDevices } from '../../../modules/devices';
-import { DisplayProfileSelect } from '../../../modules/system';
+import { DisplayProfileSelect } from '../../../modules/displays';
 import type { IDeviceDetailPageEditForm } from '../schemas/pages.types';
 
 defineOptions({

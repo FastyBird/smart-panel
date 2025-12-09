@@ -194,7 +194,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
-import { TableColumnDisplayProfile } from '../../../system';
+import { TableColumnDisplayProfile } from '../../../displays';
 import type { IPagesFilter } from '../../composables/types';
 import type { IPage } from '../../store/pages.store.types';
 

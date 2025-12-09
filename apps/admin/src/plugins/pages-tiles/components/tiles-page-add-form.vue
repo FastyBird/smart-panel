@@ -176,7 +176,7 @@ import { Icon } from '@iconify/vue';
 
 import { IconPicker } from '../../../common';
 import { FormResult, type FormResultType, type IPageAddFormProps, usePageAddForm } from '../../../modules/dashboard';
-import { DisplayProfileSelect } from '../../../modules/system';
+import { DisplayProfileSelect } from '../../../modules/displays';
 import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 import type { ITilesPageAddForm } from '../schemas/pages.types';
 

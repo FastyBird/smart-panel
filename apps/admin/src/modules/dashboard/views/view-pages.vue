@@ -170,7 +170,7 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import { useDisplaysProfiles } from '../../system';
+import { useDisplaysProfiles } from '../../displays';
 import { ListPages, ListPagesAdjust } from '../components/components';
 import { usePagesActions, usePagesDataSource } from '../composables/composables';
 import { RouteNames } from '../dashboard.constants';

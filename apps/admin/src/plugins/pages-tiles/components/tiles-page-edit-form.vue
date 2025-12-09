@@ -177,7 +177,7 @@ import { Icon } from '@iconify/vue';
 
 import { IconPicker } from '../../../common';
 import { FormResult, type FormResultType, type IPageEditFormProps, usePageEditForm } from '../../../modules/dashboard';
-import { DisplayProfileSelect } from '../../../modules/system';
+import { DisplayProfileSelect } from '../../../modules/displays';
 import type { ITilesPageEditForm } from '../schemas/pages.types';
 
 defineOptions({

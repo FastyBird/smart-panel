@@ -64,22 +64,6 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					title: 'System information',
 					icon: 'mdi:cellphone-information',
 				},
-				children: [
-					{
-						path: 'display/:display/edit',
-						name: RouteNames.DISPLAY_EDIT,
-						component: () => import('../views/view-display-profile-edit.vue'),
-						props: true,
-						meta: {
-							guards: {
-								authenticated: true,
-								roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
-							},
-							title: 'Edit display',
-							icon: 'mdi:monitor-edit',
-						},
-					},
-				],
 			},
 			{
 				path: 'logs',

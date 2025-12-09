@@ -1,0 +1,62 @@
+{
+	"title": "Displays",
+	"description": "Manage your display devices",
+	"table": {
+		"columns": {
+			"name": "Name",
+			"macAddress": "MAC Address",
+			"version": "Version",
+			"resolution": "Resolution",
+			"status": "Status",
+			"createdAt": "Created"
+		}
+	},
+	"detail": {
+		"title": "Display Detail",
+		"info": {
+			"title": "Display Information",
+			"macAddress": "MAC Address",
+			"version": "Version",
+			"build": "Build",
+			"resolution": "Resolution",
+			"pixelRatio": "Pixel Ratio",
+			"gridSize": "Grid Size"
+		},
+		"settings": {
+			"title": "Display Settings",
+			"name": "Name",
+			"darkMode": "Dark Mode",
+			"brightness": "Brightness",
+			"screenLockDuration": "Screen Lock Duration",
+			"screenSaver": "Screen Saver"
+		},
+		"tokens": {
+			"title": "Access Tokens",
+			"description": "Manage access tokens for this display. Each display should have at most one active token.",
+			"noTokens": "No active tokens",
+			"revokeConfirm": "Are you sure you want to revoke the access token? The display will need to re-register.",
+			"revoked": "Token revoked successfully"
+		}
+	},
+	"form": {
+		"edit": {
+			"title": "Edit Display"
+		}
+	},
+	"messages": {
+		"notFound": "Display not found",
+		"loadError": "Failed to load displays",
+		"updateSuccess": "Display updated successfully",
+		"updateError": "Failed to update display",
+		"deleteSuccess": "Display deleted successfully",
+		"deleteError": "Failed to delete display"
+	},
+	"actions": {
+		"refresh": "Refresh",
+		"edit": "Edit",
+		"delete": "Delete",
+		"viewDetail": "View Detail",
+		"revokeToken": "Revoke Token",
+		"manageTokens": "Manage Tokens"
+	}
+}

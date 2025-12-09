@@ -110,7 +110,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { useDisplaysProfiles } from '../../../system';
+import { useDisplaysProfiles } from '../../../displays';
 import { type IPagesFilter } from '../../composables/types';
 import { usePagesPlugins } from '../../composables/usePagesPlugins';
 

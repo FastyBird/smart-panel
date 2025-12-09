@@ -20,14 +20,8 @@ import enUS from './locales/en-US.json';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
 import { SystemActionsService, provideSystemActionsService } from './services/system-actions.service';
 import { SystemLogsReporterService, provideSystemLogsReporter } from './services/system-logs-reporter.service';
-import { displaysStoreKey, extensionsStoreKey, logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
-import {
-	registerDisplaysProfilesStore,
-	registerExtensionsStore,
-	registerLogsEntriesStore,
-	registerSystemInfoStore,
-	registerThrottleStatusStore,
-} from './store/stores';
+import { extensionsStoreKey, logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
+import { registerExtensionsStore, registerLogsEntriesStore, registerSystemInfoStore, registerThrottleStatusStore } from './store/stores';
 import { EventType, SYSTEM_MODULE_EVENT_PREFIX, SYSTEM_MODULE_NAME } from './system.constants';
 
 const systemAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-System');
@@ -58,11 +52,6 @@ export default {
 
 		app.provide(throttleStatusStoreKey, throttleStatusStore);
 		storesManager.addStore(throttleStatusStoreKey, throttleStatusStore);
-
-		const displaysStore = registerDisplaysProfilesStore(options.store);
-
-		app.provide(displaysStoreKey, displaysStore);
-		storesManager.addStore(displaysStoreKey, displaysStore);
 
 		const logsEntriesStore = registerLogsEntriesStore(options.store);
 

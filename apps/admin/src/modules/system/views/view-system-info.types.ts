@@ -1,5 +1,2 @@
-import type { IDisplayProfile } from '../store/displays-profiles.store.types';
-
-export interface IViewSystemInfoProps {
-	display?: IDisplayProfile['id'];
-}
+// No props needed for system info view now that displays are managed separately
+export type IViewSystemInfoProps = Record<string, never>;

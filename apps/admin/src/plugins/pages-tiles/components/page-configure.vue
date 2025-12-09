@@ -75,8 +75,23 @@ import {
 	tilesStoreKey,
 	useTiles,
 } from '../../../modules/dashboard';
-import { type IDisplayProfile, useDisplaysProfiles } from '../../../modules/system';
-import { calculateLayout } from '../../../modules/system/utils/gird-layout.utils';
+import { type IDisplayProfile, useDisplaysProfiles } from '../../../modules/displays';
+
+// Simple layout calculation - displays now contain rows, cols, and unitSize
+const calculateLayout = (
+	display: IDisplayProfile | null,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+	_pageSettings?: any
+): { rows: number; cols: number; unitSize: number } => {
+	if (!display) {
+		return { rows: 12, cols: 24, unitSize: 8 };
+	}
+	return {
+		rows: display.rows ?? 12,
+		cols: display.cols ?? 24,
+		unitSize: display.unitSize ?? 8,
+	};
+};
 
 import type { IPageConfigureProps } from './page-configure.types';
 import TilePreview from './tile-preview.vue';
@@ -131,13 +146,14 @@ const initialized = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
 
 const displayProfile = computed<IDisplayProfile | null>((): IDisplayProfile | null => {
-	const primary = displays.value.find((display) => display.primary);
+	// Get the first display as default since we no longer have a "primary" flag
+	const defaultDisplay = displays.value[0] ?? null;
 
 	if (props.page.display !== null) {
-		return displays.value.find((display) => display.id === props.page.display) ?? primary ?? null;
+		return displays.value.find((display) => display.id === props.page.display) ?? defaultDisplay;
 	}
 
-	return primary ?? null;
+	return defaultDisplay;
 });
 
 const gridLayout = computed<{ rows: number; cols: number } | null>((): { rows: number; cols: number } | null => {

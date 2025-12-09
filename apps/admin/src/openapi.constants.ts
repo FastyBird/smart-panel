@@ -81,12 +81,7 @@ export type DisplaysModuleDisplaySchema = components['schemas']['DisplaysModuleD
 export type DisplaysModuleUpdateDisplaySchema = components['schemas']['DisplaysModuleUpdateDisplay'];
 export type DisplaysModuleRegisterDisplaySchema = components['schemas']['DisplaysModuleRegisterDisplay'];
 export type DisplaysModuleRegistrationSchema = components['schemas']['DisplaysModuleDataRegistration'];
-
-// Displays Module Schemas
-export type DisplaysModuleDisplaySchema = components['schemas']['DisplaysModuleDataDisplay'];
-export type DisplaysModuleUpdateDisplaySchema = components['schemas']['DisplaysModuleUpdateDisplay'];
-export type DisplaysModuleRegisterDisplaySchema = components['schemas']['DisplaysModuleRegisterDisplay'];
-export type DisplaysModuleRegistrationSchema = components['schemas']['DisplaysModuleDataRegistration'];
+export type DisplaysModuleLongLiveTokenSchema = components['schemas']['AuthModuleDataLongLiveToken'];
 
 // System Module Schemas
 export type SystemModuleExtensionAdminSchema = components['schemas']['SystemModuleDataExtensionAdmin'];
