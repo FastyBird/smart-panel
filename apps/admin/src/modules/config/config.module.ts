@@ -17,16 +17,12 @@ import {
 import { CONFIG_MODULE_EVENT_PREFIX, CONFIG_MODULE_NAME, EventType } from './config.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
-import { registerConfigAudioStore } from './store/config-audio.store';
-import { registerConfigDisplayStore } from './store/config-display.store';
 import { registerConfigLanguageStore } from './store/config-language.store';
 import { registerConfigModuleStore } from './store/config-modules.store';
 import { registerConfigPluginStore } from './store/config-plugins.store';
 import { registerConfigWeatherStore } from './store/config-weather.store';
 import {
 	configAppStoreKey,
-	configAudioStoreKey,
-	configDisplayStoreKey,
 	configLanguageStoreKey,
 	configModulesStoreKey,
 	configPluginsStoreKey,
@@ -62,16 +58,6 @@ export default {
 			description: 'Adjust system behaviour, appearance, language, and integrations.',
 			elements: [],
 		});
-
-		const configAudioStore = registerConfigAudioStore(options.store);
-
-		app.provide(configAudioStoreKey, configAudioStore);
-		storesManager.addStore(configAudioStoreKey, configAudioStore);
-
-		const configDisplayStore = registerConfigDisplayStore(options.store);
-
-		app.provide(configDisplayStoreKey, configDisplayStore);
-		storesManager.addStore(configDisplayStoreKey, configDisplayStore);
 
 		const configLanguageStore = registerConfigLanguageStore(options.store);
 
@@ -117,18 +103,6 @@ export default {
 
 			switch (data.event) {
 				case EventType.CONFIG_UPDATED:
-					if ('audio' in data.payload && typeof data.payload.audio === 'object' && data.payload.audio !== null) {
-						configAudioStore.onEvent({
-							data: data.payload.audio,
-						});
-					}
-
-					if ('display' in data.payload && typeof data.payload.display === 'object' && data.payload.display !== null) {
-						configDisplayStore.onEvent({
-							data: data.payload.display,
-						});
-					}
-
 					if ('language' in data.payload && typeof data.payload.language === 'object' && data.payload.language !== null) {
 						configLanguageStore.onEvent({
 							data: data.payload.language,

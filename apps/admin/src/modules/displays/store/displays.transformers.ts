@@ -21,6 +21,14 @@ export const transformDisplayResponse = (response: any): IDisplay => {
 		brightness: response.brightness ?? 100,
 		screenLockDuration: response.screen_lock_duration ?? 30,
 		screenSaver: response.screen_saver ?? true,
+		// Audio capabilities
+		audioOutputSupported: response.audio_output_supported ?? false,
+		audioInputSupported: response.audio_input_supported ?? false,
+		// Audio settings
+		speaker: response.speaker ?? false,
+		speakerVolume: response.speaker_volume ?? 50,
+		microphone: response.microphone ?? false,
+		microphoneVolume: response.microphone_volume ?? 50,
 		createdAt: response.created_at,
 		updatedAt: response.updated_at ?? null,
 	});
@@ -59,6 +67,11 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 		brightness: display.brightness,
 		screen_lock_duration: display.screenLockDuration,
 		screen_saver: display.screenSaver,
+		// Audio settings
+		speaker: display.speaker,
+		speaker_volume: display.speakerVolume,
+		microphone: display.microphone,
+		microphone_volume: display.microphoneVolume,
 	});
 
 	if (!parsedRequest.success) {

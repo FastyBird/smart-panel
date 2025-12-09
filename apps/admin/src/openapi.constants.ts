@@ -64,8 +64,6 @@ export type ConfigModuleUpdateWeatherLatLonSchema = components['schemas']['Confi
 export type ConfigModuleUpdateWeatherCityNameSchema = components['schemas']['ConfigModuleUpdateWeatherCityName'];
 export type ConfigModuleUpdateWeatherCityIdSchema = components['schemas']['ConfigModuleUpdateWeatherCityId'];
 export type ConfigModuleUpdateWeatherZipCodeSchema = components['schemas']['ConfigModuleUpdateWeatherZipCode'];
-export type ConfigModuleAudioSchema = components['schemas']['ConfigModuleDataAudio'];
-export type ConfigModuleUpdateAudioSchema = components['schemas']['ConfigModuleUpdateAudio'];
 export type ConfigModuleSystemSchema = components['schemas']['ConfigModuleDataSystem'];
 export type ConfigModuleUpdateSystemSchema = components['schemas']['ConfigModuleUpdateSystem'];
 export type ConfigModuleAppSchema = components['schemas']['ConfigModuleDataApp'];
@@ -247,7 +245,6 @@ export type DashboardModuleDeleteDataSourceOperation = operations['delete-dashbo
 // Config Module Operations
 export type ConfigModuleGetConfigSectionOperation = operations['get-config-module-config-section'];
 export type ConfigModuleUpdateLanguageOperation = operations['update-config-module-language'];
-export type ConfigModuleUpdateAudioOperation = operations['update-config-module-audio'];
 export type ConfigModuleUpdateWeatherOperation = operations['update-config-module-weather'];
 export type ConfigModuleUpdateSystemOperation = operations['update-config-module-system'];
 export type ConfigModuleGetConfigPluginOperation = operations['get-config-module-config-plugin'];
@@ -317,8 +314,6 @@ export { ConfigModuleUpdateLanguageLanguage as ConfigModuleLanguageLanguage } fr
 export { ConfigModuleUpdateLanguageTime_format as ConfigModuleLanguageTimeFormat } from './openapi';
 
 export { ConfigModuleUpdateWeatherUnit as ConfigModuleWeatherUnit } from './openapi';
-
-export { ConfigModuleUpdateAudioType as ConfigModuleAudioType } from './openapi';
 
 export { ConfigModuleUpdateLanguageType as ConfigModuleLanguageType } from './openapi';
 

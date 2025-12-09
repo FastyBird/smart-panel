@@ -23,6 +23,14 @@ export const DisplaySchema = z.object({
 	brightness: z.number().min(0).max(100).default(100),
 	screenLockDuration: z.number().default(30),
 	screenSaver: z.boolean().default(true),
+	// Audio capabilities
+	audioOutputSupported: z.boolean().default(false),
+	audioInputSupported: z.boolean().default(false),
+	// Audio settings
+	speaker: z.boolean().default(false),
+	speakerVolume: z.number().min(0).max(100).default(50),
+	microphone: z.boolean().default(false),
+	microphoneVolume: z.number().min(0).max(100).default(50),
 	createdAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
 		.transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -69,6 +77,14 @@ export const DisplaysSetActionPayloadSchema = z.object({
 		brightness: z.number().min(0).max(100).optional(),
 		screenLockDuration: z.number().optional(),
 		screenSaver: z.boolean().optional(),
+		// Audio capabilities
+		audioOutputSupported: z.boolean().optional(),
+		audioInputSupported: z.boolean().optional(),
+		// Audio settings
+		speaker: z.boolean().optional(),
+		speakerVolume: z.number().min(0).max(100).optional(),
+		microphone: z.boolean().optional(),
+		microphoneVolume: z.number().min(0).max(100).optional(),
 	}),
 });
 
@@ -104,6 +120,11 @@ export const DisplaysEditActionPayloadSchema = z.object({
 		brightness: z.number().min(0).max(100).optional(),
 		screenLockDuration: z.number().optional(),
 		screenSaver: z.boolean().optional(),
+		// Audio settings (only if supported)
+		speaker: z.boolean().optional(),
+		speakerVolume: z.number().min(0).max(100).optional(),
+		microphone: z.boolean().optional(),
+		microphoneVolume: z.number().min(0).max(100).optional(),
 	}),
 });
 
@@ -140,6 +161,11 @@ export const DisplayUpdateReqSchema = z.object({
 	brightness: z.number().min(0).max(100).optional(),
 	screen_lock_duration: z.number().optional(),
 	screen_saver: z.boolean().optional(),
+	// Audio settings
+	speaker: z.boolean().optional(),
+	speaker_volume: z.number().min(0).max(100).optional(),
+	microphone: z.boolean().optional(),
+	microphone_volume: z.number().min(0).max(100).optional(),
 });
 
 export const DisplayResSchema = z.object({
@@ -158,6 +184,14 @@ export const DisplayResSchema = z.object({
 	brightness: z.number(),
 	screen_lock_duration: z.number(),
 	screen_saver: z.boolean(),
+	// Audio capabilities
+	audio_output_supported: z.boolean(),
+	audio_input_supported: z.boolean(),
+	// Audio settings
+	speaker: z.boolean(),
+	speaker_volume: z.number(),
+	microphone: z.boolean(),
+	microphone_volume: z.number(),
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional().default(null),
 });

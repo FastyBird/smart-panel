@@ -164,6 +164,55 @@
 		</el-table-column>
 
 		<el-table-column
+			:label="t('displaysModule.table.columns.audio')"
+			:width="100"
+			align="center"
+		>
+			<template #default="scope">
+				<div class="flex items-center justify-center gap-2">
+					<el-tooltip
+						v-if="scope.row.audioOutputSupported"
+						:content="t('displaysModule.table.tooltips.speakerSupported')"
+						placement="top"
+					>
+						<el-icon
+							:size="18"
+							class="text-green-500"
+						>
+							<icon icon="mdi:volume-high" />
+						</el-icon>
+					</el-tooltip>
+					<el-icon
+						v-else
+						:size="18"
+						class="text-gray-300"
+					>
+						<icon icon="mdi:volume-off" />
+					</el-icon>
+					<el-tooltip
+						v-if="scope.row.audioInputSupported"
+						:content="t('displaysModule.table.tooltips.microphoneSupported')"
+						placement="top"
+					>
+						<el-icon
+							:size="18"
+							class="text-green-500"
+						>
+							<icon icon="mdi:microphone" />
+						</el-icon>
+					</el-tooltip>
+					<el-icon
+						v-else
+						:size="18"
+						class="text-gray-300"
+					>
+						<icon icon="mdi:microphone-off" />
+					</el-icon>
+				</div>
+			</template>
+		</el-table-column>
+
+		<el-table-column
 			:label="t('displaysModule.table.columns.createdAt')"
 			prop="createdAt"
 			sortable="custom"
@@ -224,7 +273,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
+import { ElButton, ElIcon, ElResult, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

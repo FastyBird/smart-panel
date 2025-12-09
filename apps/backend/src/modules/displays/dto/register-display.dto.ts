@@ -1,5 +1,14 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsInt, IsMACAddress, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+	IsBoolean,
+	IsInt,
+	IsMACAddress,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	ValidateNested,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -118,6 +127,38 @@ export class RegisterDisplayDto {
 	@IsOptional()
 	@IsInt({ message: '[{"field":"cols","reason":"Cols must be an integer."}]' })
 	cols?: number;
+
+	@ApiPropertyOptional({
+		name: 'audio_output_supported',
+		description: 'Whether the display supports audio output (speakers)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'audio_output_supported' })
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"audio_output_supported","reason":"Audio output supported must be a boolean."}]' })
+	@Transform(
+		({ obj }: { obj: { audio_output_supported?: boolean; audioOutputSupported?: boolean } }) =>
+			obj.audio_output_supported ?? obj.audioOutputSupported,
+		{ toClassOnly: true },
+	)
+	audioOutputSupported?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'audio_input_supported',
+		description: 'Whether the display supports audio input (microphone)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'audio_input_supported' })
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"audio_input_supported","reason":"Audio input supported must be a boolean."}]' })
+	@Transform(
+		({ obj }: { obj: { audio_input_supported?: boolean; audioInputSupported?: boolean } }) =>
+			obj.audio_input_supported ?? obj.audioInputSupported,
+		{ toClassOnly: true },
+	)
+	audioInputSupported?: boolean;
 }
 
 @ApiSchema({ name: 'DisplaysModuleReqRegisterDisplay' })

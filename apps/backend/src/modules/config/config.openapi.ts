@@ -4,7 +4,6 @@
 import {
 	ReqUpdateModuleDto,
 	ReqUpdateSectionDto,
-	UpdateAudioConfigDto,
 	UpdateLanguageConfigDto,
 	UpdateModuleConfigDto,
 	UpdateSystemConfigDto,
@@ -16,7 +15,6 @@ import {
 } from './dto/config.dto';
 import {
 	ConfigModuleResAppConfig,
-	ConfigModuleResAudio,
 	ConfigModuleResLanguage,
 	ConfigModuleResModuleConfig,
 	ConfigModuleResModules,
@@ -28,7 +26,6 @@ import {
 } from './models/config-response.model';
 import {
 	AppConfigModel,
-	AudioConfigModel,
 	LanguageConfigModel,
 	ModuleConfigModel,
 	SystemConfigModel,
@@ -41,7 +38,6 @@ import {
 
 export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	// DTOs
-	UpdateAudioConfigDto,
 	UpdateLanguageConfigDto,
 	UpdateWeatherConfigDto,
 	UpdateWeatherLatLonConfigDto,
@@ -59,12 +55,10 @@ export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	ConfigModuleResModuleConfig,
 	ConfigModuleResModules,
 	ConfigModuleResSection,
-	ConfigModuleResAudio,
 	ConfigModuleResLanguage,
 	ConfigModuleResWeather,
 	ConfigModuleResSystem,
 	// Data models
-	AudioConfigModel,
 	LanguageConfigModel,
 	WeatherConfigModel,
 	WeatherLatLonConfigModel,

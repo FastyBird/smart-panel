@@ -26,8 +26,13 @@
 			"version": "Version",
 			"resolution": "Resolution",
 			"layout": "Layout",
+			"audio": "Audio",
 			"status": "Status",
 			"createdAt": "Created"
+		},
+		"tooltips": {
+			"speakerSupported": "Speaker supported",
+			"microphoneSupported": "Microphone supported"
 		}
 	},
 	"fields": {
@@ -86,6 +91,12 @@
 		},
 		"no": {
 			"title": "No"
+		},
+		"save": {
+			"title": "Save"
+		},
+		"cancel": {
+			"title": "Cancel"
 		}
 	},
 	"detail": {
@@ -105,7 +116,19 @@
 			"darkMode": "Dark Mode",
 			"brightness": "Brightness",
 			"screenLockDuration": "Screen Lock Duration",
-			"screenSaver": "Screen Saver"
+			"screenSaver": "Screen Saver",
+			"speakerEnabled": "Speaker Enabled",
+			"speakerVolume": "Speaker Volume",
+			"microphoneEnabled": "Microphone Enabled",
+			"microphoneVolume": "Microphone Volume"
+		},
+		"audio": {
+			"speaker": {
+				"title": "Speaker (Audio Output)"
+			},
+			"microphone": {
+				"title": "Microphone (Audio Input)"
+			}
 		},
 		"tokens": {
 			"title": "Access Tokens",
@@ -118,6 +141,18 @@
 	"form": {
 		"edit": {
 			"title": "Edit Display"
+		},
+		"sections": {
+			"general": "General",
+			"display": "Display Settings",
+			"speaker": "Speaker (Audio Output)",
+			"microphone": "Microphone (Audio Input)"
+		},
+		"placeholders": {
+			"name": "Enter display name"
+		},
+		"units": {
+			"seconds": "seconds"
 		}
 	},
 	"messages": {

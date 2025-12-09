@@ -50,8 +50,6 @@ describe('LayoutConfig.vue', (): void => {
 					name: RouteNames.CONFIG,
 					component: { template: '<div><div id="breadcrumbs-target"></div> <router-view /></div>' },
 					children: [
-						{ path: 'audio', name: RouteNames.CONFIG_AUDIO, component: { template: '<div>Audio</div>' } },
-						{ path: 'display', name: RouteNames.CONFIG_DISPLAY, component: { template: '<div>Display</div>' } },
 						{ path: 'language', name: RouteNames.CONFIG_LANGUAGE, component: { template: '<div>Language</div>' } },
 						{ path: 'weather', name: RouteNames.CONFIG_WEATHER, component: { template: '<div>Weather</div>' } },
 					],
@@ -59,7 +57,7 @@ describe('LayoutConfig.vue', (): void => {
 			],
 		});
 
-		router.push({ name: RouteNames.CONFIG_AUDIO });
+		router.push({ name: RouteNames.CONFIG_LANGUAGE });
 
 		wrapper = mount(LayoutConfig, {
 			global: {
@@ -80,9 +78,9 @@ describe('LayoutConfig.vue', (): void => {
 		expect(wrapper.findComponent(ElTabs).exists()).toBe(true);
 		expect(wrapper.findComponent(ElTabPane).exists()).toBe(true);
 
-		await router.push({ name: RouteNames.CONFIG_DISPLAY });
+		await router.push({ name: RouteNames.CONFIG_LANGUAGE });
 
-		expect(wrapper.vm.activeTab).toBe('display');
+		expect(wrapper.vm.activeTab).toBe('language');
 	});
 
 	it('calls onSave when save button is clicked', async (): Promise<void> => {

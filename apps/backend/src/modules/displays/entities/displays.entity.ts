@@ -208,4 +208,99 @@ export class DisplayEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true, default: null })
 	name: string | null;
+
+	// === Audio Capabilities (set during registration) ===
+
+	@ApiProperty({
+		name: 'audio_output_supported',
+		description: 'Whether the display supports audio output (speakers)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'audio_output_supported' })
+	@IsBoolean()
+	@Transform(
+		({ obj }: { obj: { audio_output_supported?: boolean; audioOutputSupported?: boolean } }) =>
+			obj.audio_output_supported ?? obj.audioOutputSupported,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'boolean', default: false })
+	audioOutputSupported: boolean;
+
+	@ApiProperty({
+		name: 'audio_input_supported',
+		description: 'Whether the display supports audio input (microphone)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'audio_input_supported' })
+	@IsBoolean()
+	@Transform(
+		({ obj }: { obj: { audio_input_supported?: boolean; audioInputSupported?: boolean } }) =>
+			obj.audio_input_supported ?? obj.audioInputSupported,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'boolean', default: false })
+	audioInputSupported: boolean;
+
+	// === Audio Settings (configurable, only relevant if supported) ===
+
+	@ApiProperty({
+		description: 'Speaker enabled state (only relevant if audio output is supported)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	@Column({ type: 'boolean', default: false })
+	speaker: boolean;
+
+	@ApiProperty({
+		name: 'speaker_volume',
+		description: 'Speaker volume level (0-100, only relevant if audio output is supported)',
+		type: 'integer',
+		minimum: 0,
+		maximum: 100,
+		example: 50,
+	})
+	@Expose({ name: 'speaker_volume' })
+	@IsNumber()
+	@Min(0)
+	@Max(100)
+	@Transform(
+		({ obj }: { obj: { speaker_volume?: number; speakerVolume?: number } }) => obj.speaker_volume ?? obj.speakerVolume,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'int', default: 50 })
+	speakerVolume: number;
+
+	@ApiProperty({
+		description: 'Microphone enabled state (only relevant if audio input is supported)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose()
+	@IsBoolean()
+	@Column({ type: 'boolean', default: false })
+	microphone: boolean;
+
+	@ApiProperty({
+		name: 'microphone_volume',
+		description: 'Microphone volume level (0-100, only relevant if audio input is supported)',
+		type: 'integer',
+		minimum: 0,
+		maximum: 100,
+		example: 50,
+	})
+	@Expose({ name: 'microphone_volume' })
+	@IsNumber()
+	@Min(0)
+	@Max(100)
+	@Transform(
+		({ obj }: { obj: { microphone_volume?: number; microphoneVolume?: number } }) =>
+			obj.microphone_volume ?? obj.microphoneVolume,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'int', default: 50 })
+	microphoneVolume: number;
 }

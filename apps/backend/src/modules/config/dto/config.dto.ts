@@ -41,8 +41,6 @@ const determineConfigDto = (obj: unknown): new () => object => {
 		}
 
 		switch (type) {
-			case SectionType.AUDIO:
-				return UpdateAudioConfigDto;
 			case SectionType.LANGUAGE:
 				return UpdateLanguageConfigDto;
 			case SectionType.WEATHER:
@@ -75,75 +73,7 @@ const determineConfigDto = (obj: unknown): new () => object => {
 export class BaseConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid section string."}]' })
-	type: SectionType.AUDIO | SectionType.LANGUAGE | SectionType.WEATHER | SectionType.SYSTEM;
-}
-
-@ApiSchema({ name: 'ConfigModuleUpdateAudio' })
-export class UpdateAudioConfigDto extends BaseConfigDto {
-	@ApiProperty({
-		description: 'Configuration section type',
-		enum: [SectionType.AUDIO],
-		example: 'audio',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"type","reason":"Type must be a audio string."}]' })
-	type: SectionType.AUDIO;
-
-	@ApiPropertyOptional({
-		description: 'Enables or disables the speaker.',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"speaker","reason":"Speaker must be a boolean value."}]' })
-	speaker?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Sets the speaker volume (0-100).',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 100,
-		example: 34,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"speaker_volume","reason":"Speaker volume must be a valid number."}]' },
-	)
-	@Min(0, { message: '[{"field":"speaker_volume","reason":"Speaker volume must be at least 0."}]' })
-	@Max(100, { message: '[{"field":"speaker_volume","reason":"Speaker volume cannot exceed 100."}]' })
-	speaker_volume?: number;
-
-	@ApiPropertyOptional({
-		description: 'Enables or disables the microphone.',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"microphone","reason":"Microphone must be a boolean value."}]' })
-	microphone?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Sets the microphone volume (0-100).',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 100,
-		example: 55,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"microphone_volume","reason":"Microphone volume must be a valid number."}]' },
-	)
-	@Min(0, { message: '[{"field":"microphone_volume","reason":"Microphone volume must be at least 0."}]' })
-	@Max(100, { message: '[{"field":"microphone_volume","reason":"Microphone volume cannot exceed 100."}]' })
-	microphone_volume?: number;
+	type: SectionType.LANGUAGE | SectionType.WEATHER | SectionType.SYSTEM;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateLanguage' })
@@ -472,7 +402,6 @@ export class ReqUpdateSectionDto {
 	@ApiProperty({
 		description: 'Configuration section data',
 		oneOf: [
-			{ $ref: getSchemaPath(UpdateAudioConfigDto) },
 			{ $ref: getSchemaPath(UpdateLanguageConfigDto) },
 			{ $ref: getSchemaPath(UpdateWeatherConfigDto) },
 			{ $ref: getSchemaPath(UpdateSystemConfigDto) },
@@ -480,7 +409,6 @@ export class ReqUpdateSectionDto {
 		discriminator: {
 			propertyName: 'type',
 			mapping: {
-				audio: getSchemaPath(UpdateAudioConfigDto),
 				language: getSchemaPath(UpdateLanguageConfigDto),
 				weather: getSchemaPath(UpdateWeatherConfigDto),
 				system: getSchemaPath(UpdateSystemConfigDto),
@@ -491,7 +419,6 @@ export class ReqUpdateSectionDto {
 	@ValidateNested()
 	@Type((options) => determineConfigDto(options?.object ?? {}))
 	data:
-		| UpdateAudioConfigDto
 		| UpdateLanguageConfigDto
 		| UpdateWeatherLatLonConfigDto
 		| UpdateWeatherCityNameConfigDto

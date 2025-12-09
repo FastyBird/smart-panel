@@ -2,16 +2,12 @@ import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { ConfigModuleLanguageType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
-import type { IConfigAudioRes } from './config-audio.store.types';
-import type { IConfigDisplayRes } from './config-display.store.types';
 import { ConfigLanguageSchema, ConfigLanguageUpdateReqSchema } from './config-language.store.schemas';
 import type { IConfigLanguage, IConfigLanguageEditActionPayload, IConfigLanguageRes, IConfigLanguageUpdateReq } from './config-language.store.types';
 import type { IConfigSystemRes } from './config-system.store.types';
 import type { IConfigWeatherRes } from './config-weather.store.types';
 
-export const transformConfigLanguageResponse = (
-	response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes | IConfigSystemRes
-): IConfigLanguage => {
+export const transformConfigLanguageResponse = (response: IConfigLanguageRes | IConfigWeatherRes | IConfigSystemRes): IConfigLanguage => {
 	const parsed = ConfigLanguageSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {

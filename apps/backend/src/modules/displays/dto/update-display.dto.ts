@@ -183,6 +183,67 @@ export class UpdateDisplayDto {
 	@IsString({ message: '[{"field":"name","reason":"Name must be a string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	name?: string | null;
+
+	// === Audio Settings (only editable if the display supports the feature) ===
+
+	@ApiPropertyOptional({
+		description: 'Speaker enabled state (only applicable if display supports audio output)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"speaker","reason":"Speaker must be a boolean."}]' })
+	speaker?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'speaker_volume',
+		description: 'Speaker volume level (0-100, only applicable if display supports audio output)',
+		type: 'integer',
+		minimum: 0,
+		maximum: 100,
+		example: 50,
+	})
+	@Expose({ name: 'speaker_volume' })
+	@IsOptional()
+	@IsNumber({}, { message: '[{"field":"speaker_volume","reason":"Speaker volume must be a number."}]' })
+	@Min(0, { message: '[{"field":"speaker_volume","reason":"Speaker volume must be at least 0."}]' })
+	@Max(100, { message: '[{"field":"speaker_volume","reason":"Speaker volume must be at most 100."}]' })
+	@Transform(
+		({ obj }: { obj: { speaker_volume?: number; speakerVolume?: number } }) => obj.speaker_volume ?? obj.speakerVolume,
+		{ toClassOnly: true },
+	)
+	speakerVolume?: number;
+
+	@ApiPropertyOptional({
+		description: 'Microphone enabled state (only applicable if display supports audio input)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"microphone","reason":"Microphone must be a boolean."}]' })
+	microphone?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'microphone_volume',
+		description: 'Microphone volume level (0-100, only applicable if display supports audio input)',
+		type: 'integer',
+		minimum: 0,
+		maximum: 100,
+		example: 50,
+	})
+	@Expose({ name: 'microphone_volume' })
+	@IsOptional()
+	@IsNumber({}, { message: '[{"field":"microphone_volume","reason":"Microphone volume must be a number."}]' })
+	@Min(0, { message: '[{"field":"microphone_volume","reason":"Microphone volume must be at least 0."}]' })
+	@Max(100, { message: '[{"field":"microphone_volume","reason":"Microphone volume must be at most 100."}]' })
+	@Transform(
+		({ obj }: { obj: { microphone_volume?: number; microphoneVolume?: number } }) =>
+			obj.microphone_volume ?? obj.microphoneVolume,
+		{ toClassOnly: true },
+	)
+	microphoneVolume?: number;
 }
 
 @ApiSchema({ name: 'DisplaysModuleReqUpdateDisplay' })

@@ -3,14 +3,10 @@ import { ConfigValidationException } from '../config.exceptions';
 
 import { ConfigAppSchema } from './config-app.store.schemas';
 import type { IConfigApp, IConfigAppRes } from './config-app.store.types';
-import type { IConfigAudioRes } from './config-audio.store.types';
-import type { IConfigDisplayRes } from './config-display.store.types';
 import type { IConfigLanguageRes } from './config-language.store.types';
 import type { IConfigWeatherRes } from './config-weather.store.types';
 
-export const transformConfigAppResponse = (
-	response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes | IConfigAppRes
-): IConfigApp => {
+export const transformConfigAppResponse = (response: IConfigLanguageRes | IConfigWeatherRes | IConfigAppRes): IConfigApp => {
 	const parsed = ConfigAppSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {

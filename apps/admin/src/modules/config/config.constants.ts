@@ -14,8 +14,6 @@ export enum EventType {
 
 export const RouteNames = {
 	CONFIG: 'config_module-module',
-	CONFIG_AUDIO: 'config_module-config_audio',
-	CONFIG_DISPLAY: 'config_module-config_display',
 	CONFIG_LANGUAGE: 'config_module-config_language',
 	CONFIG_WEATHER: 'config_module-config_weather',
 	CONFIG_SYSTEM: 'config_module-config_system',

@@ -78,46 +78,6 @@
 		@tab-click="onTabClick"
 	>
 		<el-tab-pane
-			:label="t('configModule.tabs.configAudio')"
-			:name="'audio'"
-		>
-			<template #label>
-				<span class="flex flex-row items-center gap-2">
-					<el-icon>
-						<icon icon="mdi:monitor-speaker" />
-					</el-icon>
-					<span>{{ t('configModule.tabs.configAudio') }}</span>
-				</span>
-			</template>
-
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_AUDIO"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
-		</el-tab-pane>
-
-		<el-tab-pane
-			:label="t('configModule.tabs.configDisplay')"
-			:name="'display'"
-		>
-			<template #label>
-				<span class="flex flex-row items-center gap-2">
-					<el-icon>
-						<icon icon="mdi:monitor-dashboard" />
-					</el-icon>
-					<span>{{ t('configModule.tabs.configDisplay') }}</span>
-				</span>
-			</template>
-
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_DISPLAY"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
-		</el-tab-pane>
-
-		<el-tab-pane
 			:label="t('configModule.tabs.configLanguage')"
 			:name="'language'"
 		>
@@ -240,7 +200,7 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { FormResult, RouteNames } from '../config.constants';
 
-type PageTabName = 'audio' | 'display' | 'language' | 'weather' | 'system' | 'plugins' | 'modules';
+type PageTabName = 'language' | 'weather' | 'system' | 'plugins' | 'modules';
 
 defineOptions({
 	name: 'LayoutConfig',
@@ -251,7 +211,7 @@ const route = useRoute();
 const { t } = useI18n();
 
 const { isMDDevice } = useBreakpoints();
-const activeTab = ref<PageTabName>('audio');
+const activeTab = ref<PageTabName>('language');
 
 const mounted = ref<boolean>(false);
 const remoteFormSubmit = ref<boolean>(false);
@@ -264,20 +224,6 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 			route: router.resolve({ name: RouteNames.CONFIG }),
 		},
 	];
-
-	if (route.name === RouteNames.CONFIG_AUDIO) {
-		items.push({
-			label: t('configModule.breadcrumbs.configAudio'),
-			route: router.resolve({ name: RouteNames.CONFIG_AUDIO }),
-		});
-	}
-
-	if (route.name === RouteNames.CONFIG_DISPLAY) {
-		items.push({
-			label: t('configModule.breadcrumbs.configDisplay'),
-			route: router.resolve({ name: RouteNames.CONFIG_DISPLAY }),
-		});
-	}
 
 	if (route.name === RouteNames.CONFIG_LANGUAGE) {
 		items.push({
@@ -319,12 +265,6 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 
 const onTabClick = (pane: TabsPaneContext): void => {
 	switch (pane.paneName) {
-		case 'audio':
-			router.push({ name: RouteNames.CONFIG_AUDIO });
-			break;
-		case 'display':
-			router.push({ name: RouteNames.CONFIG_DISPLAY });
-			break;
 		case 'language':
 			router.push({ name: RouteNames.CONFIG_LANGUAGE });
 			break;
@@ -350,11 +290,7 @@ const onSave = (): void => {
 onMounted((): void => {
 	mounted.value = true;
 
-	if (route.name === RouteNames.CONFIG_AUDIO && activeTab.value !== 'audio') {
-		activeTab.value = 'audio';
-	} else if (route.name === RouteNames.CONFIG_DISPLAY && activeTab.value !== 'display') {
-		activeTab.value = 'display';
-	} else if (route.name === RouteNames.CONFIG_LANGUAGE && activeTab.value !== 'language') {
+	if (route.name === RouteNames.CONFIG_LANGUAGE && activeTab.value !== 'language') {
 		activeTab.value = 'language';
 	} else if (route.name === RouteNames.CONFIG_WEATHER && activeTab.value !== 'weather') {
 		activeTab.value = 'weather';
@@ -371,11 +307,7 @@ watch(
 	(): RouteRecordName | string | null | undefined => route.name,
 	(val: RouteRecordName | string | null | undefined): void => {
 		if (mounted.value) {
-			if (val === RouteNames.CONFIG_AUDIO && activeTab.value !== 'audio') {
-				activeTab.value = 'audio';
-			} else if (val === RouteNames.CONFIG_DISPLAY && activeTab.value !== 'display') {
-				activeTab.value = 'display';
-			} else if (val === RouteNames.CONFIG_LANGUAGE && activeTab.value !== 'language') {
+			if (val === RouteNames.CONFIG_LANGUAGE && activeTab.value !== 'language') {
 				activeTab.value = 'language';
 			} else if (val === RouteNames.CONFIG_WEATHER && activeTab.value !== 'weather') {
 				activeTab.value = 'weather';

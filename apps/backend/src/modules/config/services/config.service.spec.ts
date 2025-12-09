@@ -28,11 +28,11 @@ import {
 	WeatherLocationType,
 } from '../config.constants';
 import { ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
-import { UpdateAudioConfigDto, UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
+import { UpdateLanguageConfigDto, UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
 import {
 	AppConfigModel,
-	AudioConfigModel,
 	BaseConfigModel,
+	LanguageConfigModel,
 	ModuleConfigModel,
 	PluginConfigModel,
 } from '../models/config.model';
@@ -90,11 +90,10 @@ describe('ConfigService', () => {
 	let platform: PlatformService;
 
 	const mockRawConfig = {
-		audio: {
-			speaker: true,
-			speaker_volume: 50,
-			microphone: false,
-			microphone_volume: 30,
+		language: {
+			language: 'en_US',
+			timezone: 'Europe/Prague',
+			time_format: '24h',
 		},
 		plugins: {
 			mock: {
@@ -112,13 +111,6 @@ describe('ConfigService', () => {
 
 	const mockConfig: Partial<AppConfigModel> = {
 		path: '/var/smart-panel/config.yaml',
-		audio: {
-			type: SectionType.AUDIO,
-			speaker: true,
-			speakerVolume: 50,
-			microphone: false,
-			microphoneVolume: 30,
-		},
 		language: {
 			type: SectionType.LANGUAGE,
 			language: LanguageType.ENGLISH,
@@ -295,9 +287,9 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			const result = service.getConfigSection(SectionType.AUDIO, AudioConfigModel);
+			const result = service.getConfigSection(SectionType.LANGUAGE, LanguageConfigModel);
 
-			expect(result).toEqual(mockConfig.audio);
+			expect(result).toEqual(mockConfig.language);
 
 			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
 			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
@@ -321,17 +313,16 @@ describe('ConfigService', () => {
 	});
 
 	describe('setConfigSection', () => {
-		it('should update a configuration section and save it to YAML', async () => {
-			const updatedAudioConfig: UpdateAudioConfigDto & { speaker_volume?: number } = {
-				type: SectionType.AUDIO,
-				speaker: false,
-				speaker_volume: 20,
+		it('should update a configuration section and save it to YAML', () => {
+			const updatedLanguageConfig: UpdateLanguageConfigDto = {
+				type: SectionType.LANGUAGE,
+				language: LanguageType.CZECH,
 			};
-			const mergedConfig = { ...mockConfig.audio, ...{ speaker: false, speakerVolume: 20 } };
+			const mergedConfig = { ...mockConfig.language, ...{ language: LanguageType.CZECH } };
 
 			const updatedRawConfig = {
 				...mockRawConfig,
-				...{ audio: { ...mockRawConfig.audio, speaker: false, speaker_volume: 20 } },
+				...{ language: { ...mockRawConfig.language, language: 'cs_CZ' } },
 			};
 
 			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
@@ -344,9 +335,9 @@ describe('ConfigService', () => {
 			const mockYamlStringify = jest.spyOn(yaml, 'stringify');
 			const mockFsWriteFileSync = jest.spyOn(fs, 'writeFileSync');
 
-			await service.setConfigSection(SectionType.AUDIO, updatedAudioConfig, UpdateAudioConfigDto);
+			service.setConfigSection(SectionType.LANGUAGE, updatedLanguageConfig, UpdateLanguageConfigDto);
 
-			expect(service['config'].audio).toEqual(mergedConfig);
+			expect(service['config'].language).toEqual(mergedConfig);
 
 			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
 			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
@@ -357,9 +348,9 @@ describe('ConfigService', () => {
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, service['config']);
 		});
 
-		it('should throw validation errors for an invalid update', async () => {
-			const invalidUpdateDto: UpdateAudioConfigDto & { invalidField: string } = {
-				type: SectionType.AUDIO,
+		it('should throw validation errors for an invalid update', () => {
+			const invalidUpdateDto: UpdateLanguageConfigDto & { invalidField: string } = {
+				type: SectionType.LANGUAGE,
 				invalidField: 'value',
 			};
 
@@ -367,7 +358,7 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			await expect(service.setConfigSection(SectionType.AUDIO, invalidUpdateDto, UpdateAudioConfigDto)).rejects.toThrow(
+			expect(() => service.setConfigSection(SectionType.LANGUAGE, invalidUpdateDto, UpdateLanguageConfigDto)).toThrow(
 				ConfigValidationException,
 			);
 

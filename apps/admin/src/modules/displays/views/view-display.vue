@@ -163,6 +163,66 @@
 					</el-descriptions-item>
 				</el-descriptions>
 			</el-card>
+
+			<!-- Audio Settings (Speaker) - Only shown if audio output is supported -->
+			<el-card
+				v-if="display.audioOutputSupported"
+				shadow="never"
+			>
+				<template #header>
+					<div class="flex items-center gap-2">
+						<icon
+							icon="mdi:speaker"
+							class="text-lg"
+						/>
+						<span>{{ t('displaysModule.detail.audio.speaker.title') }}</span>
+					</div>
+				</template>
+
+				<el-descriptions
+					:column="1"
+					border
+				>
+					<el-descriptions-item :label="t('displaysModule.detail.settings.speakerEnabled')">
+						<el-tag :type="display.speaker ? 'success' : 'info'">
+							{{ display.speaker ? 'Enabled' : 'Disabled' }}
+						</el-tag>
+					</el-descriptions-item>
+					<el-descriptions-item :label="t('displaysModule.detail.settings.speakerVolume')">
+						{{ display.speakerVolume }}%
+					</el-descriptions-item>
+				</el-descriptions>
+			</el-card>
+
+			<!-- Audio Settings (Microphone) - Only shown if audio input is supported -->
+			<el-card
+				v-if="display.audioInputSupported"
+				shadow="never"
+			>
+				<template #header>
+					<div class="flex items-center gap-2">
+						<icon
+							icon="mdi:microphone"
+							class="text-lg"
+						/>
+						<span>{{ t('displaysModule.detail.audio.microphone.title') }}</span>
+					</div>
+				</template>
+
+				<el-descriptions
+					:column="1"
+					border
+				>
+					<el-descriptions-item :label="t('displaysModule.detail.settings.microphoneEnabled')">
+						<el-tag :type="display.microphone ? 'success' : 'info'">
+							{{ display.microphone ? 'Enabled' : 'Disabled' }}
+						</el-tag>
+					</el-descriptions-item>
+					<el-descriptions-item :label="t('displaysModule.detail.settings.microphoneVolume')">
+						{{ display.microphoneVolume }}%
+					</el-descriptions-item>
+				</el-descriptions>
+			</el-card>
 		</div>
 
 		<div

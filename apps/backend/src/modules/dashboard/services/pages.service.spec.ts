@@ -85,6 +85,12 @@ describe('PagesService', () => {
 		brightness: 100,
 		screenLockDuration: 30,
 		screenSaver: true,
+		audioOutputSupported: false,
+		audioInputSupported: false,
+		speaker: false,
+		speakerVolume: 50,
+		microphone: false,
+		microphoneVolume: 50,
 		createdAt: new Date(),
 		updatedAt: undefined,
 	};

@@ -34,66 +34,6 @@ export abstract class BaseConfigModel {
 	type?: SectionType;
 }
 
-@ApiSchema({ name: 'ConfigModuleDataAudio' })
-export class AudioConfigModel extends BaseConfigModel {
-	@ApiProperty({
-		description: 'Configuration section type',
-		enum: [SectionType.AUDIO],
-		example: 'audio',
-	})
-	@Expose()
-	@IsOptional()
-	type = SectionType.AUDIO;
-
-	@ApiProperty({
-		description: 'Speaker enabled state',
-		type: 'boolean',
-		example: false,
-	})
-	@Expose()
-	@IsBoolean()
-	speaker: boolean = false;
-
-	@ApiProperty({
-		name: 'speaker_volume',
-		description: 'Speaker volume level (0-100)',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 100,
-		example: 0,
-	})
-	@Expose({ name: 'speaker_volume' })
-	@IsNumber()
-	@Min(0)
-	@Max(100)
-	speakerVolume: number = 0;
-
-	@ApiProperty({
-		description: 'Microphone enabled state',
-		type: 'boolean',
-		example: false,
-	})
-	@Expose()
-	@IsBoolean()
-	microphone: boolean = false;
-
-	@ApiProperty({
-		name: 'microphone_volume',
-		description: 'Microphone volume level (0-100)',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 100,
-		example: 0,
-	})
-	@Expose({ name: 'microphone_volume' })
-	@IsNumber()
-	@Min(0)
-	@Max(100)
-	microphoneVolume: number = 0;
-}
-
 @ApiSchema({ name: 'ConfigModuleDataLanguage' })
 export class LanguageConfigModel extends BaseConfigModel {
 	@ApiProperty({
@@ -435,15 +375,6 @@ export class AppConfigModel {
 	@Expose()
 	@IsString()
 	path: string;
-
-	@ApiProperty({
-		description: 'Audio configuration section',
-		type: () => AudioConfigModel,
-	})
-	@Expose()
-	@ValidateNested()
-	@Type(() => AudioConfigModel)
-	audio: AudioConfigModel = new AudioConfigModel();
 
 	@ApiProperty({
 		description: 'Language configuration section',
