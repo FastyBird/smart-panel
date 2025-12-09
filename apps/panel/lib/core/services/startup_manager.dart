@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_register_display.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_req_register_display.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
@@ -10,10 +12,14 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/application.dart';
 import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/module.dart';
 import 'package:fastybird_smart_panel/modules/devices/module.dart';
+import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/displays/module.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/system/module.dart';
 import 'package:fastybird_smart_panel/modules/weather/module.dart';
 import 'package:flutter/foundation.dart';
@@ -225,8 +231,16 @@ class StartupManagerService {
     }
 
     if (_apiSecret != null) {
-      _apiIoService.options.headers['X-Display-Secret'] = _apiSecret;
+      _apiIoService.options.headers['Authorization'] = 'Bearer $_apiSecret';
     }
+
+    // Unregister any existing modules before registering new ones
+    // This ensures modules always use the current _apiClient, especially on retries
+    _unregisterModulesIfNeeded();
+
+    // Register modules with the new API client BEFORE initialization
+    // This is needed because _initialize() uses DisplaysModuleService
+    _registerModules();
 
     try {
       await _initialize();
@@ -235,18 +249,14 @@ class StartupManagerService {
         debugPrint('[BACKEND INIT] Backend initialization failed: $e');
       }
 
+      // Clean up registered modules on failure
+      _unregisterModulesIfNeeded();
+
       // Clear stored URL on connection failure to allow rediscovery
       await _clearStoredBackendUrl();
 
       return InitializationResult.connectionFailed;
     }
-
-    // Unregister any existing modules before registering new ones
-    // This ensures modules always use the current _apiClient, especially on retries
-    _unregisterModulesIfNeeded();
-
-    // Register modules with the new API client after successful connection
-    _registerModules();
 
     final appUid = await _getAppUid();
 
@@ -301,6 +311,12 @@ class StartupManagerService {
       locator.unregister<ConfigModuleService>();
     } catch (_) {}
     try {
+      locator.unregister<DisplaysModuleService>();
+    } catch (_) {}
+    try {
+      locator.unregister<DisplayRepository>();
+    } catch (_) {}
+    try {
       locator.unregister<SystemModuleService>();
     } catch (_) {}
     try {
@@ -340,6 +356,10 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
+    var displaysModuleService = DisplaysModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
     var systemModuleService = SystemModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
@@ -359,6 +379,7 @@ class StartupManagerService {
     );
 
     locator.registerSingleton(configModuleService);
+    locator.registerSingleton(displaysModuleService);
     locator.registerSingleton(systemModuleService);
     locator.registerSingleton(weatherModuleService);
     locator.registerSingleton(devicesModuleService);
@@ -392,12 +413,206 @@ class StartupManagerService {
       );
     }
 
-    if (_apiSecret == null) {
-      await _obtainApiSecret();
-      await _notifyDisplayProfile();
+    // Try to initialize with stored token if available
+    if (_apiSecret != null) {
+      final success = await _tryInitializeWithStoredToken();
+
+      if (success) {
+        if (kDebugMode) {
+          debugPrint('[INITIALIZE] Successfully initialized with stored token');
+        }
+        return;
+      }
+
+      // Token invalid or display not found - need to re-register
+      if (kDebugMode) {
+        debugPrint('[INITIALIZE] Stored token invalid, re-registering display');
+      }
+
+      // Clear the invalid token
+      await _clearStoredApiSecret();
+    }
+
+    // No valid token - register the display
+    await _registerDisplay();
+  }
+
+  /// Try to initialize using the stored API secret/token
+  /// Returns true if successful, false if token is invalid or display not found
+  Future<bool> _tryInitializeWithStoredToken() async {
+    if (kDebugMode) {
+      debugPrint('[TRY STORED TOKEN] Attempting to load display with stored token');
+    }
+
+    try {
+      // Get the displays module service (it's already registered in _registerModules)
+      // But at this point modules aren't registered yet, so we need to create a temporary
+      // displays module service to test the token
+      final displaysModule = locator.get<DisplaysModuleService>();
+      final result = await displaysModule.initializeWithStoredToken();
+
+      switch (result) {
+        case FetchDisplayResult.success:
+          if (kDebugMode) {
+            debugPrint('[TRY STORED TOKEN] Display loaded successfully');
+          }
+          return true;
+
+        case FetchDisplayResult.authenticationFailed:
+          if (kDebugMode) {
+            debugPrint('[TRY STORED TOKEN] Authentication failed - token invalid or revoked');
+          }
+          return false;
+
+        case FetchDisplayResult.notFound:
+          if (kDebugMode) {
+            debugPrint('[TRY STORED TOKEN] Display not found');
+          }
+          return false;
+
+        case FetchDisplayResult.error:
+          if (kDebugMode) {
+            debugPrint('[TRY STORED TOKEN] Error fetching display');
+          }
+          return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[TRY STORED TOKEN] Exception: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Clear the stored API secret
+  Future<void> _clearStoredApiSecret() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      await _securedStorage.delete(key: _apiSecretKey);
     } else {
-      await _checkApiConnection();
-      await _notifyDisplayInstance();
+      await _securedStorageFallback.delete(key: _apiSecretKey);
+    }
+    _apiSecret = null;
+    _apiIoService.options.headers.remove('Authorization');
+  }
+
+  /// Register the display with the backend
+  Future<void> _registerDisplay() async {
+    if (kDebugMode) {
+      debugPrint('[REGISTER DISPLAY] Registering display with backend');
+    }
+
+    try {
+      // Get device information
+      final macAddress = await AppInfo.getMacAddress();
+      final appVersion = await AppInfo.getAppVersionInfo();
+
+      // Calculate grid dimensions
+      final screenService = locator.get<ScreenService>();
+
+      final registrationData = DisplaysModuleRegisterDisplay(
+        macAddress: macAddress.toUpperCase(),
+        version: appVersion.version,
+        build: appVersion.build,
+        screenWidth: screenWidth.toInt(),
+        screenHeight: screenHeight.toInt(),
+        pixelRatio: pixelRatio,
+        unitSize: screenService.unitSize,
+        rows: screenService.defaultRows,
+        cols: screenService.defaultColumns,
+        audioOutputSupported: false, // TODO: Detect actual audio capabilities
+        audioInputSupported: false, // TODO: Detect actual audio capabilities
+      );
+
+      if (kDebugMode) {
+        debugPrint('[REGISTER DISPLAY] Registration data:');
+        debugPrint('  macAddress: ${macAddress.toUpperCase()}');
+        debugPrint('  version: ${appVersion.version}');
+        debugPrint('  build: ${appVersion.build}');
+        debugPrint('  screenWidth: ${screenWidth.toInt()}');
+        debugPrint('  screenHeight: ${screenHeight.toInt()}');
+        debugPrint('  pixelRatio: $pixelRatio');
+        debugPrint('  unitSize: ${screenService.unitSize}');
+        debugPrint('  rows: ${screenService.defaultRows}');
+        debugPrint('  cols: ${screenService.defaultColumns}');
+      }
+
+      final response = await _apiClient.displaysModuleRegistration.register(
+        userAgent: 'FastyBird Smart Panel/${appVersion.version}',
+        body: DisplaysModuleReqRegisterDisplay(data: registrationData),
+      );
+
+      if (response.response.statusCode == 201) {
+        final accessToken = response.data.data.accessToken;
+        final display = response.data.data.display;
+
+        if (kDebugMode) {
+          debugPrint(
+            '[REGISTER DISPLAY] Display registered successfully with ID: ${display.id}',
+          );
+        }
+
+        // Store the access token
+        if (Platform.isAndroid || Platform.isIOS) {
+          await _securedStorage.write(key: _apiSecretKey, value: accessToken);
+        } else {
+          await _securedStorageFallback.write(
+            key: _apiSecretKey,
+            value: accessToken,
+          );
+        }
+
+        _apiSecret = accessToken;
+        _apiIoService.options.headers['Authorization'] = 'Bearer $accessToken';
+
+        // Initialize displays module with the registration data
+        final displaysModule = locator.get<DisplaysModuleService>();
+        displaysModule.initializeFromRegistration(
+          DisplayModel(
+            id: display.id,
+            macAddress: display.macAddress,
+            version: display.version,
+            build: display.build,
+            name: display.name,
+            screenWidth: display.screenWidth,
+            screenHeight: display.screenHeight,
+            pixelRatio: display.pixelRatio.toDouble(),
+            unitSize: display.unitSize.toDouble(),
+            rows: display.rows,
+            cols: display.cols,
+            darkMode: display.darkMode,
+            brightness: display.brightness,
+            screenLockDuration: display.screenLockDuration,
+            screenSaver: display.screenSaver,
+            audioOutputSupported: display.audioOutputSupported,
+            audioInputSupported: display.audioInputSupported,
+            speaker: display.speaker,
+            speakerVolume: display.speakerVolume,
+            microphone: display.microphone,
+            microphoneVolume: display.microphoneVolume,
+            createdAt: display.createdAt,
+            updatedAt: display.updatedAt,
+          ),
+        );
+      } else {
+        throw Exception(
+          'Failed to register display: Unexpected response status',
+        );
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[REGISTER DISPLAY] Registration failed: ${e.response?.statusCode} - ${e.message}',
+        );
+        debugPrint('[REGISTER DISPLAY] Response body: ${e.response?.data}');
+      }
+
+      throw Exception('Display registration failed: ${e.response?.data ?? e.message}');
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[REGISTER DISPLAY] Unexpected error: $e');
+      }
+
+      throw Exception('Display registration failed: $e');
     }
   }
 
@@ -427,71 +642,6 @@ class StartupManagerService {
       return systemInfoResponse.response.statusCode == 200;
     } catch (_) {
       return false;
-    }
-  }
-
-  Future<void> _obtainApiSecret() async {
-    // TODO: Update to use displays module API once client is generated
-    // The displays module registration endpoint is at /displays-module/displays/register
-    // For now, this functionality is disabled until the API client is regenerated
-    throw UnimplementedError(
-      'Display registration is not yet implemented. The displays module API client needs to be regenerated.',
-    );
-  }
-
-  Future<void> _notifyDisplayInstance() async {
-    // TODO: Update to use displays module API once client is generated
-    // The displays module update endpoint is at /displays-module/displays/:id
-    // For now, this functionality is disabled until the API client is regenerated
-    if (kDebugMode) {
-      debugPrint('[NOTIFY DISPLAY INSTANCE] Skipped - displays module API not yet available');
-    }
-  }
-
-  Future<void> _notifyDisplayProfile() async {
-    // TODO: Display profiles functionality has been moved to displays module
-    // This functionality is now handled through the display registration/update endpoints
-    // For now, this functionality is disabled until the API client is regenerated
-    if (kDebugMode) {
-      debugPrint('[NOTIFY DISPLAY PROFILE] Skipped - displays module API not yet available');
-    }
-  }
-
-  Future<void> _checkApiConnection() async {
-    try {
-      // Try to fetch the display profile
-      await _apiClient.authModule.getAuthModuleProfile();
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[CHECK SECRET] API Error: ${e.response?.statusCode} - ${e.message}',
-        );
-      }
-
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        if (kDebugMode) {
-          debugPrint('[CHECK SECRET] Stored secret key is not valid');
-        }
-
-        if (Platform.isAndroid || Platform.isIOS) {
-          _securedStorage.delete(key: _apiSecretKey);
-        } else {
-          _securedStorageFallback.delete(key: _apiSecretKey);
-        }
-        _apiSecret = null;
-
-        await _initialize();
-      } else {
-        throw Exception(
-          'Backend connection check failed. Ensure the server is running.',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[CHECK SECRET] Unexpected error: ${e.toString()}');
-      }
-
-      throw StateError('Unexpected backend error.');
     }
   }
 

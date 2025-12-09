@@ -80,11 +80,14 @@ export class DisplaysService {
 
 		await this.repository.save(display);
 
-		this.logger.debug(`[CREATE] Successfully created display with id=${display.id}`);
+		// Re-fetch to get database default values populated
+		const savedDisplay = await this.getOneOrThrow(display.id);
 
-		this.eventEmitter.emit(EventType.DISPLAY_CREATED, display);
+		this.logger.debug(`[CREATE] Successfully created display with id=${savedDisplay.id}`);
 
-		return display;
+		this.eventEmitter.emit(EventType.DISPLAY_CREATED, savedDisplay);
+
+		return savedDisplay;
 	}
 
 	async update(id: string, updateDto: UpdateDisplayDto): Promise<DisplayEntity> {

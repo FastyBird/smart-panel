@@ -439,6 +439,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_audio_settings_microphone_volume_title => 'Hlasitost mikrofonu';
 
   @override
+  String get settings_audio_settings_no_support => 'Tento displej nepodporuje zvukový vstup ani výstup.';
+
+  @override
   String get settings_about_title => 'O aplikaci';
 
   @override

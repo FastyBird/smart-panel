@@ -1,9 +1,24 @@
-import { Body, Controller, Delete, Get, HttpCode, Logger, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	ForbiddenException,
+	Get,
+	HttpCode,
+	Logger,
+	Param,
+	ParseUUIDPipe,
+	Patch,
+	Post,
+	Req,
+} from '@nestjs/common';
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { TokenOwnerType } from '../../auth/auth.constants';
+import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import { TokensService } from '../../auth/services/tokens.service';
 import {
+	ApiForbiddenResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
@@ -28,6 +43,61 @@ export class DisplaysController {
 		private readonly tokensService: TokensService,
 	) {}
 
+	@Get('me')
+	@ApiOperation({
+		summary: 'Get current display',
+		description: "Retrieves the authenticated display's own data. Only accessible by displays.",
+	})
+	@ApiSuccessResponse(DisplayResponseModel, 'Returns the current display')
+	@ApiForbiddenResponse('Not authenticated as a display')
+	@ApiNotFoundResponse('Display not found')
+	async getMe(@Req() req: AuthenticatedRequest): Promise<DisplayResponseModel> {
+		const auth = req.auth;
+
+		if (!auth || auth.type !== 'display') {
+			this.logger.warn('[GET ME] Attempted access by non-display entity');
+			throw new ForbiddenException('This endpoint is only accessible by displays');
+		}
+
+		this.logger.debug(`[GET ME] Fetching display data for id=${auth.id}`);
+
+		const display = await this.displaysService.getOneOrThrow(auth.id);
+
+		const response = new DisplayResponseModel();
+
+		response.data = display;
+
+		return response;
+	}
+
+	@Patch('me')
+	@ApiOperation({
+		summary: 'Update current display',
+		description: "Updates the authenticated display's own configuration. Only accessible by displays.",
+	})
+	@ApiSuccessResponse(DisplayResponseModel, 'Returns the updated display')
+	@ApiForbiddenResponse('Not authenticated as a display')
+	@ApiNotFoundResponse('Display not found')
+	@ApiUnprocessableEntityResponse('Invalid display data')
+	async updateMe(@Req() req: AuthenticatedRequest, @Body() body: ReqUpdateDisplayDto): Promise<DisplayResponseModel> {
+		const auth = req.auth;
+
+		if (!auth || auth.type !== 'display') {
+			this.logger.warn('[UPDATE ME] Attempted access by non-display entity');
+			throw new ForbiddenException('This endpoint is only accessible by displays');
+		}
+
+		this.logger.debug(`[UPDATE ME] Updating display with id=${auth.id}`);
+
+		const display = await this.displaysService.update(auth.id, body.data);
+
+		const response = new DisplayResponseModel();
+
+		response.data = display;
+
+		return response;
+	}
+
 	@Get()
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
@@ -40,7 +110,11 @@ export class DisplaysController {
 
 		const displays = await this.displaysService.findAll();
 
-		return { success: true, data: displays };
+		const response = new DisplaysResponseModel();
+
+		response.data = displays;
+
+		return response;
 	}
 
 	@Get(':id')
@@ -57,7 +131,11 @@ export class DisplaysController {
 
 		const display = await this.displaysService.getOneOrThrow(id);
 
-		return { success: true, data: display };
+		const response = new DisplayResponseModel();
+
+		response.data = display;
+
+		return response;
 	}
 
 	@Patch(':id')
@@ -78,7 +156,11 @@ export class DisplaysController {
 
 		const display = await this.displaysService.update(id, body.data);
 
-		return { success: true, data: display };
+		const response = new DisplayResponseModel();
+
+		response.data = display;
+
+		return response;
 	}
 
 	@Delete(':id')
@@ -121,7 +203,11 @@ export class DisplaysController {
 
 		this.logger.debug(`[GET TOKENS] Found ${activeTokens.length} active tokens for display with id=${id}`);
 
-		return { success: true, data: activeTokens };
+		const response = new DisplayTokensResponseModel();
+
+		response.data = activeTokens;
+
+		return response;
 	}
 
 	@Post(':id/revoke-token')

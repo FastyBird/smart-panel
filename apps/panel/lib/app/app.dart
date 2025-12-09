@@ -14,6 +14,8 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart'
     as dashboard_module;
 import 'package:fastybird_smart_panel/modules/devices/export.dart'
     as devices_module;
+import 'package:fastybird_smart_panel/modules/displays/export.dart'
+    as displays_module;
 import 'package:fastybird_smart_panel/modules/system/export.dart'
     as system_module;
 import 'package:fastybird_smart_panel/modules/weather/export.dart'
@@ -320,10 +322,7 @@ class _MyAppState extends State<MyApp> {
           value: locator<ScreenService>(),
         ),
         ChangeNotifierProvider.value(
-          value: locator<config_module.AudioConfigRepository>(),
-        ),
-        ChangeNotifierProvider.value(
-          value: locator<config_module.DisplayConfigRepository>(),
+          value: locator<displays_module.DisplayRepository>(),
         ),
         ChangeNotifierProvider.value(
           value: locator<config_module.LanguageConfigRepository>(),

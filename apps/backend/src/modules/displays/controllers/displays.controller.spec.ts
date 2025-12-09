@@ -129,7 +129,6 @@ describe('DisplaysController', () => {
 
 			const result = await controller.findAll();
 
-			expect(result.success).toBe(true);
 			expect(result.data).toHaveLength(2);
 			expect(service.findAll).toHaveBeenCalled();
 		});
@@ -139,7 +138,6 @@ describe('DisplaysController', () => {
 
 			const result = await controller.findAll();
 
-			expect(result.success).toBe(true);
 			expect(result.data).toHaveLength(0);
 		});
 	});
@@ -150,7 +148,6 @@ describe('DisplaysController', () => {
 
 			const result = await controller.findOne(mockDisplay.id);
 
-			expect(result.success).toBe(true);
 			expect(result.data).toEqual(toInstance(DisplayEntity, mockDisplay));
 			expect(service.getOneOrThrow).toHaveBeenCalledWith(mockDisplay.id);
 		});
@@ -171,7 +168,6 @@ describe('DisplaysController', () => {
 
 			const result = await controller.update(mockDisplay.id, { data: updateDto });
 
-			expect(result.success).toBe(true);
 			expect(result.data.brightness).toBe(80);
 			expect(service.update).toHaveBeenCalledWith(mockDisplay.id, updateDto);
 		});
@@ -221,7 +217,6 @@ describe('DisplaysController', () => {
 
 			const result = await controller.getTokens(mockDisplay.id);
 
-			expect(result.success).toBe(true);
 			expect(result.data).toHaveLength(1);
 			expect(service.getOneOrThrow).toHaveBeenCalledWith(mockDisplay.id);
 			expect(tokensService.findByOwnerId).toHaveBeenCalledWith(mockDisplay.id, TokenOwnerType.DISPLAY);
@@ -261,7 +256,6 @@ describe('DisplaysController', () => {
 
 			const result = await controller.getTokens(mockDisplay.id);
 
-			expect(result.success).toBe(true);
 			expect(result.data).toHaveLength(1);
 			expect(result.data[0].revoked).toBe(false);
 		});

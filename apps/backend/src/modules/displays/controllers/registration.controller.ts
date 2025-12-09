@@ -47,12 +47,13 @@ export class RegistrationController {
 
 		const result = await this.registrationService.registerDisplay(body.data, userAgent);
 
-		return {
-			success: true,
-			data: {
-				display: result.display,
-				accessToken: result.accessToken,
-			},
+		const response = new DisplayRegistrationResponseModel();
+
+		response.data = {
+			display: result.display,
+			accessToken: result.accessToken,
 		};
+
+		return response;
 	}
 }

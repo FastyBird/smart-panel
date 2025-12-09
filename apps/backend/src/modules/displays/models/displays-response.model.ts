@@ -2,50 +2,40 @@ import { Expose, Type } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
+import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { DisplayEntity } from '../entities/displays.entity';
 
+/**
+ * Response wrapper for DisplayEntity
+ */
 @ApiSchema({ name: 'DisplaysModuleResDisplay' })
-export class DisplayResponseModel {
+export class DisplayResponseModel extends BaseSuccessResponseModel<DisplayEntity> {
 	@ApiProperty({
-		description: 'Indicates whether the API request was successful',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	success: boolean;
-
-	@ApiProperty({
-		description: 'Display data',
+		description: 'The actual data payload returned by the API',
 		type: () => DisplayEntity,
 	})
 	@Expose()
-	@Type(() => DisplayEntity)
-	data: DisplayEntity;
+	declare data: DisplayEntity;
 }
 
+/**
+ * Response wrapper for array of DisplayEntity
+ */
 @ApiSchema({ name: 'DisplaysModuleResDisplays' })
-export class DisplaysResponseModel {
+export class DisplaysResponseModel extends BaseSuccessResponseModel<DisplayEntity[]> {
 	@ApiProperty({
-		description: 'Indicates whether the API request was successful',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	success: boolean;
-
-	@ApiProperty({
-		description: 'List of displays',
+		description: 'The actual data payload returned by the API',
 		type: 'array',
-		items: {
-			$ref: getSchemaPath(DisplayEntity),
-		},
+		items: { $ref: getSchemaPath(DisplayEntity) },
 	})
 	@Expose()
-	@Type(() => DisplayEntity)
-	data: DisplayEntity[];
+	declare data: DisplayEntity[];
 }
 
+/**
+ * Display registration data containing the display and access token
+ */
 @ApiSchema({ name: 'DisplaysModuleDataRegistration' })
 export class DisplayRegistrationDataModel {
 	@ApiProperty({
@@ -57,52 +47,40 @@ export class DisplayRegistrationDataModel {
 	display: DisplayEntity;
 
 	@ApiProperty({
+		name: 'access_token',
 		description: 'Long-lived access token for the display',
 		type: 'string',
 		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-		name: 'access_token',
 	})
 	@Expose({ name: 'access_token' })
 	accessToken: string;
 }
 
+/**
+ * Response wrapper for display registration
+ */
 @ApiSchema({ name: 'DisplaysModuleResDisplayRegistration' })
-export class DisplayRegistrationResponseModel {
+export class DisplayRegistrationResponseModel extends BaseSuccessResponseModel<DisplayRegistrationDataModel> {
 	@ApiProperty({
-		description: 'Indicates whether the API request was successful',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	success: boolean;
-
-	@ApiProperty({
-		description: 'Display registration data',
+		description: 'The actual data payload returned by the API',
 		type: () => DisplayRegistrationDataModel,
 	})
 	@Expose()
 	@Type(() => DisplayRegistrationDataModel)
-	data: DisplayRegistrationDataModel;
+	declare data: DisplayRegistrationDataModel;
 }
 
+/**
+ * Response wrapper for array of LongLiveTokenEntity (display tokens)
+ */
 @ApiSchema({ name: 'DisplaysModuleResDisplayTokens' })
-export class DisplayTokensResponseModel {
+export class DisplayTokensResponseModel extends BaseSuccessResponseModel<LongLiveTokenEntity[]> {
 	@ApiProperty({
-		description: 'Indicates whether the API request was successful',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	success: boolean;
-
-	@ApiProperty({
-		description: 'List of display tokens (should be at most one active token per display)',
+		description: 'The actual data payload returned by the API',
 		type: 'array',
-		items: {
-			$ref: getSchemaPath(LongLiveTokenEntity),
-		},
+		items: { $ref: getSchemaPath(LongLiveTokenEntity) },
 	})
 	@Expose()
 	@Type(() => LongLiveTokenEntity)
-	data: LongLiveTokenEntity[];
+	declare data: LongLiveTokenEntity[];
 }

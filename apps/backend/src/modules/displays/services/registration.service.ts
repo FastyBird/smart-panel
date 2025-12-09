@@ -66,6 +66,8 @@ export class RegistrationService {
 				unitSize: dtoInstance.unitSize ?? 8,
 				rows: dtoInstance.rows ?? 12,
 				cols: dtoInstance.cols ?? 24,
+				audioOutputSupported: dtoInstance.audioOutputSupported ?? false,
+				audioInputSupported: dtoInstance.audioInputSupported ?? false,
 			});
 		}
 

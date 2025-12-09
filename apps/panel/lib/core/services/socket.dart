@@ -161,7 +161,7 @@ class SocketService {
       '$host:$backendPort',
       io.OptionBuilder()
           .setTransports(['websocket'])
-          .setExtraHeaders({'X-Display-Secret': apiSecret})
+          .setAuth({'token': apiSecret})
           .disableAutoConnect()
           .disableReconnection()
           .build(),

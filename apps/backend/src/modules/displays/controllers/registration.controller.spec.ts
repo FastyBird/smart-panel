@@ -97,7 +97,6 @@ describe('RegistrationController', () => {
 
 			const result = await controller.register('FastyBird Smart Panel/1.0.0', { data: registerDto });
 
-			expect(result.success).toBe(true);
 			expect(result.data.display).toEqual(toInstance(DisplayEntity, mockDisplay));
 			expect(result.data.accessToken).toBe(mockToken);
 			expect(service.registerDisplay).toHaveBeenCalledWith(registerDto, 'FastyBird Smart Panel/1.0.0');
@@ -116,7 +115,7 @@ describe('RegistrationController', () => {
 
 			const result = await controller.register('FastyBird-Display/1.0', { data: registerDto });
 
-			expect(result.success).toBe(true);
+			expect(result.data).toBeDefined();
 			expect(service.registerDisplay).toHaveBeenCalledWith(registerDto, 'FastyBird-Display/1.0');
 		});
 

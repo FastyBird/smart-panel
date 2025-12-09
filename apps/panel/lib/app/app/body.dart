@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/features/overlay/presentation/screen_saver
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/export.dart';
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
@@ -23,8 +24,7 @@ class AppBody extends StatefulWidget {
 }
 
 class _AppBodyState extends State<AppBody> {
-  final DisplayConfigRepository _displayConfigRepository =
-      locator<DisplayConfigRepository>();
+  final DisplayRepository _displayRepository = locator<DisplayRepository>();
   final LanguageConfigRepository _languageConfigRepository =
       locator<LanguageConfigRepository>();
   final NavigationService _navigator = locator<NavigationService>();
@@ -32,6 +32,7 @@ class _AppBodyState extends State<AppBody> {
   bool _hasDarkMode = false;
   Language _language = Language.english;
   int _screenLockDuration = 30;
+  bool _hasScreenSaver = true;
 
   Timer? _inactivityTimer;
 
@@ -45,7 +46,7 @@ class _AppBodyState extends State<AppBody> {
     _syncStateWithRepository();
     _resetInactivityTimer();
 
-    _displayConfigRepository.addListener(_syncStateWithRepository);
+    _displayRepository.addListener(_syncStateWithRepository);
     _languageConfigRepository.addListener(_syncStateWithRepository);
 
     locator<SystemActionsService>().init();
@@ -55,7 +56,7 @@ class _AppBodyState extends State<AppBody> {
   void dispose() {
     _inactivityTimer?.cancel();
 
-    _displayConfigRepository.removeListener(_syncStateWithRepository);
+    _displayRepository.removeListener(_syncStateWithRepository);
     _languageConfigRepository.removeListener(_syncStateWithRepository);
 
     locator<SystemActionsService>().dispose();
@@ -65,9 +66,10 @@ class _AppBodyState extends State<AppBody> {
 
   void _syncStateWithRepository() {
     setState(() {
-      _hasDarkMode = _displayConfigRepository.hasDarkMode;
+      _hasDarkMode = _displayRepository.hasDarkMode;
       _language = _languageConfigRepository.language;
-      _screenLockDuration = _displayConfigRepository.screenLockDuration;
+      _screenLockDuration = _displayRepository.screenLockDuration;
+      _hasScreenSaver = _displayRepository.hasScreenSaver;
     });
   }
 
@@ -83,7 +85,7 @@ class _AppBodyState extends State<AppBody> {
           _navigator.navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (context) {
-                if (_displayConfigRepository.hasScreenSaver) {
+                if (_hasScreenSaver) {
                   return ScreenSaverScreen();
                 }
 

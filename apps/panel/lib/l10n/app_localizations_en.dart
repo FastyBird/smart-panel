@@ -439,6 +439,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_audio_settings_microphone_volume_title => 'Microphone Volume';
 
   @override
+  String get settings_audio_settings_no_support => 'This display does not support audio input or output.';
+
+  @override
   String get settings_about_title => 'About Application';
 
   @override
