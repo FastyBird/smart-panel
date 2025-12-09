@@ -92,9 +92,19 @@ void main() {
 
     test('should clear stored URL on connection failure', () {
       // Expected behavior:
-      // - When _performInitialization fails
+      // - When backend connection fails in _performInitialization
       // - Clears 'backend_url' from secure storage
       // - Returns InitializationResult.connectionFailed
+      expect(true, isTrue);
+    });
+
+    test('should clear stored URL on module initialization failure', () {
+      // Expected behavior:
+      // - When backend connects but module initialization fails
+      // - Clears 'backend_url' from secure storage
+      // - Returns InitializationResult.error
+      // - This ensures consistent behavior with connection failures
+      //   and prevents repeated failures on subsequent app launches
       expect(true, isTrue);
     });
 

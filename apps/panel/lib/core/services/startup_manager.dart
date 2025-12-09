@@ -275,6 +275,10 @@ class StartupManagerService {
       // This ensures they don't remain registered with a stale API client
       _unregisterModulesIfNeeded();
 
+      // Clear stored URL on module initialization failure to allow rediscovery
+      // This matches the behavior of connection failures (line 247)
+      await _clearStoredBackendUrl();
+
       return InitializationResult.error;
     }
 
