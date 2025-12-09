@@ -145,7 +145,7 @@ class StartupManagerService {
       defaultValue: '3000',
     );
 
-    if (!isAndroidEmulator) {
+    if (isAndroidEmulator) {
       return 'http://10.0.2.2:$backendPort/api/v1';
     }
 
