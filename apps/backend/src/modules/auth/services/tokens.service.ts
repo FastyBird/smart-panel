@@ -7,11 +7,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { UserEntity } from '../../users/entities/users.entity';
 import { TokenOwnerType } from '../auth.constants';
 import { AuthException, AuthNotFoundException, AuthValidationException } from '../auth.exceptions';
 import { CreateTokenDto } from '../dto/create-token.dto';
 import { UpdateTokenDto } from '../dto/update-token.dto';
-import { LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { hashToken } from '../utils/token.utils';
 
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
@@ -31,17 +32,21 @@ export class TokensService {
 		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
-		const isLongLiveToken = type?.name === LongLiveTokenEntity.name;
+		const typeName = type?.name;
 
 		let queryBuilder = repository.createQueryBuilder('token');
 
-		// LongLiveTokenEntity doesn't have owner relation, others do
-		if (!isLongLiveToken) {
+		// Join relations based on token type
+		if (typeName === AccessTokenEntity.name) {
+			// AccessTokenEntity has owner and children (no parent)
 			queryBuilder = queryBuilder
 				.leftJoinAndSelect('token.owner', 'owner')
-				.leftJoinAndSelect('token.parent', 'parent')
 				.leftJoinAndSelect('token.children', 'children');
+		} else if (typeName === RefreshTokenEntity.name) {
+			// RefreshTokenEntity has owner and parent (no children)
+			queryBuilder = queryBuilder.leftJoinAndSelect('token.owner', 'owner').leftJoinAndSelect('token.parent', 'parent');
 		}
+		// LongLiveTokenEntity has no relations to join
 
 		const tokens = (await queryBuilder.getMany()) as TToken[];
 
@@ -57,20 +62,30 @@ export class TokensService {
 		this.logger.debug('[LOOKUP ALL] Fetching all tokens by owner');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
-		const isLongLiveToken = type?.name === LongLiveTokenEntity.name;
+		const typeName = type?.name;
 
 		let queryBuilder = repository.createQueryBuilder('token');
 
-		if (isLongLiveToken) {
+		if (typeName === LongLiveTokenEntity.name) {
 			// LongLiveTokenEntity uses ownerId field directly
 			queryBuilder = queryBuilder.where('token.ownerId = :ownerId', { ownerId: owner });
-		} else {
-			// AccessToken/RefreshToken use owner relation
+		} else if (typeName === AccessTokenEntity.name) {
+			// AccessTokenEntity has owner and children (no parent)
+			queryBuilder = queryBuilder
+				.leftJoinAndSelect('token.owner', 'owner')
+				.leftJoinAndSelect('token.children', 'children')
+				.where('owner.id = :ownerId', { ownerId: owner });
+		} else if (typeName === RefreshTokenEntity.name) {
+			// RefreshTokenEntity has owner and parent (no children)
 			queryBuilder = queryBuilder
 				.leftJoinAndSelect('token.owner', 'owner')
 				.leftJoinAndSelect('token.parent', 'parent')
-				.leftJoinAndSelect('token.children', 'children')
-				.where('token.owner = :ownerId', { ownerId: owner });
+				.where('owner.id = :ownerId', { ownerId: owner });
+		} else {
+			// Generic query for unknown types - just filter by owner
+			queryBuilder = queryBuilder
+				.leftJoinAndSelect('token.owner', 'owner')
+				.where('owner.id = :ownerId', { ownerId: owner });
 		}
 
 		const tokens = (await queryBuilder.getMany()) as TToken[];
@@ -100,7 +115,7 @@ export class TokensService {
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
 		const tokens = await repository.find({
-			where: { ownerId, ownerType },
+			where: { tokenOwnerId: ownerId, ownerType },
 		});
 
 		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} long-live tokens`);
@@ -113,7 +128,7 @@ export class TokensService {
 
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
-		await repository.update({ ownerId, ownerType }, { revoked: true });
+		await repository.update({ tokenOwnerId: ownerId, ownerType }, { revoked: true });
 
 		this.logger.debug(`[REVOKE] Successfully revoked tokens for ownerId=${ownerId}`);
 	}
@@ -151,6 +166,27 @@ export class TokensService {
 			throw new AuthException('Token property type is required.');
 		}
 
+		// Extract entity relations BEFORE validation/transformation
+		// toInstance uses plainToInstance which doesn't handle entity references properly
+		let ownerEntity: UserEntity | undefined;
+		let parentEntity: AccessTokenEntity | undefined;
+
+		// Check if owner is an entity object (has id property and is not a string)
+		if ('owner' in createDto && createDto.owner && typeof createDto.owner === 'object' && 'id' in createDto.owner) {
+			ownerEntity = createDto.owner as UserEntity;
+			// Remove entity from DTO to prevent issues with transformation
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			delete (createDto as any).owner;
+		}
+
+		// Check if parent is an entity object
+		if ('parent' in createDto && createDto.parent && typeof createDto.parent === 'object' && 'id' in createDto.parent) {
+			parentEntity = createDto.parent as AccessTokenEntity;
+			// Remove entity from DTO to prevent issues with transformation
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			delete (createDto as any).parent;
+		}
+
 		const mapping = this.tokensMapperService.getMapping<TToken, TCreateDTO, any>(type);
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
@@ -177,15 +213,59 @@ export class TokensService {
 			throw new AuthException('A token with the same hash already exists.');
 		}
 
-		const token = repository.create(toInstance(mapping.class, dtoInstance));
+		// Build the token entity directly without using toInstance for relations
+		// toInstance doesn't properly handle entity references
+		const token = new mapping.class();
 
+		// Set scalar properties from DTO
+		if (dtoInstance.id) {
+			token.id = dtoInstance.id;
+		}
 		token.hashedToken = dtoInstance.token;
+		if (dtoInstance.expiresAt) {
+			token.expiresAt = dtoInstance.expiresAt;
+		}
 
-		// Save the token
-		await repository.save(token);
+		// Set LongLiveToken specific properties
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		if ('ownerType' in dtoInstance && (dtoInstance as any).ownerType) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+			(token as any).ownerType = (dtoInstance as any).ownerType;
+		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		if ('ownerId' in dtoInstance && (dtoInstance as any).ownerId) {
+			// Use tokenOwnerId for LongLiveTokenEntity to avoid FK conflict with AccessTokenEntity.ownerId
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+			(token as any).tokenOwnerId = (dtoInstance as any).ownerId;
+		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		if ('name' in dtoInstance && (dtoInstance as any).name) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+			(token as any).name = (dtoInstance as any).name;
+		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		if ('description' in dtoInstance && (dtoInstance as any).description !== undefined) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+			(token as any).description = (dtoInstance as any).description;
+		}
+
+		// Set entity relations by setting the foreign key columns directly
+		// This is more reliable than setting the relation entity
+		if (ownerEntity) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			(token as any).ownerId = ownerEntity.id;
+		}
+
+		if (parentEntity) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			(token as any).parentId = parentEntity.id;
+		}
+
+		// Save the token - save returns the entity with the generated ID
+		const savedResult = await repository.save(token);
 
 		// Retrieve the saved token with its full relations
-		const savedToken = await this.getOneOrThrow<TToken>(token.id);
+		const savedToken = await this.getOneOrThrow<TToken>(savedResult.id, mapping.class);
 
 		this.logger.debug(`[CREATE] Successfully created token with id=${savedToken.id}`);
 
@@ -233,8 +313,11 @@ export class TokensService {
 		this.logger.log(`[DELETE] Successfully removed token with id=${id}`);
 	}
 
-	async getOneOrThrow<TToken extends TokenEntity>(id: string): Promise<TToken> {
-		const token = await this.findOne<TToken>(id);
+	async getOneOrThrow<TToken extends TokenEntity>(
+		id: string,
+		type?: new (...args: unknown[]) => TToken,
+	): Promise<TToken> {
+		const token = await this.findOne<TToken>(id, type);
 
 		if (!token) {
 			this.logger.error(`[ERROR] Token with id=${id} not found`);
@@ -253,17 +336,21 @@ export class TokensService {
 		this.logger.debug('[LOOKUP] Fetching token');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
-		const isLongLiveToken = type?.name === LongLiveTokenEntity.name;
+		const typeName = type?.name;
 
 		let queryBuilder = repository.createQueryBuilder('token');
 
-		// LongLiveTokenEntity doesn't have owner relation, others do
-		if (!isLongLiveToken) {
+		// Join relations based on token type
+		if (typeName === AccessTokenEntity.name) {
+			// AccessTokenEntity has owner and children (no parent)
 			queryBuilder = queryBuilder
 				.leftJoinAndSelect('token.owner', 'owner')
-				.leftJoinAndSelect('token.parent', 'parent')
 				.leftJoinAndSelect('token.children', 'children');
+		} else if (typeName === RefreshTokenEntity.name) {
+			// RefreshTokenEntity has owner and parent (no children)
+			queryBuilder = queryBuilder.leftJoinAndSelect('token.owner', 'owner').leftJoinAndSelect('token.parent', 'parent');
 		}
+		// LongLiveTokenEntity has no relations to join
 
 		queryBuilder = queryBuilder.where(`token.${field} = :fieldValue`, { fieldValue: value });
 

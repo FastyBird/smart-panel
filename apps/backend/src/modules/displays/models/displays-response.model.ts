@@ -2,6 +2,7 @@ import { Expose, Type } from 'class-transformer';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
+import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { DisplayEntity } from '../entities/displays.entity';
 
 @ApiSchema({ name: 'DisplaysModuleResDisplay' })
@@ -82,4 +83,26 @@ export class DisplayRegistrationResponseModel {
 	@Expose()
 	@Type(() => DisplayRegistrationDataModel)
 	data: DisplayRegistrationDataModel;
+}
+
+@ApiSchema({ name: 'DisplaysModuleResDisplayTokens' })
+export class DisplayTokensResponseModel {
+	@ApiProperty({
+		description: 'Indicates whether the API request was successful',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		description: 'List of display tokens (should be at most one active token per display)',
+		type: 'array',
+		items: {
+			$ref: getSchemaPath(LongLiveTokenEntity),
+		},
+	})
+	@Expose()
+	@Type(() => LongLiveTokenEntity)
+	data: LongLiveTokenEntity[];
 }

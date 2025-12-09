@@ -1,6 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, Logger, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Logger, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { TokenOwnerType } from '../../auth/auth.constants';
+import { TokensService } from '../../auth/services/tokens.service';
 import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
@@ -9,7 +11,11 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqUpdateDisplayDto } from '../dto/update-display.dto';
-import { DisplayResponseModel, DisplaysResponseModel } from '../models/displays-response.model';
+import {
+	DisplayResponseModel,
+	DisplayTokensResponseModel,
+	DisplaysResponseModel,
+} from '../models/displays-response.model';
 import { DisplaysService } from '../services/displays.service';
 
 @ApiTags('Displays Module - Displays')
@@ -17,12 +23,16 @@ import { DisplaysService } from '../services/displays.service';
 export class DisplaysController {
 	private readonly logger = new Logger(DisplaysController.name);
 
-	constructor(private readonly displaysService: DisplaysService) {}
+	constructor(
+		private readonly displaysService: DisplaysService,
+		private readonly tokensService: TokensService,
+	) {}
 
 	@Get()
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'List all displays',
-		description: 'Retrieves a list of all registered displays.',
+		description: 'Retrieves a list of all registered displays. Requires owner or admin role.',
 	})
 	@ApiSuccessResponse(DisplaysResponseModel, 'Returns a list of displays')
 	async findAll(): Promise<DisplaysResponseModel> {
@@ -34,13 +44,15 @@ export class DisplaysController {
 	}
 
 	@Get(':id')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Get display by ID',
-		description: 'Retrieves a specific display by its unique identifier.',
+		description: 'Retrieves a specific display by its unique identifier. Requires owner or admin role.',
 	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display ID' })
 	@ApiSuccessResponse(DisplayResponseModel, 'Returns the display')
 	@ApiNotFoundResponse('Display not found')
-	async findOne(@Param('id') id: string): Promise<DisplayResponseModel> {
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayResponseModel> {
 		this.logger.debug(`[GET] Fetching display with id=${id}`);
 
 		const display = await this.displaysService.getOneOrThrow(id);
@@ -49,14 +61,19 @@ export class DisplaysController {
 	}
 
 	@Patch(':id')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Update display',
-		description: 'Updates an existing display configuration.',
+		description: 'Updates an existing display configuration. Requires owner or admin role.',
 	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display ID' })
 	@ApiSuccessResponse(DisplayResponseModel, 'Returns the updated display')
 	@ApiNotFoundResponse('Display not found')
 	@ApiUnprocessableEntityResponse('Invalid display data')
-	async update(@Param('id') id: string, @Body() body: ReqUpdateDisplayDto): Promise<DisplayResponseModel> {
+	async update(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqUpdateDisplayDto,
+	): Promise<DisplayResponseModel> {
 		this.logger.debug(`[UPDATE] Updating display with id=${id}`);
 
 		const display = await this.displaysService.update(id, body.data);
@@ -80,5 +97,53 @@ export class DisplaysController {
 		await this.displaysService.remove(id);
 
 		this.logger.debug(`[DELETE] Successfully removed display with id=${id}`);
+	}
+
+	@Get(':id/tokens')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		summary: 'List display tokens',
+		description:
+			'Retrieves all active (non-revoked) tokens for a specific display. Requires owner or admin role. Note: Each display should have at most one active token.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display ID' })
+	@ApiSuccessResponse(DisplayTokensResponseModel, 'Returns the list of display tokens')
+	@ApiNotFoundResponse('Display not found')
+	async getTokens(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayTokensResponseModel> {
+		this.logger.debug(`[GET TOKENS] Fetching tokens for display with id=${id}`);
+
+		// Verify display exists
+		await this.displaysService.getOneOrThrow(id);
+
+		// Get all tokens for this display (only active, non-revoked tokens)
+		const allTokens = await this.tokensService.findByOwnerId(id, TokenOwnerType.DISPLAY);
+		const activeTokens = allTokens.filter((token) => !token.revoked);
+
+		this.logger.debug(`[GET TOKENS] Found ${activeTokens.length} active tokens for display with id=${id}`);
+
+		return { success: true, data: activeTokens };
+	}
+
+	@Post(':id/revoke-token')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		summary: 'Revoke display token',
+		description:
+			'Revokes all active tokens for a specific display. The display will need to re-register to get a new token. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display ID' })
+	@ApiNoContentResponse({ description: 'Display tokens revoked successfully' })
+	@ApiNotFoundResponse('Display not found')
+	@HttpCode(204)
+	async revokeToken(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`[REVOKE TOKEN] Revoking tokens for display with id=${id}`);
+
+		// Verify display exists
+		await this.displaysService.getOneOrThrow(id);
+
+		// Revoke all tokens for this display
+		await this.tokensService.revokeByOwnerId(id, TokenOwnerType.DISPLAY);
+
+		this.logger.debug(`[REVOKE TOKEN] Successfully revoked tokens for display with id=${id}`);
 	}
 }

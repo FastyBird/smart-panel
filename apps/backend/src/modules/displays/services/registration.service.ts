@@ -80,6 +80,10 @@ export class RegistrationService {
 	private async generateDisplayToken(display: DisplayEntity): Promise<string> {
 		this.logger.debug(`[TOKEN] Generating token for display=${display.id}`);
 
+		// Calculate expiration date (1 year from now)
+		const expiresAt = new Date();
+		expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
 		// Generate JWT token with display info
 		const token = this.jwtService.sign(
 			{
@@ -100,6 +104,7 @@ export class RegistrationService {
 			ownerId: display.id,
 			name: `Display Token - ${display.macAddress}`,
 			description: `Auto-generated token for display ${display.name ?? display.macAddress}`,
+			expiresAt: expiresAt,
 		});
 
 		this.logger.debug(`[TOKEN] Successfully generated token for display=${display.id}`);

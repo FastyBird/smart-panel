@@ -148,6 +148,8 @@ describe('RegistrationService', () => {
 				ownerId: mockDisplay.id,
 				name: `Display Token - ${mockDisplay.macAddress}`,
 				description: `Auto-generated token for display ${mockDisplay.name ?? mockDisplay.macAddress}`,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				expiresAt: expect.any(Date),
 			});
 		});
 

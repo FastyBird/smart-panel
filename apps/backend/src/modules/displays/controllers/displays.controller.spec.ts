@@ -11,6 +11,9 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { TokenOwnerType } from '../../auth/auth.constants';
+import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
+import { TokensService } from '../../auth/services/tokens.service';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 import { DisplaysService } from '../services/displays.service';
@@ -20,6 +23,7 @@ import { DisplaysController } from './displays.controller';
 describe('DisplaysController', () => {
 	let controller: DisplaysController;
 	let service: DisplaysService;
+	let tokensService: TokensService;
 
 	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
@@ -75,11 +79,19 @@ describe('DisplaysController', () => {
 						remove: jest.fn(),
 					},
 				},
+				{
+					provide: TokensService,
+					useValue: {
+						findByOwnerId: jest.fn(),
+						revokeByOwnerId: jest.fn(),
+					},
+				},
 			],
 		}).compile();
 
 		controller = module.get<DisplaysController>(DisplaysController);
 		service = module.get<DisplaysService>(DisplaysService);
+		tokensService = module.get<TokensService>(TokensService);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -94,6 +106,7 @@ describe('DisplaysController', () => {
 	it('should be defined', () => {
 		expect(controller).toBeDefined();
 		expect(service).toBeDefined();
+		expect(tokensService).toBeDefined();
 	});
 
 	describe('findAll', () => {
@@ -173,6 +186,96 @@ describe('DisplaysController', () => {
 			jest.spyOn(service, 'remove').mockRejectedValue(new DisplaysNotFoundException('Display not found'));
 
 			await expect(controller.remove('non-existent-id')).rejects.toThrow(DisplaysNotFoundException);
+		});
+	});
+
+	describe('getTokens', () => {
+		it('should return active tokens for a display', async () => {
+			const mockToken: Partial<LongLiveTokenEntity> = {
+				id: uuid().toString(),
+				hashedToken: 'hashed-token',
+				ownerType: TokenOwnerType.DISPLAY,
+				ownerId: mockDisplay.id,
+				name: 'Display Token',
+				description: null,
+				revoked: false,
+				expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+				createdAt: new Date(),
+				updatedAt: null,
+			};
+
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
+			jest.spyOn(tokensService, 'findByOwnerId').mockResolvedValue([mockToken as LongLiveTokenEntity]);
+
+			const result = await controller.getTokens(mockDisplay.id);
+
+			expect(result.success).toBe(true);
+			expect(result.data).toHaveLength(1);
+			expect(service.getOneOrThrow).toHaveBeenCalledWith(mockDisplay.id);
+			expect(tokensService.findByOwnerId).toHaveBeenCalledWith(mockDisplay.id, TokenOwnerType.DISPLAY);
+		});
+
+		it('should filter out revoked tokens', async () => {
+			const mockActiveToken: Partial<LongLiveTokenEntity> = {
+				id: uuid().toString(),
+				hashedToken: 'hashed-token-1',
+				ownerType: TokenOwnerType.DISPLAY,
+				ownerId: mockDisplay.id,
+				name: 'Active Token',
+				description: null,
+				revoked: false,
+				expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+				createdAt: new Date(),
+				updatedAt: null,
+			};
+
+			const mockRevokedToken: Partial<LongLiveTokenEntity> = {
+				id: uuid().toString(),
+				hashedToken: 'hashed-token-2',
+				ownerType: TokenOwnerType.DISPLAY,
+				ownerId: mockDisplay.id,
+				name: 'Revoked Token',
+				description: null,
+				revoked: true,
+				expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+				createdAt: new Date(),
+				updatedAt: null,
+			};
+
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
+			jest
+				.spyOn(tokensService, 'findByOwnerId')
+				.mockResolvedValue([mockActiveToken as LongLiveTokenEntity, mockRevokedToken as LongLiveTokenEntity]);
+
+			const result = await controller.getTokens(mockDisplay.id);
+
+			expect(result.success).toBe(true);
+			expect(result.data).toHaveLength(1);
+			expect(result.data[0].revoked).toBe(false);
+		});
+
+		it('should throw DisplaysNotFoundException when display not found', async () => {
+			jest.spyOn(service, 'getOneOrThrow').mockRejectedValue(new DisplaysNotFoundException('Display not found'));
+
+			await expect(controller.getTokens('non-existent-id')).rejects.toThrow(DisplaysNotFoundException);
+		});
+	});
+
+	describe('revokeToken', () => {
+		it('should revoke all tokens for a display', async () => {
+			jest.spyOn(service, 'getOneOrThrow').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
+			jest.spyOn(tokensService, 'revokeByOwnerId').mockResolvedValue(undefined);
+
+			await controller.revokeToken(mockDisplay.id);
+
+			expect(service.getOneOrThrow).toHaveBeenCalledWith(mockDisplay.id);
+			expect(tokensService.revokeByOwnerId).toHaveBeenCalledWith(mockDisplay.id, TokenOwnerType.DISPLAY);
+		});
+
+		it('should throw DisplaysNotFoundException when display not found', async () => {
+			jest.spyOn(service, 'getOneOrThrow').mockRejectedValue(new DisplaysNotFoundException('Display not found'));
+
+			await expect(controller.revokeToken('non-existent-id')).rejects.toThrow(DisplaysNotFoundException);
 		});
 	});
 });

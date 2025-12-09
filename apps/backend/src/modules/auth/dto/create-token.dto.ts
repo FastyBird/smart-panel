@@ -3,7 +3,9 @@ import { IsDate, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, V
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
+import { UserEntity } from '../../users/entities/users.entity';
 import { TokenOwnerType, TokenType } from '../auth.constants';
+import { AccessTokenEntity } from '../entities/auth.entity';
 
 const determineTokenDto = (obj: unknown): new () => object => {
 	if (
@@ -95,14 +97,13 @@ export class CreateAccessTokenDto extends CreateTokenDto {
 	type: TokenType.ACCESS;
 
 	@ApiProperty({
-		description: 'Token owner user ID',
+		description: 'Token owner user entity',
 		type: 'string',
 		format: 'uuid',
 	})
 	@Expose()
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"owner","reason":"Token owner must be a valid UUID (version 4)."}]' })
-	owner: string;
+	owner: UserEntity;
 }
 
 @ApiSchema({ name: 'AuthModuleCreateRefreshToken' })
@@ -115,24 +116,22 @@ export class CreateRefreshTokenDto extends CreateTokenDto {
 	type: TokenType.REFRESH;
 
 	@ApiProperty({
-		description: 'Token owner user ID',
+		description: 'Token owner user entity',
 		type: 'string',
 		format: 'uuid',
 	})
 	@Expose()
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"owner","reason":"Token owner must be a valid UUID (version 4)."}]' })
-	owner: string;
+	owner: UserEntity;
 
 	@ApiProperty({
-		description: 'Parent access token ID',
+		description: 'Parent access token entity',
 		type: 'string',
 		format: 'uuid',
 	})
 	@Expose()
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"parent","reason":"Parent access token must be a valid UUID (version 4)."}]' })
-	parent: string;
+	parent: AccessTokenEntity;
 }
 
 @ApiSchema({ name: 'AuthModuleCreateLongLiveToken' })

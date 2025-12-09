@@ -1,6 +1,16 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDate, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
-import { BeforeInsert, ChildEntity, Column, Entity, Index, ManyToOne, OneToMany, TableInheritance } from 'typeorm';
+import {
+	BeforeInsert,
+	ChildEntity,
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	OneToMany,
+	TableInheritance,
+} from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -101,11 +111,15 @@ export class AccessTokenEntity extends TokenEntity {
 	})
 	@Expose()
 	@IsOptional()
+	@Column({ nullable: true })
+	ownerId: string;
+
 	@Type(() => UserEntity)
 	@Transform(({ value }: { value: UserEntity | string }) => (typeof value === 'string' ? value : value?.id), {
 		toPlainOnly: true,
 	})
 	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'ownerId' })
 	owner: UserEntity;
 
 	@OneToMany(() => RefreshTokenEntity, (token) => token.parent, { cascade: true })
@@ -133,6 +147,9 @@ export class AccessTokenEntity extends TokenEntity {
 @ApiSchema({ name: 'AuthModuleDataRefreshToken' })
 @ChildEntity()
 export class RefreshTokenEntity extends TokenEntity {
+	@Column({ nullable: true })
+	ownerId: string;
+
 	@ApiProperty({
 		description: 'Token owner ID',
 		type: 'string',
@@ -146,7 +163,11 @@ export class RefreshTokenEntity extends TokenEntity {
 		toPlainOnly: true,
 	})
 	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'ownerId' })
 	owner: UserEntity;
+
+	@Column({ nullable: true })
+	parentId: string;
 
 	@ApiProperty({
 		description: 'Parent access token ID',
@@ -161,6 +182,7 @@ export class RefreshTokenEntity extends TokenEntity {
 		toPlainOnly: true,
 	})
 	@ManyToOne(() => AccessTokenEntity, (token) => token.children, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'parentId' })
 	parent: AccessTokenEntity;
 
 	@ApiProperty({
@@ -203,11 +225,24 @@ export class LongLiveTokenEntity extends TokenEntity {
 	@Expose({ name: 'owner_id' })
 	@IsOptional()
 	@IsUUID('4')
-	@Transform(({ obj }: { obj: { owner_id?: string; ownerId?: string } }) => obj.owner_id ?? obj.ownerId, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { owner_id?: string; ownerId?: string; tokenOwnerId?: string } }) =>
+			obj.owner_id ?? obj.ownerId ?? obj.tokenOwnerId,
+		{
+			toClassOnly: true,
+		},
+	)
 	@Column({ type: 'uuid', nullable: true })
-	ownerId: string | null;
+	tokenOwnerId: string | null;
+
+	// Getter/setter for API compatibility - maps ownerId to tokenOwnerId
+	get ownerId(): string | null {
+		return this.tokenOwnerId;
+	}
+
+	set ownerId(value: string | null) {
+		this.tokenOwnerId = value;
+	}
 
 	@ApiProperty({
 		description: 'Token name',

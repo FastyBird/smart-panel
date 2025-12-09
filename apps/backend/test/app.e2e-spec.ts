@@ -152,11 +152,11 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			})
 			.expect(201);
 
-		const responseBody = response.body as { data: { display: { id: string }; access_token: string } };
+		const responseBody = response.body as { data: { display: { id: string }; accessToken: string } };
 
 		expect(responseBody).toHaveProperty('data');
 		expect(responseBody.data).toHaveProperty('display');
-		expect(responseBody.data).toHaveProperty('access_token');
+		expect(responseBody.data).toHaveProperty('accessToken');
 	});
 
 	// ✅ Unauthorized Access Test

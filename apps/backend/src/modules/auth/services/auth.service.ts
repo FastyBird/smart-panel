@@ -254,10 +254,11 @@ export class AuthService {
 		let accessTokenEntity: AccessTokenEntity;
 
 		try {
+			// Pass user entity directly to ensure relation is properly set
 			accessTokenEntity = await this.tokensService.create<AccessTokenEntity, CreateAccessTokenDto>({
 				token: accessToken,
 				type: TokenType.ACCESS,
-				owner: user.id,
+				owner: user,
 				expiresAt: accessTokenExpiresAt,
 			});
 		} catch (error) {
@@ -272,11 +273,12 @@ export class AuthService {
 		const refreshTokenExpiresAt = this.getExpiryDate(refreshToken) || new Date();
 
 		try {
+			// Pass user entity and parent token entity directly to ensure relations are properly set
 			await this.tokensService.create<RefreshTokenEntity, CreateRefreshTokenDto>({
 				token: refreshToken,
 				type: TokenType.REFRESH,
-				owner: user.id,
-				parent: accessTokenEntity.id,
+				owner: user,
+				parent: accessTokenEntity,
 				expiresAt: refreshTokenExpiresAt,
 			});
 		} catch (error) {
