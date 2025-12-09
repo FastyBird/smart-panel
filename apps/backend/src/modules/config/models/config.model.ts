@@ -580,7 +580,6 @@ export class AppConfigModel {
 	})
 	@Expose()
 	@ValidateNested({ each: true })
-	@Type(() => PluginConfigModel)
 	plugins: PluginConfigModel[] = [];
 
 	@ApiProperty({
@@ -592,6 +591,5 @@ export class AppConfigModel {
 	})
 	@Expose()
 	@ValidateNested({ each: true })
-	@Type(() => ModuleConfigModel)
 	modules: ModuleConfigModel[] = [];
 }

@@ -1,0 +1,35 @@
+{
+	"messages": {
+		"config": {
+			"edited": "mDNS configuration has been successfully updated",
+			"notEdited": "Failed to update mDNS configuration"
+		}
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enable mDNS",
+				"description": "Enable or disable mDNS service advertisement",
+				"validation": {
+					"required": "Enabled field is required"
+				}
+			},
+			"serviceName": {
+				"title": "Service Name",
+				"description": "mDNS service name to advertise",
+				"placeholder": "FastyBird Smart Panel",
+				"validation": {
+					"required": "Service name is required"
+				}
+			},
+			"serviceType": {
+				"title": "Service Type",
+				"description": "mDNS service type identifier",
+				"placeholder": "fastybird-panel",
+				"validation": {
+					"required": "Service type is required"
+				}
+			}
+		}
+	}
+}

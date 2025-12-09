@@ -20,6 +20,7 @@ import { DASHBOARD_MODULE_PREFIX } from './modules/dashboard/dashboard.constants
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DEVICES_MODULE_PREFIX } from './modules/devices/devices.constants';
 import { DevicesModule } from './modules/devices/devices.module';
+import { MdnsModule } from './modules/mdns/mdns.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SeedModule } from './modules/seed/seeding.module';
 import { STATS_MODULE_PREFIX } from './modules/stats/stats.constants';
@@ -183,6 +184,7 @@ export class AppModule {
 				WeatherModule,
 				WebsocketModule,
 				SwaggerModule,
+				MdnsModule,
 				DevicesThirdPartyPlugin,
 				DevicesHomeAssistantPlugin,
 				DevicesShellyNgPlugin,

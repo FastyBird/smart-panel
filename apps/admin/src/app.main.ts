@@ -39,6 +39,7 @@ import { AuthModule } from './modules/auth';
 import { ConfigModule } from './modules/config';
 import { DashboardModule } from './modules/dashboard';
 import { DevicesModule } from './modules/devices';
+import { MdnsModule } from './modules/mdns';
 import { StatsModule } from './modules/stats';
 import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
@@ -124,6 +125,7 @@ app.use(DevicesModule, moduleOptions);
 app.use(UsersModule, moduleOptions);
 app.use(StatsModule, moduleOptions);
 app.use(WeatherModule, moduleOptions);
+app.use(MdnsModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {

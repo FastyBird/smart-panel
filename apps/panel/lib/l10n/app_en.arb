@@ -851,5 +851,126 @@
   "weather_condition_unknown": "Unknown",
   "@weather_condition_unknown": {
     "description": ""
+  },
+
+  "discovery_searching_title": "Searching for Gateways",
+  "@discovery_searching_title": {
+    "description": "Title displayed while searching for gateways"
+  },
+  "discovery_searching_description": "Looking for FastyBird Smart Panel gateways on your network...",
+  "@discovery_searching_description": {
+    "description": "Description displayed while searching for gateways"
+  },
+  "discovery_found_count": "Found {count} gateway(s)...",
+  "@discovery_found_count": {
+    "description": "Message showing how many gateways were found during search",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "discovery_select_title": "Select a Gateway",
+  "@discovery_select_title": {
+    "description": "Title when gateways are found and user needs to select one"
+  },
+  "discovery_select_description": "Found {count} gateway(s) on your network:",
+  "@discovery_select_description": {
+    "description": "Description showing how many gateways were found",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "discovery_not_found_title": "No Gateway Found",
+  "@discovery_not_found_title": {
+    "description": "Title when no gateways are found"
+  },
+  "discovery_not_found_description": "Could not find any FastyBird Smart Panel gateway on your network.\n\nMake sure the gateway is running and connected to the same network as this device.",
+  "@discovery_not_found_description": {
+    "description": "Description when no gateways are found"
+  },
+  "discovery_error_title": "Discovery Error",
+  "@discovery_error_title": {
+    "description": "Title when discovery fails with an error"
+  },
+  "discovery_error_description": "An error occurred while searching for gateways.\n\nPlease check your network connection and try again.",
+  "@discovery_error_description": {
+    "description": "Description when discovery fails with an error"
+  },
+  "discovery_error_failed": "Discovery failed: {error}",
+  "@discovery_error_failed": {
+    "description": "Error message when discovery fails",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Network error"
+      }
+    }
+  },
+  "discovery_connecting_title": "Connecting to Gateway",
+  "@discovery_connecting_title": {
+    "description": "Title when connecting to a gateway"
+  },
+  "discovery_connecting_description": "Contacting {address}...",
+  "@discovery_connecting_description": {
+    "description": "Description when connecting to a gateway",
+    "placeholders": {
+      "address": {
+        "type": "String",
+        "example": "192.168.1.100"
+      }
+    }
+  },
+  "discovery_connecting_fallback": "gateway",
+  "@discovery_connecting_fallback": {
+    "description": "Fallback name when gateway name is not available"
+  },
+  "discovery_manual_entry_title": "Enter Gateway Address",
+  "@discovery_manual_entry_title": {
+    "description": "Title for manual gateway address entry"
+  },
+  "discovery_manual_entry_hint": "192.168.1.100:3000",
+  "@discovery_manual_entry_hint": {
+    "description": "Hint text for gateway address input field"
+  },
+  "discovery_manual_entry_label": "Gateway Address",
+  "@discovery_manual_entry_label": {
+    "description": "Label for gateway address input field"
+  },
+  "discovery_manual_entry_help": "Enter IP address or hostname with optional port.\nExamples: 192.168.1.100:3000, gateway.local, 10.0.0.5",
+  "@discovery_manual_entry_help": {
+    "description": "Help text for manual gateway address entry"
+  },
+  "discovery_validation_empty": "Please enter a gateway address",
+  "@discovery_validation_empty": {
+    "description": "Warning message when gateway address is empty"
+  },
+  "discovery_validation_invalid": "Invalid address. Enter a valid IP address or hostname.",
+  "@discovery_validation_invalid": {
+    "description": "Error message when gateway address is invalid"
+  },
+  "discovery_button_back": "Back",
+  "@discovery_button_back": {
+    "description": "Back button text"
+  },
+  "discovery_button_connect": "Connect",
+  "@discovery_button_connect": {
+    "description": "Connect button text"
+  },
+  "discovery_button_connect_selected": "Connect to Selected Gateway",
+  "@discovery_button_connect_selected": {
+    "description": "Button text to connect to selected gateway"
+  },
+  "discovery_button_rescan": "Rescan",
+  "@discovery_button_rescan": {
+    "description": "Rescan button text"
+  },
+  "discovery_button_manual": "Manual",
+  "@discovery_button_manual": {
+    "description": "Manual entry button text"
   }
 }

@@ -644,4 +644,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get weather_condition_unknown => 'Unknown';
+
+  @override
+  String get discovery_searching_title => 'Searching for Gateways';
+
+  @override
+  String get discovery_searching_description => 'Looking for FastyBird Smart Panel gateways on your network...';
+
+  @override
+  String discovery_found_count(int count) {
+    return 'Found $count gateway(s)...';
+  }
+
+  @override
+  String get discovery_select_title => 'Select a Gateway';
+
+  @override
+  String discovery_select_description(int count) {
+    return 'Found $count gateway(s) on your network:';
+  }
+
+  @override
+  String get discovery_not_found_title => 'No Gateway Found';
+
+  @override
+  String get discovery_not_found_description => 'Could not find any FastyBird Smart Panel gateway on your network.\n\nMake sure the gateway is running and connected to the same network as this device.';
+
+  @override
+  String get discovery_error_title => 'Discovery Error';
+
+  @override
+  String get discovery_error_description => 'An error occurred while searching for gateways.\n\nPlease check your network connection and try again.';
+
+  @override
+  String discovery_error_failed(String error) {
+    return 'Discovery failed: $error';
+  }
+
+  @override
+  String get discovery_connecting_title => 'Connecting to Gateway';
+
+  @override
+  String discovery_connecting_description(String address) {
+    return 'Contacting $address...';
+  }
+
+  @override
+  String get discovery_connecting_fallback => 'gateway';
+
+  @override
+  String get discovery_manual_entry_title => 'Enter Gateway Address';
+
+  @override
+  String get discovery_manual_entry_hint => '192.168.1.100:3000';
+
+  @override
+  String get discovery_manual_entry_label => 'Gateway Address';
+
+  @override
+  String get discovery_manual_entry_help => 'Enter IP address or hostname with optional port.\nExamples: 192.168.1.100:3000, gateway.local, 10.0.0.5';
+
+  @override
+  String get discovery_validation_empty => 'Please enter a gateway address';
+
+  @override
+  String get discovery_validation_invalid => 'Invalid address. Enter a valid IP address or hostname.';
+
+  @override
+  String get discovery_button_back => 'Back';
+
+  @override
+  String get discovery_button_connect => 'Connect';
+
+  @override
+  String get discovery_button_connect_selected => 'Connect to Selected Gateway';
+
+  @override
+  String get discovery_button_rescan => 'Rescan';
+
+  @override
+  String get discovery_button_manual => 'Manual';
 }
