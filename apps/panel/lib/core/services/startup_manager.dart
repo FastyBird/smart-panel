@@ -3,13 +3,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
-import 'package:fastybird_smart_panel/api/models/auth_module_register_display.dart';
-import 'package:fastybird_smart_panel/api/models/auth_module_req_register_display.dart';
-import 'package:fastybird_smart_panel/api/models/system_module_create_display_profile.dart';
-import 'package:fastybird_smart_panel/api/models/system_module_data_display_profile.dart';
-import 'package:fastybird_smart_panel/api/models/system_module_req_create_display_profile.dart';
-import 'package:fastybird_smart_panel/api/models/users_module_req_update_display_instance.dart';
-import 'package:fastybird_smart_panel/api/models/users_module_update_display_instance.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
@@ -17,7 +10,6 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/application.dart';
 import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/module.dart';
@@ -439,217 +431,29 @@ class StartupManagerService {
   }
 
   Future<void> _obtainApiSecret() async {
-    final appUid = await _getAppUid();
-    final mac = await AppInfo.getMacAddress();
-    final versionInfo = await AppInfo.getAppVersionInfo();
-
-    try {
-      var registerResponse =
-          await _apiClient.authModule.createAuthModuleRegisterDisplay(
-        userAgent: 'FlutterApp',
-        body: AuthModuleReqRegisterDisplay(
-          data: AuthModuleRegisterDisplay(
-            uid: appUid,
-            mac: mac,
-            version: versionInfo.version,
-            build: versionInfo.build,
-          ),
-        ),
-      );
-
-      String apiSecret = registerResponse.data.data.secret;
-
-      // Store API secret key
-      if (Platform.isAndroid || Platform.isIOS) {
-        await _securedStorage.write(
-          key: _apiSecretKey,
-          value: apiSecret,
-        );
-      } else {
-        await _securedStorageFallback.write(
-          key: _apiSecretKey,
-          value: apiSecret,
-        );
-      }
-
-      // Update API secret key in the API client
-      _apiIoService.options.headers['X-Display-Secret'] = apiSecret;
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[OBTAIN SECRET] API error: ${e.response?.statusCode} - ${e.message}',
-        );
-      }
-
-      if (e.response?.statusCode == 403) {
-        throw StateError(
-          'Application reset is required. Please reset the app.',
-        );
-      }
-
-      throw Exception(
-        'Backend initialization failed. Ensure the server is running.',
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[OBTAIN SECRET] Unexpected error: ${e.toString()}');
-      }
-
-      throw StateError('Unexpected backend error.');
-    }
+    // TODO: Update to use displays module API once client is generated
+    // The displays module registration endpoint is at /displays-module/displays/register
+    // For now, this functionality is disabled until the API client is regenerated
+    throw UnimplementedError(
+      'Display registration is not yet implemented. The displays module API client needs to be regenerated.',
+    );
   }
 
   Future<void> _notifyDisplayInstance() async {
-    final appUid = await _getAppUid();
-
-    String? existingInstanceId;
-
-    try {
-      final existingProfile = await _apiClient.usersModule
-          .getUsersModuleDisplayInstanceByUid(uid: appUid);
-
-      existingInstanceId = existingProfile.data.data.id;
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[READ DISPLAY INSTANCE] API error: ${e.response?.statusCode} - ${e.message}',
-        );
-      }
-
-      if (e.response?.statusCode != 404) {
-        throw Exception(
-          'Reading display instance failed. Ensure the server is running.',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[READ DISPLAY INSTANCE] Unexpected error: ${e.toString()}');
-      }
-
-      throw StateError('Unexpected backend error.');
-    }
-
-    final versionInfo = await AppInfo.getAppVersionInfo();
-
-    try {
-      if (existingInstanceId != null) {
-        await _apiClient.usersModule.updateUsersModuleDisplayInstance(
-          id: existingInstanceId,
-          body: UsersModuleReqUpdateDisplayInstance(
-            data: UsersModuleUpdateDisplayInstance(
-              version: versionInfo.version,
-              build: versionInfo.build,
-            ),
-          ),
-        );
-      }
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[UPDATE DISPLAY INSTANCE] API error: ${e.response?.statusCode} - ${e.message}',
-        );
-      }
-
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        if (kDebugMode) {
-          debugPrint(
-              '[UPDATE DISPLAY INSTANCE] Stored secret key is not valid');
-        }
-      }
-
-      throw Exception(
-        'Backend initialization failed. Ensure the server is running.',
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-            '[UPDATE DISPLAY INSTANCE] Unexpected error: ${e.toString()}');
-      }
-
-      throw StateError('Unexpected backend error.');
+    // TODO: Update to use displays module API once client is generated
+    // The displays module update endpoint is at /displays-module/displays/:id
+    // For now, this functionality is disabled until the API client is regenerated
+    if (kDebugMode) {
+      debugPrint('[NOTIFY DISPLAY INSTANCE] Skipped - displays module API not yet available');
     }
   }
 
   Future<void> _notifyDisplayProfile() async {
-    final appUid = await _getAppUid();
-
-    final ScreenService screenService = locator.get<ScreenService>();
-
-    SystemModuleDataDisplayProfile? existingProfile;
-
-    try {
-      final existingProfileResponse = await _apiClient.systemModule
-          .getSystemModuleDisplayProfileByUid(uid: appUid);
-
-      existingProfile = existingProfileResponse.data.data;
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[READ DISPLAY PROFILE] API error: ${e.response?.statusCode} - ${e.message}',
-        );
-      }
-
-      if (e.response?.statusCode != 404) {
-        throw Exception(
-          'Reading display profile failed. Ensure the server is running.',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[READ DISPLAY PROFILE] Unexpected error: ${e.toString()}');
-      }
-
-      throw StateError('Unexpected backend error.');
-    }
-
-    if (existingProfile != null) {
-      screenService.updateFromProfile(
-        profileCols: existingProfile.cols,
-        profileRows: existingProfile.rows,
-        profileUnitSize: existingProfile.unitSize.toDouble(),
-      );
-
-      return;
-    }
-
-    try {
-      await _apiClient.systemModule.createSystemModuleDisplayProfile(
-        body: SystemModuleReqCreateDisplayProfile(
-          data: SystemModuleCreateDisplayProfile(
-            id: const Uuid().v4(),
-            uid: appUid,
-            screenWidth: screenService.screenWidth.toInt(),
-            screenHeight: screenService.screenHeight.toInt(),
-            pixelRatio: screenService.pixelRatio,
-            unitSize: screenService.unitSize.toInt(),
-            rows: screenService.rows,
-            cols: screenService.columns,
-          ),
-        ),
-      );
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[UPDATE DISPLAY PROFILE] API error: ${e.response?.statusCode} - ${e.message}',
-        );
-      }
-
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        if (kDebugMode) {
-          debugPrint('[UPDATE DISPLAY PROFILE] Stored secret key is not valid');
-        }
-      }
-
-      throw Exception(
-        'Backend initialization failed. Ensure the server is running.',
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-            '[UPDATE DISPLAY PROFILE] Unexpected error: ${e.toString()}');
-      }
-
-      throw StateError('Unexpected backend error.');
+    // TODO: Display profiles functionality has been moved to displays module
+    // This functionality is now handled through the display registration/update endpoints
+    // For now, this functionality is disabled until the API client is regenerated
+    if (kDebugMode) {
+      debugPrint('[NOTIFY DISPLAY PROFILE] Skipped - displays module API not yet available');
     }
   }
 

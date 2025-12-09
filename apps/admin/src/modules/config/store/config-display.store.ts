@@ -85,7 +85,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 				// Get the list of displays and use the first one (primary display)
 				const apiResponse = await backend.client.GET(`/${DISPLAYS_MODULE_PREFIX}/displays`);
 
-				const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, response } = apiResponse;
 
 				if (typeof responseData !== 'undefined' && responseData.data && responseData.data.length > 0) {
 					const primaryDisplay = responseData.data[0];

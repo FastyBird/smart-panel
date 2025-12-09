@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { UsersValidationException } from '../users.exceptions';
 
-import type { IDisplayInstanceRes, IDisplaysInstancesAddActionPayload, IDisplaysInstancesEditActionPayload } from './displays-instances.store.types';
+import type { IDisplaysInstancesAddActionPayload, IDisplaysInstancesEditActionPayload } from './displays-instances.store.types';
 import {
 	transformDisplayInstanceCreateRequest,
 	transformDisplayInstanceResponse,

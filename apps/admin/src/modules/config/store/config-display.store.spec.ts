@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
+import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigDisplay } from './config-display.store';
 import type { IConfigDisplayEditActionPayload, IConfigDisplaySetActionPayload } from './config-display.store.types';

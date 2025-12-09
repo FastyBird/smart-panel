@@ -4,7 +4,6 @@ import { DisplayProfileCreateReqSchema, DisplayProfileSchema, DisplayProfileUpda
 import type {
 	IDisplayProfile,
 	IDisplayProfileCreateReq,
-	IDisplayProfileRes,
 	IDisplayProfileUpdateReq,
 	IDisplaysProfilesAddActionPayload,
 	IDisplaysProfilesEditActionPayload,

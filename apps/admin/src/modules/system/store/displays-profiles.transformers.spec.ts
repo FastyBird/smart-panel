@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { SystemValidationException } from '../system.exceptions';
 
-import type { IDisplayProfileRes, IDisplaysProfilesAddActionPayload, IDisplaysProfilesEditActionPayload } from './displays-profiles.store.types';
+import type { IDisplaysProfilesAddActionPayload, IDisplaysProfilesEditActionPayload } from './displays-profiles.store.types';
 import {
 	transformDisplayProfileCreateRequest,
 	transformDisplayProfileResponse,

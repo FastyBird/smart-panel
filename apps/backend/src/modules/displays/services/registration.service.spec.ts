@@ -13,6 +13,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
+import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
 import { RegisterDisplayDto } from '../dto/register-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
@@ -114,7 +115,7 @@ describe('RegistrationService', () => {
 
 			jest.spyOn(displaysService, 'findByMacAddress').mockResolvedValue(null);
 			jest.spyOn(displaysService, 'create').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
-			jest.spyOn(tokensService, 'create').mockResolvedValue({} as any);
+			jest.spyOn(tokensService, 'create').mockResolvedValue({} as unknown as LongLiveTokenEntity);
 
 			const result = await service.registerDisplay(registerDto, 'FlutterApp');
 
@@ -168,7 +169,7 @@ describe('RegistrationService', () => {
 			jest.spyOn(displaysService, 'findByMacAddress').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
 			jest.spyOn(displaysService, 'update').mockResolvedValue(toInstance(DisplayEntity, updatedDisplay));
 			jest.spyOn(tokensService, 'revokeByOwnerId').mockResolvedValue(undefined);
-			jest.spyOn(tokensService, 'create').mockResolvedValue({} as any);
+			jest.spyOn(tokensService, 'create').mockResolvedValue({} as unknown as LongLiveTokenEntity);
 
 			const result = await service.registerDisplay(registerDto, 'FlutterApp');
 
@@ -196,7 +197,7 @@ describe('RegistrationService', () => {
 
 			jest.spyOn(displaysService, 'findByMacAddress').mockResolvedValue(null);
 			jest.spyOn(displaysService, 'create').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
-			jest.spyOn(tokensService, 'create').mockResolvedValue({} as any);
+			jest.spyOn(tokensService, 'create').mockResolvedValue({} as unknown as LongLiveTokenEntity);
 
 			await service.registerDisplay(registerDto, 'FlutterApp');
 

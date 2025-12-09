@@ -117,7 +117,7 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
   }) async {
     final updated = await _updateConfiguration(
       section: Section.display,
-      data: ConfigModuleReqUpdateSectionDataUnionDisplay(
+      data: ConfigModuleReqUpdateSectionDataUnion.display(
         darkMode: darkMode ?? _getConfig().hasDarkMode,
         brightness: brightness ?? _getConfig().brightness,
         screenLockDuration:

@@ -4,7 +4,6 @@ import { DisplayInstanceCreateReqSchema, DisplayInstanceSchema, DisplayInstanceU
 import type {
 	IDisplayInstance,
 	IDisplayInstanceCreateReq,
-	IDisplayInstanceRes,
 	IDisplayInstanceUpdateReq,
 	IDisplaysInstancesAddActionPayload,
 	IDisplaysInstancesEditActionPayload,

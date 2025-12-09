@@ -8,7 +8,6 @@ that ESLint flags as unsafe, but they are necessary for effective testing.
 */
 import { useContainer } from 'class-validator';
 import request from 'supertest';
-import { v4 as uuid } from 'uuid';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';

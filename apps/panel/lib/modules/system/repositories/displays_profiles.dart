@@ -48,17 +48,11 @@ class DisplaysProfilesRepository extends Repository<DisplayProfileModel> {
   }
 
   Future<void> fetchOne(String appUid) async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getSystemModuleDisplayProfileByUid(
-          uid: appUid,
-        );
-
-        final raw = response.response.data['data'] as Map<String, dynamic>;
-
-        insert(raw);
-      },
-      'fetch system display profile',
-    );
+    // TODO: Update to use displays module API once client is generated
+    // Display profiles functionality has been moved to displays module
+    // For now, this functionality is disabled until the API client is regenerated
+    if (kDebugMode) {
+      debugPrint('[FETCH DISPLAY PROFILE] Skipped - displays module API not yet available');
+    }
   }
 }
