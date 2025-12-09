@@ -2,7 +2,7 @@
 ID: FEATURE-PLUGIN-MATTER
 Type: feature
 Scope: backend
-Size: epic
+Size: large
 Parent: (none)
 Status: planned
 Created: 2025-11-14

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 Created: 2025-11-14
 
 ## 1. Business goal
@@ -241,18 +241,27 @@ shellies.start();
 - Do not touch admin or panel apps in this task.
 - Do not introduce breaking changes to existing Shelly NG behavior.
 
-## 9. Current implementation status (informational)
+## 9. Implementation status (informational)
 
-> This section is informational for humans/AI and reflects the state as of 2025-11-16.  
-> It is **not** a hard requirement for future work, but helps to understand what is already done.
+> This section is informational for humans/AI and reflects the state as of 2025-12-09.
 
 - ✅ Plugin skeleton created (`devices-shelly-v1` module, config, entities, DTOs).
 - ✅ Discovery via `shellies` implemented and working in a multicast-capable environment.
 - ✅ Device/channel/property mapping implemented using `DESCRIPTORS` and `PropertyBinding` (including mode-based profiles for some devices).
 - ✅ Runtime property updates wired to `shellies` `change` events.
-- ✅ Basic availability handling using `lastSeen` + configurable `staleTimeout` (devices marked offline when no events within timeout).
+- ✅ Availability handling using `lastSeen` + configurable `staleTimeout` (devices marked offline when no events within timeout).
 - ✅ Disabled devices (`enabled = false`) are skipped in runtime updates and HTTP sync.
 - ✅ HTTP client implemented for Shelly Gen 1 (`/shelly`, `/status`, `/settings`) with periodic sync (defaults ~5 minutes).
 - ✅ `device_information` channel created with core metadata (model, firmware, IP, MAC/serial, mode where applicable, connection status).
-- ⏳ Command handling (on/off, brightness, basic color/gain) is **not yet fully implemented**.
-- ⏳ Unit test coverage exists for some services but is **not yet complete** for all aspects (availability, HTTP sync, commands).
+- ✅ Command handling implemented for relay (on/off), light (brightness, color via `setWhite`/`setColor`).
+- ✅ Unit tests covering: shelly-v1.service, shelly-v1-probe.service, device-mapper.service, shellies-adapter.service, shelly-v1-http-client.service, shelly-v1-devices.controller, shelly-v1.device.platform.
+
+## 10. Follow-up tasks
+
+The following task is needed to complete full Shelly Gen 1 support across all apps:
+
+| Task ID | Scope | Description | Status |
+|---------|-------|-------------|--------|
+| `FEATURE-PLUGIN-SHELLY-V1-UI` | admin, panel | Admin UI (plugin config, device management, discovery) and Panel UI (tiles, detail screens) | **planned** |
+
+See `tasks/features/FEATURE-PLUGIN-SHELLY-V1-UI.md` for details.
