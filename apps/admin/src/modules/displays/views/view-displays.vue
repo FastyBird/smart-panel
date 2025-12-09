@@ -13,11 +13,11 @@
 		</template>
 
 		<template #title>
-			{{ t('displaysModule.title') }}
+			{{ t('displaysModule.headings.list') }}
 		</template>
 
 		<template #subtitle>
-			{{ t('displaysModule.description') }}
+			{{ t('displaysModule.subHeadings.list') }}
 		</template>
 	</app-bar-heading>
 
@@ -38,107 +38,32 @@
 	</app-bar-button>
 
 	<view-header
-		:heading="t('displaysModule.title')"
-		:sub-heading="t('displaysModule.description')"
+		:heading="t('displaysModule.headings.list')"
+		:sub-heading="t('displaysModule.subHeadings.list')"
 		icon="mdi:monitor"
-	>
-		<template #extra>
-			<div class="flex items-center">
-				<el-button
-					type="default"
-					plain
-					class="px-4! ml-2!"
-					@click="fetchDisplays"
-				>
-					<template #icon>
-						<icon icon="mdi:refresh" />
-					</template>
-
-					{{ t('displaysModule.actions.refresh') }}
-				</el-button>
-			</div>
-		</template>
-	</view-header>
+	/>
 
 	<div
 		v-if="isDisplaysListRoute || isLGDevice"
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden"
 	>
-		<el-card
-			shadow="never"
-			class="flex-1 overflow-auto"
-		>
-			<el-table
-				v-loading="isLoading"
-				:data="displays"
-				style="width: 100%"
-				@row-click="onRowClick"
-			>
-				<el-table-column
-					prop="name"
-					:label="t('displaysModule.table.columns.name')"
-					min-width="150"
-				>
-					<template #default="{ row }">
-						{{ row.name || row.macAddress }}
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					prop="macAddress"
-					:label="t('displaysModule.table.columns.macAddress')"
-					width="180"
-				/>
-
-				<el-table-column
-					prop="version"
-					:label="t('displaysModule.table.columns.version')"
-					width="120"
-				/>
-
-				<el-table-column
-					:label="t('displaysModule.table.columns.resolution')"
-					width="150"
-				>
-					<template #default="{ row }">
-						{{ row.screenWidth }}x{{ row.screenHeight }}
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					prop="createdAt"
-					:label="t('displaysModule.table.columns.createdAt')"
-					width="180"
-				>
-					<template #default="{ row }">
-						{{ formatDate(row.createdAt) }}
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					fixed="right"
-					width="120"
-				>
-					<template #default="{ row }">
-						<el-button
-							link
-							type="primary"
-							size="small"
-							@click.stop="onDisplayDetail(row.id)"
-						>
-							{{ t('displaysModule.actions.viewDetail') }}
-						</el-button>
-					</template>
-				</el-table-column>
-			</el-table>
-
-			<div
-				v-if="!isLoading && displays.length === 0"
-				class="text-center py-8 text-gray-500"
-			>
-				No displays registered yet. Displays will appear here once they connect to the system.
-			</div>
-		</el-card>
+		<list-displays
+			v-model:filters="filters"
+			v-model:sort-by="sortBy"
+			v-model:sort-dir="sortDir"
+			v-model:paginate-size="paginateSize"
+			v-model:paginate-page="paginatePage"
+			:items="displaysPaginated"
+			:all-items="displays"
+			:total-rows="totalRows"
+			:loading="areLoading"
+			:filters-active="filtersActive"
+			@detail="onDisplayDetail"
+			@edit="onDisplayEdit"
+			@remove="onDisplayRemove"
+			@adjust-list="onAdjustList"
+			@reset-filters="onResetFilters"
+		/>
 	</div>
 
 	<router-view
@@ -153,7 +78,7 @@
 		v-if="isLGDevice"
 		v-model="showDrawer"
 		:show-close="false"
-		size="40%"
+		:size="adjustList ? '300px' : '40%'"
 		:with-header="false"
 		:before-close="onCloseDrawer"
 	>
@@ -175,7 +100,14 @@
 			</app-bar>
 
 			<template v-if="showDrawer">
-				<view-error>
+				<list-displays-adjust
+					v-if="adjustList"
+					v-model:filters="filters"
+					:filters-active="filtersActive"
+					@reset-filters="onResetFilters"
+				/>
+
+				<view-error v-else>
 					<template #icon>
 						<icon icon="mdi:monitor" />
 					</template>
@@ -206,13 +138,15 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDrawer, ElIcon, ElTable, ElTableColumn } from 'element-plus';
+import { ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import { useDisplays } from '../composables/composables';
+import { ListDisplays, ListDisplaysAdjust } from '../components/components';
+import { useDisplaysActions, useDisplaysDataSource } from '../composables/composables';
 import { RouteNames } from '../displays.constants';
+import { DisplaysException } from '../displays.exceptions';
 import type { IDisplay } from '../store/displays.store.types';
 
 import type { IViewDisplaysProps } from './view-displays.types';
@@ -228,16 +162,31 @@ const router = useRouter();
 const { t } = useI18n();
 
 useMeta({
-	title: t('displaysModule.title'),
+	title: t('displaysModule.meta.list.title'),
 });
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { displays, isLoading, fetchDisplays } = useDisplays();
+const {
+	fetchDisplays,
+	displays,
+	displaysPaginated,
+	totalRows,
+	filters,
+	filtersActive,
+	sortBy,
+	sortDir,
+	paginateSize,
+	paginatePage,
+	areLoading,
+	resetFilter,
+} = useDisplaysDataSource();
+const displayActions = useDisplaysActions();
 
 const mounted = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
+const adjustList = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 
@@ -249,30 +198,56 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
 		return [
 			{
-				label: t('displaysModule.title'),
+				label: t('displaysModule.breadcrumbs.list'),
 				route: router.resolve({ name: RouteNames.DISPLAYS }),
 			},
 		];
 	}
 );
 
-const formatDate = (date: Date | string): string => {
-	const d = date instanceof Date ? date : new Date(date);
-	return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
-};
-
 const onCloseDrawer = (done?: () => void): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.DISPLAYS,
-		});
-	} else {
-		router.push({
-			name: RouteNames.DISPLAYS,
-		});
-	}
+	if (adjustList.value) {
+		showDrawer.value = false;
+		adjustList.value = false;
 
-	done?.();
+		done?.();
+	} else {
+		if (remoteFormChanged.value) {
+			ElMessageBox.confirm(t('displaysModule.texts.confirmDiscard'), t('displaysModule.headings.discard'), {
+				confirmButtonText: t('displaysModule.buttons.yes.title'),
+				cancelButtonText: t('displaysModule.buttons.no.title'),
+				type: 'warning',
+			})
+				.then((): void => {
+					if (isLGDevice.value) {
+						router.replace({
+							name: RouteNames.DISPLAYS,
+						});
+					} else {
+						router.push({
+							name: RouteNames.DISPLAYS,
+						});
+					}
+
+					done?.();
+				})
+				.catch((): void => {
+					// Just ignore it
+				});
+		} else {
+			if (isLGDevice.value) {
+				router.replace({
+					name: RouteNames.DISPLAYS,
+				});
+			} else {
+				router.push({
+					name: RouteNames.DISPLAYS,
+				});
+			}
+
+			done?.();
+		}
+	}
 };
 
 const onDisplayDetail = (id: IDisplay['id']): void => {
@@ -284,11 +259,44 @@ const onDisplayDetail = (id: IDisplay['id']): void => {
 	});
 };
 
-const onRowClick = (row: IDisplay): void => {
-	onDisplayDetail(row.id);
+const onDisplayEdit = (id: IDisplay['id']): void => {
+	if (isLGDevice.value) {
+		router.replace({
+			name: RouteNames.DISPLAYS_EDIT,
+			params: {
+				id,
+			},
+		});
+	} else {
+		router.push({
+			name: RouteNames.DISPLAYS_EDIT,
+			params: {
+				id,
+			},
+		});
+	}
+};
+
+const onDisplayRemove = (id: IDisplay['id']): void => {
+	displayActions.remove(id);
+};
+
+const onResetFilters = (): void => {
+	resetFilter();
+};
+
+const onAdjustList = (): void => {
+	showDrawer.value = true;
+	adjustList.value = true;
 };
 
 onBeforeMount((): void => {
+	fetchDisplays().catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new DisplaysException('Something went wrong', err);
+	});
+
 	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.DISPLAYS_EDIT) !== undefined;
 });
 

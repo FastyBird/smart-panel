@@ -1,14 +1,91 @@
 {
 	"title": "Displays",
 	"description": "Manage your display devices",
+	"headings": {
+		"list": "Displays",
+		"adjustFilters": "Filter Displays",
+		"removeDisplay": "Remove Display",
+		"discard": "Discard Changes"
+	},
+	"subHeadings": {
+		"list": "Manage your connected display devices",
+		"adjustFilters": "Adjust filter settings"
+	},
+	"breadcrumbs": {
+		"list": "Displays"
+	},
+	"meta": {
+		"list": {
+			"title": "Displays"
+		}
+	},
 	"table": {
 		"columns": {
 			"name": "Name",
 			"macAddress": "MAC Address",
 			"version": "Version",
 			"resolution": "Resolution",
+			"layout": "Layout",
 			"status": "Status",
 			"createdAt": "Created"
+		}
+	},
+	"fields": {
+		"search": {
+			"title": "Search",
+			"placeholder": "Search displays..."
+		},
+		"darkMode": {
+			"title": "Dark mode"
+		}
+	},
+	"filters": {
+		"darkMode": {
+			"title": "Dark Mode",
+			"values": {
+				"enabled": "Enabled",
+				"disabled": "Disabled",
+				"all": "All"
+			}
+		},
+		"screenSaver": {
+			"title": "Screen Saver",
+			"values": {
+				"enabled": "Enabled",
+				"disabled": "Disabled",
+				"all": "All"
+			}
+		}
+	},
+	"states": {
+		"enabled": "Enabled",
+		"disabled": "Disabled",
+		"all": "All"
+	},
+	"texts": {
+		"loadingDisplays": "Loading displays...",
+		"noDisplays": "No displays registered yet",
+		"noFilteredDisplays": "No displays match your filter criteria",
+		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+	},
+	"buttons": {
+		"detail": {
+			"title": "Detail"
+		},
+		"adjust": {
+			"title": "Filter"
+		},
+		"resetFilters": {
+			"title": "Reset Filters"
+		},
+		"reset": {
+			"title": "Reset Filters"
+		},
+		"yes": {
+			"title": "Yes"
+		},
+		"no": {
+			"title": "No"
 		}
 	},
 	"detail": {
@@ -49,7 +126,9 @@
 		"updateSuccess": "Display updated successfully",
 		"updateError": "Failed to update display",
 		"deleteSuccess": "Display deleted successfully",
-		"deleteError": "Failed to delete display"
+		"deleteError": "Failed to delete display",
+		"confirmRemove": "Are you sure you want to remove display \"{name}\"? This action cannot be undone.",
+		"removed": "Display removed successfully"
 	},
 	"actions": {
 		"refresh": "Refresh",
