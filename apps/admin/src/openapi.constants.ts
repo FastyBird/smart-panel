@@ -82,6 +82,12 @@ export type DisplaysModuleUpdateDisplaySchema = components['schemas']['DisplaysM
 export type DisplaysModuleRegisterDisplaySchema = components['schemas']['DisplaysModuleRegisterDisplay'];
 export type DisplaysModuleRegistrationSchema = components['schemas']['DisplaysModuleDataRegistration'];
 
+// Displays Module Schemas
+export type DisplaysModuleDisplaySchema = components['schemas']['DisplaysModuleDataDisplay'];
+export type DisplaysModuleUpdateDisplaySchema = components['schemas']['DisplaysModuleUpdateDisplay'];
+export type DisplaysModuleRegisterDisplaySchema = components['schemas']['DisplaysModuleRegisterDisplay'];
+export type DisplaysModuleRegistrationSchema = components['schemas']['DisplaysModuleDataRegistration'];
+
 // System Module Schemas
 export type SystemModuleExtensionAdminSchema = components['schemas']['SystemModuleDataExtensionAdmin'];
 export type SystemModuleExtensionBackendSchema = components['schemas']['SystemModuleDataExtensionBackend'];
