@@ -1,8 +1,98 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class AppInfo {
+  /// Detects if the device has audio output capability (speakers)
+  static Future<bool> hasAudioOutputSupport() async {
+    try {
+      if (Platform.isAndroid) {
+        // Check Android device features for audio output
+        final result = await Process.run('pm', ['list', 'features']);
+
+        if (result.exitCode == 0) {
+          final output = result.stdout as String;
+
+          return output.contains('android.hardware.audio.output');
+        }
+
+        return false;
+      }
+
+      if (Platform.isIOS) {
+        // iOS devices always have speakers
+        return true;
+      }
+
+      if (Platform.isLinux) {
+        // Check for playback devices on Linux (Raspberry Pi)
+        final result = await Process.run('aplay', ['-l']);
+
+        if (result.exitCode == 0) {
+          final output = result.stdout as String;
+          // Check if there are any playback devices listed
+          return output.contains('card') && !output.contains('no soundcards');
+        }
+
+        // Fallback: check /proc/asound/cards
+        final cardsFile = File('/proc/asound/cards');
+
+        if (await cardsFile.exists()) {
+          final content = await cardsFile.readAsString();
+
+          return content.trim().isNotEmpty;
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[APP INFO] Error detecting audio output support: $e');
+      }
+    }
+
+    return false;
+  }
+
+  /// Detects if the device has audio input capability (microphone)
+  static Future<bool> hasAudioInputSupport() async {
+    try {
+      if (Platform.isAndroid) {
+        // Check Android device features for microphone
+        final result = await Process.run('pm', ['list', 'features']);
+
+        if (result.exitCode == 0) {
+          final output = result.stdout as String;
+
+          return output.contains('android.hardware.microphone');
+        }
+
+        return false;
+      }
+
+      if (Platform.isIOS) {
+        // iOS devices always have microphones
+        return true;
+      }
+
+      if (Platform.isLinux) {
+        // Check for recording devices on Linux (Raspberry Pi)
+        final result = await Process.run('arecord', ['-l']);
+
+        if (result.exitCode == 0) {
+          final output = result.stdout as String;
+          // Check if there are any recording devices listed
+          return output.contains('card') && !output.contains('no soundcards');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[APP INFO] Error detecting audio input support: $e');
+      }
+    }
+
+    return false;
+  }
+
   static Future<AppVersion> getAppVersionInfo() async {
     const String envVersion = String.fromEnvironment(
       'APP_VERSION',

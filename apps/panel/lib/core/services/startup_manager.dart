@@ -506,6 +506,10 @@ class StartupManagerService {
       final macAddress = await AppInfo.getMacAddress();
       final appVersion = await AppInfo.getAppVersionInfo();
 
+      // Detect audio capabilities
+      final audioOutputSupported = await AppInfo.hasAudioOutputSupport();
+      final audioInputSupported = await AppInfo.hasAudioInputSupport();
+
       // Calculate grid dimensions
       final screenService = locator.get<ScreenService>();
 
@@ -519,8 +523,8 @@ class StartupManagerService {
         unitSize: screenService.unitSize,
         rows: screenService.defaultRows,
         cols: screenService.defaultColumns,
-        audioOutputSupported: false, // TODO: Detect actual audio capabilities
-        audioInputSupported: false, // TODO: Detect actual audio capabilities
+        audioOutputSupported: audioOutputSupported,
+        audioInputSupported: audioInputSupported,
       );
 
       if (kDebugMode) {
@@ -534,6 +538,8 @@ class StartupManagerService {
         debugPrint('  unitSize: ${screenService.unitSize}');
         debugPrint('  rows: ${screenService.defaultRows}');
         debugPrint('  cols: ${screenService.defaultColumns}');
+        debugPrint('  audioOutputSupported: $audioOutputSupported');
+        debugPrint('  audioInputSupported: $audioInputSupported');
       }
 
       final response = await _apiClient.displaysModuleRegistration.register(
