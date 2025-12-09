@@ -1,10 +1,10 @@
 # Task: Backend as Source of Truth for OpenAPI Specification
-ID: FEATURE-BACKEND-OPENAPI-SOURCE
-Type: feature
+ID: TECHNICAL-BACKEND-OPENAPI-SOURCE
+Type: technical
 Scope: backend
 Size: large
-Parent: none
-Status: planned
+Parent: (none)
+Status: done
 
 ## 1. Business goal
 
