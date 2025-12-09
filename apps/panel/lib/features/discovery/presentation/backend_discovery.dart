@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -17,11 +20,10 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart'
         AppFilledButtonsDarkThemes,
         AppFilledButtonsLightThemes,
         AppFontSize,
-        AppOutlinedButtonsDarkThemes,
-        AppOutlinedButtonsLightThemes,
         AppSpacings,
         AppTextColorDark,
         AppTextColorLight;
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Discovery state enum
@@ -31,6 +33,7 @@ enum DiscoveryState {
   found,
   notFound,
   error,
+  connecting,
 }
 
 /// Screen for discovering and selecting backend servers
@@ -68,18 +71,34 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   List<DiscoveredBackend> _backends = [];
   DiscoveredBackend? _selectedBackend;
   bool _showManualEntry = false;
-  String? _discoveryError;
+  bool _wasManualEntry = false;
+
+  // Validation patterns
+  static final RegExp _ipAddressPattern = RegExp(
+    r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
+  );
+  static final RegExp _hostnamePattern = RegExp(
+    r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$',
+  );
 
   @override
   void initState() {
     super.initState();
     _startDiscovery();
-    // Add listener to update button state when text changes
     _manualUrlController.addListener(_onManualUrlChanged);
+
+    // Show AlertBar if there's an error message (connection failed)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.errorMessage != null && mounted) {
+        AlertBar.showError(
+          context,
+          message: widget.errorMessage!,
+        );
+      }
+    });
   }
 
   void _onManualUrlChanged() {
-    // Trigger rebuild when manual URL text changes to update button state
     if (mounted) {
       setState(() {});
     }
@@ -98,7 +117,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       _state = DiscoveryState.searching;
       _backends = [];
       _selectedBackend = null;
-      _discoveryError = null;
+      _showManualEntry = false;
     });
 
     try {
@@ -117,16 +136,34 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       if (mounted) {
         setState(() {
           _backends = backends;
-          _state =
-              backends.isEmpty ? DiscoveryState.notFound : DiscoveryState.found;
+          
+          // In debug mode on Android emulator, add a mock gateway if none found
+          if (backends.isEmpty && kDebugMode && Platform.isAndroid) {
+            _backends = [
+              const DiscoveredBackend(
+                name: 'Emulator Gateway (Debug)',
+                host: '10.0.2.2',
+                port: 3000,
+                version: 'dev',
+              ),
+            ];
+            _state = DiscoveryState.found;
+          } else {
+            _state =
+                backends.isEmpty ? DiscoveryState.notFound : DiscoveryState.found;
+          }
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _state = DiscoveryState.error;
-          _discoveryError = e.toString();
         });
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(
+          context,
+          message: localizations.discovery_error_failed(e.toString()),
+        );
       }
     }
   }
@@ -139,14 +176,96 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
   void _confirmSelection() {
     if (_selectedBackend != null) {
+      setState(() {
+        _state = DiscoveryState.connecting;
+        _wasManualEntry = false;
+      });
       widget.onBackendSelected(_selectedBackend!);
     }
   }
 
+  /// Validates the entered address (IP or hostname with optional port)
+  bool _isValidAddress(String address) {
+    // Remove protocol if present
+    String cleanAddress = address.trim();
+    if (cleanAddress.toLowerCase().startsWith('http://')) {
+      cleanAddress = cleanAddress.substring(7);
+    } else if (cleanAddress.toLowerCase().startsWith('https://')) {
+      cleanAddress = cleanAddress.substring(8);
+    }
+
+    // Remove path if present
+    final pathIndex = cleanAddress.indexOf('/');
+    if (pathIndex != -1) {
+      cleanAddress = cleanAddress.substring(0, pathIndex);
+    }
+
+    // Separate host and port
+    String host = cleanAddress;
+    if (cleanAddress.contains(':')) {
+      final parts = cleanAddress.split(':');
+      if (parts.length == 2) {
+        host = parts[0];
+        final port = int.tryParse(parts[1]);
+        if (port == null || port < 1 || port > 65535) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
+    // Validate host (IP address or hostname)
+    if (host.isEmpty) {
+      return false;
+    }
+
+    return _ipAddressPattern.hasMatch(host) || _hostnamePattern.hasMatch(host);
+  }
+
   void _submitManualUrl() {
     final url = _manualUrlController.text.trim();
-    if (url.isNotEmpty) {
-      widget.onManualUrlEntered(url);
+    final localizations = AppLocalizations.of(context)!;
+
+    if (url.isEmpty) {
+      AlertBar.showWarning(
+        context,
+        message: localizations.discovery_validation_empty,
+      );
+      return;
+    }
+
+    if (!_isValidAddress(url)) {
+      AlertBar.showError(
+        context,
+        message: localizations.discovery_validation_invalid,
+      );
+      return;
+    }
+
+    setState(() {
+      _state = DiscoveryState.connecting;
+      _wasManualEntry = true;
+    });
+
+    widget.onManualUrlEntered(url);
+  }
+
+  void _showManualEntryForm() {
+    setState(() {
+      _showManualEntry = true;
+    });
+  }
+
+  void _backToDiscovery() {
+    setState(() {
+      _showManualEntry = false;
+    });
+    // Restart discovery if we were in an error state or not found
+    if (_state == DiscoveryState.error ||
+        _state == DiscoveryState.notFound ||
+        _backends.isEmpty) {
+      _startDiscovery();
     }
   }
 
@@ -161,99 +280,36 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
-              _buildHeader(context, localizations),
-              AppSpacings.spacingLgVertical,
-
-              // Error message if retry
-              if (widget.errorMessage != null) ...[
-                _buildErrorBanner(context),
-                AppSpacings.spacingMdVertical,
-              ],
-
               // Main content
               Expanded(
-                child: _showManualEntry
-                    ? _buildManualEntryForm(context, localizations)
-                    : _buildDiscoveryContent(context, localizations),
+                child: _buildContent(context, localizations),
               ),
-
-              // Bottom actions
-              _buildBottomActions(context, localizations),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, AppLocalizations localizations) {
-    return Column(
-      children: [
-        Icon(
-          MdiIcons.accessPoint,
-          size: _screenService.scale(48),
-          color: Theme.of(context).primaryColor,
-        ),
-        AppSpacings.spacingMdVertical,
-        Text(
-          widget.isRetry
-              ? 'Connection Failed'
-              : 'Searching for Backend Server',
-          style: Theme.of(context).textTheme.headlineMedium,
-          textAlign: TextAlign.center,
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          widget.isRetry
-              ? 'Could not connect to the stored backend. Searching for available servers...'
-              : 'Looking for FastyBird Smart Panel backends on your network',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTextColorLight.secondary,
+      // Fixed bottom actions
+      bottomNavigationBar: _state != DiscoveryState.connecting
+          ? SafeArea(
+              child: Padding(
+                padding: AppSpacings.paddingLg,
+                child: _buildBottomActions(context, localizations),
               ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+            )
+          : null,
     );
   }
 
-  Widget _buildErrorBanner(BuildContext context) {
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.light
-            ? AppColorsLight.warningLight9
-            : AppColorsDark.warningLight9,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.warning
-              : AppColorsDark.warning,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            MdiIcons.alert,
-            color: Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.warning
-                : AppColorsDark.warning,
-            size: _screenService.scale(20),
-          ),
-          AppSpacings.spacingSmHorizontal,
-          Expanded(
-            child: Text(
-              widget.errorMessage ?? 'Connection failed',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.warningDark2
-                        : AppColorsDark.warningDark2,
-                  ),
-            ),
-          ),
-        ],
-      ),
-    );
+  Widget _buildContent(BuildContext context, AppLocalizations localizations) {
+    if (_state == DiscoveryState.connecting) {
+      return _buildConnectingState(context);
+    }
+
+    if (_showManualEntry) {
+      return _buildManualEntryForm(context, localizations);
+    }
+
+    return _buildDiscoveryContent(context, localizations);
   }
 
   Widget _buildDiscoveryContent(
@@ -273,29 +329,51 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
       case DiscoveryState.error:
         return _buildErrorState(context);
+
+      case DiscoveryState.connecting:
+        return _buildConnectingState(context);
     }
   }
 
   Widget _buildSearchingState(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SizedBox(
-          width: _screenService.scale(50),
-          height: _screenService.scale(50),
-          child: const CircularProgressIndicator(),
+        Icon(
+          MdiIcons.accessPointNetwork,
+          size: _screenService.scale(48),
+          color: Theme.of(context).primaryColor,
+        ),
+        AppSpacings.spacingMdVertical,
+        Text(
+          localizations.discovery_searching_title,
+          style: Theme.of(context).textTheme.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
+        AppSpacings.spacingSmVertical,
+        Text(
+          localizations.discovery_searching_description,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.secondary
+                    : AppTextColorDark.secondary,
+              ),
+          textAlign: TextAlign.center,
         ),
         AppSpacings.spacingLgVertical,
-        Text(
-          'Searching...',
-          style: Theme.of(context).textTheme.bodyMedium,
+        SizedBox(
+          width: _screenService.scale(32),
+          height: _screenService.scale(32),
+          child: const CircularProgressIndicator(strokeWidth: 3),
         ),
         if (_backends.isNotEmpty) ...[
           AppSpacings.spacingMdVertical,
           Text(
-            'Found ${_backends.length} server(s)',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTextColorLight.secondary,
+            localizations.discovery_found_count(_backends.length),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).primaryColor,
                 ),
           ),
         ],
@@ -304,12 +382,31 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 
   Widget _buildFoundState(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Icon(
+          MdiIcons.accessPointNetwork,
+          size: _screenService.scale(32),
+          color: Theme.of(context).primaryColor,
+        ),
+        AppSpacings.spacingSmVertical,
         Text(
-          'Found ${_backends.length} backend server(s):',
-          style: Theme.of(context).textTheme.bodyMedium,
+          localizations.discovery_select_title,
+          style: Theme.of(context).textTheme.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
+        AppSpacings.spacingXsVertical,
+        Text(
+          localizations.discovery_select_description(_backends.length),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.secondary
+                    : AppTextColorDark.secondary,
+              ),
+          textAlign: TextAlign.center,
         ),
         AppSpacings.spacingMdVertical,
         Expanded(
@@ -334,26 +431,31 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 
   Widget _buildNotFoundState(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
           MdiIcons.serverOff,
-          size: _screenService.scale(64),
-          color: AppTextColorLight.placeholder,
+          size: _screenService.scale(48),
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppTextColorLight.placeholder
+              : AppTextColorDark.placeholder,
         ),
-        AppSpacings.spacingLgVertical,
+        AppSpacings.spacingMdVertical,
         Text(
-          'No Backend Found',
+          localizations.discovery_not_found_title,
           style: Theme.of(context).textTheme.headlineSmall,
           textAlign: TextAlign.center,
         ),
         AppSpacings.spacingSmVertical,
         Text(
-          'Could not find any FastyBird Smart Panel backend on your network.\n'
-          'Make sure the backend is running and on the same network.',
+          localizations.discovery_not_found_description,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTextColorLight.secondary,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.secondary
+                    : AppTextColorDark.secondary,
               ),
           textAlign: TextAlign.center,
         ),
@@ -362,29 +464,74 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
   }
 
   Widget _buildErrorState(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
           MdiIcons.alertCircle,
-          size: _screenService.scale(64),
+          size: _screenService.scale(48),
           color: Theme.of(context).brightness == Brightness.light
               ? AppColorsLight.danger
               : AppColorsDark.danger,
         ),
-        AppSpacings.spacingLgVertical,
+        AppSpacings.spacingMdVertical,
         Text(
-          'Discovery Error',
+          localizations.discovery_error_title,
           style: Theme.of(context).textTheme.headlineSmall,
           textAlign: TextAlign.center,
         ),
         AppSpacings.spacingSmVertical,
         Text(
-          _discoveryError ?? 'An error occurred during discovery',
+          localizations.discovery_error_description,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTextColorLight.secondary,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.secondary
+                    : AppTextColorDark.secondary,
               ),
           textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectingState(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    final address = _wasManualEntry
+        ? _manualUrlController.text.trim()
+        : (_selectedBackend?.name ?? localizations.discovery_connecting_fallback);
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          MdiIcons.serverNetwork,
+          size: _screenService.scale(48),
+          color: Theme.of(context).primaryColor,
+        ),
+        AppSpacings.spacingMdVertical,
+        Text(
+          localizations.discovery_connecting_title,
+          style: Theme.of(context).textTheme.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
+        AppSpacings.spacingSmVertical,
+        Text(
+          localizations.discovery_connecting_description(address),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.secondary
+                    : AppTextColorDark.secondary,
+              ),
+          textAlign: TextAlign.center,
+        ),
+        AppSpacings.spacingLgVertical,
+        SizedBox(
+          width: _screenService.scale(32),
+          height: _screenService.scale(32),
+          child: const CircularProgressIndicator(strokeWidth: 3),
         ),
       ],
     );
@@ -394,45 +541,46 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     BuildContext context,
     AppLocalizations localizations,
   ) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Enter Backend URL',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          AppSpacings.spacingSmVertical,
-          Text(
-            'Enter the full URL of your FastyBird Smart Panel backend:',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTextColorLight.secondary,
-                ),
-          ),
-          AppSpacings.spacingLgVertical,
-          TextField(
-            controller: _manualUrlController,
-            decoration: InputDecoration(
-              hintText: 'http://192.168.1.100:3000',
-              labelText: 'Backend URL',
-              prefixIcon: Icon(MdiIcons.web),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-              ),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          MdiIcons.keyboard,
+          size: _screenService.scale(48),
+          color: Theme.of(context).primaryColor,
+        ),
+        AppSpacings.spacingMdVertical,
+        Text(
+          localizations.discovery_manual_entry_title,
+          style: Theme.of(context).textTheme.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
+        AppSpacings.spacingLgVertical,
+        TextField(
+          controller: _manualUrlController,
+          decoration: InputDecoration(
+            hintText: localizations.discovery_manual_entry_hint,
+            labelText: localizations.discovery_manual_entry_label,
+            prefixIcon: Icon(MdiIcons.serverNetwork),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
-            keyboardType: TextInputType.url,
-            autocorrect: false,
-            onSubmitted: (_) => _submitManualUrl(),
           ),
-          AppSpacings.spacingMdVertical,
-          Text(
-            'Example: http://192.168.1.100:3000',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTextColorLight.placeholder,
-                ),
-          ),
-        ],
-      ),
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          onSubmitted: (_) => _submitManualUrl(),
+        ),
+        AppSpacings.spacingMdVertical,
+        Text(
+          localizations.discovery_manual_entry_help,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.placeholder
+                    : AppTextColorDark.placeholder,
+              ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
@@ -441,6 +589,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     AppLocalizations localizations,
   ) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_showManualEntry) ...[
@@ -448,12 +597,18 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      _showManualEntry = false;
-                    });
-                  },
-                  child: const Text('Back to Discovery'),
+                  onPressed: _backToDiscovery,
+                  style: OutlinedButton.styleFrom(
+                    padding: AppSpacings.paddingSm,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                    ),
+                    textStyle: TextStyle(
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  child: Text(localizations.discovery_button_back),
                 ),
               ),
               AppSpacings.spacingMdHorizontal,
@@ -469,7 +624,17 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                     onPressed: _manualUrlController.text.trim().isNotEmpty
                         ? _submitManualUrl
                         : null,
-                    child: const Text('Connect'),
+                    style: FilledButton.styleFrom(
+                      padding: AppSpacings.paddingSm,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                      ),
+                      textStyle: TextStyle(
+                        fontSize: AppFontSize.base,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    child: Text(localizations.discovery_button_connect),
                   ),
                 ),
               ),
@@ -486,7 +651,17 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               ),
               child: FilledButton(
                 onPressed: _confirmSelection,
-                child: const Text('Connect to Selected Server'),
+                style: FilledButton.styleFrom(
+                  padding: AppSpacings.paddingSm,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                  ),
+                  textStyle: TextStyle(
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                child: Text(localizations.discovery_button_connect_selected),
               ),
             ),
             AppSpacings.spacingSmVertical,
@@ -494,39 +669,40 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           Row(
             children: [
               Expanded(
-                child: Theme(
-                  data: ThemeData(
-                    outlinedButtonTheme:
-                        Theme.of(context).brightness == Brightness.light
-                            ? AppOutlinedButtonsLightThemes.base
-                            : AppOutlinedButtonsDarkThemes.base,
+                child: OutlinedButton(
+                  onPressed: _state == DiscoveryState.searching
+                      ? null
+                      : _startDiscovery,
+                  style: OutlinedButton.styleFrom(
+                    padding: AppSpacings.paddingSm,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                    ),
+                    textStyle: TextStyle(
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  child: OutlinedButton.icon(
-                    onPressed:
-                        _state == DiscoveryState.searching ? null : _startDiscovery,
-                    icon: Icon(MdiIcons.refresh),
-                    label: const Text('Rescan'),
-                  ),
+                  child: Text(localizations.discovery_button_rescan),
                 ),
               ),
               AppSpacings.spacingMdHorizontal,
               Expanded(
-                child: Theme(
-                  data: ThemeData(
-                    outlinedButtonTheme:
-                        Theme.of(context).brightness == Brightness.light
-                            ? AppOutlinedButtonsLightThemes.base
-                            : AppOutlinedButtonsDarkThemes.base,
+                child: OutlinedButton(
+                  onPressed: _state == DiscoveryState.searching
+                      ? null
+                      : _showManualEntryForm,
+                  style: OutlinedButton.styleFrom(
+                    padding: AppSpacings.paddingSm,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                    ),
+                    textStyle: TextStyle(
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _showManualEntry = true;
-                      });
-                    },
-                    icon: Icon(MdiIcons.keyboard),
-                    label: const Text('Enter Manually'),
-                  ),
+                  child: Text(localizations.discovery_button_manual),
                 ),
               ),
             ],
@@ -583,9 +759,7 @@ class _BackendListItem extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                isSelected
-                    ? MdiIcons.checkCircle
-                    : MdiIcons.server,
+                isSelected ? MdiIcons.checkCircle : MdiIcons.server,
                 color: isSelected
                     ? Theme.of(context).primaryColor
                     : Theme.of(context).brightness == Brightness.light

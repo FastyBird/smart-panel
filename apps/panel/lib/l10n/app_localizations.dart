@@ -1372,6 +1372,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown'**
   String get weather_condition_unknown;
+
+  /// Title displayed while searching for gateways
+  ///
+  /// In en, this message translates to:
+  /// **'Searching for Gateways'**
+  String get discovery_searching_title;
+
+  /// Description displayed while searching for gateways
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for FastyBird Smart Panel gateways on your network...'**
+  String get discovery_searching_description;
+
+  /// Message showing how many gateways were found during search
+  ///
+  /// In en, this message translates to:
+  /// **'Found {count} gateway(s)...'**
+  String discovery_found_count(int count);
+
+  /// Title when gateways are found and user needs to select one
+  ///
+  /// In en, this message translates to:
+  /// **'Select a Gateway'**
+  String get discovery_select_title;
+
+  /// Description showing how many gateways were found
+  ///
+  /// In en, this message translates to:
+  /// **'Found {count} gateway(s) on your network:'**
+  String discovery_select_description(int count);
+
+  /// Title when no gateways are found
+  ///
+  /// In en, this message translates to:
+  /// **'No Gateway Found'**
+  String get discovery_not_found_title;
+
+  /// Description when no gateways are found
+  ///
+  /// In en, this message translates to:
+  /// **'Could not find any FastyBird Smart Panel gateway on your network.\n\nMake sure the gateway is running and connected to the same network as this device.'**
+  String get discovery_not_found_description;
+
+  /// Title when discovery fails with an error
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery Error'**
+  String get discovery_error_title;
+
+  /// Description when discovery fails with an error
+  ///
+  /// In en, this message translates to:
+  /// **'An error occurred while searching for gateways.\n\nPlease check your network connection and try again.'**
+  String get discovery_error_description;
+
+  /// Error message when discovery fails
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery failed: {error}'**
+  String discovery_error_failed(String error);
+
+  /// Title when connecting to a gateway
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting to Gateway'**
+  String get discovery_connecting_title;
+
+  /// Description when connecting to a gateway
+  ///
+  /// In en, this message translates to:
+  /// **'Contacting {address}...'**
+  String discovery_connecting_description(String address);
+
+  /// Fallback name when gateway name is not available
+  ///
+  /// In en, this message translates to:
+  /// **'gateway'**
+  String get discovery_connecting_fallback;
+
+  /// Title for manual gateway address entry
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Gateway Address'**
+  String get discovery_manual_entry_title;
+
+  /// Hint text for gateway address input field
+  ///
+  /// In en, this message translates to:
+  /// **'192.168.1.100:3000'**
+  String get discovery_manual_entry_hint;
+
+  /// Label for gateway address input field
+  ///
+  /// In en, this message translates to:
+  /// **'Gateway Address'**
+  String get discovery_manual_entry_label;
+
+  /// Help text for manual gateway address entry
+  ///
+  /// In en, this message translates to:
+  /// **'Enter IP address or hostname with optional port.\nExamples: 192.168.1.100:3000, gateway.local, 10.0.0.5'**
+  String get discovery_manual_entry_help;
+
+  /// Warning message when gateway address is empty
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a gateway address'**
+  String get discovery_validation_empty;
+
+  /// Error message when gateway address is invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid address. Enter a valid IP address or hostname.'**
+  String get discovery_validation_invalid;
+
+  /// Back button text
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get discovery_button_back;
+
+  /// Connect button text
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get discovery_button_connect;
+
+  /// Button text to connect to selected gateway
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to Selected Gateway'**
+  String get discovery_button_connect_selected;
+
+  /// Rescan button text
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan'**
+  String get discovery_button_rescan;
+
+  /// Manual entry button text
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get discovery_button_manual;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

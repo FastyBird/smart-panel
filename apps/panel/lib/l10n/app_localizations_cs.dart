@@ -644,4 +644,84 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get weather_condition_unknown => 'Unknown';
+
+  @override
+  String get discovery_searching_title => 'Hledání bran';
+
+  @override
+  String get discovery_searching_description => 'Hledám brány FastyBird Smart Panel ve vaší síti...';
+
+  @override
+  String discovery_found_count(int count) {
+    return 'Nalezeno $count bran...';
+  }
+
+  @override
+  String get discovery_select_title => 'Vyberte bránu';
+
+  @override
+  String discovery_select_description(int count) {
+    return 'Nalezeno $count bran ve vaší síti:';
+  }
+
+  @override
+  String get discovery_not_found_title => 'Brána nenalezena';
+
+  @override
+  String get discovery_not_found_description => 'Nepodařilo se najít žádnou bránu FastyBird Smart Panel ve vaší síti.\n\nUjistěte se, že brána běží a je připojena ke stejné síti jako toto zařízení.';
+
+  @override
+  String get discovery_error_title => 'Chyba vyhledávání';
+
+  @override
+  String get discovery_error_description => 'Při hledání bran došlo k chybě.\n\nZkontrolujte připojení k síti a zkuste to znovu.';
+
+  @override
+  String discovery_error_failed(String error) {
+    return 'Vyhledávání selhalo: $error';
+  }
+
+  @override
+  String get discovery_connecting_title => 'Připojování k bráně';
+
+  @override
+  String discovery_connecting_description(String address) {
+    return 'Kontaktuji $address...';
+  }
+
+  @override
+  String get discovery_connecting_fallback => 'bránu';
+
+  @override
+  String get discovery_manual_entry_title => 'Zadejte adresu brány';
+
+  @override
+  String get discovery_manual_entry_hint => '192.168.1.100:3000';
+
+  @override
+  String get discovery_manual_entry_label => 'Adresa brány';
+
+  @override
+  String get discovery_manual_entry_help => 'Zadejte IP adresu nebo hostname s volitelným portem.\nPříklady: 192.168.1.100:3000, gateway.local, 10.0.0.5';
+
+  @override
+  String get discovery_validation_empty => 'Prosím zadejte adresu brány';
+
+  @override
+  String get discovery_validation_invalid => 'Neplatná adresa. Zadejte platnou IP adresu nebo hostname.';
+
+  @override
+  String get discovery_button_back => 'Zpět';
+
+  @override
+  String get discovery_button_connect => 'Připojit';
+
+  @override
+  String get discovery_button_connect_selected => 'Připojit k vybrané bráně';
+
+  @override
+  String get discovery_button_rescan => 'Znovu vyhledat';
+
+  @override
+  String get discovery_button_manual => 'Ručně';
 }

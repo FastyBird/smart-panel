@@ -145,22 +145,26 @@ class StartupManagerService {
       defaultValue: '3000',
     );
 
+    if (!isAndroidEmulator) {
+      return 'http://10.0.2.2:$backendPort/api/v1';
+    }
+
     if (appHost.isNotEmpty) {
       String host;
-      if (isAndroidEmulator) {
-        host = 'http://10.0.2.2';
-      } else {
-        // Ensure appHost has a protocol prefix
-        host = appHost;
-        if (!host.startsWith('http://') && !host.startsWith('https://')) {
-          host = 'http://$host';
-        }
+
+      // Ensure appHost has a protocol prefix
+      host = appHost;
+
+      if (!host.startsWith('http://') && !host.startsWith('https://')) {
+        host = 'http://$host';
       }
+
       return '$host:$backendPort/api/v1';
     }
 
     // Priority 2: Stored URL from previous discovery
     final storedUrl = await _readStoredBackendUrl();
+
     if (storedUrl != null && storedUrl.isNotEmpty) {
       return storedUrl;
     }
