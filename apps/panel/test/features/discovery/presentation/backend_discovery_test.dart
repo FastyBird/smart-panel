@@ -4,12 +4,13 @@ import 'package:fastybird_smart_panel/features/discovery/presentation/backend_di
 void main() {
   group('DiscoveryState', () {
     test('should have all expected values', () {
-      expect(DiscoveryState.values, hasLength(5));
+      expect(DiscoveryState.values, hasLength(6));
       expect(DiscoveryState.values, contains(DiscoveryState.initial));
       expect(DiscoveryState.values, contains(DiscoveryState.searching));
       expect(DiscoveryState.values, contains(DiscoveryState.found));
       expect(DiscoveryState.values, contains(DiscoveryState.notFound));
       expect(DiscoveryState.values, contains(DiscoveryState.error));
+      expect(DiscoveryState.values, contains(DiscoveryState.connecting));
     });
   });
 
