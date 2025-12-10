@@ -133,17 +133,17 @@ export class WsAuthService {
 		}
 
 		// Set universal long-live token client data
-		(client.data as object)['user'] = toInstance(
-			ClientUserDto,
-			{
-				id: storedToken.ownerId,
-				role: UserRole.USER,
-				type: 'token',
-				ownerType: storedToken.ownerType,
-				tokenId: storedToken.id,
-			},
-			{ excludeExtraneousValues: false },
-		);
+		(client.data as object)['user'] = toInstance(ClientUserDto, {
+			id: storedToken.ownerId,
+			role: UserRole.USER,
+			type: 'token',
+			owner_type: storedToken.ownerType,
+			token_id: storedToken.id,
+		});
+
+		this.logger.debug(`[WS AUTH] Display authentication successful for display=${displayId}`);
+
+		return true;
 
 		this.logger.debug(`[WS AUTH] Token authentication successful (ownerType=${storedToken.ownerType})`);
 
@@ -188,17 +188,13 @@ export class WsAuthService {
 		}
 
 		// Set universal long-live token client data
-		(client.data as object)['user'] = toInstance(
-			ClientUserDto,
-			{
-				id: storedLongLiveToken.ownerId,
-				role: role,
-				type: 'token',
-				ownerType: storedLongLiveToken.ownerType,
-				tokenId: storedLongLiveToken.id,
-			},
-			{ excludeExtraneousValues: false },
-		);
+		(client.data as object)['user'] = toInstance(ClientUserDto, {
+			id: storedLongLiveToken.ownerId,
+			role: role,
+			type: 'token',
+			ownerType: storedLongLiveToken.ownerType,
+			tokenId: storedLongLiveToken.id,
+		});
 
 		this.logger.debug(
 			`[WS AUTH] Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`,

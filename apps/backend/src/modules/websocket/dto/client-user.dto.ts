@@ -21,12 +21,12 @@ export class ClientUserDto {
 	@IsString()
 	type?: ClientType;
 
-	@Expose()
+	@Expose({ name: 'owner_type' })
 	@IsOptional()
 	@IsEnum(TokenOwnerType)
 	ownerType?: TokenOwnerType;
 
-	@Expose()
+	@Expose({ name: 'token_id' })
 	@IsOptional()
 	@IsString()
 	tokenId?: string;
