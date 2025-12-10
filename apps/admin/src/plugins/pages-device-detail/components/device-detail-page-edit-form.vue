@@ -82,10 +82,21 @@
 			/>
 		</el-form-item>
 
-		<display-profile-select
-			v-model="model.display"
-			:required="false"
-		/>
+		<el-form-item
+			:label="t('dashboardModule.fields.pages.displays.title')"
+			:prop="['displays']"
+		>
+			<displays-multi-select
+				v-model="model.displays"
+				:placeholder="t('dashboardModule.fields.pages.displays.placeholder')"
+			/>
+			<el-text
+				size="small"
+				class="block mt-1 text-gray-500"
+			>
+				{{ t('dashboardModule.fields.pages.displays.description') }}
+			</el-text>
+		</el-form-item>
 	</el-form>
 </template>
 
@@ -99,7 +110,8 @@ import { orderBy } from 'natural-orderby';
 import { IconPicker } from '../../../common';
 import { DashboardException, FormResult, type FormResultType, type IPageEditFormProps, usePageEditForm } from '../../../modules/dashboard';
 import { type IDevice, useDevices } from '../../../modules/devices';
-import { DisplayProfileSelect } from '../../../modules/displays';
+import { DisplaysMultiSelect } from '../../../modules/displays';
+import { ElText } from 'element-plus';
 import type { IDeviceDetailPageEditForm } from '../schemas/pages.types';
 
 defineOptions({

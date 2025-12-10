@@ -44,7 +44,7 @@ describe('CardsService', () => {
 		showTopBar: false,
 		cards: [],
 		dataSource: [],
-		display: uuid().toString(),
+		displays: [],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};

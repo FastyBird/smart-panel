@@ -146,11 +146,12 @@ const initialized = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
 
 const displayProfile = computed<IDisplayProfile | null>((): IDisplayProfile | null => {
-	// Get the first display as default since we no longer have a "primary" flag
+	// Get the first display as default
 	const defaultDisplay = displays.value[0] ?? null;
 
-	if (props.page.display !== null) {
-		return displays.value.find((display) => display.id === props.page.display) ?? defaultDisplay;
+	// If page has displays assigned, use the first one; otherwise use default
+	if (props.page.displays !== null && props.page.displays.length > 0) {
+		return displays.value.find((display) => display.id === props.page.displays![0]) ?? defaultDisplay;
 	}
 
 	return defaultDisplay;

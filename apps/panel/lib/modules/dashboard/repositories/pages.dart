@@ -12,7 +12,17 @@ class PagesRepository extends Repository<PageModel> {
   PagesRepository({required super.apiClient});
 
   void insert(List<Map<String, dynamic>> json) {
+    final currentDisplayId = _systemService.displayProfile?.id;
     late Map<String, PageModel> insertData = {...data};
+
+    // First, check existing pages in data - remove any that are no longer visible
+    // (This handles the case where a page's display assignment changes via socket update)
+    insertData.removeWhere((pageId, page) {
+      final isVisible = page.displays == null ||
+          page.displays!.isEmpty ||
+          (currentDisplayId != null && page.displays!.contains(currentDisplayId));
+      return !isVisible;
+    });
 
     for (var row in json) {
       if (!row.containsKey('type')) {
@@ -40,9 +50,18 @@ class PagesRepository extends Repository<PageModel> {
       try {
         PageModel page = buildPageModel(pageType, row);
 
-        if (page.display == null ||
-            page.display == _systemService.displayProfile?.id) {
+        // Page is visible if:
+        // 1. displays is null or empty (visible to all displays), OR
+        // 2. current display ID is in the displays array
+        final isVisible = page.displays == null ||
+            page.displays!.isEmpty ||
+            (currentDisplayId != null && page.displays!.contains(currentDisplayId));
+
+        if (isVisible) {
           insertData[page.id] = page;
+        } else {
+          // Page is no longer visible - remove it if it exists
+          insertData.remove(page.id);
         }
       } catch (e) {
         if (kDebugMode) {

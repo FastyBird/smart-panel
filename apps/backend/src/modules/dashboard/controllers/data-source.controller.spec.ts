@@ -84,7 +84,7 @@ describe('DataSourceController', () => {
 		order: 0,
 		showTopBar: false,
 		dataSource: [],
-		display: uuid().toString(),
+		displays: [],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',

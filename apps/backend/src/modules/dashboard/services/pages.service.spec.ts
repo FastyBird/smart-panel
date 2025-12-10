@@ -102,7 +102,7 @@ describe('PagesService', () => {
 		order: 0,
 		showTopBar: false,
 		dataSource: [],
-		display: mockDisplay.id,
+		displays: [toInstance(DisplayEntity, mockDisplay)],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -115,7 +115,7 @@ describe('PagesService', () => {
 		order: 0,
 		showTopBar: false,
 		dataSource: [],
-		display: mockDisplay.id,
+		displays: [toInstance(DisplayEntity, mockDisplay)],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Other mock value',
@@ -125,7 +125,6 @@ describe('PagesService', () => {
 		findAll: jest.fn().mockResolvedValue([toInstance(DisplayEntity, mockDisplay)]),
 		findOne: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
 		findByMacAddress: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
-		findPrimary: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
 		getOneOrThrow: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
 	};
 
@@ -253,7 +252,11 @@ describe('PagesService', () => {
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockPageOne)),
+				getOne: jest
+					.fn()
+					.mockResolvedValue(
+						toInstance(MockPageEntity, { ...mockPageOne, displays: [toInstance(DisplayEntity, mockDisplay)] }),
+					),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
@@ -295,7 +298,7 @@ describe('PagesService', () => {
 				title: createDto.title,
 				order: createDto.order,
 				showTopBar: createDto.show_top_bar,
-				display: mockDisplay.id,
+				displays: [],
 				mockValue: createDto.mockValue,
 			};
 			const mockCratedPage: MockPageEntity = {
@@ -305,7 +308,7 @@ describe('PagesService', () => {
 				icon: null,
 				order: mockCratePage.order,
 				showTopBar: mockCratePage.showTopBar,
-				display: mockCratePage.display,
+				displays: [],
 				createdAt: new Date(),
 				dataSource: [],
 				updatedAt: null,
@@ -327,7 +330,7 @@ describe('PagesService', () => {
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockCratedPage)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, { ...mockCratedPage, displays: [] })),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
@@ -360,16 +363,20 @@ describe('PagesService', () => {
 				title: 'Updated title',
 				mockValue: 'Updated mock value',
 			};
+			const mockPageTwoWithDisplays: MockPageEntity = {
+				...mockPageTwo,
+				displays: [toInstance(DisplayEntity, mockDisplay)],
+			};
 			const mockUpdatePage: MockPageEntity = {
-				id: mockPageTwo.id,
-				type: mockPageTwo.type,
+				id: mockPageTwoWithDisplays.id,
+				type: mockPageTwoWithDisplays.type,
 				title: updateDto.title,
-				order: mockPageTwo.order,
-				showTopBar: mockPageTwo.showTopBar,
-				dataSource: mockPageTwo.dataSource,
-				display: mockDisplay.id,
-				createdAt: mockPageTwo.createdAt,
-				updatedAt: mockPageTwo.updatedAt,
+				order: mockPageTwoWithDisplays.order,
+				showTopBar: mockPageTwoWithDisplays.showTopBar,
+				dataSource: mockPageTwoWithDisplays.dataSource,
+				displays: mockPageTwoWithDisplays.displays,
+				createdAt: mockPageTwoWithDisplays.createdAt,
+				updatedAt: mockPageTwoWithDisplays.updatedAt,
 				mockValue: updateDto.mockValue,
 			};
 			const mockUpdatedPage: MockPageEntity = {
@@ -379,7 +386,7 @@ describe('PagesService', () => {
 				order: mockUpdatePage.order,
 				showTopBar: mockUpdatePage.showTopBar,
 				dataSource: mockUpdatePage.dataSource,
-				display: mockUpdatePage.display,
+				displays: mockUpdatePage.displays,
 				createdAt: mockUpdatePage.createdAt,
 				updatedAt: new Date(),
 				mockValue: mockUpdatePage.mockValue,
@@ -400,18 +407,18 @@ describe('PagesService', () => {
 				where: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
-					.mockResolvedValueOnce(toInstance(MockPageEntity, mockPageTwo))
-					.mockResolvedValueOnce(toInstance(MockPageEntity, mockUpdatedPage)),
+					.mockResolvedValueOnce(toInstance(MockPageEntity, { ...mockPageTwo, displays: [toInstance(DisplayEntity, mockDisplay)] }))
+					.mockResolvedValueOnce(toInstance(MockPageEntity, { ...mockUpdatedPage, displays: mockPageTwo.displays })),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockPageEntity, mockUpdatedPage));
 
-			const result = await service.update(mockPageTwo.id, updateDto);
+			const result = await service.update(mockPageTwoWithDisplays.id, updateDto);
 
 			expect(result).toEqual(toInstance(MockPageEntity, mockUpdatedPage));
 			expect(repository.save).toHaveBeenCalledWith(toInstance(MockPageEntity, mockUpdatePage));
-			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :id', { id: mockPageTwo.id });
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :id', { id: mockPageTwoWithDisplays.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_UPDATED,
 				toInstance(MockPageEntity, mockUpdatedPage),

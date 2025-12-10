@@ -81,8 +81,10 @@ export const usePagesDataSource = (): IUsePagesDataSource => {
 						(!filters.value.search || page.title.toLowerCase().includes(filters.value.search.toLowerCase())) &&
 						(filters.value.types.length === 0 || filters.value.types.includes(page.type)) &&
 						(filters.value.displays.length === 0 ||
-							(filters.value.displays.includes('all') && page.display === null) ||
-							(page.display !== null && filters.value.displays.includes(page.display)))
+							(filters.value.displays.includes('all') && (page.displays === null || page.displays.length === 0)) ||
+							(page.displays !== null &&
+								page.displays.length > 0 &&
+								page.displays.some((displayId) => filters.value.displays.includes(displayId))))
 				),
 			[(page: IPage) => page[sortBy.value as keyof IPage] ?? ''],
 			[sortDir.value === 'asc' ? 'asc' : 'desc']

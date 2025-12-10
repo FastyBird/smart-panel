@@ -90,7 +90,7 @@ describe('DataSourcesService', () => {
 		title: 'Tiles detail',
 		order: 0,
 		showTopBar: false,
-		display: uuid().toString(),
+		displays: [],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',

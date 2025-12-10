@@ -178,28 +178,6 @@ describe('DisplaysService', () => {
 		});
 	});
 
-	describe('findPrimary', () => {
-		it('should return the first display by creation date', async () => {
-			jest.spyOn(repository, 'find').mockResolvedValue([toInstance(DisplayEntity, mockDisplay)]);
-
-			const result = await service.findPrimary();
-
-			expect(result).toEqual(toInstance(DisplayEntity, mockDisplay));
-			expect(repository.find).toHaveBeenCalledWith({
-				order: { createdAt: 'ASC' },
-				take: 1,
-			});
-		});
-
-		it('should return null if no displays exist', async () => {
-			jest.spyOn(repository, 'find').mockResolvedValue([]);
-
-			const result = await service.findPrimary();
-
-			expect(result).toBeNull();
-		});
-	});
-
 	describe('getOneOrThrow', () => {
 		it('should return a display if found', async () => {
 			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));

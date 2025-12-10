@@ -12,7 +12,7 @@ abstract class PageModel extends Model {
 
   final bool _showTopBar;
 
-  final String? _display;
+  final List<String>? _displays;
 
   PageModel({
     required super.id,
@@ -21,7 +21,7 @@ abstract class PageModel extends Model {
     IconData? icon,
     int order = 0,
     bool showTopBar = true,
-    String? display,
+    List<String>? displays,
     super.createdAt,
     super.updatedAt,
   })  : _type = type,
@@ -29,7 +29,7 @@ abstract class PageModel extends Model {
         _icon = icon,
         _order = order,
         _showTopBar = showTopBar,
-        _display = display;
+        _displays = displays;
 
   PageType get type => _type;
 
@@ -41,5 +41,5 @@ abstract class PageModel extends Model {
 
   bool get showTopBar => _showTopBar;
 
-  String? get display => _display;
+  List<String>? get displays => _displays;
 }

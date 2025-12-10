@@ -25,7 +25,7 @@ class TilesPageModel extends PageModel {
     required super.icon,
     super.order,
     super.showTopBar,
-    required super.display,
+    super.displays,
     super.createdAt,
     super.updatedAt,
   })  : _tiles = UuidUtils.validateUuidList(tiles),
@@ -81,7 +81,9 @@ class TilesPageModel extends PageModel {
           : null,
       order: json['order'],
       showTopBar: json['show_top_bar'],
-      display: json['display'],
+      displays: json['displays'] != null && json['displays'] is List
+          ? (json['displays'] as List).map((e) => e.toString()).toList()
+          : null,
       tileSize: json['tile_size']?.toDouble(),
       rows: json['rows'],
       cols: json['cols'],

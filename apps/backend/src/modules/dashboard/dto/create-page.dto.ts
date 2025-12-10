@@ -83,18 +83,22 @@ export class CreatePageDto {
 	data_source?: CreateDataSourceDto[];
 
 	@ApiPropertyOptional({
-		description: 'Display ID',
-		type: 'string',
-		format: 'uuid',
-		example: '123e4567-e89b-12d3-a456-426614174000',
+		description: 'Display IDs. Empty array or null means visible to all displays.',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['123e4567-e89b-12d3-a456-426614174000'],
 		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
-	@ValidateDisplayExists({ message: '[{"field":"display","reason":"The specified display does not exist."}]' })
-	@ValidateIf((_, value) => value !== null)
-	display?: string | null;
+	@IsArray({ message: '[{"field":"displays","reason":"Displays must be an array."}]' })
+	@IsUUID('4', {
+		each: true,
+		message: '[{"field":"displays","reason":"Each display must be a valid UUID (version 4)."}]',
+	})
+	@ValidateIf((_, value) => value !== null && Array.isArray(value) && value.length > 0)
+	@ValidateDisplayExists({ message: '[{"field":"displays","reason":"One or more specified displays do not exist."}]' })
+	displays?: string[] | null;
 }
 
 @ApiSchema({ name: 'DashboardModuleReqCreatePage' })

@@ -12,7 +12,7 @@ export const PageAddFormSchema = z.object({
 		.optional(),
 	order: z.number(),
 	showTopBar: z.boolean().optional(),
-	display: z.string().uuid().nullable().optional(),
+	displays: z.array(z.string().uuid()).nullable().optional(),
 });
 
 export const PageEditFormSchema = z.object({
@@ -27,5 +27,5 @@ export const PageEditFormSchema = z.object({
 		.optional(),
 	order: z.number().optional(),
 	showTopBar: z.boolean().optional(),
-	display: z.string().uuid().nullable().optional(),
+	displays: z.array(z.string().uuid()).nullable().optional(),
 });

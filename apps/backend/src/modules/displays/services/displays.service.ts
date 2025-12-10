@@ -41,26 +41,6 @@ export class DisplaysService {
 		return this.findByField('macAddress', macAddress);
 	}
 
-	async findPrimary(): Promise<DisplayEntity | null> {
-		this.logger.debug('[LOOKUP] Fetching primary display');
-
-		// Return the first display ordered by creation date (oldest first)
-		// In a multi-display setup, the first registered display is considered primary
-		const displays = await this.repository.find({
-			order: { createdAt: 'ASC' },
-			take: 1,
-		});
-
-		if (displays.length === 0) {
-			this.logger.warn('[LOOKUP] No primary display found');
-			return null;
-		}
-
-		this.logger.debug(`[LOOKUP] Successfully fetched primary display with id=${displays[0].id}`);
-
-		return displays[0];
-	}
-
 	async getOneOrThrow(id: string): Promise<DisplayEntity> {
 		const display = await this.findOne(id);
 

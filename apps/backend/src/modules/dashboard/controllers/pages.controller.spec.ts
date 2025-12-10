@@ -95,7 +95,7 @@ describe('PagesController', () => {
 		order: 0,
 		showTopBar: false,
 		dataSource: [],
-		display: mockDisplay.id,
+		displays: [mockDisplay],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',

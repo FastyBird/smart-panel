@@ -61,7 +61,7 @@ export class PagesService {
 		this.logger.debug('[LOOKUP ALL] Fetching all pages');
 
 		const pages = await repository.find({
-			relations: ['display'],
+			relations: ['displays'],
 		});
 
 		this.logger.debug(`[LOOKUP ALL] Found ${pages.length} pages`);
@@ -82,7 +82,7 @@ export class PagesService {
 
 		const page = (await repository
 			.createQueryBuilder('page')
-			.leftJoinAndSelect('page.display', 'display')
+			.leftJoinAndSelect('page.displays', 'displays')
 			.where('page.id = :id', { id })
 			.getOne()) as TPage | null;
 
@@ -114,29 +114,41 @@ export class PagesService {
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
-		if (dtoInstance.display) {
-			const display = await this.displaysService.findOne(dtoInstance.display);
+		// Handle display assignments: validate all display IDs exist
+		if (dtoInstance.displays && dtoInstance.displays.length > 0) {
+			const displays = await Promise.all(
+				dtoInstance.displays.map((displayId) => this.displaysService.findOne(displayId)),
+			);
 
-			if (display === null) {
-				this.logger.error(`[VALIDATION FAILED] Page display with id ${dtoInstance.display} is not found`);
+			const invalidDisplays = displays
+				.map((display, index) => (display === null ? dtoInstance.displays[index] : null))
+				.filter((id): id is string => id !== null);
 
-				throw new DashboardValidationException('Provided page display identifier is invalid.');
+			if (invalidDisplays.length > 0) {
+				this.logger.error(`[VALIDATION FAILED] Page displays with ids ${invalidDisplays.join(', ')} are not found`);
+
+				throw new DashboardValidationException('One or more provided page display identifiers are invalid.');
 			}
-		} else {
-			const display = await this.displaysService.findPrimary();
-
-			if (display === null) {
-				this.logger.error(`[VALIDATION FAILED] Primary display is missing in system`);
-
-				throw new DashboardValidationException('Primary display is not configured.');
-			}
-
-			dtoInstance.display = display.id;
 		}
 
 		const repository: Repository<TPage> = this.dataSource.getRepository(mapping.class);
 
 		const page = toInstance(mapping.class, dtoInstance);
+
+		// Set displays relation: empty array means visible to all displays
+		if (dtoInstance.displays !== undefined) {
+			if (dtoInstance.displays.length === 0) {
+				page.displays = [];
+			} else {
+				const displayEntities = await Promise.all(
+					dtoInstance.displays.map((displayId) => this.displaysService.getOneOrThrow(displayId)),
+				);
+				page.displays = displayEntities;
+			}
+		} else {
+			// If not provided, default to empty array (visible to all)
+			page.displays = [];
+		}
 
 		for (const builder of this.nestedCreateBuilders.getBuilders()) {
 			if (builder.supports(dtoInstance)) {
@@ -181,19 +193,42 @@ export class PagesService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
-		if (dtoInstance.display) {
-			const display = await this.displaysService.findOne(dtoInstance.display);
+		// Handle display assignments if provided
+		if (dtoInstance.displays !== undefined) {
+			if (dtoInstance.displays.length > 0) {
+				// Validate all display IDs exist
+				const displays = await Promise.all(
+					dtoInstance.displays.map((displayId) => this.displaysService.findOne(displayId)),
+				);
 
-			if (display === null) {
-				this.logger.error(`[VALIDATION FAILED] Page display with id ${dtoInstance.display} is not found`);
+				const invalidDisplays = displays
+					.map((display, index) => (display === null ? dtoInstance.displays[index] : null))
+					.filter((id): id is string => id !== null);
 
-				throw new DashboardValidationException('Provided page display identifier is invalid.');
+				if (invalidDisplays.length > 0) {
+					this.logger.error(`[VALIDATION FAILED] Page displays with ids ${invalidDisplays.join(', ')} are not found`);
+
+					throw new DashboardValidationException('One or more provided page display identifiers are invalid.');
+				}
+
+				// Set the displays relation
+				const displayEntities = await Promise.all(
+					dtoInstance.displays.map((displayId) => this.displaysService.getOneOrThrow(displayId)),
+				);
+				page.displays = displayEntities;
+			} else {
+				// Empty array means visible to all displays
+				page.displays = [];
 			}
 		}
+		// If displays is not provided in DTO, keep existing assignments
 
 		const repository: Repository<TPage> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(page, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
+		// Remove displays from the DTO before assigning other fields (we handle it separately above)
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { displays: _displays, ...dtoWithoutDisplays } = dtoInstance;
+		Object.assign(page, omitBy(toInstance(mapping.class, dtoWithoutDisplays), isUndefined));
 
 		await repository.save(page);
 

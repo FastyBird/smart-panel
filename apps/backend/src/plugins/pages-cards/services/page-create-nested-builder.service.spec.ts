@@ -157,7 +157,7 @@ describe('CardsPageNestedBuilderService', () => {
 			type: PAGES_CARDS_TYPE,
 			title: 'Test Page',
 			order: 1,
-			display: uuid().toString(),
+			displays: [],
 			cards: [
 				{
 					title: 'Card 1',

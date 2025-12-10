@@ -1,4 +1,5 @@
 export { default as DisplaySelect } from './display-select.vue';
+export { default as DisplaysMultiSelect } from './displays-multi-select.vue';
 export { default as DisplayEditForm } from './display-edit-form.vue';
 export { default as DisplaysTableColumnIcon } from './displays-table-column-icon.vue';
 export { default as TableColumnDisplay } from './table-column-display.vue';

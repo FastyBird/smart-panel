@@ -89,9 +89,9 @@ class DashboardModuleService {
     /// Page CREATE/UPDATE
     if (event == DashboardModuleConstants.pageCreatedEvent ||
         event == DashboardModuleConstants.pageUpdatedEvent) {
-      if (payload.containsKey('display')) {
-        _pagesRepository.insert([payload]);
-      }
+      // Filter pages based on current display ID before inserting
+      // The insert() method will handle the filtering logic
+      _pagesRepository.insert([payload]);
 
       /// Page DELETE
     } else if (event == DashboardModuleConstants.pageDeletedEvent &&

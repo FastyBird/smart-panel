@@ -62,10 +62,21 @@
 			/>
 		</el-form-item>
 
-		<display-profile-select
-			v-model="model.display"
-			:required="false"
-		/>
+		<el-form-item
+			:label="t('dashboardModule.fields.pages.displays.title')"
+			:prop="['displays']"
+		>
+			<displays-multi-select
+				v-model="model.displays"
+				:placeholder="t('dashboardModule.fields.pages.displays.placeholder')"
+			/>
+			<el-text
+				size="small"
+				class="block mt-1 text-gray-500"
+			>
+				{{ t('dashboardModule.fields.pages.displays.description') }}
+			</el-text>
+		</el-form-item>
 
 		<el-divider />
 
@@ -177,7 +188,8 @@ import { Icon } from '@iconify/vue';
 
 import { IconPicker } from '../../../common';
 import { FormResult, type FormResultType, type IPageEditFormProps, usePageEditForm } from '../../../modules/dashboard';
-import { DisplayProfileSelect } from '../../../modules/displays';
+import { DisplaysMultiSelect } from '../../../modules/displays';
+import { ElText } from 'element-plus';
 import type { ITilesPageEditForm } from '../schemas/pages.types';
 
 defineOptions({

@@ -99,7 +99,7 @@ describe('Pages Store', () => {
 						id: pageId,
 						type: 'some-page',
 						title: 'Page title',
-						display: displayId,
+						displays: [displayId],
 						created_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					},
@@ -129,7 +129,7 @@ describe('Pages Store', () => {
 			id: pageId,
 			type: 'some-page',
 			title: 'Page title',
-			display: displayId,
+			displays: [displayId],
 			created_at: new Date().toISOString(),
 			updatedAt: null,
 		};
@@ -148,7 +148,7 @@ describe('Pages Store', () => {
 				title: 'Page title',
 				order: 0,
 				showTopBar: true,
-				display: displayId,
+				displays: [displayId],
 				createdAt: new Date(),
 			},
 		};
@@ -167,7 +167,7 @@ describe('Pages Store', () => {
 				title: 'Page title',
 				order: 0,
 				showTopBar: true,
-				display: displayId,
+				displays: [displayId],
 				createdAt: new Date(),
 			},
 		};
