@@ -1,11 +1,30 @@
 <template>
-	<div class="p-4">
-		<h3 class="text-lg font-semibold mb-2">
+	<app-bar-heading teleport>
+		<template #icon>
+			<icon
+				icon="mdi:key"
+				class="w[20px] h[20px]"
+			/>
+		</template>
+
+		<template #title>
 			{{ t('displaysModule.detail.tokens.title') }}
-		</h3>
-		<p class="text-gray-500 text-sm mb-4">
-			{{ t('displaysModule.detail.tokens.description') }}
-		</p>
+		</template>
+
+		<template #subtitle>
+			{{ t('displaysModule.detail.tokens.subtitle') }}
+		</template>
+	</app-bar-heading>
+
+	<app-breadcrumbs :items="breadcrumbs" />
+
+	<div class="p-4">
+		<el-alert
+			:title="t('displaysModule.detail.tokens.description')"
+			type="info"
+			:closable="false"
+			class="mb-4"
+		/>
 
 		<div
 			v-loading="isLoadingTokens"
@@ -82,14 +101,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useMeta } from 'vue-meta';
+import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElMessage, ElMessageBox, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElAlert, ElButton, ElMessage, ElMessageBox, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { AppBarHeading, AppBreadcrumbs } from '../../../common';
+import { RouteNames } from '../displays.constants';
 import { useDisplay } from '../composables/composables';
+import type { IDisplay } from '../store/displays.store.types';
 
 import type { IViewDisplayTokensProps } from './view-display-tokens.types';
 
@@ -99,10 +123,31 @@ defineOptions({
 
 const props = defineProps<IViewDisplayTokensProps>();
 
+const router = useRouter();
 const { t } = useI18n();
+const { meta } = useMeta({});
 
 const displayId = computed(() => props.id);
-const { tokens, fetchTokens, revokeToken } = useDisplay(displayId);
+const { display, tokens, fetchTokens, revokeToken } = useDisplay(displayId);
+
+const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
+	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
+		return [
+			{
+				label: t('displaysModule.breadcrumbs.displays.list'),
+				route: router.resolve({ name: RouteNames.DISPLAYS }),
+			},
+			{
+				label: t('displaysModule.breadcrumbs.displays.detail', { display: display.value?.name || display.value?.macAddress }),
+				route: router.resolve({ name: RouteNames.DISPLAY, params: { id: props.id } }),
+			},
+			{
+				label: t('displaysModule.breadcrumbs.displays.tokens'),
+				route: router.resolve({ name: RouteNames.DISPLAY_TOKENS, params: { id: props.id } }),
+			},
+		];
+	}
+);
 
 const isLoadingTokens = ref(false);
 const isRevoking = ref(false);
@@ -144,6 +189,16 @@ const onRevokeToken = (): void => {
 			// Cancelled
 		});
 };
+
+watch(
+	(): IDisplay | null => display.value,
+	(val: IDisplay | null): void => {
+		if (val !== null) {
+			meta.title = t('displaysModule.meta.displays.tokens.title', { display: val.name || val.macAddress });
+		}
+	},
+	{ immediate: true },
+);
 
 onMounted(() => {
 	loadTokens();

@@ -162,7 +162,7 @@ const router = useRouter();
 const { t } = useI18n();
 
 useMeta({
-	title: t('displaysModule.meta.list.title'),
+	title: t('displaysModule.meta.displays.list.title'),
 });
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
@@ -198,7 +198,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
 		return [
 			{
-				label: t('displaysModule.breadcrumbs.list'),
+				label: t('displaysModule.breadcrumbs.displays.list'),
 				route: router.resolve({ name: RouteNames.DISPLAYS }),
 			},
 		];

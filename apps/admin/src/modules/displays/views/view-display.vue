@@ -43,38 +43,17 @@
 		icon="mdi:monitor"
 	>
 		<template #extra>
-			<div class="flex items-center gap-2">
-				<el-button
-					type="primary"
-					plain
-					@click="onEdit"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-					{{ t('displaysModule.actions.edit') }}
-				</el-button>
-
+			<div class="flex items-center">
 				<el-button
 					type="warning"
 					plain
+					class="px-4! ml-2!"
 					@click="onManageTokens"
 				>
 					<template #icon>
 						<icon icon="mdi:key" />
 					</template>
 					{{ t('displaysModule.actions.manageTokens') }}
-				</el-button>
-
-				<el-button
-					type="danger"
-					plain
-					@click="onRemove"
-				>
-					<template #icon>
-						<icon icon="mdi:delete" />
-					</template>
-					{{ t('displaysModule.actions.delete') }}
 				</el-button>
 			</div>
 		</template>
@@ -85,145 +64,158 @@
 		v-loading="isLoading"
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-auto"
 	>
-		<div
-			v-if="display"
-			class="grid grid-cols-1 lg:grid-cols-2 gap-4"
-		>
+		<el-row v-if="display">
 			<!-- Display Information -->
-			<el-card shadow="never">
-				<template #header>
-					<div class="flex items-center gap-2">
-						<icon
-							icon="mdi:information"
-							class="text-lg"
-						/>
-						<span>{{ t('displaysModule.detail.info.title') }}</span>
-					</div>
-				</template>
-
-				<el-descriptions
-					:column="1"
-					border
+			<el-col
+				:xs="24"
+				:sm="12"
+				:md="8"
+			>
+				<el-card
+					class="md:m-2 xs:my-1"
+					body-class="p-0!"
 				>
-					<el-descriptions-item :label="t('displaysModule.detail.info.macAddress')">
-						<code>{{ display.macAddress }}</code>
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.info.version')">
-						{{ display.version }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.info.build')">
-						{{ display.build || '-' }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.info.resolution')">
-						{{ display.screenWidth }}x{{ display.screenHeight }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.info.pixelRatio')">
-						{{ display.pixelRatio }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.info.gridSize')">
-						{{ display.cols }}x{{ display.rows }}
-					</el-descriptions-item>
-				</el-descriptions>
-			</el-card>
+					<el-descriptions
+						:label-width="170"
+						:column="1"
+						border
+					>
+						<template #title>
+							<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
+								<el-icon
+									class="mr-2"
+									size="28"
+								>
+									<icon icon="mdi:information" />
+								</el-icon>
+								{{ t('displaysModule.detail.info.title') }}
+							</div>
+						</template>
+
+						<el-descriptions-item :label="t('displaysModule.detail.info.macAddress')">
+							<code>{{ display.macAddress }}</code>
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.info.version')">
+							{{ display.version }}
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.info.build')">
+							{{ display.build || '-' }}
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.info.resolution')">
+							{{ display.screenWidth }}x{{ display.screenHeight }}
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.info.pixelRatio')">
+							{{ display.pixelRatio }}
+						</el-descriptions-item>
+					</el-descriptions>
+				</el-card>
+			</el-col>
 
 			<!-- Display Settings -->
-			<el-card shadow="never">
-				<template #header>
-					<div class="flex items-center gap-2">
-						<icon
-							icon="mdi:cog"
-							class="text-lg"
-						/>
-						<span>{{ t('displaysModule.detail.settings.title') }}</span>
-					</div>
-				</template>
-
-				<el-descriptions
-					:column="1"
-					border
-				>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.name')">
-						{{ display.name || '-' }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.darkMode')">
-						<el-tag :type="display.darkMode ? 'success' : 'info'">
-							{{ display.darkMode ? 'Enabled' : 'Disabled' }}
-						</el-tag>
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.brightness')">
-						{{ display.brightness }}%
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.screenLockDuration')">
-						{{ display.screenLockDuration }}s
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.screenSaver')">
-						<el-tag :type="display.screenSaver ? 'success' : 'info'">
-							{{ display.screenSaver ? 'Enabled' : 'Disabled' }}
-						</el-tag>
-					</el-descriptions-item>
-				</el-descriptions>
-			</el-card>
-
-			<!-- Audio Settings (Speaker) - Only shown if audio output is supported -->
-			<el-card
-				v-if="display.audioOutputSupported"
-				shadow="never"
+			<el-col
+				:xs="24"
+				:sm="12"
+				:md="8"
 			>
-				<template #header>
-					<div class="flex items-center gap-2">
-						<icon
-							icon="mdi:speaker"
-							class="text-lg"
-						/>
-						<span>{{ t('displaysModule.detail.audio.speaker.title') }}</span>
-					</div>
-				</template>
-
-				<el-descriptions
-					:column="1"
-					border
+				<el-card
+					class="md:m-2 xs:my-1"
+					body-class="p-0!"
 				>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.speakerEnabled')">
-						<el-tag :type="display.speaker ? 'success' : 'info'">
-							{{ display.speaker ? 'Enabled' : 'Disabled' }}
-						</el-tag>
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.speakerVolume')">
-						{{ display.speakerVolume }}%
-					</el-descriptions-item>
-				</el-descriptions>
-			</el-card>
+					<el-descriptions
+						:label-width="170"
+						:column="1"
+						border
+					>
+						<template #title>
+							<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
+								<el-icon
+									class="mr-2"
+									size="28"
+								>
+									<icon icon="mdi:cog" />
+								</el-icon>
+								{{ t('displaysModule.detail.settings.title') }}
+							</div>
+						</template>
 
-			<!-- Audio Settings (Microphone) - Only shown if audio input is supported -->
-			<el-card
-				v-if="display.audioInputSupported"
-				shadow="never"
+						<el-descriptions-item :label="t('displaysModule.detail.settings.gridSize')">
+							{{ display.cols }}x{{ display.rows }}
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.settings.darkMode')">
+							<el-tag :type="display.darkMode ? 'success' : 'info'">
+								{{ display.darkMode ? 'Enabled' : 'Disabled' }}
+							</el-tag>
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.settings.brightness')">
+							{{ display.brightness }}%
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.settings.screenLockDuration')">
+							{{ display.screenLockDuration }}s
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.settings.screenSaver')">
+							<el-tag :type="display.screenSaver ? 'success' : 'info'">
+								{{ display.screenSaver ? 'Enabled' : 'Disabled' }}
+							</el-tag>
+						</el-descriptions-item>
+					</el-descriptions>
+				</el-card>
+			</el-col>
+
+			<!-- Peripherals - Only shown if any peripheral is supported -->
+			<el-col
+				v-if="display.audioOutputSupported || display.audioInputSupported"
+				:xs="24"
+				:sm="12"
+				:md="8"
 			>
-				<template #header>
-					<div class="flex items-center gap-2">
-						<icon
-							icon="mdi:microphone"
-							class="text-lg"
-						/>
-						<span>{{ t('displaysModule.detail.audio.microphone.title') }}</span>
-					</div>
-				</template>
-
-				<el-descriptions
-					:column="1"
-					border
+				<el-card
+					class="md:m-2 xs:my-1"
+					body-class="p-0!"
 				>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.microphoneEnabled')">
-						<el-tag :type="display.microphone ? 'success' : 'info'">
-							{{ display.microphone ? 'Enabled' : 'Disabled' }}
-						</el-tag>
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('displaysModule.detail.settings.microphoneVolume')">
-						{{ display.microphoneVolume }}%
-					</el-descriptions-item>
-				</el-descriptions>
-			</el-card>
-		</div>
+					<el-descriptions
+						:label-width="170"
+						:column="1"
+						border
+					>
+						<template #title>
+							<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
+								<el-icon
+									class="mr-2"
+									size="28"
+								>
+									<icon icon="mdi:usb" />
+								</el-icon>
+								{{ t('displaysModule.detail.peripherals.title') }}
+							</div>
+						</template>
+
+						<!-- Audio Output -->
+						<template v-if="display.audioOutputSupported">
+							<el-descriptions-item :label="t('displaysModule.detail.peripherals.audioOutput')">
+								<el-tag :type="display.speaker ? 'success' : 'info'">
+									{{ display.speaker ? 'Enabled' : 'Disabled' }}
+								</el-tag>
+							</el-descriptions-item>
+							<el-descriptions-item :label="t('displaysModule.detail.peripherals.audioOutputVolume')">
+								{{ display.speakerVolume }}%
+							</el-descriptions-item>
+						</template>
+
+						<!-- Audio Input -->
+						<template v-if="display.audioInputSupported">
+							<el-descriptions-item :label="t('displaysModule.detail.peripherals.audioInput')">
+								<el-tag :type="display.microphone ? 'success' : 'info'">
+									{{ display.microphone ? 'Enabled' : 'Disabled' }}
+								</el-tag>
+							</el-descriptions-item>
+							<el-descriptions-item :label="t('displaysModule.detail.peripherals.audioInputVolume')">
+								{{ display.microphoneVolume }}%
+							</el-descriptions-item>
+						</template>
+					</el-descriptions>
+				</el-card>
+			</el-col>
+		</el-row>
 
 		<div
 			v-else-if="!isLoading"
@@ -277,19 +269,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onBeforeMount, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElDrawer, ElIcon, ElMessage, ElMessageBox, ElTag } from 'element-plus';
+import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, ElIcon, ElRow, ElTag, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { useDisplay } from '../composables/composables';
 import { RouteNames } from '../displays.constants';
-import { displaysStoreKey } from '../store/keys';
+import type { IDisplay } from '../store/displays.store.types';
 
 import type { IViewDisplayProps } from './view-display.types';
 
@@ -303,16 +295,12 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
-const displaysStore = inject(displaysStoreKey);
-
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const displayId = computed(() => props.id);
 const { display, isLoading } = useDisplay(displayId);
 
-useMeta({
-	title: computed(() => display.value?.name || display.value?.macAddress || t('displaysModule.detail.title')),
-});
+const { meta } = useMeta({});
 
 const showDrawer = ref<boolean>(false);
 
@@ -324,11 +312,11 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
 		return [
 			{
-				label: t('displaysModule.title'),
+				label: t('displaysModule.breadcrumbs.displays.list'),
 				route: router.resolve({ name: RouteNames.DISPLAYS }),
 			},
 			{
-				label: display.value?.name || display.value?.macAddress || t('displaysModule.detail.title'),
+				label: t('displaysModule.breadcrumbs.displays.detail', { display: display.value?.name || display.value?.macAddress }),
 				route: router.resolve({ name: RouteNames.DISPLAY, params: { id: props.id } }),
 			},
 		];
@@ -342,20 +330,6 @@ const onCloseDrawer = (done?: () => void): void => {
 	});
 
 	done?.();
-};
-
-const onEdit = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.DISPLAY_EDIT,
-			params: { id: props.id },
-		});
-	} else {
-		router.push({
-			name: RouteNames.DISPLAY_EDIT,
-			params: { id: props.id },
-		});
-	}
 };
 
 const onManageTokens = (): void => {
@@ -372,26 +346,6 @@ const onManageTokens = (): void => {
 	}
 };
 
-const onRemove = (): void => {
-	ElMessageBox.confirm('Are you sure you want to delete this display? This action cannot be undone.', 'Delete Display', {
-		confirmButtonText: 'Delete',
-		cancelButtonText: 'Cancel',
-		type: 'warning',
-	})
-		.then(async () => {
-			try {
-				await displaysStore?.remove({ id: props.id });
-				ElMessage.success(t('displaysModule.messages.deleteSuccess'));
-				router.push({ name: RouteNames.DISPLAYS });
-			} catch {
-				ElMessage.error(t('displaysModule.messages.deleteError'));
-			}
-		})
-		.catch(() => {
-			// Cancelled
-		});
-};
-
 onBeforeMount((): void => {
 	showDrawer.value =
 		route.matched.find((matched) => matched.name === RouteNames.DISPLAY_EDIT || matched.name === RouteNames.DISPLAY_TOKENS) !== undefined;
@@ -403,5 +357,15 @@ watch(
 		showDrawer.value =
 			route.matched.find((matched) => matched.name === RouteNames.DISPLAY_EDIT || matched.name === RouteNames.DISPLAY_TOKENS) !== undefined;
 	}
+);
+
+watch(
+	(): IDisplay | null => display.value,
+	(val: IDisplay | null): void => {
+		if (val !== null) {
+			meta.title = t('displaysModule.meta.displays.detail.title', { display: val.name || val.macAddress });
+		}
+	},
+	{ immediate: true },
 );
 </script>

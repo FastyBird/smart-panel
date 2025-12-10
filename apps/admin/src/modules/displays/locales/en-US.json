@@ -13,18 +13,25 @@
 	},
 	"breadcrumbs": {
 		"displays": {
-			"list": "Displays",
-			"detail": "{display}",
-			"edit": "Edit"
+			"list": "displays",
+			"detail": "display: {display}",
+			"edit": "edit display",
+			"tokens": "access tokens"
 		}
 	},
 	"meta": {
-		"list": {
-			"title": "Displays"
-		},
 		"displays": {
+			"list": {
+				"title": "List displays"
+			},
 			"edit": {
-				"title": "Edit {display}"
+				"title": "Edit display: {display}"
+			},
+			"detail": {
+				"title": "Display: {display}"
+			},
+			"tokens": {
+				"title": "Access tokens: {display}"
 			}
 		}
 	},
@@ -205,7 +212,7 @@
 		},
 		"settings": {
 			"title": "Display Settings",
-			"name": "Name",
+			"gridSize": "Grid Size",
 			"darkMode": "Dark Mode",
 			"brightness": "Brightness",
 			"screenLockDuration": "Screen Lock Duration",
@@ -214,6 +221,13 @@
 			"speakerVolume": "Speaker Volume",
 			"microphoneEnabled": "Microphone Enabled",
 			"microphoneVolume": "Microphone Volume"
+		},
+		"peripherals": {
+			"title": "Peripherals",
+			"audioOutput": "Audio Output",
+			"audioOutputVolume": "Audio Output Volume",
+			"audioInput": "Audio Input",
+			"audioInputVolume": "Audio Input Volume"
 		},
 		"audio": {
 			"speaker": {
@@ -225,6 +239,7 @@
 		},
 		"tokens": {
 			"title": "Access Tokens",
+			"subtitle": "Manage tokens",
 			"description": "Manage access tokens for this display. Each display should have at most one active token.",
 			"noTokens": "No active tokens",
 			"revokeConfirm": "Are you sure you want to revoke the access token? The display will need to re-register.",

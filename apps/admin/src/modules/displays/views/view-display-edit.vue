@@ -187,12 +187,12 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 				route: router.resolve({ name: RouteNames.DISPLAY, params: { id: props.id } }),
 			});
 			items.push({
-				label: t('displaysModule.breadcrumbs.displays.edit', { display: display.value?.name || display.value?.macAddress }),
+				label: t('displaysModule.breadcrumbs.displays.edit'),
 				route: router.resolve({ name: RouteNames.DISPLAY_EDIT, params: { id: props.id } }),
 			});
 		} else {
 			items.push({
-				label: t('displaysModule.breadcrumbs.displays.edit', { display: display.value?.name || display.value?.macAddress }),
+				label: t('displaysModule.breadcrumbs.displays.edit'),
 				route: router.resolve({ name: RouteNames.DISPLAYS_EDIT, params: { id: props.id } }),
 			});
 		}
@@ -288,7 +288,8 @@ watch(
 		if (!isLoading.value && val === null) {
 			throw new DisplaysException('Display not found');
 		}
-	}
+	},
+	{ immediate: true },
 );
 
 watch(
