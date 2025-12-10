@@ -1,4 +1,5 @@
 export * from './useDisplay';
+export * from './useDisplayEditForm';
 export * from './useDisplays';
 export * from './useDisplaysDataSource';
 export * from './useDisplaysActions';

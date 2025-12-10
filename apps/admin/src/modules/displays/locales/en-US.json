@@ -12,11 +12,20 @@
 		"adjustFilters": "Adjust filter settings"
 	},
 	"breadcrumbs": {
-		"list": "Displays"
+		"displays": {
+			"list": "Displays",
+			"detail": "{display}",
+			"edit": "Edit"
+		}
 	},
 	"meta": {
 		"list": {
 			"title": "Displays"
+		},
+		"displays": {
+			"edit": {
+				"title": "Edit {display}"
+			}
 		}
 	},
 	"table": {
@@ -42,6 +51,64 @@
 		},
 		"darkMode": {
 			"title": "Dark mode"
+		},
+		"displays": {
+			"id": {
+				"title": "ID",
+				"placeholder": "Display ID"
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Enter display name",
+				"validation": {
+					"maxLength": "Name must be less than 100 characters"
+				}
+			},
+			"brightness": {
+				"title": "Brightness",
+				"validation": {
+					"range": "Brightness must be between 0 and 100"
+				}
+			},
+			"screenLockDuration": {
+				"title": "Screen Lock Duration",
+				"unit": "seconds",
+				"validation": {
+					"min": "Screen lock duration must be positive"
+				}
+			},
+			"darkMode": {
+				"title": "Dark Mode"
+			},
+			"screenSaver": {
+				"title": "Screen Saver"
+			},
+			"audio": {
+				"speaker": {
+					"title": "Speaker (Audio Output)"
+				},
+				"microphone": {
+					"title": "Microphone (Audio Input)"
+				}
+			},
+			"speaker": {
+				"title": "Speaker Enabled"
+			},
+			"speakerVolume": {
+				"title": "Speaker Volume",
+				"validation": {
+					"range": "Volume must be between 0 and 100"
+				}
+			},
+			"microphone": {
+				"title": "Microphone Enabled"
+			},
+			"microphoneVolume": {
+				"title": "Microphone Volume",
+				"validation": {
+					"range": "Volume must be between 0 and 100"
+				}
+			}
 		}
 	},
 	"filters": {
@@ -69,6 +136,7 @@
 	},
 	"texts": {
 		"loadingDisplays": "Loading displays...",
+		"loadingDisplay": "Loading display...",
 		"noDisplays": "No displays registered yet",
 		"noFilteredDisplays": "No displays match your filter criteria",
 		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
@@ -97,6 +165,12 @@
 		},
 		"cancel": {
 			"title": "Cancel"
+		},
+		"close": {
+			"title": "Close"
+		},
+		"discard": {
+			"title": "Discard"
 		}
 	},
 	"detail": {
@@ -163,7 +237,9 @@
 		"deleteSuccess": "Display deleted successfully",
 		"deleteError": "Failed to delete display",
 		"confirmRemove": "Are you sure you want to remove display \"{name}\"? This action cannot be undone.",
-		"removed": "Display removed successfully"
+		"removed": "Display removed successfully",
+		"edited": "Display {display} has been updated",
+		"notEdited": "Display {display} was not updated"
 	},
 	"actions": {
 		"refresh": "Refresh",
