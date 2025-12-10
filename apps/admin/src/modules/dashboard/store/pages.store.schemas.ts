@@ -98,7 +98,7 @@ export const PagesAddActionPayloadSchema = z.object({
 				.optional(),
 			order: z.number().default(0),
 			showTopBar: z.boolean().default(true).optional(),
-			display: z.string().uuid().nullable().optional(),
+			displays: z.array(z.string().uuid()).nullable().optional(),
 		})
 		.passthrough(),
 });
@@ -118,7 +118,7 @@ export const PagesEditActionPayloadSchema = z.object({
 				.optional(),
 			order: z.number().optional(),
 			showTopBar: z.boolean().optional(),
-			display: z.string().uuid().nullable().optional(),
+			displays: z.array(z.string().uuid()).nullable().optional(),
 		})
 		.passthrough(),
 });
@@ -146,7 +146,7 @@ export const PageCreateReqSchema: ZodType<ApiCreatePage> = z.object({
 		.optional(),
 	order: z.number(),
 	show_top_bar: z.boolean().optional(),
-	display: z.string().uuid().nullable().optional(),
+	displays: z.array(z.string().uuid()).nullable().optional(),
 });
 
 export const PageUpdateReqSchema: ZodType<ApiUpdatePage> = z.object({
@@ -160,7 +160,7 @@ export const PageUpdateReqSchema: ZodType<ApiUpdatePage> = z.object({
 		.optional(),
 	order: z.number().optional(),
 	show_top_bar: z.boolean().optional(),
-	display: z.string().uuid().nullable().optional(),
+	displays: z.array(z.string().uuid()).nullable().optional(),
 });
 
 export const PageResSchema: ZodType<ApiPage> = z.object({

@@ -257,15 +257,15 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 
 		innerFilters.value.types = Array.from(new Set(filteredTypes));
 	} else if (column === 'display') {
-		let filteredTypes = innerFilters.value.displays;
+		let filteredDisplays = innerFilters.value.displays;
 
 		if (add === true) {
-			filteredTypes.push(data);
+			filteredDisplays.push(data);
 		} else {
-			filteredTypes = innerFilters.value.types.filter((item) => item !== data);
+			filteredDisplays = innerFilters.value.displays.filter((item) => item !== data);
 		}
 
-		innerFilters.value.displays = Array.from(new Set(filteredTypes));
+		innerFilters.value.displays = Array.from(new Set(filteredDisplays));
 	}
 };
 </script>

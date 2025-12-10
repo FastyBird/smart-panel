@@ -291,7 +291,8 @@
           "title": "Type"
         },
         "display": {
-          "title": "Display"
+          "title": "Displays",
+          "all": "All displays"
         },
         "order": {
           "title": "Order"
