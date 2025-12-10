@@ -126,11 +126,5 @@ const innerFilters = useVModel(props, 'filters', emit);
 </script>
 
 <style rel="stylesheet/scss" lang="scss" scoped>
-.list-displays-adjust {
-	&__filter-item {
-		:deep(.el-collapse-item__header) {
-			padding-left: 0;
-		}
-	}
-}
+@use 'list-displays-adjust.scss';
 </style>

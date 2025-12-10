@@ -152,7 +152,7 @@
 			prop="screenWidth"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="150"
+			:width="120"
 		>
 			<template #default="scope">
 				{{ scope.row.screenWidth }}x{{ scope.row.screenHeight }}
@@ -161,7 +161,7 @@
 
 		<el-table-column
 			:label="t('displaysModule.table.columns.layout')"
-			:width="120"
+			:width="80"
 		>
 			<template #default="scope">
 				{{ scope.row.cols }}x{{ scope.row.rows }}
@@ -170,7 +170,7 @@
 
 		<el-table-column
 			:label="t('displaysModule.table.columns.audio')"
-			:width="100"
+			:width="80"
 			align="center"
 		>
 			<template #default="scope">
@@ -222,7 +222,7 @@
 			prop="createdAt"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="180"
+			:width="160"
 		>
 			<template #default="scope">
 				{{ formatDate(scope.row.createdAt) }}

@@ -79,15 +79,3 @@ watch(
 	}
 );
 </script>
-
-<style rel="stylesheet/scss" lang="scss" scoped>
-.displays-filter {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-
-	:deep(.el-form-item__label) {
-		font-size: 12px;
-	}
-}
-</style>
