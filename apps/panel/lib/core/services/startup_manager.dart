@@ -286,8 +286,8 @@ class StartupManagerService {
 
     String? apiSecret = _apiSecret;
 
-    if (apiSecret != null) {
-      _socketClient.initialize(apiSecret);
+    if (apiSecret != null && _currentBackendUrl != null) {
+      _socketClient.initialize(apiSecret, _currentBackendUrl!);
     }
 
     return InitializationResult.success;
@@ -416,7 +416,9 @@ class StartupManagerService {
     _apiSecret = newToken;
 
     // Also reinitialize the socket with the new token
-    _socketClient.initialize(newToken);
+    if (_currentBackendUrl != null) {
+      _socketClient.initialize(newToken, _currentBackendUrl!);
+    }
 
     if (kDebugMode) {
       debugPrint('[STARTUP MANAGER] Token refreshed and persisted successfully');

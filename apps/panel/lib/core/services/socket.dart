@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -143,22 +141,20 @@ class SocketService {
   final Map<String, List<void Function(String, Map<String, dynamic>)>>
       _eventCallbacks = {};
 
-  void initialize(String apiSecret) {
-    final bool isAndroidEmulator = Platform.isAndroid && !kReleaseMode;
+  void initialize(String apiSecret, String backendUrl) {
+    // Parse the backend URL to extract host and port
+    // backendUrl format: http://host:port/api/v1 or https://host:port/api/v1
+    final uri = Uri.parse(backendUrl);
+    final String host = uri.scheme == 'https' ? 'https://${uri.host}' : 'http://${uri.host}';
+    // Use explicit port if provided, otherwise use default (80 for http, 443 for https)
+    final int port = uri.hasPort
+        ? uri.port
+        : (uri.scheme == 'https' ? 443 : 80);
 
-    const String appHost = String.fromEnvironment(
-      'FB_APP_HOST',
-      defaultValue: 'http://127.0.0.1',
-    );
-    const String backendPort = String.fromEnvironment(
-      'FB_BACKEND_PORT',
-      defaultValue: '3000',
-    );
-
-    final String host = isAndroidEmulator ? 'http://10.0.2.2' : appHost;
+    final String socketUrl = uri.hasPort ? '$host:$port' : host;
 
     _socket = io.io(
-      '$host:$backendPort',
+      socketUrl,
       io.OptionBuilder()
           .setTransports(['websocket'])
           .setAuth({'token': apiSecret})

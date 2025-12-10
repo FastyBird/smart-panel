@@ -7,9 +7,10 @@ export const DISPLAYS_MODULE_API_TAG_DESCRIPTION =
 	'token management, and display-specific settings like brightness, dark mode, screen saver, and audio configuration.';
 
 export enum EventType {
-	DISPLAY_CREATED = 'display.created',
-	DISPLAY_UPDATED = 'display.updated',
-	DISPLAY_DELETED = 'display.deleted',
+	DISPLAY_CREATED = 'DisplaysModule.Display.Created',
+	DISPLAY_UPDATED = 'DisplaysModule.Display.Updated',
+	DISPLAY_DELETED = 'DisplaysModule.Display.Deleted',
+	DISPLAY_RESET = 'DisplaysModule.Display.Reset',
 }
 
 export const ALLOWED_USER_AGENTS = ['FastyBird Smart Panel', 'FastyBird-Display'];
