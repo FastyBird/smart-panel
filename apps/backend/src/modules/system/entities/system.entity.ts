@@ -1,1 +1,1 @@
-// System module entities - currently empty as DisplayProfileEntity has been moved to DisplaysModule
+// System module entities - currently empty as display entities have been moved to DisplaysModule

@@ -147,7 +147,7 @@
 			:width="150"
 		>
 			<template #default="scope">
-				<table-column-display-profile
+				<table-column-display
 					:row="scope.row"
 					:filters="innerFilters"
 					@filter-by="(value: string, add: boolean) => onFilterBy('display', value, add)"
@@ -194,7 +194,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
-import { TableColumnDisplayProfile } from '../../../displays';
+import { TableColumnDisplay } from '../../../displays';
 import type { IPagesFilter } from '../../composables/types';
 import type { IPage } from '../../store/pages.store.types';
 

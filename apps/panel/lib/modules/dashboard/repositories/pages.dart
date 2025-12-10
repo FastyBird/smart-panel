@@ -12,7 +12,7 @@ class PagesRepository extends Repository<PageModel> {
   PagesRepository({required super.apiClient});
 
   void insert(List<Map<String, dynamic>> json) {
-    final currentDisplayId = _systemService.displayProfile?.id;
+    final currentDisplayId = _systemService.display?.id;
     late Map<String, PageModel> insertData = {...data};
 
     // First, check existing pages in data - remove any that are no longer visible

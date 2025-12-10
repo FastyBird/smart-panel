@@ -22,7 +22,7 @@ class SystemModuleService {
   final SocketService _socketService;
   final EventBus _eventBus;
 
-  late DisplaysProfilesRepository _displaysProfilesRepository;
+  late DisplaysProfilesRepository _displaysRepository;
   late SystemInfoRepository _systemInfoRepository;
   late ThrottleStatusRepository _throttleStatusRepository;
 
@@ -42,7 +42,7 @@ class SystemModuleService {
     required EventBus eventBus,
   })  : _socketService = socketService,
         _eventBus = eventBus {
-    _displaysProfilesRepository = DisplaysProfilesRepository(
+    _displaysRepository = DisplaysProfilesRepository(
       apiClient: apiClient.systemModule,
     );
     _systemInfoRepository = SystemInfoRepository(
@@ -53,12 +53,12 @@ class SystemModuleService {
     );
 
     _systemService = SystemService(
-      displaysProfilesRepository: _displaysProfilesRepository,
+      displaysRepository: _displaysRepository,
       systemInfoRepository: _systemInfoRepository,
       throttleStatusRepository: _throttleStatusRepository,
     );
 
-    locator.registerSingleton(_displaysProfilesRepository);
+    locator.registerSingleton(_displaysRepository);
     locator.registerSingleton(_systemInfoRepository);
     locator.registerSingleton(_throttleStatusRepository);
 
@@ -235,18 +235,18 @@ class SystemModuleService {
         }
       }
 
-      /// Display profile CREATE/UPDATE
-    } else if ((event == SystemModuleConstants.displayProfileCreatedEvent ||
-            event == SystemModuleConstants.displayProfileUpdatedEvent) &&
+      /// Display CREATE/UPDATE
+    } else if ((event == SystemModuleConstants.displayCreatedEvent ||
+            event == SystemModuleConstants.displayUpdatedEvent) &&
         payload.containsKey('uid') &&
         payload['uid'] == _appUid) {
-      _displaysProfilesRepository.insert(payload);
+      _displaysRepository.insert(payload);
 
-      /// Display profile DELETE
-    } else if (event == SystemModuleConstants.displayProfileDeletedEvent &&
+      /// Display DELETE
+    } else if (event == SystemModuleConstants.displayDeletedEvent &&
         payload.containsKey('uid') &&
         payload['uid'] == _appUid) {
-      _displaysProfilesRepository.delete();
+      _displaysRepository.delete();
     }
   }
 }

@@ -1,21 +1,21 @@
 import 'package:fastybird_smart_panel/modules/system/models/displays_profiles/display_profile.dart';
 
-class DisplayProfileView {
-  final DisplayProfileModel _displayProfileModel;
+class DisplayView {
+  final DisplayProfileModel _displayModel;
 
-  DisplayProfileView({
-    required DisplayProfileModel displayProfileModel,
-  }) : _displayProfileModel = displayProfileModel;
+  DisplayView({
+    required DisplayProfileModel displayModel,
+  }) : _displayModel = displayModel;
 
-  String get id => _displayProfileModel.id;
+  String get id => _displayModel.id;
 
-  String get uid => _displayProfileModel.uid;
+  String get uid => _displayModel.uid;
 
-  double get unitSize => _displayProfileModel.unitSize;
+  double get unitSize => _displayModel.unitSize;
 
-  int get rows => _displayProfileModel.rows;
+  int get rows => _displayModel.rows;
 
-  int get cols => _displayProfileModel.cols;
+  int get cols => _displayModel.cols;
 
-  DisplayProfileModel get displayProfileModel => _displayProfileModel;
+  DisplayProfileModel get displayModel => _displayModel;
 }

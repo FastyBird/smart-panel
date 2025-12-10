@@ -24,7 +24,6 @@ export const useDisplays = (): IUseDisplays => {
 		isLoaded.value = true;
 	};
 
-	// Options for select components (backward compatibility)
 	const options = computed<{ value: IDisplay['id']; label: string }[]>((): { value: IDisplay['id']; label: string }[] => {
 		return displays.value.map((display) => ({
 			value: display.id,
@@ -45,9 +44,6 @@ export const useDisplays = (): IUseDisplays => {
 		isLoading,
 		isLoaded,
 		fetchDisplays,
-		// Aliases for backward compatibility
 		options,
-		areLoading: isLoading,
-		loaded: isLoaded,
 	};
 };

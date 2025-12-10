@@ -9,7 +9,7 @@ import { BaseEntity } from '../../../common/entities/base.entity';
 @ApiSchema({ name: 'DisplaysModuleDataDisplay' })
 @Entity('displays_module_displays')
 export class DisplayEntity extends BaseEntity {
-	// === Instance Information (from DisplayInstanceEntity) ===
+	// === Instance Information ===
 
 	@ApiProperty({
 		name: 'mac_address',
@@ -48,7 +48,7 @@ export class DisplayEntity extends BaseEntity {
 	@Column({ nullable: true, default: null })
 	build: string | null;
 
-	// === Profile Information (from DisplayProfileEntity) ===
+	// === Profile Information ===
 
 	@ApiProperty({
 		name: 'screen_width',

@@ -1,3 +1,3 @@
-export * from './displays-profiles.schemas';
+export * from './displays.schemas';
 
 export * from './types';

@@ -24,10 +24,7 @@ export interface IUseDisplays {
 	isLoading: ComputedRef<boolean>;
 	isLoaded: Ref<boolean>;
 	fetchDisplays: () => Promise<void>;
-	// Added for compatibility with old useDisplaysProfiles interface
 	options: ComputedRef<{ value: IDisplay['id']; label: string }[]>;
-	areLoading: ComputedRef<boolean>;
-	loaded: Ref<boolean>;
 }
 
 export interface IUseDisplaysDataSource {

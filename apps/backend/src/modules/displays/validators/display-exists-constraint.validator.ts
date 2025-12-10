@@ -36,7 +36,7 @@ export class DisplayExistsConstraint implements ValidatorConstraintInterface {
 			return true;
 		}
 
-		// Handle single display ID (backward compatibility)
+		// Handle single display ID
 		const display = await this.displaysService.findOne(value);
 
 		return display !== null;

@@ -5,24 +5,24 @@ import 'package:fastybird_smart_panel/modules/system/views/throttle_status/view.
 import 'package:flutter/foundation.dart';
 
 class SystemService extends ChangeNotifier {
-  final DisplaysProfilesRepository _displaysProfilesRepository;
+  final DisplaysProfilesRepository _displaysRepository;
   final SystemInfoRepository _systemInfoRepository;
   final ThrottleStatusRepository _throttleStatusRepository;
 
-  DisplayProfileView? _displayProfile;
+  DisplayView? _display;
   SystemInfoView? _systemInfo;
   ThrottleStatusView? _throttleStatus;
 
   SystemService({
-    required DisplaysProfilesRepository displaysProfilesRepository,
+    required DisplaysProfilesRepository displaysRepository,
     required SystemInfoRepository systemInfoRepository,
     required ThrottleStatusRepository throttleStatusRepository,
-  })  : _displaysProfilesRepository = displaysProfilesRepository,
+  })  : _displaysRepository = displaysRepository,
         _systemInfoRepository = systemInfoRepository,
         _throttleStatusRepository = throttleStatusRepository;
 
   Future<void> initialize(String appUid) async {
-    await _displaysProfilesRepository.fetchOne(appUid);
+    await _displaysRepository.fetchOne(appUid);
 
     await _systemInfoRepository.fetchOne();
 
@@ -32,21 +32,21 @@ class SystemService extends ChangeNotifier {
       // This error could be ignored
     }
 
-    _displaysProfilesRepository.addListener(_updateData);
+    _displaysRepository.addListener(_updateData);
     _systemInfoRepository.addListener(_updateData);
     _throttleStatusRepository.addListener(_updateData);
 
     _updateData();
   }
 
-  DisplayProfileView? get displayProfile => _displayProfile;
+  DisplayView? get display => _display;
 
   SystemInfoView? get systemInfo => _systemInfo;
 
   ThrottleStatusView? get throttleStatus => _throttleStatus;
 
-  DisplayProfileView? getDisplayProfile() {
-    return _displayProfile;
+  DisplayView? getDisplay() {
+    return _display;
   }
 
   SystemInfoView? getSystemInfo() {
@@ -58,9 +58,9 @@ class SystemService extends ChangeNotifier {
   }
 
   void _updateData() {
-    final displayProfileModel = _displaysProfilesRepository.data;
-    final displayProfile = displayProfileModel != null
-        ? DisplayProfileView(displayProfileModel: displayProfileModel)
+    final displayModel = _displaysRepository.data;
+    final display = displayModel != null
+        ? DisplayView(displayModel: displayModel)
         : null;
     final systemInfoModel = _systemInfoRepository.data;
     final systemInfo = systemInfoModel != null
@@ -73,8 +73,8 @@ class SystemService extends ChangeNotifier {
 
     late bool triggerNotifyListeners = false;
 
-    if (_displayProfile != displayProfile) {
-      _displayProfile = displayProfile;
+    if (_display != display) {
+      _display = display;
 
       triggerNotifyListeners = true;
     }
@@ -100,7 +100,7 @@ class SystemService extends ChangeNotifier {
   void dispose() {
     super.dispose();
 
-    _displaysProfilesRepository.removeListener(_updateData);
+    _displaysRepository.removeListener(_updateData);
     _systemInfoRepository.removeListener(_updateData);
     _throttleStatusRepository.removeListener(_updateData);
   }

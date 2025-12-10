@@ -8,10 +8,6 @@ export { default as ListDisplaysAdjust } from './list-displays-adjust.vue';
 export { default as DisplaysFilter } from './displays-filter.vue';
 export { default as DisplaysTable } from './displays-table.vue';
 
-// Backward compatibility aliases
-export { default as DisplayProfileSelect } from './display-select.vue';
-export { default as TableColumnDisplayProfile } from './table-column-display.vue';
-
 // Type exports
 export * from './display-edit-form.types';
 export * from './displays-table-column-icon.types';

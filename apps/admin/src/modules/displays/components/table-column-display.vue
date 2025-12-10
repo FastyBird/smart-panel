@@ -1,5 +1,4 @@
 <template>
-	<!-- Support both old interface (single display) and new interface (displays array) -->
 	<template v-if="displaysArray && displaysArray.length > 0">
 		<el-tag
 			v-for="displayItem in displayItems"
@@ -10,9 +9,6 @@
 			{{ displayItem.name || displayItem.macAddress }}
 		</el-tag>
 	</template>
-	<template v-else-if="singleDisplay">
-		{{ singleDisplay.name || singleDisplay.macAddress }}
-	</template>
 	<span
 		v-else
 		class="text-gray-400"
@@ -22,12 +18,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref, ref, watch } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElTag } from 'element-plus';
 
-import { useDisplay, useDisplays } from '../composables/composables';
+import { useDisplays } from '../composables/composables';
 import type { IDisplay } from '../store/displays.store.types';
 
 defineOptions({
@@ -36,7 +32,6 @@ defineOptions({
 
 const { t } = useI18n();
 
-// Support both old interface (row with display property) and new interface (displayId or displays)
 const props = defineProps<{
 	displayId?: IDisplay['id'] | null;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,18 +40,6 @@ const props = defineProps<{
 	filters?: any;
 }>();
 
-// Extract display ID(s) from either prop format
-const resolvedDisplayId = computed<IDisplay['id'] | null>(() => {
-	if (props.displayId) {
-		return props.displayId;
-	}
-	// Legacy support: single display
-	if (props.row?.display) {
-		return props.row.display;
-	}
-	return null;
-});
-
 const displaysArray = computed<IDisplay['id'][] | null>(() => {
 	if (props.row?.displays) {
 		return props.row.displays;
@@ -64,13 +47,6 @@ const displaysArray = computed<IDisplay['id'][] | null>(() => {
 	return null;
 });
 
-const displayIdRef: Ref<IDisplay['id'] | null> = ref(resolvedDisplayId.value);
-
-watch(resolvedDisplayId, (newVal) => {
-	displayIdRef.value = newVal;
-});
-
-const { display: singleDisplay } = useDisplay(displayIdRef);
 const { displays: allDisplays } = useDisplays();
 
 const displayItems = computed<IDisplay[]>(() => {
