@@ -1,4 +1,6 @@
 import { validate } from 'class-validator';
+import { CreateLongLiveTokenDto } from 'src/modules/auth/dto/create-token.dto';
+import { LongLiveTokenEntity } from 'src/modules/auth/entities/auth.entity';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -99,7 +101,7 @@ export class RegistrationService {
 		);
 
 		// Store token in database
-		await this.tokensService.create<any, any>({
+		await this.tokensService.create<LongLiveTokenEntity, CreateLongLiveTokenDto>({
 			type: TokenType.LONG_LIVE,
 			token: token,
 			ownerType: TokenOwnerType.DISPLAY,

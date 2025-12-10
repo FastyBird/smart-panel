@@ -228,7 +228,6 @@ describe('AuthGuard', () => {
 
 			expect(result).toBe(true);
 			expect(request.auth).toEqual({ type: 'user', id: mockUser.id, role: mockUser.role });
-			expect(request['user']).toEqual({ id: mockUser.id, role: mockUser.role });
 		});
 
 		it('should throw UnauthorizedException when access token not found', async () => {
@@ -319,7 +318,6 @@ describe('AuthGuard', () => {
 				ownerId: mockDisplayId,
 				role: UserRole.USER,
 			});
-			expect(request['user']).toEqual({ id: mockDisplayId, role: UserRole.USER });
 		});
 
 		it('should throw UnauthorizedException when display token not found', async () => {
@@ -389,7 +387,6 @@ describe('AuthGuard', () => {
 				ownerId: null,
 				role: UserRole.USER,
 			});
-			expect(request['user']).toEqual({ id: null, role: UserRole.USER });
 		});
 
 		it('should throw UnauthorizedException when long-live token not found', async () => {
@@ -466,7 +463,6 @@ describe('AuthGuard', () => {
 				ownerId: mockUserId,
 				role: mockUser.role,
 			});
-			expect(request['user']).toEqual({ id: mockUserId, role: mockUser.role });
 		});
 
 		it('should authenticate display long-live token', async () => {
@@ -496,7 +492,6 @@ describe('AuthGuard', () => {
 				ownerId: mockDisplayId,
 				role: UserRole.USER,
 			});
-			expect(request['user']).toEqual({ id: mockDisplayId, role: UserRole.USER });
 		});
 
 		it('should authenticate display token without ownerId', async () => {

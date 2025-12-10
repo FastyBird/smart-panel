@@ -56,7 +56,6 @@ export type AuthenticatedEntity = AuthenticatedUser | AuthenticatedLongLiveToken
  */
 export interface AuthenticatedRequest extends Request {
 	auth?: AuthenticatedEntity;
-	user?: { id: string | null; role: UserRole }; // Legacy support
 }
 
 /**
@@ -168,10 +167,7 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Invalid user');
 		}
 
-		// Set new auth format
 		request.auth = { type: 'user', id: user.id, role: user.role };
-		// Legacy support
-		request['user'] = { id: user.id, role: user.role };
 
 		this.logger.debug(`[AUTH] User authentication successful for user=${user.id}`);
 
@@ -210,7 +206,6 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Token expired');
 		}
 
-		// Set universal long-live token auth format
 		request.auth = {
 			type: 'token',
 			tokenId: storedToken.id,
@@ -218,8 +213,6 @@ export class AuthGuard implements CanActivate {
 			ownerId: storedToken.ownerId,
 			role: UserRole.USER,
 		};
-		// Legacy support
-		request['user'] = { id: storedToken.ownerId, role: UserRole.USER };
 
 		this.logger.debug(`[AUTH] Token authentication successful (ownerType=${storedToken.ownerType})`);
 
@@ -263,7 +256,6 @@ export class AuthGuard implements CanActivate {
 			}
 		}
 
-		// Set universal long-live token auth format
 		request.auth = {
 			type: 'token',
 			tokenId: storedLongLiveToken.id,
@@ -271,8 +263,6 @@ export class AuthGuard implements CanActivate {
 			ownerId: storedLongLiveToken.ownerId,
 			role: role,
 		};
-		// Legacy support
-		request['user'] = { id: storedLongLiveToken.ownerId, role: role };
 
 		this.logger.debug(`[AUTH] Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
 
