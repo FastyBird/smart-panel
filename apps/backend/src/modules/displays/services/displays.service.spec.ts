@@ -228,6 +228,7 @@ describe('DisplaysService', () => {
 
 			jest.spyOn(repository, 'create').mockReturnValue(toInstance(DisplayEntity, mockDisplay));
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
 
 			const result = await service.create(createData);
 

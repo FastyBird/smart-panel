@@ -25,6 +25,7 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
+import { DISPLAYS_MODULE_API_TAG_NAME } from '../displays.constants';
 import { ReqUpdateDisplayDto } from '../dto/update-display.dto';
 import {
 	DisplayResponseModel,
@@ -33,7 +34,7 @@ import {
 } from '../models/displays-response.model';
 import { DisplaysService } from '../services/displays.service';
 
-@ApiTags('Displays Module - Displays')
+@ApiTags(DISPLAYS_MODULE_API_TAG_NAME)
 @Controller('displays')
 export class DisplaysController {
 	private readonly logger = new Logger(DisplaysController.name);

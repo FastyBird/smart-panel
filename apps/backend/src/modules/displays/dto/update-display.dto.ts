@@ -1,5 +1,15 @@
-import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateIf } from 'class-validator';
+import { Expose, Transform, Type } from 'class-transformer';
+import {
+	IsBoolean,
+	IsInt,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Max,
+	Min,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -253,5 +263,7 @@ export class ReqUpdateDisplayDto {
 		type: () => UpdateDisplayDto,
 	})
 	@Expose()
+	@ValidateNested()
+	@Type(() => UpdateDisplayDto)
 	data: UpdateDisplayDto;
 }

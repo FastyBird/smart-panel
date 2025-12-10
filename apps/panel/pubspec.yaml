@@ -154,3 +154,5 @@ swagger_parser:
   unknown_enum_value: true
   mark_files_as_generated: true
   original_http_response: true
+  include_if_null: false
+  infer_required_from_nullable: true

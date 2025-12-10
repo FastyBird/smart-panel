@@ -138,6 +138,8 @@ describe('RegistrationService', () => {
 				unitSize: registerDto.unitSize,
 				rows: registerDto.rows,
 				cols: registerDto.cols,
+				audioOutputSupported: false,
+				audioInputSupported: false,
 			});
 			expect(jwtService.sign).toHaveBeenCalledWith(
 				{
@@ -219,6 +221,8 @@ describe('RegistrationService', () => {
 				unitSize: 8,
 				rows: 12,
 				cols: 24,
+				audioOutputSupported: false,
+				audioInputSupported: false,
 			});
 		});
 	});

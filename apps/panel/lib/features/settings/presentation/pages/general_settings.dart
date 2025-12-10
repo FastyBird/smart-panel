@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -11,12 +12,16 @@ class GeneralSettingsPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  final DisplayRepository _displayRepository = locator<DisplayRepository>();
 
   GeneralSettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
+
+    final hasAudioSupport = _displayRepository.audioOutputSupported ||
+        _displayRepository.audioInputSupported;
 
     List<SettingsButton> buttons = [
       SettingsButton(
@@ -29,11 +34,12 @@ class GeneralSettingsPage extends StatelessWidget {
         label: localizations.settings_general_settings_button_language_settings,
         route: 'language-settings',
       ),
-      SettingsButton(
-        icon: MdiIcons.volumeHigh,
-        label: localizations.settings_general_settings_button_audio_settings,
-        route: 'audio-settings',
-      ),
+      if (hasAudioSupport)
+        SettingsButton(
+          icon: MdiIcons.volumeHigh,
+          label: localizations.settings_general_settings_button_audio_settings,
+          route: 'audio-settings',
+        ),
       SettingsButton(
         icon: MdiIcons.weatherPartlyCloudy,
         label: localizations.settings_general_settings_button_weather_settings,
