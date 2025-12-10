@@ -22,7 +22,6 @@ class SystemModuleService {
   final SocketService _socketService;
   final EventBus _eventBus;
 
-  late DisplaysProfilesRepository _displaysRepository;
   late SystemInfoRepository _systemInfoRepository;
   late ThrottleStatusRepository _throttleStatusRepository;
 
@@ -32,8 +31,6 @@ class SystemModuleService {
 
   late SystemService _systemService;
 
-  late String _appUid;
-
   bool _isLoading = true;
 
   SystemModuleService({
@@ -42,9 +39,6 @@ class SystemModuleService {
     required EventBus eventBus,
   })  : _socketService = socketService,
         _eventBus = eventBus {
-    _displaysRepository = DisplaysProfilesRepository(
-      apiClient: apiClient.systemModule,
-    );
     _systemInfoRepository = SystemInfoRepository(
       apiClient: apiClient.systemModule,
     );
@@ -53,12 +47,10 @@ class SystemModuleService {
     );
 
     _systemService = SystemService(
-      displaysRepository: _displaysRepository,
       systemInfoRepository: _systemInfoRepository,
       throttleStatusRepository: _throttleStatusRepository,
     );
 
-    locator.registerSingleton(_displaysRepository);
     locator.registerSingleton(_systemInfoRepository);
     locator.registerSingleton(_throttleStatusRepository);
 
@@ -67,7 +59,6 @@ class SystemModuleService {
 
   Future<void> initialize(String appUid) async {
     _isLoading = true;
-    _appUid = appUid;
 
     await _systemService.initialize(appUid);
 
@@ -234,19 +225,6 @@ class SystemModuleService {
           );
         }
       }
-
-      /// Display CREATE/UPDATE
-    } else if ((event == SystemModuleConstants.displayCreatedEvent ||
-            event == SystemModuleConstants.displayUpdatedEvent) &&
-        payload.containsKey('uid') &&
-        payload['uid'] == _appUid) {
-      _displaysRepository.insert(payload);
-
-      /// Display DELETE
-    } else if (event == SystemModuleConstants.displayDeletedEvent &&
-        payload.containsKey('uid') &&
-        payload['uid'] == _appUid) {
-      _displaysRepository.delete();
     }
   }
 }

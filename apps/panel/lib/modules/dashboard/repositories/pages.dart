@@ -3,16 +3,16 @@ import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
-import 'package:fastybird_smart_panel/modules/system/service.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/foundation.dart';
 
 class PagesRepository extends Repository<PageModel> {
-  final SystemService _systemService = locator<SystemService>();
+  final DisplayRepository _displayRepository = locator<DisplayRepository>();
 
   PagesRepository({required super.apiClient});
 
   void insert(List<Map<String, dynamic>> json) {
-    final currentDisplayId = _systemService.display?.id;
+    final currentDisplayId = _displayRepository.display?.id;
     late Map<String, PageModel> insertData = {...data};
 
     // First, check existing pages in data - remove any that are no longer visible

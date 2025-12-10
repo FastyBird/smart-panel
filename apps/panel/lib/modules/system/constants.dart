@@ -6,15 +6,6 @@ class SystemModuleConstants {
   static const String systemRebootEvent = 'SystemModule.System.Reboot';
   static const String systemPowerOffEvent = 'SystemModule.System.PowerOff';
 
-  static const String displayCreatedEvent =
-      'SystemModule.Display.Created';
-  static const String displayUpdatedEvent =
-      'SystemModule.Display.Updated';
-  static const String displayDeletedEvent =
-      'SystemModule.Display.Deleted';
-  static const String displayResetEvent =
-      'SystemModule.Display.Reset';
-
   static const String systemFactoryResetEvent =
       'SystemModule.System.FactoryReset';
   static const String systemRebootSetEvent = 'SystemModule.System.Reboot.Set';
