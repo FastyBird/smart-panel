@@ -2,12 +2,13 @@ import { validate } from 'class-validator';
 import { CreateLongLiveTokenDto } from 'src/modules/auth/dto/create-token.dto';
 import { LongLiveTokenEntity } from 'src/modules/auth/entities/auth.entity';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
+import { hashToken } from '../../auth/utils/token.utils';
 import { DisplaysValidationException } from '../displays.exceptions';
 import { RegisterDisplayDto } from '../dto/register-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
@@ -17,6 +18,11 @@ import { DisplaysService } from './displays.service';
 export interface RegistrationResult {
 	display: DisplayEntity;
 	accessToken: string;
+}
+
+export interface TokenRefreshResult {
+	accessToken: string;
+	expiresAt: Date;
 }
 
 @Injectable()
@@ -79,6 +85,49 @@ export class RegistrationService {
 		this.logger.debug(`[REGISTER] Successfully registered display with id=${display.id}`);
 
 		return { display, accessToken };
+	}
+
+	async refreshDisplayToken(displayId: string, currentToken: string): Promise<TokenRefreshResult> {
+		this.logger.debug(`[REFRESH] Refreshing token for display=${displayId}`);
+
+		// Verify the display exists
+		const display = await this.displaysService.getOneOrThrow(displayId);
+
+		// Find and validate the current token
+		const displayTokens = await this.tokensService.findByOwnerId(displayId, TokenOwnerType.DISPLAY);
+
+		let storedToken: LongLiveTokenEntity | null = null;
+
+		for (const token of displayTokens) {
+			if (hashToken(currentToken) === token.hashedToken) {
+				storedToken = token;
+				break;
+			}
+		}
+
+		if (!storedToken) {
+			this.logger.warn(`[REFRESH] Token not found for display=${displayId}`);
+			throw new UnauthorizedException('Invalid token');
+		}
+
+		if (storedToken.revoked) {
+			this.logger.warn(`[REFRESH] Token is revoked for display=${displayId}`);
+			throw new UnauthorizedException('Token has been revoked');
+		}
+
+		// Revoke the current token
+		await this.tokensService.revokeByOwnerId(displayId, TokenOwnerType.DISPLAY);
+
+		// Generate new token
+		const newToken = await this.generateDisplayToken(display);
+
+		// Get the expiration date
+		const expiresAt = new Date();
+		expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+		this.logger.debug(`[REFRESH] Successfully refreshed token for display=${displayId}`);
+
+		return { accessToken: newToken, expiresAt };
 	}
 
 	private async generateDisplayToken(display: DisplayEntity): Promise<string> {

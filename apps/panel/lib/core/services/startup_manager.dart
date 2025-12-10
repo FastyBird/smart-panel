@@ -359,7 +359,15 @@ class StartupManagerService {
     var displaysModuleService = DisplaysModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
+      dio: _apiIoService,
     );
+
+    // Set up token refresh callbacks for displays module
+    displaysModuleService.setTokenCallbacks(
+      onTokenRefreshed: _onTokenRefreshed,
+      getCurrentToken: () => _apiSecret,
+    );
+
     var systemModuleService = SystemModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
@@ -396,6 +404,23 @@ class StartupManagerService {
     locator.registerSingleton<SystemActionsService>(
       SystemActionsService(_eventBus),
     );
+  }
+
+  /// Callback for when token is refreshed - persists the new token
+  Future<void> _onTokenRefreshed(String newToken) async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      await _securedStorage.write(key: _apiSecretKey, value: newToken);
+    } else {
+      await _securedStorageFallback.write(key: _apiSecretKey, value: newToken);
+    }
+    _apiSecret = newToken;
+
+    // Also reinitialize the socket with the new token
+    _socketClient.initialize(newToken);
+
+    if (kDebugMode) {
+      debugPrint('[STARTUP MANAGER] Token refreshed and persisted successfully');
+    }
   }
 
   Future<void> _initialize() async {

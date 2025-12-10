@@ -17,13 +17,44 @@ enum FetchDisplayResult {
   error,
 }
 
+/// Result of token refresh
+enum TokenRefreshResult {
+  /// Token refreshed successfully
+  success,
+  /// Token refresh failed
+  failed,
+}
+
+/// Callback type for persisting the refreshed token
+typedef TokenPersistCallback = Future<void> Function(String newToken);
+
+/// Callback type for getting the current token
+typedef GetCurrentTokenCallback = String? Function();
+
 class DisplayRepository extends ChangeNotifier {
   final ApiClient _apiClient;
+  final Dio _dio;
+  TokenPersistCallback? _tokenPersistCallback;
+  GetCurrentTokenCallback? _getCurrentTokenCallback;
 
   DisplayModel? _display;
   bool _isLoading = false;
+  bool _isRefreshingToken = false;
 
-  DisplayRepository({required ApiClient apiClient}) : _apiClient = apiClient;
+  DisplayRepository({
+    required ApiClient apiClient,
+    required Dio dio,
+  })  : _apiClient = apiClient,
+        _dio = dio;
+
+  /// Set callbacks for token management
+  void setTokenCallbacks({
+    required TokenPersistCallback onTokenRefreshed,
+    required GetCurrentTokenCallback getCurrentToken,
+  }) {
+    _tokenPersistCallback = onTokenRefreshed;
+    _getCurrentTokenCallback = getCurrentToken;
+  }
 
   DisplayModel? get display => _display;
 
@@ -87,6 +118,81 @@ class DisplayRepository extends ChangeNotifier {
           '[DISPLAYS MODULE] Display model could not be created: $e',
         );
       }
+    }
+  }
+
+  /// Refresh the display token
+  /// Returns true if refresh was successful, false otherwise
+  Future<TokenRefreshResult> refreshToken() async {
+    if (_isRefreshingToken) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Token refresh already in progress');
+      }
+      return TokenRefreshResult.failed;
+    }
+
+    final currentToken = _getCurrentTokenCallback?.call();
+    if (currentToken == null) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] No current token available for refresh');
+      }
+      return TokenRefreshResult.failed;
+    }
+
+    _isRefreshingToken = true;
+
+    try {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Attempting to refresh token...');
+      }
+
+      final response = await _apiClient.displaysModule.refreshToken(
+        authorization: 'Bearer $currentToken',
+      );
+
+      if (response.response.statusCode == 200) {
+        final newToken = response.data.data.accessToken;
+
+        // Update the Dio headers with the new token
+        _dio.options.headers['Authorization'] = 'Bearer $newToken';
+
+        // Persist the new token using the callback
+        if (_tokenPersistCallback != null) {
+          await _tokenPersistCallback!(newToken);
+        }
+
+        if (kDebugMode) {
+          debugPrint('[DISPLAYS MODULE] Token refreshed successfully');
+        }
+
+        _isRefreshingToken = false;
+        return TokenRefreshResult.success;
+      }
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Token refresh failed with status: ${response.response.statusCode}',
+        );
+      }
+
+      _isRefreshingToken = false;
+      return TokenRefreshResult.failed;
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Token refresh failed: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+
+      _isRefreshingToken = false;
+      return TokenRefreshResult.failed;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Token refresh error: $e');
+      }
+
+      _isRefreshingToken = false;
+      return TokenRefreshResult.failed;
     }
   }
 
@@ -163,7 +269,8 @@ class DisplayRepository extends ChangeNotifier {
 
   /// Fetch current display using /displays-module/displays/me endpoint
   /// This is used when the display has a stored token and needs to fetch its own data
-  Future<FetchDisplayResult> fetchCurrentDisplay() async {
+  /// If authentication fails (401), it will attempt to refresh the token and retry once
+  Future<FetchDisplayResult> fetchCurrentDisplay({bool retryAfterRefresh = true}) async {
     _isLoading = true;
     notifyListeners();
 
@@ -216,9 +323,6 @@ class DisplayRepository extends ChangeNotifier {
 
       return FetchDisplayResult.error;
     } on DioException catch (e) {
-      _isLoading = false;
-      notifyListeners();
-
       final statusCode = e.response?.statusCode;
 
       if (kDebugMode) {
@@ -226,6 +330,31 @@ class DisplayRepository extends ChangeNotifier {
           '[DISPLAYS MODULE] Failed to fetch current display: $statusCode - ${e.message}',
         );
       }
+
+      // Attempt token refresh on 401 (Unauthorized)
+      if (statusCode == 401 && retryAfterRefresh) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DISPLAYS MODULE] Token expired, attempting refresh...',
+          );
+        }
+
+        final refreshResult = await refreshToken();
+
+        if (refreshResult == TokenRefreshResult.success) {
+          // Retry the fetch with the new token (but don't retry again if it fails)
+          return fetchCurrentDisplay(retryAfterRefresh: false);
+        }
+
+        if (kDebugMode) {
+          debugPrint(
+            '[DISPLAYS MODULE] Token refresh failed, returning authentication failed',
+          );
+        }
+      }
+
+      _isLoading = false;
+      notifyListeners();
 
       if (statusCode == 401 || statusCode == 403) {
         return FetchDisplayResult.authenticationFailed;

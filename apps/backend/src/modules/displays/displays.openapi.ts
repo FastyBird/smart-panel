@@ -8,6 +8,8 @@ import {
 	DisplayRegistrationDataModel,
 	DisplayRegistrationResponseModel,
 	DisplayResponseModel,
+	DisplayTokenRefreshDataModel,
+	DisplayTokenRefreshResponseModel,
 	DisplayTokensResponseModel,
 	DisplaysResponseModel,
 } from './models/displays-response.model';
@@ -23,6 +25,8 @@ export const DISPLAYS_SWAGGER_EXTRA_MODELS = [
 	DisplaysResponseModel,
 	DisplayRegistrationDataModel,
 	DisplayRegistrationResponseModel,
+	DisplayTokenRefreshDataModel,
+	DisplayTokenRefreshResponseModel,
 	DisplayTokensResponseModel,
 	// Entities
 	DisplayEntity,

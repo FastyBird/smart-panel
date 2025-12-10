@@ -84,3 +84,42 @@ export class DisplayTokensResponseModel extends BaseSuccessResponseModel<LongLiv
 	@Type(() => LongLiveTokenEntity)
 	declare data: LongLiveTokenEntity[];
 }
+
+/**
+ * Display token refresh data containing the new access token
+ */
+@ApiSchema({ name: 'DisplaysModuleDataTokenRefresh' })
+export class DisplayTokenRefreshDataModel {
+	@ApiProperty({
+		name: 'access_token',
+		description: 'New long-lived access token for the display',
+		type: 'string',
+		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+	})
+	@Expose({ name: 'access_token' })
+	accessToken: string;
+
+	@ApiProperty({
+		name: 'expires_at',
+		description: 'Token expiration date',
+		type: 'string',
+		format: 'date-time',
+		example: '2026-01-01T00:00:00.000Z',
+	})
+	@Expose({ name: 'expires_at' })
+	expiresAt: Date;
+}
+
+/**
+ * Response wrapper for display token refresh
+ */
+@ApiSchema({ name: 'DisplaysModuleResTokenRefresh' })
+export class DisplayTokenRefreshResponseModel extends BaseSuccessResponseModel<DisplayTokenRefreshDataModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => DisplayTokenRefreshDataModel,
+	})
+	@Expose()
+	@Type(() => DisplayTokenRefreshDataModel)
+	declare data: DisplayTokenRefreshDataModel;
+}

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -10,6 +11,7 @@ import 'package:flutter/foundation.dart';
 class DisplaysModuleService {
   final ApiClient _apiClient;
   final SocketService _socketService;
+  final Dio _dio;
 
   late DisplayRepository _displayRepository;
 
@@ -18,11 +20,27 @@ class DisplaysModuleService {
   DisplaysModuleService({
     required ApiClient apiClient,
     required SocketService socketService,
+    required Dio dio,
   })  : _apiClient = apiClient,
-        _socketService = socketService {
-    _displayRepository = DisplayRepository(apiClient: _apiClient);
+        _socketService = socketService,
+        _dio = dio {
+    _displayRepository = DisplayRepository(
+      apiClient: _apiClient,
+      dio: _dio,
+    );
 
     locator.registerSingleton(_displayRepository);
+  }
+
+  /// Set callbacks for token refresh functionality
+  void setTokenCallbacks({
+    required TokenPersistCallback onTokenRefreshed,
+    required GetCurrentTokenCallback getCurrentToken,
+  }) {
+    _displayRepository.setTokenCallbacks(
+      onTokenRefreshed: onTokenRefreshed,
+      getCurrentToken: getCurrentToken,
+    );
   }
 
   /// Initialize the displays module by fetching the current display data

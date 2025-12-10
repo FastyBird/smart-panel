@@ -4,6 +4,7 @@ import {
 	Delete,
 	ForbiddenException,
 	Get,
+	Headers,
 	HttpCode,
 	Logger,
 	Param,
@@ -29,10 +30,13 @@ import { DISPLAYS_MODULE_API_TAG_NAME } from '../displays.constants';
 import { ReqUpdateDisplayDto } from '../dto/update-display.dto';
 import {
 	DisplayResponseModel,
+	DisplayTokenRefreshDataModel,
+	DisplayTokenRefreshResponseModel,
 	DisplayTokensResponseModel,
 	DisplaysResponseModel,
 } from '../models/displays-response.model';
 import { DisplaysService } from '../services/displays.service';
+import { RegistrationService } from '../services/registration.service';
 
 @ApiTags(DISPLAYS_MODULE_API_TAG_NAME)
 @Controller('displays')
@@ -42,6 +46,7 @@ export class DisplaysController {
 	constructor(
 		private readonly displaysService: DisplaysService,
 		private readonly tokensService: TokensService,
+		private readonly registrationService: RegistrationService,
 	) {}
 
 	@Get('me')
@@ -95,6 +100,42 @@ export class DisplaysController {
 		const response = new DisplayResponseModel();
 
 		response.data = display;
+
+		return response;
+	}
+
+	@Post('me/refresh-token')
+	@ApiOperation({
+		summary: 'Refresh display token',
+		description:
+			'Refreshes the current display token. Returns a new long-lived token and revokes the old one. Only accessible by displays.',
+	})
+	@ApiSuccessResponse(DisplayTokenRefreshResponseModel, 'Returns the new access token')
+	@ApiForbiddenResponse('Not authenticated as a display')
+	async refreshToken(
+		@Req() req: AuthenticatedRequest,
+		@Headers('authorization') authHeader: string,
+	): Promise<DisplayTokenRefreshResponseModel> {
+		const auth = req.auth;
+
+		if (!auth || auth.type !== 'token' || auth.ownerType !== TokenOwnerType.DISPLAY || !auth.ownerId) {
+			this.logger.warn('[REFRESH TOKEN] Attempted access by non-display entity');
+			throw new ForbiddenException('This endpoint is only accessible by displays');
+		}
+
+		// Extract the token from the Authorization header
+		const token = authHeader?.replace('Bearer ', '');
+
+		this.logger.debug(`[REFRESH TOKEN] Refreshing token for display=${auth.ownerId}`);
+
+		const result = await this.registrationService.refreshDisplayToken(auth.ownerId, token);
+
+		const responseData = new DisplayTokenRefreshDataModel();
+		responseData.accessToken = result.accessToken;
+		responseData.expiresAt = result.expiresAt;
+
+		const response = new DisplayTokenRefreshResponseModel();
+		response.data = responseData;
 
 		return response;
 	}

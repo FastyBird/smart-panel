@@ -17,6 +17,7 @@ import { TokensService } from '../../auth/services/tokens.service';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 import { DisplaysService } from '../services/displays.service';
+import { RegistrationService } from '../services/registration.service';
 
 import { DisplaysController } from './displays.controller';
 
@@ -96,6 +97,12 @@ describe('DisplaysController', () => {
 					useValue: {
 						findByOwnerId: jest.fn(),
 						revokeByOwnerId: jest.fn(),
+					},
+				},
+				{
+					provide: RegistrationService,
+					useValue: {
+						refreshDisplayToken: jest.fn(),
 					},
 				},
 			],
