@@ -529,6 +529,9 @@ class StartupManagerService {
     }
 
     try {
+      // Check registration status before attempting registration
+      await _checkRegistrationStatus();
+
       // Get device information
       final macAddress = await AppInfo.getMacAddress();
       final appVersion = await AppInfo.getAppVersionInfo();
@@ -639,13 +642,103 @@ class StartupManagerService {
         debugPrint('[REGISTER DISPLAY] Response body: ${e.response?.data}');
       }
 
-      throw Exception('Display registration failed: ${e.response?.data ?? e.message}');
+      // Handle specific error cases
+      if (e.response?.statusCode == 403) {
+        throw InitializationException(
+          'Registration is not currently permitted. Please activate permit join in the admin panel.',
+          InitializationResult.error,
+        );
+      } else if (e.response?.statusCode == 409) {
+        throw InitializationException(
+          'Display already registered with this IP address. Please contact the administrator.',
+          InitializationResult.error,
+        );
+      }
+
+      throw InitializationException(
+        'Display registration failed: ${e.response?.data ?? e.message}',
+        InitializationResult.error,
+      );
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[REGISTER DISPLAY] Unexpected error: $e');
       }
 
-      throw Exception('Display registration failed: $e');
+      if (e is InitializationException) {
+        rethrow;
+      }
+
+      throw InitializationException(
+        'Display registration failed: $e',
+        InitializationResult.error,
+      );
+    }
+  }
+
+  /// Check registration status before attempting registration
+  /// Throws InitializationException if registration is not open
+  /// Note: Localhost registrations in ALL_IN_ONE/COMBINED modes are allowed
+  /// even if permit join is not active, so we only check status as a warning
+  Future<void> _checkRegistrationStatus() async {
+    if (kDebugMode) {
+      debugPrint('[CHECK REGISTRATION STATUS] Checking if registration is open');
+    }
+
+    try {
+      final statusResponse = await _apiClient.displaysModule.getRegistrationStatus();
+
+      if (statusResponse.response.statusCode == 200) {
+        final isOpen = statusResponse.data.data.open;
+
+        if (kDebugMode) {
+          debugPrint(
+            '[CHECK REGISTRATION STATUS] Registration status: ${isOpen ? "open" : "closed"}',
+          );
+          if (statusResponse.data.data.remainingTime != null) {
+            final remainingSeconds =
+                (statusResponse.data.data.remainingTime! / 1000).round();
+            debugPrint(
+              '[CHECK REGISTRATION STATUS] Remaining time: ${remainingSeconds}s',
+            );
+          }
+        }
+
+        // If registration is closed, throw an exception
+        // Note: Localhost registrations in ALL_IN_ONE/COMBINED modes will still
+        // be allowed by the backend even if permit join is not active
+        if (!isOpen) {
+          throw InitializationException(
+            'Registration is not currently permitted. Please activate permit join in the admin panel.',
+            InitializationResult.error,
+          );
+        }
+      }
+    } on DioException catch (e) {
+      // If status endpoint fails, we'll still try to register
+      // The registration endpoint will return the appropriate error
+      if (kDebugMode) {
+        debugPrint(
+          '[CHECK REGISTRATION STATUS] Status check failed: ${e.response?.statusCode} - ${e.message}',
+        );
+        debugPrint(
+          '[CHECK REGISTRATION STATUS] Will attempt registration anyway',
+        );
+      }
+    } catch (e) {
+      // Re-throw InitializationException
+      if (e is InitializationException) {
+        rethrow;
+      }
+
+      // For other errors, log and continue with registration attempt
+      if (kDebugMode) {
+        debugPrint(
+          '[CHECK REGISTRATION STATUS] Unexpected error: $e',
+        );
+        debugPrint(
+          '[CHECK REGISTRATION STATUS] Will attempt registration anyway',
+        );
+      }
     }
   }
 
