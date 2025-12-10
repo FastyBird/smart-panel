@@ -19,6 +19,8 @@ import { DisplayEntity } from '../entities/displays.entity';
 import { DisplaysService } from '../services/displays.service';
 import { RegistrationService } from '../services/registration.service';
 
+import { PermitJoinService } from '../services/permit-join.service';
+
 import { DisplaysController } from './displays.controller';
 
 describe('DisplaysController', () => {
@@ -105,6 +107,17 @@ describe('DisplaysController', () => {
 					provide: RegistrationService,
 					useValue: {
 						refreshDisplayToken: jest.fn(),
+					},
+				},
+				{
+					provide: PermitJoinService,
+					useValue: {
+						activatePermitJoin: jest.fn(),
+						deactivatePermitJoin: jest.fn(),
+						isPermitJoinActive: jest.fn(),
+						getExpiresAt: jest.fn(),
+						getRemainingTime: jest.fn(),
+						getDeploymentMode: jest.fn(),
 					},
 				},
 			],

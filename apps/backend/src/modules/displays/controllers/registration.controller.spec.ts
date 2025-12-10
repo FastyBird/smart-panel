@@ -14,6 +14,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DisplaysRegistrationException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
+import { RegistrationGuard } from '../guards/registration.guard';
+import { PermitJoinService } from '../services/permit-join.service';
 import { RegistrationService } from '../services/registration.service';
 
 import { RegistrationController } from './registration.controller';
@@ -62,13 +64,20 @@ describe('RegistrationController', () => {
 					},
 				},
 				{
-					provide: 'PermitJoinService',
+					provide: PermitJoinService,
 					useValue: {
 						isPermitJoinActive: jest.fn().mockReturnValue(true),
+						getRemainingTime: jest.fn().mockReturnValue(null),
+						getDeploymentMode: jest.fn().mockReturnValue('combined'),
 					},
 				},
 			],
-		}).compile();
+		})
+			.overrideGuard(RegistrationGuard)
+			.useValue({
+				canActivate: jest.fn().mockReturnValue(true),
+			})
+			.compile();
 
 		controller = module.get<RegistrationController>(RegistrationController);
 		service = module.get<RegistrationService>(RegistrationService);
@@ -103,7 +112,10 @@ describe('RegistrationController', () => {
 				accessToken: mockToken,
 			});
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+			const mockRequest = {
+				headers: {},
+				socket: { remoteAddress: '127.0.0.1' },
+			} as unknown as Request;
 			const result = await controller.register(mockRequest, 'FastyBird Smart Panel/1.0.0', { data: registerDto });
 
 			expect(result.data.display).toEqual(toInstance(DisplayEntity, mockDisplay));
@@ -122,7 +134,10 @@ describe('RegistrationController', () => {
 				accessToken: mockToken,
 			});
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+			const mockRequest = {
+				headers: {},
+				socket: { remoteAddress: '127.0.0.1' },
+			} as unknown as Request;
 			const result = await controller.register(mockRequest, 'FastyBird-Display/1.0', { data: registerDto });
 
 			expect(result.data).toBeDefined();
@@ -135,7 +150,10 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+			const mockRequest = {
+				headers: {},
+				socket: { remoteAddress: '127.0.0.1' },
+			} as unknown as Request;
 			await expect(controller.register(mockRequest, 'InvalidBrowser/1.0', { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);
@@ -149,7 +167,10 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+			const mockRequest = {
+				headers: {},
+				socket: { remoteAddress: '127.0.0.1' },
+			} as unknown as Request;
 			await expect(
 				controller.register(mockRequest, undefined as unknown as string, { data: registerDto }),
 			).rejects.toThrow(DisplaysRegistrationException);
@@ -163,7 +184,10 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+			const mockRequest = {
+				headers: {},
+				socket: { remoteAddress: '127.0.0.1' },
+			} as unknown as Request;
 			await expect(controller.register(mockRequest, '', { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);

@@ -228,7 +228,7 @@ export class PermitJoinStatusDataModel {
 /**
  * Response wrapper for permit join status
  */
-@ApiSchema({ name: 'DisplaysModuleResPermitJoinStatus' })
+@ApiSchema({ name: 'DisplaysModuleResPermitJoinInfo' })
 export class PermitJoinStatusResponseModel extends BaseSuccessResponseModel<PermitJoinStatusDataModel> {
 	@ApiProperty({
 		description: 'The actual data payload returned by the API',
