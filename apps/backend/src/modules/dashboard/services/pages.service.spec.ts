@@ -363,20 +363,19 @@ describe('PagesService', () => {
 				title: 'Updated title',
 				mockValue: 'Updated mock value',
 			};
-			const mockPageTwoWithDisplays: MockPageEntity = {
-				...mockPageTwo,
-				displays: [toInstance(DisplayEntity, mockDisplay)],
-			};
+			// When displays is not provided in updateDto, the service should preserve existing displays
+			// The page entity returned by getOneOrThrow will have displays loaded
+			const pageWithDisplays = toInstance(MockPageEntity, mockPageTwo);
 			const mockUpdatePage: MockPageEntity = {
-				id: mockPageTwoWithDisplays.id,
-				type: mockPageTwoWithDisplays.type,
+				id: pageWithDisplays.id,
+				type: pageWithDisplays.type,
 				title: updateDto.title,
-				order: mockPageTwoWithDisplays.order,
-				showTopBar: mockPageTwoWithDisplays.showTopBar,
-				dataSource: mockPageTwoWithDisplays.dataSource,
-				displays: mockPageTwoWithDisplays.displays,
-				createdAt: mockPageTwoWithDisplays.createdAt,
-				updatedAt: mockPageTwoWithDisplays.updatedAt,
+				order: pageWithDisplays.order,
+				showTopBar: pageWithDisplays.showTopBar,
+				dataSource: pageWithDisplays.dataSource,
+				displays: pageWithDisplays.displays, // Preserve existing displays when not provided in DTO
+				createdAt: pageWithDisplays.createdAt,
+				updatedAt: pageWithDisplays.updatedAt,
 				mockValue: updateDto.mockValue,
 			};
 			const mockUpdatedPage: MockPageEntity = {
@@ -407,18 +406,18 @@ describe('PagesService', () => {
 				where: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
-					.mockResolvedValueOnce(toInstance(MockPageEntity, { ...mockPageTwo, displays: [toInstance(DisplayEntity, mockDisplay)] }))
-					.mockResolvedValueOnce(toInstance(MockPageEntity, { ...mockUpdatedPage, displays: mockPageTwo.displays })),
+					.mockResolvedValueOnce(toInstance(MockPageEntity, mockPageTwo))
+					.mockResolvedValueOnce(toInstance(MockPageEntity, mockUpdatedPage)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockPageEntity, mockUpdatedPage));
 
-			const result = await service.update(mockPageTwoWithDisplays.id, updateDto);
+			const result = await service.update(mockPageTwo.id, updateDto);
 
 			expect(result).toEqual(toInstance(MockPageEntity, mockUpdatedPage));
 			expect(repository.save).toHaveBeenCalledWith(toInstance(MockPageEntity, mockUpdatePage));
-			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :id', { id: mockPageTwoWithDisplays.id });
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :id', { id: mockPageTwo.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_UPDATED,
 				toInstance(MockPageEntity, mockUpdatedPage),

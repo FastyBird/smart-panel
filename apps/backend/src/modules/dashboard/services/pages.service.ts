@@ -228,7 +228,10 @@ export class PagesService {
 		// Remove displays from the DTO before assigning other fields (we handle it separately above)
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { displays: _displays, ...dtoWithoutDisplays } = dtoInstance;
-		Object.assign(page, omitBy(toInstance(mapping.class, dtoWithoutDisplays), isUndefined));
+		const dtoInstanceWithoutDisplays = omitBy(toInstance(mapping.class, dtoWithoutDisplays), isUndefined);
+		// Explicitly exclude displays from being overwritten if not provided in DTO
+		delete dtoInstanceWithoutDisplays.displays;
+		Object.assign(page, dtoInstanceWithoutDisplays);
 
 		await repository.save(page);
 
