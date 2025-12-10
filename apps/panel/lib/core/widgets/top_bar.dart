@@ -61,6 +61,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                                 16,
                                 density: _visualDensityService.density,
                               ),
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? AppTextColorLight.regular
+                                  : AppTextColorDark.regular,
                             ),
                             child: Icon(icon),
                           ),
@@ -76,6 +80,10 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                                       16,
                                       density: _visualDensityService.density,
                                     ),
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? AppTextColorLight.regular
+                                        : AppTextColorDark.regular,
                                   ),
                                   child: Icon(MdiIcons.arrowLeft),
                                 ),
