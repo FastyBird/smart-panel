@@ -90,7 +90,7 @@ export class RegistrationService {
 		const token = this.jwtService.sign(
 			{
 				sub: display.id,
-				type: 'display',
+				type: TokenOwnerType.DISPLAY,
 				mac: display.macAddress,
 			},
 			{

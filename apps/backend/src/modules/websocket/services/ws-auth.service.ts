@@ -51,8 +51,8 @@ export class WsAuthService {
 			throw new WebsocketNotAllowedException('Invalid or expired token');
 		}
 
-		// Check if this is a display token (type: 'display' in payload)
-		if (payload.type === 'display' && payload.sub) {
+		// Check if this is a display token (type: TokenOwnerType.DISPLAY in payload)
+		if ((payload.type as TokenOwnerType) === TokenOwnerType.DISPLAY && payload.sub) {
 			return this.validateDisplayToken(client, token, payload.sub);
 		}
 
@@ -136,7 +136,7 @@ export class WsAuthService {
 		(client.data as object)['user'] = toInstance(ClientUserDto, {
 			id: displayId,
 			role: UserRole.USER,
-			type: 'display',
+			type: TokenOwnerType.DISPLAY,
 		});
 
 		this.logger.debug(`[WS AUTH] Display authentication successful for display=${displayId}`);
@@ -178,13 +178,13 @@ export class WsAuthService {
 					(client.data as object)['user'] = toInstance(ClientUserDto, {
 						id: storedLongLiveToken.ownerId,
 						role: UserRole.USER,
-						type: 'display',
+						type: TokenOwnerType.DISPLAY,
 					});
 				} else {
 					(client.data as object)['user'] = toInstance(ClientUserDto, {
 						id: null,
 						role: UserRole.USER,
-						type: 'display',
+						type: TokenOwnerType.DISPLAY,
 					});
 				}
 				this.logger.debug(`[WS AUTH] Display long-live token authentication successful`);

@@ -39,7 +39,7 @@ export interface AuthenticatedUser {
  * Authenticated display entity
  */
 export interface AuthenticatedDisplay {
-	type: 'display';
+	type: typeof TokenOwnerType.DISPLAY;
 	id: string;
 }
 
@@ -47,7 +47,7 @@ export interface AuthenticatedDisplay {
  * Authenticated third-party entity
  */
 export interface AuthenticatedThirdParty {
-	type: 'third_party';
+	type: typeof TokenOwnerType.THIRD_PARTY;
 	tokenId: string;
 }
 
@@ -123,8 +123,8 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Invalid or expired token');
 		}
 
-		// Check if this is a display token (type: 'display' in payload)
-		if (payload.type === 'display' && payload.sub) {
+		// Check if this is a display token (type: TokenOwnerType.DISPLAY in payload)
+		if ((payload.type as TokenOwnerType) === TokenOwnerType.DISPLAY && payload.sub) {
 			return this.validateDisplayToken(request, token, payload.sub);
 		}
 
@@ -216,7 +216,7 @@ export class AuthGuard implements CanActivate {
 		}
 
 		// Set new auth format
-		request.auth = { type: 'display', id: displayId };
+		request.auth = { type: TokenOwnerType.DISPLAY, id: displayId };
 		// Legacy support - treat display as a special user type for backwards compatibility
 		request['user'] = { id: displayId, role: UserRole.USER };
 
@@ -258,7 +258,7 @@ export class AuthGuard implements CanActivate {
 				if (!storedLongLiveToken.ownerId) {
 					throw new UnauthorizedException('Invalid display token');
 				}
-				request.auth = { type: 'display', id: storedLongLiveToken.ownerId };
+				request.auth = { type: TokenOwnerType.DISPLAY, id: storedLongLiveToken.ownerId };
 				request['user'] = { id: storedLongLiveToken.ownerId, role: UserRole.USER };
 				this.logger.debug(`[AUTH] Display long-live token authentication successful`);
 				break;
@@ -270,11 +270,11 @@ export class AuthGuard implements CanActivate {
 						request.auth = { type: 'user', id: user.id, role: user.role };
 						request['user'] = { id: user.id, role: user.role };
 					} else {
-						request.auth = { type: 'third_party', tokenId: storedLongLiveToken.id };
+						request.auth = { type: TokenOwnerType.THIRD_PARTY, tokenId: storedLongLiveToken.id };
 						request['user'] = { id: null, role: UserRole.USER };
 					}
 				} else {
-					request.auth = { type: 'third_party', tokenId: storedLongLiveToken.id };
+					request.auth = { type: TokenOwnerType.THIRD_PARTY, tokenId: storedLongLiveToken.id };
 					request['user'] = { id: null, role: UserRole.USER };
 				}
 				this.logger.debug(`[AUTH] User long-live token authentication successful`);
@@ -282,7 +282,7 @@ export class AuthGuard implements CanActivate {
 
 			case TokenOwnerType.THIRD_PARTY:
 			default:
-				request.auth = { type: 'third_party', tokenId: storedLongLiveToken.id };
+				request.auth = { type: TokenOwnerType.THIRD_PARTY, tokenId: storedLongLiveToken.id };
 				request['user'] = { id: null, role: UserRole.USER };
 				this.logger.debug(`[AUTH] Third-party long-live token authentication successful`);
 				break;

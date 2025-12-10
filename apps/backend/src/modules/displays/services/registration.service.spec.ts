@@ -144,7 +144,7 @@ describe('RegistrationService', () => {
 			expect(jwtService.sign).toHaveBeenCalledWith(
 				{
 					sub: mockDisplay.id,
-					type: 'display',
+					type: TokenOwnerType.DISPLAY,
 					mac: mockDisplay.macAddress,
 				},
 				{ expiresIn: '365d' },

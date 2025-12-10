@@ -97,7 +97,7 @@ class DisplayRepository extends ChangeNotifier {
 
     try {
       final response =
-          await _apiClient.displaysModuleDisplays.findOne(id: displayId);
+          await _apiClient.displaysModule.findOne(id: displayId);
 
       if (response.response.statusCode == 200) {
         final data = response.data.data;
@@ -168,7 +168,7 @@ class DisplayRepository extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.getMe();
+      final response = await _apiClient.displaysModule.getMe();
 
       if (response.response.statusCode == 200) {
         final data = response.data.data;
@@ -289,7 +289,7 @@ class DisplayRepository extends ChangeNotifier {
     if (_display == null) return false;
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.updateMe(
+      final response = await _apiClient.displaysModule.updateMe(
         body: DisplaysModuleReqUpdateDisplay(
           data: _buildUpdateData(darkMode: darkMode),
         ),
@@ -315,7 +315,7 @@ class DisplayRepository extends ChangeNotifier {
     if (_display == null) return false;
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.updateMe(
+      final response = await _apiClient.displaysModule.updateMe(
         body: DisplaysModuleReqUpdateDisplay(
           data: _buildUpdateData(brightness: brightness),
         ),
@@ -341,7 +341,7 @@ class DisplayRepository extends ChangeNotifier {
     if (_display == null) return false;
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.updateMe(
+      final response = await _apiClient.displaysModule.updateMe(
         body: DisplaysModuleReqUpdateDisplay(
           data: _buildUpdateData(screenLockDuration: duration),
         ),
@@ -367,7 +367,7 @@ class DisplayRepository extends ChangeNotifier {
     if (_display == null) return false;
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.updateMe(
+      final response = await _apiClient.displaysModule.updateMe(
         body: DisplaysModuleReqUpdateDisplay(
           data: _buildUpdateData(screenSaver: enabled),
         ),
@@ -401,7 +401,7 @@ class DisplayRepository extends ChangeNotifier {
     if (_display == null) return false;
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.updateMe(
+      final response = await _apiClient.displaysModule.updateMe(
         body: DisplaysModuleReqUpdateDisplay(
           data: _buildUpdateData(speaker: enabled),
         ),
@@ -427,7 +427,7 @@ class DisplayRepository extends ChangeNotifier {
     if (_display == null) return false;
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.updateMe(
+      final response = await _apiClient.displaysModule.updateMe(
         body: DisplaysModuleReqUpdateDisplay(
           data: _buildUpdateData(speakerVolume: volume),
         ),
@@ -453,7 +453,7 @@ class DisplayRepository extends ChangeNotifier {
     if (_display == null) return false;
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.updateMe(
+      final response = await _apiClient.displaysModule.updateMe(
         body: DisplaysModuleReqUpdateDisplay(
           data: _buildUpdateData(microphone: enabled),
         ),
@@ -479,7 +479,7 @@ class DisplayRepository extends ChangeNotifier {
     if (_display == null) return false;
 
     try {
-      final response = await _apiClient.displaysModuleDisplays.updateMe(
+      final response = await _apiClient.displaysModule.updateMe(
         body: DisplaysModuleReqUpdateDisplay(
           data: _buildUpdateData(microphoneVolume: volume),
         ),

@@ -55,7 +55,7 @@ export class DisplaysController {
 	async getMe(@Req() req: AuthenticatedRequest): Promise<DisplayResponseModel> {
 		const auth = req.auth;
 
-		if (!auth || auth.type !== 'display') {
+		if (!auth || auth.type !== TokenOwnerType.DISPLAY) {
 			this.logger.warn('[GET ME] Attempted access by non-display entity');
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}
@@ -83,7 +83,7 @@ export class DisplaysController {
 	async updateMe(@Req() req: AuthenticatedRequest, @Body() body: ReqUpdateDisplayDto): Promise<DisplayResponseModel> {
 		const auth = req.auth;
 
-		if (!auth || auth.type !== 'display') {
+		if (!auth || auth.type !== TokenOwnerType.DISPLAY) {
 			this.logger.warn('[UPDATE ME] Attempted access by non-display entity');
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}

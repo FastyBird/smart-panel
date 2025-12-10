@@ -542,7 +542,7 @@ class StartupManagerService {
         debugPrint('  audioInputSupported: $audioInputSupported');
       }
 
-      final response = await _apiClient.displaysModuleRegistration.register(
+      final response = await _apiClient.displaysModule.register(
         userAgent: 'FastyBird Smart Panel/${appVersion.version}',
         body: DisplaysModuleReqRegisterDisplay(data: registrationData),
       );
