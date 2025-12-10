@@ -9,7 +9,6 @@ class DisplayProfileModel extends Model {
   final double _unitSize;
   final int _rows;
   final int _cols;
-  final bool _primary;
 
   final DateTime? _createdAt;
   final DateTime? _updatedAt;
@@ -23,7 +22,6 @@ class DisplayProfileModel extends Model {
     required double unitSize,
     required int rows,
     required int cols,
-    required bool primary,
     required DateTime? createdAt,
     required DateTime? updatedAt,
   })  : _id = id,
@@ -34,7 +32,6 @@ class DisplayProfileModel extends Model {
         _unitSize = unitSize,
         _rows = rows,
         _cols = cols,
-        _primary = primary,
         _createdAt = createdAt,
         _updatedAt = updatedAt;
 
@@ -54,8 +51,6 @@ class DisplayProfileModel extends Model {
 
   int get cols => _cols;
 
-  bool get primary => _primary;
-
   DateTime? get createdAt => _createdAt;
 
   DateTime? get updatedAt => _updatedAt;
@@ -70,7 +65,6 @@ class DisplayProfileModel extends Model {
       unitSize: json['unit_size'].toDouble(),
       rows: json['rows'],
       cols: json['cols'],
-      primary: json['primary'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -89,8 +83,7 @@ class DisplayProfileModel extends Model {
           other._pixelRatio == _pixelRatio &&
           other._unitSize == _unitSize &&
           other._rows == _rows &&
-          other._cols == _cols &&
-          other._primary == _primary);
+          other._cols == _cols);
 
   @override
   int get hashCode => Object.hashAll([
@@ -100,6 +93,5 @@ class DisplayProfileModel extends Model {
         _unitSize,
         _rows,
         _cols,
-        _primary,
       ]);
 }

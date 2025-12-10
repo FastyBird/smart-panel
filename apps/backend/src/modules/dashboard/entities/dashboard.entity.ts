@@ -90,7 +90,7 @@ export abstract class PageEntity extends BaseEntity {
 		joinColumn: { name: 'pageId', referencedColumnName: 'id' },
 		inverseJoinColumn: { name: 'displayId', referencedColumnName: 'id' },
 	})
-	displays: DisplayEntity[] = [];
+	displays: DisplayEntity[];
 
 	@ApiProperty({ description: 'Page type', type: 'string', example: 'default' })
 	@Expose()
