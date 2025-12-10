@@ -12,6 +12,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
+import { UserRole } from '../../users/users.constants';
 import { CheckEmailDto } from '../dto/check-email.dto';
 import { CheckUsernameDto } from '../dto/check-username.dto';
 import { LoginDto } from '../dto/login.dto';
@@ -125,8 +126,8 @@ describe('AuthController', () => {
 
 	describe('getProfile', () => {
 		it('should return user profile', async () => {
-			const user = { id: '123' };
-			const requestMock = { user };
+			const auth = { type: 'user', id: '123', role: UserRole.OWNER };
+			const requestMock = { auth };
 			const expectedUser = new UserEntity();
 			expectedUser.id = '123';
 			const expectedResponse = toInstance(ProfileResponseModel, { data: expectedUser });
@@ -139,7 +140,12 @@ describe('AuthController', () => {
 
 		it('should throw ForbiddenException if no user is found', async () => {
 			await expect(controller.getProfile({} as any)).rejects.toThrow(ForbiddenException);
-			await expect(controller.getProfile({ user: null } as any)).rejects.toThrow(ForbiddenException);
+			await expect(controller.getProfile({ auth: null } as any)).rejects.toThrow(ForbiddenException);
+		});
+
+		it('should throw ForbiddenException if auth type is not user', async () => {
+			const auth = { type: 'token', tokenId: '123', ownerType: 'display', ownerId: '456', role: UserRole.USER };
+			await expect(controller.getProfile({ auth } as any)).rejects.toThrow(ForbiddenException);
 		});
 	});
 });

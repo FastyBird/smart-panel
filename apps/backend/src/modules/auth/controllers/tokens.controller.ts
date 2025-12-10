@@ -32,11 +32,11 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
-import { AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
 import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { AuthenticatedRequest } from '../guards/auth.guard';
 import { TokenResponseModel, TokensResponseModel } from '../models/auth-response.model';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
@@ -267,10 +267,10 @@ export class TokensController {
 
 		const token = await this.getOneOrThrow(id);
 
-		const { user: actualUser } = req;
+		const { auth } = req;
 
 		// Prevent token from deleting themselves
-		if (token instanceof AccessTokenEntity && token.owner.id === actualUser.id) {
+		if (auth && auth.type === 'user' && token instanceof AccessTokenEntity && token.owner.id === auth.id) {
 			throw new ForbiddenException('You cannot delete your own account');
 		}
 

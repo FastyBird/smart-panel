@@ -21,13 +21,13 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { UsersService } from '../../users/services/users.service';
 import { AUTH_MODULE_API_TAG_NAME } from '../auth.constants';
-import { AuthenticatedRequest } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
 import { ReqCheckEmailDto } from '../dto/check-email.dto';
 import { ReqCheckUsernameDto } from '../dto/check-username.dto';
 import { ReqLoginDto } from '../dto/login.dto';
 import { ReqRefreshDto } from '../dto/refresh-token.dto';
 import { ReqRegisterDto } from '../dto/register.dto';
+import { AuthenticatedRequest } from '../guards/auth.guard';
 import { Public } from '../guards/auth.guard';
 import {
 	CheckEmailResponseModel,
@@ -207,17 +207,17 @@ export class AuthController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('profile')
 	async getProfile(@Req() req: AuthenticatedRequest): Promise<ProfileResponseModel> {
-		const { user } = req;
+		const { auth } = req;
 
-		if (!user) {
+		if (!auth || auth.type !== 'user') {
 			throw new ForbiddenException('User not found');
 		}
 
-		this.logger.debug(`[PROFILE] Fetching profile for user=${user.id}`);
+		this.logger.debug(`[PROFILE] Fetching profile for user=${auth.id}`);
 
-		const userData = await this.authService.getProfile(user.id);
+		const userData = await this.authService.getProfile(auth.id);
 
-		this.logger.debug(`[PROFILE] Successfully fetched profile for user=${user.id}`);
+		this.logger.debug(`[PROFILE] Successfully fetched profile for user=${auth.id}`);
 
 		const response = new ProfileResponseModel();
 		response.data = userData;

@@ -13,7 +13,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { AuthenticatedRequest } from '../../auth/auth.constants';
+import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
@@ -150,21 +150,21 @@ describe('UsersController', () => {
 
 	describe('remove', () => {
 		it('should delete the user', async () => {
-			const user = { id: '123', role: UserRole.USER };
-			const requestMock = { user };
+			const auth = { type: 'user', id: '123', role: UserRole.USER };
+			const requestMock = { auth };
 
-			await controller.remove(mockUser.id, requestMock as AuthenticatedRequest);
+			await controller.remove(mockUser.id, requestMock as unknown as AuthenticatedRequest);
 
 			expect(service.remove).toHaveBeenCalledWith(mockUser.id);
 		});
 
 		it('should throw NotFoundException if user does not exist', async () => {
-			const user = { id: '123', role: UserRole.USER };
-			const requestMock = { user };
+			const auth = { type: 'user', id: '123', role: UserRole.USER };
+			const requestMock = { auth };
 
 			mockUserService.findOne.mockResolvedValueOnce(null);
 
-			await expect(controller.remove('invalid-id', requestMock as AuthenticatedRequest)).rejects.toThrow(
+			await expect(controller.remove('invalid-id', requestMock as unknown as AuthenticatedRequest)).rejects.toThrow(
 				NotFoundException,
 			);
 		});

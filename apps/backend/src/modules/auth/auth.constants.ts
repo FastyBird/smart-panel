@@ -1,7 +1,3 @@
-import { FastifyRequest as Request } from 'fastify';
-
-import { UserRole } from '../users/users.constants';
-
 export const AUTH_MODULE_PREFIX = 'auth-module';
 
 export const AUTH_MODULE_NAME = 'auth-module';
@@ -24,7 +20,3 @@ export enum TokenOwnerType {
 }
 
 export const ACCESS_TOKEN_TYPE = 'Bearer';
-
-export interface AuthenticatedRequest extends Request {
-	user?: { id: string | null; role: UserRole };
-}
