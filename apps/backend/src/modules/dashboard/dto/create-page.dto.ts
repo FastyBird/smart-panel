@@ -91,6 +91,7 @@ export class CreatePageDto {
 	})
 	@Expose()
 	@IsOptional()
+	@ValidateIf((_, value) => value !== null && value !== undefined)
 	@IsArray({ message: '[{"field":"displays","reason":"Displays must be an array."}]' })
 	@IsUUID('4', {
 		each: true,

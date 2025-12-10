@@ -135,8 +135,8 @@ export class PagesService {
 
 		const page = toInstance(mapping.class, dtoInstance);
 
-		// Set displays relation: empty array means visible to all displays
-		if (dtoInstance.displays !== undefined) {
+		// Set displays relation: empty array or null means visible to all displays
+		if (dtoInstance.displays !== undefined && dtoInstance.displays !== null) {
 			if (dtoInstance.displays.length === 0) {
 				page.displays = [];
 			} else {
@@ -146,7 +146,7 @@ export class PagesService {
 				page.displays = displayEntities;
 			}
 		} else {
-			// If not provided, default to empty array (visible to all)
+			// If not provided or null, default to empty array (visible to all)
 			page.displays = [];
 		}
 
@@ -194,7 +194,7 @@ export class PagesService {
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
 		// Handle display assignments if provided
-		if (dtoInstance.displays !== undefined) {
+		if (dtoInstance.displays !== undefined && dtoInstance.displays !== null) {
 			if (dtoInstance.displays.length > 0) {
 				// Validate all display IDs exist
 				const displays = await Promise.all(
@@ -220,8 +220,10 @@ export class PagesService {
 				// Empty array means visible to all displays
 				page.displays = [];
 			}
+		} else if (dtoInstance.displays !== undefined) {
+			page.displays = [];
 		}
-		// If displays is not provided in DTO, keep existing assignments
+		// If displays is not provided in DTO or is null, keep existing assignments
 
 		const repository: Repository<TPage> = this.dataSource.getRepository(mapping.class);
 

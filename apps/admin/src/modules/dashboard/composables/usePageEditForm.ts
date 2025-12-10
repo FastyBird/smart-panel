@@ -40,6 +40,7 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 
 	let initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
 
+
 	const formEl = ref<FormInstance | undefined>(undefined);
 
 	const formChanged = ref<boolean>(false);
@@ -71,7 +72,9 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 		}
 
 		try {
-			await pagesStore.edit({
+			let updatedPage: IPage;
+
+			updatedPage = await pagesStore.edit({
 				id: page.id,
 				data: {
 					...parsedModel.data,
@@ -80,9 +83,17 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 			});
 
 			if (page.draft) {
-				await pagesStore.save({
+				updatedPage = await pagesStore.save({
 					id: page.id,
 				});
+			}
+
+			// Update model with the response from the store to ensure it's in sync
+			// This ensures the form reflects the actual saved state (e.g., displays: null)
+			if (updatedPage) {
+				const updatedFormData = updatedPage as unknown as TForm;
+				// Use Object.assign to update all properties, preserving reactivity
+				Object.assign(model, updatedFormData);
 			}
 		} catch (error: unknown) {
 			formResult.value = FormResult.ERROR;
