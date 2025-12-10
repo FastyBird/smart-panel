@@ -1,8 +1,9 @@
 import { inject } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessageBox } from 'element-plus';
 
+import { useFlashMessage } from '../../../common';
 import type { IDisplay } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
@@ -12,12 +13,13 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 	const displaysStore = inject(displaysStoreKey);
 
 	const { t } = useI18n();
+	const flashMessage = useFlashMessage();
 
 	const remove = async (id: IDisplay['id']): Promise<void> => {
 		const display = displaysStore?.findById(id);
 
 		if (!display) {
-			ElMessage.error(t('displaysModule.messages.notFound'));
+			flashMessage.error(t('displaysModule.messages.notFound'));
 			return;
 		}
 
@@ -34,7 +36,7 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 
 			await displaysStore?.remove({ id });
 
-			ElMessage.success(t('displaysModule.messages.removed'));
+			flashMessage.success(t('displaysModule.messages.removed'));
 		} catch {
 			// User cancelled or error occurred
 		}

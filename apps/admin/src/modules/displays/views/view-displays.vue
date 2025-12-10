@@ -46,12 +46,11 @@
 			<el-button
 				v-if="permitJoinAvailable"
 				:loading="permitJoinActivating"
-				:disabled="permitJoinActive"
 				type="primary"
 				@click="onPermitJoin"
 			>
 				<template v-if="permitJoinActive">
-					{{ t('displaysModule.buttons.permitJoin.active', { seconds: permitJoinRemainingSeconds }) }}
+					{{ t('displaysModule.buttons.permitJoin.disable', { time: permitJoinRemainingTimeFormatted }) }}
 				</template>
 				<template v-else>
 					{{ t('displaysModule.buttons.permitJoin.title') }}
@@ -155,13 +154,13 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessage, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { ListDisplays, ListDisplaysAdjust } from '../components/components';
-import { useDisplaysActions, useDisplaysDataSource } from '../composables/composables';
+import { useDisplaysActions, useDisplaysDataSource, usePermitJoin } from '../composables/composables';
 import { RouteNames } from '../displays.constants';
 import { DisplaysException } from '../displays.exceptions';
 import type { IDisplay } from '../store/displays.store.types';
@@ -183,6 +182,7 @@ useMeta({
 });
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+const flashMessage = useFlashMessage();
 
 const {
 	fetchDisplays,
@@ -203,10 +203,11 @@ const displayActions = useDisplaysActions();
 const {
 	isAvailable: permitJoinAvailable,
 	isActive: permitJoinActive,
-	remainingTimeSeconds: permitJoinRemainingSeconds,
+	remainingTimeFormatted: permitJoinRemainingTimeFormatted,
 	activating: permitJoinActivating,
 	fetchStatus: fetchPermitJoinStatus,
 	activate: activatePermitJoin,
+	deactivate: deactivatePermitJoin,
 } = usePermitJoin();
 
 const mounted = ref<boolean>(false);
@@ -328,16 +329,31 @@ onBeforeMount((): void => {
 
 const onPermitJoin = async (): Promise<void> => {
 	try {
-		await activatePermitJoin();
-		ElMessage.success(t('displaysModule.messages.permitJoinActivated'));
+		if (permitJoinActive.value) {
+			await deactivatePermitJoin();
+			flashMessage.success(t('displaysModule.messages.permitJoinDeactivated'));
 
-		// Start countdown timer
-		startPermitJoinCountdown();
+			// Stop countdown timer
+			if (permitJoinCountdownInterval) {
+				clearInterval(permitJoinCountdownInterval);
+				permitJoinCountdownInterval = null;
+			}
+		} else {
+			await activatePermitJoin();
+			flashMessage.success(t('displaysModule.messages.permitJoinActivated'));
+
+			// Start countdown timer
+			startPermitJoinCountdown();
+		}
 	} catch (error: unknown) {
 		if (error instanceof DisplaysException) {
-			ElMessage.error(error.message);
+			flashMessage.error(error.message);
 		} else {
-			ElMessage.error(t('displaysModule.messages.permitJoinError'));
+			flashMessage.error(
+				permitJoinActive.value
+					? t('displaysModule.messages.permitJoinDeactivateError')
+					: t('displaysModule.messages.permitJoinError'),
+			);
 		}
 	}
 };

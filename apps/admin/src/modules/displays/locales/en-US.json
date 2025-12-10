@@ -200,7 +200,7 @@
 		},
 		"permitJoin": {
 			"title": "Permit Join",
-			"active": "Active ({seconds}s)"
+			"disable": "Disable Join ({time})"
 		}
 	},
 	"detail": {
@@ -279,7 +279,9 @@
 		"edited": "Display {display} has been updated",
 		"notEdited": "Display {display} was not updated",
 		"permitJoinActivated": "Permit join activated successfully",
-		"permitJoinError": "Failed to activate permit join"
+		"permitJoinDeactivated": "Permit join deactivated successfully",
+		"permitJoinError": "Failed to activate permit join",
+		"permitJoinDeactivateError": "Failed to deactivate permit join"
 	},
 	"actions": {
 		"refresh": "Refresh",

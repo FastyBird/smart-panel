@@ -106,11 +106,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElMessage, ElMessageBox, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElMessageBox, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, AppBreadcrumbs } from '../../../common';
+import { AppBarHeading, AppBreadcrumbs, useFlashMessage } from '../../../common';
 import { RouteNames } from '../displays.constants';
 import { useDisplay } from '../composables/composables';
 import type { IDisplay } from '../store/displays.store.types';
@@ -126,6 +126,7 @@ const props = defineProps<IViewDisplayTokensProps>();
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const displayId = computed(() => props.id);
 const { display, tokens, fetchTokens, revokeToken } = useDisplay(displayId);
@@ -177,10 +178,10 @@ const onRevokeToken = (): void => {
 			try {
 				const result = await revokeToken();
 				if (result) {
-					ElMessage.success(t('displaysModule.detail.tokens.revoked'));
+					flashMessage.success(t('displaysModule.detail.tokens.revoked'));
 				}
 			} catch {
-				ElMessage.error('Failed to revoke token');
+				flashMessage.error('Failed to revoke token');
 			} finally {
 				isRevoking.value = false;
 			}

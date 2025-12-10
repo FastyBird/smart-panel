@@ -342,4 +342,18 @@ export class DisplaysController {
 
 		return response;
 	}
+
+	@Delete('permit-join')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		summary: 'Deactivate permit join',
+		description: 'Immediately deactivates permit join. Requires owner or admin role.',
+	})
+	@ApiNoContentResponse({ description: 'Permit join deactivated successfully' })
+	@HttpCode(204)
+	deactivatePermitJoin(): void {
+		this.logger.debug('[PERMIT JOIN] Deactivating permit join');
+		this.permitJoinService.deactivatePermitJoin();
+		this.logger.debug('[PERMIT JOIN] Successfully deactivated');
+	}
 }

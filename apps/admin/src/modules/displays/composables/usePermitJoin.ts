@@ -44,15 +44,27 @@ export const usePermitJoin = () => {
 		return Math.ceil(time / 1000);
 	});
 
+	const remainingTimeFormatted = computed<string>(() => {
+		const seconds = remainingTimeSeconds.value;
+		if (seconds <= 0) {
+			return '0:00';
+		}
+		const minutes = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${minutes}:${secs.toString().padStart(2, '0')}`;
+	});
+
 	const fetchStatus = async (): Promise<void> => {
 		try {
 			loading.value = true;
 
-			const {
-				data: { data: statusData },
-			} = await backend.client.GET(`/${DISPLAYS_MODULE_PREFIX}/displays/permit-join/status`);
+			const { data: responseData } = await backend.client.GET(
+				`/${DISPLAYS_MODULE_PREFIX}/displays/permit-join/status`,
+			);
 
-			if (statusData) {
+			if (responseData?.data) {
+				const statusData = responseData.data;
+
 				status.value = {
 					active: statusData.active ?? false,
 					expiresAt: statusData.expires_at ? new Date(statusData.expires_at) : null,
@@ -87,6 +99,23 @@ export const usePermitJoin = () => {
 		}
 	};
 
+	const deactivate = async (): Promise<void> => {
+		try {
+			activating.value = true;
+
+			await backend.client.DELETE(`/${DISPLAYS_MODULE_PREFIX}/displays/permit-join`, {});
+
+			// Refresh status after deactivation
+			await fetchStatus();
+		} catch (error: unknown) {
+			logger.error('Failed to deactivate permit join', error);
+
+			throw new DisplaysException('Failed to deactivate permit join');
+		} finally {
+			activating.value = false;
+		}
+	};
+
 	return {
 		status,
 		loading,
@@ -96,7 +125,9 @@ export const usePermitJoin = () => {
 		deploymentMode,
 		remainingTime,
 		remainingTimeSeconds,
+		remainingTimeFormatted,
 		fetchStatus,
 		activate,
+		deactivate,
 	};
 };
