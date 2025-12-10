@@ -171,7 +171,7 @@ export const PageResSchema: ZodType<ApiPage> = z.object({
 	order: z.number(),
 	show_top_bar: z.boolean(),
 	data_source: z.array(DataSourceResSchema),
-	display: z.string().uuid().nullable(),
+	displays: z.array(z.string().uuid()).nullable(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });
