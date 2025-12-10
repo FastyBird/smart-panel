@@ -4,7 +4,7 @@ import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
-import { DeploymentMode, DISPLAYS_MODULE_NAME, PERMIT_JOIN_DEFAULT_DURATION_MS } from '../displays.constants';
+import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateDisplays' })
 export class UpdateDisplaysConfigDto extends UpdateModuleConfigDto {
@@ -25,7 +25,9 @@ export class UpdateDisplaysConfigDto extends UpdateModuleConfigDto {
 	})
 	@Expose({ name: 'deployment_mode' })
 	@IsOptional()
-	@IsEnum(DeploymentMode, { message: '[{"field":"deployment_mode","reason":"Deployment mode must be a valid enum value."}]' })
+	@IsEnum(DeploymentMode, {
+		message: '[{"field":"deployment_mode","reason":"Deployment mode must be a valid enum value."}]',
+	})
 	deployment_mode?: DeploymentMode;
 
 	@ApiPropertyOptional({
@@ -38,6 +40,8 @@ export class UpdateDisplaysConfigDto extends UpdateModuleConfigDto {
 	@Expose({ name: 'permit_join_duration_ms' })
 	@IsOptional()
 	@IsInt({ message: '[{"field":"permit_join_duration_ms","reason":"Permit join duration must be a valid integer."}]' })
-	@Min(1000, { message: '[{"field":"permit_join_duration_ms","reason":"Permit join duration must be at least 1000ms."}]' })
+	@Min(1000, {
+		message: '[{"field":"permit_join_duration_ms","reason":"Permit join duration must be at least 1000ms."}]',
+	})
 	permit_join_duration_ms?: number;
 }

@@ -1,6 +1,7 @@
+import { Request } from 'express';
+
 import { Body, Controller, Get, Headers, Logger, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
 
 import { Public } from '../../auth/guards/auth.guard';
 import {
@@ -12,8 +13,8 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { ALLOWED_USER_AGENTS, DISPLAYS_MODULE_API_TAG_NAME } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
-import { RegistrationGuard } from '../guards/registration.guard';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
+import { RegistrationGuard } from '../guards/registration.guard';
 import {
 	DisplayRegistrationResponseModel,
 	RegistrationStatusDataModel,
@@ -78,10 +79,11 @@ export class RegistrationController {
 	@Public()
 	@ApiOperation({
 		summary: 'Check registration status',
-		description: 'Returns whether registration is currently open. Public endpoint for displays to check before attempting registration.',
+		description:
+			'Returns whether registration is currently open. Public endpoint for displays to check before attempting registration.',
 	})
 	@ApiSuccessResponse(RegistrationStatusResponseModel, 'Returns registration status')
-	async getRegistrationStatus(): Promise<RegistrationStatusResponseModel> {
+	getRegistrationStatus(): RegistrationStatusResponseModel {
 		const open = this.permitJoinService.isPermitJoinActive();
 		const remainingTime = this.permitJoinService.getRemainingTime();
 

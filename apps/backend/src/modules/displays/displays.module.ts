@@ -12,13 +12,13 @@ import { SystemModule } from '../system/system.module';
 
 import { DisplaysController } from './controllers/displays.controller';
 import { RegistrationController } from './controllers/registration.controller';
-import { UpdateDisplaysConfigDto } from './dto/update-config.dto';
 import {
 	DISPLAYS_MODULE_API_TAG_DESCRIPTION,
 	DISPLAYS_MODULE_API_TAG_NAME,
 	DISPLAYS_MODULE_NAME,
 } from './displays.constants';
 import { DISPLAYS_SWAGGER_EXTRA_MODELS } from './displays.openapi';
+import { UpdateDisplaysConfigDto } from './dto/update-config.dto';
 import { DisplayEntity } from './entities/displays.entity';
 import { RegistrationGuard } from './guards/registration.guard';
 import { DisplaysConfigModel } from './models/config.model';

@@ -197,6 +197,10 @@
 		},
 		"discard": {
 			"title": "Discard"
+		},
+		"permitJoin": {
+			"title": "Permit Join",
+			"active": "Active ({seconds}s)"
 		}
 	},
 	"detail": {
@@ -273,7 +277,9 @@
 		"confirmRemove": "Are you sure you want to remove display \"{name}\"? This action cannot be undone.",
 		"removed": "Display removed successfully",
 		"edited": "Display {display} has been updated",
-		"notEdited": "Display {display} was not updated"
+		"notEdited": "Display {display} was not updated",
+		"permitJoinActivated": "Permit join activated successfully",
+		"permitJoinError": "Failed to activate permit join"
 	},
 	"actions": {
 		"refresh": "Refresh",

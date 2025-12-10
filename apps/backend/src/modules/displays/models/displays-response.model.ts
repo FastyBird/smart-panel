@@ -204,6 +204,25 @@ export class PermitJoinStatusDataModel {
 	})
 	@Expose({ name: 'remaining_time' })
 	remainingTime: number | null;
+
+	@ApiProperty({
+		name: 'deployment_mode',
+		description: 'Current deployment mode',
+		type: 'string',
+		enum: ['standalone', 'all-in-one', 'combined'],
+		example: 'combined',
+	})
+	@Expose({ name: 'deployment_mode' })
+	deploymentMode: string;
+
+	@ApiProperty({
+		name: 'available',
+		description: 'Whether permit join is available in current deployment mode',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	available: boolean;
 }
 
 /**

@@ -1,8 +1,16 @@
-import { ConflictException, CanActivate, ExecutionContext, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { Request } from 'express';
 
+import {
+	CanActivate,
+	ConflictException,
+	ExecutionContext,
+	ForbiddenException,
+	Injectable,
+	Logger,
+} from '@nestjs/common';
+
 import { ConfigService } from '../../config/services/config.service';
-import { DeploymentMode, DISPLAYS_MODULE_NAME, LOCALHOST_IPS } from '../displays.constants';
+import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
 import { DisplaysConfigModel } from '../models/config.model';
 import { DisplaysService } from '../services/displays.service';
 import { PermitJoinService } from '../services/permit-join.service';
@@ -63,10 +71,28 @@ export class RegistrationGuard implements CanActivate {
 			return true;
 		}
 
-		// Modes 1 & 3: Standalone and Combined - require permit join
+		// Modes 1 & 3: Standalone and Combined
+		// Localhost registrations are always allowed in COMBINED mode, even without permit join
+		if (mode === DeploymentMode.COMBINED && isLocalhost(clientIp)) {
+			// Check if localhost display already exists
+			const localhostDisplay = await this.displaysService.findByRegisteredFromIp(clientIp);
+			if (localhostDisplay) {
+				this.logger.warn(`[REGISTRATION GUARD] Rejected: Display already registered with localhost IP ${clientIp}`);
+				throw new ConflictException('Display already registered with localhost IP address');
+			}
+
+			this.logger.debug(
+				`[REGISTRATION GUARD] Allowed: localhost registration in combined mode (no permit join required)`,
+			);
+			return true;
+		}
+
+		// For non-localhost in STANDALONE or COMBINED modes, require permit join
 		if (!this.permitJoinService.isPermitJoinActive()) {
 			this.logger.warn(`[REGISTRATION GUARD] Rejected: Permit join is not active`);
-			throw new ForbiddenException('Registration is not currently permitted. Please activate permit join in the admin panel.');
+			throw new ForbiddenException(
+				'Registration is not currently permitted. Please activate permit join in the admin panel.',
+			);
 		}
 
 		this.logger.debug(`[REGISTRATION GUARD] Allowed: permit join is active`);

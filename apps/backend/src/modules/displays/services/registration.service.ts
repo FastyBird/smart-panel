@@ -1,11 +1,11 @@
 import { validate } from 'class-validator';
 import { CreateLongLiveTokenDto } from 'src/modules/auth/dto/create-token.dto';
 import { LongLiveTokenEntity } from 'src/modules/auth/entities/auth.entity';
+import { Repository } from 'typeorm';
 
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
@@ -39,7 +39,11 @@ export class RegistrationService {
 		private readonly displayRepository: Repository<DisplayEntity>,
 	) {}
 
-	async registerDisplay(registerDto: RegisterDisplayDto, _userAgent: string, clientIp: string): Promise<RegistrationResult> {
+	async registerDisplay(
+		registerDto: RegisterDisplayDto,
+		_userAgent: string,
+		clientIp: string,
+	): Promise<RegistrationResult> {
 		this.logger.debug(`[REGISTER] Registering display with MAC=${registerDto.macAddress}, IP=${clientIp}`);
 
 		const dtoInstance = await this.validateDto(RegisterDisplayDto, registerDto);

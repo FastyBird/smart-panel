@@ -5,13 +5,13 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
@@ -100,7 +100,8 @@ describe('RegistrationService', () => {
 		jwtService = module.get<JwtService>(JwtService);
 
 		// Store module reference for later use in tests
-		(service as any).testModule = module;
+
+		(service as { testModule?: TestingModule }).testModule = module;
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -196,9 +197,11 @@ describe('RegistrationService', () => {
 			jest.spyOn(tokensService, 'revokeByOwnerId').mockResolvedValue(undefined);
 			jest.spyOn(tokensService, 'create').mockResolvedValue({} as unknown as LongLiveTokenEntity);
 
-			const testModule = (service as any).testModule as TestingModule;
+			const testModule = (service as { testModule?: TestingModule }).testModule;
 			const mockRepository = testModule.get<Repository<DisplayEntity>>(getRepositoryToken(DisplayEntity));
-			jest.spyOn(mockRepository, 'save').mockResolvedValue(toInstance(DisplayEntity, { ...updatedDisplay, registeredFromIp: '127.0.0.1' }));
+			jest
+				.spyOn(mockRepository, 'save')
+				.mockResolvedValue(toInstance(DisplayEntity, { ...updatedDisplay, registeredFromIp: '127.0.0.1' }));
 
 			const result = await service.registerDisplay(registerDto, 'FlutterApp', '127.0.0.1');
 

@@ -5,6 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import type { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -102,7 +103,7 @@ describe('RegistrationController', () => {
 				accessToken: mockToken,
 			});
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
 			const result = await controller.register(mockRequest, 'FastyBird Smart Panel/1.0.0', { data: registerDto });
 
 			expect(result.data.display).toEqual(toInstance(DisplayEntity, mockDisplay));
@@ -121,7 +122,7 @@ describe('RegistrationController', () => {
 				accessToken: mockToken,
 			});
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
 			const result = await controller.register(mockRequest, 'FastyBird-Display/1.0', { data: registerDto });
 
 			expect(result.data).toBeDefined();
@@ -134,7 +135,7 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
 			await expect(controller.register(mockRequest, 'InvalidBrowser/1.0', { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);
@@ -148,10 +149,10 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
-			await expect(controller.register(mockRequest, undefined as unknown as string, { data: registerDto })).rejects.toThrow(
-				DisplaysRegistrationException,
-			);
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+			await expect(
+				controller.register(mockRequest, undefined as unknown as string, { data: registerDto }),
+			).rejects.toThrow(DisplaysRegistrationException);
 
 			expect(service.registerDisplay).not.toHaveBeenCalled();
 		});
@@ -162,8 +163,10 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
-			await expect(controller.register(mockRequest, '', { data: registerDto })).rejects.toThrow(DisplaysRegistrationException);
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as unknown as Request;
+			await expect(controller.register(mockRequest, '', { data: registerDto })).rejects.toThrow(
+				DisplaysRegistrationException,
+			);
 
 			expect(service.registerDisplay).not.toHaveBeenCalled();
 		});

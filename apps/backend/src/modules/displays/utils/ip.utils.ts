@@ -32,8 +32,9 @@ export function extractClientIp(request: Request): string {
 	}
 
 	// Last resort: use connection remote address
-	if ((request as any).connection?.remoteAddress) {
-		return (request as any).connection.remoteAddress;
+
+	if ((request as { connection?: { remoteAddress?: string } }).connection?.remoteAddress) {
+		return (request as { connection?: { remoteAddress?: string } }).connection.remoteAddress;
 	}
 
 	return 'unknown';

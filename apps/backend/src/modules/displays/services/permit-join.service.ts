@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
+import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
 import { DisplaysConfigModel } from '../models/config.model';
-import { DISPLAYS_MODULE_NAME } from '../displays.constants';
 
 @Injectable()
 export class PermitJoinService {
@@ -25,7 +25,7 @@ export class PermitJoinService {
 			// Return default configuration
 			const defaultConfig = new DisplaysConfigModel();
 			defaultConfig.type = DISPLAYS_MODULE_NAME;
-			defaultConfig.deploymentMode = 'combined' as any;
+			defaultConfig.deploymentMode = DeploymentMode.COMBINED;
 			defaultConfig.permitJoinDurationMs = 120000;
 
 			return defaultConfig;
@@ -34,15 +34,25 @@ export class PermitJoinService {
 
 	/**
 	 * Activate permit join for the configured duration
+	 * @throws BadRequestException if deployment mode is ALL_IN_ONE
 	 */
 	activatePermitJoin(): void {
 		const config = this.getConfig();
+
+		// Permit join is not available in ALL_IN_ONE mode
+		if (config.deploymentMode === DeploymentMode.ALL_IN_ONE) {
+			this.logger.warn('[PERMIT JOIN] Cannot activate permit join in all-in-one mode');
+			throw new BadRequestException('Permit join is not available in all-in-one deployment mode');
+		}
+
 		const duration = config.permitJoinDurationMs;
 
 		this.permitJoinActive = true;
 		this.permitJoinExpiresAt = new Date(Date.now() + duration);
 
-		this.logger.debug(`[PERMIT JOIN] Activated for ${duration}ms, expires at ${this.permitJoinExpiresAt.toISOString()}`);
+		this.logger.debug(
+			`[PERMIT JOIN] Activated for ${duration}ms, expires at ${this.permitJoinExpiresAt.toISOString()}`,
+		);
 	}
 
 	/**
@@ -93,5 +103,13 @@ export class PermitJoinService {
 		}
 
 		return this.permitJoinExpiresAt;
+	}
+
+	/**
+	 * Get deployment mode
+	 */
+	getDeploymentMode(): DeploymentMode {
+		const config = this.getConfig();
+		return config.deploymentMode;
 	}
 }

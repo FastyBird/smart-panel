@@ -34,6 +34,12 @@ export const DISPLAYS_SWAGGER_EXTRA_MODELS = [
 	DisplayTokenRefreshDataModel,
 	DisplayTokenRefreshResponseModel,
 	DisplayTokensResponseModel,
+	PermitJoinDataModel,
+	PermitJoinResponseModel,
+	PermitJoinStatusDataModel,
+	PermitJoinStatusResponseModel,
+	RegistrationStatusDataModel,
+	RegistrationStatusResponseModel,
 	// Entities
 	DisplayEntity,
 ];

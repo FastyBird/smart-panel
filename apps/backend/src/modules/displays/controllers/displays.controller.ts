@@ -19,6 +19,7 @@ import { TokenOwnerType } from '../../auth/auth.constants';
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import { TokensService } from '../../auth/services/tokens.service';
 import {
+	ApiBadRequestResponse,
 	ApiForbiddenResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
@@ -26,7 +27,7 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
-import { DISPLAYS_MODULE_API_TAG_NAME } from '../displays.constants';
+import { DISPLAYS_MODULE_API_TAG_NAME, DeploymentMode } from '../displays.constants';
 import { ReqUpdateDisplayDto } from '../dto/update-display.dto';
 import {
 	DisplayResponseModel,
@@ -285,10 +286,12 @@ export class DisplaysController {
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Permit display join',
-		description: 'Opens registration endpoint for the configured duration (default: 2 minutes). Requires owner or admin role.',
+		description:
+			'Opens registration endpoint for the configured duration (default: 2 minutes). Requires owner or admin role. Not available in all-in-one mode.',
 	})
 	@ApiSuccessResponse(PermitJoinResponseModel, 'Permit join activated successfully')
-	async permitJoin(): Promise<PermitJoinResponseModel> {
+	@ApiBadRequestResponse('Permit join is not available in all-in-one deployment mode')
+	permitJoin(): PermitJoinResponseModel {
 		this.logger.debug('[PERMIT JOIN] Activating permit join');
 
 		this.permitJoinService.activatePermitJoin();
@@ -320,7 +323,9 @@ export class DisplaysController {
 		description: 'Returns the current permit join status. Requires owner or admin role.',
 	})
 	@ApiSuccessResponse(PermitJoinStatusResponseModel, 'Returns permit join status')
-	async getPermitJoinStatus(): Promise<PermitJoinStatusResponseModel> {
+	getPermitJoinStatus(): PermitJoinStatusResponseModel {
+		const deploymentMode = this.permitJoinService.getDeploymentMode();
+		const available = deploymentMode !== DeploymentMode.ALL_IN_ONE;
 		const active = this.permitJoinService.isPermitJoinActive();
 		const expiresAt = this.permitJoinService.getExpiresAt();
 		const remainingTime = this.permitJoinService.getRemainingTime();
@@ -329,6 +334,8 @@ export class DisplaysController {
 		data.active = active;
 		data.expiresAt = expiresAt;
 		data.remainingTime = remainingTime;
+		data.deploymentMode = deploymentMode;
+		data.available = available;
 
 		const response = new PermitJoinStatusResponseModel();
 		response.data = data;

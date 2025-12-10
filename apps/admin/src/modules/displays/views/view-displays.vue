@@ -41,7 +41,24 @@
 		:heading="t('displaysModule.headings.list')"
 		:sub-heading="t('displaysModule.subHeadings.list')"
 		icon="mdi:monitor"
-	/>
+	>
+		<template #extra>
+			<el-button
+				v-if="permitJoinAvailable"
+				:loading="permitJoinActivating"
+				:disabled="permitJoinActive"
+				type="primary"
+				@click="onPermitJoin"
+			>
+				<template v-if="permitJoinActive">
+					{{ t('displaysModule.buttons.permitJoin.active', { seconds: permitJoinRemainingSeconds }) }}
+				</template>
+				<template v-else>
+					{{ t('displaysModule.buttons.permitJoin.title') }}
+				</template>
+			</el-button>
+		</template>
+	</view-header>
 
 	<div
 		v-if="isDisplaysListRoute || isLGDevice"
@@ -133,12 +150,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessage, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -182,6 +199,15 @@ const {
 	resetFilter,
 } = useDisplaysDataSource();
 const displayActions = useDisplaysActions();
+
+const {
+	isAvailable: permitJoinAvailable,
+	isActive: permitJoinActive,
+	remainingTimeSeconds: permitJoinRemainingSeconds,
+	activating: permitJoinActivating,
+	fetchStatus: fetchPermitJoinStatus,
+	activate: activatePermitJoin,
+} = usePermitJoin();
 
 const mounted = ref<boolean>(false);
 
@@ -300,8 +326,59 @@ onBeforeMount((): void => {
 	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.DISPLAYS_EDIT) !== undefined;
 });
 
-onMounted((): void => {
+const onPermitJoin = async (): Promise<void> => {
+	try {
+		await activatePermitJoin();
+		ElMessage.success(t('displaysModule.messages.permitJoinActivated'));
+
+		// Start countdown timer
+		startPermitJoinCountdown();
+	} catch (error: unknown) {
+		if (error instanceof DisplaysException) {
+			ElMessage.error(error.message);
+		} else {
+			ElMessage.error(t('displaysModule.messages.permitJoinError'));
+		}
+	}
+};
+
+let permitJoinCountdownInterval: ReturnType<typeof setInterval> | null = null;
+
+const startPermitJoinCountdown = (): void => {
+	if (permitJoinCountdownInterval) {
+		clearInterval(permitJoinCountdownInterval);
+	}
+
+	permitJoinCountdownInterval = setInterval(async () => {
+		await fetchPermitJoinStatus();
+
+		if (!permitJoinActive.value) {
+			if (permitJoinCountdownInterval) {
+				clearInterval(permitJoinCountdownInterval);
+				permitJoinCountdownInterval = null;
+			}
+		}
+	}, 1000);
+};
+
+onMounted(async (): Promise<void> => {
 	mounted.value = true;
+
+	if (isDisplaysListRoute.value) {
+		await fetchPermitJoinStatus();
+
+		// Start countdown if permit join is active
+		if (permitJoinActive.value) {
+			startPermitJoinCountdown();
+		}
+	}
+});
+
+onBeforeUnmount((): void => {
+	if (permitJoinCountdownInterval) {
+		clearInterval(permitJoinCountdownInterval);
+		permitJoinCountdownInterval = null;
+	}
 });
 
 watch(

@@ -4,7 +4,7 @@ import { IsEnum, IsInt, IsString, Min } from 'class-validator';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ModuleConfigModel } from '../../config/models/config.model';
-import { DeploymentMode, DISPLAYS_MODULE_NAME, PERMIT_JOIN_DEFAULT_DURATION_MS } from '../displays.constants';
+import { DISPLAYS_MODULE_NAME, DeploymentMode, PERMIT_JOIN_DEFAULT_DURATION_MS } from '../displays.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataDisplays' })
 export class DisplaysConfigModel extends ModuleConfigModel {
