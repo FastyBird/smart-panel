@@ -312,7 +312,13 @@ describe('AuthGuard', () => {
 			const result = await guard.canActivate(context);
 
 			expect(result).toBe(true);
-			expect(request.auth).toEqual({ type: 'display', id: mockDisplayId });
+			expect(request.auth).toEqual({
+				type: 'token',
+				tokenId: mockDisplayLongLiveToken.id,
+				ownerType: TokenOwnerType.DISPLAY,
+				ownerId: mockDisplayId,
+				role: UserRole.USER,
+			});
 			expect(request['user']).toEqual({ id: mockDisplayId, role: UserRole.USER });
 		});
 
@@ -376,7 +382,13 @@ describe('AuthGuard', () => {
 			const result = await guard.canActivate(context);
 
 			expect(result).toBe(true);
-			expect(request.auth).toEqual({ type: 'third_party', tokenId: mockThirdPartyLongLiveToken.id });
+			expect(request.auth).toEqual({
+				type: 'token',
+				tokenId: mockThirdPartyLongLiveToken.id,
+				ownerType: TokenOwnerType.THIRD_PARTY,
+				ownerId: null,
+				role: UserRole.USER,
+			});
 			expect(request['user']).toEqual({ id: null, role: UserRole.USER });
 		});
 
@@ -447,8 +459,14 @@ describe('AuthGuard', () => {
 			const result = await guard.canActivate(context);
 
 			expect(result).toBe(true);
-			expect(request.auth).toEqual({ type: 'user', id: mockUser.id, role: mockUser.role });
-			expect(request['user']).toEqual({ id: mockUser.id, role: mockUser.role });
+			expect(request.auth).toEqual({
+				type: 'token',
+				tokenId: userLongLiveToken.id,
+				ownerType: TokenOwnerType.USER,
+				ownerId: mockUserId,
+				role: mockUser.role,
+			});
+			expect(request['user']).toEqual({ id: mockUserId, role: mockUser.role });
 		});
 
 		it('should authenticate display long-live token', async () => {
@@ -471,12 +489,18 @@ describe('AuthGuard', () => {
 			const result = await guard.canActivate(context);
 
 			expect(result).toBe(true);
-			expect(request.auth).toEqual({ type: 'display', id: mockDisplayId });
+			expect(request.auth).toEqual({
+				type: 'token',
+				tokenId: displayLongLiveToken.id,
+				ownerType: TokenOwnerType.DISPLAY,
+				ownerId: mockDisplayId,
+				role: UserRole.USER,
+			});
 			expect(request['user']).toEqual({ id: mockDisplayId, role: UserRole.USER });
 		});
 
-		it('should throw UnauthorizedException for display token without ownerId', async () => {
-			const invalidDisplayToken = {
+		it('should authenticate display token without ownerId', async () => {
+			const displayTokenWithoutOwner = {
 				...mockThirdPartyLongLiveToken,
 				ownerType: TokenOwnerType.DISPLAY,
 				ownerId: null,
@@ -485,13 +509,23 @@ describe('AuthGuard', () => {
 			const context = createMockExecutionContext({
 				authorization: `Bearer ${mockLongLiveToken}`,
 			});
+			const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findAll').mockResolvedValue([invalidDisplayToken]);
+			jest.spyOn(tokensService, 'findAll').mockResolvedValue([displayTokenWithoutOwner]);
 
-			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			const result = await guard.canActivate(context);
+
+			expect(result).toBe(true);
+			expect(request.auth).toEqual({
+				type: 'token',
+				tokenId: displayTokenWithoutOwner.id,
+				ownerType: TokenOwnerType.DISPLAY,
+				ownerId: null,
+				role: UserRole.USER,
+			});
 		});
 	});
 

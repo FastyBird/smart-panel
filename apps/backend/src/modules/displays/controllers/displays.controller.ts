@@ -55,14 +55,14 @@ export class DisplaysController {
 	async getMe(@Req() req: AuthenticatedRequest): Promise<DisplayResponseModel> {
 		const auth = req.auth;
 
-		if (!auth || auth.type !== TokenOwnerType.DISPLAY) {
+		if (!auth || auth.type !== 'token' || auth.ownerType !== TokenOwnerType.DISPLAY || !auth.ownerId) {
 			this.logger.warn('[GET ME] Attempted access by non-display entity');
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}
 
-		this.logger.debug(`[GET ME] Fetching display data for id=${auth.id}`);
+		this.logger.debug(`[GET ME] Fetching display data for id=${auth.ownerId}`);
 
-		const display = await this.displaysService.getOneOrThrow(auth.id);
+		const display = await this.displaysService.getOneOrThrow(auth.ownerId);
 
 		const response = new DisplayResponseModel();
 
@@ -83,14 +83,14 @@ export class DisplaysController {
 	async updateMe(@Req() req: AuthenticatedRequest, @Body() body: ReqUpdateDisplayDto): Promise<DisplayResponseModel> {
 		const auth = req.auth;
 
-		if (!auth || auth.type !== TokenOwnerType.DISPLAY) {
+		if (!auth || auth.type !== 'token' || auth.ownerType !== TokenOwnerType.DISPLAY || !auth.ownerId) {
 			this.logger.warn('[UPDATE ME] Attempted access by non-display entity');
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}
 
-		this.logger.debug(`[UPDATE ME] Updating display with id=${auth.id}`);
+		this.logger.debug(`[UPDATE ME] Updating display with id=${auth.ownerId}`);
 
-		const display = await this.displaysService.update(auth.id, body.data);
+		const display = await this.displaysService.update(auth.ownerId, body.data);
 
 		const response = new DisplayResponseModel();
 

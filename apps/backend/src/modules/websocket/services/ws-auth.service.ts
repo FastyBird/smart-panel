@@ -132,14 +132,16 @@ export class WsAuthService {
 			throw new WebsocketNotAllowedException('Token expired');
 		}
 
-		// Set user data with display ID - using USER role for backwards compatibility
+		// Set universal long-live token client data
 		(client.data as object)['user'] = toInstance(ClientUserDto, {
-			id: displayId,
+			id: storedToken.ownerId,
 			role: UserRole.USER,
-			type: TokenOwnerType.DISPLAY,
+			type: 'token',
+			ownerType: storedToken.ownerType,
+			tokenId: storedToken.id,
 		});
 
-		this.logger.debug(`[WS AUTH] Display authentication successful for display=${displayId}`);
+		this.logger.debug(`[WS AUTH] Token authentication successful (ownerType=${storedToken.ownerType})`);
 
 		return true;
 	}
@@ -171,61 +173,28 @@ export class WsAuthService {
 			throw new WebsocketNotAllowedException('Token expired');
 		}
 
-		// Handle based on owner type
-		switch (storedLongLiveToken.ownerType) {
-			case TokenOwnerType.DISPLAY:
-				if (storedLongLiveToken.ownerId) {
-					(client.data as object)['user'] = toInstance(ClientUserDto, {
-						id: storedLongLiveToken.ownerId,
-						role: UserRole.USER,
-						type: TokenOwnerType.DISPLAY,
-					});
-				} else {
-					(client.data as object)['user'] = toInstance(ClientUserDto, {
-						id: null,
-						role: UserRole.USER,
-						type: TokenOwnerType.DISPLAY,
-					});
-				}
-				this.logger.debug(`[WS AUTH] Display long-live token authentication successful`);
-				break;
+		// Determine the role based on owner type
+		let role = UserRole.USER;
 
-			case TokenOwnerType.USER:
-				if (storedLongLiveToken.ownerId) {
-					const user = await this.usersService.findOne(storedLongLiveToken.ownerId);
-					if (user) {
-						(client.data as object)['user'] = toInstance(ClientUserDto, {
-							id: user.id,
-							role: user.role,
-							type: 'user',
-						});
-					} else {
-						(client.data as object)['user'] = toInstance(ClientUserDto, {
-							id: null,
-							role: UserRole.USER,
-							type: 'third_party',
-						});
-					}
-				} else {
-					(client.data as object)['user'] = toInstance(ClientUserDto, {
-						id: null,
-						role: UserRole.USER,
-						type: 'third_party',
-					});
-				}
-				this.logger.debug(`[WS AUTH] User long-live token authentication successful`);
-				break;
-
-			case TokenOwnerType.THIRD_PARTY:
-			default:
-				(client.data as object)['user'] = toInstance(ClientUserDto, {
-					id: null,
-					role: UserRole.USER,
-					type: 'third_party',
-				});
-				this.logger.debug(`[WS AUTH] Third-party long-live token authentication successful`);
-				break;
+		if (storedLongLiveToken.ownerType === TokenOwnerType.USER && storedLongLiveToken.ownerId) {
+			const user = await this.usersService.findOne(storedLongLiveToken.ownerId);
+			if (user) {
+				role = user.role;
+			}
 		}
+
+		// Set universal long-live token client data
+		(client.data as object)['user'] = toInstance(ClientUserDto, {
+			id: storedLongLiveToken.ownerId,
+			role: role,
+			type: 'token',
+			ownerType: storedLongLiveToken.ownerType,
+			tokenId: storedLongLiveToken.id,
+		});
+
+		this.logger.debug(
+			`[WS AUTH] Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`,
+		);
 
 		return true;
 	}

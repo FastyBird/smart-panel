@@ -3,6 +3,7 @@ import { validate } from 'class-validator';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { TokenOwnerType } from '../../auth/auth.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
 import { DataTypeType } from '../devices.constants';
@@ -30,7 +31,7 @@ export class PropertyCommandService {
 		payload?: object,
 	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
 		// Only display clients can control device properties via WebSocket
-		if (user.type !== 'display') {
+		if (user.type !== 'token' || user.ownerType !== TokenOwnerType.DISPLAY) {
 			throw new WebsocketNotAllowedException('This action is not allowed for this user');
 		}
 

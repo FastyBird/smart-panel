@@ -13,6 +13,7 @@ import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
@@ -32,7 +33,9 @@ describe('WebsocketGateway', () => {
 	const mockClientUser: ClientUserDto = {
 		id: null,
 		role: UserRole.USER,
-		type: 'display',
+		type: 'token',
+		ownerType: TokenOwnerType.DISPLAY,
+		tokenId: 'mock-token-id',
 	};
 
 	const mockSocket = {

@@ -27,7 +27,7 @@ import { hashToken } from '../utils/token.utils';
 export const IS_PUBLIC_KEY = 'isPublic';
 
 /**
- * Authenticated user entity
+ * Authenticated user entity (via access token from login flow)
  */
 export interface AuthenticatedUser {
 	type: 'user';
@@ -36,25 +36,20 @@ export interface AuthenticatedUser {
 }
 
 /**
- * Authenticated display entity
+ * Authenticated entity via long-live token (universal for display, user API tokens, third-party, etc.)
  */
-export interface AuthenticatedDisplay {
-	type: typeof TokenOwnerType.DISPLAY;
-	id: string;
-}
-
-/**
- * Authenticated third-party entity
- */
-export interface AuthenticatedThirdParty {
-	type: typeof TokenOwnerType.THIRD_PARTY;
+export interface AuthenticatedLongLiveToken {
+	type: 'token';
 	tokenId: string;
+	ownerType: TokenOwnerType;
+	ownerId: string | null;
+	role: UserRole;
 }
 
 /**
  * Union type for all authenticated entity types
  */
-export type AuthenticatedEntity = AuthenticatedUser | AuthenticatedDisplay | AuthenticatedThirdParty;
+export type AuthenticatedEntity = AuthenticatedUser | AuthenticatedLongLiveToken;
 
 /**
  * Extended request with authentication info
@@ -215,12 +210,18 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Token expired');
 		}
 
-		// Set new auth format
-		request.auth = { type: TokenOwnerType.DISPLAY, id: displayId };
-		// Legacy support - treat display as a special user type for backwards compatibility
-		request['user'] = { id: displayId, role: UserRole.USER };
+		// Set universal long-live token auth format
+		request.auth = {
+			type: 'token',
+			tokenId: storedToken.id,
+			ownerType: storedToken.ownerType,
+			ownerId: storedToken.ownerId,
+			role: UserRole.USER,
+		};
+		// Legacy support
+		request['user'] = { id: storedToken.ownerId, role: UserRole.USER };
 
-		this.logger.debug(`[AUTH] Display authentication successful for display=${displayId}`);
+		this.logger.debug(`[AUTH] Token authentication successful (ownerType=${storedToken.ownerType})`);
 
 		return true;
 	}
@@ -252,41 +253,28 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Token expired');
 		}
 
-		// Handle based on owner type
-		switch (storedLongLiveToken.ownerType) {
-			case TokenOwnerType.DISPLAY:
-				if (!storedLongLiveToken.ownerId) {
-					throw new UnauthorizedException('Invalid display token');
-				}
-				request.auth = { type: TokenOwnerType.DISPLAY, id: storedLongLiveToken.ownerId };
-				request['user'] = { id: storedLongLiveToken.ownerId, role: UserRole.USER };
-				this.logger.debug(`[AUTH] Display long-live token authentication successful`);
-				break;
+		// Determine the role based on owner type
+		let role = UserRole.USER;
 
-			case TokenOwnerType.USER:
-				if (storedLongLiveToken.ownerId) {
-					const user = await this.usersService.findOne(storedLongLiveToken.ownerId);
-					if (user) {
-						request.auth = { type: 'user', id: user.id, role: user.role };
-						request['user'] = { id: user.id, role: user.role };
-					} else {
-						request.auth = { type: TokenOwnerType.THIRD_PARTY, tokenId: storedLongLiveToken.id };
-						request['user'] = { id: null, role: UserRole.USER };
-					}
-				} else {
-					request.auth = { type: TokenOwnerType.THIRD_PARTY, tokenId: storedLongLiveToken.id };
-					request['user'] = { id: null, role: UserRole.USER };
-				}
-				this.logger.debug(`[AUTH] User long-live token authentication successful`);
-				break;
-
-			case TokenOwnerType.THIRD_PARTY:
-			default:
-				request.auth = { type: TokenOwnerType.THIRD_PARTY, tokenId: storedLongLiveToken.id };
-				request['user'] = { id: null, role: UserRole.USER };
-				this.logger.debug(`[AUTH] Third-party long-live token authentication successful`);
-				break;
+		if (storedLongLiveToken.ownerType === TokenOwnerType.USER && storedLongLiveToken.ownerId) {
+			const user = await this.usersService.findOne(storedLongLiveToken.ownerId);
+			if (user) {
+				role = user.role;
+			}
 		}
+
+		// Set universal long-live token auth format
+		request.auth = {
+			type: 'token',
+			tokenId: storedLongLiveToken.id,
+			ownerType: storedLongLiveToken.ownerType,
+			ownerId: storedLongLiveToken.ownerId,
+			role: role,
+		};
+		// Legacy support
+		request['user'] = { id: storedLongLiveToken.ownerId, role: role };
+
+		this.logger.debug(`[AUTH] Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
 
 		return true;
 	}

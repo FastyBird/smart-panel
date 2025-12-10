@@ -16,6 +16,7 @@ import {
 } from '@nestjs/websockets';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { TokenOwnerType } from '../../auth/auth.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandResultDto } from '../dto/command-result.dto';
@@ -86,7 +87,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 			const clientData = client.data as ClientData;
 
-			if (clientData.user && clientData.user.type === 'display') {
+			if (clientData.user && clientData.user.type === 'token' && clientData.user.ownerType === TokenOwnerType.DISPLAY) {
 				await client.join(DISPLAY_INTERNAL_ROOM);
 			}
 		} catch (error) {

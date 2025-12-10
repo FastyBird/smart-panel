@@ -6,6 +6,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import {
@@ -138,7 +139,9 @@ describe('PropertyCommandService', () => {
 	const mockWsUser: ClientUserDto = {
 		id: null,
 		role: UserRole.USER,
-		type: 'display',
+		type: 'token',
+		ownerType: TokenOwnerType.DISPLAY,
+		tokenId: 'mock-token-id',
 	};
 
 	beforeEach(async () => {
