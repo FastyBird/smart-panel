@@ -1,4 +1,4 @@
-import { type Reactive, reactive, type Ref, ref, toRaw, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
@@ -10,28 +10,7 @@ import { DisplaysApiException, DisplaysValidationException } from '../displays.e
 import type { IDisplay } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
-export interface IDisplayEditForm {
-	id: string;
-	name: string | null;
-	brightness: number;
-	screenLockDuration: number;
-	darkMode: boolean;
-	screenSaver: boolean;
-	// Audio settings
-	speaker: boolean;
-	speakerVolume: number;
-	microphone: boolean;
-	microphoneVolume: number;
-}
-
-export interface IUseDisplayEditForm {
-	model: Reactive<IDisplayEditForm>;
-	formEl: Ref<FormInstance | undefined>;
-	formChanged: Ref<boolean>;
-	submit: () => Promise<'saved'>;
-	clear: () => void;
-	formResult: Ref<FormResultType>;
-}
+import type { IDisplayEditForm, IUseDisplayEditForm } from './types';
 
 interface IUseDisplayEditFormProps {
 	display: IDisplay;
@@ -54,6 +33,9 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 	const model = reactive<IDisplayEditForm>({
 		id: display.id,
 		name: display.name,
+		unitSize: display.unitSize,
+		rows: display.rows,
+		cols: display.cols,
 		brightness: display.brightness,
 		screenLockDuration: display.screenLockDuration,
 		darkMode: display.darkMode,
@@ -86,6 +68,9 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		try {
 			const updateData: {
 				name: string | null;
+				unitSize?: number;
+				rows?: number;
+				cols?: number;
 				brightness: number;
 				screenLockDuration: number;
 				darkMode: boolean;
@@ -96,6 +81,9 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				microphoneVolume?: number;
 			} = {
 				name: model.name || null,
+				unitSize: model.unitSize,
+				rows: model.rows,
+				cols: model.cols,
 				brightness: model.brightness,
 				screenLockDuration: model.screenLockDuration,
 				darkMode: model.darkMode,

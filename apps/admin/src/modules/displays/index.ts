@@ -12,7 +12,7 @@ export { displaysStoreKey } from './store/keys';
 
 // Type aliases for backward compatibility with old code
 export type { IDisplay as IDisplayProfile } from './store/displays.store.types';
-export type { IUseDisplays as IUseDisplaysProfiles } from './composables/useDisplays';
+export type { IUseDisplays as IUseDisplaysProfiles } from './composables/types';
 
 // Function alias for backward compatibility
 export { useDisplays as useDisplaysProfiles } from './composables/composables';

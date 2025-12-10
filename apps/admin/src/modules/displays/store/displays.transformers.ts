@@ -63,6 +63,9 @@ export const transformDisplayCreateRequest = (display: IDisplaysAddActionPayload
 export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayload['data']): IDisplayUpdateReq => {
 	const parsedRequest = DisplayUpdateReqSchema.safeParse({
 		name: display.name,
+		unit_size: display.unitSize,
+		rows: display.rows,
+		cols: display.cols,
 		dark_mode: display.darkMode,
 		brightness: display.brightness,
 		screen_lock_duration: display.screenLockDuration,

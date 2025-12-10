@@ -116,6 +116,9 @@ export const DisplaysEditActionPayloadSchema = z.object({
 	id: DisplayIdSchema,
 	data: z.object({
 		name: z.string().nullable().optional(),
+		unitSize: z.number().min(1).optional(),
+		rows: z.number().min(1).optional(),
+		cols: z.number().min(1).optional(),
 		darkMode: z.boolean().optional(),
 		brightness: z.number().min(0).max(100).optional(),
 		screenLockDuration: z.number().optional(),
@@ -157,6 +160,9 @@ export const DisplayCreateReqSchema = z.object({
 
 export const DisplayUpdateReqSchema = z.object({
 	name: z.string().nullable().optional(),
+	unit_size: z.number().min(1).optional(),
+	rows: z.number().min(1).optional(),
+	cols: z.number().min(1).optional(),
 	dark_mode: z.boolean().optional(),
 	brightness: z.number().min(0).max(100).optional(),
 	screen_lock_duration: z.number().optional(),

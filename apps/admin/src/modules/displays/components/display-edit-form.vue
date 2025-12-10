@@ -33,6 +33,42 @@
 		<el-divider />
 
 		<el-form-item
+			:label="t('displaysModule.fields.displays.unitSize.title')"
+			:prop="['unitSize']"
+		>
+			<el-input-number
+				v-model="model.unitSize"
+				:min="1"
+				name="unitSize"
+			/>
+			<span class="ml-2 text-gray-500">{{ t('displaysModule.fields.displays.unitSize.unit') }}</span>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('displaysModule.fields.displays.rows.title')"
+			:prop="['rows']"
+		>
+			<el-input-number
+				v-model="model.rows"
+				:min="1"
+				name="rows"
+			/>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('displaysModule.fields.displays.cols.title')"
+			:prop="['cols']"
+		>
+			<el-input-number
+				v-model="model.cols"
+				:min="1"
+				name="cols"
+			/>
+		</el-form-item>
+
+		<el-divider />
+
+		<el-form-item
 			:label="t('displaysModule.fields.displays.brightness.title')"
 			:prop="['brightness']"
 		>
@@ -144,8 +180,9 @@ import { useI18n } from 'vue-i18n';
 
 import { ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElSlider, ElSwitch, type FormRules } from 'element-plus';
 
-import { useDisplayEditForm, type IDisplayEditForm } from '../composables/useDisplayEditForm';
+import { useDisplayEditForm } from '../composables/useDisplayEditForm';
 import { FormResult, type FormResultType } from '../displays.constants';
+import type { IDisplayEditForm } from '../composables/types';
 
 import type { IDisplayEditFormProps } from './display-edit-form.types';
 
@@ -172,6 +209,9 @@ const { model, formEl, formChanged, submit, formResult } = useDisplayEditForm({ 
 
 const rules = reactive<FormRules<IDisplayEditForm>>({
 	name: [{ max: 100, message: t('displaysModule.fields.displays.name.validation.maxLength'), trigger: 'blur' }],
+	unitSize: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.unitSize.validation.min'), trigger: 'blur' }],
+	rows: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.rows.validation.min'), trigger: 'blur' }],
+	cols: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.cols.validation.min'), trigger: 'blur' }],
 	brightness: [{ type: 'number', min: 0, max: 100, message: t('displaysModule.fields.displays.brightness.validation.range'), trigger: 'blur' }],
 	screenLockDuration: [{ type: 'number', min: 0, message: t('displaysModule.fields.displays.screenLockDuration.validation.min'), trigger: 'blur' }],
 	speakerVolume: [{ type: 'number', min: 0, max: 100, message: t('displaysModule.fields.displays.speakerVolume.validation.range'), trigger: 'blur' }],

@@ -64,6 +64,25 @@
 					"maxLength": "Name must be less than 100 characters"
 				}
 			},
+			"unitSize": {
+				"title": "Unit Size",
+				"unit": "px",
+				"validation": {
+					"min": "Unit size must be at least 1"
+				}
+			},
+			"rows": {
+				"title": "Rows",
+				"validation": {
+					"min": "Rows must be at least 1"
+				}
+			},
+			"cols": {
+				"title": "Columns",
+				"validation": {
+					"min": "Columns must be at least 1"
+				}
+			},
 			"brightness": {
 				"title": "Brightness",
 				"validation": {

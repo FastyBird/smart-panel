@@ -1,16 +1,9 @@
-import { computed, type ComputedRef, inject, type Ref, ref, watch } from 'vue';
+import { computed, inject, type Ref, ref, watch } from 'vue';
 
 import type { IDisplay, IDisplayToken } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
-interface IUseDisplay {
-	display: ComputedRef<IDisplay | null>;
-	tokens: Ref<IDisplayToken[]>;
-	isLoading: ComputedRef<boolean>;
-	fetchDisplay: () => Promise<void>;
-	fetchTokens: () => Promise<void>;
-	revokeToken: () => Promise<boolean>;
-}
+import type { IUseDisplay } from './types';
 
 export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
 	const displaysStore = inject(displaysStoreKey);

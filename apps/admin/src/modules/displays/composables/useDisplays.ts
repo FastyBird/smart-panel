@@ -1,18 +1,9 @@
-import { computed, type ComputedRef, inject, onMounted, ref, type Ref } from 'vue';
+import { computed, inject, onMounted, ref } from 'vue';
 
 import type { IDisplay } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
-export interface IUseDisplays {
-	displays: ComputedRef<IDisplay[]>;
-	isLoading: ComputedRef<boolean>;
-	isLoaded: Ref<boolean>;
-	fetchDisplays: () => Promise<void>;
-	// Added for compatibility with old useDisplaysProfiles interface
-	options: ComputedRef<{ value: IDisplay['id']; label: string }[]>;
-	areLoading: ComputedRef<boolean>;
-	loaded: Ref<boolean>;
-}
+import type { IUseDisplays } from './types';
 
 export const useDisplays = (): IUseDisplays => {
 	const displaysStore = inject(displaysStoreKey);
