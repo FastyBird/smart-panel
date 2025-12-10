@@ -13,6 +13,7 @@
 		class="flex-grow"
 		:max-height="tableHeight"
 		@sort-change="onSortData"
+		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
 	>
 		<template #empty>
@@ -95,13 +96,17 @@
 		</template>
 
 		<el-table-column
+			v-if="isMDDevice"
+			type="selection"
+			:width="30"
+		/>
+
+		<el-table-column
 			:width="60"
 			align="center"
 		>
-			<template #default>
-				<el-icon :size="24">
-					<icon icon="mdi:monitor" />
-				</el-icon>
+			<template #default="scope">
+				<displays-table-column-icon :display="scope.row" />
 			</template>
 		</el-table-column>
 
@@ -277,7 +282,8 @@ import { ElButton, ElIcon, ElResult, ElTable, ElTableColumn, ElText, ElTooltip, 
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild } from '../../../common';
+import { IconWithChild, useBreakpoints } from '../../../common';
+import DisplaysTableColumnIcon from './displays-table-column-icon.vue';
 import type { IDisplay } from '../store/displays.store.types';
 
 import type { IDisplaysTableProps } from './displays-table.types';
@@ -293,11 +299,14 @@ const emit = defineEmits<{
 	(e: 'edit', id: IDisplay['id']): void;
 	(e: 'remove', id: IDisplay['id']): void;
 	(e: 'reset-filters'): void;
+	(e: 'selected-changes', selected: IDisplay[]): void;
 	(e: 'update:sort-by', by: 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
 const { t } = useI18n();
+
+const { isMDDevice } = useBreakpoints();
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
@@ -317,6 +326,10 @@ const onSortData = ({
 }): void => {
 	emit('update:sort-by', prop);
 	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
+};
+
+const onSelectionChange = (selected: IDisplay[]): void => {
+	emit('selected-changes', selected);
 };
 
 const onRowClick = (row: IDisplay): void => {
