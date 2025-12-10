@@ -12,6 +12,12 @@ import {
 	DisplayTokenRefreshResponseModel,
 	DisplayTokensResponseModel,
 	DisplaysResponseModel,
+	PermitJoinDataModel,
+	PermitJoinResponseModel,
+	PermitJoinStatusDataModel,
+	PermitJoinStatusResponseModel,
+	RegistrationStatusDataModel,
+	RegistrationStatusResponseModel,
 } from './models/displays-response.model';
 
 export const DISPLAYS_SWAGGER_EXTRA_MODELS = [

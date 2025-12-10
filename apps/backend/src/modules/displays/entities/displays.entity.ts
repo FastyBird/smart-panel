@@ -303,4 +303,19 @@ export class DisplayEntity extends BaseEntity {
 	)
 	@Column({ type: 'int', default: 50 })
 	microphoneVolume: number;
+
+	// === Registration Information ===
+
+	@ApiPropertyOptional({
+		name: 'registered_from_ip',
+		description: 'IP address from which the display was registered',
+		type: 'string',
+		nullable: true,
+		example: '127.0.0.1',
+	})
+	@Expose({ name: 'registered_from_ip' })
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true, default: null })
+	registeredFromIp: string | null;
 }

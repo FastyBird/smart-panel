@@ -3,7 +3,9 @@ import { CreateLongLiveTokenDto } from 'src/modules/auth/dto/create-token.dto';
 import { LongLiveTokenEntity } from 'src/modules/auth/entities/auth.entity';
 
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { Repository } from 'typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
@@ -33,10 +35,12 @@ export class RegistrationService {
 		private readonly displaysService: DisplaysService,
 		private readonly tokensService: TokensService,
 		private readonly jwtService: JwtService,
+		@InjectRepository(DisplayEntity)
+		private readonly displayRepository: Repository<DisplayEntity>,
 	) {}
 
-	async registerDisplay(registerDto: RegisterDisplayDto, _userAgent: string): Promise<RegistrationResult> {
-		this.logger.debug(`[REGISTER] Registering display with MAC=${registerDto.macAddress}`);
+	async registerDisplay(registerDto: RegisterDisplayDto, _userAgent: string, clientIp: string): Promise<RegistrationResult> {
+		this.logger.debug(`[REGISTER] Registering display with MAC=${registerDto.macAddress}, IP=${clientIp}`);
 
 		const dtoInstance = await this.validateDto(RegisterDisplayDto, registerDto);
 
@@ -58,6 +62,10 @@ export class RegistrationService {
 				cols: dtoInstance.cols,
 			});
 
+			// Update registeredFromIp directly on the entity (not via DTO)
+			display.registeredFromIp = clientIp;
+			display = await this.displayRepository.save(display);
+
 			// Revoke existing tokens for this display
 			await this.tokensService.revokeByOwnerId(display.id, TokenOwnerType.DISPLAY);
 		} else {
@@ -76,6 +84,7 @@ export class RegistrationService {
 				cols: dtoInstance.cols ?? 24,
 				audioOutputSupported: dtoInstance.audioOutputSupported ?? false,
 				audioInputSupported: dtoInstance.audioInputSupported ?? false,
+				registeredFromIp: clientIp,
 			});
 		}
 

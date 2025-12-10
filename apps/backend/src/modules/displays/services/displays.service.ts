@@ -41,6 +41,10 @@ export class DisplaysService {
 		return this.findByField('macAddress', macAddress);
 	}
 
+	async findByRegisteredFromIp(ip: string): Promise<DisplayEntity | null> {
+		return this.findByField('registeredFromIp', ip);
+	}
+
 	async getOneOrThrow(id: string): Promise<DisplayEntity> {
 		const display = await this.findOne(id);
 

@@ -84,6 +84,7 @@ describe('PagesController', () => {
 		speakerVolume: 50,
 		microphone: false,
 		microphoneVolume: 50,
+		registeredFromIp: null,
 		createdAt: new Date(),
 		updatedAt: undefined,
 	};

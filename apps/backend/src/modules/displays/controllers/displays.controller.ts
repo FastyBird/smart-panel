@@ -34,8 +34,13 @@ import {
 	DisplayTokenRefreshResponseModel,
 	DisplayTokensResponseModel,
 	DisplaysResponseModel,
+	PermitJoinDataModel,
+	PermitJoinResponseModel,
+	PermitJoinStatusDataModel,
+	PermitJoinStatusResponseModel,
 } from '../models/displays-response.model';
 import { DisplaysService } from '../services/displays.service';
+import { PermitJoinService } from '../services/permit-join.service';
 import { RegistrationService } from '../services/registration.service';
 
 @ApiTags(DISPLAYS_MODULE_API_TAG_NAME)
@@ -47,6 +52,7 @@ export class DisplaysController {
 		private readonly displaysService: DisplaysService,
 		private readonly tokensService: TokensService,
 		private readonly registrationService: RegistrationService,
+		private readonly permitJoinService: PermitJoinService,
 	) {}
 
 	@Get('me')
@@ -273,5 +279,60 @@ export class DisplaysController {
 		await this.tokensService.revokeByOwnerId(id, TokenOwnerType.DISPLAY);
 
 		this.logger.debug(`[REVOKE TOKEN] Successfully revoked tokens for display with id=${id}`);
+	}
+
+	@Post('permit-join')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		summary: 'Permit display join',
+		description: 'Opens registration endpoint for the configured duration (default: 2 minutes). Requires owner or admin role.',
+	})
+	@ApiSuccessResponse(PermitJoinResponseModel, 'Permit join activated successfully')
+	async permitJoin(): Promise<PermitJoinResponseModel> {
+		this.logger.debug('[PERMIT JOIN] Activating permit join');
+
+		this.permitJoinService.activatePermitJoin();
+
+		const expiresAt = this.permitJoinService.getExpiresAt();
+		const remainingTime = this.permitJoinService.getRemainingTime();
+
+		if (!expiresAt || remainingTime === null) {
+			throw new Error('Failed to activate permit join');
+		}
+
+		this.logger.debug(`[PERMIT JOIN] Successfully activated, expires at ${expiresAt.toISOString()}`);
+
+		const data = new PermitJoinDataModel();
+		data.success = true;
+		data.expiresAt = expiresAt;
+		data.remainingTime = remainingTime;
+
+		const response = new PermitJoinResponseModel();
+		response.data = data;
+
+		return response;
+	}
+
+	@Get('permit-join/status')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		summary: 'Get permit join status',
+		description: 'Returns the current permit join status. Requires owner or admin role.',
+	})
+	@ApiSuccessResponse(PermitJoinStatusResponseModel, 'Returns permit join status')
+	async getPermitJoinStatus(): Promise<PermitJoinStatusResponseModel> {
+		const active = this.permitJoinService.isPermitJoinActive();
+		const expiresAt = this.permitJoinService.getExpiresAt();
+		const remainingTime = this.permitJoinService.getRemainingTime();
+
+		const data = new PermitJoinStatusDataModel();
+		data.active = active;
+		data.expiresAt = expiresAt;
+		data.remainingTime = remainingTime;
+
+		const response = new PermitJoinStatusResponseModel();
+		response.data = data;
+
+		return response;
 	}
 }

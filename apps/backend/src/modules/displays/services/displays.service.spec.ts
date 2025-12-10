@@ -47,6 +47,7 @@ describe('DisplaysService', () => {
 		speakerVolume: 50,
 		microphone: false,
 		microphoneVolume: 50,
+		registeredFromIp: null,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -73,6 +74,7 @@ describe('DisplaysService', () => {
 		speakerVolume: 75,
 		microphone: true,
 		microphoneVolume: 60,
+		registeredFromIp: null,
 		createdAt: new Date(Date.now() + 1000), // Created later
 		updatedAt: null,
 	};

@@ -14,3 +14,12 @@ export enum EventType {
 }
 
 export const ALLOWED_USER_AGENTS = ['FastyBird Smart Panel', 'FastyBird-Display'];
+
+export enum DeploymentMode {
+	STANDALONE = 'standalone',
+	ALL_IN_ONE = 'all-in-one',
+	COMBINED = 'combined',
+}
+
+export const PERMIT_JOIN_DEFAULT_DURATION_MS = 2 * 60 * 1000; // 2 minutes
+export const LOCALHOST_IPS = ['127.0.0.1', '::1', 'localhost'];

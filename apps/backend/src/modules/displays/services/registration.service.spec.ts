@@ -9,7 +9,9 @@ import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Repository } from 'typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
@@ -49,6 +51,7 @@ describe('RegistrationService', () => {
 		speakerVolume: 50,
 		microphone: false,
 		microphoneVolume: 50,
+		registeredFromIp: null,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -56,6 +59,10 @@ describe('RegistrationService', () => {
 	const mockToken = 'mock-jwt-token-for-display';
 
 	beforeEach(async () => {
+		const mockRepository = {
+			save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+		} as unknown as Repository<DisplayEntity>;
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				RegistrationService,
@@ -80,6 +87,10 @@ describe('RegistrationService', () => {
 						sign: jest.fn().mockReturnValue(mockToken),
 					},
 				},
+				{
+					provide: getRepositoryToken(DisplayEntity),
+					useValue: mockRepository,
+				},
 			],
 		}).compile();
 
@@ -87,6 +98,9 @@ describe('RegistrationService', () => {
 		displaysService = module.get<DisplaysService>(DisplaysService);
 		tokensService = module.get<TokensService>(TokensService);
 		jwtService = module.get<JwtService>(JwtService);
+
+		// Store module reference for later use in tests
+		(service as any).testModule = module;
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -123,7 +137,7 @@ describe('RegistrationService', () => {
 			jest.spyOn(displaysService, 'create').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
 			jest.spyOn(tokensService, 'create').mockResolvedValue({} as unknown as LongLiveTokenEntity);
 
-			const result = await service.registerDisplay(registerDto, 'FlutterApp');
+			const result = await service.registerDisplay(registerDto, 'FlutterApp', '127.0.0.1');
 
 			expect(result.display).toEqual(toInstance(DisplayEntity, mockDisplay));
 			expect(result.accessToken).toBe(mockToken);
@@ -140,6 +154,7 @@ describe('RegistrationService', () => {
 				cols: registerDto.cols,
 				audioOutputSupported: false,
 				audioInputSupported: false,
+				registeredFromIp: '127.0.0.1',
 			});
 			expect(jwtService.sign).toHaveBeenCalledWith(
 				{
@@ -181,7 +196,11 @@ describe('RegistrationService', () => {
 			jest.spyOn(tokensService, 'revokeByOwnerId').mockResolvedValue(undefined);
 			jest.spyOn(tokensService, 'create').mockResolvedValue({} as unknown as LongLiveTokenEntity);
 
-			const result = await service.registerDisplay(registerDto, 'FlutterApp');
+			const testModule = (service as any).testModule as TestingModule;
+			const mockRepository = testModule.get<Repository<DisplayEntity>>(getRepositoryToken(DisplayEntity));
+			jest.spyOn(mockRepository, 'save').mockResolvedValue(toInstance(DisplayEntity, { ...updatedDisplay, registeredFromIp: '127.0.0.1' }));
+
+			const result = await service.registerDisplay(registerDto, 'FlutterApp', '127.0.0.1');
 
 			expect(result.display.version).toBe('2.0.0');
 			expect(result.accessToken).toBe(mockToken);
@@ -197,6 +216,7 @@ describe('RegistrationService', () => {
 				rows: registerDto.rows,
 				cols: registerDto.cols,
 			});
+			expect(mockRepository.save).toHaveBeenCalledWith(expect.objectContaining({ registeredFromIp: '127.0.0.1' }));
 		});
 
 		it('should use default values when optional fields are not provided', async () => {
@@ -209,7 +229,7 @@ describe('RegistrationService', () => {
 			jest.spyOn(displaysService, 'create').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
 			jest.spyOn(tokensService, 'create').mockResolvedValue({} as unknown as LongLiveTokenEntity);
 
-			await service.registerDisplay(registerDto, 'FlutterApp');
+			await service.registerDisplay(registerDto, 'FlutterApp', '192.168.1.100');
 
 			expect(displaysService.create).toHaveBeenCalledWith({
 				macAddress: registerDto.macAddress,
@@ -223,6 +243,7 @@ describe('RegistrationService', () => {
 				cols: 24,
 				audioOutputSupported: false,
 				audioInputSupported: false,
+				registeredFromIp: '192.168.1.100',
 			});
 		});
 	});

@@ -1,27 +1,41 @@
-import { Body, Controller, Headers, Logger, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Logger, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 
 import { Public } from '../../auth/guards/auth.guard';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
+	ApiForbiddenResponse,
+	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { ALLOWED_USER_AGENTS, DISPLAYS_MODULE_API_TAG_NAME } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
+import { RegistrationGuard } from '../guards/registration.guard';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
-import { DisplayRegistrationResponseModel } from '../models/displays-response.model';
+import {
+	DisplayRegistrationResponseModel,
+	RegistrationStatusDataModel,
+	RegistrationStatusResponseModel,
+} from '../models/displays-response.model';
+import { PermitJoinService } from '../services/permit-join.service';
 import { RegistrationService } from '../services/registration.service';
+import { extractClientIp } from '../utils/ip.utils';
 
 @ApiTags(DISPLAYS_MODULE_API_TAG_NAME)
 @Controller('register')
 export class RegistrationController {
 	private readonly logger = new Logger(RegistrationController.name);
 
-	constructor(private readonly registrationService: RegistrationService) {}
+	constructor(
+		private readonly registrationService: RegistrationService,
+		private readonly permitJoinService: PermitJoinService,
+	) {}
 
 	@Post()
 	@Public()
+	@UseGuards(RegistrationGuard)
 	@ApiOperation({
 		summary: 'Register display',
 		description:
@@ -29,8 +43,10 @@ export class RegistrationController {
 	})
 	@ApiCreatedSuccessResponse(DisplayRegistrationResponseModel, 'Display registered successfully')
 	@ApiBadRequestResponse('Invalid user agent or request')
+	@ApiForbiddenResponse('Registration not permitted or localhost display already exists')
 	@ApiUnprocessableEntityResponse('Invalid registration data')
 	async register(
+		@Req() request: Request,
 		@Headers('user-agent') userAgent: string,
 		@Body() body: ReqRegisterDisplayDto,
 	): Promise<DisplayRegistrationResponseModel> {
@@ -45,7 +61,8 @@ export class RegistrationController {
 			throw new DisplaysRegistrationException('Invalid request source');
 		}
 
-		const result = await this.registrationService.registerDisplay(body.data, userAgent);
+		const clientIp = extractClientIp(request);
+		const result = await this.registrationService.registerDisplay(body.data, userAgent, clientIp);
 
 		const response = new DisplayRegistrationResponseModel();
 
@@ -53,6 +70,27 @@ export class RegistrationController {
 			display: result.display,
 			accessToken: result.accessToken,
 		};
+
+		return response;
+	}
+
+	@Get('status')
+	@Public()
+	@ApiOperation({
+		summary: 'Check registration status',
+		description: 'Returns whether registration is currently open. Public endpoint for displays to check before attempting registration.',
+	})
+	@ApiSuccessResponse(RegistrationStatusResponseModel, 'Returns registration status')
+	async getRegistrationStatus(): Promise<RegistrationStatusResponseModel> {
+		const open = this.permitJoinService.isPermitJoinActive();
+		const remainingTime = this.permitJoinService.getRemainingTime();
+
+		const data = new RegistrationStatusDataModel();
+		data.open = open;
+		data.remainingTime = remainingTime;
+
+		const response = new RegistrationStatusResponseModel();
+		response.data = data;
 
 		return response;
 	}

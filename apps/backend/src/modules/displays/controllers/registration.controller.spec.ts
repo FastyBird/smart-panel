@@ -43,6 +43,7 @@ describe('RegistrationController', () => {
 		speakerVolume: 50,
 		microphone: false,
 		microphoneVolume: 50,
+		registeredFromIp: null,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -57,6 +58,12 @@ describe('RegistrationController', () => {
 					provide: RegistrationService,
 					useValue: {
 						registerDisplay: jest.fn(),
+					},
+				},
+				{
+					provide: 'PermitJoinService',
+					useValue: {
+						isPermitJoinActive: jest.fn().mockReturnValue(true),
 					},
 				},
 			],
@@ -95,11 +102,12 @@ describe('RegistrationController', () => {
 				accessToken: mockToken,
 			});
 
-			const result = await controller.register('FastyBird Smart Panel/1.0.0', { data: registerDto });
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
+			const result = await controller.register(mockRequest, 'FastyBird Smart Panel/1.0.0', { data: registerDto });
 
 			expect(result.data.display).toEqual(toInstance(DisplayEntity, mockDisplay));
 			expect(result.data.accessToken).toBe(mockToken);
-			expect(service.registerDisplay).toHaveBeenCalledWith(registerDto, 'FastyBird Smart Panel/1.0.0');
+			expect(service.registerDisplay).toHaveBeenCalledWith(registerDto, 'FastyBird Smart Panel/1.0.0', '127.0.0.1');
 		});
 
 		it('should register a display with FastyBird-Display user agent', async () => {
@@ -113,10 +121,11 @@ describe('RegistrationController', () => {
 				accessToken: mockToken,
 			});
 
-			const result = await controller.register('FastyBird-Display/1.0', { data: registerDto });
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
+			const result = await controller.register(mockRequest, 'FastyBird-Display/1.0', { data: registerDto });
 
 			expect(result.data).toBeDefined();
-			expect(service.registerDisplay).toHaveBeenCalledWith(registerDto, 'FastyBird-Display/1.0');
+			expect(service.registerDisplay).toHaveBeenCalledWith(registerDto, 'FastyBird-Display/1.0', '127.0.0.1');
 		});
 
 		it('should throw DisplaysRegistrationException for invalid user agent', async () => {
@@ -125,7 +134,8 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			await expect(controller.register('InvalidBrowser/1.0', { data: registerDto })).rejects.toThrow(
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
+			await expect(controller.register(mockRequest, 'InvalidBrowser/1.0', { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);
 
@@ -138,7 +148,8 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			await expect(controller.register(undefined as unknown as string, { data: registerDto })).rejects.toThrow(
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
+			await expect(controller.register(mockRequest, undefined as unknown as string, { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);
 
@@ -151,7 +162,8 @@ describe('RegistrationController', () => {
 				version: '1.0.0',
 			};
 
-			await expect(controller.register('', { data: registerDto })).rejects.toThrow(DisplaysRegistrationException);
+			const mockRequest = { socket: { remoteAddress: '127.0.0.1' } } as any;
+			await expect(controller.register(mockRequest, '', { data: registerDto })).rejects.toThrow(DisplaysRegistrationException);
 
 			expect(service.registerDisplay).not.toHaveBeenCalled();
 		});
