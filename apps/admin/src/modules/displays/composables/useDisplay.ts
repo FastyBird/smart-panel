@@ -1,11 +1,13 @@
 import { computed, type Ref, ref, watch } from 'vue';
 
+import { watchDebounced } from '@vueuse/core';
+
 import type { IDisplay, IDisplayToken } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
 import type { IUseDisplay } from './types';
 import { storeToRefs } from 'pinia';
-import { injectStoresManager } from '../../../common';
+import { injectStoresManager, useLogger } from '../../../common';
 
 export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
 	const storesManager = injectStoresManager();
@@ -13,6 +15,8 @@ export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
 	const displaysStore = storesManager.getStore(displaysStoreKey);
 
 	const { tokenRefreshTriggers } = storeToRefs(displaysStore);
+
+	const logger = useLogger();
 
 	const tokens = ref<IDisplayToken[]>([]);
 
@@ -37,7 +41,12 @@ export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
 			return;
 		}
 
-		await displaysStore?.get({ id: id.value });
+		try {
+			await displaysStore?.get({ id: id.value });
+		} catch (error) {
+			logger.error('Failed to fetch display:', error);
+			// Don't throw - allow UI to continue
+		}
 	};
 
 	const fetchTokens = async (): Promise<void> => {
@@ -45,17 +54,19 @@ export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
 			return;
 		}
 
-		const result = await displaysStore?.getTokens({ id: id.value });
-		tokens.value = result ?? [];
+		try {
+			const result = await displaysStore?.getTokens({ id: id.value });
+			tokens.value = result ?? [];
+		} catch (error) {
+			logger.error('Failed to fetch display tokens:', error);
+			// Don't throw - allow UI to continue, but clear tokens on error
+			tokens.value = [];
+		}
 	};
 
 	// Watch for token refresh triggers from socket events
 	const tokenRefreshTrigger = computed((): number => {
 		if (id.value === null || !displaysStore) {
-			return 0;
-		}
-		// Access tokenRefreshTriggers from store state
-		if (!tokenRefreshTriggers) {
 			return 0;
 		}
 		const triggers = tokenRefreshTriggers.value;
@@ -65,13 +76,20 @@ export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
 		return triggers[id.value] ?? 0;
 	});
 
-	watch(
+	// Debounce token refresh to prevent race conditions from rapid socket events
+	watchDebounced(
 		tokenRefreshTrigger,
 		async (): Promise<void> => {
 			if (id.value !== null) {
-				await fetchTokens();
+				try {
+					await fetchTokens();
+				} catch (error) {
+					logger.error('Failed to refresh tokens:', error);
+					// Error already handled in fetchTokens, just log here
+				}
 			}
-		}
+		},
+		{ debounce: 300 } // 300ms debounce to prevent rapid successive calls
 	);
 
 	const revokeToken = async (): Promise<boolean> => {
@@ -92,7 +110,12 @@ export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
 		(): IDisplay['id'] | null => id.value,
 		async (currentId: IDisplay['id'] | null): Promise<void> => {
 			if (currentId !== null && displaysStore?.findById(currentId) === null) {
-				await fetchDisplay();
+				try {
+					await fetchDisplay();
+				} catch (error) {
+					logger.error('Failed to fetch display on id change:', error);
+					// Error already handled in fetchDisplay, just log here
+				}
 			}
 		},
 		{ immediate: true }

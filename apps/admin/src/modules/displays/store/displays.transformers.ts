@@ -1,10 +1,9 @@
 import { DisplaysValidationException } from '../displays.exceptions';
 
 import { DisplayCreateReqSchema, DisplaySchema, DisplayUpdateReqSchema } from './displays.store.schemas';
-import type { IDisplay, IDisplayCreateReq, IDisplayUpdateReq, IDisplaysAddActionPayload, IDisplaysEditActionPayload } from './displays.store.types';
+import type { IDisplay, IDisplayCreateReq, IDisplayRes, IDisplayUpdateReq, IDisplaysAddActionPayload, IDisplaysEditActionPayload } from './displays.store.types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const transformDisplayResponse = (response: any): IDisplay => {
+export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 	const parsedDisplay = DisplaySchema.safeParse({
 		id: response.id,
 		macAddress: response.mac_address,
@@ -61,7 +60,7 @@ export const transformDisplayCreateRequest = (display: IDisplaysAddActionPayload
 };
 
 export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayload['data']): IDisplayUpdateReq => {
-	const parsedRequest = DisplayUpdateReqSchema.safeParse({
+	const baseData: Record<string, unknown> = {
 		name: display.name,
 		unit_size: display.unitSize,
 		rows: display.rows,
@@ -70,12 +69,23 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 		brightness: display.brightness,
 		screen_lock_duration: display.screenLockDuration,
 		screen_saver: display.screenSaver,
-		// Audio settings
-		speaker: display.speaker,
-		speaker_volume: display.speakerVolume,
-		microphone: display.microphone,
-		microphone_volume: display.microphoneVolume,
-	});
+	};
+
+	// Only include audio settings if they are defined (i.e., display supports audio)
+	if (display.speaker !== undefined) {
+		baseData.speaker = display.speaker;
+	}
+	if (display.speakerVolume !== undefined) {
+		baseData.speaker_volume = display.speakerVolume;
+	}
+	if (display.microphone !== undefined) {
+		baseData.microphone = display.microphone;
+	}
+	if (display.microphoneVolume !== undefined) {
+		baseData.microphone_volume = display.microphoneVolume;
+	}
+
+	const parsedRequest = DisplayUpdateReqSchema.safeParse(baseData);
 
 	if (!parsedRequest.success) {
 		throw new DisplaysValidationException('Failed to validate update display request.');

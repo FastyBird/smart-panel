@@ -100,7 +100,12 @@ export class DisplaysService {
 
 		// Explicitly clean up page-display relations in the join table
 		// TypeORM should handle this automatically, but we do it explicitly to be safe
-		await this.dataSource.query('DELETE FROM dashboard_module_pages_displays WHERE displayId = ?', [id]);
+		await this.dataSource
+			.createQueryBuilder()
+			.delete()
+			.from('dashboard_module_pages_displays')
+			.where('displayId = :id', { id })
+			.execute();
 
 		await this.repository.remove(display);
 

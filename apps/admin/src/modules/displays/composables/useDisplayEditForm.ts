@@ -1,4 +1,4 @@
-import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
+import { onBeforeUnmount, type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
@@ -28,7 +28,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
-	let timer: number;
+	let timer: number | undefined = undefined;
 
 	const model = reactive<IDisplayEditForm>({
 		id: display.id,
@@ -59,9 +59,13 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		const errorMessage =
 			messages && messages.error ? messages.error : t('displaysModule.messages.notEdited', { display: display.name || display.macAddress });
 
-		formEl.value!.clearValidate();
+		if (!formEl.value) {
+			throw new DisplaysValidationException('Form element is not available');
+		}
 
-		const valid = await formEl.value!.validate();
+		formEl.value.clearValidate();
+
+		const valid = await formEl.value.validate();
 
 		if (!valid) throw new DisplaysValidationException('Form not valid');
 
@@ -137,13 +141,20 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 	};
 
 	const clear = (): void => {
-		window.clearTimeout(timer);
+		if (timer !== undefined) {
+			window.clearTimeout(timer);
+			timer = undefined;
+		}
 
 		formResult.value = FormResult.NONE;
 	};
 
 	watch(model, (): void => {
 		formChanged.value = !isEqual(toRaw(model), initialModel);
+	});
+
+	onBeforeUnmount(() => {
+		clear();
 	});
 
 	return {

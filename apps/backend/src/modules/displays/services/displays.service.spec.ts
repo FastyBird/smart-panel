@@ -88,8 +88,16 @@ describe('DisplaysService', () => {
 			remove: jest.fn(),
 		});
 
+		const mockQueryBuilder = {
+			delete: jest.fn().mockReturnThis(),
+			from: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			execute: jest.fn().mockResolvedValue({ affected: 1 }),
+		};
+
 		const mockDataSource = {
 			query: jest.fn().mockResolvedValue([]),
+			createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -249,16 +257,24 @@ describe('DisplaysService', () => {
 	describe('remove', () => {
 		it('should remove a display', async () => {
 			const mockDataSource = service['dataSource'];
+			const mockQueryBuilder = {
+				delete: jest.fn().mockReturnThis(),
+				from: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				execute: jest.fn().mockResolvedValue({ affected: 1 }),
+			} as any;
+
 			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
 			jest.spyOn(repository, 'remove').mockResolvedValue(undefined);
-			jest.spyOn(mockDataSource, 'query').mockResolvedValue([]);
+			jest.spyOn(mockDataSource, 'createQueryBuilder').mockReturnValue(mockQueryBuilder);
 
 			await service.remove(mockDisplay.id);
 
-			expect(mockDataSource.query).toHaveBeenCalledWith(
-				'DELETE FROM dashboard_module_pages_displays WHERE displayId = ?',
-				[mockDisplay.id],
-			);
+			expect(mockDataSource.createQueryBuilder).toHaveBeenCalled();
+			expect(mockQueryBuilder.delete).toHaveBeenCalled();
+			expect(mockQueryBuilder.from).toHaveBeenCalledWith('dashboard_module_pages_displays');
+			expect(mockQueryBuilder.where).toHaveBeenCalledWith('displayId = :id', { id: mockDisplay.id });
+			expect(mockQueryBuilder.execute).toHaveBeenCalled();
 			expect(repository.remove).toHaveBeenCalledWith(toInstance(DisplayEntity, mockDisplay));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DISPLAY_DELETED, { id: mockDisplay.id });
 		});
