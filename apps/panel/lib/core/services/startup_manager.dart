@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/api/models/displays_module_register_displa
 import 'package:fastybird_smart_panel/api/models/displays_module_req_register_display.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
+import 'package:fastybird_smart_panel/core/interceptors/token_refresh_interceptor.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -368,6 +369,13 @@ class StartupManagerService {
       getCurrentToken: () => _apiSecret,
     );
 
+    // Add token refresh interceptor to Dio instance
+    // This must be done after the displays module is created and callbacks are set
+    final displayRepository = displaysModuleService.displayRepository;
+    _apiIoService.interceptors.add(
+      TokenRefreshInterceptor(displayRepository),
+    );
+
     var systemModuleService = SystemModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
@@ -451,16 +459,37 @@ class StartupManagerService {
         return;
       }
 
-      // Token invalid or display not found - need to re-register
+      // Token invalid, expired, or display not found - need to re-register
       if (kDebugMode) {
-        debugPrint('[INITIALIZE] Stored token invalid, re-registering display');
+        debugPrint(
+          '[INITIALIZE] Stored token invalid, expired, or display not found - re-registering display',
+        );
       }
 
-      // Clear the invalid token
+      // Clear the invalid token (only the token, not backend URL or other state)
       await _clearStoredApiSecret();
+
+      // Clear the display model to ensure no stale data remains
+      // The display model will be set fresh from the registration response
+      try {
+        final displaysModule = locator.get<DisplaysModuleService>();
+        displaysModule.displayRepository.setDisplay(null);
+        if (kDebugMode) {
+          debugPrint('[INITIALIZE] Cleared display model before re-registration');
+        }
+      } catch (e) {
+        // Module might not be registered yet, which is fine
+        // The new registration will set the display model fresh anyway
+        if (kDebugMode) {
+          debugPrint(
+            '[INITIALIZE] Could not clear display model (module not registered yet): $e',
+          );
+        }
+      }
     }
 
-    // No valid token - register the display
+    // No valid token (lost, corrupted, or invalid) - register the display
+    // This will check permit join status and throw InitializationException if closed
     await _registerDisplay();
   }
 
@@ -487,13 +516,17 @@ class StartupManagerService {
 
         case FetchDisplayResult.authenticationFailed:
           if (kDebugMode) {
-            debugPrint('[TRY STORED TOKEN] Authentication failed - token invalid or revoked');
+            debugPrint(
+              '[TRY STORED TOKEN] Authentication failed - token invalid, revoked, or deleted',
+            );
           }
           return false;
 
         case FetchDisplayResult.notFound:
           if (kDebugMode) {
-            debugPrint('[TRY STORED TOKEN] Display not found');
+            debugPrint(
+              '[TRY STORED TOKEN] Display not found - display may have been deleted',
+            );
           }
           return false;
 
@@ -832,4 +865,38 @@ class StartupManagerService {
       await _securedStorageFallback.delete(key: _backendUrlKey);
     }
   }
+
+  /// Reset the app to discovery state
+  /// This clears the token and backend URL, disconnects sockets, and triggers discovery
+  Future<void> resetToDiscovery() async {
+    if (kDebugMode) {
+      debugPrint('[STARTUP MANAGER] Resetting to discovery state');
+    }
+
+    // Clear token
+    await _clearStoredApiSecret();
+
+    // Clear backend URL to force rediscovery
+    await _clearStoredBackendUrl();
+
+    // Disconnect sockets
+    _socketClient.dispose();
+
+    // Clear display model if module is registered
+    try {
+      final displaysModule = locator.get<DisplaysModuleService>();
+      displaysModule.displayRepository.setDisplay(null);
+    } catch (e) {
+      // Module might not be registered, which is fine
+      if (kDebugMode) {
+        debugPrint('[STARTUP MANAGER] Could not clear display model: $e');
+      }
+    }
+
+    // Emit event to trigger app state change to discovery
+    _eventBus.fire(ResetToDiscoveryEvent());
+  }
 }
+
+/// Event fired when app should reset to discovery state
+class ResetToDiscoveryEvent {}

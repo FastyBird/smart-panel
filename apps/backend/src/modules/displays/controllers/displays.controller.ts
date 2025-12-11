@@ -14,6 +14,7 @@ import {
 	Req,
 } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
@@ -27,7 +28,7 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
-import { DISPLAYS_MODULE_API_TAG_NAME, DeploymentMode } from '../displays.constants';
+import { DISPLAYS_MODULE_API_TAG_NAME, DeploymentMode, EventType } from '../displays.constants';
 import { ReqUpdateDisplayDto } from '../dto/update-display.dto';
 import {
 	DisplayResponseModel,
@@ -54,6 +55,7 @@ export class DisplaysController {
 		private readonly tokensService: TokensService,
 		private readonly registrationService: RegistrationService,
 		private readonly permitJoinService: PermitJoinService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	@Get('me')
@@ -274,12 +276,15 @@ export class DisplaysController {
 		this.logger.debug(`[REVOKE TOKEN] Revoking tokens for display with id=${id}`);
 
 		// Verify display exists
-		await this.displaysService.getOneOrThrow(id);
+		const display = await this.displaysService.getOneOrThrow(id);
 
 		// Revoke all tokens for this display
 		await this.tokensService.revokeByOwnerId(id, TokenOwnerType.DISPLAY);
 
 		this.logger.debug(`[REVOKE TOKEN] Successfully revoked tokens for display with id=${id}`);
+
+		// Emit token revoked event for socket notification
+		this.eventEmitter.emit(EventType.DISPLAY_TOKEN_REVOKED, { id: display.id });
 	}
 
 	@Post('permit-join')

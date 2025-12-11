@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/app/body.dart';
 import 'package:fastybird_smart_panel/app/app/error.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
@@ -7,6 +10,7 @@ import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/backend_discovery.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:flutter/foundation.dart';
 import 'package:fastybird_smart_panel/modules/config/export.dart'
     as config_module;
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
@@ -54,6 +58,8 @@ class _MyAppState extends State<MyApp> {
   late ValueNotifier<AppState> _appState;
   String? _errorMessage;
 
+  StreamSubscription<ResetToDiscoveryEvent>? _resetEventSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -80,7 +86,22 @@ class _MyAppState extends State<MyApp> {
 
     locator.registerSingleton(_startupManager);
 
+    // Listen for reset to discovery events
+    final eventBus = locator.get<EventBus>();
+    _resetEventSubscription = eventBus.on<ResetToDiscoveryEvent>().listen((_) {
+      _resetToDiscovery();
+    });
+
     _initializeApp();
+  }
+
+
+  Future<void> _resetToDiscovery() async {
+    if (kDebugMode) {
+      debugPrint('[APP] Resetting to discovery state');
+    }
+
+    _appState.value = AppState.discovery;
   }
 
   Future<void> _initializeApp() async {
@@ -221,6 +242,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    _resetEventSubscription?.cancel();
     _appState.dispose();
     super.dispose();
   }
@@ -241,7 +263,10 @@ class _MyAppState extends State<MyApp> {
             return _buildDiscoveryApp(isRetry: true);
 
           case AppState.error:
-            return AppError(onRestart: _restartApp);
+            return AppError(
+              onRestart: _restartApp,
+              errorMessage: _errorMessage,
+            );
 
           case AppState.ready:
             return _buildMainApp();

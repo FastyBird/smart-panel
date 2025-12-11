@@ -37,6 +37,12 @@ class DisplayRepository extends ChangeNotifier {
   TokenPersistCallback? _tokenPersistCallback;
   GetCurrentTokenCallback? _getCurrentTokenCallback;
 
+  // Expose for interceptor access
+  Dio get dio => _dio;
+
+  /// Get the current token using the callback (for interceptor use)
+  String? getCurrentToken() => _getCurrentTokenCallback?.call();
+
   DisplayModel? _display;
   bool _isLoading = false;
   bool _isRefreshingToken = false;
@@ -92,7 +98,8 @@ class DisplayRepository extends ChangeNotifier {
   double get unitSize => _display?.unitSize ?? 120.0;
 
   /// Set display data from registration response
-  void setDisplay(DisplayModel display) {
+  /// Pass null to clear the display model
+  void setDisplay(DisplayModel? display) {
     _display = display;
     notifyListeners();
   }
@@ -348,7 +355,7 @@ class DisplayRepository extends ChangeNotifier {
 
         if (kDebugMode) {
           debugPrint(
-            '[DISPLAYS MODULE] Token refresh failed, returning authentication failed',
+            '[DISPLAYS MODULE] Token refresh failed - token may have been revoked or deleted',
           );
         }
       }
@@ -357,10 +364,12 @@ class DisplayRepository extends ChangeNotifier {
       notifyListeners();
 
       if (statusCode == 401 || statusCode == 403) {
+        // 401/403: Token invalid, revoked, or deleted
         return FetchDisplayResult.authenticationFailed;
       }
 
       if (statusCode == 404) {
+        // 404: Display not found - display may have been deleted
         return FetchDisplayResult.notFound;
       }
 

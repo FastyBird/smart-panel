@@ -11,6 +11,7 @@ export enum EventType {
 	DISPLAY_UPDATED = 'DisplaysModule.Display.Updated',
 	DISPLAY_DELETED = 'DisplaysModule.Display.Deleted',
 	DISPLAY_RESET = 'DisplaysModule.Display.Reset',
+	DISPLAY_TOKEN_REVOKED = 'DisplaysModule.Display.TokenRevoked',
 }
 
 export const ALLOWED_USER_AGENTS = ['FastyBird Smart Panel', 'FastyBird-Display'];

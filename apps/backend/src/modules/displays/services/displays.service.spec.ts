@@ -5,7 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -88,10 +88,15 @@ describe('DisplaysService', () => {
 			remove: jest.fn(),
 		});
 
+		const mockDataSource = {
+			query: jest.fn().mockResolvedValue([]),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DisplaysService,
 				{ provide: getRepositoryToken(DisplayEntity), useFactory: mockRepository },
+				{ provide: DataSource, useValue: mockDataSource },
 				{
 					provide: EventEmitter2,
 					useValue: {
@@ -243,11 +248,17 @@ describe('DisplaysService', () => {
 
 	describe('remove', () => {
 		it('should remove a display', async () => {
+			const mockDataSource = service['dataSource'];
 			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
 			jest.spyOn(repository, 'remove').mockResolvedValue(undefined);
+			jest.spyOn(mockDataSource, 'query').mockResolvedValue([]);
 
 			await service.remove(mockDisplay.id);
 
+			expect(mockDataSource.query).toHaveBeenCalledWith(
+				'DELETE FROM dashboard_module_pages_displays WHERE displayId = ?',
+				[mockDisplay.id],
+			);
 			expect(repository.remove).toHaveBeenCalledWith(toInstance(DisplayEntity, mockDisplay));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DISPLAY_DELETED, { id: mockDisplay.id });
 		});

@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/modules/displays/constants.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -60,11 +61,8 @@ class DisplaysModuleService {
         profileUnitSize: _displayRepository.unitSize,
       );
 
-      // Register socket event handler
-      _socketService.registerEventHandler(
-        DisplaysModuleConstants.displayUpdatedEvent,
-        _socketEventHandler,
-      );
+      // Register socket event handlers
+      _registerSocketEventHandlers();
 
       if (kDebugMode) {
         debugPrint(
@@ -95,10 +93,7 @@ class DisplaysModuleService {
 
     _isLoading = false;
 
-    _socketService.registerEventHandler(
-      DisplaysModuleConstants.displayUpdatedEvent,
-      _socketEventHandler,
-    );
+    _registerSocketEventHandlers();
 
     if (kDebugMode) {
       debugPrint(
@@ -121,10 +116,7 @@ class DisplaysModuleService {
 
     _isLoading = false;
 
-    _socketService.registerEventHandler(
-      DisplaysModuleConstants.displayUpdatedEvent,
-      _socketEventHandler,
-    );
+    _registerSocketEventHandlers();
 
     if (kDebugMode) {
       debugPrint(
@@ -138,9 +130,36 @@ class DisplaysModuleService {
   DisplayRepository get displayRepository => _displayRepository;
 
   void dispose() {
+    _unregisterSocketEventHandlers();
+  }
+
+  void _registerSocketEventHandlers() {
+    _socketService.registerEventHandler(
+      DisplaysModuleConstants.displayUpdatedEvent,
+      _socketEventHandler,
+    );
+    _socketService.registerEventHandler(
+      DisplaysModuleConstants.displayDeletedEvent,
+      _socketDisplayDeletedHandler,
+    );
+    _socketService.registerEventHandler(
+      DisplaysModuleConstants.displayTokenRevokedEvent,
+      _socketTokenRevokedHandler,
+    );
+  }
+
+  void _unregisterSocketEventHandlers() {
     _socketService.unregisterEventHandler(
       DisplaysModuleConstants.displayUpdatedEvent,
       _socketEventHandler,
+    );
+    _socketService.unregisterEventHandler(
+      DisplaysModuleConstants.displayDeletedEvent,
+      _socketDisplayDeletedHandler,
+    );
+    _socketService.unregisterEventHandler(
+      DisplaysModuleConstants.displayTokenRevokedEvent,
+      _socketTokenRevokedHandler,
     );
   }
 
@@ -207,6 +226,74 @@ class DisplaysModuleService {
           );
         }
       }
+    }
+  }
+
+  void _socketDisplayDeletedHandler(String event, Map<String, dynamic> payload) {
+    if (kDebugMode) {
+      debugPrint('[DISPLAYS MODULE] Display deleted event received via socket');
+    }
+
+    // Check if this deletion is for the current display
+    final currentDisplay = _displayRepository.display;
+    final deletedDisplayId = payload['id'] as String?;
+
+    if (currentDisplay != null && deletedDisplayId == currentDisplay.id) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Current display was deleted, resetting to discovery state',
+        );
+      }
+
+      // Clear display model
+      _displayRepository.setDisplay(null);
+
+      // Disconnect from sockets
+      _socketService.dispose();
+
+      // Trigger app reset to discovery state
+      // This will be handled by the startup manager
+      final startupManager = locator.get<StartupManagerService>();
+      startupManager.resetToDiscovery();
+    }
+  }
+
+  void _socketTokenRevokedHandler(String event, Map<String, dynamic> payload) {
+    if (kDebugMode) {
+      debugPrint('[DISPLAYS MODULE] Token revoked event received via socket');
+    }
+
+    // Check if this revocation is for the current display
+    final currentDisplay = _displayRepository.display;
+    final revokedDisplayId = payload['id'] as String?;
+
+    if (currentDisplay != null && revokedDisplayId == currentDisplay.id) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE] Current display token was revoked, attempting refresh',
+        );
+      }
+
+      // Attempt to refresh the token
+      _displayRepository.refreshToken().then((result) {
+        if (result == TokenRefreshResult.failed) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DISPLAYS MODULE] Token refresh failed after revocation, resetting to discovery state',
+            );
+          }
+
+          // Clear display model
+          _displayRepository.setDisplay(null);
+
+          // Disconnect from sockets
+          _socketService.dispose();
+
+          // Trigger app reset to discovery state
+          final startupManager = locator.get<StartupManagerService>();
+          startupManager.resetToDiscovery();
+        }
+      });
     }
   }
 }

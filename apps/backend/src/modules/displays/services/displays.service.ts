@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -20,6 +20,7 @@ export class DisplaysService {
 	constructor(
 		@InjectRepository(DisplayEntity)
 		private readonly repository: Repository<DisplayEntity>,
+		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -96,6 +97,10 @@ export class DisplaysService {
 		this.logger.debug(`[DELETE] Removing display with id=${id}`);
 
 		const display = await this.getOneOrThrow(id);
+
+		// Explicitly clean up page-display relations in the join table
+		// TypeORM should handle this automatically, but we do it explicitly to be safe
+		await this.dataSource.query('DELETE FROM dashboard_module_pages_displays WHERE displayId = ?', [id]);
 
 		await this.repository.remove(display);
 

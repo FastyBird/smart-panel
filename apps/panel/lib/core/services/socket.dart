@@ -136,12 +136,41 @@ class SocketCommandResponseModel {
 }
 
 class SocketService {
-  late io.Socket _socket;
+  io.Socket? _socket;
+  String? _currentApiSecret;
+  String? _currentBackendUrl;
 
   final Map<String, List<void Function(String, Map<String, dynamic>)>>
       _eventCallbacks = {};
 
   void initialize(String apiSecret, String backendUrl) {
+    // If already initialized with the same token and URL, skip reinitialization
+    if (_socket != null &&
+        _currentApiSecret == apiSecret &&
+        _currentBackendUrl == backendUrl &&
+        _socket!.connected) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SOCKETS] Socket already initialized and connected with same credentials, skipping',
+        );
+      }
+      return;
+    }
+
+    // Disconnect existing socket if it exists
+    if (_socket != null) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Disconnecting existing socket before reinitializing');
+      }
+      _socket!.disconnect();
+      _socket!.dispose();
+      _socket = null;
+    }
+
+    // Store current credentials
+    _currentApiSecret = apiSecret;
+    _currentBackendUrl = backendUrl;
+
     // Parse the backend URL to extract host and port
     // backendUrl format: http://host:port/api/v1 or https://host:port/api/v1
     final uri = Uri.parse(backendUrl);
@@ -163,13 +192,13 @@ class SocketService {
           .build(),
     );
 
-    _socket.onConnect((_) {
+    _socket!.onConnect((_) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Connected to Socket.IO backend');
       }
     });
 
-    _socket.onDisconnect((_) {
+    _socket!.onDisconnect((_) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Disconnected from Socket.IO backend');
       }
@@ -177,7 +206,7 @@ class SocketService {
       _attemptReconnect();
     });
 
-    _socket.on(
+    _socket!.on(
       'event',
       (data) {
         try {
@@ -203,17 +232,32 @@ class SocketService {
       },
     );
 
-    _socket.connect();
+    _socket!.connect();
   }
 
   Future<void> sendCommand(String event, dynamic data, String handler,
       {Function(SocketCommandResponseModel?)? onAck}) async {
+    if (_socket == null || !_socket!.connected) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Cannot send command: socket not connected');
+      }
+      if (onAck != null) {
+        onAck(
+          SocketCommandResponseModel(
+            status: false,
+            message: 'Socket not connected',
+          ),
+        );
+      }
+      return;
+    }
+
     Map<String, dynamic> payload = {
       'event': event,
       'payload': data,
     };
 
-    await _socket.emitWithAckAsync(
+    await _socket!.emitWithAckAsync(
       'command',
       payload,
       ack: (dynamic response) {
@@ -296,7 +340,13 @@ class SocketService {
   }
 
   void dispose() {
-    _socket.dispose();
+    if (_socket != null) {
+      _socket!.disconnect();
+      _socket!.dispose();
+      _socket = null;
+    }
+    _currentApiSecret = null;
+    _currentBackendUrl = null;
   }
 
   void _dispatchEvent(SocketEventModel event) {
@@ -327,10 +377,21 @@ class SocketService {
   }
 
   void _attemptReconnect({int delayInSeconds = 2, int? maxAttempts}) {
+    if (_socket == null || _currentApiSecret == null || _currentBackendUrl == null) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Cannot reconnect: socket not initialized');
+      }
+      return;
+    }
+
     int attempt = 0;
 
     void reconnect() {
-      if (_socket.connected) {
+      if (_socket == null) {
+        return;
+      }
+
+      if (_socket!.connected) {
         if (kDebugMode) {
           debugPrint('[SOCKETS] Successfully reconnected to Socket.IO backend');
         }
@@ -349,15 +410,19 @@ class SocketService {
       attempt++;
 
       Future.delayed(Duration(seconds: delayInSeconds), () {
+        if (_socket == null) {
+          return;
+        }
+
         if (kDebugMode) {
           debugPrint(
             '[SOCKETS] Reconnection attempt $attempt/${maxAttempts ?? '-'} to Socket.IO backend...',
           );
         }
 
-        _socket.connect();
+        _socket!.connect();
 
-        if (!_socket.connected) {
+        if (!_socket!.connected) {
           reconnect();
         }
       });
