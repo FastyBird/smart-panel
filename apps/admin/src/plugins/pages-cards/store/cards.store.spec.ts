@@ -72,12 +72,17 @@ vi.mock('../../../common', async () => {
 	};
 });
 
-vi.mock('../../../modules/config', () => ({
-	useConfigPlugins: () => ({
-		enabled: () => true,
-		loaded: ref(true),
-	}),
-}));
+vi.mock('../../../modules/config', async () => {
+	const actual = await vi.importActual('../../../modules/config');
+
+	return {
+		...actual,
+		useConfigPlugins: () => ({
+			enabled: () => true,
+			loaded: ref(true),
+		}),
+	};
+});
 
 describe('Cards Store', () => {
 	let store: ReturnType<typeof useCards>;
