@@ -14,9 +14,14 @@ import {
 	type ModuleInjectionKey,
 } from '../../common';
 
+import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
+
+import { DisplaysConfigForm } from './components/components';
 import { DISPLAYS_MODULE_EVENT_PREFIX, DISPLAYS_MODULE_NAME, EventType } from './displays.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
+import { DisplaysConfigEditFormSchema } from './schemas/config.schemas';
+import { DisplaysConfigSchema, DisplaysConfigUpdateReqSchema } from './store/config.store.schemas';
 import { registerDisplaysStore } from './store/displays.store';
 import { displaysStoreKey } from './store/keys';
 
@@ -41,11 +46,36 @@ export default {
 		app.provide(displaysStoreKey, displaysStore);
 		storesManager.addStore(displaysStoreKey, displaysStore);
 
+		// Register main displays module
 		modulesManager.addModule(displaysAdminModuleKey, {
 			type: DISPLAYS_MODULE_NAME,
 			name: 'Displays',
 			description: 'Manage your display devices and their access tokens.',
 			elements: [],
+		});
+
+		// Register displays config module (backend uses 'displays' as type, not 'displays-module')
+		const displaysConfigModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Displays-Config');
+		modulesManager.addModule(displaysConfigModuleKey, {
+			type: 'displays',
+			name: 'Displays Configuration',
+			description: 'Configure display registration and permit join settings.',
+			elements: [
+				{
+					type: CONFIG_MODULE_MODULE_TYPE,
+					components: {
+						moduleConfigEditForm: DisplaysConfigForm,
+					},
+					schemas: {
+						moduleConfigSchema: DisplaysConfigSchema,
+						moduleConfigEditFormSchema: DisplaysConfigEditFormSchema,
+						moduleConfigUpdateReqSchema: DisplaysConfigUpdateReqSchema,
+					},
+					modules: [CONFIG_MODULE_NAME],
+				},
+			],
+			modules: [CONFIG_MODULE_NAME],
+			isCore: true,
 		});
 
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);

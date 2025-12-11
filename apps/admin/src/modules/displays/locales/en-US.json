@@ -59,10 +59,30 @@
 		"darkMode": {
 			"title": "Dark mode"
 		},
+		"config": {
+			"deploymentMode": {
+				"title": "Deployment Mode",
+				"description": "Deployment mode for display registration",
+				"placeholder": "Select deployment mode",
+				"validation": {
+					"required": "Deployment mode is required"
+				}
+			},
+			"permitJoinDurationMs": {
+				"title": "Permit Join Duration",
+				"description": "Duration in milliseconds that permit join remains active",
+				"placeholder": "120000",
+				"unit": "ms",
+				"validation": {
+					"required": "Permit join duration is required",
+					"min": "Permit join duration must be at least 1000ms"
+				}
+			}
+		},
 		"displays": {
 			"id": {
-				"title": "ID",
-				"placeholder": "Display ID"
+				"title": "Internal identifier",
+				"placeholder": "Display id"
 			},
 			"name": {
 				"title": "Name",
@@ -281,7 +301,11 @@
 		"permitJoinActivated": "Permit join activated successfully",
 		"permitJoinDeactivated": "Permit join deactivated successfully",
 		"permitJoinError": "Failed to activate permit join",
-		"permitJoinDeactivateError": "Failed to deactivate permit join"
+		"permitJoinDeactivateError": "Failed to deactivate permit join",
+		"config": {
+			"edited": "Displays configuration has been successfully updated",
+			"notEdited": "Failed to update displays configuration"
+		}
 	},
 	"actions": {
 		"refresh": "Refresh",
