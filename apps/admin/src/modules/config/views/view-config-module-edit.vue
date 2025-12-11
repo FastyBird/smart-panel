@@ -222,7 +222,7 @@ const isLoading = computed(() => configModuleComposable.value.isLoading.value);
 const fetchConfigModule = (): Promise<void> => {
 	return configModuleComposable.value.fetchConfigModule();
 };
-const element = computed(() => moduleComposable.value.element);
+const element = computed(() => moduleComposable.value.element.value);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {

@@ -213,7 +213,7 @@ const isLoading = computed(() => configPluginComposable.value.isLoading.value);
 const fetchConfigPlugin = (): Promise<void> => {
 	return configPluginComposable.value.fetchConfigPlugin();
 };
-const element = computed(() => pluginComposable.value.element);
+const element = computed(() => pluginComposable.value.element.value);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
