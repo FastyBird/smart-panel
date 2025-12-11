@@ -13,8 +13,8 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';

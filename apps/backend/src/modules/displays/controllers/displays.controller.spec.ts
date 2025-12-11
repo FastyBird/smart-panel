@@ -8,6 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -117,6 +118,12 @@ describe('DisplaysController', () => {
 						getExpiresAt: jest.fn(),
 						getRemainingTime: jest.fn(),
 						getDeploymentMode: jest.fn(),
+					},
+				},
+				{
+					provide: EventEmitter2,
+					useValue: {
+						emit: jest.fn(),
 					},
 				},
 			],
