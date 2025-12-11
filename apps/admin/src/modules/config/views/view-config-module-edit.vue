@@ -50,31 +50,6 @@
 		:element-loading-text="t('configModule.texts.loadingModuleConfig')"
 		class="flex flex-col overflow-hidden h-full"
 	>
-		<view-header
-			v-if="isMDDevice"
-			:heading="moduleName"
-			:sub-heading="t('configModule.subHeadings.configModule')"
-			icon="mdi:package-variant"
-		>
-			<template #extra>
-				<div class="flex items-center">
-					<el-button
-						plain
-						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="remoteFormResult === FormResult.WORKING"
-						type="primary"
-						class="px-4! ml-2!"
-						@click="onSave"
-					>
-						<template #icon>
-							<icon icon="mdi:content-save" />
-						</template>
-						{{ t('configModule.buttons.save.title') }}
-					</el-button>
-				</div>
-			</template>
-		</view-header>
-
 		<el-scrollbar
 			v-if="configModule !== null"
 			class="grow-1 p-2 md:px-4"
@@ -161,7 +136,6 @@ import {
 	AppBreadcrumbs,
 	SUBMIT_FORM_SM,
 	useBreakpoints,
-	ViewHeader,
 } from '../../../common';
 import { ConfigModule } from '../components/components';
 import { useConfigModule } from '../composables/useConfigModule';
