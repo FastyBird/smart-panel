@@ -307,7 +307,16 @@ class StartupManagerService {
     String? apiSecret = _apiSecret;
 
     if (apiSecret != null && _currentBackendUrl != null) {
-      _socketClient.initialize(apiSecret, _currentBackendUrl!);
+      _socketClient.initialize(
+        apiSecret,
+        _currentBackendUrl!,
+        onTokenInvalid: () {
+          if (kDebugMode) {
+            debugPrint('[STARTUP MANAGER] Token invalidated via socket error, resetting to discovery');
+          }
+          resetToDiscovery();
+        },
+      );
     }
 
     return InitializationResult.success;

@@ -141,10 +141,23 @@ class SocketService {
   String? _currentBackendUrl;
   bool _shouldReconnect = true;
 
+  // Retry state for backend down scenarios
+  int _retryAttempt = 0;
+  static const int _maxRetryIntervalSeconds = 300; // 5 minutes max
+  static const int _initialRetryIntervalSeconds = 2;
+  static const int _retryBackoffMultiplier = 2;
+
+  // Callback for token invalidation
+  void Function()? _onTokenInvalid;
+
   final Map<String, List<void Function(String, Map<String, dynamic>)>>
       _eventCallbacks = {};
 
-  void initialize(String apiSecret, String backendUrl) {
+  void initialize(
+    String apiSecret,
+    String backendUrl, {
+    void Function()? onTokenInvalid,
+  }) {
     // If already initialized with the same token and URL, skip reinitialization
     if (_socket != null &&
         _currentApiSecret == apiSecret &&
@@ -170,6 +183,12 @@ class SocketService {
 
     // Enable reconnection for new initialization
     _shouldReconnect = true;
+
+    // Reset retry state on new initialization
+    _retryAttempt = 0;
+
+    // Store callback for token invalidation
+    _onTokenInvalid = onTokenInvalid;
 
     // Store current credentials
     _currentApiSecret = apiSecret;
@@ -200,6 +219,8 @@ class SocketService {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Connected to Socket.IO backend');
       }
+      // Reset retry state on successful connection
+      _retryAttempt = 0;
     });
 
     _socket!.onDisconnect((_) {
@@ -210,7 +231,8 @@ class SocketService {
       // Only attempt reconnection if reconnection is enabled
       // This prevents reconnection attempts when display is deleted
       if (_shouldReconnect) {
-        _attemptReconnect();
+        // Use exponential backoff for disconnects (backend might be down)
+        _attemptReconnectWithBackoff();
       } else {
         if (kDebugMode) {
           debugPrint('[SOCKETS] Reconnection disabled, not attempting to reconnect');
@@ -243,6 +265,22 @@ class SocketService {
         }
       },
     );
+
+    // Handle connection errors (authentication failures, etc.)
+    _socket!.onConnectError((data) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Connection error: $data');
+      }
+      _handleConnectionError(data);
+    });
+
+    // Handle general errors
+    _socket!.onError((data) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Socket error: $data');
+      }
+      _handleConnectionError(data);
+    });
 
     _socket!.connect();
   }
@@ -362,6 +400,8 @@ class SocketService {
     }
     _currentApiSecret = null;
     _currentBackendUrl = null;
+    _onTokenInvalid = null;
+    _retryAttempt = 0;
   }
 
   void _dispatchEvent(SocketEventModel event) {
@@ -389,6 +429,107 @@ class SocketService {
     RegExp regex = RegExp(pattern);
 
     return regex.hasMatch(receivedEvent);
+  }
+
+  void _handleConnectionError(dynamic error) {
+    if (_socket == null || _currentApiSecret == null || _currentBackendUrl == null) {
+      return;
+    }
+
+    // Check if this is an authentication error
+    final errorString = error.toString().toLowerCase();
+    final errorData = error is Map ? error : null;
+    final errorMessage = errorData?['message']?.toString().toLowerCase() ?? '';
+    final errorType = errorData?['type']?.toString().toLowerCase() ?? '';
+
+    // Detect authentication errors (401, 403, unauthorized, forbidden, etc.)
+    final isAuthError = errorString.contains('unauthorized') ||
+        errorString.contains('forbidden') ||
+        errorString.contains('401') ||
+        errorString.contains('403') ||
+        errorMessage.contains('unauthorized') ||
+        errorMessage.contains('forbidden') ||
+        errorMessage.contains('authentication') ||
+        errorMessage.contains('token') ||
+        errorType.contains('unauthorized') ||
+        errorType.contains('forbidden');
+
+    if (isAuthError) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Authentication error detected, token invalid. Triggering re-registration.');
+      }
+
+      // Disable reconnection attempts
+      _shouldReconnect = false;
+
+      // Trigger re-registration via callback
+      if (_onTokenInvalid != null) {
+        _onTokenInvalid!();
+      }
+
+      return;
+    }
+
+    // For non-auth errors (backend down), use dynamic retry with exponential backoff
+    if (_shouldReconnect) {
+      _attemptReconnectWithBackoff();
+    }
+  }
+
+  void _attemptReconnectWithBackoff() {
+    if (_socket == null || _currentApiSecret == null || _currentBackendUrl == null) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Cannot reconnect: socket not initialized');
+      }
+      return;
+    }
+
+    if (_socket!.connected) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Already connected, skipping reconnection');
+      }
+      return;
+    }
+
+    // Calculate dynamic retry interval with exponential backoff
+    final baseInterval = _initialRetryIntervalSeconds;
+    final backoffInterval = baseInterval * (_retryBackoffMultiplier * _retryAttempt);
+    final retryInterval = backoffInterval > _maxRetryIntervalSeconds
+        ? _maxRetryIntervalSeconds
+        : backoffInterval;
+
+    _retryAttempt++;
+
+    if (kDebugMode) {
+      debugPrint(
+        '[SOCKETS] Backend appears to be down. Retry attempt $_retryAttempt with ${retryInterval}s delay (max: ${_maxRetryIntervalSeconds}s)...',
+      );
+    }
+
+    Future.delayed(Duration(seconds: retryInterval), () {
+      if (_socket == null || !_shouldReconnect) {
+        return;
+      }
+
+      if (_socket!.connected) {
+        if (kDebugMode) {
+          debugPrint('[SOCKETS] Successfully reconnected to Socket.IO backend');
+        }
+        // Reset retry state on successful connection
+        _retryAttempt = 0;
+        return;
+      }
+
+      // Attempt to reconnect
+      _socket!.connect();
+
+      // Schedule next retry if still not connected after a short delay
+      Future.delayed(Duration(seconds: 2), () {
+        if (_socket != null && !_socket!.connected && _shouldReconnect) {
+          _attemptReconnectWithBackoff();
+        }
+      });
+    });
   }
 
   void _attemptReconnect({int delayInSeconds = 2, int? maxAttempts}) {
