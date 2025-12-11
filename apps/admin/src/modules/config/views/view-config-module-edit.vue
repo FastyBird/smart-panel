@@ -65,9 +65,18 @@
 				class="p-4"
 			>
 				<p v-if="!configModule">Loading config...</p>
-				<p v-else-if="!element">Loading module element...</p>
+				<p v-else-if="!moduleComposable.value.module.value">
+					Module "{{ moduleType }}" not found in modules list.
+				</p>
+				<p v-else-if="!element">
+					Module "{{ moduleType }}" does not have a config element (type: module) registered.
+				</p>
+				<p v-else-if="!element?.components">
+					Module "{{ moduleType }}" config element does not have components.
+				</p>
 				<p v-else-if="!element?.components?.moduleConfigEditForm">
 					Module "{{ moduleType }}" does not have a configuration form component registered.
+					Available components: {{ Object.keys(element.components || {}) }}
 				</p>
 			</div>
 		</el-scrollbar>
