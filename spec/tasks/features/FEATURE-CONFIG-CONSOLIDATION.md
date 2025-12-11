@@ -188,18 +188,29 @@ And changes are saved to the config module plugin endpoint
 - Weather service updated to use system module config for language settings
 - All backend checks passing: TypeScript, ESLint, Unit tests, E2E tests, OpenAPI generation
 
-### Phase 3: Admin - UI Refactoring
-1. Update config router to remove language, weather, and system routes
-2. Refactor `view-config-modules.vue` to show large buttons for each module (instead of collapse items)
-3. Refactor `view-config-plugins.vue` to show large buttons for each plugin (instead of collapse items)
-4. Create module configuration edit view component (drawer/page pattern) - similar to device/display edit views
-5. Create plugin configuration edit view component (drawer/page pattern) - similar to device/display edit views
-6. Update config layout (`layout-config.vue`) to show only modules and plugins tabs
-7. Update navigation logic for drawer/page view pattern (use router children routes like devices/displays)
-8. Update stores to use `/config/module/:module` endpoints instead of section-based endpoints
-9. Remove deprecated stores (config-language, config-weather, config-system) or update them to use module endpoints
-10. Update translations
-11. Update tests
+### Phase 3: Admin - UI Refactoring ✅ COMPLETED
+1. ✅ Update config router to remove language, weather, and system routes - Removed routes, added module/plugin edit routes with children
+2. ✅ Refactor `view-config-modules.vue` to show large buttons for each module - Implemented card-based grid layout with drawer/page pattern
+3. ✅ Refactor `view-config-plugins.vue` to show large buttons for each plugin - Implemented card-based grid layout with drawer/page pattern
+4. ✅ Create module configuration edit view component (drawer/page pattern) - Created `view-config-module-edit.vue`
+5. ✅ Create plugin configuration edit view component (drawer/page pattern) - Created `view-config-plugin-edit.vue`
+6. ✅ Update config layout (`layout-config.vue`) to show only modules and plugins tabs - Removed language, weather, system tabs
+7. ✅ Update navigation logic for drawer/page view pattern - Implemented drawer/page pattern similar to devices/displays
+8. ✅ Update stores to use `/config/module/:module` endpoints - Stores already using module endpoints (no changes needed)
+9. ✅ Remove deprecated stores (config-language, config-weather, config-system) - Removed store registrations, exports, and related views/components
+10. ⏳ Update translations - Pending (may need new translation keys for module/plugin edit views)
+11. ⏳ Update tests - Pending (layout-config.spec.ts updated, other tests may need updates)
+
+**Notes:**
+- Removed deprecated views: view-config-language, view-config-weather, view-config-system
+- Removed deprecated components: config-language-form, config-weather-form, config-system-form
+- Removed deprecated store registrations from config.module.ts
+- Updated config-app.store to remove language/weather/system references
+- Updated config-app.store.schemas to remove language/weather/system
+- Updated socket event handler to remove language/weather/system handling
+- Stores (config-modules, config-plugins) already use `/config/module/:module` and `/config/plugin/:plugin` endpoints
+- Drawer/page pattern implemented: drawer on large devices (isLGDevice), page view on small devices
+- Large buttons implemented as card-based grid layout (1-4 columns responsive)
 
 ### Phase 4: Panel - Module Configuration
 1. Create weather configuration repository in weather module (use `/config/module/weather-module` endpoint)
