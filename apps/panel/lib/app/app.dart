@@ -350,7 +350,7 @@ class _MyAppState extends State<MyApp> {
           value: locator<displays_module.DisplayRepository>(),
         ),
         ChangeNotifierProvider.value(
-          value: locator<config_module.LanguageConfigRepository>(),
+          value: locator<system_module.SystemConfigRepository>(),
         ),
         ChangeNotifierProvider.value(
           value: locator<weather_module.WeatherConfigRepository>(),

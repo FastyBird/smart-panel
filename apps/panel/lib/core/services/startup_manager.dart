@@ -16,8 +16,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/application.dart';
 import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
-import 'package:fastybird_smart_panel/modules/config/repositories/language.dart';
-import 'package:fastybird_smart_panel/modules/config/repositories/weather.dart';
+// LanguageConfigRepository and WeatherConfigRepository moved to their respective modules
 import 'package:fastybird_smart_panel/modules/dashboard/module.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/cards.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/data_sources.dart';
@@ -356,13 +355,9 @@ class StartupManagerService {
     } catch (_) {}
 
     // Unregister all repositories and services registered by modules
-    // Config module repositories
-    try {
-      locator.unregister<LanguageConfigRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<WeatherConfigRepository>();
-    } catch (_) {}
+    // Config module repositories (LanguageConfigRepository moved to system module)
+    // WeatherConfigRepository moved to weather module
+    // SystemConfigRepository is registered by system module
 
     // Displays module repositories
     try {
