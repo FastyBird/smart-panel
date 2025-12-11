@@ -257,23 +257,28 @@ describe('DisplaysService', () => {
 	describe('remove', () => {
 		it('should remove a display', async () => {
 			const mockDataSource = service['dataSource'];
-			const mockQueryBuilder = {
+			const mockQueryBuilder: any = {
 				delete: jest.fn().mockReturnThis(),
 				from: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				execute: jest.fn().mockResolvedValue({ affected: 1 }),
-			} as any;
+			};
 
 			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
 			jest.spyOn(repository, 'remove').mockResolvedValue(undefined);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			jest.spyOn(mockDataSource, 'createQueryBuilder').mockReturnValue(mockQueryBuilder);
 
 			await service.remove(mockDisplay.id);
 
 			expect(mockDataSource.createQueryBuilder).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(mockQueryBuilder.delete).toHaveBeenCalled();
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(mockQueryBuilder.from).toHaveBeenCalledWith('dashboard_module_pages_displays');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(mockQueryBuilder.where).toHaveBeenCalledWith('displayId = :id', { id: mockDisplay.id });
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			expect(mockQueryBuilder.execute).toHaveBeenCalled();
 			expect(repository.remove).toHaveBeenCalledWith(toInstance(DisplayEntity, mockDisplay));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DISPLAY_DELETED, { id: mockDisplay.id });

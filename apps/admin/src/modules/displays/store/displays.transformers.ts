@@ -7,7 +7,7 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 	const parsedDisplay = DisplaySchema.safeParse({
 		id: response.id,
 		macAddress: response.mac_address,
-		name: response.name ?? null,
+		name: response.name ?? null, // Handle undefined by converting to null
 		version: response.version,
 		build: response.build ?? null,
 		screenWidth: response.screen_width ?? 0,

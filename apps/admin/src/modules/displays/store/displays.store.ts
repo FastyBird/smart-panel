@@ -132,7 +132,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 				});
 
 				if (typeof responseData !== 'undefined') {
-					const display = transformDisplayResponse(responseData.data);
+					const display = transformDisplayResponse(responseData.data as IDisplayRes);
 
 					data.value[display.id] = display;
 
@@ -174,7 +174,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
 						responseData.data.map((display) => {
-							const transformedDisplay = transformDisplayResponse(display);
+							const transformedDisplay = transformDisplayResponse(display as IDisplayRes);
 
 							return [transformedDisplay.id, transformedDisplay];
 						})
@@ -250,7 +250,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 				});
 
 				if (typeof responseData !== 'undefined' && responseData.data.display.id === payload.id) {
-					const display = transformDisplayResponse(responseData.data.display);
+					const display = transformDisplayResponse(responseData.data.display as IDisplayRes);
 
 					data.value[display.id] = display;
 
@@ -323,7 +323,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 				});
 
 				if (typeof responseData !== 'undefined') {
-					const display = transformDisplayResponse(responseData.data);
+					const display = transformDisplayResponse(responseData.data as IDisplayRes);
 
 					data.value[display.id] = display;
 
@@ -378,7 +378,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 			});
 
 			if (typeof responseData !== 'undefined' && responseData.data.display.id === payload.id) {
-				const display = transformDisplayResponse(responseData.data.display);
+				const display = transformDisplayResponse(responseData.data.display as IDisplayRes);
 
 				data.value[display.id] = display;
 
