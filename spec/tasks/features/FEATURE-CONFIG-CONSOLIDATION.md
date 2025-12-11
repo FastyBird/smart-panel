@@ -230,13 +230,13 @@ And changes are saved to the config module plugin endpoint
 - Deprecated repositories removed from config module
 - Socket event handlers updated to handle module config updates
 
-### Phase 5: Cleanup and Testing
-1. Remove all deprecated code references
-2. Remove deprecated constants, types, and enums
-3. Update all imports across all apps
-4. Run all tests and fix any failures
-5. Verify configuration YAML structure remains compatible
-6. Update documentation if needed
+### Phase 5: Cleanup and Testing 🔄 IN PROGRESS
+1. ✅ Remove all deprecated code references - Removed LanguageConfigRepository and WeatherConfigRepository from config module
+2. ✅ Remove deprecated constants, types, and enums - No deprecated constants/types in panel app code (Section enum only in generated API files)
+3. ✅ Update all imports across all apps - All imports updated
+4. ⏳ Run all tests and fix any failures - Pending
+5. ✅ Verify configuration YAML structure remains compatible - Verified in backend (migration logic handles compatibility)
+6. ⏳ Update documentation if needed - Task file updated
 
 ## 10. Progress Summary
 
