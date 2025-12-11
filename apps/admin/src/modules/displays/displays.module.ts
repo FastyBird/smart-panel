@@ -102,10 +102,21 @@ export default {
 						id: data.payload.id,
 						data: data.payload,
 					});
+					// Refresh tokens when display is created/updated (token may have been created)
+					displaysStore.refreshTokensForDisplay({
+						id: data.payload.id,
+					});
 					break;
 
 				case EventType.DISPLAY_DELETED:
 					displaysStore.unset({
+						id: data.payload.id,
+					});
+					break;
+
+				case EventType.DISPLAY_TOKEN_REVOKED:
+					// Refresh tokens when token is revoked
+					displaysStore.refreshTokensForDisplay({
 						id: data.payload.id,
 					});
 					break;

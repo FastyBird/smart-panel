@@ -1,12 +1,15 @@
-import { computed, inject, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
+import { injectStoresManager } from '../../../common';
 import type { IDisplay } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
 import type { IUseDisplays } from './types';
 
 export const useDisplays = (): IUseDisplays => {
-	const displaysStore = inject(displaysStoreKey);
+	const storesManager = injectStoresManager();
+
+	const displaysStore = storesManager.getStore(displaysStoreKey);
 
 	const isLoaded = ref<boolean>(false);
 

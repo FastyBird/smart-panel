@@ -286,7 +286,8 @@ watch(
 		}
 
 		if (!isLoading.value && val === null) {
-			throw new DisplaysException('Display not found');
+			// Display was deleted, redirect to list
+			router.push({ name: RouteNames.DISPLAYS });
 		}
 	},
 	{ immediate: true },

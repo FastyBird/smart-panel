@@ -59,6 +59,7 @@ export interface IDisplaysStoreState {
 	data: Ref<{ [key: IDisplay['id']]: IDisplay }>;
 	semaphore: Ref<IDisplaysStateSemaphore>;
 	firstLoad: Ref<boolean>;
+	tokenRefreshTriggers: Ref<{ [key: IDisplay['id']]: number }>;
 }
 
 export interface IDisplaysStoreActions {
@@ -80,6 +81,7 @@ export interface IDisplaysStoreActions {
 	remove: (payload: IDisplaysRemoveActionPayload) => Promise<boolean>;
 	getTokens: (payload: IDisplaysGetActionPayload) => Promise<IDisplayToken[]>;
 	revokeToken: (payload: IDisplaysRevokeTokenActionPayload) => Promise<boolean>;
+	refreshTokensForDisplay: (payload: IDisplaysGetActionPayload) => void;
 }
 
 export type DisplaysStoreSetup = IDisplaysStoreState & IDisplaysStoreActions;

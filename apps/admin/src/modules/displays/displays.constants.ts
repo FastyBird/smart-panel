@@ -8,6 +8,7 @@ export enum EventType {
 	DISPLAY_CREATED = 'DisplaysModule.Display.Created',
 	DISPLAY_UPDATED = 'DisplaysModule.Display.Updated',
 	DISPLAY_DELETED = 'DisplaysModule.Display.Deleted',
+	DISPLAY_TOKEN_REVOKED = 'DisplaysModule.Display.TokenRevoked',
 }
 
 export enum FormResult {

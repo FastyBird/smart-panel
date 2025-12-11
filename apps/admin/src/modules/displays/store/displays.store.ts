@@ -49,6 +49,8 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 
 	const data = ref<{ [key: IDisplay['id']]: IDisplay }>({});
 
+	const tokenRefreshTriggers = ref<{ [key: IDisplay['id']]: number }>({});
+
 	const pendingGetPromises: Record<IDisplay['id'], Promise<IDisplay>> = {};
 
 	const pendingFetchPromises: Record<string, Promise<IDisplay[]>> = {};
@@ -486,6 +488,8 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 			});
 
 			if (response.status === 204) {
+				// Trigger token refresh for this display
+				refreshTokensForDisplay({ id: payload.id });
 				return true;
 			}
 
@@ -498,10 +502,19 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 		}
 	};
 
+	const refreshTokensForDisplay = (payload: IDisplaysGetActionPayload): void => {
+		// Update the refresh trigger to notify composables that tokens need to be refreshed
+		tokenRefreshTriggers.value = {
+			...tokenRefreshTriggers.value,
+			[payload.id]: (tokenRefreshTriggers.value[payload.id] ?? 0) + 1,
+		};
+	};
+
 	return {
 		semaphore,
 		firstLoad,
 		data,
+		tokenRefreshTriggers,
 		firstLoadFinished,
 		getting,
 		fetching,
@@ -518,6 +531,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 		remove,
 		getTokens,
 		revokeToken,
+		refreshTokensForDisplay,
 	};
 });
 

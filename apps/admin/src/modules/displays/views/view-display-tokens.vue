@@ -165,7 +165,7 @@ const { meta } = useMeta({});
 const flashMessage = useFlashMessage();
 
 const displayId = computed(() => props.id);
-const { display, tokens, fetchTokens, revokeToken } = useDisplay(displayId);
+const { display, tokens, isLoading, fetchTokens, revokeToken } = useDisplay(displayId);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -232,6 +232,9 @@ watch(
 	(val: IDisplay | null): void => {
 		if (val !== null) {
 			meta.title = t('displaysModule.meta.displays.tokens.title', { display: val.name || val.macAddress });
+		} else if (val === null && !isLoading.value) {
+			// Display was deleted, redirect to list
+			router.push({ name: RouteNames.DISPLAYS });
 		}
 	},
 	{ immediate: true },

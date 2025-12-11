@@ -1,16 +1,17 @@
-import { inject } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElMessageBox } from 'element-plus';
 
-import { useFlashMessage } from '../../../common';
+import { injectStoresManager, useFlashMessage } from '../../../common';
 import type { IDisplay } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
 import type { IUseDisplaysActions } from './types';
 
 export const useDisplaysActions = (): IUseDisplaysActions => {
-	const displaysStore = inject(displaysStoreKey);
+	const storesManager = injectStoresManager();
+
+	const displaysStore = storesManager.getStore(displaysStoreKey);
 
 	const { t } = useI18n();
 	const flashMessage = useFlashMessage();

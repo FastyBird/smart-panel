@@ -364,6 +364,9 @@ watch(
 	(val: IDisplay | null): void => {
 		if (val !== null) {
 			meta.title = t('displaysModule.meta.displays.detail.title', { display: val.name || val.macAddress });
+		} else if (val === null && !isLoading.value) {
+			// Display was deleted, redirect to list
+			router.push({ name: RouteNames.DISPLAYS });
 		}
 	},
 	{ immediate: true },

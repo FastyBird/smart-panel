@@ -1,12 +1,18 @@
-import { computed, inject, type Ref, ref, watch } from 'vue';
+import { computed, type Ref, ref, watch } from 'vue';
 
 import type { IDisplay, IDisplayToken } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
 import type { IUseDisplay } from './types';
+import { storeToRefs } from 'pinia';
+import { injectStoresManager } from '../../../common';
 
 export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
-	const displaysStore = inject(displaysStoreKey);
+	const storesManager = injectStoresManager();
+
+	const displaysStore = storesManager.getStore(displaysStoreKey);
+
+	const { tokenRefreshTriggers } = storeToRefs(displaysStore);
 
 	const tokens = ref<IDisplayToken[]>([]);
 
@@ -42,6 +48,31 @@ export const useDisplay = (id: Ref<IDisplay['id'] | null>): IUseDisplay => {
 		const result = await displaysStore?.getTokens({ id: id.value });
 		tokens.value = result ?? [];
 	};
+
+	// Watch for token refresh triggers from socket events
+	const tokenRefreshTrigger = computed((): number => {
+		if (id.value === null || !displaysStore) {
+			return 0;
+		}
+		// Access tokenRefreshTriggers from store state
+		if (!tokenRefreshTriggers) {
+			return 0;
+		}
+		const triggers = tokenRefreshTriggers.value;
+		if (!triggers || typeof triggers !== 'object') {
+			return 0;
+		}
+		return triggers[id.value] ?? 0;
+	});
+
+	watch(
+		tokenRefreshTrigger,
+		async (): Promise<void> => {
+			if (id.value !== null) {
+				await fetchTokens();
+			}
+		}
+	);
 
 	const revokeToken = async (): Promise<boolean> => {
 		if (id.value === null) {
