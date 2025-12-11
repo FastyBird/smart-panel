@@ -13,15 +13,16 @@ import {
 	EventType as ConfigModuleEventType,
 	LanguageType,
 	SectionType,
+	TemperatureUnitType,
 	WeatherLocationType,
 } from '../../config/config.constants';
 import { LanguageConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
-import { WEATHER_MODULE_NAME } from '../weather.constants';
-import { WeatherConfigModel } from '../models/config.model';
 import { ForecastDto, ForecastListItemDto } from '../dto/forecast.dto';
 import { WeatherDto } from '../dto/weather.dto';
+import { WeatherConfigModel } from '../models/config.model';
 import { CurrentDayModel, ForecastDayModel, LocationModel, LocationWeatherModel } from '../models/weather.model';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { EventType } from '../weather.constants';
 import { WeatherException, WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
@@ -47,17 +48,14 @@ export class WeatherService {
 	) {
 		this.units = 'metric';
 
-		this.loadConfiguration();
+		// Load configuration lazily - will be loaded on first use
+		// This avoids issues during module initialization when mappings might not be registered yet
 
 		this.refreshJob = new CronJob(CronExpression.EVERY_DAY_AT_MIDNIGHT, async () => {
 			await this.refreshWeather();
 		});
 
 		this.schedulerRegistry.addCronJob('refreshWeather', this.refreshJob);
-
-		if (this.apiKey !== null) {
-			this.refreshJob.start();
-		}
 	}
 
 	async getWeather(force = false): Promise<LocationWeatherModel> {
@@ -185,17 +183,33 @@ export class WeatherService {
 	}
 
 	private loadConfiguration() {
-		this.apiKey = this.getConfig().openWeatherApiKey;
+		const config = this.getConfig();
+		this.apiKey = config.openWeatherApiKey;
 
-		this.locationType = this.getConfig().locationType || WeatherLocationType.CITY_NAME;
+		this.locationType = config.locationType || WeatherLocationType.CITY_NAME;
 
-		switch (this.configService.getConfigSection(SectionType.LANGUAGE, LanguageConfigModel).language) {
-			case LanguageType.ENGLISH:
-				this.language = 'en';
-				break;
-			case LanguageType.CZECH:
-				this.language = 'cz';
-				break;
+		// Language config is still in config module (will be moved in Phase 2)
+		try {
+			switch (this.configService.getConfigSection(SectionType.LANGUAGE, LanguageConfigModel).language) {
+				case LanguageType.ENGLISH:
+					this.language = 'en';
+					break;
+				case LanguageType.CZECH:
+					this.language = 'cz';
+					break;
+			}
+		} catch {
+			// If language config is not available, use default
+			this.language = 'en';
+		}
+
+		// Start/stop refresh job based on API key availability
+		if (this.apiKey !== null) {
+			if (!this.refreshJob.running) {
+				this.refreshJob.start();
+			}
+		} else if (this.refreshJob.running) {
+			this.refreshJob.stop();
 		}
 	}
 
@@ -536,6 +550,24 @@ export class WeatherService {
 	}
 
 	private getConfig(): WeatherConfigModel {
-		return this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
+		try {
+			return this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
+		} catch (error) {
+			// If config doesn't exist yet (e.g., during migration or mapping not registered), return default config
+			this.logger.debug('[WEATHER] Weather module config not available, using defaults', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return toInstance(WeatherConfigModel, {
+				type: WEATHER_MODULE_NAME,
+				locationType: WeatherLocationType.LAT_LON,
+				unit: TemperatureUnitType.CELSIUS,
+				openWeatherApiKey: null,
+				latitude: null,
+				longitude: null,
+				cityName: null,
+				cityId: null,
+				zipCode: null,
+			});
+		}
 	}
 }

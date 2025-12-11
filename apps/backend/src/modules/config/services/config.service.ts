@@ -24,6 +24,7 @@ export class ConfigService {
 	private readonly logger = new Logger(ConfigService.name);
 	private readonly filename = 'config.yaml';
 	private config: AppConfigModel | null = null;
+	private isSaving = false;
 
 	constructor(
 		private readonly configService: NestConfigService,
@@ -70,14 +71,44 @@ export class ConfigService {
 			const fileContents = fs.readFileSync(path.resolve(this.configPath, this.filename), 'utf8');
 
 			// Parse YAML and explicitly type the result
-			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigModel>;
+			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigModel & { weather?: unknown }>;
+
+			// Migrate deprecated weather section to modules section if it exists and weather-module doesn't exist
+			if ('weather' in parsedConfig && parsedConfig.weather && typeof parsedConfig.weather === 'object') {
+				// In YAML, modules is an object, not an array
+				const modulesObj =
+					'modules' in parsedConfig &&
+					parsedConfig.modules &&
+					typeof parsedConfig.modules === 'object' &&
+					!Array.isArray(parsedConfig.modules)
+						? (parsedConfig.modules as unknown as Record<string, unknown>)
+						: {};
+
+				// Only migrate if weather-module doesn't already exist in modules
+				if (!('weather-module' in modulesObj)) {
+					this.logger.log('[MIGRATION] Migrating weather section to modules.weather-module');
+
+					if (!parsedConfig.modules || Array.isArray(parsedConfig.modules)) {
+						(parsedConfig as { modules?: unknown }).modules = {};
+					}
+
+					(parsedConfig.modules as unknown as Record<string, unknown>)['weather-module'] = {
+						...(parsedConfig.weather as Record<string, unknown>),
+						type: 'weather-module',
+					};
+				}
+			}
+
+			// Remove deprecated weather section from parsed config (moved to weather module)
+			const { weather, ...configWithoutWeather } = parsedConfig;
+			void weather; // Explicitly mark as intentionally unused (removed from config)
 
 			// Transform YAML data into AppConfig instance
 			const appConfigInstance = toInstance(
 				AppConfigModel,
 				{
 					path: path.resolve(this.configPath, this.filename),
-					...parsedConfig,
+					...configWithoutWeather,
 				},
 				{
 					excludeExtraneousValues: false,
@@ -101,6 +132,20 @@ export class ConfigService {
 
 			this.logger.log('[LOAD] Configuration loaded successfully');
 
+			// Save migrated config if migration occurred (after validation to avoid recursion)
+			const shouldSaveMigration = 'weather' in parsedConfig && parsedConfig.weather && !this.isSaving;
+			if (shouldSaveMigration) {
+				this.logger.log('[MIGRATION] Saving migrated configuration');
+				this.isSaving = true;
+				try {
+					this.saveConfig(appConfigInstance);
+				} catch (error) {
+					this.logger.warn('[MIGRATION] Failed to save migrated configuration', error);
+				} finally {
+					this.isSaving = false;
+				}
+			}
+
 			return appConfigInstance;
 		} else {
 			this.logger.warn('[LOAD] Configuration file not found. Initializing default configuration');
@@ -118,6 +163,11 @@ export class ConfigService {
 	}
 
 	private saveConfig(appConfig: AppConfigModel) {
+		if (this.isSaving) {
+			// Prevent recursive saves
+			return;
+		}
+
 		this.logger.log('[SAVE] Writing configuration to file');
 
 		// Prepare main app config - use recursive transformation to handle arrays correctly

@@ -1,28 +1,9 @@
 import { Expose, Type } from 'class-transformer';
-import {
-	ArrayNotEmpty,
-	IsArray,
-	IsBoolean,
-	IsEnum,
-	IsInt,
-	IsNumber,
-	IsOptional,
-	IsString,
-	Max,
-	Min,
-	ValidateNested,
-} from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import {
-	LanguageType,
-	LogLevelType,
-	SectionType,
-	TemperatureUnitType,
-	TimeFormatType,
-	WeatherLocationType,
-} from '../config.constants';
+import { LanguageType, LogLevelType, SectionType, TimeFormatType } from '../config.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataBase' })
 export abstract class BaseConfigModel {

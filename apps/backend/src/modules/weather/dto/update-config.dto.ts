@@ -3,8 +3,8 @@ import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateIf } f
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
 import { TemperatureUnitType, WeatherLocationType } from '../../config/config.constants';
+import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeather' })

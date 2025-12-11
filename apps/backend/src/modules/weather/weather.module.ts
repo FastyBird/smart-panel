@@ -5,9 +5,9 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
-import { UpdateWeatherConfigDto } from './dto/update-config.dto';
 import { GeolocationController } from './controllers/geolocation.controller';
 import { WeatherController } from './controllers/weather.controller';
+import { UpdateWeatherConfigDto } from './dto/update-config.dto';
 import { WeatherConfigModel } from './models/config.model';
 import { GeolocationService } from './services/geolocation.service';
 import { WeatherService } from './services/weather.service';

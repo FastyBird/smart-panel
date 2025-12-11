@@ -18,15 +18,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
-import {
-	EventType,
-	LanguageType,
-	LogLevelType,
-	SectionType,
-	TemperatureUnitType,
-	TimeFormatType,
-	WeatherLocationType,
-} from '../config.constants';
+import { EventType, LanguageType, LogLevelType, SectionType, TimeFormatType } from '../config.constants';
 import { ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { UpdateLanguageConfigDto, UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
 import {
@@ -116,15 +108,6 @@ describe('ConfigService', () => {
 			language: LanguageType.ENGLISH,
 			timeFormat: TimeFormatType.HOUR_24,
 			timezone: 'Europe/Prague',
-		},
-		weather: {
-			type: SectionType.WEATHER,
-			cityName: null,
-			latitude: null,
-			longitude: null,
-			locationType: WeatherLocationType.CITY_NAME,
-			openWeatherApiKey: null,
-			unit: TemperatureUnitType.CELSIUS,
 		},
 		system: {
 			type: SectionType.SYSTEM,

@@ -105,10 +105,7 @@ export class ConfigModuleResSystem extends BaseSuccessResponseModel<SystemConfig
 export class ConfigModuleResSection extends BaseSuccessResponseModel<LanguageConfigModel | SystemConfigModel> {
 	@ApiProperty({
 		description: 'Single configuration section payload',
-		oneOf: [
-			{ $ref: getSchemaPath(LanguageConfigModel) },
-			{ $ref: getSchemaPath(SystemConfigModel) },
-		],
+		oneOf: [{ $ref: getSchemaPath(LanguageConfigModel) }, { $ref: getSchemaPath(SystemConfigModel) }],
 		discriminator: {
 			propertyName: 'type',
 			mapping: {

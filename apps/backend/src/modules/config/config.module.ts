@@ -10,11 +10,7 @@ import { FactoryResetRegistryService } from '../system/services/factory-reset-re
 import { SystemModule } from '../system/system.module';
 
 import { GenerateAdminExtensionsCommand } from './commands/generate-admin-extensions.command';
-import {
-	CONFIG_MODULE_API_TAG_DESCRIPTION,
-	CONFIG_MODULE_API_TAG_NAME,
-	CONFIG_MODULE_NAME,
-} from './config.constants';
+import { CONFIG_MODULE_API_TAG_DESCRIPTION, CONFIG_MODULE_API_TAG_NAME, CONFIG_MODULE_NAME } from './config.constants';
 import { CONFIG_SWAGGER_EXTRA_MODELS } from './config.openapi';
 import { ConfigController } from './controllers/config.controller';
 import { ConfigService } from './services/config.service';

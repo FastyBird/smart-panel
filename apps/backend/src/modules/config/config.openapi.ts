@@ -18,12 +18,7 @@ import {
 	ConfigModuleResSection,
 	ConfigModuleResSystem,
 } from './models/config-response.model';
-import {
-	AppConfigModel,
-	LanguageConfigModel,
-	ModuleConfigModel,
-	SystemConfigModel,
-} from './models/config.model';
+import { AppConfigModel, LanguageConfigModel, ModuleConfigModel, SystemConfigModel } from './models/config.model';
 
 export const CONFIG_SWAGGER_EXTRA_MODELS = [
 	// DTOs

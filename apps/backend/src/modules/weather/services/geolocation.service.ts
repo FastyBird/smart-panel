@@ -4,11 +4,12 @@ import fetch from 'node-fetch';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { TemperatureUnitType, WeatherLocationType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
-import { WEATHER_MODULE_NAME } from '../weather.constants';
-import { WeatherConfigModel } from '../models/config.model';
 import { GeolocationCityDto, GeolocationZipDto } from '../dto/geolocation.dto';
+import { WeatherConfigModel } from '../models/config.model';
 import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 @Injectable()
 export class GeolocationService {
@@ -19,7 +20,14 @@ export class GeolocationService {
 	private readonly API_URL = 'https://api.openweathermap.org/geo/1.0';
 
 	constructor(private readonly configService: ConfigService) {
-		this.apiKey = this.getConfig().openWeatherApiKey;
+		// Load config lazily - will be loaded on first use
+		// This avoids issues during module initialization when mappings might not be registered yet
+		try {
+			this.apiKey = this.getConfig().openWeatherApiKey;
+		} catch {
+			// If config is not available yet, use null (will be loaded on first API call)
+			this.apiKey = null;
+		}
 	}
 
 	async getCoordinatesByCity(city: string): Promise<GeolocationCityModel[] | null> {
@@ -135,6 +143,21 @@ export class GeolocationService {
 	}
 
 	private getConfig(): WeatherConfigModel {
-		return this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
+		try {
+			return this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
+		} catch {
+			// If config doesn't exist yet (e.g., during migration or mapping not registered), return default config
+			return toInstance(WeatherConfigModel, {
+				type: WEATHER_MODULE_NAME,
+				locationType: WeatherLocationType.LAT_LON,
+				unit: TemperatureUnitType.CELSIUS,
+				openWeatherApiKey: null,
+				latitude: null,
+				longitude: null,
+				cityName: null,
+				cityId: null,
+				zipCode: null,
+			});
+		}
 	}
 }

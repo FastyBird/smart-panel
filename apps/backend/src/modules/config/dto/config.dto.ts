@@ -1,29 +1,9 @@
 import { Expose, Type } from 'class-transformer';
-import {
-	ArrayNotEmpty,
-	IsArray,
-	IsBoolean,
-	IsEnum,
-	IsInt,
-	IsNumber,
-	IsOptional,
-	IsString,
-	Max,
-	Min,
-	ValidateIf,
-	ValidateNested,
-} from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import {
-	LanguageType,
-	LogLevelType,
-	SectionType,
-	TemperatureUnitType,
-	TimeFormatType,
-	WeatherLocationType,
-} from '../config.constants';
+import { LanguageType, LogLevelType, SectionType, TimeFormatType } from '../config.constants';
 
 const determineConfigDto = (obj: unknown): new () => object => {
 	if (
@@ -135,10 +115,7 @@ export class UpdateSystemConfigDto extends BaseConfigDto {
 export class ReqUpdateSectionDto {
 	@ApiProperty({
 		description: 'Configuration section data',
-		oneOf: [
-			{ $ref: getSchemaPath(UpdateLanguageConfigDto) },
-			{ $ref: getSchemaPath(UpdateSystemConfigDto) },
-		],
+		oneOf: [{ $ref: getSchemaPath(UpdateLanguageConfigDto) }, { $ref: getSchemaPath(UpdateSystemConfigDto) }],
 		discriminator: {
 			propertyName: 'type',
 			mapping: {
