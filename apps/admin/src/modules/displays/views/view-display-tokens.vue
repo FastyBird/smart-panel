@@ -26,15 +26,58 @@
 			class="mb-4"
 		/>
 
-		<div
-			v-loading="isLoadingTokens"
-			class="min-h-[100px]"
+        <div
+            v-loading="isLoadingTokens"
+            class="min-h-[100px]"
 		>
 			<el-table
-				v-if="tokens.length > 0"
+				v-loading="isLoadingTokens"
+				:element-loading-text="t('displaysModule.texts.loadingDisplays')"
 				:data="tokens"
 				style="width: 100%"
 			>
+				<template #empty>
+					<div
+						v-if="isLoadingTokens"
+						class="h-full w-full leading-normal"
+					>
+						<el-result class="h-full w-full">
+							<template #icon>
+								<icon-with-child :size="80">
+									<template #primary>
+										<icon icon="mdi:key" />
+									</template>
+									<template #secondary>
+										<icon icon="mdi:database-refresh" />
+									</template>
+								</icon-with-child>
+							</template>
+						</el-result>
+					</div>
+
+					<div
+						v-else
+						class="h-full w-full leading-normal"
+					>
+						<el-result class="h-full w-full">
+							<template #icon>
+								<icon-with-child :size="80">
+									<template #primary>
+										<icon icon="mdi:key" />
+									</template>
+									<template #secondary>
+										<icon icon="mdi:information" />
+									</template>
+								</icon-with-child>
+							</template>
+
+							<template #title>
+								{{ t('displaysModule.detail.tokens.noTokens') }}
+							</template>
+						</el-result>
+					</div>
+				</template>
+
 				<el-table-column
 					prop="name"
 					label="Name"
@@ -73,13 +116,6 @@
 					</template>
 				</el-table-column>
 			</el-table>
-
-			<div
-				v-else-if="!isLoadingTokens"
-				class="text-center py-8 text-gray-500"
-			>
-				{{ t('displaysModule.detail.tokens.noTokens') }}
-			</div>
 		</div>
 
 		<div
@@ -106,11 +142,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElMessageBox, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
+import { ElAlert, ElButton, ElMessageBox, ElResult, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, AppBreadcrumbs, useFlashMessage } from '../../../common';
+import { AppBarHeading, AppBreadcrumbs, IconWithChild, useFlashMessage } from '../../../common';
 import { RouteNames } from '../displays.constants';
 import { useDisplay } from '../composables/composables';
 import type { IDisplay } from '../store/displays.store.types';
