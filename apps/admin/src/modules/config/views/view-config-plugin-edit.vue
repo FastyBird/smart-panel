@@ -199,7 +199,13 @@ const pluginName = computed<string>((): string => {
 	return pluginComposable.value.plugin.value?.name || pluginType.value;
 });
 
-const { configPlugin, isLoading, fetchConfigPlugin } = useConfigPlugin({ type: pluginType });
+// Create composable reactively based on plugin type
+const configPluginComposable = computed(() => useConfigPlugin({ type: currentPluginType.value }));
+const configPlugin = computed(() => configPluginComposable.value.configPlugin.value);
+const isLoading = computed(() => configPluginComposable.value.isLoading.value);
+const fetchConfigPlugin = (): Promise<void> => {
+	return configPluginComposable.value.fetchConfigPlugin();
+};
 const element = computed(() => pluginComposable.value.element);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

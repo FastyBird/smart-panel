@@ -23,7 +23,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				path: 'modules',
 				name: RouteNames.CONFIG_MODULES,
 				component: () => import('../views/view-config-modules.vue'),
-				props: true,
+				props: false,
 				meta: {
 					guards: {
 						authenticated: true,
@@ -52,7 +52,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				path: 'plugins',
 				name: RouteNames.CONFIG_PLUGINS,
 				component: () => import('../views/view-config-plugins.vue'),
-				props: true,
+				props: false,
 				meta: {
 					guards: {
 						authenticated: true,

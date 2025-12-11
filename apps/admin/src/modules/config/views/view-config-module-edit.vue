@@ -199,7 +199,13 @@ const moduleName = computed<string>((): string => {
 	return moduleComposable.value.module.value?.name || moduleType.value;
 });
 
-const { configModule, isLoading, fetchConfigModule } = useConfigModule({ type: moduleType });
+// Create composable reactively based on module type
+const configModuleComposable = computed(() => useConfigModule({ type: currentModuleType.value }));
+const configModule = computed(() => configModuleComposable.value.configModule.value);
+const isLoading = computed(() => configModuleComposable.value.isLoading.value);
+const fetchConfigModule = (): Promise<void> => {
+	return configModuleComposable.value.fetchConfigModule();
+};
 const element = computed(() => moduleComposable.value.element);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
