@@ -3,8 +3,7 @@
 		ref="formEl"
 		:model="model"
 		:rules="rules"
-		:label-position="props.layout === Layout.PHONE ? 'top' : 'right'"
-		:label-width="180"
+		label-position="top"
 		status-icon
 	>
 		<el-form-item
