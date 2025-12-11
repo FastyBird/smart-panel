@@ -62,10 +62,10 @@ I want to consolidate configuration sections under their respective modules (wea
 ## 4. Acceptance criteria
 
 - [x] Weather configuration is accessible through `/config/module/weather-module` endpoint (via config module) - **Phase 1: COMPLETED**
-- [ ] System configuration (including language) is accessible through `/config/module/system-module` endpoint (via config module)
+- [x] System configuration (including language) is accessible through `/config/module/system-module` endpoint (via config module) - **Phase 2: COMPLETED**
 - [x] Weather module registers its config model with `ModulesTypeMapperService` in `onModuleInit()` - **Phase 1: COMPLETED**
-- [ ] System module registers its config model with `ModulesTypeMapperService` in `onModuleInit()`
-- [x] Config module section-based endpoints (`/config/:section`) for weather are removed - **Phase 1: COMPLETED** (language and system pending Phase 2)
+- [x] System module registers its config model with `ModulesTypeMapperService` in `onModuleInit()` - **Phase 2: COMPLETED**
+- [x] Config module section-based endpoints (`/config/:section`) for weather, language, and system are removed - **Phase 1 & 2: COMPLETED**
 - [ ] Admin UI shows only 2 tabs: "Modules" and "Plugins"
 - [ ] Admin UI displays large buttons for each module/plugin in their respective tabs
 - [ ] Clicking a module/plugin button opens its configuration in a drawer on large devices
@@ -169,18 +169,24 @@ And changes are saved to the config module plugin endpoint
 - Automatic migration of weather section from YAML to modules.weather-module on config load
 - All backend checks passing: TypeScript, ESLint, Unit tests, E2E tests, OpenAPI generation
 
-### Phase 2: Backend - System Module Configuration
-1. Create or update `SystemConfigModel` extending `ModuleConfigModel` in system module (include language settings)
-2. Create `UpdateSystemConfigDto` extending `UpdateModuleConfigDto` in system module (include language settings)
-3. Ensure system module imports `ConfigModule` and has access to `ModulesTypeMapperService`
-4. Register system config mapping in `system.module.ts` `onModuleInit()` method (following displays/mdns pattern)
-5. Update system module services to use `configService.getModuleConfig<SystemConfigModel>('system-module')` instead of section-based access
-6. Remove language and system section handling from config controller (`/config/:section` endpoint)
-7. Remove language and system DTOs and models from config module (keep only if needed for migration)
-8. Update config service to remove language and system section handling (keep module handling)
-9. Update SectionType enum to remove LANGUAGE and SYSTEM
-10. Update OpenAPI specification (config module endpoints remain, section endpoints removed)
-11. Update tests
+### Phase 2: Backend - System Module Configuration ✅ COMPLETED
+1. ✅ Create or update `SystemConfigModel` extending `ModuleConfigModel` in system module (include language settings)
+2. ✅ Create `UpdateSystemConfigDto` extending `UpdateModuleConfigDto` in system module (include language settings)
+3. ✅ Ensure system module imports `ConfigModule` and has access to `ModulesTypeMapperService`
+4. ✅ Register system config mapping in `system.module.ts` `onModuleInit()` method (following displays/mdns pattern)
+5. ✅ Update system module services to use `configService.getModuleConfig<SystemConfigModel>('system-module')` instead of section-based access
+6. ✅ Remove language and system section handling from config controller (`/config/:section` endpoint)
+7. ✅ Remove language and system DTOs and models from config module (keep only if needed for migration)
+8. ✅ Update config service to remove language and system section handling (keep module handling) - Added migration logic to move language/system sections from YAML to modules.system-module
+9. ✅ Update SectionType enum to remove LANGUAGE and SYSTEM
+10. ✅ Update OpenAPI specification (config module endpoints remain, section endpoints removed)
+11. ✅ Update tests - All unit tests (740 passed) and E2E tests (7 passed) passing
+
+**Notes:**
+- SystemConfigModel includes both language settings (language, timezone, timeFormat) and system settings (logLevels)
+- Automatic migration of language and system sections from YAML to modules.system-module on config load
+- Weather service updated to use system module config for language settings
+- All backend checks passing: TypeScript, ESLint, Unit tests, E2E tests, OpenAPI generation
 
 ### Phase 3: Admin - UI Refactoring
 1. Update config router to remove language, weather, and system routes
@@ -234,9 +240,27 @@ And changes are saved to the config module plugin endpoint
   - Migration logic added to move weather section from YAML to modules.weather-module
   - Weather and Geolocation services updated to handle config gracefully during initialization
 
-### Phase 2: Backend - System Module Configuration 🔄 NEXT
+### Phase 2: Backend - System Module Configuration ✅ COMPLETED
+- **Status**: All tasks completed
+- **Commits**: 
+  - Phase 2 implementation
+  - Fix tests and linting issues
+- **Backend Checks**: All passing
+  - ✅ TypeScript compilation
+  - ✅ ESLint
+  - ✅ Unit tests (740 passed)
+  - ✅ E2E tests (7 passed)
+  - ✅ OpenAPI generation
+- **Key Changes**:
+  - SystemConfigModel and UpdateSystemConfigDto created in system module
+  - System module registered with ModulesTypeMapperService
+  - Language and system sections removed from config module (controller, models, DTOs, enum)
+  - Migration logic added to move language/system sections from YAML to modules.system-module
+  - Weather service updated to use system module config for language settings
+
+### Phase 3: Admin - UI Refactoring 🔄 NEXT
 - **Status**: Pending
-- **Dependencies**: Phase 1 completed
+- **Dependencies**: Phase 1 and Phase 2 completed
 
 ### Phase 3: Admin - UI Refactoring ⏳ PENDING
 - **Status**: Pending
