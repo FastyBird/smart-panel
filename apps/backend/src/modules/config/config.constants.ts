@@ -14,10 +14,10 @@ export enum EventType {
 	CONFIG_RESET = 'ConfigModule.Configuration.Reset',
 }
 
-export enum SectionType {
-	LANGUAGE = 'language',
-	SYSTEM = 'system',
-}
+// SectionType enum removed - section-based endpoints are deprecated
+// Use module endpoints instead (/config/module/:module)
+export enum SectionType {}
+// Deprecated - kept for backward compatibility with deprecated endpoints
 
 export enum TemperatureUnitType {
 	CELSIUS = 'celsius',

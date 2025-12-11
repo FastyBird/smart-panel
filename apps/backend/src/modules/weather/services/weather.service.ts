@@ -12,12 +12,11 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	EventType as ConfigModuleEventType,
 	LanguageType,
-	SectionType,
 	TemperatureUnitType,
 	WeatherLocationType,
 } from '../../config/config.constants';
-import { LanguageConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
+import { SystemConfigModel } from '../../system/models/config.model';
 import { ForecastDto, ForecastListItemDto } from '../dto/forecast.dto';
 import { WeatherDto } from '../dto/weather.dto';
 import { WeatherConfigModel } from '../models/config.model';
@@ -188,9 +187,10 @@ export class WeatherService {
 
 		this.locationType = config.locationType || WeatherLocationType.CITY_NAME;
 
-		// Language config is still in config module (will be moved in Phase 2)
+		// Language config is now part of system module
 		try {
-			switch (this.configService.getConfigSection(SectionType.LANGUAGE, LanguageConfigModel).language) {
+			const systemConfig = this.configService.getModuleConfig<SystemConfigModel>('system-module');
+			switch (systemConfig.language) {
 				case LanguageType.ENGLISH:
 					this.language = 'en';
 					break;
@@ -199,7 +199,7 @@ export class WeatherService {
 					break;
 			}
 		} catch {
-			// If language config is not available, use default
+			// If system config is not available, use default
 			this.language = 'en';
 		}
 

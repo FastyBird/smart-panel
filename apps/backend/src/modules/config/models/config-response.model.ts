@@ -4,13 +4,7 @@ import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
-import {
-	AppConfigModel,
-	LanguageConfigModel,
-	ModuleConfigModel,
-	PluginConfigModel,
-	SystemConfigModel,
-} from './config.model';
+import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from './config.model';
 
 /**
  * Response wrapper for AppConfigModel
@@ -79,41 +73,15 @@ export class ConfigModuleResModules extends BaseSuccessResponseModel<ModuleConfi
 	declare data: ModuleConfigModel[];
 }
 
-@ApiSchema({ name: 'ConfigModuleResLanguage' })
-export class ConfigModuleResLanguage extends BaseSuccessResponseModel<LanguageConfigModel> {
-	@ApiProperty({
-		description: 'Single configuration section payload',
-		type: () => LanguageConfigModel,
-	})
-	@Expose()
-	declare data: LanguageConfigModel;
-}
-@ApiSchema({ name: 'ConfigModuleResSystem' })
-export class ConfigModuleResSystem extends BaseSuccessResponseModel<SystemConfigModel> {
-	@ApiProperty({
-		description: 'Single configuration section payload',
-		type: () => SystemConfigModel,
-	})
-	@Expose()
-	declare data: SystemConfigModel;
-}
-
 /**
- * Response wrapper for section config (union type)
+ * Response wrapper for section config (deprecated - section endpoints are deprecated)
+ * @deprecated Use module endpoints instead (/config/module/:module)
  */
 @ApiSchema({ name: 'ConfigModuleResSection' })
-export class ConfigModuleResSection extends BaseSuccessResponseModel<LanguageConfigModel | SystemConfigModel> {
+export class ConfigModuleResSection extends BaseSuccessResponseModel<unknown> {
 	@ApiProperty({
-		description: 'Single configuration section payload',
-		oneOf: [{ $ref: getSchemaPath(LanguageConfigModel) }, { $ref: getSchemaPath(SystemConfigModel) }],
-		discriminator: {
-			propertyName: 'type',
-			mapping: {
-				language: getSchemaPath(LanguageConfigModel),
-				system: getSchemaPath(SystemConfigModel),
-			},
-		},
+		description: 'Single configuration section payload (deprecated)',
 	})
 	@Expose()
-	declare data: LanguageConfigModel | SystemConfigModel;
+	declare data: unknown;
 }

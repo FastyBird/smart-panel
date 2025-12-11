@@ -13,8 +13,8 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import { EventType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
-import { BaseConfigDto, UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
-import { AppConfigModel, BaseConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
+import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
+import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 
 import { ModulesTypeMapperService } from './modules-type-mapper.service';
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
@@ -71,20 +71,21 @@ export class ConfigService {
 			const fileContents = fs.readFileSync(path.resolve(this.configPath, this.filename), 'utf8');
 
 			// Parse YAML and explicitly type the result
-			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigModel & { weather?: unknown }>;
+			const parsedConfig = yaml.parse(fileContents) as Partial<
+				AppConfigModel & { weather?: unknown; language?: unknown; system?: unknown }
+			>;
+
+			// In YAML, modules is an object, not an array
+			const modulesObj =
+				'modules' in parsedConfig &&
+				parsedConfig.modules &&
+				typeof parsedConfig.modules === 'object' &&
+				!Array.isArray(parsedConfig.modules)
+					? (parsedConfig.modules as unknown as Record<string, unknown>)
+					: {};
 
 			// Migrate deprecated weather section to modules section if it exists and weather-module doesn't exist
 			if ('weather' in parsedConfig && parsedConfig.weather && typeof parsedConfig.weather === 'object') {
-				// In YAML, modules is an object, not an array
-				const modulesObj =
-					'modules' in parsedConfig &&
-					parsedConfig.modules &&
-					typeof parsedConfig.modules === 'object' &&
-					!Array.isArray(parsedConfig.modules)
-						? (parsedConfig.modules as unknown as Record<string, unknown>)
-						: {};
-
-				// Only migrate if weather-module doesn't already exist in modules
 				if (!('weather-module' in modulesObj)) {
 					this.logger.log('[MIGRATION] Migrating weather section to modules.weather-module');
 
@@ -99,16 +100,52 @@ export class ConfigService {
 				}
 			}
 
-			// Remove deprecated weather section from parsed config (moved to weather module)
-			const { weather, ...configWithoutWeather } = parsedConfig;
+			// Migrate deprecated language and system sections to modules.system-module if they exist
+			const hasLanguage =
+				'language' in parsedConfig && parsedConfig.language && typeof parsedConfig.language === 'object';
+			const hasSystem = 'system' in parsedConfig && parsedConfig.system && typeof parsedConfig.system === 'object';
+
+			if ((hasLanguage || hasSystem) && !('system-module' in modulesObj)) {
+				this.logger.log('[MIGRATION] Migrating language and system sections to modules.system-module');
+
+				if (!parsedConfig.modules || Array.isArray(parsedConfig.modules)) {
+					(parsedConfig as { modules?: unknown }).modules = {};
+				}
+
+				// Merge language and system configs into system-module
+				const systemModuleConfig: Record<string, unknown> = {
+					type: 'system-module',
+				};
+
+				if (hasLanguage) {
+					const languageConfig = parsedConfig.language as Record<string, unknown>;
+					if ('language' in languageConfig) systemModuleConfig.language = languageConfig.language;
+					if ('timezone' in languageConfig) systemModuleConfig.timezone = languageConfig.timezone;
+					if ('time_format' in languageConfig) {
+						systemModuleConfig.time_format = languageConfig.time_format;
+					}
+				}
+
+				if (hasSystem) {
+					const systemConfig = parsedConfig.system as Record<string, unknown>;
+					if ('log_levels' in systemConfig) systemModuleConfig.log_levels = systemConfig.log_levels;
+				}
+
+				(parsedConfig.modules as unknown as Record<string, unknown>)['system-module'] = systemModuleConfig;
+			}
+
+			// Remove deprecated sections from parsed config (moved to modules)
+			const { weather, language, system, ...configWithoutSections } = parsedConfig;
 			void weather; // Explicitly mark as intentionally unused (removed from config)
+			void language; // Explicitly mark as intentionally unused (removed from config)
+			void system; // Explicitly mark as intentionally unused (removed from config)
 
 			// Transform YAML data into AppConfig instance
 			const appConfigInstance = toInstance(
 				AppConfigModel,
 				{
 					path: path.resolve(this.configPath, this.filename),
-					...configWithoutWeather,
+					...configWithoutSections,
 				},
 				{
 					excludeExtraneousValues: false,
@@ -133,7 +170,11 @@ export class ConfigService {
 			this.logger.log('[LOAD] Configuration loaded successfully');
 
 			// Save migrated config if migration occurred (after validation to avoid recursion)
-			const shouldSaveMigration = 'weather' in parsedConfig && parsedConfig.weather && !this.isSaving;
+			const shouldSaveMigration =
+				(('weather' in parsedConfig && parsedConfig.weather) ||
+					('language' in parsedConfig && parsedConfig.language) ||
+					('system' in parsedConfig && parsedConfig.system)) &&
+				!this.isSaving;
 			if (shouldSaveMigration) {
 				this.logger.log('[MIGRATION] Saving migrated configuration');
 				this.isSaving = true;
@@ -309,7 +350,10 @@ export class ConfigService {
 		return this.appConfig;
 	}
 
-	getConfigSection<T extends BaseConfigModel>(key: keyof AppConfigModel, type: (new () => T) | (new () => T)[]): T {
+	/**
+	 * @deprecated Section-based config access is deprecated. Use getModuleConfig() instead.
+	 */
+	getConfigSection<T extends object>(key: keyof AppConfigModel, type: (new () => T) | (new () => T)[]): T {
 		this.logger.log(`[LOOKUP] Fetching configuration section=${key}`);
 
 		const configSection = this.appConfig[key];
@@ -349,7 +393,10 @@ export class ConfigService {
 		throw new ConfigCorruptedException(`Configuration section '${key}' is corrupted and can not be loaded.`);
 	}
 
-	setConfigSection<TUpdateDto extends BaseConfigDto>(
+	/**
+	 * @deprecated Section-based config updates are deprecated. Use setModuleConfig() instead.
+	 */
+	setConfigSection<TUpdateDto extends object>(
 		key: keyof AppConfigModel,
 		value: TUpdateDto,
 		type: (new () => TUpdateDto) | (new () => TUpdateDto)[],
