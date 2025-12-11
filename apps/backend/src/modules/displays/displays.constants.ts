@@ -22,5 +22,22 @@ export enum DeploymentMode {
 	COMBINED = 'combined',
 }
 
+import { FieldType, ISchemaOptions } from 'influx';
+
 export const PERMIT_JOIN_DEFAULT_DURATION_MS = 2 * 60 * 1000; // 2 minutes
 export const LOCALHOST_IPS = ['127.0.0.1', '::1', 'localhost'];
+
+export enum ConnectionState {
+	CONNECTED = 'connected',
+	DISCONNECTED = 'disconnected',
+	LOST = 'lost',
+	UNKNOWN = 'unknown',
+}
+
+export const OnlineDisplayState = [ConnectionState.CONNECTED];
+
+export const DisplayStatusInfluxDbSchema: ISchemaOptions = {
+	measurement: 'display_status',
+	fields: { online: FieldType.BOOLEAN, onlineI: FieldType.INTEGER, status: FieldType.STRING },
+	tags: ['displayId'],
+};

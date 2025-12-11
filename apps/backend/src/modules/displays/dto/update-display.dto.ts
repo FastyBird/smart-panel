@@ -254,6 +254,19 @@ export class UpdateDisplayDto {
 		{ toClassOnly: true },
 	)
 	microphoneVolume?: number;
+
+	@ApiPropertyOptional({
+		name: 'current_ip_address',
+		description: 'Current IP address from which the display is connected via WebSocket',
+		type: 'string',
+		nullable: true,
+		example: '192.168.1.100',
+	})
+	@Expose({ name: 'current_ip_address' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"current_ip_address","reason":"Current IP address must be a string."}]' })
+	@ValidateIf((_, value) => value !== null)
+	currentIpAddress?: string | null;
 }
 
 @ApiSchema({ name: 'DisplaysModuleReqUpdateDisplay' })

@@ -19,3 +19,9 @@ export const WsConnInfluxDbSchema: ISchemaOptions = {
 	fields: { clients: FieldType.INTEGER },
 	tags: [],
 };
+
+export enum WsEventType {
+	CLIENT_CONNECTED = 'WebsocketModule.Client.Connected',
+	CLIENT_DISCONNECTED = 'WebsocketModule.Client.Disconnected',
+	CLIENT_LOST = 'WebsocketModule.Client.Lost',
+}

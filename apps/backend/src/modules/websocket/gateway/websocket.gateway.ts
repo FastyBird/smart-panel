@@ -20,9 +20,11 @@ import { TokenOwnerType } from '../../auth/auth.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandResultDto } from '../dto/command-result.dto';
+import { WsClientDto, WsClientEventType } from '../dto/ws-client.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
-import { CLIENT_DEFAULT_ROOM, DISPLAY_INTERNAL_ROOM, EXCHANGE_ROOM } from '../websocket.constants';
+import { extractClientIpFromSocket } from '../utils/ip.utils';
+import { CLIENT_DEFAULT_ROOM, DISPLAY_INTERNAL_ROOM, EXCHANGE_ROOM, WsEventType } from '../websocket.constants';
 import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 interface ClientData {
@@ -86,10 +88,22 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			await client.join(CLIENT_DEFAULT_ROOM);
 
 			const clientData = client.data as ClientData;
+			const clientIp = extractClientIpFromSocket(client);
 
 			if (clientData.user && clientData.user.type === 'token' && clientData.user.ownerType === TokenOwnerType.DISPLAY) {
 				await client.join(DISPLAY_INTERNAL_ROOM);
 			}
+
+			// Emit client connected event to exchange bus
+			const wsClientDto = toInstance(WsClientDto, {
+				socket_id: client.id,
+				ip_address: clientIp !== 'unknown' ? clientIp : null,
+				user: clientData.user || null,
+				event_type: WsClientEventType.CONNECTED,
+				timestamp: new Date().toISOString(),
+			});
+
+			this.eventEmitter.emit(WsEventType.CLIENT_CONNECTED, wsClientDto);
 		} catch (error) {
 			const err = error as Error;
 
@@ -103,6 +117,20 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 	handleDisconnect(client: Socket): void {
 		this.logger.log(`[WS GATEWAY] Client disconnected: ${client.id}`);
+
+		const clientData = client.data as ClientData;
+		const clientIp = extractClientIpFromSocket(client);
+
+		// Emit client disconnected event to exchange bus
+		const wsClientDto = toInstance(WsClientDto, {
+			socket_id: client.id,
+			ip_address: clientIp !== 'unknown' ? clientIp : null,
+			user: clientData.user || null,
+			event_type: WsClientEventType.DISCONNECTED,
+			timestamp: new Date().toISOString(),
+		});
+
+		this.eventEmitter.emit(WsEventType.CLIENT_DISCONNECTED, wsClientDto);
 	}
 
 	@SubscribeMessage('subscribe-exchange')

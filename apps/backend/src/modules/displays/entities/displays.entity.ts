@@ -1,8 +1,10 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsMACAddress, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsMACAddress, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Column, Entity } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+import { ConnectionState } from '../displays.constants';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 
@@ -318,4 +320,35 @@ export class DisplayEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true, default: null })
 	registeredFromIp: string | null;
+
+	@ApiPropertyOptional({
+		name: 'current_ip_address',
+		description: 'Current IP address from which the display is connected via WebSocket',
+		type: 'string',
+		nullable: true,
+		example: '192.168.1.100',
+	})
+	@Expose({ name: 'current_ip_address' })
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true, default: null })
+	currentIpAddress: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Display online status',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	online: boolean = false;
+
+	@ApiPropertyOptional({
+		description: 'Display connection state',
+		enum: ConnectionState,
+		example: ConnectionState.CONNECTED,
+	})
+	@Expose()
+	@IsEnum(ConnectionState)
+	status: ConnectionState = ConnectionState.UNKNOWN;
 }

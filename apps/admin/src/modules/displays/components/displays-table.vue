@@ -222,7 +222,7 @@
 			prop="createdAt"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="160"
+			:width="170"
 		>
 			<template #default="scope">
 				{{ formatDate(scope.row.createdAt) }}

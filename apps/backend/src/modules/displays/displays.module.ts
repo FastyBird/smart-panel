@@ -1,10 +1,11 @@
-import { Module, OnModuleInit } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { InfluxDbModule } from '../influxdb/influxdb.module';
+import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
@@ -16,16 +17,20 @@ import {
 	DISPLAYS_MODULE_API_TAG_DESCRIPTION,
 	DISPLAYS_MODULE_API_TAG_NAME,
 	DISPLAYS_MODULE_NAME,
+	DisplayStatusInfluxDbSchema,
 } from './displays.constants';
 import { DISPLAYS_SWAGGER_EXTRA_MODELS } from './displays.openapi';
 import { UpdateDisplaysConfigDto } from './dto/update-config.dto';
 import { DisplayEntity } from './entities/displays.entity';
 import { RegistrationGuard } from './guards/registration.guard';
+import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { DisplaysConfigModel } from './models/config.model';
+import { DisplayConnectionStateService } from './services/display-connection-state.service';
 import { DisplaysService } from './services/displays.service';
 import { DisplaysModuleResetService } from './services/module-reset.service';
 import { PermitJoinService } from './services/permit-join.service';
 import { RegistrationService } from './services/registration.service';
+import { DisplayEntitySubscriber } from './subscribers/display-entity.subscriber';
 import { DisplayExistsConstraint } from './validators/display-exists-constraint.validator';
 
 @ApiTag({
@@ -34,7 +39,13 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 	description: DISPLAYS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [NestConfigModule, TypeOrmModule.forFeature([DisplayEntity]), AuthModule, ConfigModule, SystemModule],
+	imports: [
+		TypeOrmModule.forFeature([DisplayEntity]),
+		AuthModule,
+		ConfigModule,
+		forwardRef(() => SystemModule),
+		InfluxDbModule,
+	],
 	controllers: [DisplaysController, RegistrationController],
 	providers: [
 		DisplaysService,
@@ -43,6 +54,9 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		DisplayExistsConstraint,
 		PermitJoinService,
 		RegistrationGuard,
+		DisplayConnectionStateService,
+		DisplayEntitySubscriber,
+		WebsocketExchangeListener,
 	],
 	exports: [DisplaysService, DisplaysModuleResetService, DisplayExistsConstraint, PermitJoinService],
 })
@@ -52,9 +66,12 @@ export class DisplaysModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly influxDbService: InfluxDbService,
 	) {}
 
 	onModuleInit() {
+		this.influxDbService.registerSchema(DisplayStatusInfluxDbSchema);
+
 		this.modulesMapperService.registerMapping<DisplaysConfigModel, UpdateDisplaysConfigDto>({
 			type: DISPLAYS_MODULE_NAME,
 			class: DisplaysConfigModel,
