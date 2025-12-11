@@ -2,8 +2,6 @@ import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { ConfigModuleWeatherType } from '../../../openapi.constants';
 import { ConfigValidationException } from '../config.exceptions';
 
-import type { IConfigAudioRes } from './config-audio.store.types';
-import type { IConfigDisplayRes } from './config-display.store.types';
 import type { IConfigLanguageRes } from './config-language.store.types';
 import type { IConfigSystemRes } from './config-system.store.types';
 import {
@@ -15,9 +13,7 @@ import {
 } from './config-weather.store.schemas';
 import type { IConfigWeather, IConfigWeatherEditActionPayload, IConfigWeatherRes, IConfigWeatherUpdateReq } from './config-weather.store.types';
 
-export const transformConfigWeatherResponse = (
-	response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes | IConfigSystemRes
-): IConfigWeather => {
+export const transformConfigWeatherResponse = (response: IConfigLanguageRes | IConfigWeatherRes | IConfigSystemRes): IConfigWeather => {
 	const parsed = ConfigWeatherSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {

@@ -18,8 +18,7 @@ import {
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import roleGuard from './router/guards/role.guard';
-import { displaysInstancesStoreKey, usersStoreKey } from './store/keys';
-import { registerDisplaysInstancesStore } from './store/stores';
+import { usersStoreKey } from './store/keys';
 import { registerUsersStore } from './store/users.store';
 import { EventType, USERS_MODULE_EVENT_PREFIX, USERS_MODULE_NAME } from './users.constants';
 
@@ -44,11 +43,6 @@ export default {
 
 		app.provide(usersStoreKey, usersStore);
 		storesManager.addStore(usersStoreKey, usersStore);
-
-		const displaysInstancesStore = registerDisplaysInstancesStore(options.store);
-
-		app.provide(displaysInstancesStoreKey, displaysInstancesStore);
-		storesManager.addStore(displaysInstancesStoreKey, displaysInstancesStore);
 
 		modulesManager.addModule(usersAdminModuleKey, {
 			type: USERS_MODULE_NAME,
@@ -88,27 +82,13 @@ export default {
 					break;
 
 				case EventType.USER_DELETED:
-					displaysInstancesStore.unset({
-						id: data.payload.id,
-					});
-					break;
-
-				case EventType.DISPLAY_INSTANCE_CREATED:
-				case EventType.DISPLAY_INSTANCE_UPDATED:
-					displaysInstancesStore.onEvent({
-						id: data.payload.id,
-						data: data.payload,
-					});
-					break;
-
-				case EventType.DISPLAY_INSTANCE_DELETED:
-					displaysInstancesStore.unset({
+					usersStore.unset({
 						id: data.payload.id,
 					});
 					break;
 
 				default:
-					logger.warn('Unhandled system module event:', data.event);
+					logger.warn('Unhandled users module event:', data.event);
 			}
 		});
 	},

@@ -170,7 +170,7 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import { useDisplaysProfiles } from '../../system';
+import { useDisplays } from '../../displays';
 import { ListPages, ListPagesAdjust } from '../components/components';
 import { usePagesActions, usePagesDataSource } from '../composables/composables';
 import { RouteNames } from '../dashboard.constants';
@@ -198,7 +198,7 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 const { fetchPages, pages, pagesPaginated, totalRows, filters, filtersActive, sortBy, sortDir, paginateSize, paginatePage, areLoading, resetFilter } =
 	usePagesDataSource();
 const pageActions = usePagesActions();
-const { fetchDisplays } = useDisplaysProfiles();
+const { fetchDisplays } = useDisplays();
 
 const mounted = ref<boolean>(false);
 

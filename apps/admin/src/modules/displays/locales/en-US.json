@@ -1,0 +1,333 @@
+{
+	"title": "Displays",
+	"description": "Manage your display devices",
+	"headings": {
+		"list": "Displays",
+		"adjustFilters": "Filter Displays",
+		"removeDisplay": "Remove Display",
+		"discard": "Discard Changes"
+	},
+	"subHeadings": {
+		"list": "Manage your connected display devices",
+		"adjustFilters": "Adjust filter settings"
+	},
+	"breadcrumbs": {
+		"displays": {
+			"list": "displays",
+			"detail": "display: {display}",
+			"edit": "edit display",
+			"tokens": "access tokens"
+		}
+	},
+	"meta": {
+		"displays": {
+			"list": {
+				"title": "List displays"
+			},
+			"edit": {
+				"title": "Edit display: {display}"
+			},
+			"detail": {
+				"title": "Display: {display}"
+			},
+			"tokens": {
+				"title": "Access tokens: {display}"
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": "Name",
+			"macAddress": "MAC Address",
+			"version": "Version",
+			"resolution": "Resolution",
+			"layout": "Layout",
+			"audio": "Audio",
+			"state": {
+				"title": "State"
+			},
+			"currentIpAddress": "Current IP",
+			"local": "Local",
+			"status": "Status",
+			"createdAt": "Created"
+		},
+		"tooltips": {
+			"speakerSupported": "Speaker supported",
+			"microphoneSupported": "Microphone supported"
+		}
+	},
+	"fields": {
+		"search": {
+			"title": "Search",
+			"placeholder": "Search for display"
+		},
+		"darkMode": {
+			"title": "Dark mode"
+		},
+		"config": {
+			"deploymentMode": {
+				"title": "Gateway Mode",
+				"description": "Gateway mode for display registration",
+				"placeholder": "Select gateway mode",
+				"validation": {
+					"required": "Gateway mode is required"
+				}
+			},
+			"permitJoinDurationMs": {
+				"title": "Permit Join Duration",
+				"description": "Duration in milliseconds that permit join remains active",
+				"placeholder": "120000",
+				"unit": "ms",
+				"validation": {
+					"required": "Permit join duration is required",
+					"min": "Permit join duration must be at least 1000ms"
+				}
+			}
+		},
+		"displays": {
+			"id": {
+				"title": "Internal identifier",
+				"placeholder": "Display id"
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Enter display name",
+				"validation": {
+					"maxLength": "Name must be less than 100 characters"
+				}
+			},
+			"unitSize": {
+				"title": "Unit Size",
+				"unit": "px",
+				"validation": {
+					"min": "Unit size must be at least 1"
+				}
+			},
+			"rows": {
+				"title": "Rows",
+				"validation": {
+					"min": "Rows must be at least 1"
+				}
+			},
+			"cols": {
+				"title": "Columns",
+				"validation": {
+					"min": "Columns must be at least 1"
+				}
+			},
+			"brightness": {
+				"title": "Brightness",
+				"validation": {
+					"range": "Brightness must be between 0 and 100"
+				}
+			},
+			"screenLockDuration": {
+				"title": "Screen Lock Duration",
+				"unit": "seconds",
+				"validation": {
+					"min": "Screen lock duration must be positive"
+				}
+			},
+			"darkMode": {
+				"title": "Dark Mode"
+			},
+			"screenSaver": {
+				"title": "Screen Saver"
+			},
+			"audio": {
+				"speaker": {
+					"title": "Speaker (Audio Output)"
+				},
+				"microphone": {
+					"title": "Microphone (Audio Input)"
+				}
+			},
+			"speaker": {
+				"title": "Speaker Enabled"
+			},
+			"speakerVolume": {
+				"title": "Speaker Volume",
+				"validation": {
+					"range": "Volume must be between 0 and 100"
+				}
+			},
+			"microphone": {
+				"title": "Microphone Enabled"
+			},
+			"microphoneVolume": {
+				"title": "Microphone Volume",
+				"validation": {
+					"range": "Volume must be between 0 and 100"
+				}
+			}
+		}
+	},
+	"filters": {
+		"darkMode": {
+			"title": "Dark Mode",
+			"values": {
+				"enabled": "Enabled",
+				"disabled": "Disabled",
+				"all": "All"
+			}
+		},
+		"screenSaver": {
+			"title": "Screen Saver",
+			"values": {
+				"enabled": "Enabled",
+				"disabled": "Disabled",
+				"all": "All"
+			}
+		},
+		"state": {
+			"title": "State"
+		},
+		"states": {
+			"title": "State"
+		}
+	},
+	"states": {
+		"connected": "Connected",
+		"disconnected": "Disconnected",
+		"lost": "Lost",
+		"unknown": "Unknown"
+	},
+	"texts": {
+		"loadingDisplays": "Loading displays...",
+		"loadingDisplay": "Loading display...",
+		"noDisplays": "No displays registered yet",
+		"noFilteredDisplays": "No displays match your filter criteria",
+		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+	},
+	"buttons": {
+		"detail": {
+			"title": "Detail"
+		},
+		"adjust": {
+			"title": "Filter"
+		},
+		"resetFilters": {
+			"title": "Reset Filters"
+		},
+		"reset": {
+			"title": "Reset Filters"
+		},
+		"yes": {
+			"title": "Yes"
+		},
+		"no": {
+			"title": "No"
+		},
+		"save": {
+			"title": "Save"
+		},
+		"cancel": {
+			"title": "Cancel"
+		},
+		"close": {
+			"title": "Close"
+		},
+		"discard": {
+			"title": "Discard"
+		},
+		"permitJoin": {
+			"title": "Permit Join",
+			"disable": "Disable Join ({time})"
+		}
+	},
+	"detail": {
+		"title": "Display Detail",
+		"info": {
+			"title": "Display Information",
+			"macAddress": "MAC Address",
+			"version": "Version",
+			"build": "Build",
+			"resolution": "Resolution",
+			"pixelRatio": "Pixel Ratio",
+			"gridSize": "Grid Size",
+			"registeredFromIp": "Registered IP",
+			"currentIpAddress": "Current IP",
+			"status": "Connection State"
+		},
+		"settings": {
+			"title": "Display Settings",
+			"gridSize": "Grid Size",
+			"darkMode": "Dark Mode",
+			"brightness": "Brightness",
+			"screenLockDuration": "Screen Lock Duration",
+			"screenSaver": "Screen Saver",
+			"speakerEnabled": "Speaker Enabled",
+			"speakerVolume": "Speaker Volume",
+			"microphoneEnabled": "Microphone Enabled",
+			"microphoneVolume": "Microphone Volume"
+		},
+		"peripherals": {
+			"title": "Peripherals",
+			"audioOutput": "Audio Output",
+			"audioOutputVolume": "Audio Output Volume",
+			"audioInput": "Audio Input",
+			"audioInputVolume": "Audio Input Volume"
+		},
+		"audio": {
+			"speaker": {
+				"title": "Speaker (Audio Output)"
+			},
+			"microphone": {
+				"title": "Microphone (Audio Input)"
+			}
+		},
+		"tokens": {
+			"title": "Access Tokens",
+			"subtitle": "Manage tokens",
+			"description": "Manage access tokens for this display. Each display should have at most one active token.",
+			"noTokens": "No active tokens",
+			"revokeConfirm": "Are you sure you want to revoke the access token? The display will need to re-register.",
+			"revoked": "Token revoked successfully"
+		}
+	},
+	"form": {
+		"edit": {
+			"title": "Edit Display"
+		},
+		"sections": {
+			"general": "General",
+			"display": "Display Settings",
+			"speaker": "Speaker (Audio Output)",
+			"microphone": "Microphone (Audio Input)"
+		},
+		"placeholders": {
+			"name": "Enter display name"
+		},
+		"units": {
+			"seconds": "seconds"
+		}
+	},
+	"messages": {
+		"notFound": "Display not found",
+		"loadError": "Failed to load displays",
+		"updateSuccess": "Display updated successfully",
+		"updateError": "Failed to update display",
+		"deleteSuccess": "Display deleted successfully",
+		"deleteError": "Failed to delete display",
+		"confirmRemove": "Are you sure you want to remove display \"{name}\"? This action cannot be undone.",
+		"removed": "Display removed successfully",
+		"edited": "Display {display} has been updated",
+		"notEdited": "Display {display} was not updated",
+		"permitJoinActivated": "Permit join activated successfully",
+		"permitJoinDeactivated": "Permit join deactivated successfully",
+		"permitJoinError": "Failed to activate permit join",
+		"permitJoinDeactivateError": "Failed to deactivate permit join",
+		"config": {
+			"edited": "Displays configuration has been successfully updated",
+			"notEdited": "Failed to update displays configuration"
+		}
+	},
+	"actions": {
+		"refresh": "Refresh",
+		"edit": "Edit",
+		"delete": "Delete",
+		"viewDetail": "View Detail",
+		"revokeToken": "Revoke Token",
+		"manageTokens": "Manage Tokens"
+	}
+}

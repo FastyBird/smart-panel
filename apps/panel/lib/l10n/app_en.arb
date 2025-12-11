@@ -576,6 +576,10 @@
   "@settings_audio_settings_microphone_volume_title": {
     "description": "Label for adjusting the microphone volume."
   },
+  "settings_audio_settings_no_support": "This display does not support audio input or output.",
+  "@settings_audio_settings_no_support": {
+    "description": "Message shown when the display doesn't support audio."
+  },
   "settings_about_title": "About Application",
   "@settings_about_title": {
     "description": "Title for the About Application section."

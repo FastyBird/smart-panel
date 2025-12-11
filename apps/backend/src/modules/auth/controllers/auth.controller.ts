@@ -3,7 +3,6 @@ import {
 	Controller,
 	ForbiddenException,
 	Get,
-	Headers,
 	HttpCode,
 	Logger,
 	NotFoundException,
@@ -12,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -21,19 +19,15 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { CreateDisplayInstanceDto } from '../../users/dto/create-display-instance.dto';
-import { DisplaysInstancesService } from '../../users/services/displays-instances.service';
 import { UsersService } from '../../users/services/users.service';
-import { UserRole } from '../../users/users.constants';
 import { AUTH_MODULE_API_TAG_NAME } from '../auth.constants';
-import { AuthenticatedRequest } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
 import { ReqCheckEmailDto } from '../dto/check-email.dto';
 import { ReqCheckUsernameDto } from '../dto/check-username.dto';
 import { ReqLoginDto } from '../dto/login.dto';
 import { ReqRefreshDto } from '../dto/refresh-token.dto';
-import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { ReqRegisterDto } from '../dto/register.dto';
+import { AuthenticatedRequest } from '../guards/auth.guard';
 import { Public } from '../guards/auth.guard';
 import {
 	CheckEmailResponseModel,
@@ -41,11 +35,8 @@ import {
 	LoginResponseModel,
 	ProfileResponseModel,
 	RefreshResponseModel,
-	RegisterDisplayResponseModel,
 } from '../models/auth-response.model';
-import { RegisteredDisplayModel } from '../models/auth.model';
 import { AuthService } from '../services/auth.service';
-import { CryptoService } from '../services/crypto.service';
 
 @ApiTags(AUTH_MODULE_API_TAG_NAME)
 @Controller('auth')
@@ -55,8 +46,6 @@ export class AuthController {
 	constructor(
 		private readonly authService: AuthService,
 		private readonly userService: UsersService,
-		private readonly displayService: DisplaysInstancesService,
-		private readonly cryptoService: CryptoService,
 	) {}
 
 	@ApiOperation({
@@ -157,72 +146,6 @@ export class AuthController {
 
 	@ApiOperation({
 		tags: [AUTH_MODULE_API_TAG_NAME],
-		summary: 'Register display device',
-		description: 'Register a new display device and get credentials',
-		operationId: 'create-auth-module-register-display',
-	})
-	@ApiBody({ type: ReqRegisterDisplayDto, description: 'Display device information' })
-	@ApiCreatedSuccessResponse(RegisterDisplayResponseModel, 'Display successfully registered')
-	@ApiBadRequestResponse('Invalid display registration data')
-	@ApiInternalServerErrorResponse('Internal server error')
-	@Public()
-	@Post('register-display')
-	async registerDisplay(
-		@Headers('User-Agent') userAgent: string,
-		@Body() createDto: ReqRegisterDisplayDto,
-	): Promise<RegisterDisplayResponseModel> {
-		this.logger.debug(`[REGISTER DISPLAY] User-Agent: ${userAgent}`);
-
-		if (!userAgent || !userAgent.includes('FlutterApp')) {
-			this.logger.warn('[REGISTER DISPLAY] Unauthorized User-Agent attempt');
-
-			throw new ForbiddenException('Access Denied');
-		}
-
-		const displayUser = await this.userService.findByUsername(createDto.data.uid);
-
-		if (displayUser !== null && displayUser.password !== null) {
-			this.logger.warn('[REGISTER DISPLAY] Display user already registered');
-
-			throw new ForbiddenException('Access Denied');
-		}
-
-		try {
-			const password = this.cryptoService.generateSecureSecret();
-
-			const displayUser = await this.authService.register({
-				username: createDto.data.uid,
-				password,
-				role: UserRole.DISPLAY,
-			});
-
-			const dtoInstance = toInstance(CreateDisplayInstanceDto, {
-				...createDto.data,
-				user: displayUser.id,
-			});
-
-			await this.displayService.create(displayUser.id, dtoInstance);
-
-			this.logger.debug('[REGISTER DISPLAY] Display user successfully registered');
-
-			const response = new RegisterDisplayResponseModel();
-			response.data = toInstance(RegisteredDisplayModel, { secret: password });
-
-			return response;
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error('[REGISTER DISPLAY] Failed to register display', {
-				message: err.message,
-				stack: err.stack,
-			});
-
-			throw new ForbiddenException('An error occurred while registering the display');
-		}
-	}
-
-	@ApiOperation({
-		tags: [AUTH_MODULE_API_TAG_NAME],
 		summary: 'Check username availability',
 		description: 'Verify if a username is available for registration',
 		operationId: 'validate-auth-module-check-username',
@@ -284,17 +207,17 @@ export class AuthController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('profile')
 	async getProfile(@Req() req: AuthenticatedRequest): Promise<ProfileResponseModel> {
-		const { user } = req;
+		const { auth } = req;
 
-		if (!user) {
+		if (!auth || auth.type !== 'user') {
 			throw new ForbiddenException('User not found');
 		}
 
-		this.logger.debug(`[PROFILE] Fetching profile for user=${user.id}`);
+		this.logger.debug(`[PROFILE] Fetching profile for user=${auth.id}`);
 
-		const userData = await this.authService.getProfile(user.id);
+		const userData = await this.authService.getProfile(auth.id);
 
-		this.logger.debug(`[PROFILE] Successfully fetched profile for user=${user.id}`);
+		this.logger.debug(`[PROFILE] Successfully fetched profile for user=${auth.id}`);
 
 		const response = new ProfileResponseModel();
 		response.data = userData;

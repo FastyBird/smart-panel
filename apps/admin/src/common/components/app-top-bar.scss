@@ -8,6 +8,7 @@
 	@include set-css-var-value(('header', 'padding'), '0.25rem 0.5rem');
 	@include set-css-var-value(('header', 'height'), '44px');
 
+	background-color: var(--el-bg-color);
 	border-bottom: 1px solid var(--el-border-color);
 }
 

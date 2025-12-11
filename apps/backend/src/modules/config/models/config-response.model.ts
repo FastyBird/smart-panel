@@ -6,8 +6,6 @@ import { BaseSuccessResponseModel } from '../../../modules/api/models/api-respon
 
 import {
 	AppConfigModel,
-	AudioConfigModel,
-	DisplayConfigModel,
 	LanguageConfigModel,
 	ModuleConfigModel,
 	PluginConfigModel,
@@ -86,26 +84,6 @@ export class ConfigModuleResModules extends BaseSuccessResponseModel<ModuleConfi
 	declare data: ModuleConfigModel[];
 }
 
-@ApiSchema({ name: 'ConfigModuleResAudio' })
-export class ConfigModuleResAudio extends BaseSuccessResponseModel<AudioConfigModel> {
-	@ApiProperty({
-		description: 'Single configuration section payload',
-		type: () => AudioConfigModel,
-	})
-	@Expose()
-	declare data: AudioConfigModel;
-}
-
-@ApiSchema({ name: 'ConfigModuleResDisplay' })
-export class ConfigModuleResDisplay extends BaseSuccessResponseModel<DisplayConfigModel> {
-	@ApiProperty({
-		description: 'Single configuration section payload',
-		type: () => DisplayConfigModel,
-	})
-	@Expose()
-	declare data: DisplayConfigModel;
-}
-
 @ApiSchema({ name: 'ConfigModuleResLanguage' })
 export class ConfigModuleResLanguage extends BaseSuccessResponseModel<LanguageConfigModel> {
 	@ApiProperty({
@@ -160,8 +138,6 @@ export class ConfigModuleResSystem extends BaseSuccessResponseModel<SystemConfig
  */
 @ApiSchema({ name: 'ConfigModuleResSection' })
 export class ConfigModuleResSection extends BaseSuccessResponseModel<
-	| AudioConfigModel
-	| DisplayConfigModel
 	| LanguageConfigModel
 	| WeatherCityIdConfigModel
 	| WeatherCityNameConfigModel
@@ -172,8 +148,6 @@ export class ConfigModuleResSection extends BaseSuccessResponseModel<
 	@ApiProperty({
 		description: 'Single configuration section payload',
 		oneOf: [
-			{ $ref: getSchemaPath(AudioConfigModel) },
-			{ $ref: getSchemaPath(DisplayConfigModel) },
 			{ $ref: getSchemaPath(LanguageConfigModel) },
 			{ $ref: getSchemaPath(WeatherConfigModel) },
 			{ $ref: getSchemaPath(SystemConfigModel) },
@@ -181,8 +155,6 @@ export class ConfigModuleResSection extends BaseSuccessResponseModel<
 		discriminator: {
 			propertyName: 'type',
 			mapping: {
-				audio: getSchemaPath(AudioConfigModel),
-				display: getSchemaPath(DisplayConfigModel),
 				language: getSchemaPath(LanguageConfigModel),
 				weather: getSchemaPath(WeatherConfigModel),
 				system: getSchemaPath(SystemConfigModel),
@@ -191,8 +163,6 @@ export class ConfigModuleResSection extends BaseSuccessResponseModel<
 	})
 	@Expose()
 	declare data:
-		| AudioConfigModel
-		| DisplayConfigModel
 		| LanguageConfigModel
 		| WeatherCityIdConfigModel
 		| WeatherCityNameConfigModel

@@ -9,7 +9,7 @@
 		>
 			<el-card
 				body-class="p-1!"
-				:class="`max-w-[${displayProfile?.screenWidth ?? 540}px]`"
+				:class="`max-w-[${display?.screenWidth ?? 540}px]`"
 			>
 				<div ref="pageGridContainer" />
 			</el-card>
@@ -21,7 +21,7 @@
 		>
 			<el-card
 				body-class="p-1!"
-				:class="`max-w-[${displayProfile?.screenWidth ?? 540}px]`"
+				:class="`max-w-[${display?.screenWidth ?? 540}px]`"
 			>
 				<div
 					id="trash"
@@ -75,8 +75,23 @@ import {
 	tilesStoreKey,
 	useTiles,
 } from '../../../modules/dashboard';
-import { type IDisplayProfile, useDisplaysProfiles } from '../../../modules/system';
-import { calculateLayout } from '../../../modules/system/utils/gird-layout.utils';
+import { type IDisplay, useDisplays } from '../../../modules/displays';
+
+// Simple layout calculation - displays now contain rows, cols, and unitSize
+const calculateLayout = (
+	display: IDisplay | null,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+	_pageSettings?: any
+): { rows: number; cols: number; unitSize: number } => {
+	if (!display) {
+		return { rows: 12, cols: 24, unitSize: 8 };
+	}
+	return {
+		rows: display.rows ?? 12,
+		cols: display.cols ?? 24,
+		unitSize: display.unitSize ?? 8,
+	};
+};
 
 import type { IPageConfigureProps } from './page-configure.types';
 import TilePreview from './tile-preview.vue';
@@ -101,7 +116,7 @@ const emit = defineEmits<{
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
 
-const { displays, fetchDisplays, areLoading: loadingDisplays } = useDisplaysProfiles();
+const { displays, fetchDisplays, isLoading: loadingDisplays } = useDisplays();
 const { tiles, fetchTiles, areLoading: loadingTiles } = useTiles({ parent: 'page', parentId: props.page.id });
 
 const storesManager = injectStoresManager();
@@ -130,22 +145,24 @@ const initialized = ref<boolean>(false);
 
 const pageChanged = ref<boolean>(false);
 
-const displayProfile = computed<IDisplayProfile | null>((): IDisplayProfile | null => {
-	const primary = displays.value.find((display) => display.primary);
+const display = computed<IDisplay | null>((): IDisplay | null => {
+	// Get the first display as default
+	const defaultDisplay = displays.value[0] ?? null;
 
-	if (props.page.display !== null) {
-		return displays.value.find((display) => display.id === props.page.display) ?? primary ?? null;
+	// If page has displays assigned, use the first one; otherwise use default
+	if (props.page.displays !== null && props.page.displays.length > 0) {
+		return displays.value.find((d) => d.id === props.page.displays![0]) ?? defaultDisplay;
 	}
 
-	return primary ?? null;
+	return defaultDisplay;
 });
 
 const gridLayout = computed<{ rows: number; cols: number } | null>((): { rows: number; cols: number } | null => {
-	if (displayProfile.value === null) {
+	if (display.value === null) {
 		return null;
 	}
 
-	const grid = calculateLayout(displayProfile.value, {
+	const grid = calculateLayout(display.value, {
 		rows: props.page.rows,
 		cols: props.page.cols,
 		tileSize: props.page.tileSize,

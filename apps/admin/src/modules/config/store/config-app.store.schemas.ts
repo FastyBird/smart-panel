@@ -2,8 +2,6 @@ import { type ZodType, z } from 'zod';
 
 import type { ConfigModuleAppSchema } from '../../../openapi.constants';
 
-import { ConfigAudioResSchema, ConfigAudioSchema } from './config-audio.store.schemas';
-import { ConfigDisplayResSchema, ConfigDisplaySchema } from './config-display.store.schemas';
 import { ConfigLanguageResSchema, ConfigLanguageSchema } from './config-language.store.schemas';
 import { ConfigModuleResSchema, ConfigModuleSchema } from './config-modules.store.schemas';
 import { ConfigPluginResSchema, ConfigPluginSchema } from './config-plugins.store.schemas';
@@ -20,11 +18,10 @@ type ApiConfigApp = ConfigModuleAppSchema;
 
 // STORE STATE
 // ===========
+// Note: Display config is now managed via DisplaysModule
 
 export const ConfigAppSchema = z.object({
 	path: z.string().nonempty(),
-	audio: ConfigAudioSchema,
-	display: ConfigDisplaySchema,
 	language: ConfigLanguageSchema,
 	system: ConfigSystemSchema,
 	weather: ConfigWeatherSchema,
@@ -42,8 +39,6 @@ export const ConfigAppStateSemaphoreSchema = z.object({
 export const ConfigAppOnEventActionPayloadSchema = z.object({
 	data: z.object({
 		path: z.string().nonempty(),
-		audio: ConfigAudioSchema,
-		display: ConfigDisplaySchema,
 		language: ConfigLanguageSchema,
 		system: ConfigSystemSchema,
 		weather: ConfigWeatherSchema,
@@ -55,8 +50,6 @@ export const ConfigAppOnEventActionPayloadSchema = z.object({
 export const ConfigAppSetActionPayloadSchema = z.object({
 	data: z.object({
 		path: z.string().nonempty(),
-		audio: ConfigAudioSchema,
-		display: ConfigDisplaySchema,
 		language: ConfigLanguageSchema,
 		system: ConfigSystemSchema,
 		weather: ConfigWeatherSchema,
@@ -70,8 +63,6 @@ export const ConfigAppSetActionPayloadSchema = z.object({
 
 export const ConfigAppResSchema: ZodType<ApiConfigApp> = z.object({
 	path: z.string().nonempty(),
-	audio: ConfigAudioResSchema,
-	display: ConfigDisplayResSchema,
 	language: ConfigLanguageResSchema,
 	system: ConfigSystemResSchema,
 	weather: z.union([ConfigWeatherLatLonResSchema, ConfigWeatherCityNameResSchema, ConfigWeatherCityIdResSchema, ConfigWeatherZipCodeResSchema]),

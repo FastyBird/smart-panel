@@ -13,7 +13,7 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
+import { ValidateDisplayExists } from '../../displays/validators/display-exists-constraint.validator';
 import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
 
 import { CreateDataSourceDto } from './create-data-source.dto';
@@ -83,18 +83,23 @@ export class CreatePageDto {
 	data_source?: CreateDataSourceDto[];
 
 	@ApiPropertyOptional({
-		description: 'Display profile ID',
-		type: 'string',
-		format: 'uuid',
-		example: '123e4567-e89b-12d3-a456-426614174000',
+		description: 'Display IDs. Empty array or null means visible to all displays.',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['123e4567-e89b-12d3-a456-426614174000'],
 		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
-	@ValidateDisplayProfileExists({ message: '[{"field":"display","reason":"The specified display does not exist."}]' })
-	@ValidateIf((_, value) => value !== null)
-	display?: string | null;
+	@ValidateIf((_, value) => value !== null && value !== undefined)
+	@IsArray({ message: '[{"field":"displays","reason":"Displays must be an array."}]' })
+	@IsUUID('4', {
+		each: true,
+		message: '[{"field":"displays","reason":"Each display must be a valid UUID (version 4)."}]',
+	})
+	@ValidateIf((_, value) => value !== null && Array.isArray(value) && value.length > 0)
+	@ValidateDisplayExists({ message: '[{"field":"displays","reason":"One or more specified displays do not exist."}]' })
+	displays?: string[] | null;
 }
 
 @ApiSchema({ name: 'DashboardModuleReqCreatePage' })

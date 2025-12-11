@@ -75,7 +75,6 @@ export class UsersService {
 				{
 					...dtoInstance,
 					password: hashedPassword,
-					is_hidden: dtoInstance.role === UserRole.DISPLAY,
 				},
 				{
 					groups: ['internal'],

@@ -31,7 +31,7 @@ const validPageResponse: IPageRes = {
 	order: 0,
 	show_top_bar: true,
 	icon: 'test',
-	display: displayId,
+	displays: [displayId],
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
 	data_source: [],
@@ -43,7 +43,7 @@ const validPageCreatePayload: IPagesAddActionPayload['data'] = {
 	order: 0,
 	showTopBar: true,
 	icon: null,
-	display: displayId,
+	displays: [displayId],
 };
 
 const validPageUpdatePayload: IPagesEditActionPayload['data'] = {
@@ -65,7 +65,7 @@ describe('Pages Transformers', (): void => {
 				order: 0,
 				showTopBar: true,
 				icon: 'test',
-				display: displayId,
+				displays: [displayId],
 				draft: false,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
 				updatedAt: new Date('2024-03-02T12:00:00Z'),
@@ -89,7 +89,7 @@ describe('Pages Transformers', (): void => {
 				order: 0,
 				show_top_bar: true,
 				icon: null,
-				display: displayId,
+				displays: [displayId],
 			});
 		});
 

@@ -139,6 +139,7 @@
   "settings_audio_settings_microphone_title": "Mikrofon",
   "settings_audio_settings_microphone_description": "Povolit nebo zakázat mikrofon.",
   "settings_audio_settings_microphone_volume_title": "Hlasitost mikrofonu",
+  "settings_audio_settings_no_support": "Tento displej nepodporuje zvukový vstup ani výstup.",
   "settings_about_title": "O aplikaci",
   "settings_about_about_heading": "O aplikaci",
   "settings_about_about_info": "FastyBird Smart Panel je aplikace pro chytrou domácnost, která umožňuje bezproblémovou integraci s vašimi chytrými zařízeními a nabízí lepší ovládání a monitorování.",

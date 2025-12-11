@@ -1,22 +1,11 @@
 import { Exclude, Expose, Transform } from 'class-transformer';
-import {
-	IsArray,
-	IsBoolean,
-	IsNumber,
-	IsOptional,
-	IsString,
-	IsUUID,
-	Validate,
-	ValidateIf,
-	ValidateNested,
-} from 'class-validator';
-import { BeforeInsert, BeforeUpdate, Column, Entity, JoinColumn, ManyToOne, TableInheritance } from 'typeorm';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { BeforeInsert, BeforeUpdate, Column, Entity, JoinTable, ManyToMany, TableInheritance } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
-import { DisplayProfileEntity } from '../../system/entities/system.entity';
+import { DisplayEntity } from '../../displays/entities/displays.entity';
 
 @ApiSchema({ name: 'DashboardModuleDataPage' })
 @Entity('dashboard_module_pages')
@@ -72,23 +61,36 @@ export abstract class PageEntity extends BaseEntity {
 	dataSource: DataSourceEntity[] = [];
 
 	@ApiProperty({
-		description: 'Associated display profile ID',
-		type: 'string',
-		format: 'uuid',
-		example: '123e4567-e89b-12d3-a456-426614174000',
+		description: 'Associated display IDs. Empty array means visible to all displays.',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['123e4567-e89b-12d3-a456-426614174000'],
 		nullable: true,
 	})
 	@Expose()
-	@ValidateIf((_, value) => typeof value === 'string')
-	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
-	@ValidateIf((_, value) => typeof value === 'object')
-	@Validate(AbstractInstanceValidator, [DisplayProfileEntity], {
-		message: '[{"field":"display","reason":"Display must be a valid subclass of DisplayProfileEntity."}]',
+	@IsOptional()
+	@IsArray({ message: '[{"field":"displays","reason":"Displays must be an array."}]' })
+	@IsUUID('4', {
+		each: true,
+		message: '[{"field":"displays","reason":"Each display must be a valid UUID (version 4)."}]',
 	})
-	@Transform(({ value }: { value: DisplayProfileEntity | null }) => value?.id ?? null, { toPlainOnly: true })
-	@ManyToOne(() => DisplayProfileEntity, { cascade: true, onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'displayId' })
-	display: DisplayProfileEntity | string | null;
+	@Transform(
+		({ value }: { value: DisplayEntity[] | string[] | null | undefined }): string[] => {
+			if (!value) return [];
+			if (Array.isArray(value)) {
+				return value.map((item: DisplayEntity | string): string => (typeof item === 'string' ? item : item.id));
+			}
+			return [];
+		},
+		{ toPlainOnly: true },
+	)
+	@ManyToMany(() => DisplayEntity, { cascade: false, nullable: true })
+	@JoinTable({
+		name: 'dashboard_module_pages_displays',
+		joinColumn: { name: 'pageId', referencedColumnName: 'id' },
+		inverseJoinColumn: { name: 'displayId', referencedColumnName: 'id' },
+	})
+	displays: DisplayEntity[];
 
 	@ApiProperty({ description: 'Page type', type: 'string', example: 'default' })
 	@Expose()

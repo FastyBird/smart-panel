@@ -10,7 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/config/repositories/audio.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -26,19 +26,23 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
-  final AudioConfigRepository _repository = locator<AudioConfigRepository>();
+  final DisplayRepository _repository = locator<DisplayRepository>();
 
-  late bool _speakerEnabled;
+  late bool _audioOutputSupported;
+  late bool _audioInputSupported;
+
+  late bool _hasSpeakerEnabled;
   late int _speakerVolume;
   late int? _speakerVolumeBackup;
   late bool _savingSpeakerVolume = false;
 
-  late bool _microphoneEnabled;
+  late bool _hasMicrophoneEnabled;
   late int _microphoneVolume;
   late int? _microphoneVolumeBackup;
   late bool _savingMicrophoneVolume = false;
 
-  Timer? _debounce;
+  Timer? _speakerDebounce;
+  Timer? _microphoneDebounce;
 
   @override
   void initState() {
@@ -53,14 +57,19 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
   void dispose() {
     super.dispose();
 
+    _speakerDebounce?.cancel();
+    _microphoneDebounce?.cancel();
+
     _repository.removeListener(_syncStateWithRepository);
   }
 
   void _syncStateWithRepository() {
     setState(() {
-      _speakerEnabled = _repository.hasSpeakerEnabled;
+      _audioOutputSupported = _repository.audioOutputSupported;
+      _audioInputSupported = _repository.audioInputSupported;
+      _hasSpeakerEnabled = _repository.hasSpeakerEnabled;
       _speakerVolume = _repository.speakerVolume;
-      _microphoneEnabled = _repository.hasMicrophoneEnabled;
+      _hasMicrophoneEnabled = _repository.hasMicrophoneEnabled;
       _microphoneVolume = _repository.microphoneVolume;
     });
   }
@@ -79,107 +88,15 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SettingRow(
-                icon: MdiIcons.speaker,
-                title: Text(
-                  localizations.settings_audio_settings_speaker_title,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  localizations.settings_audio_settings_speaker_description,
-                  style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
-                  ),
-                ),
-                trailing: IconSwitch(
-                  iconOn: MdiIcons.volumeHigh,
-                  iconOff: MdiIcons.volumeOff,
-                  switchState: _speakerEnabled,
-                  onChanged: (bool state) async {
-                    _handleSpeakerChange(context, state);
-                  },
-                ),
-              ),
-              AppSpacings.spacingMdVertical,
-              SettingRow(
-                icon: MdiIcons.volumeHigh,
-                title: Text(
-                  localizations.settings_audio_settings_speaker_volume_title,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: SettingSlider(
-                  leftIcon: MdiIcons.volumeLow,
-                  rightIcon: MdiIcons.volumeHigh,
-                  value: _speakerVolume.toDouble(),
-                  enabled: _speakerEnabled,
-                  onChanged: (double value) async {
-                    _handleSpeakerVolumeChange(
-                      context,
-                      value,
-                    );
-                  },
-                ),
-              ),
-              AppSpacings.spacingMdVertical,
-              SettingRow(
-                icon: MdiIcons.microphoneVariant,
-                title: Text(
-                  localizations.settings_audio_settings_microphone_title,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  localizations.settings_audio_settings_microphone_description,
-                  style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
-                  ),
-                ),
-                trailing: IconSwitch(
-                  iconOn: MdiIcons.microphone,
-                  iconOff: MdiIcons.microphoneOff,
-                  switchState: _microphoneEnabled,
-                  onChanged: (bool state) async {
-                    _handleMicrophoneChange(context, state);
-                  },
-                ),
-              ),
-              AppSpacings.spacingMdVertical,
-              SettingRow(
-                icon: MdiIcons.microphone,
-                title: Text(
-                  localizations.settings_audio_settings_microphone_volume_title,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: SettingSlider(
-                  leftIcon: MdiIcons.microphoneOff,
-                  rightIcon: MdiIcons.microphone,
-                  value: _microphoneVolume.toDouble(),
-                  enabled: _microphoneEnabled,
-                  onChanged: (double value) async {
-                    _handleMicrophoneVolumeChange(
-                      context,
-                      value,
-                    );
-                  },
-                ),
-              ),
+              if (!_audioOutputSupported && !_audioInputSupported)
+                _buildNoAudioSupportMessage(localizations)
+              else ...[
+                if (_audioOutputSupported) ...[
+                  _buildSpeakerSection(localizations),
+                  if (_audioInputSupported) AppSpacings.spacingMdVertical,
+                ],
+                if (_audioInputSupported) _buildMicrophoneSection(localizations),
+              ],
             ],
           ),
         ),
@@ -187,19 +104,157 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
     );
   }
 
-  Future<void> _handleSpeakerChange(
+  Widget _buildNoAudioSupportMessage(AppLocalizations localizations) {
+    return Center(
+      child: Padding(
+        padding: AppSpacings.paddingLg,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              MdiIcons.volumeOff,
+              size: _screenService.scale(
+                48,
+                density: _visualDensityService.density,
+              ),
+              color: Theme.of(context).disabledColor,
+            ),
+            AppSpacings.spacingMdVertical,
+            Text(
+              localizations.settings_audio_settings_no_support,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: AppFontSize.small,
+                color: Theme.of(context).disabledColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpeakerSection(AppLocalizations localizations) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SettingRow(
+          icon: MdiIcons.volumeHigh,
+          title: Text(
+            localizations.settings_audio_settings_speaker_title,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            localizations.settings_audio_settings_speaker_description,
+            style: TextStyle(
+              fontSize: _screenService.scale(
+                8,
+                density: _visualDensityService.density,
+              ),
+            ),
+          ),
+          trailing: IconSwitch(
+            switchState: _hasSpeakerEnabled,
+            iconOn: MdiIcons.volumeHigh,
+            iconOff: MdiIcons.volumeOff,
+            onChanged: (bool state) async {
+              _handleSpeakerStateChange(context, state);
+            },
+          ),
+        ),
+        AppSpacings.spacingMdVertical,
+        SettingRow(
+          icon: MdiIcons.volumeMedium,
+          title: Text(
+            localizations.settings_audio_settings_speaker_volume_title,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: SettingSlider(
+            leftIcon: MdiIcons.volumeLow,
+            rightIcon: MdiIcons.volumeHigh,
+            value: _speakerVolume.toDouble(),
+            enabled: _hasSpeakerEnabled,
+            onChanged: (double value) async {
+              _handleSpeakerVolumeChange(context, value);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMicrophoneSection(AppLocalizations localizations) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SettingRow(
+          icon: MdiIcons.microphone,
+          title: Text(
+            localizations.settings_audio_settings_microphone_title,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            localizations.settings_audio_settings_microphone_description,
+            style: TextStyle(
+              fontSize: _screenService.scale(
+                8,
+                density: _visualDensityService.density,
+              ),
+            ),
+          ),
+          trailing: IconSwitch(
+            switchState: _hasMicrophoneEnabled,
+            iconOn: MdiIcons.microphone,
+            iconOff: MdiIcons.microphoneOff,
+            onChanged: (bool state) async {
+              _handleMicrophoneStateChange(context, state);
+            },
+          ),
+        ),
+        AppSpacings.spacingMdVertical,
+        SettingRow(
+          icon: MdiIcons.microphone,
+          title: Text(
+            localizations.settings_audio_settings_microphone_volume_title,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: SettingSlider(
+            leftIcon: MdiIcons.volumeLow,
+            rightIcon: MdiIcons.volumeHigh,
+            value: _microphoneVolume.toDouble(),
+            enabled: _hasMicrophoneEnabled,
+            onChanged: (double value) async {
+              _handleMicrophoneVolumeChange(context, value);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleSpeakerStateChange(
     BuildContext context,
     bool state,
   ) async {
     HapticFeedback.lightImpact();
 
     setState(() {
-      _speakerEnabled = !_speakerEnabled;
+      _hasSpeakerEnabled = !_hasSpeakerEnabled;
     });
 
-    final success = await _repository.setSpeakerState(
-      _speakerEnabled,
-    );
+    final success = await _repository.setSpeakerState(_hasSpeakerEnabled);
 
     Future.microtask(
       () async {
@@ -211,13 +266,10 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 
         if (!success) {
           setState(() {
-            _speakerEnabled = !_speakerEnabled;
+            _hasSpeakerEnabled = !_hasSpeakerEnabled;
           });
 
-          AlertBar.showError(
-            context,
-            message: 'Save settings failed.',
-          );
+          AlertBar.showError(context, message: 'Save settings failed.');
         }
       },
     );
@@ -240,57 +292,51 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
       _speakerVolume = value.toInt();
     });
 
-    _debounce?.cancel();
+    _speakerDebounce?.cancel();
 
-    _debounce = Timer(
+    _speakerDebounce = Timer(
       const Duration(milliseconds: 500),
       () async {
-        final success = await _repository.setSpeakerVolume(
-          _speakerVolume,
-        );
+        final success = await _repository.setSpeakerVolume(_speakerVolume);
 
-        Future.microtask(
-          () async {
-            await Future.delayed(
-              const Duration(milliseconds: 500),
-            );
+        Future.microtask(() async {
+          await Future.delayed(
+            const Duration(milliseconds: 500),
+          );
 
-            if (!context.mounted) return;
+          if (!context.mounted) return;
 
+          setState(() {
+            _speakerVolumeBackup = null;
+            _savingSpeakerVolume = false;
+          });
+
+          if (!success) {
             setState(() {
-              _speakerVolumeBackup = null;
-              _savingSpeakerVolume = false;
+              _speakerVolume = _speakerVolumeBackup ?? 50;
             });
 
-            if (!success) {
-              setState(() {
-                _speakerVolume = _speakerVolumeBackup ?? 0;
-              });
-
-              AlertBar.showError(
-                context,
-                message: 'Save settings failed.',
-              );
-            }
-          },
-        );
+            AlertBar.showError(
+              context,
+              message: 'Save settings failed.',
+            );
+          }
+        });
       },
     );
   }
 
-  Future<void> _handleMicrophoneChange(
+  Future<void> _handleMicrophoneStateChange(
     BuildContext context,
     bool state,
   ) async {
     HapticFeedback.lightImpact();
 
     setState(() {
-      _microphoneEnabled = !_microphoneEnabled;
+      _hasMicrophoneEnabled = !_hasMicrophoneEnabled;
     });
 
-    final success = await _repository.setMicrophoneState(
-      _microphoneEnabled,
-    );
+    final success = await _repository.setMicrophoneState(_hasMicrophoneEnabled);
 
     Future.microtask(
       () async {
@@ -302,13 +348,10 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 
         if (!success) {
           setState(() {
-            _microphoneEnabled = !_microphoneEnabled;
+            _hasMicrophoneEnabled = !_hasMicrophoneEnabled;
           });
 
-          AlertBar.showError(
-            context,
-            message: 'Save settings failed.',
-          );
+          AlertBar.showError(context, message: 'Save settings failed.');
         }
       },
     );
@@ -331,40 +374,36 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
       _microphoneVolume = value.toInt();
     });
 
-    _debounce?.cancel();
+    _microphoneDebounce?.cancel();
 
-    _debounce = Timer(
+    _microphoneDebounce = Timer(
       const Duration(milliseconds: 500),
       () async {
-        final success = await _repository.setMicrophoneVolume(
-          _microphoneVolume,
-        );
+        final success = await _repository.setMicrophoneVolume(_microphoneVolume);
 
-        Future.microtask(
-          () async {
-            await Future.delayed(
-              const Duration(milliseconds: 500),
-            );
+        Future.microtask(() async {
+          await Future.delayed(
+            const Duration(milliseconds: 500),
+          );
 
-            if (!context.mounted) return;
+          if (!context.mounted) return;
 
+          setState(() {
+            _microphoneVolumeBackup = null;
+            _savingMicrophoneVolume = false;
+          });
+
+          if (!success) {
             setState(() {
-              _microphoneVolumeBackup = null;
-              _savingMicrophoneVolume = false;
+              _microphoneVolume = _microphoneVolumeBackup ?? 50;
             });
 
-            if (!success) {
-              setState(() {
-                _microphoneVolume = _microphoneVolumeBackup ?? 0;
-              });
-
-              AlertBar.showError(
-                context,
-                message: 'Save settings failed.',
-              );
-            }
-          },
-        );
+            AlertBar.showError(
+              context,
+              message: 'Save settings failed.',
+            );
+          }
+        });
       },
     );
   }

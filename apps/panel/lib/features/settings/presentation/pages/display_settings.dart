@@ -11,7 +11,7 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/config/repositories/display.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -27,8 +27,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
-  final DisplayConfigRepository _repository =
-      locator<DisplayConfigRepository>();
+  final DisplayRepository _repository = locator<DisplayRepository>();
 
   late bool _isDarkMode;
 

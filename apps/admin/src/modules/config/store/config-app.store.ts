@@ -20,8 +20,6 @@ import type {
 } from './config-app.store.types';
 import { transformConfigAppResponse } from './config-app.transformers';
 import {
-	configAudioStoreKey,
-	configDisplayStoreKey,
 	configLanguageStoreKey,
 	configModulesStoreKey,
 	configPluginsStoreKey,
@@ -46,37 +44,24 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 	const dataPartial = ref<Pick<IConfigApp, 'path'> | null>(null);
 
 	const data = computed<IConfigApp | null>((): IConfigApp | null => {
-		const configAudioStore = storesManager.getStore(configAudioStoreKey);
-		const configDisplayStore = storesManager.getStore(configDisplayStoreKey);
 		const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
 		const configSystemStore = storesManager.getStore(configSystemStoreKey);
 		const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 		const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 		const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
-		const { data: audio } = storeToRefs(configAudioStore);
-		const { data: display } = storeToRefs(configDisplayStore);
 		const { data: language } = storeToRefs(configLanguageStore);
 		const { data: system } = storeToRefs(configSystemStore);
 		const { data: weather } = storeToRefs(configWeatherStore);
 		const { data: plugins } = storeToRefs(configPluginsStore);
 		const { data: modules } = storeToRefs(configModulesStore);
 
-		if (
-			dataPartial.value === null ||
-			audio.value === null ||
-			display.value === null ||
-			language.value === null ||
-			system.value === null ||
-			weather.value === null
-		) {
+		if (dataPartial.value === null || language.value === null || system.value === null || weather.value === null) {
 			return null;
 		}
 
 		return {
 			path: dataPartial.value.path,
-			audio: audio.value,
-			display: display.value,
 			language: language.value,
 			system: system.value,
 			weather: weather.value,
@@ -106,20 +91,12 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 			throw new ConfigValidationException('Failed to insert app config.');
 		}
 
-		const configAudioStore = storesManager.getStore(configAudioStoreKey);
-		const configDisplayStore = storesManager.getStore(configDisplayStoreKey);
 		const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
 		const configSystemStore = storesManager.getStore(configSystemStoreKey);
 		const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 		const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 		const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
-		configAudioStore.set({
-			data: parsedConfigApp.data.audio,
-		});
-		configDisplayStore.set({
-			data: parsedConfigApp.data.display,
-		});
 		configLanguageStore.set({
 			data: parsedConfigApp.data.language,
 		});
@@ -169,20 +146,12 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformConfigAppResponse(responseData.data);
 
-					const configAudioStore = storesManager.getStore(configAudioStoreKey);
-					const configDisplayStore = storesManager.getStore(configDisplayStoreKey);
 					const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
 					const configSystemStore = storesManager.getStore(configSystemStoreKey);
 					const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 					const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 					const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
-					configAudioStore.set({
-						data: transformed.audio,
-					});
-					configDisplayStore.set({
-						data: transformed.display,
-					});
 					configLanguageStore.set({
 						data: transformed.language,
 					});

@@ -61,10 +61,21 @@
 			/>
 		</el-form-item>
 
-		<display-profile-select
-			v-model="model.display"
-			:required="false"
-		/>
+		<el-form-item
+			:label="t('dashboardModule.fields.pages.displays.title')"
+			:prop="['displays']"
+		>
+			<displays-multi-select
+				v-model="model.displays"
+				:placeholder="t('dashboardModule.fields.pages.displays.placeholder')"
+			/>
+			<el-text
+				size="small"
+				class="block mt-1 text-gray-500"
+			>
+				{{ t('dashboardModule.fields.pages.displays.description') }}
+			</el-text>
+		</el-form-item>
 	</el-form>
 </template>
 
@@ -72,10 +83,10 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, ElText, type FormRules } from 'element-plus';
 
 import { type IPlugin, IconPicker } from '../../../../common';
-import { DisplayProfileSelect } from '../../../system';
+import { DisplaysMultiSelect } from '../../../displays';
 import { usePageAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../dashboard.constants';
 import type { IPageAddForm } from '../../schemas/pages.types';

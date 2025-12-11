@@ -1,1 +1,1 @@
-export * from './displays-profiles.types';
+// Display profiles are now managed in the displays module

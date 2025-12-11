@@ -147,7 +147,6 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Channels',
 			icon: 'mdi:chip',
-			menu: 6000,
 		},
 		children: [
 			{

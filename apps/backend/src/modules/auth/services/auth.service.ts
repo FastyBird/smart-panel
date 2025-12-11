@@ -1,17 +1,15 @@
 import bcrypt from 'bcrypt';
-import { Cache } from 'cache-manager';
 import { validate } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { ACCESS_TOKEN_TYPE, DISPLAY_SECRET_CACHE_KEY, TokenType } from '../auth.constants';
+import { ACCESS_TOKEN_TYPE, TokenType } from '../auth.constants';
 import {
 	AuthException,
 	AuthNotFoundException,
@@ -38,8 +36,6 @@ export class AuthService {
 		private readonly usersService: UsersService,
 		private readonly tokensService: TokensService,
 		private readonly jwtService: JwtService,
-		@Inject(CACHE_MANAGER)
-		private readonly cacheManager: Cache,
 	) {}
 
 	generateToken(user: UserEntity, role?: UserRole, options?: JwtSignOptions): string {
@@ -139,14 +135,10 @@ export class AuthService {
 		const { password, email, username } = dtoInstance;
 
 		// Ensure only one owner can be registered
-		if ((await this.usersService.findOwner()) && registerDto.role !== UserRole.DISPLAY) {
+		if (await this.usersService.findOwner()) {
 			this.logger.warn(`[REGISTER] Registration failed - owner already exists`);
 
 			throw new AuthException('Owner already registered');
-		}
-
-		if (registerDto.role === UserRole.DISPLAY) {
-			return this.registerDisplay(registerDto);
 		}
 
 		// Check if email or username already exists
@@ -175,35 +167,6 @@ export class AuthService {
 		});
 
 		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);
-
-		return user;
-	}
-
-	private async registerDisplay(dto: RegisterDto): Promise<UserEntity> {
-		this.logger.debug(`[REGISTER] Registering new display display=${dto.username}`);
-
-		const existingUser = await this.usersService.findByUsername(dto.username);
-
-		let user: UserEntity;
-
-		if (existingUser !== null) {
-			this.logger.log(`[REGISTER] Updating existing display - display=${dto.username}`);
-
-			user = await this.usersService.update(existingUser.id, {
-				password: dto.password,
-			});
-		} else {
-			user = await this.usersService.create({
-				id: dto.id,
-				username: dto.username,
-				password: dto.password,
-				role: UserRole.DISPLAY,
-			});
-		}
-
-		await this.cacheManager.del(DISPLAY_SECRET_CACHE_KEY);
-
-		this.logger.debug(`[REGISTER] Successfully registered display id=${user.id}`);
 
 		return user;
 	}
@@ -291,10 +254,11 @@ export class AuthService {
 		let accessTokenEntity: AccessTokenEntity;
 
 		try {
+			// Pass user entity directly to ensure relation is properly set
 			accessTokenEntity = await this.tokensService.create<AccessTokenEntity, CreateAccessTokenDto>({
 				token: accessToken,
 				type: TokenType.ACCESS,
-				owner: user.id,
+				owner: user,
 				expiresAt: accessTokenExpiresAt,
 			});
 		} catch (error) {
@@ -309,11 +273,12 @@ export class AuthService {
 		const refreshTokenExpiresAt = this.getExpiryDate(refreshToken) || new Date();
 
 		try {
+			// Pass user entity and parent token entity directly to ensure relations are properly set
 			await this.tokensService.create<RefreshTokenEntity, CreateRefreshTokenDto>({
 				token: refreshToken,
 				type: TokenType.REFRESH,
-				owner: user.id,
-				parent: accessTokenEntity.id,
+				owner: user,
+				parent: accessTokenEntity,
 				expiresAt: refreshTokenExpiresAt,
 			});
 		} catch (error) {

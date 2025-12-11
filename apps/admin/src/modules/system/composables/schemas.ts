@@ -3,10 +3,6 @@ import { z } from 'zod';
 import { SystemModuleExtensionSurface, SystemModuleLogEntrySource, SystemModuleLogEntryType } from '../../../openapi.constants';
 import { SystemModuleExtensionKind, SystemModuleExtensionSource } from '../../../openapi.constants';
 
-export const DisplaysProfilesFilterSchema = z.object({
-	search: z.string().optional(),
-});
-
 export const SystemLogsFilterSchema = z.object({
 	search: z.string().optional(),
 	levels: z.array(z.nativeEnum(SystemModuleLogEntryType)).default([]),

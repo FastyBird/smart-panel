@@ -1,7 +1,6 @@
 export type ExtensionKind = 'module' | 'plugin';
 
 export interface ClassType<T = unknown> {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	new (...args: any[]): T;
 }
 

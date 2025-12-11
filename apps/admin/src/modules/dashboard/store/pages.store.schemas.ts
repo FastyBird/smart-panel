@@ -25,7 +25,7 @@ export const PageSchema = z.object({
 	icon: z.string().trim().nullable().default(null),
 	order: z.number().default(0),
 	showTopBar: z.boolean().default(true),
-	display: z.string().uuid().nullable().default(null),
+	displays: z.array(z.string().uuid()).nullable().default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -69,7 +69,7 @@ export const PagesSetActionPayloadSchema = z.object({
 				.optional(),
 			order: z.number().default(0),
 			showTopBar: z.boolean().default(true),
-			display: z.string().uuid().nullable().default(null),
+			displays: z.array(z.string().uuid()).nullable().default(null),
 		})
 		.passthrough(),
 });
@@ -98,7 +98,7 @@ export const PagesAddActionPayloadSchema = z.object({
 				.optional(),
 			order: z.number().default(0),
 			showTopBar: z.boolean().default(true).optional(),
-			display: z.string().uuid().nullable().optional(),
+			displays: z.array(z.string().uuid()).nullable().optional(),
 		})
 		.passthrough(),
 });
@@ -118,7 +118,7 @@ export const PagesEditActionPayloadSchema = z.object({
 				.optional(),
 			order: z.number().optional(),
 			showTopBar: z.boolean().optional(),
-			display: z.string().uuid().nullable().optional(),
+			displays: z.array(z.string().uuid()).nullable().optional(),
 		})
 		.passthrough(),
 });
@@ -146,7 +146,7 @@ export const PageCreateReqSchema: ZodType<ApiCreatePage> = z.object({
 		.optional(),
 	order: z.number(),
 	show_top_bar: z.boolean().optional(),
-	display: z.string().uuid().nullable().optional(),
+	displays: z.array(z.string().uuid()).nullable().optional(),
 });
 
 export const PageUpdateReqSchema: ZodType<ApiUpdatePage> = z.object({
@@ -160,7 +160,7 @@ export const PageUpdateReqSchema: ZodType<ApiUpdatePage> = z.object({
 		.optional(),
 	order: z.number().optional(),
 	show_top_bar: z.boolean().optional(),
-	display: z.string().uuid().nullable().optional(),
+	displays: z.array(z.string().uuid()).nullable().optional(),
 });
 
 export const PageResSchema: ZodType<ApiPage> = z.object({
@@ -171,7 +171,7 @@ export const PageResSchema: ZodType<ApiPage> = z.object({
 	order: z.number(),
 	show_top_bar: z.boolean(),
 	data_source: z.array(DataSourceResSchema),
-	display: z.string().uuid().nullable(),
+	displays: z.array(z.string().uuid()).nullable(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

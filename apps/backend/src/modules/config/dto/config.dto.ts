@@ -41,10 +41,6 @@ const determineConfigDto = (obj: unknown): new () => object => {
 		}
 
 		switch (type) {
-			case SectionType.AUDIO:
-				return UpdateAudioConfigDto;
-			case SectionType.DISPLAY:
-				return UpdateDisplayConfigDto;
 			case SectionType.LANGUAGE:
 				return UpdateLanguageConfigDto;
 			case SectionType.WEATHER:
@@ -77,148 +73,7 @@ const determineConfigDto = (obj: unknown): new () => object => {
 export class BaseConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid section string."}]' })
-	type: SectionType.AUDIO | SectionType.DISPLAY | SectionType.LANGUAGE | SectionType.WEATHER | SectionType.SYSTEM;
-}
-
-@ApiSchema({ name: 'ConfigModuleUpdateAudio' })
-export class UpdateAudioConfigDto extends BaseConfigDto {
-	@ApiProperty({
-		description: 'Configuration section type',
-		enum: [SectionType.AUDIO],
-		example: 'audio',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"type","reason":"Type must be a audio string."}]' })
-	type: SectionType.AUDIO;
-
-	@ApiPropertyOptional({
-		description: 'Enables or disables the speaker.',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"speaker","reason":"Speaker must be a boolean value."}]' })
-	speaker?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Sets the speaker volume (0-100).',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 100,
-		example: 34,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"speaker_volume","reason":"Speaker volume must be a valid number."}]' },
-	)
-	@Min(0, { message: '[{"field":"speaker_volume","reason":"Speaker volume must be at least 0."}]' })
-	@Max(100, { message: '[{"field":"speaker_volume","reason":"Speaker volume cannot exceed 100."}]' })
-	speaker_volume?: number;
-
-	@ApiPropertyOptional({
-		description: 'Enables or disables the microphone.',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"microphone","reason":"Microphone must be a boolean value."}]' })
-	microphone?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Sets the microphone volume (0-100).',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 100,
-		example: 55,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"microphone_volume","reason":"Microphone volume must be a valid number."}]' },
-	)
-	@Min(0, { message: '[{"field":"microphone_volume","reason":"Microphone volume must be at least 0."}]' })
-	@Max(100, { message: '[{"field":"microphone_volume","reason":"Microphone volume cannot exceed 100."}]' })
-	microphone_volume?: number;
-}
-
-@ApiSchema({ name: 'ConfigModuleUpdateDisplay' })
-export class UpdateDisplayConfigDto extends BaseConfigDto {
-	@ApiProperty({
-		description: 'Configuration section type',
-		enum: [SectionType.DISPLAY],
-		example: 'display',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"type","reason":"Type must be a display string."}]' })
-	type: SectionType.DISPLAY;
-
-	@ApiPropertyOptional({
-		description: 'Enables or disables dark mode.',
-		type: 'boolean',
-		example: false,
-	})
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"dark_mode","reason":"Dark mode must be a boolean value."}]' })
-	dark_mode?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Sets the display brightness (0-100).',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 100,
-		example: 50,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"brightness","reason":"Brightness must be a valid number."}]' },
-	)
-	@Min(0, { message: '[{"field":"brightness","reason":"Brightness must be at least 0."}]' })
-	@Max(100, { message: '[{"field":"brightness","reason":"Brightness cannot exceed 100."}]' })
-	brightness?: number;
-
-	@ApiPropertyOptional({
-		description: 'Sets the screen lock duration in seconds (0-3600).',
-		type: 'integer',
-		format: 'int32',
-		minimum: 0,
-		maximum: 3600,
-		example: 30,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{
-			each: false,
-			message: '[{"field":"screen_lock_duration","reason":"Screen lock duration must be a valid number."}]',
-		},
-	)
-	@Min(0, { message: '[{"field":"screen_lock_duration","reason":"Screen lock duration must be at least 0."}]' })
-	@Max(3600, {
-		message: '[{"field":"screen_lock_duration","reason":"Screen lock duration cannot exceed 3600 seconds."}]',
-	})
-	screen_lock_duration?: number;
-
-	@ApiPropertyOptional({
-		description: 'Enables or disables the screen saver.',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"screen_saver","reason":"Screen saver must be a boolean value."}]' })
-	screen_saver?: boolean;
+	type: SectionType.LANGUAGE | SectionType.WEATHER | SectionType.SYSTEM;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateLanguage' })
@@ -547,8 +402,6 @@ export class ReqUpdateSectionDto {
 	@ApiProperty({
 		description: 'Configuration section data',
 		oneOf: [
-			{ $ref: getSchemaPath(UpdateAudioConfigDto) },
-			{ $ref: getSchemaPath(UpdateDisplayConfigDto) },
 			{ $ref: getSchemaPath(UpdateLanguageConfigDto) },
 			{ $ref: getSchemaPath(UpdateWeatherConfigDto) },
 			{ $ref: getSchemaPath(UpdateSystemConfigDto) },
@@ -556,8 +409,6 @@ export class ReqUpdateSectionDto {
 		discriminator: {
 			propertyName: 'type',
 			mapping: {
-				audio: getSchemaPath(UpdateAudioConfigDto),
-				display: getSchemaPath(UpdateDisplayConfigDto),
 				language: getSchemaPath(UpdateLanguageConfigDto),
 				weather: getSchemaPath(UpdateWeatherConfigDto),
 				system: getSchemaPath(UpdateSystemConfigDto),
@@ -568,8 +419,6 @@ export class ReqUpdateSectionDto {
 	@ValidateNested()
 	@Type((options) => determineConfigDto(options?.object ?? {}))
 	data:
-		| UpdateAudioConfigDto
-		| UpdateDisplayConfigDto
 		| UpdateLanguageConfigDto
 		| UpdateWeatherLatLonConfigDto
 		| UpdateWeatherCityNameConfigDto

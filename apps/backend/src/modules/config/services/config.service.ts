@@ -11,7 +11,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
-import { EventType, SectionType } from '../config.constants';
+import { EventType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { BaseConfigDto, UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
 import { AppConfigModel, BaseConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
@@ -299,11 +299,11 @@ export class ConfigService {
 		throw new ConfigCorruptedException(`Configuration section '${key}' is corrupted and can not be loaded.`);
 	}
 
-	async setConfigSection<TUpdateDto extends BaseConfigDto>(
+	setConfigSection<TUpdateDto extends BaseConfigDto>(
 		key: keyof AppConfigModel,
 		value: TUpdateDto,
 		type: (new () => TUpdateDto) | (new () => TUpdateDto)[],
-	): Promise<void> {
+	): void {
 		this.logger.log(`[UPDATE] Attempting to update configuration section=${key}`);
 
 		const configSection = this.appConfig[key];
@@ -371,46 +371,6 @@ export class ConfigService {
 			this.logger.log(`[SAVE] Saving updated configuration for section=${key}`);
 
 			this.saveConfig(appConfig);
-
-			if (key === SectionType.AUDIO) {
-				this.logger.log('[AUDIO] Applying updated audio configuration');
-
-				try {
-					this.logger.debug(`[AUDIO] Setting speaker volume: ${this.appConfig.audio.speakerVolume}`);
-					await this.platform.setSpeakerVolume(this.appConfig.audio.speakerVolume);
-				} catch (error) {
-					const err = error as Error;
-
-					this.logger.error('[ERROR] Failed to set speaker volume', { message: err.message, stack: err.stack });
-				}
-
-				try {
-					this.logger.debug(`[AUDIO] Setting speaker mute state: ${!this.appConfig.audio.speaker}`);
-					await this.platform.muteSpeaker(!this.appConfig.audio.speaker);
-				} catch (error) {
-					const err = error as Error;
-
-					this.logger.error('[ERROR] Failed to mute/unmute speaker', { message: err.message, stack: err.stack });
-				}
-
-				try {
-					this.logger.debug(`[AUDIO] Setting microphone volume: ${this.appConfig.audio.microphoneVolume}`);
-					await this.platform.setMicrophoneVolume(this.appConfig.audio.microphoneVolume);
-				} catch (error) {
-					const err = error as Error;
-
-					this.logger.error('[ERROR] Failed to set microphone volume', { message: err.message, stack: err.stack });
-				}
-
-				try {
-					this.logger.debug(`[AUDIO] Setting microphone mute state: ${!this.appConfig.audio.microphone}`);
-					await this.platform.muteMicrophone(!this.appConfig.audio.microphone);
-				} catch (error) {
-					const err = error as Error;
-
-					this.logger.error('[ERROR] Failed to mute/unmute microphone', { message: err.message, stack: err.stack });
-				}
-			}
 
 			this.logger.log(`[EVENT] Broadcasting configuration change for section=${key}`);
 			this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);

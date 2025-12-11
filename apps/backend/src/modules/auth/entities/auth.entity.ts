@@ -1,12 +1,22 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsBoolean, IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { BeforeInsert, ChildEntity, Column, Entity, Index, ManyToOne, OneToMany, TableInheritance } from 'typeorm';
+import { IsBoolean, IsDate, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+	BeforeInsert,
+	ChildEntity,
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	OneToMany,
+	TableInheritance,
+} from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { UserEntity } from '../../users/entities/users.entity';
-import { TokenType } from '../auth.constants';
+import { TokenOwnerType, TokenType } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { hashToken } from '../utils/token.utils';
 
@@ -101,11 +111,15 @@ export class AccessTokenEntity extends TokenEntity {
 	})
 	@Expose()
 	@IsOptional()
+	@Column({ nullable: true })
+	ownerId: string;
+
 	@Type(() => UserEntity)
 	@Transform(({ value }: { value: UserEntity | string }) => (typeof value === 'string' ? value : value?.id), {
 		toPlainOnly: true,
 	})
 	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'ownerId' })
 	owner: UserEntity;
 
 	@OneToMany(() => RefreshTokenEntity, (token) => token.parent, { cascade: true })
@@ -133,6 +147,9 @@ export class AccessTokenEntity extends TokenEntity {
 @ApiSchema({ name: 'AuthModuleDataRefreshToken' })
 @ChildEntity()
 export class RefreshTokenEntity extends TokenEntity {
+	@Column({ nullable: true })
+	ownerId: string;
+
 	@ApiProperty({
 		description: 'Token owner ID',
 		type: 'string',
@@ -146,7 +163,11 @@ export class RefreshTokenEntity extends TokenEntity {
 		toPlainOnly: true,
 	})
 	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'ownerId' })
 	owner: UserEntity;
+
+	@Column({ nullable: true })
+	parentId: string;
 
 	@ApiProperty({
 		description: 'Parent access token ID',
@@ -161,6 +182,7 @@ export class RefreshTokenEntity extends TokenEntity {
 		toPlainOnly: true,
 	})
 	@ManyToOne(() => AccessTokenEntity, (token) => token.children, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'parentId' })
 	parent: AccessTokenEntity;
 
 	@ApiProperty({
@@ -178,19 +200,49 @@ export class RefreshTokenEntity extends TokenEntity {
 @ChildEntity()
 export class LongLiveTokenEntity extends TokenEntity {
 	@ApiProperty({
-		description: 'Token owner ID',
+		name: 'owner_type',
+		description: 'Type of token owner',
+		enum: TokenOwnerType,
+		example: TokenOwnerType.USER,
+	})
+	@Expose({ name: 'owner_type' })
+	@IsEnum(TokenOwnerType)
+	@Transform(
+		({ obj }: { obj: { owner_type?: TokenOwnerType; ownerType?: TokenOwnerType } }) => obj.owner_type ?? obj.ownerType,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', default: TokenOwnerType.USER })
+	ownerType: TokenOwnerType;
+
+	@ApiPropertyOptional({
+		name: 'owner_id',
+		description: 'Owner entity ID (user, display, or null for third-party)',
 		type: 'string',
 		format: 'uuid',
+		nullable: true,
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@Expose()
+	@Expose({ name: 'owner_id' })
 	@IsOptional()
-	@Type(() => UserEntity)
-	@Transform(({ value }: { value: UserEntity | string }) => (typeof value === 'string' ? value : value?.id), {
-		toPlainOnly: true,
-	})
-	@ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
-	owner: UserEntity;
+	@IsUUID('4')
+	@Transform(
+		({ obj }: { obj: { owner_id?: string; ownerId?: string; tokenOwnerId?: string } }) =>
+			obj.owner_id ?? obj.ownerId ?? obj.tokenOwnerId,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Column({ type: 'uuid', nullable: true })
+	tokenOwnerId: string | null;
+
+	// Getter/setter for API compatibility - maps ownerId to tokenOwnerId
+	get ownerId(): string | null {
+		return this.tokenOwnerId;
+	}
+
+	set ownerId(value: string | null) {
+		this.tokenOwnerId = value;
+	}
 
 	@ApiProperty({
 		description: 'Token name',

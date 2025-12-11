@@ -4,10 +4,6 @@ export const WEBSOCKET_MODULE_PREFIX = 'websocket-module';
 
 export const WEBSOCKET_MODULE_NAME = 'websocket-module';
 
-export const DISPLAY_SECRET_HEADER = 'x-display-secret';
-
-export const DISPLAY_SECRET_CACHE_KEY = 'display-secret';
-
 export const CLIENT_DEFAULT_ROOM = 'default-room';
 export const DISPLAY_INTERNAL_ROOM = 'display-room';
 export const EXCHANGE_ROOM = 'exchange-room';
@@ -23,3 +19,9 @@ export const WsConnInfluxDbSchema: ISchemaOptions = {
 	fields: { clients: FieldType.INTEGER },
 	tags: [],
 };
+
+export enum WsEventType {
+	CLIENT_CONNECTED = 'WebsocketModule.Client.Connected',
+	CLIENT_DISCONNECTED = 'WebsocketModule.Client.Disconnected',
+	CLIENT_LOST = 'WebsocketModule.Client.Lost',
+}

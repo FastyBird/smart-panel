@@ -110,7 +110,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { useDisplaysProfiles } from '../../../system';
+import { useDisplays } from '../../../displays';
 import { type IPagesFilter } from '../../composables/types';
 import { usePagesPlugins } from '../../composables/usePagesPlugins';
 
@@ -131,7 +131,7 @@ const ns = useNamespace('list-pages-adjust');
 const { t } = useI18n();
 
 const { options: typesOptions } = usePagesPlugins();
-const { options: displaysOptions } = useDisplaysProfiles();
+const { options: displaysOptions } = useDisplays();
 
 const activeBoxes = ref<string[]>(['types', 'displays']);
 

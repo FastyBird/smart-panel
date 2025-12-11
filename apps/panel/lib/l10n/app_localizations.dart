@@ -959,6 +959,12 @@ abstract class AppLocalizations {
   /// **'Microphone Volume'**
   String get settings_audio_settings_microphone_volume_title;
 
+  /// Message shown when the display doesn't support audio.
+  ///
+  /// In en, this message translates to:
+  /// **'This display does not support audio input or output.'**
+  String get settings_audio_settings_no_support;
+
   /// Title for the About Application section.
   ///
   /// In en, this message translates to:

@@ -66,7 +66,7 @@ import { TokensService } from './services/tokens.service';
 		},
 	],
 	controllers: [AuthController, TokensController],
-	exports: [AuthService, TokensService, CryptoService, TokensTypeMapperService],
+	exports: [AuthService, TokensService, CryptoService, TokensTypeMapperService, JwtModule],
 })
 export class AuthModule {
 	constructor(

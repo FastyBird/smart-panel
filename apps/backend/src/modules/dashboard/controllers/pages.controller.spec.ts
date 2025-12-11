@@ -14,7 +14,8 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DisplayProfileEntity } from '../../system/entities/system.entity';
+import { ConnectionState } from '../../displays/displays.constants';
+import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { CreatePageDto } from '../dto/create-page.dto';
 import { UpdatePageDto } from '../dto/update-page.dto';
@@ -62,16 +63,32 @@ describe('PagesController', () => {
 	let tileMapper: TilesTypeMapperService;
 	let dataSourceMapper: DataSourcesTypeMapperService;
 
-	const mockDisplay: DisplayProfileEntity = {
+	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
-		uid: uuid().toString(),
+		macAddress: 'AA:BB:CC:DD:EE:FF',
+		name: 'Test Display',
+		version: '1.0.0',
+		build: 'test',
 		screenWidth: 1280,
 		screenHeight: 720,
 		pixelRatio: 2,
 		unitSize: 120,
 		rows: 6,
 		cols: 4,
-		primary: true,
+		darkMode: false,
+		brightness: 100,
+		screenLockDuration: 30,
+		screenSaver: true,
+		audioOutputSupported: false,
+		audioInputSupported: false,
+		speaker: false,
+		speakerVolume: 50,
+		microphone: false,
+		microphoneVolume: 50,
+		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: undefined,
 	};
@@ -83,7 +100,7 @@ describe('PagesController', () => {
 		order: 0,
 		showTopBar: false,
 		dataSource: [],
-		display: mockDisplay.id,
+		displays: [mockDisplay],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',

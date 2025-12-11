@@ -13,6 +13,7 @@ import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
@@ -31,7 +32,10 @@ describe('WebsocketGateway', () => {
 
 	const mockClientUser: ClientUserDto = {
 		id: null,
-		role: UserRole.DISPLAY,
+		role: UserRole.USER,
+		type: 'token',
+		ownerType: TokenOwnerType.DISPLAY,
+		tokenId: 'mock-token-id',
 	};
 
 	const mockSocket = {
@@ -41,6 +45,16 @@ describe('WebsocketGateway', () => {
 		disconnect: jest.fn(),
 		data: {
 			user: mockClientUser,
+		},
+		request: {
+			headers: {},
+			socket: {
+				remoteAddress: '127.0.0.1',
+			},
+		},
+		handshake: {
+			headers: {},
+			address: '127.0.0.1',
 		},
 	} as unknown as Socket;
 
@@ -59,6 +73,7 @@ describe('WebsocketGateway', () => {
 					provide: EventEmitter2,
 					useValue: {
 						onAny: jest.fn(),
+						emit: jest.fn(),
 					},
 				},
 				{

@@ -18,8 +18,6 @@ import {
 } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 import {
-	UpdateAudioConfigDto,
-	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
 	UpdateModuleConfigDto,
 	UpdateWeatherCityIdConfigDto,
@@ -29,8 +27,6 @@ import {
 } from '../dto/config.dto';
 import {
 	AppConfigModel,
-	AudioConfigModel,
-	DisplayConfigModel,
 	LanguageConfigModel,
 	ModuleConfigModel,
 	WeatherCityIdConfigModel,
@@ -50,20 +46,6 @@ describe('ConfigController', () => {
 
 	const mockConfig: AppConfigModel = {
 		path: '/var/smart-panel/config.yml',
-		audio: {
-			type: SectionType.AUDIO,
-			speaker: true,
-			speakerVolume: 50,
-			microphone: false,
-			microphoneVolume: 30,
-		},
-		display: {
-			type: SectionType.DISPLAY,
-			darkMode: true,
-			brightness: 80,
-			screenLockDuration: 5,
-			screenSaver: true,
-		},
 		language: {
 			type: SectionType.LANGUAGE,
 			language: LanguageType.ENGLISH,
@@ -154,18 +136,11 @@ describe('ConfigController', () => {
 	});
 
 	describe('getConfigSection', () => {
-		it('should return the audio configuration section', () => {
-			const result = controller.getConfigSection(SectionType.AUDIO);
+		it('should return the language configuration section', () => {
+			const result = controller.getConfigSection(SectionType.LANGUAGE);
 			expect(result).toHaveProperty('data');
-			expect(result.data).toEqual(mockConfig.audio);
-			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.AUDIO, AudioConfigModel);
-		});
-
-		it('should return the display configuration section', () => {
-			const result = controller.getConfigSection(SectionType.DISPLAY);
-			expect(result).toHaveProperty('data');
-			expect(result.data).toEqual(mockConfig.display);
-			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.DISPLAY, DisplayConfigModel);
+			expect(result.data).toEqual(mockConfig.language);
+			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.LANGUAGE, LanguageConfigModel);
 		});
 
 		it('should throw BadRequestException for an invalid section', () => {
@@ -173,48 +148,8 @@ describe('ConfigController', () => {
 		});
 	});
 
-	describe('updateAudioConfig', () => {
-		it('should update and return the audio configuration', async () => {
-			const updateDto: UpdateAudioConfigDto = { type: SectionType.AUDIO, speaker: false, speaker_volume: 20 };
-			const updatedConfig = { ...mockConfig.audio, speaker: false, speakerVolume: 20 };
-
-			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
-
-			const result = await controller.updateAudioConfig({ data: updateDto });
-
-			expect(result).toHaveProperty('data');
-			expect(result.data).toMatchObject({
-				type: SectionType.AUDIO,
-				speaker: false,
-				speakerVolume: 20,
-			});
-			expect(configService.setConfigSection).toHaveBeenCalledWith('audio', updateDto, UpdateAudioConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('audio', AudioConfigModel);
-		});
-	});
-
-	describe('updateDisplayConfig', () => {
-		it('should update and return the display configuration', async () => {
-			const updateDto: UpdateDisplayConfigDto = { type: SectionType.DISPLAY, brightness: 60, dark_mode: false };
-			const updatedConfig = { ...mockConfig.display, brightness: 60, darkMode: false };
-
-			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
-
-			const result = await controller.updateDisplayConfig({ data: updateDto });
-
-			expect(result).toHaveProperty('data');
-			expect(result.data).toMatchObject({
-				type: SectionType.DISPLAY,
-				brightness: 60,
-				darkMode: false,
-			});
-			expect(configService.setConfigSection).toHaveBeenCalledWith('display', updateDto, UpdateDisplayConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('display', DisplayConfigModel);
-		});
-	});
-
 	describe('updateLanguageConfig', () => {
-		it('should update and return the language configuration', async () => {
+		it('should update and return the language configuration', () => {
 			const updateDto: UpdateLanguageConfigDto = {
 				type: SectionType.LANGUAGE,
 				language: LanguageType.CZECH,
@@ -224,7 +159,7 @@ describe('ConfigController', () => {
 
 			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
 
-			const result = await controller.updateLanguageConfig({ data: updateDto });
+			const result = controller.updateLanguageConfig({ data: updateDto });
 
 			expect(result).toHaveProperty('data');
 			expect(result.data).toEqual(updatedConfig);
@@ -234,7 +169,7 @@ describe('ConfigController', () => {
 	});
 
 	describe('updateWeatherConfig', () => {
-		it('should update and return the weather configuration', async () => {
+		it('should update and return the weather configuration', () => {
 			const updateDto: UpdateWeatherCityNameConfigDto = {
 				type: SectionType.WEATHER,
 				location_type: WeatherLocationType.CITY_NAME,
@@ -245,7 +180,7 @@ describe('ConfigController', () => {
 
 			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
 
-			const result = await controller.updateWeatherConfig({ data: updateDto });
+			const result = controller.updateWeatherConfig({ data: updateDto });
 
 			expect(result).toHaveProperty('data');
 			expect(result.data).toMatchObject({

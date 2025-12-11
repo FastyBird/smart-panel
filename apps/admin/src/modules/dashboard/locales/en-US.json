@@ -221,6 +221,11 @@
       "showTopBar": {
         "title": "Show top bar",
         "placeholder": "Show page top bar"
+      },
+      "displays": {
+        "title": "Displays",
+        "placeholder": "Select displays (leave empty for all displays)",
+        "description": "Select specific displays for this page. Leave empty to make it visible on all displays."
       }
     },
     "tiles": {
@@ -286,7 +291,8 @@
           "title": "Type"
         },
         "display": {
-          "title": "Display"
+          "title": "Displays",
+          "all": "All displays"
         },
         "order": {
           "title": "Order"

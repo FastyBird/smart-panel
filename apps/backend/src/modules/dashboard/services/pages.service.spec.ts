@@ -17,9 +17,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DisplayProfileEntity } from '../../system/entities/system.entity';
-import { DisplaysProfilesService } from '../../system/services/displays-profiles.service';
-import { DisplayProfileExistsConstraintValidator } from '../../system/validators/display-profile-exists-constraint.validator';
+import { ConnectionState } from '../../displays/displays.constants';
+import { DisplayEntity } from '../../displays/entities/displays.entity';
+import { DisplaysService } from '../../displays/services/displays.service';
+import { DisplayExistsConstraint } from '../../displays/validators/display-exists-constraint.validator';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException } from '../dashboard.exceptions';
 import { CreatePageDto } from '../dto/create-page.dto';
@@ -69,16 +70,32 @@ describe('PagesService', () => {
 	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 
-	const mockDisplay: DisplayProfileEntity = {
+	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
-		uid: uuid().toString(),
+		macAddress: 'AA:BB:CC:DD:EE:FF',
+		name: 'Test Display',
+		version: '1.0.0',
+		build: 'test',
 		screenWidth: 1280,
 		screenHeight: 720,
 		pixelRatio: 2,
 		unitSize: 120,
 		rows: 6,
 		cols: 4,
-		primary: true,
+		darkMode: false,
+		brightness: 100,
+		screenLockDuration: 30,
+		screenSaver: true,
+		audioOutputSupported: false,
+		audioInputSupported: false,
+		speaker: false,
+		speakerVolume: 50,
+		microphone: false,
+		microphoneVolume: 50,
+		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: undefined,
 	};
@@ -90,7 +107,7 @@ describe('PagesService', () => {
 		order: 0,
 		showTopBar: false,
 		dataSource: [],
-		display: mockDisplay.id,
+		displays: [toInstance(DisplayEntity, mockDisplay)],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -103,18 +120,17 @@ describe('PagesService', () => {
 		order: 0,
 		showTopBar: false,
 		dataSource: [],
-		display: mockDisplay.id,
+		displays: [toInstance(DisplayEntity, mockDisplay)],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Other mock value',
 	};
 
 	const mockDisplaysService = {
-		findAll: jest.fn().mockResolvedValue([toInstance(DisplayProfileEntity, mockDisplay)]),
-		findOne: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
-		findByUid: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
-		findPrimary: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
-		getOneOrThrow: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
+		findAll: jest.fn().mockResolvedValue([toInstance(DisplayEntity, mockDisplay)]),
+		findOne: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
+		findByMacAddress: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
+		getOneOrThrow: jest.fn().mockResolvedValue(toInstance(DisplayEntity, mockDisplay)),
 	};
 
 	const mockManager: jest.Mocked<Partial<EntityManager>> = {
@@ -142,7 +158,7 @@ describe('PagesService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				PagesService,
-				DisplayProfileExistsConstraintValidator,
+				DisplayExistsConstraint,
 				{ provide: getRepositoryToken(PageEntity), useFactory: mockRepository },
 				{
 					provide: DataSourcesService,
@@ -177,7 +193,7 @@ describe('PagesService', () => {
 					},
 				},
 				{
-					provide: DisplaysProfilesService,
+					provide: DisplaysService,
 					useValue: mockDisplaysService,
 				},
 				{
@@ -241,7 +257,11 @@ describe('PagesService', () => {
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockPageOne)),
+				getOne: jest
+					.fn()
+					.mockResolvedValue(
+						toInstance(MockPageEntity, { ...mockPageOne, displays: [toInstance(DisplayEntity, mockDisplay)] }),
+					),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
@@ -283,7 +303,7 @@ describe('PagesService', () => {
 				title: createDto.title,
 				order: createDto.order,
 				showTopBar: createDto.show_top_bar,
-				display: mockDisplay.id,
+				displays: [],
 				mockValue: createDto.mockValue,
 			};
 			const mockCratedPage: MockPageEntity = {
@@ -293,7 +313,7 @@ describe('PagesService', () => {
 				icon: null,
 				order: mockCratePage.order,
 				showTopBar: mockCratePage.showTopBar,
-				display: mockCratePage.display,
+				displays: [],
 				createdAt: new Date(),
 				dataSource: [],
 				updatedAt: null,
@@ -315,7 +335,7 @@ describe('PagesService', () => {
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockCratedPage)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, { ...mockCratedPage, displays: [] })),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
@@ -348,16 +368,19 @@ describe('PagesService', () => {
 				title: 'Updated title',
 				mockValue: 'Updated mock value',
 			};
+			// When displays is not provided in updateDto, the service should preserve existing displays
+			// The page entity returned by getOneOrThrow will have displays loaded
+			const pageWithDisplays = toInstance(MockPageEntity, mockPageTwo);
 			const mockUpdatePage: MockPageEntity = {
-				id: mockPageTwo.id,
-				type: mockPageTwo.type,
+				id: pageWithDisplays.id,
+				type: pageWithDisplays.type,
 				title: updateDto.title,
-				order: mockPageTwo.order,
-				showTopBar: mockPageTwo.showTopBar,
-				dataSource: mockPageTwo.dataSource,
-				display: mockDisplay.id,
-				createdAt: mockPageTwo.createdAt,
-				updatedAt: mockPageTwo.updatedAt,
+				order: pageWithDisplays.order,
+				showTopBar: pageWithDisplays.showTopBar,
+				dataSource: pageWithDisplays.dataSource,
+				displays: pageWithDisplays.displays, // Preserve existing displays when not provided in DTO
+				createdAt: pageWithDisplays.createdAt,
+				updatedAt: pageWithDisplays.updatedAt,
 				mockValue: updateDto.mockValue,
 			};
 			const mockUpdatedPage: MockPageEntity = {
@@ -367,7 +390,7 @@ describe('PagesService', () => {
 				order: mockUpdatePage.order,
 				showTopBar: mockUpdatePage.showTopBar,
 				dataSource: mockUpdatePage.dataSource,
-				display: mockUpdatePage.display,
+				displays: mockUpdatePage.displays,
 				createdAt: mockUpdatePage.createdAt,
 				updatedAt: new Date(),
 				mockValue: mockUpdatePage.mockValue,

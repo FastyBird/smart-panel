@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -138,50 +136,111 @@ class SocketCommandResponseModel {
 }
 
 class SocketService {
-  late io.Socket _socket;
+  io.Socket? _socket;
+  String? _currentApiSecret;
+  String? _currentBackendUrl;
+  bool _shouldReconnect = true;
+
+  // Retry state for backend down scenarios
+  int _retryAttempt = 0;
+  static const int _maxRetryIntervalSeconds = 300; // 5 minutes max
+  static const int _initialRetryIntervalSeconds = 2;
+  static const int _retryBackoffMultiplier = 2;
+
+  // Callback for token invalidation
+  void Function()? _onTokenInvalid;
 
   final Map<String, List<void Function(String, Map<String, dynamic>)>>
       _eventCallbacks = {};
 
-  void initialize(String apiSecret) {
-    final bool isAndroidEmulator = Platform.isAndroid && !kReleaseMode;
+  void initialize(
+    String apiSecret,
+    String backendUrl, {
+    void Function()? onTokenInvalid,
+  }) {
+    // If already initialized with the same token and URL, skip reinitialization
+    if (_socket != null &&
+        _currentApiSecret == apiSecret &&
+        _currentBackendUrl == backendUrl &&
+        _socket!.connected) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SOCKETS] Socket already initialized and connected with same credentials, skipping',
+        );
+      }
+      return;
+    }
 
-    const String appHost = String.fromEnvironment(
-      'FB_APP_HOST',
-      defaultValue: 'http://127.0.0.1',
-    );
-    const String backendPort = String.fromEnvironment(
-      'FB_BACKEND_PORT',
-      defaultValue: '3000',
-    );
+    // Disconnect existing socket if it exists
+    if (_socket != null) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Disconnecting existing socket before reinitializing');
+      }
+      _socket!.disconnect();
+      _socket!.dispose();
+      _socket = null;
+    }
 
-    final String host = isAndroidEmulator ? 'http://10.0.2.2' : appHost;
+    // Enable reconnection for new initialization
+    _shouldReconnect = true;
+
+    // Reset retry state on new initialization
+    _retryAttempt = 0;
+
+    // Store callback for token invalidation
+    _onTokenInvalid = onTokenInvalid;
+
+    // Store current credentials
+    _currentApiSecret = apiSecret;
+    _currentBackendUrl = backendUrl;
+
+    // Parse the backend URL to extract host and port
+    // backendUrl format: http://host:port/api/v1 or https://host:port/api/v1
+    final uri = Uri.parse(backendUrl);
+    final String host = uri.scheme == 'https' ? 'https://${uri.host}' : 'http://${uri.host}';
+    // Use explicit port if provided, otherwise use default (80 for http, 443 for https)
+    final int port = uri.hasPort
+        ? uri.port
+        : (uri.scheme == 'https' ? 443 : 80);
+
+    final String socketUrl = uri.hasPort ? '$host:$port' : host;
 
     _socket = io.io(
-      '$host:$backendPort',
+      socketUrl,
       io.OptionBuilder()
           .setTransports(['websocket'])
-          .setExtraHeaders({'X-Display-Secret': apiSecret})
+          .setAuth({'token': apiSecret})
           .disableAutoConnect()
           .disableReconnection()
           .build(),
     );
 
-    _socket.onConnect((_) {
+    _socket!.onConnect((_) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Connected to Socket.IO backend');
       }
+      // Reset retry state on successful connection
+      _retryAttempt = 0;
     });
 
-    _socket.onDisconnect((_) {
+    _socket!.onDisconnect((_) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Disconnected from Socket.IO backend');
       }
 
-      _attemptReconnect();
+      // Only attempt reconnection if reconnection is enabled
+      // This prevents reconnection attempts when display is deleted
+      if (_shouldReconnect) {
+        // Use exponential backoff for disconnects (backend might be down)
+        _attemptReconnectWithBackoff();
+      } else {
+        if (kDebugMode) {
+          debugPrint('[SOCKETS] Reconnection disabled, not attempting to reconnect');
+        }
+      }
     });
 
-    _socket.on(
+    _socket!.on(
       'event',
       (data) {
         try {
@@ -207,17 +266,48 @@ class SocketService {
       },
     );
 
-    _socket.connect();
+    // Handle connection errors (authentication failures, etc.)
+    _socket!.onConnectError((data) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Connection error: $data');
+      }
+      _handleConnectionError(data);
+    });
+
+    // Handle general errors
+    _socket!.onError((data) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Socket error: $data');
+      }
+      _handleConnectionError(data);
+    });
+
+    _socket!.connect();
   }
 
   Future<void> sendCommand(String event, dynamic data, String handler,
       {Function(SocketCommandResponseModel?)? onAck}) async {
+    if (_socket == null || !_socket!.connected) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Cannot send command: socket not connected');
+      }
+      if (onAck != null) {
+        onAck(
+          SocketCommandResponseModel(
+            status: false,
+            message: 'Socket not connected',
+          ),
+        );
+      }
+      return;
+    }
+
     Map<String, dynamic> payload = {
       'event': event,
       'payload': data,
     };
 
-    await _socket.emitWithAckAsync(
+    await _socket!.emitWithAckAsync(
       'command',
       payload,
       ack: (dynamic response) {
@@ -300,7 +390,18 @@ class SocketService {
   }
 
   void dispose() {
-    _socket.dispose();
+    // Disable reconnection before disposing to prevent reconnection attempts
+    _shouldReconnect = false;
+
+    if (_socket != null) {
+      _socket!.disconnect();
+      _socket!.dispose();
+      _socket = null;
+    }
+    _currentApiSecret = null;
+    _currentBackendUrl = null;
+    _onTokenInvalid = null;
+    _retryAttempt = 0;
   }
 
   void _dispatchEvent(SocketEventModel event) {
@@ -330,43 +431,104 @@ class SocketService {
     return regex.hasMatch(receivedEvent);
   }
 
-  void _attemptReconnect({int delayInSeconds = 2, int? maxAttempts}) {
-    int attempt = 0;
+  void _handleConnectionError(dynamic error) {
+    if (_socket == null || _currentApiSecret == null || _currentBackendUrl == null) {
+      return;
+    }
 
-    void reconnect() {
-      if (_socket.connected) {
+    // Check if this is an authentication error
+    final errorString = error.toString().toLowerCase();
+    final errorData = error is Map ? error : null;
+    final errorMessage = errorData?['message']?.toString().toLowerCase() ?? '';
+    final errorType = errorData?['type']?.toString().toLowerCase() ?? '';
+
+    // Detect authentication errors (401, 403, unauthorized, forbidden, etc.)
+    final isAuthError = errorString.contains('unauthorized') ||
+        errorString.contains('forbidden') ||
+        errorString.contains('401') ||
+        errorString.contains('403') ||
+        errorMessage.contains('unauthorized') ||
+        errorMessage.contains('forbidden') ||
+        errorMessage.contains('authentication') ||
+        errorMessage.contains('token') ||
+        errorType.contains('unauthorized') ||
+        errorType.contains('forbidden');
+
+    if (isAuthError) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Authentication error detected, token invalid. Triggering re-registration.');
+      }
+
+      // Disable reconnection attempts
+      _shouldReconnect = false;
+
+      // Trigger re-registration via callback
+      if (_onTokenInvalid != null) {
+        _onTokenInvalid!();
+      }
+
+      return;
+    }
+
+    // For non-auth errors (backend down), use dynamic retry with exponential backoff
+    if (_shouldReconnect) {
+      _attemptReconnectWithBackoff();
+    }
+  }
+
+  void _attemptReconnectWithBackoff() {
+    if (_socket == null || _currentApiSecret == null || _currentBackendUrl == null) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Cannot reconnect: socket not initialized');
+      }
+      return;
+    }
+
+    if (_socket!.connected) {
+      if (kDebugMode) {
+        debugPrint('[SOCKETS] Already connected, skipping reconnection');
+      }
+      return;
+    }
+
+    // Calculate dynamic retry interval with exponential backoff
+    final baseInterval = _initialRetryIntervalSeconds;
+    final backoffInterval = baseInterval * (_retryBackoffMultiplier * _retryAttempt);
+    final retryInterval = backoffInterval > _maxRetryIntervalSeconds
+        ? _maxRetryIntervalSeconds
+        : backoffInterval;
+
+    _retryAttempt++;
+
+    if (kDebugMode) {
+      debugPrint(
+        '[SOCKETS] Backend appears to be down. Retry attempt $_retryAttempt with ${retryInterval}s delay (max: ${_maxRetryIntervalSeconds}s)...',
+      );
+    }
+
+    Future.delayed(Duration(seconds: retryInterval), () {
+      if (_socket == null || !_shouldReconnect) {
+        return;
+      }
+
+      if (_socket!.connected) {
         if (kDebugMode) {
           debugPrint('[SOCKETS] Successfully reconnected to Socket.IO backend');
         }
-
+        // Reset retry state on successful connection
+        _retryAttempt = 0;
         return;
       }
 
-      if (maxAttempts != null && attempt >= maxAttempts) {
-        if (kDebugMode) {
-          debugPrint('[SOCKETS] Max reconnection attempts reached, stopping.');
-        }
+      // Attempt to reconnect
+      _socket!.connect();
 
-        return;
-      }
-
-      attempt++;
-
-      Future.delayed(Duration(seconds: delayInSeconds), () {
-        if (kDebugMode) {
-          debugPrint(
-            '[SOCKETS] Reconnection attempt $attempt/${maxAttempts ?? '-'} to Socket.IO backend...',
-          );
-        }
-
-        _socket.connect();
-
-        if (!_socket.connected) {
-          reconnect();
+      // Schedule next retry if still not connected after a short delay
+      Future.delayed(Duration(seconds: 2), () {
+        if (_socket != null && !_socket!.connected && _shouldReconnect) {
+          _attemptReconnectWithBackoff();
         }
       });
-    }
-
-    reconnect();
+    });
   }
 }

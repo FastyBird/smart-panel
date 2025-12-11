@@ -10,14 +10,20 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 class AppError extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final Function() _onRestart;
+  final String? _errorMessage;
 
   AppError({
     required Function() onRestart,
+    String? errorMessage,
     super.key,
-  }) : _onRestart = onRestart;
+  })  : _onRestart = onRestart,
+        _errorMessage = errorMessage;
 
   @override
   Widget build(BuildContext context) {
+    final errorMsg = _errorMessage ?? '';
+    final hasPermitJoinError = errorMsg.toLowerCase().contains('permit join');
+
     return MaterialApp(
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
@@ -51,13 +57,48 @@ class AppError extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 AppSpacings.spacingSmVertical,
-                const Text(
-                  'Application could not be initialized.',
+                Text(
+                  _errorMessage ?? 'Application could not be initialized.',
                   textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: AppFontSize.base,
+                  ),
                 ),
+                if (hasPermitJoinError) ...[
+                  AppSpacings.spacingMdVertical,
+                  Container(
+                    padding: AppSpacings.paddingMd,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppFillColorLight.light
+                          : AppFillColorDark.light,
+                      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          MdiIcons.information,
+                          size: _screenService.scale(20),
+                          color: Theme.of(context).primaryColor,
+                        ),
+                        AppSpacings.spacingSmHorizontal,
+                        Expanded(
+                          child: Text(
+                            'Please ask the administrator to activate "Permit Join" in the admin panel, then restart the application.',
+                            style: TextStyle(
+                              fontSize: AppFontSize.small,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 AppSpacings.spacingLgVertical,
                 Text(
-                  'Please try to restart device.',
+                  hasPermitJoinError
+                      ? 'Please try to restart the application after the administrator has enabled permit join.'
+                      : 'Please try to restart device.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: AppFontSize.small,

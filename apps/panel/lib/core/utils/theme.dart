@@ -175,6 +175,8 @@ class AppTheme {
         contentPadding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
         horizontalTitleGap: AppSpacings.pSm,
         textColor: AppTextColorDark.regular,
+        titleAlignment: ListTileTitleAlignment.center,
+        minVerticalPadding: AppSpacings.pSm,
       ),
     );
   }

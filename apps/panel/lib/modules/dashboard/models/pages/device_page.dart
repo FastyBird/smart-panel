@@ -13,7 +13,7 @@ class DeviceDetailPageModel extends PageModel {
     required super.icon,
     super.order,
     super.showTopBar,
-    required super.display,
+    super.displays,
     super.createdAt,
     super.updatedAt,
   })  : _device = UuidUtils.validateUuid(device),
@@ -33,7 +33,9 @@ class DeviceDetailPageModel extends PageModel {
           : null,
       order: json['order'],
       showTopBar: json['show_top_bar'],
-      display: json['display'],
+      displays: json['displays'] != null && json['displays'] is List
+          ? (json['displays'] as List).map((e) => e.toString()).toList()
+          : null,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

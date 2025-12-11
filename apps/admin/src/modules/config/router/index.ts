@@ -17,38 +17,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			icon: 'mdi:cog',
 			menu: 4000,
 		},
-		redirect: () => ({ name: RouteNames.CONFIG_AUDIO }),
+		redirect: () => ({ name: RouteNames.CONFIG_LANGUAGE }),
 		children: [
-			{
-				path: 'audio',
-				name: RouteNames.CONFIG_AUDIO,
-				component: () => import('../views/view-config-audio.vue'),
-				props: true,
-				meta: {
-					guards: {
-						authenticated: true,
-						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
-					},
-					title: 'Audio',
-					icon: 'mdi:monitor-speaker',
-					menu: 4600,
-				},
-			},
-			{
-				path: 'display',
-				name: RouteNames.CONFIG_DISPLAY,
-				component: () => import('../views/view-config-display.vue'),
-				props: true,
-				meta: {
-					guards: {
-						authenticated: true,
-						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
-					},
-					title: 'Display',
-					icon: 'mdi:monitor-dashboard',
-					menu: 4500,
-				},
-			},
 			{
 				path: 'language',
 				name: RouteNames.CONFIG_LANGUAGE,

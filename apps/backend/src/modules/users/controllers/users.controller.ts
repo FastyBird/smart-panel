@@ -18,7 +18,7 @@ import {
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { setLocationHeader } from '../../api/utils/location-header.utils';
-import { AuthenticatedRequest } from '../../auth/auth.constants';
+import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -221,10 +221,10 @@ export class UsersController {
 
 		const user = await this.getOneOrThrow(id);
 
-		const { user: actualUser } = req;
+		const { auth } = req;
 
 		// Prevent user from deleting themselves
-		if (actualUser && actualUser.id === id) {
+		if (auth && auth.type === 'user' && auth.id === id) {
 			throw new UnprocessableEntityException('You cannot delete your own account');
 		}
 

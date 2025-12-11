@@ -223,7 +223,7 @@ jobs:
           pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Test build"
-        run: 'pnpm --filter @fastybird/smart-panel-docs build'
+        run: 'pnpm --filter @fastybird/smart-panel-website build'
 
   application-schemas:
     needs: "check-skip"

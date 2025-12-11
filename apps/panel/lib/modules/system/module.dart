@@ -22,7 +22,6 @@ class SystemModuleService {
   final SocketService _socketService;
   final EventBus _eventBus;
 
-  late DisplaysProfilesRepository _displaysProfilesRepository;
   late SystemInfoRepository _systemInfoRepository;
   late ThrottleStatusRepository _throttleStatusRepository;
 
@@ -32,8 +31,6 @@ class SystemModuleService {
 
   late SystemService _systemService;
 
-  late String _appUid;
-
   bool _isLoading = true;
 
   SystemModuleService({
@@ -42,9 +39,6 @@ class SystemModuleService {
     required EventBus eventBus,
   })  : _socketService = socketService,
         _eventBus = eventBus {
-    _displaysProfilesRepository = DisplaysProfilesRepository(
-      apiClient: apiClient.systemModule,
-    );
     _systemInfoRepository = SystemInfoRepository(
       apiClient: apiClient.systemModule,
     );
@@ -53,12 +47,10 @@ class SystemModuleService {
     );
 
     _systemService = SystemService(
-      displaysProfilesRepository: _displaysProfilesRepository,
       systemInfoRepository: _systemInfoRepository,
       throttleStatusRepository: _throttleStatusRepository,
     );
 
-    locator.registerSingleton(_displaysProfilesRepository);
     locator.registerSingleton(_systemInfoRepository);
     locator.registerSingleton(_throttleStatusRepository);
 
@@ -67,7 +59,6 @@ class SystemModuleService {
 
   Future<void> initialize(String appUid) async {
     _isLoading = true;
-    _appUid = appUid;
 
     await _systemService.initialize(appUid);
 
@@ -234,19 +225,6 @@ class SystemModuleService {
           );
         }
       }
-
-      /// Display profile CREATE/UPDATE
-    } else if ((event == SystemModuleConstants.displayProfileCreatedEvent ||
-            event == SystemModuleConstants.displayProfileUpdatedEvent) &&
-        payload.containsKey('uid') &&
-        payload['uid'] == _appUid) {
-      _displaysProfilesRepository.insert(payload);
-
-      /// Display profile DELETE
-    } else if (event == SystemModuleConstants.displayProfileDeletedEvent &&
-        payload.containsKey('uid') &&
-        payload['uid'] == _appUid) {
-      _displaysProfilesRepository.delete();
     }
   }
 }
