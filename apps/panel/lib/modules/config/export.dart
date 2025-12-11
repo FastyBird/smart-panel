@@ -1,2 +1,2 @@
-export 'package:fastybird_smart_panel/modules/config/repositories/language.dart';
+// LanguageConfigRepository moved to system module (modules/system/repositories/config.dart)
 // WeatherConfigRepository moved to weather module (modules/weather/repositories/config.dart)
