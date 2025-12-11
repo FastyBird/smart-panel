@@ -17,6 +17,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
 import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
+import { ConnectionState } from '../displays.constants';
 import { RegisterDisplayDto } from '../dto/register-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -52,6 +53,9 @@ describe('RegistrationService', () => {
 		microphone: false,
 		microphoneVolume: 50,
 		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
 	};

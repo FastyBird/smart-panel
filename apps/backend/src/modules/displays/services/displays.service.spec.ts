@@ -14,7 +14,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType } from '../displays.constants';
+import { ConnectionState, EventType } from '../displays.constants';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -48,6 +48,9 @@ describe('DisplaysService', () => {
 		microphone: false,
 		microphoneVolume: 50,
 		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -75,6 +78,9 @@ describe('DisplaysService', () => {
 		microphone: true,
 		microphoneVolume: 60,
 		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(Date.now() + 1000), // Created later
 		updatedAt: null,
 	};

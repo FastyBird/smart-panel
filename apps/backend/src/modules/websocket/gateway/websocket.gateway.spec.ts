@@ -46,6 +46,16 @@ describe('WebsocketGateway', () => {
 		data: {
 			user: mockClientUser,
 		},
+		request: {
+			headers: {},
+			socket: {
+				remoteAddress: '127.0.0.1',
+			},
+		},
+		handshake: {
+			headers: {},
+			address: '127.0.0.1',
+		},
 	} as unknown as Socket;
 
 	beforeEach(async () => {
@@ -63,6 +73,7 @@ describe('WebsocketGateway', () => {
 					provide: EventEmitter2,
 					useValue: {
 						onAny: jest.fn(),
+						emit: jest.fn(),
 					},
 				},
 				{

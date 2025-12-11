@@ -3,9 +3,9 @@ import { Repository } from 'typeorm';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
+import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { DisplayEntity } from '../entities/displays.entity';
 
 @Injectable()

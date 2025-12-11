@@ -2,12 +2,11 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { TokenOwnerType } from '../../auth/auth.constants';
-import { WsClientDto, WsClientEventType } from '../../websocket/dto/ws-client.dto';
+import { WsClientDto } from '../../websocket/dto/ws-client.dto';
 import { WsEventType } from '../../websocket/websocket.constants';
-
 import { ConnectionState } from '../displays.constants';
-import { DisplaysService } from '../services/displays.service';
 import { DisplayConnectionStateService } from '../services/display-connection-state.service';
+import { DisplaysService } from '../services/displays.service';
 
 @Injectable()
 export class WebsocketExchangeListener implements OnModuleInit {
@@ -48,14 +47,13 @@ export class WebsocketExchangeListener implements OnModuleInit {
 
 				// Write connection state to InfluxDB
 				await this.displayConnectionStateService.write(display, ConnectionState.CONNECTED);
-				this.logger.debug(`[WS EXCHANGE LISTENER] Updated connection state for display=${payload.user.id} to CONNECTED`);
+				this.logger.debug(
+					`[WS EXCHANGE LISTENER] Updated connection state for display=${payload.user.id} to CONNECTED`,
+				);
 			}
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn(
-				`[WS EXCHANGE LISTENER] Failed to handle client connected event: ${err.message}`,
-				err.stack,
-			);
+			this.logger.warn(`[WS EXCHANGE LISTENER] Failed to handle client connected event: ${err.message}`, err.stack);
 		}
 	}
 

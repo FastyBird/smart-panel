@@ -12,6 +12,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ConnectionState } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 import { RegistrationGuard } from '../guards/registration.guard';
@@ -47,6 +48,9 @@ describe('RegistrationController', () => {
 		microphone: false,
 		microphoneVolume: 50,
 		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
 	};

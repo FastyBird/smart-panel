@@ -1,3 +1,5 @@
+import { FieldType, ISchemaOptions } from 'influx';
+
 export const DISPLAYS_MODULE_NAME = 'displays';
 export const DISPLAYS_MODULE_PREFIX = 'displays-module';
 export const DISPLAYS_MODULE_API_TAG_NAME = 'Displays module';
@@ -21,8 +23,6 @@ export enum DeploymentMode {
 	ALL_IN_ONE = 'all-in-one',
 	COMBINED = 'combined',
 }
-
-import { FieldType, ISchemaOptions } from 'influx';
 
 export const PERMIT_JOIN_DEFAULT_DURATION_MS = 2 * 60 * 1000; // 2 minutes
 export const LOCALHOST_IPS = ['127.0.0.1', '::1', 'localhost'];

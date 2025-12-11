@@ -17,6 +17,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ConnectionState } from '../../displays/displays.constants';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { DisplaysService } from '../../displays/services/displays.service';
 import { DisplayExistsConstraint } from '../../displays/validators/display-exists-constraint.validator';
@@ -92,6 +93,9 @@ describe('PagesService', () => {
 		microphone: false,
 		microphoneVolume: 50,
 		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: undefined,
 	};

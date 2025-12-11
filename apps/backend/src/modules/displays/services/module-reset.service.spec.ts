@@ -15,6 +15,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
+import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { ConnectionState } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
 import { DisplaysModuleResetService } from './module-reset.service';
@@ -47,6 +49,9 @@ describe('DisplaysModuleResetService', () => {
 		microphone: false,
 		microphoneVolume: 50,
 		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -74,6 +79,9 @@ describe('DisplaysModuleResetService', () => {
 		microphone: true,
 		microphoneVolume: 60,
 		registeredFromIp: null,
+		currentIpAddress: null,
+		online: false,
+		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -92,6 +100,12 @@ describe('DisplaysModuleResetService', () => {
 					provide: TokensService,
 					useValue: {
 						revokeByOwnerId: jest.fn(),
+					},
+				},
+				{
+					provide: InfluxDbService,
+					useValue: {
+						dropMeasurement: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 			],

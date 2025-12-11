@@ -4,9 +4,8 @@ import { Column, Entity } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ConnectionState } from '../displays.constants';
-
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { ConnectionState } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleDataDisplay' })
 @Entity('displays_module_displays')
