@@ -296,7 +296,7 @@ export { DevicesModuleDataDeviceConnectionStatusStatus as DevicesModuleDeviceCon
 // ===================
 // Language, Weather, and System section enums removed - these configs are now accessed via modules
 
-export { PathsConfigModuleConfigSectionGetParametersPathSection as ConfigModuleSection } from './openapi';
+// ConfigModuleSection removed - section-based endpoints are deprecated
 
 // System Module Enums
 // ===================
