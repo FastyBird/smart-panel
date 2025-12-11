@@ -74,6 +74,28 @@
 						</el-radio-group>
 					</div>
 				</el-collapse-item>
+
+				<el-collapse-item
+					name="states"
+					:class="[ns.e('filter-item')]"
+				>
+					<template #title>
+						<el-text class="!px-2">
+							{{ t('displaysModule.filters.states.title') }}
+						</el-text>
+					</template>
+					<el-checkbox-group
+						v-model="innerFilters.states"
+						class="flex flex-col px-4"
+					>
+						<el-checkbox
+							v-for="state of displayStates"
+							:key="state"
+							:label="t(`displaysModule.states.${state}`)"
+							:value="state"
+						/>
+					</el-checkbox-group>
+				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
 
@@ -96,7 +118,7 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCollapse, ElCollapseItem, ElRadioButton, ElRadioGroup, ElScrollbar, ElText, useNamespace } from 'element-plus';
+import { ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElRadioButton, ElRadioGroup, ElScrollbar, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -120,9 +142,11 @@ const emit = defineEmits<{
 const ns = useNamespace('list-displays-adjust');
 const { t } = useI18n();
 
-const activeBoxes = ref<string[]>(['darkMode', 'screenSaver']);
+const activeBoxes = ref<string[]>(['darkMode', 'screenSaver', 'states']);
 
 const innerFilters = useVModel(props, 'filters', emit);
+
+const displayStates = ['connected', 'disconnected', 'lost', 'unknown'] as const;
 </script>
 
 <style rel="stylesheet/scss" lang="scss" scoped>

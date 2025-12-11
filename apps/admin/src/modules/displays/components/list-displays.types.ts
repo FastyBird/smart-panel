@@ -10,6 +10,6 @@ export interface IListDisplaysProps {
 	filters: IDisplaysFilter;
 	paginateSize: number;
 	paginatePage: number;
-	sortBy?: 'name' | 'version' | 'screenWidth' | 'createdAt';
+	sortBy?: 'name' | 'version' | 'screenWidth' | 'status';
 	sortDir: 'asc' | 'desc' | null;
 }

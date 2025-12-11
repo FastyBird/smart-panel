@@ -38,7 +38,7 @@ export interface IUseDisplaysDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'name' | 'version' | 'screenWidth' | 'createdAt' | undefined>;
+	sortBy: Ref<'name' | 'version' | 'screenWidth' | 'status' | undefined>;
 	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }

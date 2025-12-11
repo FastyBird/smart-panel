@@ -17,6 +17,29 @@
 					<el-icon><icon icon="mdi:magnify" /></el-icon>
 				</template>
 			</el-input>
+
+			<el-divider direction="vertical" />
+
+			<el-form-item
+				:label="t('displaysModule.filters.state.title')"
+				:class="[ns.e('display-state')]"
+				class="p-1 m-0!"
+			>
+				<el-radio-group v-model="innerFilters.state">
+					<el-radio-button
+						:label="t('displaysModule.states.connected')"
+						value="online"
+					/>
+					<el-radio-button
+						:label="t('displaysModule.states.disconnected')"
+						value="offline"
+					/>
+					<el-radio-button
+						:label="t('devicesModule.states.all')"
+						value="all"
+					/>
+				</el-radio-group>
+			</el-form-item>
 		</el-form>
 
 		<el-button
@@ -42,7 +65,7 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElForm, ElIcon, ElInput, type FormInstance, useNamespace } from 'element-plus';
+import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElRadioButton, ElRadioGroup, type FormInstance, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -79,3 +102,8 @@ watch(
 	}
 );
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'displays-filter.scss';
+</style>
+

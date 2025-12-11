@@ -23,6 +23,7 @@
 				body-class="p-0! max-h-full overflow-hidden flex flex-col"
 			>
 				<displays-table
+					v-model:filters="innerFilters"
 					v-model:sort-by="sortBy"
 					v-model:sort-dir="sortDir"
 					:items="props.items"
@@ -84,7 +85,7 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: IDisplaysFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;
-	(e: 'update:sort-by', dir: 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined): void;
+	(e: 'update:sort-by', dir: 'name' | 'version' | 'screenWidth' | 'status' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
@@ -97,7 +98,7 @@ const paginator = ref<HTMLElement | null>(null);
 
 const innerFilters = useVModel(props, 'filters', emit);
 
-const sortBy = ref<'name' | 'version' | 'screenWidth' | 'createdAt' | undefined>(props.sortBy);
+const sortBy = ref<'name' | 'version' | 'screenWidth' | 'status' | undefined>(props.sortBy);
 
 const sortDir = ref<'asc' | 'desc' | null>(props.sortDir);
 
@@ -155,11 +156,11 @@ onBeforeUnmount((): void => {
 });
 
 watch(
-	(): 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined => sortBy.value,
-	(val: 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined): void => {
-		emit('update:sort-by', val);
-	}
-);
+		(): 'name' | 'version' | 'screenWidth' | 'status' | undefined => sortBy.value,
+		(val: 'name' | 'version' | 'screenWidth' | 'status' | undefined): void => {
+			emit('update:sort-by', val);
+		}
+	);
 
 watch(
 	(): 'asc' | 'desc' | null => sortDir.value,
@@ -190,9 +191,9 @@ watch(
 );
 
 watch(
-	(): 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined => props.sortBy,
-	(val: 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined): void => {
-		sortBy.value = val;
-	}
-);
+		(): 'name' | 'version' | 'screenWidth' | 'status' | undefined => props.sortBy,
+		(val: 'name' | 'version' | 'screenWidth' | 'status' | undefined): void => {
+			sortBy.value = val;
+		}
+	);
 </script>

@@ -107,6 +107,17 @@
 						<el-descriptions-item :label="t('displaysModule.detail.info.pixelRatio')">
 							{{ display.pixelRatio }}
 						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.info.registeredFromIp')">
+							{{ formatIpAddress(display.registeredFromIp) }}
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.info.currentIpAddress')">
+							{{ formatIpAddress(display.currentIpAddress) }}
+						</el-descriptions-item>
+						<el-descriptions-item :label="t('displaysModule.detail.info.status')">
+							<el-tag :type="display.status === 'connected' ? 'success' : display.status === 'disconnected' ? 'warning' : display.status === 'lost' ? 'danger' : 'info'">
+								{{ t(`displaysModule.states.${display.status ?? 'unknown'}`) }}
+							</el-tag>
+						</el-descriptions-item>
 					</el-descriptions>
 				</el-card>
 			</el-col>
@@ -299,6 +310,17 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const displayId = computed(() => props.id);
 const { display, isLoading } = useDisplay(displayId);
+
+const formatIpAddress = (ipAddress: string | null | undefined): string => {
+	if (!ipAddress) {
+		return '-';
+	}
+	const normalized = ipAddress.toLowerCase().trim();
+	if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') {
+		return t('displaysModule.table.columns.local');
+	}
+	return ipAddress;
+};
 
 const { meta } = useMeta({});
 

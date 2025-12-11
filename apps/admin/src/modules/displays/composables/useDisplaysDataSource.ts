@@ -17,6 +17,8 @@ export const defaultDisplaysFilter: IDisplaysFilter = {
 	search: undefined,
 	darkMode: 'all',
 	screenSaver: 'all',
+	state: 'all',
+	states: [],
 };
 
 export const defaultDisplaysSort: ISortEntry = {
@@ -59,7 +61,9 @@ export const useDisplaysDataSource = (): IUseDisplaysDataSource => {
 		return (
 			filters.value.search !== defaultDisplaysFilter.search ||
 			!isEqual(filters.value.darkMode, defaultDisplaysFilter.darkMode) ||
-			!isEqual(filters.value.screenSaver, defaultDisplaysFilter.screenSaver)
+			!isEqual(filters.value.screenSaver, defaultDisplaysFilter.screenSaver) ||
+			!isEqual(filters.value.state, defaultDisplaysFilter.state) ||
+			!isEqual(filters.value.states, defaultDisplaysFilter.states)
 		);
 	});
 
@@ -67,8 +71,8 @@ export const useDisplaysDataSource = (): IUseDisplaysDataSource => {
 
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
-	const sortBy = ref<'name' | 'version' | 'screenWidth' | 'createdAt' | undefined>(
-		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'version' | 'screenWidth' | 'createdAt') : undefined
+	const sortBy = ref<'name' | 'version' | 'screenWidth' | 'status' | undefined>(
+		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'version' | 'screenWidth' | 'status') : undefined
 	);
 
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
@@ -90,7 +94,13 @@ export const useDisplaysDataSource = (): IUseDisplaysDataSource => {
 							(filters.value.darkMode === 'disabled' && !display.darkMode)) &&
 						(filters.value.screenSaver === 'all' ||
 							(filters.value.screenSaver === 'enabled' && display.screenSaver) ||
-							(filters.value.screenSaver === 'disabled' && !display.screenSaver))
+							(filters.value.screenSaver === 'disabled' && !display.screenSaver)) &&
+						(!filters.value.states || filters.value.states.length === 0 ||
+							filters.value.states.includes(display.status ?? 'unknown')) &&
+						(filters.value.state === 'all' ||
+							(filters.value.state === 'online' && display.status === 'connected') ||
+							(filters.value.state === 'offline' &&
+								['disconnected', 'lost', 'unknown'].includes(display.status ?? 'unknown')))
 				),
 			[
 				(display: IDisplay) => {
@@ -101,8 +111,8 @@ export const useDisplaysDataSource = (): IUseDisplaysDataSource => {
 							return display.version;
 						case 'screenWidth':
 							return display.screenWidth ?? 0;
-						case 'createdAt':
-							return display.createdAt;
+						case 'status':
+							return display.status ?? 'unknown';
 						default:
 							return display.name || display.macAddress;
 					}
@@ -181,8 +191,8 @@ export const useDisplaysDataSource = (): IUseDisplaysDataSource => {
 	);
 
 	watch(
-		(): 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined => sortBy.value,
-		(val: 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined): void => {
+		(): 'name' | 'version' | 'screenWidth' | 'status' | undefined => sortBy.value,
+		(val: 'name' | 'version' | 'screenWidth' | 'status' | undefined): void => {
 			if (typeof val === 'undefined') {
 				sort.value = [];
 			} else {

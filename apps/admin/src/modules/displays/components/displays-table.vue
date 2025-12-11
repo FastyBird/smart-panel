@@ -218,14 +218,35 @@
 		</el-table-column>
 
 		<el-table-column
-			:label="t('displaysModule.table.columns.createdAt')"
-			prop="createdAt"
+			:label="t('displaysModule.table.columns.state.title')"
+			prop="status"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="170"
+			:width="130"
 		>
 			<template #default="scope">
-				{{ formatDate(scope.row.createdAt) }}
+				<displays-table-column-state
+					:display="scope.row"
+					:filters="innerFilters"
+					@filter-by="(value: IDisplay['status'], add: boolean) => onFilterBy('state', value, add)"
+				/>
+			</template>
+		</el-table-column>
+
+		<el-table-column
+			:label="t('displaysModule.table.columns.currentIpAddress')"
+			prop="currentIpAddress"
+			sortable="custom"
+			:sort-orders="['ascending', 'descending']"
+			:width="130"
+		>
+			<template #default="scope">
+				<template v-if="scope.row.currentIpAddress">
+					{{ formatIpAddress(scope.row.currentIpAddress) }}
+				</template>
+				<template v-else>
+					—
+				</template>
 			</template>
 		</el-table-column>
 
@@ -281,10 +302,13 @@ import { useI18n } from 'vue-i18n';
 import { ElButton, ElIcon, ElResult, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
+import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../common';
 import DisplaysTableColumnIcon from './displays-table-column-icon.vue';
+import DisplaysTableColumnState from './displays-table-column-state.vue';
 import type { IDisplay } from '../store/displays.store.types';
+import type { IDisplaysFilter } from '../composables/types';
 
 import type { IDisplaysTableProps } from './displays-table.types';
 
@@ -300,7 +324,8 @@ const emit = defineEmits<{
 	(e: 'remove', id: IDisplay['id']): void;
 	(e: 'reset-filters'): void;
 	(e: 'selected-changes', selected: IDisplay[]): void;
-	(e: 'update:sort-by', by: 'name' | 'version' | 'screenWidth' | 'createdAt' | undefined): void;
+	(e: 'update:filters', filters: IDisplaysFilter): void;
+	(e: 'update:sort-by', by: 'name' | 'version' | 'screenWidth' | 'status' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
@@ -312,20 +337,42 @@ const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
 const tableHeight = computed<number>((): number => props.tableHeight ?? 400);
 
-const formatDate = (date: Date | string): string => {
-	const d = date instanceof Date ? date : new Date(date);
-	return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+const innerFilters = useVModel(props, 'filters', emit);
+
+const formatIpAddress = (ipAddress: string): string => {
+	if (!ipAddress) {
+		return '—';
+	}
+	const normalized = ipAddress.toLowerCase().trim();
+	if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') {
+		return t('displaysModule.table.columns.local');
+	}
+	return ipAddress;
 };
 
 const onSortData = ({
 	prop,
 	order,
 }: {
-	prop: 'name' | 'version' | 'screenWidth' | 'createdAt';
+	prop: 'name' | 'version' | 'screenWidth' | 'status';
 	order: 'ascending' | 'descending' | null;
 }): void => {
 	emit('update:sort-by', prop);
 	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
+};
+
+const onFilterBy = (column: string, data: IDisplay['status'], add?: boolean): void => {
+	if (column === 'state') {
+		let filteredStates = innerFilters.value.states;
+
+		if (add === true) {
+			filteredStates.push(data);
+		} else {
+			filteredStates = innerFilters.value.states.filter((item) => item !== data);
+		}
+
+		innerFilters.value.states = Array.from(new Set(filteredStates));
+	}
 };
 
 const onSelectionChange = (selected: IDisplay[]): void => {

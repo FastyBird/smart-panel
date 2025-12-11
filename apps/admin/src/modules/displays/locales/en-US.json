@@ -43,6 +43,11 @@
 			"resolution": "Resolution",
 			"layout": "Layout",
 			"audio": "Audio",
+			"state": {
+				"title": "State"
+			},
+			"currentIpAddress": "Current IP",
+			"local": "Local",
 			"status": "Status",
 			"createdAt": "Created"
 		},
@@ -54,7 +59,7 @@
 	"fields": {
 		"search": {
 			"title": "Search",
-			"placeholder": "Search displays..."
+			"placeholder": "Search for display"
 		},
 		"darkMode": {
 			"title": "Dark mode"
@@ -173,12 +178,19 @@
 				"disabled": "Disabled",
 				"all": "All"
 			}
+		},
+		"state": {
+			"title": "State"
+		},
+		"states": {
+			"title": "State"
 		}
 	},
 	"states": {
-		"enabled": "Enabled",
-		"disabled": "Disabled",
-		"all": "All"
+		"connected": "Connected",
+		"disconnected": "Disconnected",
+		"lost": "Lost",
+		"unknown": "Unknown"
 	},
 	"texts": {
 		"loadingDisplays": "Loading displays...",
@@ -232,7 +244,10 @@
 			"build": "Build",
 			"resolution": "Resolution",
 			"pixelRatio": "Pixel Ratio",
-			"gridSize": "Grid Size"
+			"gridSize": "Grid Size",
+			"registeredFromIp": "Registered IP",
+			"currentIpAddress": "Current IP",
+			"status": "Connection State"
 		},
 		"settings": {
 			"title": "Display Settings",

@@ -31,6 +31,10 @@ export const DisplaySchema = z.object({
 	speakerVolume: z.number().min(0).max(100).default(50),
 	microphone: z.boolean().default(false),
 	microphoneVolume: z.number().min(0).max(100).default(50),
+	registeredFromIp: z.string().nullable().default(null),
+	currentIpAddress: z.string().nullable().default(null),
+	online: z.boolean().default(false),
+	status: z.enum(['connected', 'disconnected', 'lost', 'unknown']).default('unknown'),
 	createdAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
 		.transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -198,6 +202,10 @@ export const DisplayResSchema = z.object({
 	speaker_volume: z.number(),
 	microphone: z.boolean(),
 	microphone_volume: z.number(),
+	registered_from_ip: z.string().nullable().optional().default(null),
+	current_ip_address: z.string().nullable().optional().default(null),
+	online: z.boolean().optional().default(false),
+	status: z.enum(['connected', 'disconnected', 'lost', 'unknown']).optional().default('unknown'),
 	created_at: z.string(),
 	updated_at: z.string().nullable().optional().default(null),
 });

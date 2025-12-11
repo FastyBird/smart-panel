@@ -28,6 +28,10 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		speakerVolume: response.speaker_volume ?? 50,
 		microphone: response.microphone ?? false,
 		microphoneVolume: response.microphone_volume ?? 50,
+		registeredFromIp: response.registered_from_ip ?? null,
+		currentIpAddress: response.current_ip_address ?? null,
+		online: response.online ?? false,
+		status: (response.status ?? 'unknown') as 'connected' | 'disconnected' | 'lost' | 'unknown',
 		createdAt: response.created_at,
 		updatedAt: response.updated_at ?? null,
 	});
