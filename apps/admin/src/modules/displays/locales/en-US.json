@@ -61,11 +61,11 @@
 		},
 		"config": {
 			"deploymentMode": {
-				"title": "Deployment Mode",
-				"description": "Deployment mode for display registration",
-				"placeholder": "Select deployment mode",
+				"title": "Gateway Mode",
+				"description": "Gateway mode for display registration",
+				"placeholder": "Select gateway mode",
 				"validation": {
-					"required": "Deployment mode is required"
+					"required": "Gateway mode is required"
 				}
 			},
 			"permitJoinDurationMs": {

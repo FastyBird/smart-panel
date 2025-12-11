@@ -22,7 +22,7 @@ import {
 } from '../models/displays-response.model';
 import { PermitJoinService } from '../services/permit-join.service';
 import { RegistrationService } from '../services/registration.service';
-import { extractClientIp } from '../utils/ip.utils';
+import { extractClientIp, isLocalhost } from '../utils/ip.utils';
 
 @ApiTags(DISPLAYS_MODULE_API_TAG_NAME)
 @Controller('register')
@@ -83,8 +83,12 @@ export class RegistrationController {
 			'Returns whether registration is currently open. Public endpoint for displays to check before attempting registration.',
 	})
 	@ApiSuccessResponse(RegistrationStatusResponseModel, 'Returns registration status')
-	getRegistrationStatus(): RegistrationStatusResponseModel {
-		const open = this.permitJoinService.isPermitJoinActive();
+	getRegistrationStatus(@Req() request: Request): RegistrationStatusResponseModel {
+		const clientIp = extractClientIp(request);
+		const isLocalhostConnection = isLocalhost(clientIp);
+
+		// Localhost connections are always allowed, regardless of permit join status
+		const open = isLocalhostConnection || this.permitJoinService.isPermitJoinActive();
 		const remainingTime = this.permitJoinService.getRemainingTime();
 
 		const data = new RegistrationStatusDataModel();
