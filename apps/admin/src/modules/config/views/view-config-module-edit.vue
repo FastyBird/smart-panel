@@ -263,12 +263,24 @@ const onClose = (): void => {
 };
 
 onBeforeMount(async (): Promise<void> => {
-	fetchConfigModule().catch((error: unknown): void => {
+	await fetchConfigModule().catch((error: unknown): void => {
 		const err = error as Error;
 
 		throw new ConfigException('Something went wrong', err);
 	});
 });
+
+// Watch for route changes and refetch config
+watch(
+	(): string => moduleType.value,
+	async (): Promise<void> => {
+		await fetchConfigModule().catch((error: unknown): void => {
+			const err = error as Error;
+
+			throw new ConfigException('Something went wrong', err);
+		});
+	}
+);
 
 onMounted((): void => {
 	emit('update:remoteFormChanged', remoteFormChanged.value);

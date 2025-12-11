@@ -52,6 +52,22 @@
 	>
 		<div class="flex flex-col h-full">
 			<app-bar menu-button-hidden>
+				<template #heading>
+					<app-bar-heading>
+						<template #icon>
+							<icon
+								icon="mdi:toy-brick"
+								class="w[20px] h[20px]"
+							/>
+						</template>
+						<template #title>
+							{{ currentPluginName }}
+						</template>
+						<template #subtitle>
+							{{ t('configModule.subHeadings.configPlugin') }}
+						</template>
+					</app-bar-heading>
+				</template>
 				<template #button-right>
 					<app-bar-button
 						:align="AppBarButtonAlign.RIGHT"
@@ -105,7 +121,14 @@ import { ElCard, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-plu
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
+import {
+	AppBar,
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	ViewError,
+	useBreakpoints,
+} from '../../../common';
 import { type IPlugin } from '../../../common';
 import { usePlugins } from '../composables/usePlugins';
 import { FormResult, RouteNames } from '../config.constants';
@@ -143,6 +166,22 @@ const remoteFormChanged = ref<boolean>(false);
 
 const isPluginsListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.CONFIG_PLUGINS;
+});
+
+const currentPluginType = computed<string>((): string => {
+	const pluginParam = route.params.plugin;
+	return (Array.isArray(pluginParam) ? pluginParam[0] : pluginParam) || '';
+});
+
+const currentPlugin = computed<IPlugin | undefined>((): IPlugin | undefined => {
+	if (!currentPluginType.value) {
+		return undefined;
+	}
+	return plugins.value.find((p) => p.type === currentPluginType.value);
+});
+
+const currentPluginName = computed<string>((): string => {
+	return currentPlugin.value?.name || currentPluginType.value;
 });
 
 const onPluginEdit = (pluginType: IPlugin['type']): void => {

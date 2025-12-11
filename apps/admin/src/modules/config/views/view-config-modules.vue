@@ -52,6 +52,22 @@
 	>
 		<div class="flex flex-col h-full">
 			<app-bar menu-button-hidden>
+				<template #heading>
+					<app-bar-heading>
+						<template #icon>
+							<icon
+								icon="mdi:package-variant"
+								class="w[20px] h[20px]"
+							/>
+						</template>
+						<template #title>
+							{{ currentModuleName }}
+						</template>
+						<template #subtitle>
+							{{ t('configModule.subHeadings.configModule') }}
+						</template>
+					</app-bar-heading>
+				</template>
 				<template #button-right>
 					<app-bar-button
 						:align="AppBarButtonAlign.RIGHT"
@@ -105,7 +121,14 @@ import { ElCard, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-plu
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
+import {
+	AppBar,
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	ViewError,
+	useBreakpoints,
+} from '../../../common';
 import { type IModule } from '../../../common';
 import { useModules } from '../composables/useModules';
 import { FormResult, RouteNames } from '../config.constants';
@@ -143,6 +166,22 @@ const remoteFormChanged = ref<boolean>(false);
 
 const isModulesListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.CONFIG_MODULES;
+});
+
+const currentModuleType = computed<string>((): string => {
+	const moduleParam = route.params.module;
+	return (Array.isArray(moduleParam) ? moduleParam[0] : moduleParam) || '';
+});
+
+const currentModule = computed<IModule | undefined>((): IModule | undefined => {
+	if (!currentModuleType.value) {
+		return undefined;
+	}
+	return modules.value.find((m) => m.type === currentModuleType.value);
+});
+
+const currentModuleName = computed<string>((): string => {
+	return currentModule.value?.name || currentModuleType.value;
 });
 
 const onModuleEdit = (moduleType: IModule['type']): void => {
