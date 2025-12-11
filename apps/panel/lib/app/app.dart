@@ -353,7 +353,7 @@ class _MyAppState extends State<MyApp> {
           value: locator<config_module.LanguageConfigRepository>(),
         ),
         ChangeNotifierProvider.value(
-          value: locator<config_module.WeatherConfigRepository>(),
+          value: locator<weather_module.WeatherConfigRepository>(),
         ),
         ChangeNotifierProvider.value(
           value: locator<weather_module.CurrentWeatherRepository>(),

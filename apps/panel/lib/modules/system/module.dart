@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/system/events/reboot_error.dart';
 import 'package:fastybird_smart_panel/modules/system/events/reboot_in_progress.dart';
 import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:fastybird_smart_panel/modules/system/models/system_action.dart';
+import 'package:fastybird_smart_panel/modules/system/repositories/config.dart';
 import 'package:flutter/foundation.dart';
 
 class SystemModuleService {
@@ -24,6 +25,7 @@ class SystemModuleService {
 
   late SystemInfoRepository _systemInfoRepository;
   late ThrottleStatusRepository _throttleStatusRepository;
+  late SystemConfigRepository _systemConfigRepository;
 
   late bool processingReboot = false;
   late bool processingPowerOff = false;
@@ -45,6 +47,9 @@ class SystemModuleService {
     _throttleStatusRepository = ThrottleStatusRepository(
       apiClient: apiClient.systemModule,
     );
+    _systemConfigRepository = SystemConfigRepository(
+      apiClient: apiClient,
+    );
 
     _systemService = SystemService(
       systemInfoRepository: _systemInfoRepository,
@@ -53,6 +58,7 @@ class SystemModuleService {
 
     locator.registerSingleton(_systemInfoRepository);
     locator.registerSingleton(_throttleStatusRepository);
+    locator.registerSingleton(_systemConfigRepository);
 
     locator.registerSingleton(_systemService);
   }
@@ -60,6 +66,7 @@ class SystemModuleService {
   Future<void> initialize(String appUid) async {
     _isLoading = true;
 
+    await _systemConfigRepository.fetchConfiguration();
     await _systemService.initialize(appUid);
 
     _isLoading = false;

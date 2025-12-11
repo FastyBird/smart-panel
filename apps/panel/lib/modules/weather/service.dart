@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/config/repositories/weather.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/config.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
