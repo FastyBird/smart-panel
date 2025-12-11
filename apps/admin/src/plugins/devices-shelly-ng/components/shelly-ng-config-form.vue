@@ -9,6 +9,7 @@
 		<el-form-item
 			:label="t('devicesShellyNgPlugin.fields.config.enabled.title')"
 			prop="enabled"
+			label-position="left"
 		>
 			<el-switch
 				v-model="model.enabled"
@@ -29,6 +30,7 @@
 			:label="t('devicesShellyNgPlugin.fields.config.mdns.enabled.title')"
 			prop="mdns.enabled"
 			class="mt-3"
+			label-position="left"
 		>
 			<el-switch
 				v-model="model.mdns.enabled"
