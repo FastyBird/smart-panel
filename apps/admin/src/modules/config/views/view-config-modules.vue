@@ -5,13 +5,13 @@
 	>
 		<el-scrollbar class="grow-1">
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-				<el-card
-					v-for="module in modules"
-					:key="module.type"
-					shadow="hover"
-					class="cursor-pointer transition-all hover:shadow-lg"
-					@click="onModuleEdit(module.type)"
-				>
+			<el-card
+				v-for="module in modules"
+				:key="String(module.type)"
+				shadow="hover"
+				class="cursor-pointer transition-all hover:shadow-lg"
+				@click="onModuleEdit(module.type)"
+			>
 					<div class="flex flex-col items-center justify-center p-6 text-center">
 						<el-icon
 							:size="48"
@@ -36,7 +36,7 @@
 
 	<router-view
 		v-else
-		:key="route.params.module"
+		:key="typeof route.params.module === 'string' ? route.params.module : String(route.params.module || '')"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -78,7 +78,7 @@
 
 					<suspense>
 						<router-view
-							:key="route.params.module"
+							:key="typeof route.params.module === 'string' ? route.params.module : String(route.params.module)"
 							v-slot="{ Component }"
 						>
 							<component
@@ -145,18 +145,19 @@ const isModulesListRoute = computed<boolean>((): boolean => {
 });
 
 const onModuleEdit = (moduleType: IModule['type']): void => {
+	const moduleParam = typeof moduleType === 'string' ? moduleType : String(moduleType);
 	if (isLGDevice.value) {
 		router.replace({
 			name: RouteNames.CONFIG_MODULE_EDIT,
 			params: {
-				module: moduleType,
+				module: moduleParam,
 			},
 		});
 	} else {
 		router.push({
 			name: RouteNames.CONFIG_MODULE_EDIT,
 			params: {
-				module: moduleType,
+				module: moduleParam,
 			},
 		});
 	}

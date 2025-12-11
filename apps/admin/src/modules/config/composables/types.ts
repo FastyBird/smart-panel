@@ -3,51 +3,15 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import type { IModule, IModuleElement, IPlugin, IPluginElement } from '../../../common';
-import {
-	ConfigModuleLanguageLanguage,
-	ConfigModuleLanguageTimeFormat,
-	ConfigModuleWeatherCityIdLocationType,
-	ConfigModuleWeatherCityNameLocationType,
-	ConfigModuleWeatherLatLonLocationType,
-	ConfigModuleWeatherZipCodeLocationType,
-} from '../../../openapi.constants';
-import { SystemModuleLogEntryType } from '../../../openapi.constants';
-import type { ConfigModuleWeatherUnit } from '../../../openapi.constants';
+// Language, Weather, and System form types removed - these configs are now accessed via modules
 import type { FormResultType } from '../config.constants';
 import type { IModulesComponents, IModulesSchemas, IPluginsComponents, IPluginsSchemas } from '../config.types';
 import type { IConfigModuleEditForm } from '../schemas/modules.types';
 import type { IConfigPluginEditForm } from '../schemas/plugins.types';
 import type { IConfigApp } from '../store/config-app.store.types';
-import type { IConfigLanguage } from '../store/config-language.store.types';
+// Deprecated store types removed - language, weather, system configs are now accessed via modules
 import type { IConfigPlugin } from '../store/config-plugins.store.types';
 import type { IConfigModule } from '../store/config-modules.store.types';
-import type { IConfigSystem } from '../store/config-system.store.types';
-import type { IConfigWeather } from '../store/config-weather.store.types';
-
-export interface IConfigLanguageEditForm {
-	language: ConfigModuleLanguageLanguage;
-	timezone: string;
-	timeFormat: ConfigModuleLanguageTimeFormat;
-}
-
-export interface IConfigWeatherEditForm {
-	longitude: number | null;
-	latitude: number | null;
-	cityId: number | null;
-	cityName: string | null;
-	zipCode: string | null;
-	locationType:
-		| ConfigModuleWeatherLatLonLocationType
-		| ConfigModuleWeatherCityNameLocationType
-		| ConfigModuleWeatherCityIdLocationType
-		| ConfigModuleWeatherZipCodeLocationType;
-	unit: ConfigModuleWeatherUnit;
-	openWeatherApiKey: string;
-}
-
-export interface IConfigSystemEditForm {
-	logLevels: SystemModuleLogEntryType[];
-}
 
 export interface IUseConfigApp {
 	configApp: ComputedRef<IConfigApp | null>;
@@ -55,63 +19,7 @@ export interface IUseConfigApp {
 	fetchConfigApp: () => Promise<void>;
 }
 
-export interface IUseConfigLanguage {
-	configLanguage: ComputedRef<IConfigLanguage | null>;
-	isLoading: ComputedRef<boolean>;
-	fetchConfigLanguage: () => Promise<void>;
-}
-
-export interface IUseConfigLanguageEditForm {
-	languageOptions: { value: ConfigModuleLanguageLanguage; label: string }[];
-	timezoneOptions: { value: string; label: string }[];
-	timeFormatOptions: { value: ConfigModuleLanguageTimeFormat; label: string }[];
-	model: IConfigLanguageEditForm;
-	formEl: Ref<FormInstance | undefined>;
-	formChanged: Ref<boolean>;
-	submit: () => Promise<'saved'>;
-	clear: () => void;
-	formResult: Ref<FormResultType>;
-}
-
-export interface IUseConfigWeather {
-	configWeather: ComputedRef<IConfigWeather | null>;
-	isLoading: ComputedRef<boolean>;
-	fetchConfigWeather: () => Promise<void>;
-}
-
-export interface IUseConfigWeatherEditForm {
-	locationTypeOptions: {
-		value:
-			| ConfigModuleWeatherLatLonLocationType
-			| ConfigModuleWeatherCityNameLocationType
-			| ConfigModuleWeatherCityIdLocationType
-			| ConfigModuleWeatherZipCodeLocationType;
-		label: string;
-	}[];
-	unitOptions: { value: ConfigModuleWeatherUnit; label: string }[];
-	model: IConfigWeatherEditForm;
-	formEl: Ref<FormInstance | undefined>;
-	formChanged: Ref<boolean>;
-	submit: () => Promise<'saved'>;
-	clear: () => void;
-	formResult: Ref<FormResultType>;
-}
-
-export interface IUseConfigSystem {
-	configSystem: ComputedRef<IConfigSystem | null>;
-	isLoading: ComputedRef<boolean>;
-	fetchConfigSystem: () => Promise<void>;
-}
-
-export interface IUseConfigSystemEditForm {
-	logLevelsOptions: { value: SystemModuleLogEntryType; label: string }[];
-	model: IConfigSystemEditForm;
-	formEl: Ref<FormInstance | undefined>;
-	formChanged: Ref<boolean>;
-	submit: () => Promise<'saved'>;
-	clear: () => void;
-	formResult: Ref<FormResultType>;
-}
+// Language, Weather, and System composable interfaces removed - these configs are now accessed via modules
 
 export interface IUseConfigPlugin {
 	configPlugin: ComputedRef<IConfigPlugin | null>;

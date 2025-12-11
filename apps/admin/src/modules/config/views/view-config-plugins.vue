@@ -5,13 +5,13 @@
 	>
 		<el-scrollbar class="grow-1">
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-				<el-card
-					v-for="plugin in plugins"
-					:key="plugin.type"
-					shadow="hover"
-					class="cursor-pointer transition-all hover:shadow-lg"
-					@click="onPluginEdit(plugin.type)"
-				>
+			<el-card
+				v-for="plugin in plugins"
+				:key="String(plugin.type)"
+				shadow="hover"
+				class="cursor-pointer transition-all hover:shadow-lg"
+				@click="onPluginEdit(plugin.type)"
+			>
 					<div class="flex flex-col items-center justify-center p-6 text-center">
 						<el-icon
 							:size="48"
@@ -36,7 +36,7 @@
 
 	<router-view
 		v-else
-		:key="route.params.plugin"
+		:key="typeof route.params.plugin === 'string' ? route.params.plugin : String(route.params.plugin || '')"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -78,7 +78,7 @@
 
 					<suspense>
 						<router-view
-							:key="route.params.plugin"
+							:key="typeof route.params.plugin === 'string' ? route.params.plugin : String(route.params.plugin)"
 							v-slot="{ Component }"
 						>
 							<component
@@ -145,18 +145,19 @@ const isPluginsListRoute = computed<boolean>((): boolean => {
 });
 
 const onPluginEdit = (pluginType: IPlugin['type']): void => {
+	const pluginParam = typeof pluginType === 'string' ? pluginType : String(pluginType);
 	if (isLGDevice.value) {
 		router.replace({
 			name: RouteNames.CONFIG_PLUGIN_EDIT,
 			params: {
-				plugin: pluginType,
+				plugin: pluginParam,
 			},
 		});
 	} else {
 		router.push({
 			name: RouteNames.CONFIG_PLUGIN_EDIT,
 			params: {
-				plugin: pluginType,
+				plugin: pluginParam,
 			},
 		});
 	}
