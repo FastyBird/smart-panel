@@ -4,7 +4,7 @@
 		:element-loading-text="t('configModule.texts.loadingModuleConfig')"
 	>
 		<component
-			:is="element.components.moduleConfigEditForm"
+			:is="element?.components?.moduleConfigEditForm"
 			v-if="configModule && element?.components?.moduleConfigEditForm"
 			v-model:remote-form-submit="remoteFormSubmit"
 			v-model:remote-form-result="remoteFormResult"

@@ -1,6 +1,0 @@
-name: local-dev-helper
-description: Developer-focused suggestions.
-guidelines:
-  - Focus on developer productivity.
-  - Allow optional refactors.
-  - Provide code completion ideas and structure changes.
