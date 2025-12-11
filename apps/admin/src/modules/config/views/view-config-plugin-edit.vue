@@ -44,7 +44,7 @@ import { Icon } from '@iconify/vue';
 import { ViewHeader } from '../../../common';
 import { ConfigPlugin } from '../components/components';
 import { usePlugin } from '../composables/usePlugin';
-import { FormResult, RouteNames } from '../config.constants';
+import { FormResult } from '../config.constants';
 
 import type { IViewConfigPluginEditProps } from './view-config-plugin-edit.types';
 
