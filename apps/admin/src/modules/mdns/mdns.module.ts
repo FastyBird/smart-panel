@@ -31,7 +31,7 @@ export default {
 
 		modulesManager.addModule(mdnsAdminModuleKey, {
 			type: MDNS_MODULE_NAME,
-			name: 'mDNS Module',
+			name: 'mDNS',
 			description: 'Configure mDNS service advertisement settings',
 			elements: [
 				{
