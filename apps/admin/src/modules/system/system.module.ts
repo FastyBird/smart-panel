@@ -16,7 +16,12 @@ import {
 	type ModuleInjectionKey,
 } from '../../common';
 
+import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
+
+import { SystemConfigForm } from './components/components';
 import enUS from './locales/en-US.json';
+import { SystemConfigEditFormSchema } from './schemas/config.schemas';
+import { SystemConfigSchema, SystemConfigUpdateReqSchema } from './store/config.store.schemas';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
 import { SystemActionsService, provideSystemActionsService } from './services/system-actions.service';
 import { SystemLogsReporterService, provideSystemLogsReporter } from './services/system-logs-reporter.service';
@@ -85,7 +90,22 @@ export default {
 			type: SYSTEM_MODULE_NAME,
 			name: 'System',
 			description: 'Monitor system health, review logs, and perform maintenance tasks.',
-			elements: [],
+			elements: [
+				{
+					type: CONFIG_MODULE_MODULE_TYPE,
+					components: {
+						moduleConfigEditForm: SystemConfigForm,
+					},
+					schemas: {
+						moduleConfigSchema: SystemConfigSchema,
+						moduleConfigEditFormSchema: SystemConfigEditFormSchema,
+						moduleConfigUpdateReqSchema: SystemConfigUpdateReqSchema,
+					},
+					modules: [CONFIG_MODULE_NAME],
+				},
+			],
+			modules: [CONFIG_MODULE_NAME],
+			isCore: true,
 		});
 
 		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {

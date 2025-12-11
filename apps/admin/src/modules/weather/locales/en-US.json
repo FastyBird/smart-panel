@@ -2,6 +2,89 @@
 	"headings": {
 		"weather": "Weather"
 	},
+	"messages": {
+		"config": {
+			"edited": "Weather configuration has been successfully updated",
+			"notEdited": "Failed to update weather configuration"
+		}
+	},
+	"fields": {
+		"config": {
+			"locationType": {
+				"title": "Location Type",
+				"description": "Type of location data to use for weather",
+				"placeholder": "Select location type",
+				"values": {
+					"latLon": "Latitude/Longitude",
+					"cityName": "City Name",
+					"cityId": "City ID",
+					"zipCode": "ZIP Code"
+				},
+				"validation": {
+					"required": "Location type is required"
+				}
+			},
+			"latitude": {
+				"title": "Latitude",
+				"description": "Latitude coordinate (-90 to 90)",
+				"placeholder": "50.0755",
+				"validation": {
+					"required": "Latitude is required when using latitude/longitude",
+					"range": "Latitude must be between -90 and 90"
+				}
+			},
+			"longitude": {
+				"title": "Longitude",
+				"description": "Longitude coordinate (-180 to 180)",
+				"placeholder": "14.4378",
+				"validation": {
+					"required": "Longitude is required when using latitude/longitude",
+					"range": "Longitude must be between -180 and 180"
+				}
+			},
+			"cityName": {
+				"title": "City Name",
+				"description": "City name with optional country code (e.g., Prague,CZ)",
+				"placeholder": "Prague,CZ",
+				"validation": {
+					"required": "City name is required when using city name"
+				}
+			},
+			"cityId": {
+				"title": "City ID",
+				"description": "OpenWeatherMap city ID",
+				"placeholder": "3067696",
+				"validation": {
+					"required": "City ID is required when using city ID"
+				}
+			},
+			"zipCode": {
+				"title": "ZIP Code",
+				"description": "ZIP code with optional country code (e.g., 10001,US)",
+				"placeholder": "10001,US",
+				"validation": {
+					"required": "ZIP code is required when using ZIP code"
+				}
+			},
+			"unit": {
+				"title": "Temperature Unit",
+				"description": "Temperature unit preference",
+				"placeholder": "Select temperature unit",
+				"values": {
+					"celsius": "Celsius",
+					"fahrenheit": "Fahrenheit"
+				},
+				"validation": {
+					"required": "Temperature unit is required"
+				}
+			},
+			"openWeatherApiKey": {
+				"title": "OpenWeatherMap API Key",
+				"description": "API key for OpenWeatherMap service",
+				"placeholder": "Enter your OpenWeatherMap API key"
+			}
+		}
+	},
 	"conditions": {
 		"thunderstormWithLightRain": "Thunderstorm with light rain",
 		"thunderstormWithRain": "Thunderstorm with rain",

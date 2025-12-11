@@ -1,4 +1,10 @@
 {
+  "messages": {
+    "config": {
+      "edited": "System configuration has been successfully updated",
+      "notEdited": "Failed to update system configuration"
+    }
+  },
   "meta": {
     "system": {
       "system": {
@@ -146,6 +152,67 @@
     }
   },
   "fields": {
+    "config": {
+      "languageSettings": {
+        "title": "Language Settings"
+      },
+      "systemSettings": {
+        "title": "System Settings"
+      },
+      "language": {
+        "title": "Language",
+        "description": "Application language",
+        "placeholder": "Select language",
+        "values": {
+          "english": "English",
+          "czech": "Czech"
+        },
+        "validation": {
+          "required": "Language is required"
+        }
+      },
+      "timezone": {
+        "title": "Timezone",
+        "description": "System timezone",
+        "placeholder": "Select timezone",
+        "validation": {
+          "required": "Timezone is required"
+        }
+      },
+      "timeFormat": {
+        "title": "Time Format",
+        "description": "Time display format",
+        "placeholder": "Select time format",
+        "values": {
+          "hour12": "12-hour",
+          "hour24": "24-hour"
+        },
+        "validation": {
+          "required": "Time format is required"
+        }
+      },
+      "logLevels": {
+        "title": "Log Levels",
+        "description": "Enabled log levels",
+        "values": {
+          "silent": "Silent",
+          "verbose": "Verbose",
+          "debug": "Debug",
+          "trace": "Trace",
+          "log": "Log",
+          "info": "Info",
+          "success": "Success",
+          "warn": "Warning",
+          "error": "Error",
+          "fail": "Fail",
+          "fatal": "Fatal"
+        },
+        "validation": {
+          "required": "At least one log level must be selected",
+          "min": "At least one log level must be selected"
+        }
+      }
+    },
     "systemLogs": {
       "search": {
         "title": "Search",
