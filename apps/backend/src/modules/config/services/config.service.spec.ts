@@ -18,16 +18,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
-import { EventType, LanguageType, LogLevelType, SectionType, TimeFormatType } from '../config.constants';
+import { EventType } from '../config.constants';
 import { ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
-import { UpdateLanguageConfigDto, UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
-import {
-	AppConfigModel,
-	BaseConfigModel,
-	LanguageConfigModel,
-	ModuleConfigModel,
-	PluginConfigModel,
-} from '../models/config.model';
+import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
+import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 
 import { ConfigService } from './config.service';
 import { ModulesTypeMapperService } from './modules-type-mapper.service';
@@ -82,11 +76,7 @@ describe('ConfigService', () => {
 	let platform: PlatformService;
 
 	const mockRawConfig = {
-		language: {
-			language: 'en_US',
-			timezone: 'Europe/Prague',
-			time_format: '24h',
-		},
+		// Language and system config moved to modules.system-module
 		plugins: {
 			mock: {
 				enabled: true,
@@ -103,16 +93,7 @@ describe('ConfigService', () => {
 
 	const mockConfig: Partial<AppConfigModel> = {
 		path: '/var/smart-panel/config.yaml',
-		language: {
-			type: SectionType.LANGUAGE,
-			language: LanguageType.ENGLISH,
-			timeFormat: TimeFormatType.HOUR_24,
-			timezone: 'Europe/Prague',
-		},
-		system: {
-			type: SectionType.SYSTEM,
-			logLevels: [LogLevelType.INFO, LogLevelType.WARN, LogLevelType.ERROR, LogLevelType.FATAL],
-		},
+		// Language and system config moved to system module (accessible via /config/module/system-module)
 		plugins: [
 			{
 				type: 'mock',
@@ -264,92 +245,8 @@ describe('ConfigService', () => {
 		});
 	});
 
-	describe('getConfigSection', () => {
-		it('should return a valid configuration section', () => {
-			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
-			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
-
-			const result = service.getConfigSection(SectionType.LANGUAGE, LanguageConfigModel);
-
-			expect(result).toEqual(mockConfig.language);
-
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
-			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
-		});
-
-		it('should throw validation errors for an invalid section', () => {
-			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
-			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
-
-			class MockConfig extends BaseConfigModel {}
-
-			// @ts-expect-error: This is an intentional test for invalid configuration sections
-			expect(() => service.getConfigSection('invalid', MockConfig)).toThrow(ConfigNotFoundException);
-
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
-			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
-		});
-	});
-
-	describe('setConfigSection', () => {
-		it('should update a configuration section and save it to YAML', () => {
-			const updatedLanguageConfig: UpdateLanguageConfigDto = {
-				type: SectionType.LANGUAGE,
-				language: LanguageType.CZECH,
-			};
-			const mergedConfig = { ...mockConfig.language, ...{ language: LanguageType.CZECH } };
-
-			const updatedRawConfig = {
-				...mockRawConfig,
-				...{ language: { ...mockRawConfig.language, language: 'cs_CZ' } },
-			};
-
-			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-			jest
-				.spyOn(fs, 'readFileSync')
-				.mockReturnValueOnce(JSON.stringify(mockRawConfig))
-				.mockReturnValueOnce(JSON.stringify(updatedRawConfig));
-			jest.spyOn(yaml, 'parse').mockReturnValueOnce(mockRawConfig).mockReturnValueOnce(updatedRawConfig);
-
-			const mockYamlStringify = jest.spyOn(yaml, 'stringify');
-			const mockFsWriteFileSync = jest.spyOn(fs, 'writeFileSync');
-
-			service.setConfigSection(SectionType.LANGUAGE, updatedLanguageConfig, UpdateLanguageConfigDto);
-
-			expect(service['config'].language).toEqual(mergedConfig);
-
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
-			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
-			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(updatedRawConfig));
-			expect(mockYamlStringify).toHaveBeenCalled();
-			expect(mockFsWriteFileSync).toHaveBeenCalled();
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, service['config']);
-		});
-
-		it('should throw validation errors for an invalid update', () => {
-			const invalidUpdateDto: UpdateLanguageConfigDto & { invalidField: string } = {
-				type: SectionType.LANGUAGE,
-				invalidField: 'value',
-			};
-
-			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
-			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
-
-			expect(() => service.setConfigSection(SectionType.LANGUAGE, invalidUpdateDto, UpdateLanguageConfigDto)).toThrow(
-				ConfigValidationException,
-			);
-
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
-			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
-		});
-	});
+	// getConfigSection and setConfigSection tests removed - section-based endpoints are deprecated
+	// Use module endpoints instead (/config/module/:module)
 
 	describe('getPluginConfig', () => {
 		it('should return a valid plugin configuration', () => {

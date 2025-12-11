@@ -11,7 +11,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { CONFIG_MODULE_API_TAG_NAME, SectionType } from '../config.constants';
+import { CONFIG_MODULE_API_TAG_NAME } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 import {
 	ReqUpdateModuleDto,
@@ -115,7 +115,7 @@ export class ConfigController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	updateConfigSection(
 		@Param('section') section: keyof AppConfigModel,
-		@Body() dto: ReqUpdateSectionDto,
+		@Body() _dto: ReqUpdateSectionDto,
 	): ConfigModuleResSection {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${section}`);
 

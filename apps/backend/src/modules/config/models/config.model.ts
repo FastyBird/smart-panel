@@ -1,5 +1,5 @@
-import { Expose, Type } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsBoolean, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Expose } from 'class-transformer';
+import { IsBoolean, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
