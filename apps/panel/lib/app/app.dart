@@ -11,8 +11,6 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/backend_discovery.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
-import 'package:fastybird_smart_panel/modules/config/export.dart'
-    as config_module;
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart'
     as dashboard_module;
