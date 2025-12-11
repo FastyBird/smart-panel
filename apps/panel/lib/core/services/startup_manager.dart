@@ -16,13 +16,32 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/application.dart';
 import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/language.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/weather.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/module.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/cards.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/data_sources.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/pages.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/tiles.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/module.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/channel_controls.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/device_controls.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/displays/module.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/system/module.dart';
+import 'package:fastybird_smart_panel/modules/system/repositories/system_info.dart';
+import 'package:fastybird_smart_panel/modules/system/repositories/throttle_status.dart';
+import 'package:fastybird_smart_panel/modules/system/service.dart';
 import 'package:fastybird_smart_panel/modules/weather/module.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
+import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
@@ -315,9 +334,6 @@ class StartupManagerService {
       locator.unregister<DisplaysModuleService>();
     } catch (_) {}
     try {
-      locator.unregister<DisplayRepository>();
-    } catch (_) {}
-    try {
       locator.unregister<SystemModuleService>();
     } catch (_) {}
     try {
@@ -328,6 +344,79 @@ class StartupManagerService {
     } catch (_) {}
     try {
       locator.unregister<DashboardModuleService>();
+    } catch (_) {}
+
+    // Unregister all repositories and services registered by modules
+    // Config module repositories
+    try {
+      locator.unregister<LanguageConfigRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<WeatherConfigRepository>();
+    } catch (_) {}
+
+    // Displays module repositories
+    try {
+      locator.unregister<DisplayRepository>();
+    } catch (_) {}
+
+    // System module repositories and services
+    try {
+      locator.unregister<SystemInfoRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<ThrottleStatusRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<SystemService>();
+    } catch (_) {}
+
+    // Weather module repositories and services
+    try {
+      locator.unregister<CurrentWeatherRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<ForecastWeatherRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<WeatherService>();
+    } catch (_) {}
+
+    // Devices module repositories and services
+    try {
+      locator.unregister<DevicesRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<DeviceControlsRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<ChannelsRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<ChannelControlsRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<ChannelPropertiesRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<DevicesService>();
+    } catch (_) {}
+
+    // Dashboard module repositories and services
+    try {
+      locator.unregister<PagesRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<CardsRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<TilesRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<DataSourcesRepository>();
+    } catch (_) {}
+    try {
+      locator.unregister<DashboardService>();
     } catch (_) {}
 
     // Unregister API client and Dio instance
@@ -708,11 +797,38 @@ class StartupManagerService {
     }
   }
 
+  /// Check if the backend URL is localhost (127.0.0.1, ::1, or localhost)
+  bool _isLocalhost(String backendUrl) {
+    try {
+      final uri = Uri.parse(backendUrl);
+      final host = uri.host.toLowerCase();
+
+      // Check for localhost variants
+      return host == 'localhost' ||
+          host == '127.0.0.1' ||
+          host == '::1' ||
+          host == '[::1]';
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Check registration status before attempting registration
   /// Throws InitializationException if registration is not open
   /// Note: Localhost registrations in ALL_IN_ONE/COMBINED modes are allowed
-  /// even if permit join is not active, so we only check status as a warning
+  /// even if permit join is not active, so we skip the check for localhost
   Future<void> _checkRegistrationStatus() async {
+    // Skip permit join check for localhost connections
+    // The backend will allow localhost registrations even if permit join is disabled
+    if (_currentBackendUrl != null && _isLocalhost(_currentBackendUrl!)) {
+      if (kDebugMode) {
+        debugPrint(
+          '[CHECK REGISTRATION STATUS] Localhost connection detected, skipping permit join check',
+        );
+      }
+      return;
+    }
+
     if (kDebugMode) {
       debugPrint('[CHECK REGISTRATION STATUS] Checking if registration is open');
     }
@@ -737,8 +853,6 @@ class StartupManagerService {
         }
 
         // If registration is closed, throw an exception
-        // Note: Localhost registrations in ALL_IN_ONE/COMBINED modes will still
-        // be allowed by the backend even if permit join is not active
         if (!isOpen) {
           throw InitializationException(
             'Registration is not currently permitted. Please activate permit join in the admin panel.',

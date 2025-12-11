@@ -270,30 +270,20 @@ class DisplaysModuleService {
     if (currentDisplay != null && revokedDisplayId == currentDisplay.id) {
       if (kDebugMode) {
         debugPrint(
-          '[DISPLAYS MODULE] Current display token was revoked, attempting refresh',
+          '[DISPLAYS MODULE] Current display token was revoked, resetting to discovery state for re-registration',
         );
       }
 
-      // Attempt to refresh the token
-      _displayRepository.refreshToken().then((result) {
-        if (result == TokenRefreshResult.failed) {
-          if (kDebugMode) {
-            debugPrint(
-              '[DISPLAYS MODULE] Token refresh failed after revocation, resetting to discovery state',
-            );
-          }
+      // Token was revoked - immediately reset to discovery state
+      // This will trigger re-registration which requires permit join to be enabled
+      _displayRepository.setDisplay(null);
 
-          // Clear display model
-          _displayRepository.setDisplay(null);
+      // Disconnect from sockets (prevent reconnection attempts)
+      _socketService.dispose();
 
-          // Disconnect from sockets
-          _socketService.dispose();
-
-          // Trigger app reset to discovery state
-          final startupManager = locator.get<StartupManagerService>();
-          startupManager.resetToDiscovery();
-        }
-      });
+      // Trigger app reset to discovery state
+      final startupManager = locator.get<StartupManagerService>();
+      startupManager.resetToDiscovery();
     }
   }
 }

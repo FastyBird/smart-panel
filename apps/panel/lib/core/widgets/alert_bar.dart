@@ -10,7 +10,7 @@ class AlertBar {
     required String message,
     required AlertType type,
     IconData? icon,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 10),
   }) {
     final theme = Theme.of(context);
     final isLight = theme.brightness == Brightness.light;
@@ -22,40 +22,58 @@ class AlertBar {
     late Widget content;
 
     if (icon != null) {
-      content = Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        spacing: AppSpacings.pSm,
-        children: [
-          Baseline(
-            baseline: AppFontSize.extraSmall,
-            baselineType: TextBaseline.alphabetic,
-            child: Icon(
-              icon,
-              size: AppFontSize.extraSmall,
-              color: textColor,
-            ),
-          ),
-          Baseline(
-            baseline: AppFontSize.extraSmall,
-            baselineType: TextBaseline.alphabetic,
-            child: Text(
-              message,
-              style: TextStyle(
+      content = Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+          vertical: AppSpacings.pSm,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          spacing: AppSpacings.pSm,
+          children: [
+            Baseline(
+              baseline: AppFontSize.extraSmall,
+              baselineType: TextBaseline.alphabetic,
+              child: Icon(
+                icon,
+                size: AppFontSize.extraSmall,
                 color: textColor,
-                fontSize: AppFontSize.extraSmall,
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: Baseline(
+                baseline: AppFontSize.extraSmall,
+                baselineType: TextBaseline.alphabetic,
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: AppFontSize.extraSmall,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     } else {
-      content = Text(
-        message,
-        style: TextStyle(
-          color: textColor,
-          fontSize: AppFontSize.extraSmall,
+      content = Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+          vertical: AppSpacings.pSm,
+        ),
+        child: Text(
+          message,
+          style: TextStyle(
+            color: textColor,
+            fontSize: AppFontSize.extraSmall,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
         ),
       );
     }
@@ -77,7 +95,7 @@ class AlertBar {
   static void showSuccess(
     BuildContext context, {
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 10),
   }) =>
       show(
         context,
@@ -90,7 +108,7 @@ class AlertBar {
   static void showInfo(
     BuildContext context, {
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 10),
   }) =>
       show(
         context,
@@ -103,7 +121,7 @@ class AlertBar {
   static void showWarning(
     BuildContext context, {
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 10),
   }) =>
       show(
         context,
@@ -116,7 +134,7 @@ class AlertBar {
   static void showError(
     BuildContext context, {
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 10),
   }) =>
       show(
         context,

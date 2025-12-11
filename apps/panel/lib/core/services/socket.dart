@@ -139,6 +139,7 @@ class SocketService {
   io.Socket? _socket;
   String? _currentApiSecret;
   String? _currentBackendUrl;
+  bool _shouldReconnect = true;
 
   final Map<String, List<void Function(String, Map<String, dynamic>)>>
       _eventCallbacks = {};
@@ -166,6 +167,9 @@ class SocketService {
       _socket!.dispose();
       _socket = null;
     }
+
+    // Enable reconnection for new initialization
+    _shouldReconnect = true;
 
     // Store current credentials
     _currentApiSecret = apiSecret;
@@ -203,7 +207,15 @@ class SocketService {
         debugPrint('[SOCKETS] Disconnected from Socket.IO backend');
       }
 
-      _attemptReconnect();
+      // Only attempt reconnection if reconnection is enabled
+      // This prevents reconnection attempts when display is deleted
+      if (_shouldReconnect) {
+        _attemptReconnect();
+      } else {
+        if (kDebugMode) {
+          debugPrint('[SOCKETS] Reconnection disabled, not attempting to reconnect');
+        }
+      }
     });
 
     _socket!.on(
@@ -340,6 +352,9 @@ class SocketService {
   }
 
   void dispose() {
+    // Disable reconnection before disposing to prevent reconnection attempts
+    _shouldReconnect = false;
+
     if (_socket != null) {
       _socket!.disconnect();
       _socket!.dispose();

@@ -9,6 +9,8 @@ import {
 	Logger,
 } from '@nestjs/common';
 
+import { TokenOwnerType } from '../../auth/auth.constants';
+import { TokensService } from '../../auth/services/tokens.service';
 import { ConfigService } from '../../config/services/config.service';
 import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
 import { DisplaysConfigModel } from '../models/config.model';
@@ -24,6 +26,7 @@ export class RegistrationGuard implements CanActivate {
 		private readonly configService: ConfigService,
 		private readonly permitJoinService: PermitJoinService,
 		private readonly displaysService: DisplaysService,
+		private readonly tokensService: TokensService,
 	) {}
 
 	/**
@@ -53,38 +56,39 @@ export class RegistrationGuard implements CanActivate {
 
 		this.logger.debug(`[REGISTRATION GUARD] Registration attempt from IP=${clientIp}, mode=${mode}`);
 
-		// Mode 2: All-in-One - trust localhost only
-		if (mode === DeploymentMode.ALL_IN_ONE) {
-			if (!isLocalhost(clientIp)) {
-				this.logger.warn(`[REGISTRATION GUARD] Rejected: IP ${clientIp} is not localhost in all-in-one mode`);
-				throw new ForbiddenException('Only localhost registrations are allowed in all-in-one mode');
-			}
-
+		// Localhost registrations are always allowed without permit join in all modes
+		// This allows local development and all-in-one deployments
+		if (isLocalhost(clientIp)) {
 			// Check if localhost display already exists
 			const localhostDisplay = await this.displaysService.findByRegisteredFromIp(clientIp);
 			if (localhostDisplay) {
-				this.logger.warn(`[REGISTRATION GUARD] Rejected: Display already registered with localhost IP ${clientIp}`);
-				throw new ConflictException('Display already registered with localhost IP address');
+				// Check if the existing display has any active (non-revoked) tokens
+				// If all tokens are revoked, allow re-registration
+				const displayTokens = await this.tokensService.findByOwnerId(localhostDisplay.id, TokenOwnerType.DISPLAY);
+				const hasActiveTokens = displayTokens.some((token) => !token.revoked);
+
+				if (hasActiveTokens) {
+					this.logger.warn(
+						`[REGISTRATION GUARD] Rejected: Display already registered with localhost IP ${clientIp} and has active tokens`,
+					);
+					throw new ConflictException('Display already registered with localhost IP address');
+				}
+
+				// Display exists but all tokens are revoked - allow re-registration
+				this.logger.debug(
+					`[REGISTRATION GUARD] Allowed: localhost display exists but all tokens are revoked, allowing re-registration`,
+				);
+				return true;
 			}
 
-			this.logger.debug(`[REGISTRATION GUARD] Allowed: localhost registration in all-in-one mode`);
+			this.logger.debug(`[REGISTRATION GUARD] Allowed: localhost registration (no permit join required)`);
 			return true;
 		}
 
-		// Modes 1 & 3: Standalone and Combined
-		// Localhost registrations are always allowed in COMBINED mode, even without permit join
-		if (mode === DeploymentMode.COMBINED && isLocalhost(clientIp)) {
-			// Check if localhost display already exists
-			const localhostDisplay = await this.displaysService.findByRegisteredFromIp(clientIp);
-			if (localhostDisplay) {
-				this.logger.warn(`[REGISTRATION GUARD] Rejected: Display already registered with localhost IP ${clientIp}`);
-				throw new ConflictException('Display already registered with localhost IP address');
-			}
-
-			this.logger.debug(
-				`[REGISTRATION GUARD] Allowed: localhost registration in combined mode (no permit join required)`,
-			);
-			return true;
+		// Mode 2: All-in-One - only localhost allowed
+		if (mode === DeploymentMode.ALL_IN_ONE) {
+			this.logger.warn(`[REGISTRATION GUARD] Rejected: IP ${clientIp} is not localhost in all-in-one mode`);
+			throw new ForbiddenException('Only localhost registrations are allowed in all-in-one mode');
 		}
 
 		// For non-localhost in STANDALONE or COMBINED modes, require permit join
