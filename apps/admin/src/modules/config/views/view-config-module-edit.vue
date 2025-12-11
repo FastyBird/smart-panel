@@ -66,19 +66,29 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const route = useRoute();
+const { meta } = useMeta({});
 
 const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResult>(props.remoteFormResult);
 const remoteFormReset = ref<boolean>(props.remoteFormReset);
 
 const moduleType = computed<string>((): string => {
-	return (route.params.module as string) || '';
+	const moduleParam = route.params.module;
+	return (Array.isArray(moduleParam) ? moduleParam[0] : moduleParam) || '';
 });
 
 const moduleComposable = useModule({ name: moduleType.value });
 const moduleName = computed<string>((): string => {
 	return moduleComposable.module.value?.name || moduleType.value;
 });
+
+watch(
+	(): string => moduleName.value,
+	(name: string): void => {
+		meta.title = t('configModule.meta.configModuleEdit.title', { module: name });
+	},
+	{ immediate: true }
+);
 
 const onSave = (): void => {
 	remoteFormSubmit.value = true;
@@ -125,8 +135,4 @@ watch(
 		emit('update:remoteFormReset', val);
 	}
 );
-
-useMeta({
-	title: computed(() => t('configModule.meta.configModuleEdit.title', { module: moduleName.value })),
-});
 </script>

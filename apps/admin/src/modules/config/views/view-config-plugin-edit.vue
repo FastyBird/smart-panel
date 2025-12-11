@@ -66,19 +66,29 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const route = useRoute();
+const { meta } = useMeta({});
 
 const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResult>(props.remoteFormResult);
 const remoteFormReset = ref<boolean>(props.remoteFormReset);
 
 const pluginType = computed<string>((): string => {
-	return (route.params.plugin as string) || '';
+	const pluginParam = route.params.plugin;
+	return (Array.isArray(pluginParam) ? pluginParam[0] : pluginParam) || '';
 });
 
 const pluginComposable = usePlugin({ name: pluginType.value });
 const pluginName = computed<string>((): string => {
 	return pluginComposable.plugin.value?.name || pluginType.value;
 });
+
+watch(
+	(): string => pluginName.value,
+	(name: string): void => {
+		meta.title = t('configModule.meta.configPluginEdit.title', { plugin: name });
+	},
+	{ immediate: true }
+);
 
 const onSave = (): void => {
 	remoteFormSubmit.value = true;
@@ -125,8 +135,4 @@ watch(
 		emit('update:remoteFormReset', val);
 	}
 );
-
-useMeta({
-	title: computed(() => t('configModule.meta.configPluginEdit.title', { plugin: pluginName.value })),
-});
 </script>

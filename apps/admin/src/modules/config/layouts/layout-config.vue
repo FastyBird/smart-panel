@@ -210,13 +210,20 @@ onMounted((): void => {
 watch(
 	(): RouteRecordName | string | null | undefined => route.name,
 	(val: RouteRecordName | string | null | undefined): void => {
-		if (mounted.value) {
-			if ((val === RouteNames.CONFIG_PLUGINS || val === RouteNames.CONFIG_PLUGIN_EDIT) && activeTab.value !== 'plugins') {
+		if (!mounted.value) {
+			return;
+		}
+
+		if (val === RouteNames.CONFIG_PLUGINS || val === RouteNames.CONFIG_PLUGIN_EDIT) {
+			if (activeTab.value !== 'plugins') {
 				activeTab.value = 'plugins';
-			} else if ((val === RouteNames.CONFIG_MODULES || val === RouteNames.CONFIG_MODULE_EDIT) && activeTab.value !== 'modules') {
+			}
+		} else if (val === RouteNames.CONFIG_MODULES || val === RouteNames.CONFIG_MODULE_EDIT) {
+			if (activeTab.value !== 'modules') {
 				activeTab.value = 'modules';
 			}
 		}
-	}
+	},
+	{ immediate: false }
 );
 </script>
