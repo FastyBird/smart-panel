@@ -52,22 +52,6 @@
 	>
 		<div class="flex flex-col h-full">
 			<app-bar menu-button-hidden>
-				<template #heading>
-					<app-bar-heading>
-						<template #icon>
-							<icon
-								icon="mdi:toy-brick"
-								class="w[20px] h[20px]"
-							/>
-						</template>
-						<template #title>
-							{{ currentPluginName }}
-						</template>
-						<template #subtitle>
-							{{ t('configModule.subHeadings.configPlugin') }}
-						</template>
-					</app-bar-heading>
-				</template>
 				<template #button-right>
 					<app-bar-button
 						:align="AppBarButtonAlign.RIGHT"

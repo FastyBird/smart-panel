@@ -1,8 +1,5 @@
 <template>
-	<app-bar-heading
-		v-if="!isMDDevice"
-		teleport
-	>
+	<app-bar-heading teleport>
 		<template #icon>
 			<icon
 				icon="mdi:toy-brick"
@@ -46,12 +43,12 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div
-		v-loading="isLoading || configPlugin === null"
+		v-loading="isLoading || !configPlugin"
 		:element-loading-text="t('configModule.texts.loadingPluginConfig')"
 		class="flex flex-col overflow-hidden h-full"
 	>
 		<el-scrollbar
-			v-if="configPlugin !== null"
+			v-if="configPlugin"
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
@@ -63,6 +60,16 @@
 				v-model:remote-form-changed="remoteFormChanged"
 				:config="configPlugin"
 			/>
+			<div
+				v-else
+				class="p-4"
+			>
+				<p v-if="!configPlugin">Loading config...</p>
+				<p v-else-if="!element">Loading plugin element...</p>
+				<p v-else-if="!element?.components?.pluginConfigEditForm">
+					Plugin "{{ pluginType }}" does not have a configuration form component registered.
+				</p>
+			</div>
 		</el-scrollbar>
 
 		<div
