@@ -22,10 +22,6 @@ import {
 	UpdateModuleConfigDto,
 	UpdatePluginConfigDto,
 	UpdateSystemConfigDto,
-	UpdateWeatherCityIdConfigDto,
-	UpdateWeatherCityNameConfigDto,
-	UpdateWeatherLatLonConfigDto,
-	UpdateWeatherZipCodeConfigDto,
 } from '../dto/config.dto';
 import {
 	ConfigModuleResAppConfig,
@@ -36,7 +32,6 @@ import {
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
 	ConfigModuleResSystem,
-	ConfigModuleResWeather,
 } from '../models/config-response.model';
 import {
 	AppConfigModel,
@@ -44,10 +39,6 @@ import {
 	ModuleConfigModel,
 	PluginConfigModel,
 	SystemConfigModel,
-	WeatherCityIdConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherZipCodeConfigModel,
 } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 import { ModuleTypeMapping, ModulesTypeMapperService } from '../services/modules-type-mapper.service';
@@ -114,20 +105,6 @@ export class ConfigController {
 
 				return this.createSectionResponse(config);
 			}
-			case SectionType.WEATHER: {
-				const config = this.service.getConfigSection<
-					WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-				>(section, [
-					WeatherLatLonConfigModel,
-					WeatherCityNameConfigModel,
-					WeatherCityIdConfigModel,
-					WeatherZipCodeConfigModel,
-				]);
-
-				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
 			case SectionType.SYSTEM: {
 				const config = this.service.getConfigSection<SystemConfigModel>(section, SystemConfigModel);
 
@@ -176,27 +153,6 @@ export class ConfigController {
 
 				return this.createSectionResponse(config);
 			}
-			case SectionType.WEATHER: {
-				this.service.setConfigSection(SectionType.WEATHER, dto.data, [
-					UpdateWeatherLatLonConfigDto,
-					UpdateWeatherCityNameConfigDto,
-					UpdateWeatherCityIdConfigDto,
-					UpdateWeatherZipCodeConfigDto,
-				]);
-
-				const config = this.service.getConfigSection<
-					WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-				>(SectionType.WEATHER, [
-					WeatherLatLonConfigModel,
-					WeatherCityNameConfigModel,
-					WeatherCityIdConfigModel,
-					WeatherZipCodeConfigModel,
-				]);
-
-				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
 			case SectionType.SYSTEM: {
 				this.service.setConfigSection(SectionType.SYSTEM, dto.data, UpdateSystemConfigDto);
 
@@ -234,41 +190,6 @@ export class ConfigController {
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.LANGUAGE}`);
 
 		return this.createSectionResponse(config) as ConfigModuleResLanguage;
-	}
-
-	@Patch(SectionType.WEATHER)
-	@ApiOperation({
-		tags: [CONFIG_MODULE_API_TAG_NAME],
-		summary: 'Update weather configuration',
-		description: 'Update the weather section configuration',
-		operationId: 'update-config-module-weather',
-	})
-	@ApiBody({ type: ReqUpdateSectionDto, description: 'Weather configuration data' })
-	@ApiSuccessResponse(ConfigModuleResWeather, 'Weather configuration updated successfully')
-	@ApiBadRequestResponse('Invalid weather configuration data')
-	@ApiInternalServerErrorResponse('Internal server error')
-	updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): ConfigModuleResWeather {
-		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.WEATHER}`);
-
-		this.service.setConfigSection(SectionType.WEATHER, weatherConfig.data, [
-			UpdateWeatherLatLonConfigDto,
-			UpdateWeatherCityNameConfigDto,
-			UpdateWeatherCityIdConfigDto,
-			UpdateWeatherZipCodeConfigDto,
-		]);
-
-		const config = this.service.getConfigSection<
-			WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-		>(SectionType.WEATHER, [
-			WeatherLatLonConfigModel,
-			WeatherCityNameConfigModel,
-			WeatherCityIdConfigModel,
-			WeatherZipCodeConfigModel,
-		]);
-
-		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.WEATHER}`);
-
-		return this.createSectionResponse(config) as ConfigModuleResWeather;
 	}
 
 	@Patch(SectionType.SYSTEM)

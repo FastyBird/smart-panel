@@ -15,14 +15,10 @@ import {
 	SectionType,
 	WeatherLocationType,
 } from '../../config/config.constants';
-import {
-	LanguageConfigModel,
-	WeatherCityIdConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherZipCodeConfigModel,
-} from '../../config/models/config.model';
+import { LanguageConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
+import { WeatherConfigModel } from '../models/config.model';
 import { ForecastDto, ForecastListItemDto } from '../dto/forecast.dto';
 import { WeatherDto } from '../dto/weather.dto';
 import { CurrentDayModel, ForecastDayModel, LocationModel, LocationWeatherModel } from '../models/weather.model';
@@ -341,28 +337,28 @@ export class WeatherService {
 
 		switch (this.locationType) {
 			case WeatherLocationType.LAT_LON: {
-				if (config instanceof WeatherLatLonConfigModel && config.latitude !== null && config.longitude !== null) {
+				if (config.latitude !== null && config.longitude !== null) {
 					return `lat=${config.latitude}&lon=${config.longitude}`;
 				}
 
 				throw new WeatherValidationException(`[WEATHER] Invalid lat/lon configuration`);
 			}
 			case WeatherLocationType.CITY_NAME: {
-				if (config instanceof WeatherCityNameConfigModel && config.cityName !== null) {
+				if (config.cityName !== null) {
 					return `q=${encodeURIComponent(config.cityName)}`;
 				}
 
 				throw new WeatherValidationException(`[WEATHER] Invalid city name configuration`);
 			}
 			case WeatherLocationType.CITY_ID: {
-				if (config instanceof WeatherCityIdConfigModel && config.cityId !== null) {
+				if (config.cityId !== null) {
 					return `id=${config.cityId}`;
 				}
 
 				throw new WeatherValidationException(`[WEATHER] Invalid city ID configuration`);
 			}
 			case WeatherLocationType.ZIP_CODE: {
-				if (config instanceof WeatherZipCodeConfigModel && config.zipCode !== null) {
+				if (config.zipCode !== null) {
 					return `zip=${config.zipCode}`;
 				}
 
@@ -506,28 +502,28 @@ export class WeatherService {
 
 		switch (this.locationType) {
 			case WeatherLocationType.LAT_LON: {
-				if (config instanceof WeatherLatLonConfigModel && config.latitude !== null && config.longitude !== null) {
+				if (config.latitude !== null && config.longitude !== null) {
 					return `lat=${config.latitude}:lon=${config.longitude}`;
 				}
 
 				throw new WeatherValidationException(`[WEATHER] Invalid lat/lon configuration`);
 			}
 			case WeatherLocationType.CITY_NAME: {
-				if (config instanceof WeatherCityNameConfigModel && config.cityName !== null) {
+				if (config.cityName !== null) {
 					return `cityName=${encodeURIComponent(config.cityName)}`;
 				}
 
 				throw new WeatherValidationException(`[WEATHER] Invalid city name configuration`);
 			}
 			case WeatherLocationType.CITY_ID: {
-				if (config instanceof WeatherCityIdConfigModel && config.cityId !== null) {
+				if (config.cityId !== null) {
 					return `cityId=${config.cityId}`;
 				}
 
 				throw new WeatherValidationException(`[WEATHER] Invalid city ID configuration`);
 			}
 			case WeatherLocationType.ZIP_CODE: {
-				if (config instanceof WeatherZipCodeConfigModel && config.zipCode !== null) {
+				if (config.zipCode !== null) {
 					return `zipCode=${config.zipCode}`;
 				}
 
@@ -539,18 +535,7 @@ export class WeatherService {
 		}
 	}
 
-	private getConfig():
-		| WeatherLatLonConfigModel
-		| WeatherCityNameConfigModel
-		| WeatherCityIdConfigModel
-		| WeatherZipCodeConfigModel {
-		return this.configService.getConfigSection<
-			WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-		>(SectionType.WEATHER, [
-			WeatherLatLonConfigModel,
-			WeatherCityNameConfigModel,
-			WeatherCityIdConfigModel,
-			WeatherZipCodeConfigModel,
-		]);
+	private getConfig(): WeatherConfigModel {
+		return this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
 	}
 }

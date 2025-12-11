@@ -43,24 +43,6 @@ const determineConfigDto = (obj: unknown): new () => object => {
 		switch (type) {
 			case SectionType.LANGUAGE:
 				return UpdateLanguageConfigDto;
-			case SectionType.WEATHER:
-				if ('location_type' in obj.data) {
-					const locationType = (obj.data as { location_type: string }).location_type as WeatherLocationType;
-
-					switch (locationType) {
-						case WeatherLocationType.LAT_LON:
-							return UpdateWeatherLatLonConfigDto;
-						case WeatherLocationType.CITY_NAME:
-							return UpdateWeatherCityNameConfigDto;
-						case WeatherLocationType.CITY_ID:
-							return UpdateWeatherCityIdConfigDto;
-						case WeatherLocationType.ZIP_CODE:
-							return UpdateWeatherZipCodeConfigDto;
-						default:
-							throw new Error(`Unknown location type ${(obj.data as { location_type: string }).location_type}`);
-					}
-				}
-				throw new Error('Invalid object format for determining config weather DTO');
 			case SectionType.SYSTEM:
 				return UpdateSystemConfigDto;
 			default:
@@ -73,7 +55,7 @@ const determineConfigDto = (obj: unknown): new () => object => {
 export class BaseConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid section string."}]' })
-	type: SectionType.LANGUAGE | SectionType.WEATHER | SectionType.SYSTEM;
+	type: SectionType.LANGUAGE | SectionType.SYSTEM;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdateLanguage' })
@@ -118,254 +100,6 @@ export class UpdateLanguageConfigDto extends BaseConfigDto {
 	time_format?: TimeFormatType;
 }
 
-@ApiSchema({ name: 'ConfigModuleUpdateWeather' })
-export abstract class UpdateWeatherConfigDto extends BaseConfigDto {
-	@ApiProperty({
-		description: 'Configuration section type',
-		enum: [SectionType.WEATHER],
-		example: 'weather',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"type","reason":"Type must be a weather string."}]' })
-	type: SectionType.WEATHER;
-
-	@ApiPropertyOptional({
-		description: 'Type of location data provided.',
-		enum: WeatherLocationType,
-		example: WeatherLocationType.CITY_NAME,
-	})
-	@Expose()
-	@IsOptional()
-	@IsEnum(WeatherLocationType, {
-		message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]',
-	})
-	location_type?: WeatherLocationType;
-
-	@ApiPropertyOptional({
-		description: 'Temperature unit preference.',
-		enum: TemperatureUnitType,
-		example: TemperatureUnitType.CELSIUS,
-	})
-	@Expose()
-	@IsEnum(TemperatureUnitType, { message: '[{"field":"unit","reason":"Unit must be a valid string."}]' })
-	unit?: TemperatureUnitType;
-
-	@ApiPropertyOptional({
-		description: 'OpenWeatherMap API key.',
-		type: 'string',
-		example: 'your-api-key-here',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({ message: '[{"field":"open_weather_api_key","reason":"OpenWeather API key must be a valid string."}]' })
-	open_weather_api_key?: string | null;
-}
-
-@ApiSchema({ name: 'ConfigModuleUpdateWeatherLatLon' })
-export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto {
-	@ApiProperty({
-		description: 'Location type',
-		enum: [WeatherLocationType.LAT_LON],
-		example: 'lat_lon',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
-	location_type: WeatherLocationType.LAT_LON;
-
-	@ApiPropertyOptional({
-		description: 'Latitude coordinate (-90 to 90).',
-		type: 'number',
-		format: 'float',
-		minimum: -90,
-		maximum: 90,
-		example: 50.0755,
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
-	)
-	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
-	@ValidateIf((_, value) => value !== null)
-	latitude?: number | null;
-
-	@ApiPropertyOptional({
-		description: 'Longitude coordinate (-180 to 180).',
-		type: 'number',
-		format: 'float',
-		minimum: -180,
-		maximum: 180,
-		example: 14.4378,
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"longitude","reason":"Longitude must be a valid number."}]' },
-	)
-	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
-	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	@ValidateIf((_, value) => value !== null)
-	longitude?: number | null;
-}
-
-@ApiSchema({ name: 'ConfigModuleUpdateWeatherCityName' })
-export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto {
-	@ApiProperty({
-		description: 'Location type',
-		enum: [WeatherLocationType.CITY_NAME],
-		example: 'city_name',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
-	location_type: WeatherLocationType.CITY_NAME;
-
-	@ApiPropertyOptional({
-		description: 'City name with optional country code (e.g., "Prague,CZ").',
-		type: 'string',
-		example: 'Prague,CZ',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({ message: '[{"field":"city_name","reason":"City name must be a valid string."}]' })
-	@ValidateIf((_, value) => value !== null)
-	city_name?: string | null;
-
-	@ApiPropertyOptional({
-		description: 'Latitude coordinate (-90 to 90).',
-		type: 'number',
-		format: 'float',
-		minimum: -90,
-		maximum: 90,
-		example: 50.0755,
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
-	)
-	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
-	@ValidateIf((_, value) => value !== null)
-	latitude?: number | null;
-
-	@ApiPropertyOptional({
-		description: 'Longitude coordinate (-180 to 180).',
-		type: 'number',
-		format: 'float',
-		minimum: -180,
-		maximum: 180,
-		example: 14.4378,
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"longitude","reason":"Longitude must be a valid number."}]' },
-	)
-	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
-	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	@ValidateIf((_, value) => value !== null)
-	longitude?: number | null;
-}
-
-@ApiSchema({ name: 'ConfigModuleUpdateWeatherCityId' })
-export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto {
-	@ApiProperty({
-		description: 'Location type',
-		enum: [WeatherLocationType.CITY_ID],
-		example: 'city_id',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
-	location_type: WeatherLocationType.CITY_ID;
-
-	@ApiPropertyOptional({
-		description: 'OpenWeatherMap city ID.',
-		type: 'integer',
-		example: 3067696,
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsInt({ message: '[{"field":"city_id","reason":"City ID must be a valid number."}]' })
-	@ValidateIf((_, value) => value !== null)
-	city_id?: number | null;
-}
-
-@ApiSchema({ name: 'ConfigModuleUpdateWeatherZipCode' })
-export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto {
-	@ApiProperty({
-		description: 'Location type',
-		enum: [WeatherLocationType.ZIP_CODE],
-		example: 'zip_code',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
-	location_type: WeatherLocationType.ZIP_CODE;
-
-	@ApiPropertyOptional({
-		description: 'ZIP/postal code with optional country code (e.g., "11000,CZ").',
-		type: 'string',
-		example: '11000,CZ',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({ message: '[{"field":"zip_code","reason":"ZIP code must be a valid string."}]' })
-	@ValidateIf((_, value) => value !== null)
-	zip_code?: string | null;
-
-	@ApiPropertyOptional({
-		description: 'Latitude coordinate (-90 to 90).',
-		type: 'number',
-		format: 'float',
-		minimum: -90,
-		maximum: 90,
-		example: 50.0755,
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
-	)
-	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
-	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than 90."}]' })
-	@ValidateIf((_, value) => value !== null)
-	latitude?: number | null;
-
-	@ApiPropertyOptional({
-		description: 'Longitude coordinate (-180 to 180).',
-		type: 'number',
-		format: 'float',
-		minimum: -180,
-		maximum: 180,
-		example: 14.4378,
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ each: false, message: '[{"field":"longitude","reason":"Longitude must be a valid number."}]' },
-	)
-	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
-	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
-	@ValidateIf((_, value) => value !== null)
-	longitude?: number | null;
-}
-
 @ApiSchema({ name: 'ConfigModuleUpdateSystem' })
 export class UpdateSystemConfigDto extends BaseConfigDto {
 	@ApiProperty({
@@ -403,14 +137,12 @@ export class ReqUpdateSectionDto {
 		description: 'Configuration section data',
 		oneOf: [
 			{ $ref: getSchemaPath(UpdateLanguageConfigDto) },
-			{ $ref: getSchemaPath(UpdateWeatherConfigDto) },
 			{ $ref: getSchemaPath(UpdateSystemConfigDto) },
 		],
 		discriminator: {
 			propertyName: 'type',
 			mapping: {
 				language: getSchemaPath(UpdateLanguageConfigDto),
-				weather: getSchemaPath(UpdateWeatherConfigDto),
 				system: getSchemaPath(UpdateSystemConfigDto),
 			},
 		},
@@ -418,13 +150,7 @@ export class ReqUpdateSectionDto {
 	@Expose()
 	@ValidateNested()
 	@Type((options) => determineConfigDto(options?.object ?? {}))
-	data:
-		| UpdateLanguageConfigDto
-		| UpdateWeatherLatLonConfigDto
-		| UpdateWeatherCityNameConfigDto
-		| UpdateWeatherCityIdConfigDto
-		| UpdateWeatherZipCodeConfigDto
-		| UpdateSystemConfigDto;
+	data: UpdateLanguageConfigDto | UpdateSystemConfigDto;
 }
 
 @ApiSchema({ name: 'ConfigModuleUpdatePlugin' })

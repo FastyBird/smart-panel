@@ -10,11 +10,6 @@ import {
 	ModuleConfigModel,
 	PluginConfigModel,
 	SystemConfigModel,
-	WeatherCityIdConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherZipCodeConfigModel,
 } from './config.model';
 
 /**
@@ -93,36 +88,6 @@ export class ConfigModuleResLanguage extends BaseSuccessResponseModel<LanguageCo
 	@Expose()
 	declare data: LanguageConfigModel;
 }
-@ApiSchema({ name: 'ConfigModuleResWeather' })
-export class ConfigModuleResWeather extends BaseSuccessResponseModel<
-	WeatherCityIdConfigModel | WeatherCityNameConfigModel | WeatherLatLonConfigModel | WeatherZipCodeConfigModel
-> {
-	@ApiProperty({
-		description: 'Single configuration section payload',
-		oneOf: [
-			{ $ref: getSchemaPath(WeatherCityIdConfigModel) },
-			{ $ref: getSchemaPath(WeatherCityNameConfigModel) },
-			{ $ref: getSchemaPath(WeatherLatLonConfigModel) },
-			{ $ref: getSchemaPath(WeatherZipCodeConfigModel) },
-		],
-		discriminator: {
-			propertyName: 'location_type',
-			mapping: {
-				city_id: getSchemaPath(WeatherCityIdConfigModel),
-				city_name: getSchemaPath(WeatherCityNameConfigModel),
-				lat_lon: getSchemaPath(WeatherLatLonConfigModel),
-				zip_code: getSchemaPath(WeatherZipCodeConfigModel),
-			},
-		},
-	})
-	@Expose()
-	declare data:
-		| WeatherCityIdConfigModel
-		| WeatherCityNameConfigModel
-		| WeatherLatLonConfigModel
-		| WeatherZipCodeConfigModel;
-}
-
 @ApiSchema({ name: 'ConfigModuleResSystem' })
 export class ConfigModuleResSystem extends BaseSuccessResponseModel<SystemConfigModel> {
 	@ApiProperty({
@@ -137,36 +102,21 @@ export class ConfigModuleResSystem extends BaseSuccessResponseModel<SystemConfig
  * Response wrapper for section config (union type)
  */
 @ApiSchema({ name: 'ConfigModuleResSection' })
-export class ConfigModuleResSection extends BaseSuccessResponseModel<
-	| LanguageConfigModel
-	| WeatherCityIdConfigModel
-	| WeatherCityNameConfigModel
-	| WeatherLatLonConfigModel
-	| WeatherZipCodeConfigModel
-	| SystemConfigModel
-> {
+export class ConfigModuleResSection extends BaseSuccessResponseModel<LanguageConfigModel | SystemConfigModel> {
 	@ApiProperty({
 		description: 'Single configuration section payload',
 		oneOf: [
 			{ $ref: getSchemaPath(LanguageConfigModel) },
-			{ $ref: getSchemaPath(WeatherConfigModel) },
 			{ $ref: getSchemaPath(SystemConfigModel) },
 		],
 		discriminator: {
 			propertyName: 'type',
 			mapping: {
 				language: getSchemaPath(LanguageConfigModel),
-				weather: getSchemaPath(WeatherConfigModel),
 				system: getSchemaPath(SystemConfigModel),
 			},
 		},
 	})
 	@Expose()
-	declare data:
-		| LanguageConfigModel
-		| WeatherCityIdConfigModel
-		| WeatherCityNameConfigModel
-		| WeatherLatLonConfigModel
-		| WeatherZipCodeConfigModel
-		| SystemConfigModel;
+	declare data: LanguageConfigModel | SystemConfigModel;
 }

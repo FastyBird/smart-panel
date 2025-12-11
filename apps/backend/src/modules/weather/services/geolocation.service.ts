@@ -4,14 +4,9 @@ import fetch from 'node-fetch';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { SectionType } from '../../config/config.constants';
-import {
-	WeatherCityIdConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherZipCodeConfigModel,
-} from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
+import { WeatherConfigModel } from '../models/config.model';
 import { GeolocationCityDto, GeolocationZipDto } from '../dto/geolocation.dto';
 import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
 
@@ -139,18 +134,7 @@ export class GeolocationService {
 		}
 	}
 
-	private getConfig():
-		| WeatherLatLonConfigModel
-		| WeatherCityNameConfigModel
-		| WeatherCityIdConfigModel
-		| WeatherZipCodeConfigModel {
-		return this.configService.getConfigSection<
-			WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-		>(SectionType.WEATHER, [
-			WeatherLatLonConfigModel,
-			WeatherCityNameConfigModel,
-			WeatherCityIdConfigModel,
-			WeatherZipCodeConfigModel,
-		]);
+	private getConfig(): WeatherConfigModel {
+		return this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
 	}
 }
