@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: in_progress
 
 ## 1. Business goal
 
@@ -61,11 +61,11 @@ I want to consolidate configuration sections under their respective modules (wea
 
 ## 4. Acceptance criteria
 
-- [ ] Weather configuration is accessible through `/config/module/weather-module` endpoint (via config module)
+- [x] Weather configuration is accessible through `/config/module/weather-module` endpoint (via config module) - **Phase 1: COMPLETED**
 - [ ] System configuration (including language) is accessible through `/config/module/system-module` endpoint (via config module)
-- [ ] Weather module registers its config model with `ModulesTypeMapperService` in `onModuleInit()`
+- [x] Weather module registers its config model with `ModulesTypeMapperService` in `onModuleInit()` - **Phase 1: COMPLETED**
 - [ ] System module registers its config model with `ModulesTypeMapperService` in `onModuleInit()`
-- [ ] Config module section-based endpoints (`/config/:section`) for language, weather, and system are removed
+- [x] Config module section-based endpoints (`/config/:section`) for weather are removed - **Phase 1: COMPLETED** (language and system pending Phase 2)
 - [ ] Admin UI shows only 2 tabs: "Modules" and "Plugins"
 - [ ] Admin UI displays large buttons for each module/plugin in their respective tabs
 - [ ] Clicking a module/plugin button opens its configuration in a drawer on large devices
@@ -151,18 +151,23 @@ And changes are saved to the config module plugin endpoint
 
 ## 9. Implementation Phases
 
-### Phase 1: Backend - Weather Module Configuration
-1. Create `WeatherConfigModel` extending `ModuleConfigModel` in weather module (move/adapt from config module)
-2. Create `UpdateWeatherConfigDto` extending `UpdateModuleConfigDto` in weather module (move/adapt from config module)
-3. Update weather module to import `ConfigModule` and `ModulesTypeMapperService`
-4. Register weather config mapping in `weather.module.ts` `onModuleInit()` method (following displays/mdns pattern)
-5. Update weather module services to use `configService.getModuleConfig<WeatherConfigModel>('weather-module')` instead of section-based access
-6. Remove weather section handling from config controller (`/config/:section` endpoint)
-7. Remove weather DTOs and models from config module (keep only if needed for migration)
-8. Update config service to remove weather section handling (keep module handling)
-9. Update SectionType enum to remove WEATHER
-10. Update OpenAPI specification (config module endpoints remain, section endpoints removed)
-11. Update tests
+### Phase 1: Backend - Weather Module Configuration ✅ COMPLETED
+1. ✅ Create `WeatherConfigModel` extending `ModuleConfigModel` in weather module (move/adapt from config module)
+2. ✅ Create `UpdateWeatherConfigDto` extending `UpdateModuleConfigDto` in weather module (move/adapt from config module)
+3. ✅ Update weather module to import `ConfigModule` and `ModulesTypeMapperService`
+4. ✅ Register weather config mapping in `weather.module.ts` `onModuleInit()` method (following displays/mdns pattern)
+5. ✅ Update weather module services to use `configService.getModuleConfig<WeatherConfigModel>('weather-module')` instead of section-based access
+6. ✅ Remove weather section handling from config controller (`/config/:section` endpoint)
+7. ✅ Remove weather DTOs and models from config module (keep only if needed for migration)
+8. ✅ Update config service to remove weather section handling (keep module handling) - Added migration logic to move weather section from YAML to modules.weather-module
+9. ✅ Update SectionType enum to remove WEATHER
+10. ✅ Update OpenAPI specification (config module endpoints remain, section endpoints removed)
+11. ✅ Update tests - All unit tests (746 passed) and E2E tests (7 passed) passing
+
+**Notes:**
+- Weather and Geolocation services updated to handle missing config gracefully during initialization
+- Automatic migration of weather section from YAML to modules.weather-module on config load
+- All backend checks passing: TypeScript, ESLint, Unit tests, E2E tests, OpenAPI generation
 
 ### Phase 2: Backend - System Module Configuration
 1. Create or update `SystemConfigModel` extending `ModuleConfigModel` in system module (include language settings)
@@ -208,3 +213,39 @@ And changes are saved to the config module plugin endpoint
 4. Run all tests and fix any failures
 5. Verify configuration YAML structure remains compatible
 6. Update documentation if needed
+
+## 10. Progress Summary
+
+### Phase 1: Backend - Weather Module Configuration ✅ COMPLETED
+- **Status**: All tasks completed
+- **Commits**: 
+  - Initial Phase 1 implementation
+  - Fix linting and initialization issues
+- **Backend Checks**: All passing
+  - ✅ TypeScript compilation
+  - ✅ ESLint
+  - ✅ Unit tests (746 passed)
+  - ✅ E2E tests (7 passed)
+  - ✅ OpenAPI generation
+- **Key Changes**:
+  - WeatherConfigModel and UpdateWeatherConfigDto created in weather module
+  - Weather module registered with ModulesTypeMapperService
+  - Weather section removed from config module (controller, models, DTOs, enum)
+  - Migration logic added to move weather section from YAML to modules.weather-module
+  - Weather and Geolocation services updated to handle config gracefully during initialization
+
+### Phase 2: Backend - System Module Configuration 🔄 NEXT
+- **Status**: Pending
+- **Dependencies**: Phase 1 completed
+
+### Phase 3: Admin - UI Refactoring ⏳ PENDING
+- **Status**: Pending
+- **Dependencies**: Phase 1 and Phase 2 completed
+
+### Phase 4: Panel - Module Configuration ⏳ PENDING
+- **Status**: Pending
+- **Dependencies**: Phase 1 and Phase 2 completed
+
+### Phase 5: Cleanup and Testing ⏳ PENDING
+- **Status**: Pending
+- **Dependencies**: All previous phases completed
