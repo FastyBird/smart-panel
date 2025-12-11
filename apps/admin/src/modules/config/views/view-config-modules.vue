@@ -81,11 +81,12 @@
 							:key="typeof route.params.module === 'string' ? route.params.module : String(route.params.module)"
 							v-slot="{ Component }"
 						>
-							<component
-								:is="Component"
-								v-model:remote-form-submit="remoteFormSubmit"
-								v-model:remote-form-result="remoteFormResult"
-							/>
+						<component
+							:is="Component"
+							v-model:remote-form-submit="remoteFormSubmit"
+							v-model:remote-form-result="remoteFormResult"
+							v-model:remote-form-changed="remoteFormChanged"
+						/>
 						</router-view>
 					</suspense>
 				</view-error>

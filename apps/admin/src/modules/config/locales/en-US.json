@@ -23,6 +23,12 @@
     },
     "configModules": {
       "title": "Modules config"
+    },
+    "configModuleEdit": {
+      "title": "Edit module: {module}"
+    },
+    "configPluginEdit": {
+      "title": "Edit plugin: {plugin}"
     }
   },
   "breadcrumbs": {
@@ -35,11 +41,19 @@
     "configPlugins": "plugins config",
     "configModules": "modules config"
   },
+  "messages": {
+    "loadError": "Failed to load configuration"
+  },
   "headings": {
-    "config": "Configuration"
+    "config": "Configuration",
+    "misc": {
+      "discard": "Discard Changes"
+    }
   },
   "subHeadings": {
-    "config": "Smart panel configuration"
+    "config": "Smart panel configuration",
+    "configModule": "Module configuration",
+    "configPlugin": "Plugin configuration"
   },
   "tabs": {
     "configAudio": "Audio config",
@@ -87,7 +101,10 @@
     "loadingWeatherConfig": "Loading weather config...",
     "loadingSystemConfig": "Loading system config...",
     "loadingPluginConfig": "Loading plugin config...",
-    "loadingModuleConfig": "Loading module config..."
+    "loadingModuleConfig": "Loading module config...",
+    "misc": {
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    }
   },
   "fields": {
     "speaker": {
@@ -197,6 +214,18 @@
     },
     "myLocation": {
       "title": "My location"
+    },
+    "discard": {
+      "title": "Discard"
+    },
+    "close": {
+      "title": "Close"
+    },
+    "yes": {
+      "title": "Yes"
+    },
+    "no": {
+      "title": "No"
     }
   },
   "languages": {
