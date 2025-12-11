@@ -14,11 +14,10 @@ export enum EventType {
 
 export const RouteNames = {
 	CONFIG: 'config_module-module',
-	CONFIG_LANGUAGE: 'config_module-config_language',
-	CONFIG_WEATHER: 'config_module-config_weather',
-	CONFIG_SYSTEM: 'config_module-config_system',
 	CONFIG_PLUGINS: 'config_module-config_plugins',
+	CONFIG_PLUGIN_EDIT: 'config_module-config_plugin_edit',
 	CONFIG_MODULES: 'config_module-config_modules',
+	CONFIG_MODULE_EDIT: 'config_module-config_module_edit',
 };
 
 export enum FormResult {

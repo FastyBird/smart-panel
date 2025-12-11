@@ -1,21 +1,13 @@
 export * from './config-app.store.types';
-export * from './config-language.store.types';
-export * from './config-weather.store.types';
-export * from './config-system.store.types';
+// Language, weather, and system stores removed - these configs are now accessed via modules
 
 export * from './config-app.store.schemas';
-export * from './config-language.store.schemas';
-export * from './config-weather.store.schemas';
-export * from './config-system.store.schemas';
+// Language, weather, and system store schemas removed
 
 export { registerConfigAppStore } from './config-app.store';
-export { registerConfigLanguageStore } from './config-language.store';
-export { registerConfigWeatherStore } from './config-weather.store';
-export { registerConfigSystemStore } from './config-system.store';
+// Language, weather, and system store registrations removed
 
 export * from './config-app.transformers';
-export * from './config-language.transformers';
-export * from './config-weather.transformers';
-export * from './config-system.transformers';
+// Language, weather, and system transformers removed
 
 export * from './keys';

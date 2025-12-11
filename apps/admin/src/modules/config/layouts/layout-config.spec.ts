@@ -50,14 +50,14 @@ describe('LayoutConfig.vue', (): void => {
 					name: RouteNames.CONFIG,
 					component: { template: '<div><div id="breadcrumbs-target"></div> <router-view /></div>' },
 					children: [
-						{ path: 'language', name: RouteNames.CONFIG_LANGUAGE, component: { template: '<div>Language</div>' } },
-						{ path: 'weather', name: RouteNames.CONFIG_WEATHER, component: { template: '<div>Weather</div>' } },
+						{ path: 'modules', name: RouteNames.CONFIG_MODULES, component: { template: '<div>Modules</div>' } },
+						{ path: 'plugins', name: RouteNames.CONFIG_PLUGINS, component: { template: '<div>Plugins</div>' } },
 					],
 				},
 			],
 		});
 
-		router.push({ name: RouteNames.CONFIG_LANGUAGE });
+		router.push({ name: RouteNames.CONFIG_MODULES });
 
 		wrapper = mount(LayoutConfig, {
 			global: {
@@ -78,9 +78,9 @@ describe('LayoutConfig.vue', (): void => {
 		expect(wrapper.findComponent(ElTabs).exists()).toBe(true);
 		expect(wrapper.findComponent(ElTabPane).exists()).toBe(true);
 
-		await router.push({ name: RouteNames.CONFIG_LANGUAGE });
+		await router.push({ name: RouteNames.CONFIG_MODULES });
 
-		expect(wrapper.vm.activeTab).toBe('language');
+		expect(wrapper.vm.activeTab).toBe('modules');
 	});
 
 	it('calls onSave when save button is clicked', async (): Promise<void> => {

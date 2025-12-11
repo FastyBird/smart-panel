@@ -20,11 +20,8 @@ import type {
 } from './config-app.store.types';
 import { transformConfigAppResponse } from './config-app.transformers';
 import {
-	configLanguageStoreKey,
 	configModulesStoreKey,
 	configPluginsStoreKey,
-	configSystemStoreKey,
-	configWeatherStoreKey,
 } from './keys';
 
 const defaultSemaphore: IConfigAppStateSemaphore = {
@@ -44,27 +41,19 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 	const dataPartial = ref<Pick<IConfigApp, 'path'> | null>(null);
 
 	const data = computed<IConfigApp | null>((): IConfigApp | null => {
-		const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
-		const configSystemStore = storesManager.getStore(configSystemStoreKey);
-		const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 		const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 		const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
-		const { data: language } = storeToRefs(configLanguageStore);
-		const { data: system } = storeToRefs(configSystemStore);
-		const { data: weather } = storeToRefs(configWeatherStore);
 		const { data: plugins } = storeToRefs(configPluginsStore);
 		const { data: modules } = storeToRefs(configModulesStore);
 
-		if (dataPartial.value === null || language.value === null || system.value === null || weather.value === null) {
+		if (dataPartial.value === null) {
 			return null;
 		}
 
 		return {
 			path: dataPartial.value.path,
-			language: language.value,
-			system: system.value,
-			weather: weather.value,
+			// Language, weather, and system configs moved to modules (system-module, weather-module)
 			plugins: Object.values(plugins.value),
 			modules: Object.values(modules.value),
 		};
@@ -91,21 +80,10 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 			throw new ConfigValidationException('Failed to insert app config.');
 		}
 
-		const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
-		const configSystemStore = storesManager.getStore(configSystemStoreKey);
-		const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 		const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 		const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
-		configLanguageStore.set({
-			data: parsedConfigApp.data.language,
-		});
-		configSystemStore.set({
-			data: parsedConfigApp.data.system,
-		});
-		configWeatherStore.set({
-			data: parsedConfigApp.data.weather,
-		});
+		// Language, weather, and system configs moved to modules - handled via modules store
 
 		for (const plugin of parsedConfigApp.data.plugins) {
 			configPluginsStore.set({
@@ -146,21 +124,10 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformConfigAppResponse(responseData.data);
 
-					const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
-					const configSystemStore = storesManager.getStore(configSystemStoreKey);
-					const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
 					const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 					const configModulesStore = storesManager.getStore(configModulesStoreKey);
 
-					configLanguageStore.set({
-						data: transformed.language,
-					});
-					configSystemStore.set({
-						data: transformed.system,
-					});
-					configWeatherStore.set({
-						data: transformed.weather,
-					});
+					// Language, weather, and system configs moved to modules - handled via modules store
 
 					for (const plugin of transformed.plugins) {
 						configPluginsStore.set({

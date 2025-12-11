@@ -1,82 +1,119 @@
 <template>
-	<el-scrollbar
-		v-if="isMDDevice"
-		class="grow-1 flex flex-col"
+	<div
+		v-if="isModulesListRoute || isLGDevice"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden"
 	>
-		<el-card class="mb-2">
-			<el-collapse
-				v-model="activeName"
-				:expand-icon-position="'left'"
-				accordion
-			>
-				<template
+		<el-scrollbar class="grow-1">
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+				<el-card
 					v-for="module in modules"
 					:key="module.type"
+					shadow="hover"
+					class="cursor-pointer transition-all hover:shadow-lg"
+					@click="onModuleEdit(module.type)"
 				>
-					<el-collapse-item
-						:title="module.name"
-						:name="module.type"
-					>
-						<config-module
-							v-model:remote-form-submit="remoteFormSubmit[module.type]"
-							v-model:remote-form-result="remoteFormResult[module.type]"
-							v-model:remote-form-reset="remoteFormReset"
-							:type="module.type"
-						/>
-					</el-collapse-item>
-				</template>
-			</el-collapse>
-		</el-card>
-	</el-scrollbar>
+					<div class="flex flex-col items-center justify-center p-6 text-center">
+						<el-icon
+							:size="48"
+							class="mb-4 text-gray-600"
+						>
+							<icon icon="mdi:package-variant" />
+						</el-icon>
+						<div class="text-lg font-semibold mb-2">
+							{{ module.name }}
+						</div>
+						<div
+							v-if="module.description"
+							class="text-sm text-gray-500"
+						>
+							{{ module.description }}
+						</div>
+					</div>
+				</el-card>
+			</div>
+		</el-scrollbar>
+	</div>
 
-	<template v-else>
-		<el-collapse
-			v-model="activeName"
-			:expand-icon-position="'left'"
-			accordion
-		>
-			<template
-				v-for="module in modules"
-				:key="module.type"
-			>
-				<el-collapse-item
-					:title="module.name"
-					:name="module.type"
-				>
-					<config-module
-						v-model:remote-form-submit="remoteFormSubmit[module.type]"
-						v-model:remote-form-result="remoteFormResult[module.type]"
-						v-model:remote-form-reset="remoteFormReset"
-						:type="module.type"
-						:layout="Layout.PHONE"
-					/>
-				</el-collapse-item>
+	<router-view
+		v-else
+		:key="route.params.module"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
+
+	<el-drawer
+		v-if="isLGDevice"
+		v-model="showDrawer"
+		:show-close="false"
+		:size="'40%'"
+		:with-header="false"
+		:before-close="onCloseDrawer"
+	>
+		<div class="flex flex-col h-full">
+			<app-bar menu-button-hidden>
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="() => onCloseDrawer()"
+					>
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+
+			<template v-if="showDrawer">
+				<view-error>
+					<template #icon>
+						<icon icon="mdi:package-variant" />
+					</template>
+					<template #message>
+						{{ t('configModule.messages.loadError') }}
+					</template>
+
+					<suspense>
+						<router-view
+							:key="route.params.module"
+							v-slot="{ Component }"
+						>
+							<component
+								:is="Component"
+								v-model:remote-form-submit="remoteFormSubmit"
+								v-model:remote-form-result="remoteFormResult"
+							/>
+						</router-view>
+					</suspense>
+				</view-error>
 			</template>
-		</el-collapse>
-	</template>
+		</div>
+	</el-drawer>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
+import { useRoute, useRouter } from 'vue-router';
 
-import { ElCard, ElCollapse, ElCollapseItem, ElScrollbar } from 'element-plus';
+import { ElCard, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 
-import { type IModule, useBreakpoints } from '../../../common';
-import { ConfigModule } from '../components/components';
+import { Icon } from '@iconify/vue';
+
+import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
+import { type IModule } from '../../../common';
 import { useModules } from '../composables/useModules';
-import { FormResult, type FormResultType, Layout } from '../config.constants';
+import { FormResult, RouteNames } from '../config.constants';
 
 import type { ViewConfigModulesProps } from './view-config-modules.types';
 
 defineOptions({
 	name: 'ViewConfigModules',
 });
-
-const makeInitialRecord = <T,>(initial: T): Record<IModule['type'], T> => {
-	return Object.fromEntries(modules.value.map((m) => [m.type as IModule['type'], initial])) as Record<IModule['type'], T>;
-};
 
 const props = withDefaults(defineProps<ViewConfigModulesProps>(), {
 	remoteFormSubmit: false,
@@ -86,125 +123,131 @@ const props = withDefaults(defineProps<ViewConfigModulesProps>(), {
 
 const emit = defineEmits<{
 	(e: 'update:remoteFormSubmit', remoteFormSubmit: boolean): void;
-	(e: 'update:remoteFormResult', remoteFormResult: FormResultType): void;
+	(e: 'update:remoteFormResult', remoteFormResult: FormResult): void;
 	(e: 'update:remoteFormReset', remoteFormReset: boolean): void;
 }>();
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 
-const { isMDDevice } = useBreakpoints();
+const { isLGDevice } = useBreakpoints();
 
-const { modules, getElement } = useModules();
+const { modules } = useModules();
 
-const remoteFormSubmit = ref<Record<IModule['type'], boolean>>(makeInitialRecord<boolean>(props.remoteFormSubmit));
-const remoteFormResult = ref<Record<IModule['type'], FormResultType>>(makeInitialRecord<FormResultType>(props.remoteFormResult));
-const remoteFormReset = ref<boolean>(props.remoteFormReset);
+const showDrawer = ref<boolean>(false);
+const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
+const remoteFormResult = ref<FormResult>(props.remoteFormResult);
+const remoteFormChanged = ref<boolean>(false);
 
-const activeNames = ref(modules.value.map((module) => module.type));
-const activeName = ref(activeNames.value ? activeNames.value[0] : undefined);
+const isModulesListRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.CONFIG_MODULES;
+});
 
-const waitForModuleToFinish = (type: IModule['type']): Promise<void> => {
-	const element = getElement(type);
-
-	// If the module doesn't have a config form component, immediately resolve
-	// since there's nothing to save
-	if (!element?.components?.moduleConfigEditForm) {
-		return Promise.resolve();
+const onModuleEdit = (moduleType: IModule['type']): void => {
+	if (isLGDevice.value) {
+		router.replace({
+			name: RouteNames.CONFIG_MODULE_EDIT,
+			params: {
+				module: moduleType,
+			},
+		});
+	} else {
+		router.push({
+			name: RouteNames.CONFIG_MODULE_EDIT,
+			params: {
+				module: moduleType,
+			},
+		});
 	}
+};
 
-	return new Promise((resolve) => {
-		const stop = watch(
-			() => remoteFormResult.value[type],
-			(res) => {
-				if (res === FormResult.OK || res === FormResult.ERROR) {
-					remoteFormSubmit.value[type] = false;
-
-					stop();
-
-					resolve();
+const onCloseDrawer = (done?: () => void): void => {
+	if (remoteFormChanged.value) {
+		ElMessageBox.confirm(t('configModule.texts.misc.confirmDiscard'), t('configModule.headings.misc.discard'), {
+			confirmButtonText: t('configModule.buttons.yes.title'),
+			cancelButtonText: t('configModule.buttons.no.title'),
+			type: 'warning',
+		})
+			.then((): void => {
+				if (isLGDevice.value) {
+					router.replace({
+						name: RouteNames.CONFIG_MODULES,
+					});
+				} else {
+					router.push({
+						name: RouteNames.CONFIG_MODULES,
+					});
 				}
-			}
-		);
-	});
+
+				done?.();
+			})
+			.catch((): void => {
+				// Just ignore it
+			});
+	} else {
+		if (isLGDevice.value) {
+			router.replace({
+				name: RouteNames.CONFIG_MODULES,
+			});
+		} else {
+			router.push({
+				name: RouteNames.CONFIG_MODULES,
+			});
+		}
+
+		done?.();
+	}
 };
 
 watch(
-	(): boolean => props.remoteFormSubmit,
-	async (val: boolean): Promise<void> => {
-		if (val) {
-			for (const { type } of modules.value) {
-				const element = getElement(type);
-
-				// Only trigger form submit for modules that have a config form component
-				if (element?.components?.moduleConfigEditForm) {
-					setTimeout(() => {
-						remoteFormSubmit.value[type] = true;
-					}, 500);
-
-					await waitForModuleToFinish(type);
-
-					if (remoteFormResult.value[type] === FormResult.ERROR) {
-						// Stop on first error
-						emit('update:remoteFormResult', FormResult.ERROR);
-						emit('update:remoteFormSubmit', false);
-
-						return;
-					}
-				}
-			}
-
-			// All done, everything OK
-			emit('update:remoteFormResult', FormResult.OK);
-			emit('update:remoteFormSubmit', false);
+	(): string | string[] | undefined => route.params.module,
+	(module: string | string[] | undefined): void => {
+		const moduleParam = Array.isArray(module) ? module[0] : module;
+		if (isLGDevice.value && moduleParam && typeof moduleParam === 'string') {
+			showDrawer.value = true;
 		} else {
-			for (const { type } of modules.value) {
-				remoteFormSubmit.value[type] = val;
-			}
-		}
-	}
-);
-
-watch(
-	(): boolean => props.remoteFormReset,
-	async (val: boolean): Promise<void> => {
-		remoteFormReset.value = val;
-	}
-);
-
-watch(
-	(): boolean => remoteFormReset.value,
-	async (val: boolean): Promise<void> => {
-		emit('update:remoteFormReset', val);
-	}
-);
-
-watch(
-	() => modules.value.map((m) => m.type),
-	(types) => {
-		const set = new Set(types);
-
-		for (const t of types as IModule['type'][]) {
-			if (!(t in remoteFormSubmit.value)) {
-				remoteFormSubmit.value[t] = false;
-			}
-
-			if (!(t in remoteFormResult.value)) {
-				remoteFormResult.value[t] = FormResult.NONE;
-			}
-		}
-
-		for (const key of Object.keys(remoteFormSubmit.value) as IModule['type'][]) {
-			if (!set.has(key)) {
-				delete remoteFormSubmit.value[key];
-				delete remoteFormResult.value[key];
-			}
+			showDrawer.value = false;
 		}
 	},
 	{ immediate: true }
 );
 
+watch(
+	(): boolean => props.remoteFormSubmit,
+	(val: boolean): void => {
+		remoteFormSubmit.value = val;
+	}
+);
+
+watch(
+	(): FormResult => props.remoteFormResult,
+	(val: FormResult): void => {
+		remoteFormResult.value = val;
+	}
+);
+
+watch(
+	(): boolean => remoteFormSubmit.value,
+	(val: boolean): void => {
+		emit('update:remoteFormSubmit', val);
+	}
+);
+
+watch(
+	(): FormResult => remoteFormResult.value,
+	(val: FormResult): void => {
+		emit('update:remoteFormResult', val);
+	}
+);
+
+onMounted((): void => {
+	if (route.params.module && isLGDevice.value) {
+		showDrawer.value = true;
+	}
+});
+
 useMeta({
 	title: t('configModule.meta.configModules.title'),
 });
 </script>
-

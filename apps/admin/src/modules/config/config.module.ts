@@ -17,19 +17,14 @@ import {
 import { CONFIG_MODULE_EVENT_PREFIX, CONFIG_MODULE_NAME, EventType } from './config.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
-import { registerConfigLanguageStore } from './store/config-language.store';
 import { registerConfigModuleStore } from './store/config-modules.store';
 import { registerConfigPluginStore } from './store/config-plugins.store';
-import { registerConfigWeatherStore } from './store/config-weather.store';
 import {
 	configAppStoreKey,
-	configLanguageStoreKey,
 	configModulesStoreKey,
 	configPluginsStoreKey,
-	configSystemStoreKey,
-	configWeatherStoreKey,
 } from './store/keys';
-import { registerConfigAppStore, registerConfigSystemStore } from './store/stores';
+import { registerConfigAppStore } from './store/stores';
 
 const configAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Config');
 
@@ -59,20 +54,7 @@ export default {
 			elements: [],
 		});
 
-		const configLanguageStore = registerConfigLanguageStore(options.store);
-
-		app.provide(configLanguageStoreKey, configLanguageStore);
-		storesManager.addStore(configLanguageStoreKey, configLanguageStore);
-
-		const configWeatherStore = registerConfigWeatherStore(options.store);
-
-		app.provide(configWeatherStoreKey, configWeatherStore);
-		storesManager.addStore(configWeatherStoreKey, configWeatherStore);
-
-		const configSystemStore = registerConfigSystemStore(options.store);
-
-		app.provide(configSystemStoreKey, configSystemStore);
-		storesManager.addStore(configSystemStoreKey, configSystemStore);
+		// Language, weather, and system stores removed - these configs are now accessed via modules (system-module, weather-module)
 
 		const configPluginsStore = registerConfigPluginStore(options.store);
 
@@ -103,24 +85,7 @@ export default {
 
 			switch (data.event) {
 				case EventType.CONFIG_UPDATED:
-					if ('language' in data.payload && typeof data.payload.language === 'object' && data.payload.language !== null) {
-						configLanguageStore.onEvent({
-							data: data.payload.language,
-						});
-					}
-
-					if ('weather' in data.payload && typeof data.payload.weather === 'object' && data.payload.weather !== null) {
-						configWeatherStore.onEvent({
-							data: data.payload.weather,
-						});
-					}
-
-					if ('system' in data.payload && typeof data.payload.system === 'object' && data.payload.system !== null) {
-						configSystemStore.onEvent({
-							data: data.payload.system,
-						});
-					}
-
+					// Language, weather, and system configs are now part of modules - handled via modules store
 					if ('plugins' in data.payload && Array.isArray(data.payload.plugins)) {
 						data.payload.plugins.forEach((plugin) => {
 							if (typeof plugin === 'object' && plugin !== null && 'type' in plugin && typeof plugin.type === 'string') {
