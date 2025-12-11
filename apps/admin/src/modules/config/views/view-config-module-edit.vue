@@ -77,9 +77,23 @@ const moduleType = computed<string>((): string => {
 	return (Array.isArray(moduleParam) ? moduleParam[0] : moduleParam) || '';
 });
 
-const moduleComposable = useModule({ name: moduleType.value });
+// Use a ref to track the current module type and update it when route changes
+const currentModuleType = ref<string>(moduleType.value);
+watch(
+	(): string => moduleType.value,
+	(val: string): void => {
+		currentModuleType.value = val;
+	},
+	{ immediate: true }
+);
+
+const moduleComposable = computed(() => {
+	// Re-create composable when module type changes
+	return useModule({ name: currentModuleType.value });
+});
+
 const moduleName = computed<string>((): string => {
-	return moduleComposable.module.value?.name || moduleType.value;
+	return moduleComposable.value.module.value?.name || moduleType.value;
 });
 
 watch(

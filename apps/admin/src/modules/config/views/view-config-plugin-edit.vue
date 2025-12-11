@@ -77,9 +77,23 @@ const pluginType = computed<string>((): string => {
 	return (Array.isArray(pluginParam) ? pluginParam[0] : pluginParam) || '';
 });
 
-const pluginComposable = usePlugin({ name: pluginType.value });
+// Use a ref to track the current plugin type and update it when route changes
+const currentPluginType = ref<string>(pluginType.value);
+watch(
+	(): string => pluginType.value,
+	(val: string): void => {
+		currentPluginType.value = val;
+	},
+	{ immediate: true }
+);
+
+const pluginComposable = computed(() => {
+	// Re-create composable when plugin type changes
+	return usePlugin({ name: currentPluginType.value });
+});
+
 const pluginName = computed<string>((): string => {
-	return pluginComposable.plugin.value?.name || pluginType.value;
+	return pluginComposable.value.plugin.value?.name || pluginType.value;
 });
 
 watch(
