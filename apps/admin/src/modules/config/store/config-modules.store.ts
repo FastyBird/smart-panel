@@ -175,18 +175,16 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 				try {
 					const { data: responseData, error, response } = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/modules`);
 
-					if (typeof responseData !== 'undefined') {
-						data.value = Object.fromEntries(
-							responseData.data.map((module) => {
-								const element = getModuleElement(module.type);
+				if (typeof responseData !== 'undefined') {
+					data.value = Object.fromEntries(
+						responseData.data.map((module) => {
+							const element = getModuleElement(module.type);
 
-								const transformed = transformConfigModuleResponse(module, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
+							const transformed = transformConfigModuleResponse(module, element?.schemas?.moduleConfigSchema || ConfigModuleSchema);
 
-								data.value[transformed.type] = transformed;
-
-								return [transformed.type, transformed];
-							})
-						);
+							return [transformed.type, transformed];
+						})
+					);
 
 						firstLoad.value = true;
 
