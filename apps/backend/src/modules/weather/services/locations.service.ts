@@ -8,10 +8,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ConfigService } from '../../config/services/config.service';
 import { CreateLocationDto } from '../dto/create-location.dto';
 import { UpdateLocationDto } from '../dto/update-location.dto';
 import { WeatherLocationEntity } from '../entities/locations.entity';
-import { EventType } from '../weather.constants';
+import { WeatherConfigModel } from '../models/config.model';
+import { EventType, WEATHER_MODULE_NAME } from '../weather.constants';
 import { WeatherException, WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
 import { LocationsTypeMapperService } from './locations-type-mapper.service';
@@ -26,6 +28,7 @@ export class LocationsService {
 		private readonly locationsMapperService: LocationsTypeMapperService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly configService: ConfigService,
 	) {}
 
 	async findAll<TLocation extends WeatherLocationEntity>(type?: string): Promise<TLocation[]> {
@@ -150,6 +153,24 @@ export class LocationsService {
 		this.logger.debug(`[DELETE] Removing location with id=${id}`);
 
 		const location = await this.getOneOrThrow(id);
+
+		// Check if this location is set as primary
+		try {
+			const weatherConfig = this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
+
+			if (weatherConfig.primaryLocationId === id) {
+				this.logger.error(`[DELETE] Cannot delete primary location id=${id}`);
+
+				throw new WeatherValidationException('Cannot delete the primary weather location. Please set a different primary location first.');
+			}
+		} catch (error) {
+			// If config doesn't exist or other error, allow deletion
+			if (error instanceof WeatherValidationException) {
+				throw error;
+			}
+
+			this.logger.debug(`[DELETE] Could not check primary location status, proceeding with deletion`);
+		}
 
 		await this.repository.remove(location);
 

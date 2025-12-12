@@ -2,6 +2,7 @@
 	"headings": {
 		"weather": "Weather",
 		"aboutLocationSettings": "Location Settings",
+		"aboutPrimaryLocation": "Primary Location",
 		"locations": {
 			"list": "Weather Locations",
 			"add": "Add Location",
@@ -50,6 +51,11 @@
 			}
 		},
 		"config": {
+			"primaryLocation": {
+				"title": "Primary Location",
+				"description": "The default location shown in weather displays",
+				"placeholder": "Select primary location"
+			},
 			"locationType": {
 				"title": "Location Type",
 				"description": "Type of location data to use for weather",
@@ -126,7 +132,8 @@
 		}
 	},
 	"texts": {
-		"aboutLocationSettings": "Configure how to identify your location for weather data. Choose from coordinates, city name, OpenWeather city ID, or ZIP code. You can click on the map or use 'My Location' to auto-detect coordinates."
+		"aboutLocationSettings": "Configure how to identify your location for weather data. Choose from coordinates, city name, OpenWeather city ID, or ZIP code. You can click on the map or use 'My Location' to auto-detect coordinates.",
+		"aboutPrimaryLocation": "Select the primary location to display in weather widgets. Locations can be managed in the Locations section. Weather data will be fetched for all configured locations."
 	},
 	"conditions": {
 		"thunderstormWithLightRain": "Thunderstorm with light rain",

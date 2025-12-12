@@ -15,14 +15,7 @@ type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 export const WeatherConfigSchema = ConfigModuleSchema.extend({
 	type: z.literal(WEATHER_MODULE_NAME),
-	locationType: z.enum(['lat_lon', 'city_name', 'city_id', 'zip_code']),
-	unit: z.enum(['celsius', 'fahrenheit']),
-	openWeatherApiKey: z.string().nullable().optional(),
-	latitude: z.number().min(-90).max(90).nullable().optional(),
-	longitude: z.number().min(-180).max(180).nullable().optional(),
-	cityName: z.string().nullable().optional(),
-	cityId: z.number().int().min(1).nullable().optional(),
-	zipCode: z.string().nullable().optional(),
+	primaryLocationId: z.string().uuid().nullable().optional(),
 });
 
 // BACKEND API
@@ -31,27 +24,13 @@ export const WeatherConfigSchema = ConfigModuleSchema.extend({
 export const WeatherConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigModuleUpdateReqSchema.and(
 	z.object({
 		type: z.literal(WEATHER_MODULE_NAME),
-		location_type: z.enum(['lat_lon', 'city_name', 'city_id', 'zip_code']).optional(),
-		unit: z.enum(['celsius', 'fahrenheit']).optional(),
-		open_weather_api_key: z.string().nullable().optional(),
-		latitude: z.number().min(-90).max(90).nullable().optional(),
-		longitude: z.number().min(-180).max(180).nullable().optional(),
-		city_name: z.string().nullable().optional(),
-		city_id: z.number().int().min(1).nullable().optional(),
-		zip_code: z.string().nullable().optional(),
+		primary_location_id: z.string().uuid().nullable().optional(),
 	})
 );
 
 export const WeatherConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
 	z.object({
 		type: z.literal(WEATHER_MODULE_NAME),
-		location_type: z.enum(['lat_lon', 'city_name', 'city_id', 'zip_code']),
-		unit: z.enum(['celsius', 'fahrenheit']),
-		open_weather_api_key: z.string().nullable().optional(),
-		latitude: z.number().min(-90).max(90).nullable().optional(),
-		longitude: z.number().min(-180).max(180).nullable().optional(),
-		city_name: z.string().nullable().optional(),
-		city_id: z.number().int().min(1).nullable().optional(),
-		zip_code: z.string().nullable().optional(),
+		primary_location_id: z.string().uuid().nullable().optional(),
 	})
 );
