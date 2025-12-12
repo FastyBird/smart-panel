@@ -323,33 +323,11 @@ const onRetry = async (): Promise<void> => {
 	});
 };
 
-onBeforeMount(async (): Promise<void> => {
-	// Wait for route params to be available
-	if (!moduleType.value) {
-		// Wait a bit for route to be ready
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		
-		// If still no module type, show error
-		if (!moduleType.value) {
-			loadError.value = true;
-			return;
-		}
-	}
-	
-	await fetchConfigModule().catch((error: unknown): void => {
-		const err = error as Error;
-
-		loadError.value = true;
-		console.error('Failed to fetch config module:', err);
-	});
-});
-
 // Watch for route changes and refetch config
 watch(
 	(): string => moduleType.value,
 	async (val: string): Promise<void> => {
 		if (!val) {
-			loadError.value = true;
 			return;
 		}
 		
@@ -361,21 +339,11 @@ watch(
 			console.error('Failed to fetch config module:', err);
 		});
 	},
-	{ immediate: false }
+	{ immediate: true }
 );
 
-onMounted(async (): Promise<void> => {
+onMounted((): void => {
 	emit('update:remoteFormChanged', remoteFormChanged.value);
-	
-	// If config module wasn't loaded in onBeforeMount (e.g., route params not ready), try again
-	if (!configModule.value && !isLoading.value && !loadError.value && currentModuleType.value) {
-		await fetchConfigModule().catch((error: unknown): void => {
-			const err = error as Error;
-
-			loadError.value = true;
-			console.error('Failed to fetch config module:', err);
-		});
-	}
 });
 
 watch(
