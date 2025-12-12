@@ -57,7 +57,7 @@ const { plugins, options: typesOptions } = usePagesPlugins();
 const selectedType = ref<IPlugin['type'] | undefined>(props.modelValue);
 
 const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === selectedType.value);
+	return plugins.value.find((plugin) => plugin.elements.find((element) => element.type === selectedType.value));
 });
 
 const element = computed<IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(() => {

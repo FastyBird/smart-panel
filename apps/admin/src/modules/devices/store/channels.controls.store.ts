@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DevicesModuleGetChannelControlOperation,
 	DevicesModuleGetChannelControlsOperation,
@@ -145,7 +146,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls/{id}`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls/{id}`, {
 						params: {
 							path: { channelId: payload.channelId, id: payload.id },
 						},
@@ -200,7 +201,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
 						params: {
 							path: { channelId: payload.channelId },
 						},
@@ -281,7 +282,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
+					} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
 						params: {
 							path: { channelId: payload.channelId },
 						},
@@ -338,7 +339,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
 					params: {
 						path: { channelId: parsedSaveChannelControl.data.channel },
 					},
@@ -386,7 +387,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {
-					const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls/{id}`, {
+					const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls/{id}`, {
 						params: {
 							path: { channelId: payload.channelId, id: payload.id },
 						},

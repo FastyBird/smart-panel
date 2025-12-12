@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { PLUGINS_PREFIX } from '../../../app.constants';
 import {
 	DashboardApiException,
 	DashboardException,
@@ -161,7 +162,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			semaphore.value.fetching.item.push(payload.id);
 
 			try {
-				const apiResponse = await backend.client.GET(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
+				const apiResponse = await backend.client.GET(`/${PLUGINS_PREFIX}/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
 					params: {
 						path: { pageId: payload.pageId, id: payload.id },
 					},
@@ -217,7 +218,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			firstLoad.value = [...new Set(firstLoad.value)];
 
 			try {
-				const apiResponse = await backend.client.GET(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
+				const apiResponse = await backend.client.GET(`/${PLUGINS_PREFIX}/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
 					params: {
 						query: { page: payload.pageId },
 					},
@@ -307,7 +308,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
+				} = await backend.client.POST(`/${PLUGINS_PREFIX}/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
 					body: {
 						data: { ...transformCardCreateRequest({ ...parsedNewCard.data, ...{ id: payload.id } }), page: payload.pageId },
 					},
@@ -378,7 +379,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			return parsedEditedCard.data;
 		} else {
 			try {
-				const apiResponse = await backend.client.PATCH(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
+				const apiResponse = await backend.client.PATCH(`/${PLUGINS_PREFIX}/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},
@@ -437,7 +438,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
+			} = await backend.client.POST(`/${PLUGINS_PREFIX}/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
 				body: {
 					data: { ...transformCardCreateRequest({ ...parsedSaveCard.data, ...{ id: payload.id } }), page: payload.pageId },
 				},
@@ -485,7 +486,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {
-				const apiResponse = await backend.client.DELETE(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
+				const apiResponse = await backend.client.DELETE(`/${PLUGINS_PREFIX}/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
 					params: {
 						path: { pageId: payload.pageId, id: payload.id },
 					},

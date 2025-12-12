@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { PLUGINS_PREFIX } from '../../../app.constants';
 import type {
 	DevicesHomeAssistantPluginGetStateOperation,
 	DevicesHomeAssistantPluginGetStatesOperation,
@@ -103,7 +104,7 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 				semaphore.value.fetching.item.push(payload.entityId);
 
 				try {
-					const apiResponse = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states/{entityId}`, {
+					const apiResponse = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states/{entityId}`, {
 						params: {
 							path: { entityId: payload.entityId },
 						},
@@ -153,7 +154,7 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 				semaphore.value.fetching.items = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states`);
+					const { data: responseData, error, response } = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states`);
 
 					if (typeof responseData !== 'undefined') {
 						data.value = Object.fromEntries(

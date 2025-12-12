@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	SystemModuleGetExtensionOperation,
 	SystemModuleGetLogsOperation,
@@ -69,7 +70,7 @@ export const useExtensions = defineStore<'system_module-logs', ExtensionsStoreSe
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/extensions/{name}`, {
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions/{name}`, {
 					params: {
 						path: { name: payload.name },
 					},
@@ -133,7 +134,7 @@ export const useExtensions = defineStore<'system_module-logs', ExtensionsStoreSe
 			semaphore.value.fetching.items = true;
 
 			try {
-				const { data: responseData, error, response } = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/extensions`);
+				const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions`);
 
 				if (typeof responseData !== 'undefined') {
 					const merged: { [name: string]: { admin?: IExtension; backend?: IExtension } } = {};

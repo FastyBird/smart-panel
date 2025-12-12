@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 
 import { useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import { DISPLAYS_MODULE_PREFIX } from '../displays.constants';
 import { DisplaysException } from '../displays.exceptions';
 
@@ -59,7 +60,7 @@ export const usePermitJoin = () => {
 			loading.value = true;
 
 			const { data: responseData } = await backend.client.GET(
-				`/${DISPLAYS_MODULE_PREFIX}/displays/permit-join/status`,
+				`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/permit-join/status`,
 			);
 
 			if (responseData?.data) {
@@ -86,7 +87,7 @@ export const usePermitJoin = () => {
 		try {
 			activating.value = true;
 
-			await backend.client.POST(`/${DISPLAYS_MODULE_PREFIX}/displays/permit-join`);
+			await backend.client.POST(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/permit-join`);
 
 			// Refresh status after activation
 			await fetchStatus();
@@ -103,7 +104,7 @@ export const usePermitJoin = () => {
 		try {
 			activating.value = true;
 
-			await backend.client.DELETE(`/${DISPLAYS_MODULE_PREFIX}/displays/permit-join`, {});
+			await backend.client.DELETE(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/permit-join`, {});
 
 			// Refresh status after deactivation
 			await fetchStatus();

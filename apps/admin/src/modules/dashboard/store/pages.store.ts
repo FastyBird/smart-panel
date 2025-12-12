@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DashboardModuleGetPageOperation,
 	DashboardModuleGetPagesOperation,
@@ -156,7 +157,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},
@@ -216,7 +217,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			firstLoad.value = false;
 
 			try {
-				const { data: responseData, error, response } = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages`);
+				const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/pages`);
 
 				if (typeof responseData !== 'undefined') {
 					firstLoad.value = true;
@@ -301,7 +302,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/pages`, {
 					body: {
 						data: transformPageCreateRequest<IPageCreateReq>(parsedNewItem.data, element?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
 					},
@@ -383,7 +384,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
 					params: {
 						path: {
 							id: payload.id,
@@ -444,7 +445,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/pages`, {
 				body: {
 					data: transformPageCreateRequest<IPageCreateReq>(parsedSaveItem.data, element?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
 				},
@@ -497,7 +498,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {
-				const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+				const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
 					params: {
 						path: {
 							id: payload.id,

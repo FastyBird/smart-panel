@@ -8,7 +8,7 @@ import {
 	WebSocketModuleSectionSchema,
 } from './schemas/sections.schemas';
 
-export const STATS_MODULE_PREFIX = 'stats-module';
+export const STATS_MODULE_PREFIX = 'stats';
 
 export const STATS_MODULE_NAME = 'stats-module';
 

@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import { DISPLAYS_MODULE_PREFIX } from '../displays.constants';
 import { DisplaysApiException, DisplaysException, DisplaysValidationException } from '../displays.exceptions';
 
@@ -125,7 +126,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.GET(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},
@@ -169,7 +170,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 			semaphore.value.fetching.items = true;
 
 			try {
-				const { data: responseData, error, response } = await backend.client.GET(`/${DISPLAYS_MODULE_PREFIX}/displays`);
+				const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays`);
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
@@ -238,7 +239,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${DISPLAYS_MODULE_PREFIX}/register`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/register`, {
 					params: {
 						header: {
 							'user-agent': 'FastyBird Smart Panel Admin',
@@ -311,7 +312,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
+				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
 					params: {
 						path: {
 							id: payload.id,
@@ -366,7 +367,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/${DISPLAYS_MODULE_PREFIX}/register`, {
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/register`, {
 				params: {
 					header: {
 						'user-agent': 'FastyBird Smart Panel Admin',
@@ -412,7 +413,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {
-				const { error, response } = await backend.client.DELETE(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
+				const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/{id}`, {
 					params: {
 						path: {
 							id: payload.id,
@@ -444,7 +445,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.GET(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}/tokens`, {
+			} = await backend.client.GET(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/{id}/tokens`, {
 				params: {
 					path: { id: payload.id },
 				},
@@ -481,7 +482,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 
 	const revokeToken = async (payload: IDisplaysRevokeTokenActionPayload): Promise<boolean> => {
 		try {
-			const { response } = await backend.client.POST(`/${DISPLAYS_MODULE_PREFIX}/displays/{id}/revoke-token`, {
+			const { response } = await backend.client.POST(`/${MODULES_PREFIX}/${DISPLAYS_MODULE_PREFIX}/displays/{id}/revoke-token`, {
 				params: {
 					path: { id: payload.id },
 				},

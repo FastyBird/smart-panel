@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	UsersModuleGetUserOperation,
 	UsersModuleGetUsersOperation,
@@ -119,7 +120,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.GET(`/${USERS_MODULE_PREFIX}/users/{id}`, {
+			} = await backend.client.GET(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users/{id}`, {
 				params: {
 					path: { id: payload.id },
 				},
@@ -153,7 +154,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		semaphore.value.fetching.items = true;
 
 		try {
-			const { data: responseData, error, response } = await backend.client.GET(`/${USERS_MODULE_PREFIX}/users`);
+			const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users`);
 
 			if (typeof responseData !== 'undefined') {
 				data.value = Object.fromEntries(
@@ -223,7 +224,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/users`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users`, {
 					body: {
 						data: transformUserCreateRequest({ ...parsedNewUser.data, ...{ id: payload.id, password } }),
 					},
@@ -295,7 +296,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${USERS_MODULE_PREFIX}/users/{id}`, {
+				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users/{id}`, {
 					params: {
 						path: {
 							id: payload.id,
@@ -360,7 +361,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/users`, {
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users`, {
 				body: {
 					data: transformUserCreateRequest({ ...parsedSaveUser.data, ...{ id: payload.id, password } }),
 				},
@@ -405,7 +406,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {
-				const { error, response } = await backend.client.DELETE(`/${USERS_MODULE_PREFIX}/users/{id}`, {
+				const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users/{id}`, {
 					params: {
 						path: {
 							id: payload.id,

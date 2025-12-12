@@ -6,6 +6,7 @@ import { type Pinia, defineStore } from 'pinia';
 import { jwtDecode } from 'jwt-decode';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	AuthModuleGetProfileOperation,
 	AuthModuleRegisterOperation,
@@ -148,7 +149,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			semaphore.value.fetching = true;
 
 			try {
-				const { data: responseData, error } = await backend.client.GET(`/${AUTH_MODULE_PREFIX}/auth/profile`);
+				const { data: responseData, error } = await backend.client.GET(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/profile`);
 
 				if (typeof responseData !== 'undefined') {
 					profile.value = transformUserResponse(responseData.data);
@@ -185,7 +186,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		semaphore.value.creating = true;
 
 		try {
-			const { data: responseData, error } = await backend.client.POST(`/${AUTH_MODULE_PREFIX}/auth/login`, {
+			const { data: responseData, error } = await backend.client.POST(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/login`, {
 				body: {
 					data: {
 						username: payload.data.username,
@@ -251,7 +252,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			semaphore.value.updating = true;
 
 			try {
-				const { data: responseData } = await backend.client.POST(`/${AUTH_MODULE_PREFIX}/auth/refresh`, {
+				const { data: responseData } = await backend.client.POST(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/refresh`, {
 					body: {
 						data: {
 							token: refreshToken,

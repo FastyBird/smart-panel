@@ -57,7 +57,7 @@ const { plugins, options: typesOptions } = useDevicesPlugins();
 const selectedType = ref<IPluginElement['type'] | undefined>(props.modelValue);
 
 const plugin = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === selectedType.value);
+	return plugins.value.find((plugin) => plugin.elements.find((element) => element.type === selectedType.value));
 });
 
 const element = computed<IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {

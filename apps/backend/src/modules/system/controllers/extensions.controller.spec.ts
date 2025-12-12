@@ -15,6 +15,7 @@ import { Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 
+import { MODULES_PREFIX } from '../../../app.constants';
 import { ExtensionSourceType, ExtensionSurfaceType, SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 import { ExtensionsController } from './extensions.controller';
@@ -203,7 +204,7 @@ describe('ExtensionsController', () => {
 			displayName: 'Acme Admin',
 			source: ExtensionSourceType.RUNTIME, // no bundled manifest by default
 			version: '1.2.3',
-			remoteUrl: `:baseUrl/${SYSTEM_MODULE_PREFIX}/extensions/assets/%40acme%2Fadmin-ext/admin/index.js`,
+			remoteUrl: `:baseUrl/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions/assets/%40acme%2Fadmin-ext/admin/index.js`,
 		});
 
 		expect(back).toMatchObject({

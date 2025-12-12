@@ -214,7 +214,7 @@ const isChannelDetailRoute = computed<boolean>(
 );
 
 const plugin = computed<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === property.value?.type);
+	return plugins.value.find((plugin) => plugin.elements.find((element) => element.type === property.value?.type));
 });
 
 const element = computed<IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {

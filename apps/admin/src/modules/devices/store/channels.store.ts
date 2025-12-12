@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DevicesModuleGetChannelOperation,
 	DevicesModuleGetDeviceChannelOperation,
@@ -179,13 +180,13 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				let apiResponse;
 
 				if (payload.deviceId) {
-					apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
+					apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
 						params: {
 							path: { deviceId: payload.deviceId, id: payload.id },
 						},
 					});
 				} else {
-					apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
+					apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
 						params: {
 							path: { id: payload.id },
 						},
@@ -251,13 +252,13 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				let apiResponse;
 
 				if (payload?.deviceId) {
-					apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
+					apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
 						params: {
 							path: { deviceId: payload.deviceId },
 						},
 					});
 				} else {
-					apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels`);
+					apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels`);
 				}
 
 				const { data: responseData, error, response } = apiResponse;
@@ -357,7 +358,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
 					params: {
 						path: { deviceId: payload.deviceId },
 					},
@@ -441,7 +442,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				let apiResponse;
 
 				if (payload.deviceId) {
-					apiResponse = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
+					apiResponse = await backend.client.PATCH(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
 						params: {
 							path: { deviceId: payload.deviceId, id: payload.id },
 						},
@@ -453,7 +454,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 						},
 					});
 				} else {
-					apiResponse = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
+					apiResponse = await backend.client.PATCH(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
 						params: {
 							path: { id: payload.id },
 						},
@@ -524,7 +525,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
 				params: {
 					path: { deviceId: parsedSaveItem.data.device },
 				},
@@ -583,13 +584,13 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				let apiResponse;
 
 				if (payload.deviceId) {
-					apiResponse = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
+					apiResponse = await backend.client.DELETE(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
 						params: {
 							path: { deviceId: payload.deviceId, id: payload.id },
 						},
 					});
 				} else {
-					apiResponse = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
+					apiResponse = await backend.client.DELETE(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
 						params: {
 							path: { id: payload.id },
 						},

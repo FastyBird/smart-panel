@@ -1,4 +1,4 @@
-export const DISPLAYS_MODULE_PREFIX = 'displays-module';
+export const DISPLAYS_MODULE_PREFIX = 'displays';
 
 export const DISPLAYS_MODULE_NAME = 'displays-module';
 

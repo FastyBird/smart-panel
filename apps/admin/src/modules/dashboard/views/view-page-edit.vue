@@ -195,7 +195,7 @@ const isDetailRoute = computed<boolean>(
 );
 
 const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === page.value?.type);
+	return plugins.value.find((plugin) => plugin.elements.find((element) => element.type === page.value?.type));
 });
 
 const element = computed<IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(() => {

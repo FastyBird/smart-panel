@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DevicesModuleGetDeviceOperation,
 	DevicesModuleGetDevicesOperation,
@@ -156,7 +157,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},
@@ -209,7 +210,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			semaphore.value.fetching.items = true;
 
 			try {
-				const { data: responseData, error, response } = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices`);
+				const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`);
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
@@ -289,7 +290,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
 					body: {
 						data: transformDeviceCreateRequest<IDeviceCreateReq>(
 							parsedNewItem.data,
@@ -371,7 +372,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
+				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
 					params: {
 						path: {
 							id: payload.id,
@@ -437,7 +438,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices`, {
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices`, {
 				body: {
 					data: transformDeviceCreateRequest<IDeviceCreateReq>(parsedSaveItem.data, element?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema),
 				},
@@ -487,7 +488,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {
-				const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
+				const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
 					params: {
 						path: {
 							id: payload.id,

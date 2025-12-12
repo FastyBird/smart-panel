@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DashboardModuleGetTileOperation,
 	DashboardModuleGetTilesOperation,
@@ -188,7 +189,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},
@@ -243,7 +244,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/tiles`, {
 					params: {
 						query: {
 							parent_type: payload.parent.type,
@@ -334,7 +335,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/tiles`, {
 					body: {
 						data: transformTileCreateRequest<ITileCreateReq>(parsedNewItem.data, element?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
 					},
@@ -410,7 +411,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
+				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},
@@ -471,7 +472,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/tiles`, {
 				body: {
 					data: transformTileCreateRequest<ITileCreateReq>(parsedSaveItem.data, element?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
 				},
@@ -518,7 +519,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {
-				const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
+				const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
 					params: {
 						path: { id: payload.id },
 					},

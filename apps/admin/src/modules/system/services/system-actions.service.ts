@@ -9,6 +9,7 @@ import type { Client } from 'openapi-fetch';
 import { injectAccountManager, injectBackendClient } from '../../../common';
 import type { OpenApiPaths } from '../../../openapi.constants';
 import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
+import { MODULES_PREFIX } from '../../../app.constants';
 
 export const systemActionsKey: InjectionKey<SystemActionsService | undefined> = Symbol('FB-System-Module-SystemActionsService');
 
@@ -150,7 +151,7 @@ export class SystemActionsService {
 		onFail?: () => void;
 	}): Promise<void> {
 		try {
-			await this.backend.GET(`/${SYSTEM_MODULE_PREFIX}/system/health`);
+			await this.backend.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/health`);
 
 			ElNotification.success(this.t('systemModule.messages.manage.panelBackOnline'));
 

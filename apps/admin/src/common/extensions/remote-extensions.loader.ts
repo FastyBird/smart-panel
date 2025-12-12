@@ -3,6 +3,7 @@ import type { App } from 'vue';
 import type { ConsolaInstance } from 'consola';
 import type { Client } from 'openapi-fetch';
 
+import { MODULES_PREFIX } from '../../app.constants';
 import type { IExtensionOptions } from '../../app.types';
 import { SYSTEM_MODULE_PREFIX } from '../../modules/system';
 import type {
@@ -53,7 +54,7 @@ export const installRemoteExtensions = async (
 		data: responseData,
 		error,
 		response,
-	} = await backendClient.GET(`/${SYSTEM_MODULE_PREFIX}/extensions`, {
+	} = await backendClient.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions`, {
 		params: {
 			query: {
 				surface: SystemModuleQuerySurface.admin,

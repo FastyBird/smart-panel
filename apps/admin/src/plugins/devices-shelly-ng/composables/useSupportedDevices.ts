@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { getErrorReason, useBackend, useFlashMessage } from '../../../common';
+import { PLUGINS_PREFIX } from '../../../app.constants';
 import type { DevicesShellyNgPluginGetSupportedOperation } from '../../../openapi.constants';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from '../devices-shelly-ng.constants';
 import type { IShellyNgSupportedDevice } from '../schemas/devices.types';
@@ -25,7 +26,7 @@ export const useSupportedDevices = (): IUseSupportedDevices => {
 			return;
 		}
 
-		const { data: responseData, error, response } = await backend.client.GET(`/plugins/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/supported`, {});
+		const { data: responseData, error, response } = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_NG_PLUGIN_PREFIX}/devices/supported`, {});
 
 		if (typeof responseData !== 'undefined') {
 			supportedDevices.value = transformSupportedDevicesResponse(responseData.data);

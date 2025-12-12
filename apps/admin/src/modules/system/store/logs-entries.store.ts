@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { z } from 'zod';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	SystemModuleGetLogsOperation,
 	SystemModuleCreateLogsOperation,
@@ -120,7 +121,7 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/logs`, {
+				} = await backend.client.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/logs`, {
 					params: {
 						query: {
 							after_id: payload?.afterId,
@@ -190,7 +191,7 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 			data: responseData,
 			error,
 			response,
-		} = await backend.client.POST(`/${SYSTEM_MODULE_PREFIX}/logs`, {
+		} = await backend.client.POST(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/logs`, {
 			body: {
 				data: transformLogEntryCreateRequest(parsedNewLogsEntries.data),
 			},

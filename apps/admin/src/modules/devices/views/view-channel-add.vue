@@ -229,7 +229,7 @@ const selectedType = ref<IPluginElement['type'] | undefined>(undefined);
 const plugin = computed<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
 	const deviceType = props.device?.type;
 
-	return deviceType ? plugins.value.find((plugin) => plugin.type === deviceType) : plugins.value.find((plugin) => plugin.type === selectedType.value);
+	return deviceType ? plugins.value.find((plugin) => plugin.elements.find((element) => element.type === deviceType)) : plugins.value.find((plugin) => plugin.elements.find((element) => element.type === selectedType.value));
 });
 
 const element = computed<IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {

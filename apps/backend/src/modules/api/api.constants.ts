@@ -1,6 +1,6 @@
 import { FieldType, ISchemaOptions } from 'influx';
 
-export const API_MODULE_PREFIX = 'api-module';
+export const API_MODULE_PREFIX = 'api';
 
 export const API_MODULE_NAME = 'api-module';
 
