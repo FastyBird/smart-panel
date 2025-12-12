@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, type MaybeRef, unref } from 'vue';
 
 import { type IPlugin, type IPluginElement } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE } from '../config.constants';
@@ -8,14 +8,17 @@ import type { IUsePlugin } from './types';
 import { usePlugins } from './usePlugins';
 
 interface IUsePluginProps {
-	name: IPlugin['type'];
+	name: MaybeRef<IPlugin['type']>;
 }
 
 export const usePlugin = ({ name }: IUsePluginProps): IUsePlugin => {
 	const { getByName } = usePlugins();
 
+	// Create a computed ref that reactively accesses the name value
+	const nameRef = computed(() => unref(name));
+
 	const plugin = computed<IPlugin<IPluginsComponents, IPluginsSchemas> | undefined>((): IPlugin<IPluginsComponents, IPluginsSchemas> | undefined => {
-		return getByName(name);
+		return getByName(nameRef.value);
 	});
 
 	const element = computed<IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined>(
