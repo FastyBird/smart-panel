@@ -1,4 +1,7 @@
 {
+  "headings": {
+    "aboutConnectionSettings": "Home Assistant Connection"
+  },
   "fields": {
     "devices": {
       "id": {
@@ -153,5 +156,8 @@
         "mainState": "Entity main state attribute"
       }
     }
+  },
+  "texts": {
+    "aboutConnectionSettings": "Configure the connection to your Home Assistant instance. When enabled, devices from Home Assistant will be available in the Smart Panel. You'll need a long-lived access token from Home Assistant and the hostname or IP address of your instance."
   }
 }

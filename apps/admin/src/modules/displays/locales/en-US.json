@@ -5,7 +5,8 @@
 		"list": "Displays",
 		"adjustFilters": "Filter Displays",
 		"removeDisplay": "Remove Display",
-		"discard": "Discard Changes"
+		"discard": "Discard Changes",
+		"aboutDisplayConfiguration": "Display Configuration"
 	},
 	"subHeadings": {
 		"list": "Manage your connected display devices",
@@ -197,7 +198,8 @@
 		"loadingDisplay": "Loading display...",
 		"noDisplays": "No displays registered yet",
 		"noFilteredDisplays": "No displays match your filter criteria",
-		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+		"aboutDisplayConfiguration": "Configure the deployment mode and display registration settings. The deployment mode determines how the backend and panel are organized, while permit join duration controls how long new displays can register on the network."
 	},
 	"buttons": {
 		"detail": {

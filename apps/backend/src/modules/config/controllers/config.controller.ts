@@ -12,43 +12,23 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { CONFIG_MODULE_API_TAG_NAME } from '../config.constants';
-import { SectionType } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 import {
 	ReqUpdateModuleDto,
 	ReqUpdatePluginDto,
 	ReqUpdateSectionDto,
-	UpdateLanguageConfigDto,
 	UpdateModuleConfigDto,
 	UpdatePluginConfigDto,
-	UpdateSystemConfigDto,
-	UpdateWeatherCityIdConfigDto,
-	UpdateWeatherCityNameConfigDto,
-	UpdateWeatherLatLonConfigDto,
-	UpdateWeatherZipCodeConfigDto,
 } from '../dto/config.dto';
 import {
 	ConfigModuleResAppConfig,
-	ConfigModuleResLanguage,
 	ConfigModuleResModuleConfig,
 	ConfigModuleResModules,
 	ConfigModuleResPluginConfig,
 	ConfigModuleResPlugins,
 	ConfigModuleResSection,
-	ConfigModuleResSystem,
-	ConfigModuleResWeather,
 } from '../models/config-response.model';
-import {
-	AppConfigModel,
-	LanguageConfigModel,
-	ModuleConfigModel,
-	PluginConfigModel,
-	SystemConfigModel,
-	WeatherCityIdConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherZipCodeConfigModel,
-} from '../models/config.model';
+import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 import { ModuleTypeMapping, ModulesTypeMapperService } from '../services/modules-type-mapper.service';
 import { PluginTypeMapping, PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
@@ -95,9 +75,9 @@ export class ConfigController {
 	})
 	@ApiParam({
 		name: 'section',
-		description: 'Configuration section identifier',
-		enum: Object.values(SectionType),
-		example: SectionType.LANGUAGE,
+		description: 'Configuration section identifier (deprecated - use /config/module/:module instead)',
+		type: 'string',
+		example: 'language',
 	})
 	@ApiSuccessResponse(ConfigModuleResSection, 'Section configuration retrieved successfully')
 	@ApiBadRequestResponse('Invalid section identifier')
@@ -106,39 +86,12 @@ export class ConfigController {
 	getConfigSection(@Param('section') section: keyof AppConfigModel): ConfigModuleResSection {
 		this.logger.debug(`[LOOKUP] Fetching configuration section=${section}`);
 
-		switch (section) {
-			case SectionType.LANGUAGE: {
-				const config = this.service.getConfigSection<LanguageConfigModel>(section, LanguageConfigModel);
-
-				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
-			case SectionType.WEATHER: {
-				const config = this.service.getConfigSection<
-					WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-				>(section, [
-					WeatherLatLonConfigModel,
-					WeatherCityNameConfigModel,
-					WeatherCityIdConfigModel,
-					WeatherZipCodeConfigModel,
-				]);
-
-				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
-			case SectionType.SYSTEM: {
-				const config = this.service.getConfigSection<SystemConfigModel>(section, SystemConfigModel);
-
-				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
-		}
-
+		// Section-based endpoints are deprecated - use module endpoints instead
 		throw new BadRequestException([
-			JSON.stringify({ field: 'section', reason: `Requested configuration section: ${section as string} not found.` }),
+			JSON.stringify({
+				field: 'section',
+				reason: `Requested configuration section: ${section as string} not found. Use /config/module/:module instead.`,
+			}),
 		]);
 	}
 
@@ -151,9 +104,9 @@ export class ConfigController {
 	})
 	@ApiParam({
 		name: 'section',
-		description: 'Configuration section identifier',
-		enum: Object.values(SectionType),
-		example: SectionType.LANGUAGE,
+		description: 'Configuration section identifier (deprecated - use /config/module/:module instead)',
+		type: 'string',
+		example: 'language',
 	})
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Configuration section data' })
 	@ApiSuccessResponse(ConfigModuleResSection, 'Section configuration updated successfully')
@@ -162,136 +115,17 @@ export class ConfigController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	updateConfigSection(
 		@Param('section') section: keyof AppConfigModel,
-		@Body() dto: ReqUpdateSectionDto,
+		@Body() _dto: ReqUpdateSectionDto,
 	): ConfigModuleResSection {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${section}`);
 
-		switch (section) {
-			case SectionType.LANGUAGE: {
-				this.service.setConfigSection(SectionType.LANGUAGE, dto.data, UpdateLanguageConfigDto);
-
-				const config = this.service.getConfigSection<LanguageConfigModel>(SectionType.LANGUAGE, LanguageConfigModel);
-
-				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
-			case SectionType.WEATHER: {
-				this.service.setConfigSection(SectionType.WEATHER, dto.data, [
-					UpdateWeatherLatLonConfigDto,
-					UpdateWeatherCityNameConfigDto,
-					UpdateWeatherCityIdConfigDto,
-					UpdateWeatherZipCodeConfigDto,
-				]);
-
-				const config = this.service.getConfigSection<
-					WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-				>(SectionType.WEATHER, [
-					WeatherLatLonConfigModel,
-					WeatherCityNameConfigModel,
-					WeatherCityIdConfigModel,
-					WeatherZipCodeConfigModel,
-				]);
-
-				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
-			case SectionType.SYSTEM: {
-				this.service.setConfigSection(SectionType.SYSTEM, dto.data, UpdateSystemConfigDto);
-
-				const config = this.service.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
-
-				this.logger.debug(`[UPDATE] Successfully updated configuration section=${section}`);
-
-				return this.createSectionResponse(config);
-			}
-		}
-
+		// Section-based endpoints are deprecated - use module endpoints instead
 		throw new BadRequestException([
-			JSON.stringify({ field: 'section', reason: `Requested configuration section: ${section as string} not found.` }),
+			JSON.stringify({
+				field: 'section',
+				reason: `Requested configuration section: ${section as string} not found. Use /config/module/:module instead.`,
+			}),
 		]);
-	}
-
-	@Patch(SectionType.LANGUAGE)
-	@ApiOperation({
-		tags: [CONFIG_MODULE_API_TAG_NAME],
-		summary: 'Update language configuration',
-		description: 'Update the language section configuration',
-		operationId: 'update-config-module-language',
-	})
-	@ApiBody({ type: ReqUpdateSectionDto, description: 'Language configuration data' })
-	@ApiSuccessResponse(ConfigModuleResLanguage, 'Language configuration updated successfully')
-	@ApiBadRequestResponse('Invalid language configuration data')
-	@ApiInternalServerErrorResponse('Internal server error')
-	updateLanguageConfig(@Body() languageConfig: ReqUpdateSectionDto): ConfigModuleResLanguage {
-		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.LANGUAGE}`);
-
-		this.service.setConfigSection(SectionType.LANGUAGE, languageConfig.data, UpdateLanguageConfigDto);
-
-		const config = this.service.getConfigSection<LanguageConfigModel>(SectionType.LANGUAGE, LanguageConfigModel);
-
-		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.LANGUAGE}`);
-
-		return this.createSectionResponse(config) as ConfigModuleResLanguage;
-	}
-
-	@Patch(SectionType.WEATHER)
-	@ApiOperation({
-		tags: [CONFIG_MODULE_API_TAG_NAME],
-		summary: 'Update weather configuration',
-		description: 'Update the weather section configuration',
-		operationId: 'update-config-module-weather',
-	})
-	@ApiBody({ type: ReqUpdateSectionDto, description: 'Weather configuration data' })
-	@ApiSuccessResponse(ConfigModuleResWeather, 'Weather configuration updated successfully')
-	@ApiBadRequestResponse('Invalid weather configuration data')
-	@ApiInternalServerErrorResponse('Internal server error')
-	updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): ConfigModuleResWeather {
-		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.WEATHER}`);
-
-		this.service.setConfigSection(SectionType.WEATHER, weatherConfig.data, [
-			UpdateWeatherLatLonConfigDto,
-			UpdateWeatherCityNameConfigDto,
-			UpdateWeatherCityIdConfigDto,
-			UpdateWeatherZipCodeConfigDto,
-		]);
-
-		const config = this.service.getConfigSection<
-			WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-		>(SectionType.WEATHER, [
-			WeatherLatLonConfigModel,
-			WeatherCityNameConfigModel,
-			WeatherCityIdConfigModel,
-			WeatherZipCodeConfigModel,
-		]);
-
-		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.WEATHER}`);
-
-		return this.createSectionResponse(config) as ConfigModuleResWeather;
-	}
-
-	@Patch(SectionType.SYSTEM)
-	@ApiOperation({
-		tags: [CONFIG_MODULE_API_TAG_NAME],
-		summary: 'Update system configuration',
-		description: 'Update the system section configuration',
-		operationId: 'update-config-module-system',
-	})
-	@ApiBody({ type: ReqUpdateSectionDto, description: 'System configuration data' })
-	@ApiSuccessResponse(ConfigModuleResSystem, 'System configuration updated successfully')
-	@ApiBadRequestResponse('Invalid system configuration data')
-	@ApiInternalServerErrorResponse('Internal server error')
-	updateSystemConfig(@Body() systemConfig: ReqUpdateSectionDto): ConfigModuleResSystem {
-		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.SYSTEM}`);
-
-		this.service.setConfigSection(SectionType.SYSTEM, systemConfig.data, UpdateSystemConfigDto);
-
-		const config = this.service.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
-
-		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.SYSTEM}`);
-
-		return this.createSectionResponse(config) as ConfigModuleResSystem;
 	}
 
 	private createSectionResponse(config: ConfigModuleResSection['data']): ConfigModuleResSection {

@@ -37,39 +37,11 @@
 		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
 	</app-bar-button>
 
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSave"
-	>
-		<span class="uppercase">{{ t('configModule.buttons.save.title') }}</span>
-	</app-bar-button>
-
 	<view-header
 		:heading="t('configModule.headings.config')"
 		:sub-heading="t('configModule.subHeadings.config')"
 		icon="mdi:cog"
-	>
-		<template #extra>
-			<div class="flex items-center">
-				<el-button
-					plain
-					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult === FormResult.WORKING"
-					type="primary"
-					class="px-4! ml-2!"
-					@click="onSave"
-				>
-					<template #icon>
-						<icon icon="mdi:content-save" />
-					</template>
-					{{ t('configModule.buttons.save.title') }}
-				</el-button>
-			</div>
-		</template>
-	</view-header>
+	/>
 
 	<el-tabs
 		v-if="isMDDevice"
@@ -78,63 +50,20 @@
 		@tab-click="onTabClick"
 	>
 		<el-tab-pane
-			:label="t('configModule.tabs.configLanguage')"
-			:name="'language'"
+			:label="t('configModule.tabs.configModules')"
+			:name="'modules'"
+			class="h-full"
 		>
 			<template #label>
 				<span class="flex flex-row items-center gap-2">
 					<el-icon>
-						<icon icon="mdi:translate" />
+						<icon icon="mdi:package-variant" />
 					</el-icon>
-					<span>{{ t('configModule.tabs.configLanguage') }}</span>
+					<span>{{ t('configModule.tabs.configModules') }}</span>
 				</span>
 			</template>
 
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_LANGUAGE"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
-		</el-tab-pane>
-
-		<el-tab-pane
-			:label="t('configModule.tabs.configWeather')"
-			:name="'weather'"
-		>
-			<template #label>
-				<span class="flex flex-row items-center gap-2">
-					<el-icon>
-						<icon icon="mdi:weather-partly-cloudy" />
-					</el-icon>
-					<span>{{ t('configModule.tabs.configWeather') }}</span>
-				</span>
-			</template>
-
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_WEATHER"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
-		</el-tab-pane>
-
-		<el-tab-pane
-			:label="t('configModule.tabs.configSystem')"
-			:name="'system'"
-		>
-			<template #label>
-				<span class="flex flex-row items-center gap-2">
-					<el-icon>
-						<icon icon="mdi:cogs" />
-					</el-icon>
-					<span>{{ t('configModule.tabs.configSystem') }}</span>
-				</span>
-			</template>
-
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_SYSTEM"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
+			<router-view v-if="isModulesRoute" />
 		</el-tab-pane>
 
 		<el-tab-pane
@@ -151,39 +80,12 @@
 				</span>
 			</template>
 
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_PLUGINS"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
-		</el-tab-pane>
-
-		<el-tab-pane
-			:label="t('configModule.tabs.configModules')"
-			:name="'modules'"
-			class="h-full"
-		>
-			<template #label>
-				<span class="flex flex-row items-center gap-2">
-					<el-icon>
-						<icon icon="mdi:package-variant" />
-					</el-icon>
-					<span>{{ t('configModule.tabs.configModules') }}</span>
-				</span>
-			</template>
-
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_MODULES"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
+			<router-view v-if="isPluginsRoute" />
 		</el-tab-pane>
 	</el-tabs>
 
 	<router-view
 		v-if="!isMDDevice"
-		v-model:remote-form-submit="remoteFormSubmit"
-		v-model:remote-form-result="remoteFormResult"
 		class="p-2"
 	/>
 </template>
@@ -193,14 +95,14 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { type RouteLocationRaw, type RouteRecordName, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElTabPane, ElTabs, type TabsPaneContext } from 'element-plus';
+import { ElIcon, ElTabPane, ElTabs, type TabsPaneContext } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { FormResult, RouteNames } from '../config.constants';
+import { RouteNames } from '../config.constants';
 
-type PageTabName = 'language' | 'weather' | 'system' | 'plugins' | 'modules';
+type PageTabName = 'modules' | 'plugins';
 
 defineOptions({
 	name: 'LayoutConfig',
@@ -211,11 +113,21 @@ const route = useRoute();
 const { t } = useI18n();
 
 const { isMDDevice } = useBreakpoints();
-const activeTab = ref<PageTabName>('language');
+const activeTab = ref<PageTabName>('modules');
 
 const mounted = ref<boolean>(false);
-const remoteFormSubmit = ref<boolean>(false);
-const remoteFormResult = ref<FormResult>(FormResult.NONE);
+
+const isModulesRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.CONFIG_MODULES || 
+		route.name === RouteNames.CONFIG_MODULE_EDIT ||
+		route.path.startsWith('/config/modules');
+});
+
+const isPluginsRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.CONFIG_PLUGINS || 
+		route.name === RouteNames.CONFIG_PLUGIN_EDIT ||
+		route.path.startsWith('/config/plugins');
+});
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
 	const items = [
@@ -225,35 +137,14 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 		},
 	];
 
-	if (route.name === RouteNames.CONFIG_LANGUAGE) {
-		items.push({
-			label: t('configModule.breadcrumbs.configLanguage'),
-			route: router.resolve({ name: RouteNames.CONFIG_LANGUAGE }),
-		});
-	}
-
-	if (route.name === RouteNames.CONFIG_WEATHER) {
-		items.push({
-			label: t('configModule.breadcrumbs.configWeather'),
-			route: router.resolve({ name: RouteNames.CONFIG_WEATHER }),
-		});
-	}
-
-	if (route.name === RouteNames.CONFIG_SYSTEM) {
-		items.push({
-			label: t('configModule.breadcrumbs.configSystem'),
-			route: router.resolve({ name: RouteNames.CONFIG_SYSTEM }),
-		});
-	}
-
-	if (route.name === RouteNames.CONFIG_PLUGINS) {
+	if (route.name === RouteNames.CONFIG_PLUGINS || route.name === RouteNames.CONFIG_PLUGIN_EDIT) {
 		items.push({
 			label: t('configModule.breadcrumbs.configPlugins'),
 			route: router.resolve({ name: RouteNames.CONFIG_PLUGINS }),
 		});
 	}
 
-	if (route.name === RouteNames.CONFIG_MODULES) {
+	if (route.name === RouteNames.CONFIG_MODULES || route.name === RouteNames.CONFIG_MODULE_EDIT) {
 		items.push({
 			label: t('configModule.breadcrumbs.configModules'),
 			route: router.resolve({ name: RouteNames.CONFIG_MODULES }),
@@ -265,15 +156,6 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 
 const onTabClick = (pane: TabsPaneContext): void => {
 	switch (pane.paneName) {
-		case 'language':
-			router.push({ name: RouteNames.CONFIG_LANGUAGE });
-			break;
-		case 'weather':
-			router.push({ name: RouteNames.CONFIG_WEATHER });
-			break;
-		case 'system':
-			router.push({ name: RouteNames.CONFIG_SYSTEM });
-			break;
 		case 'plugins':
 			router.push({ name: RouteNames.CONFIG_PLUGINS });
 			break;
@@ -283,22 +165,12 @@ const onTabClick = (pane: TabsPaneContext): void => {
 	}
 };
 
-const onSave = (): void => {
-	remoteFormSubmit.value = true;
-};
-
 onMounted((): void => {
 	mounted.value = true;
 
-	if (route.name === RouteNames.CONFIG_LANGUAGE && activeTab.value !== 'language') {
-		activeTab.value = 'language';
-	} else if (route.name === RouteNames.CONFIG_WEATHER && activeTab.value !== 'weather') {
-		activeTab.value = 'weather';
-	} else if (route.name === RouteNames.CONFIG_SYSTEM && activeTab.value !== 'system') {
-		activeTab.value = 'system';
-	} else if (route.name === RouteNames.CONFIG_PLUGINS && activeTab.value !== 'plugins') {
+	if ((route.name === RouteNames.CONFIG_PLUGINS || route.name === RouteNames.CONFIG_PLUGIN_EDIT || route.path.startsWith('/config/plugins')) && activeTab.value !== 'plugins') {
 		activeTab.value = 'plugins';
-	} else if (route.name === RouteNames.CONFIG_MODULES && activeTab.value !== 'modules') {
+	} else if ((route.name === RouteNames.CONFIG_MODULES || route.name === RouteNames.CONFIG_MODULE_EDIT || route.path.startsWith('/config/modules')) && activeTab.value !== 'modules') {
 		activeTab.value = 'modules';
 	}
 });
@@ -306,19 +178,40 @@ onMounted((): void => {
 watch(
 	(): RouteRecordName | string | null | undefined => route.name,
 	(val: RouteRecordName | string | null | undefined): void => {
-		if (mounted.value) {
-			if (val === RouteNames.CONFIG_LANGUAGE && activeTab.value !== 'language') {
-				activeTab.value = 'language';
-			} else if (val === RouteNames.CONFIG_WEATHER && activeTab.value !== 'weather') {
-				activeTab.value = 'weather';
-			} else if (val === RouteNames.CONFIG_SYSTEM && activeTab.value !== 'system') {
-				activeTab.value = 'system';
-			} else if (val === RouteNames.CONFIG_PLUGINS && activeTab.value !== 'plugins') {
+		if (!mounted.value) {
+			return;
+		}
+
+		if (val === RouteNames.CONFIG_PLUGINS || val === RouteNames.CONFIG_PLUGIN_EDIT || route.path.startsWith('/config/plugins')) {
+			if (activeTab.value !== 'plugins') {
 				activeTab.value = 'plugins';
-			} else if (val === RouteNames.CONFIG_MODULES && activeTab.value !== 'modules') {
+			}
+		} else if (val === RouteNames.CONFIG_MODULES || val === RouteNames.CONFIG_MODULE_EDIT || route.path.startsWith('/config/modules')) {
+			if (activeTab.value !== 'modules') {
 				activeTab.value = 'modules';
 			}
 		}
-	}
+	},
+	{ immediate: false }
+);
+
+watch(
+	(): string => route.path,
+	(): void => {
+		if (!mounted.value) {
+			return;
+		}
+
+		if (route.path.startsWith('/config/plugins')) {
+			if (activeTab.value !== 'plugins') {
+				activeTab.value = 'plugins';
+			}
+		} else if (route.path.startsWith('/config/modules')) {
+			if (activeTab.value !== 'modules') {
+				activeTab.value = 'modules';
+			}
+		}
+	},
+	{ immediate: false }
 );
 </script>

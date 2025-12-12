@@ -1,11 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 
 import { ConfigModule } from '../config/config.module';
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
 import { GeolocationController } from './controllers/geolocation.controller';
 import { WeatherController } from './controllers/weather.controller';
+import { UpdateWeatherConfigDto } from './dto/update-config.dto';
+import { WeatherConfigModel } from './models/config.model';
 import { GeolocationService } from './services/geolocation.service';
 import { WeatherService } from './services/weather.service';
 import {
@@ -26,10 +29,19 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	providers: [WeatherService, GeolocationService],
 	exports: [WeatherService, GeolocationService],
 })
-export class WeatherModule {
-	constructor(private readonly swaggerRegistry: SwaggerModelsRegistryService) {}
+export class WeatherModule implements OnModuleInit {
+	constructor(
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
+	) {}
 
 	onModuleInit() {
+		this.modulesMapperService.registerMapping<WeatherConfigModel, UpdateWeatherConfigDto>({
+			type: WEATHER_MODULE_NAME,
+			class: WeatherConfigModel,
+			configDto: UpdateWeatherConfigDto,
+		});
+
 		for (const model of WEATHER_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}

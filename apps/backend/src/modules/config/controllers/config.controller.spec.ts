@@ -8,32 +8,9 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { BadRequestException, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import {
-	LanguageType,
-	LogLevelType,
-	SectionType,
-	TemperatureUnitType,
-	TimeFormatType,
-	WeatherLocationType,
-} from '../config.constants';
 import { ConfigException } from '../config.exceptions';
-import {
-	UpdateLanguageConfigDto,
-	UpdateModuleConfigDto,
-	UpdateWeatherCityIdConfigDto,
-	UpdateWeatherCityNameConfigDto,
-	UpdateWeatherLatLonConfigDto,
-	UpdateWeatherZipCodeConfigDto,
-} from '../dto/config.dto';
-import {
-	AppConfigModel,
-	LanguageConfigModel,
-	ModuleConfigModel,
-	WeatherCityIdConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherZipCodeConfigModel,
-} from '../models/config.model';
+import { UpdateModuleConfigDto } from '../dto/config.dto';
+import { AppConfigModel, ModuleConfigModel } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 import { ModulesTypeMapperService } from '../services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
@@ -46,25 +23,7 @@ describe('ConfigController', () => {
 
 	const mockConfig: AppConfigModel = {
 		path: '/var/smart-panel/config.yml',
-		language: {
-			type: SectionType.LANGUAGE,
-			language: LanguageType.ENGLISH,
-			timezone: 'America/New_York',
-			timeFormat: TimeFormatType.HOUR_12,
-		},
-		weather: {
-			type: SectionType.WEATHER,
-			cityName: 'New York,US',
-			latitude: 0,
-			longitude: 0,
-			locationType: WeatherLocationType.CITY_NAME,
-			unit: TemperatureUnitType.CELSIUS,
-			openWeatherApiKey: 'dummy-api-key',
-		},
-		system: {
-			type: SectionType.SYSTEM,
-			logLevels: [LogLevelType.ERROR],
-		},
+		// Language and system config moved to system module (accessible via /config/module/system-module)
 		plugins: [],
 		modules: [
 			{
@@ -136,70 +95,9 @@ describe('ConfigController', () => {
 	});
 
 	describe('getConfigSection', () => {
-		it('should return the language configuration section', () => {
-			const result = controller.getConfigSection(SectionType.LANGUAGE);
-			expect(result).toHaveProperty('data');
-			expect(result.data).toEqual(mockConfig.language);
-			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.LANGUAGE, LanguageConfigModel);
-		});
-
-		it('should throw BadRequestException for an invalid section', () => {
-			expect(() => controller.getConfigSection('invalid' as keyof AppConfigModel)).toThrow(BadRequestException);
-		});
-	});
-
-	describe('updateLanguageConfig', () => {
-		it('should update and return the language configuration', () => {
-			const updateDto: UpdateLanguageConfigDto = {
-				type: SectionType.LANGUAGE,
-				language: LanguageType.CZECH,
-				timezone: 'Europe/Prague',
-			};
-			const updatedConfig = { ...mockConfig.language, ...updateDto };
-
-			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
-
-			const result = controller.updateLanguageConfig({ data: updateDto });
-
-			expect(result).toHaveProperty('data');
-			expect(result.data).toEqual(updatedConfig);
-			expect(configService.setConfigSection).toHaveBeenCalledWith('language', updateDto, UpdateLanguageConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('language', LanguageConfigModel);
-		});
-	});
-
-	describe('updateWeatherConfig', () => {
-		it('should update and return the weather configuration', () => {
-			const updateDto: UpdateWeatherCityNameConfigDto = {
-				type: SectionType.WEATHER,
-				location_type: WeatherLocationType.CITY_NAME,
-				city_name: 'Paris,FR',
-				unit: TemperatureUnitType.FAHRENHEIT,
-			};
-			const updatedConfig = { ...mockConfig.weather, cityName: 'Paris,FR', unit: TemperatureUnitType.FAHRENHEIT };
-
-			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
-
-			const result = controller.updateWeatherConfig({ data: updateDto });
-
-			expect(result).toHaveProperty('data');
-			expect(result.data).toMatchObject({
-				type: SectionType.WEATHER,
-				locationType: WeatherLocationType.CITY_NAME,
-			});
-			expect(result.data).toHaveProperty('unit', TemperatureUnitType.FAHRENHEIT);
-			expect(configService.setConfigSection).toHaveBeenCalledWith('weather', updateDto, [
-				UpdateWeatherLatLonConfigDto,
-				UpdateWeatherCityNameConfigDto,
-				UpdateWeatherCityIdConfigDto,
-				UpdateWeatherZipCodeConfigDto,
-			]);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('weather', [
-				WeatherLatLonConfigModel,
-				WeatherCityNameConfigModel,
-				WeatherCityIdConfigModel,
-				WeatherZipCodeConfigModel,
-			]);
+		it('should throw BadRequestException for deprecated section endpoints', () => {
+			expect(() => controller.getConfigSection('language' as keyof AppConfigModel)).toThrow(BadRequestException);
+			expect(() => controller.getConfigSection('system' as keyof AppConfigModel)).toThrow(BadRequestException);
 		});
 	});
 

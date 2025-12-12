@@ -36,6 +36,35 @@ export enum LogEntryType {
 	FATAL = 'fatal',
 }
 
+export enum TemperatureUnitType {
+	CELSIUS = 'celsius',
+	FAHRENHEIT = 'fahrenheit',
+}
+
+export enum TimeFormatType {
+	HOUR_12 = '12h',
+	HOUR_24 = '24h',
+}
+
+export enum LanguageType {
+	ENGLISH = 'en_US',
+	CZECH = 'cs_CZ',
+}
+
+export enum LogLevelType {
+	SILENT = LogEntryType.SILENT,
+	VERBOSE = LogEntryType.VERBOSE,
+	DEBUG = LogEntryType.DEBUG,
+	TRACE = LogEntryType.TRACE,
+	LOG = LogEntryType.LOG,
+	INFO = LogEntryType.INFO,
+	SUCCESS = LogEntryType.SUCCESS,
+	WARN = LogEntryType.WARN,
+	ERROR = LogEntryType.ERROR,
+	FAIL = LogEntryType.FAIL,
+	FATAL = LogEntryType.FATAL,
+}
+
 export enum LogEntrySource {
 	ADMIN = 'admin',
 	DISPLAY = 'display',

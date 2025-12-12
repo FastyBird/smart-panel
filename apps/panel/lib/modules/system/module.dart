@@ -4,7 +4,9 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/system/constants.dart';
+import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:fastybird_smart_panel/modules/system/events/factory_reset_done.dart';
 import 'package:fastybird_smart_panel/modules/system/events/factory_reset_error.dart';
 import 'package:fastybird_smart_panel/modules/system/events/factory_reset_in_progress.dart';
@@ -14,7 +16,6 @@ import 'package:fastybird_smart_panel/modules/system/events/power_off_in_progres
 import 'package:fastybird_smart_panel/modules/system/events/reboot_done.dart';
 import 'package:fastybird_smart_panel/modules/system/events/reboot_error.dart';
 import 'package:fastybird_smart_panel/modules/system/events/reboot_in_progress.dart';
-import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:fastybird_smart_panel/modules/system/models/system_action.dart';
 import 'package:flutter/foundation.dart';
 
@@ -60,6 +61,16 @@ class SystemModuleService {
   Future<void> initialize(String appUid) async {
     _isLoading = true;
 
+    // Register system config model with config module
+    final configModule = locator<ConfigModuleService>();
+    configModule.registerModule<SystemConfigModel>(
+      'system-module',
+      SystemConfigModel.fromJson,
+      updateHandler: _updateSystemConfig,
+    );
+
+    // System config is now managed by config module
+    // No need to create wrapper or register separately
     await _systemService.initialize(appUid);
 
     _isLoading = false;
@@ -74,6 +85,52 @@ class SystemModuleService {
         '[SYSTEM MODULE][MODULE] Module was successfully initialized',
       );
     }
+  }
+
+  Future<bool> _updateSystemConfig(String name, Map<String, dynamic> data) async {
+    // Custom update handler for system config
+    try {
+      final configModule = locator<ConfigModuleService>();
+      final repo = configModule.getModuleRepository<SystemConfigModel>(name);
+      
+      // Build update data with all current fields
+      final currentConfig = repo.data;
+      if (currentConfig == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[SYSTEM MODULE] Cannot update config: current configuration is null',
+          );
+        }
+        return false;
+      }
+
+      final updateDataMap = <String, dynamic>{
+        'type': name,
+        'language': data['language'] ?? _convertLanguageToApiString(currentConfig.language),
+        'timezone': data['timezone'] ?? currentConfig.timezone,
+        'time_format': data['time_format'] ?? _convertTimeFormatToApiString(currentConfig.timeFormat),
+        if (data.containsKey('log_levels')) 'log_levels': data['log_levels'],
+      };
+
+      // Use the repository's raw update method to avoid infinite recursion
+      return await repo.updateConfigurationRaw(updateDataMap);
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SYSTEM MODULE] Error updating system config: ${e.toString()}',
+        );
+        debugPrint('[SYSTEM MODULE] Stack trace: $stackTrace');
+      }
+      return false;
+    }
+  }
+
+  String _convertLanguageToApiString(Language language) {
+    return language.value;
+  }
+
+  String _convertTimeFormatToApiString(TimeFormat timeFormat) {
+    return timeFormat.value;
   }
 
   bool get isLoading => _isLoading;

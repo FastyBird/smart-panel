@@ -1,10 +1,5 @@
 export * from './useConfigApp';
-export * from './useConfigLanguage';
-export * from './useConfigLanguageEditForm';
-export * from './useConfigWeather';
-export * from './useConfigWeatherEditForm';
-export * from './useConfigSystem';
-export * from './useConfigSystemEditForm';
+// Language, weather, and system composables removed - these configs are now accessed via modules
 export * from './useConfigModule';
 export * from './useConfigModules';
 export * from './useConfigModuleEditForm';

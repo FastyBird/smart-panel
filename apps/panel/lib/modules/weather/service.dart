@@ -1,4 +1,5 @@
-import 'package:fastybird_smart_panel/modules/config/repositories/weather.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
@@ -8,7 +9,7 @@ import 'package:flutter/foundation.dart';
 class WeatherService extends ChangeNotifier {
   final CurrentWeatherRepository _currentDayRepository;
   final ForecastWeatherRepository _forecastRepository;
-  final WeatherConfigRepository _configurationRepository;
+  final ModuleConfigRepository<WeatherConfigModel> _configurationRepository;
 
   CurrentDayView? _currentDay;
 
@@ -17,7 +18,7 @@ class WeatherService extends ChangeNotifier {
   WeatherService({
     required CurrentWeatherRepository currentDayRepository,
     required ForecastWeatherRepository forecastRepository,
-    required WeatherConfigRepository configurationRepository,
+    required ModuleConfigRepository<WeatherConfigModel> configurationRepository,
   })  : _currentDayRepository = currentDayRepository,
         _forecastRepository = forecastRepository,
         _configurationRepository = configurationRepository;

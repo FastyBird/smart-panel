@@ -5,10 +5,7 @@ import type {
 	ConfigModuleUpdateModuleSchema,
 } from '../../../openapi.constants';
 import { ConfigModuleResSchema, ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
-
-// Backend uses 'displays' as the module name (not 'displays-module')
-// This must match the backend DISPLAYS_MODULE_NAME constant
-const DISPLAYS_CONFIG_MODULE_NAME = 'displays';
+import { DISPLAYS_MODULE_NAME } from '../displays.constants';
 
 type ApiConfigModule = ConfigModuleModuleSchema;
 type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
@@ -17,7 +14,7 @@ type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 // ===========
 
 export const DisplaysConfigSchema = ConfigModuleSchema.extend({
-	type: z.literal(DISPLAYS_CONFIG_MODULE_NAME),
+	type: z.literal(DISPLAYS_MODULE_NAME),
 	deploymentMode: z.enum(['standalone', 'all-in-one', 'combined']),
 	permitJoinDurationMs: z.number().int().min(1000),
 });
@@ -27,7 +24,7 @@ export const DisplaysConfigSchema = ConfigModuleSchema.extend({
 
 export const DisplaysConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigModuleUpdateReqSchema.and(
 	z.object({
-		type: z.literal(DISPLAYS_CONFIG_MODULE_NAME),
+		type: z.literal(DISPLAYS_MODULE_NAME),
 		deployment_mode: z.enum(['standalone', 'all-in-one', 'combined']).optional(),
 		permit_join_duration_ms: z.number().int().min(1000).optional(),
 	})
@@ -35,7 +32,7 @@ export const DisplaysConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Con
 
 export const DisplaysConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
 	z.object({
-		type: z.literal(DISPLAYS_CONFIG_MODULE_NAME),
+		type: z.literal(DISPLAYS_MODULE_NAME),
 		deployment_mode: z.enum(['standalone', 'all-in-one', 'combined']),
 		permit_join_duration_ms: z.number().int().min(1000),
 	})

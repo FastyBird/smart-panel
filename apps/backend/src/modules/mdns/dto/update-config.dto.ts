@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -16,16 +16,6 @@ export class UpdateMdnsConfigDto extends UpdateModuleConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
 	type: string = MDNS_MODULE_NAME;
-
-	@ApiPropertyOptional({
-		description: 'Enable or disable mDNS service advertisement.',
-		type: 'boolean',
-		example: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
-	enabled?: boolean;
 
 	@ApiPropertyOptional({
 		name: 'service_name',

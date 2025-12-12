@@ -1,5 +1,5 @@
-import 'package:fastybird_smart_panel/modules/config/models/weather.dart';
-import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
+import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/model.dart';
 
 abstract class WeatherView<M extends Model> {

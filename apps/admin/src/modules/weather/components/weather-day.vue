@@ -39,8 +39,8 @@ import { ElCard, ElIcon, vLoading } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { formatNumber } from '../../../common';
-import { ConfigModuleWeatherUnit } from '../../../openapi.constants';
-import { useConfigWeather } from '../../config';
+import { useConfigModule } from '../../config';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { useWeatherDay } from '../composables/useWeatherDay';
 import { WeatherException } from '../weather.exceptions';
 
@@ -51,14 +51,16 @@ defineOptions({
 const { t } = useI18n();
 
 const { weatherDay, fetchWeatherDay, isLoading } = useWeatherDay();
-const { configWeather, fetchConfigWeather } = useConfigWeather();
+const { configModule: configWeather, fetchConfigModule: fetchConfigWeather } = useConfigModule({ type: WEATHER_MODULE_NAME });
 
 const temperature = computed<number | null>((): number | null => {
 	return weatherDay.value?.temperature || null;
 });
 
 const unit = computed<string>((): string => {
-	return configWeather.value?.unit === ConfigModuleWeatherUnit.fahrenheit ? '°F' : '°C';
+	// Weather config is now accessed via modules - unit field should be in the module config
+	const weatherUnit = (configWeather.value as { unit?: string })?.unit;
+	return weatherUnit === 'fahrenheit' ? '°F' : '°C';
 });
 
 const iconType = computed<string>((): string => {

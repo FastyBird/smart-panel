@@ -1,19 +1,18 @@
 {
+	"headings": {
+		"aboutServiceAdvertisement": "Service Advertisement Settings"
+	},
 	"messages": {
 		"config": {
 			"edited": "mDNS configuration has been successfully updated",
 			"notEdited": "Failed to update mDNS configuration"
 		}
 	},
+	"texts": {
+		"aboutServiceAdvertisement": "Configure how the Smart Panel advertises itself on the local network using mDNS (Multicast DNS). This enables automatic discovery by devices and clients without needing to know the IP address."
+	},
 	"fields": {
 		"config": {
-			"enabled": {
-				"title": "Enable mDNS",
-				"description": "Enable or disable mDNS service advertisement",
-				"validation": {
-					"required": "Enabled field is required"
-				}
-			},
 			"serviceName": {
 				"title": "Service Name",
 				"description": "mDNS service name to advertise",

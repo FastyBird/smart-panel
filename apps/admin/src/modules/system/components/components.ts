@@ -8,4 +8,6 @@ export { default as AboutApplication } from './system-info/about-application.vue
 export { default as ManageSystem } from './system-info/manage-system.vue';
 export { default as SystemInfoDetail } from './system-info/system-info-detail.vue';
 
+export { default as SystemConfigForm } from './system-config-form.vue';
+
 export * from './types';

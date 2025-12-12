@@ -45,21 +45,11 @@ export class MdnsService implements OnApplicationShutdown {
 			// Return default configuration
 			const defaultConfig = new MdnsConfigModel();
 			defaultConfig.type = MDNS_MODULE_NAME;
-			defaultConfig.enabled = true;
 			defaultConfig.serviceName = MDNS_DEFAULT_SERVICE_NAME;
 			defaultConfig.serviceType = MDNS_DEFAULT_SERVICE_TYPE;
 
 			return defaultConfig;
 		}
-	}
-
-	/**
-	 * Check if mDNS is enabled via app configuration
-	 */
-	isEnabled(): boolean {
-		const config = this.getConfig();
-
-		return config.enabled;
 	}
 
 	/**
@@ -101,12 +91,6 @@ export class MdnsService implements OnApplicationShutdown {
 	 * Start advertising the backend service via mDNS
 	 */
 	advertise(port: number): void {
-		if (!this.isEnabled()) {
-			this.logger.log('[MDNS] mDNS advertising is disabled via configuration');
-
-			return;
-		}
-
 		if (this.isAdvertising) {
 			this.logger.warn('[MDNS] Service is already being advertised');
 

@@ -7,8 +7,10 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/config/export.dart';
-import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
+import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -24,10 +26,11 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
-  final WeatherConfigRepository _repository =
-      locator<WeatherConfigRepository>();
+  final ConfigModuleService _configModule = locator<ConfigModuleService>();
+  late final ModuleConfigRepository<WeatherConfigModel> _repository =
+      _configModule.getModuleRepository<WeatherConfigModel>('weather-module');
 
-  late WeatherUnit _unit;
+  WeatherUnit _unit = WeatherUnit.celsius;
 
   @override
   void initState() {
@@ -46,9 +49,12 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   }
 
   void _syncStateWithRepository() {
-    setState(() {
-      _unit = _repository.unit;
-    });
+    final config = _repository.data;
+    if (config != null) {
+      setState(() {
+        _unit = config.unit;
+      });
+    }
   }
 
   @override
@@ -198,7 +204,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
       _unit = unit;
     });
 
-    final success = await _repository.setWeatherUnit(_unit);
+    final success = await _updateWeatherUnit(_unit);
 
     Future.microtask(() async {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -213,5 +219,20 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
         AlertBar.showError(context, message: 'Save settings failed.');
       }
     });
+  }
+
+  Future<bool> _updateWeatherUnit(WeatherUnit unit) async {
+    final current = _repository.data;
+    if (current == null) return false;
+
+    final updateData = <String, dynamic>{
+      'type': 'weather-module',
+      'location_type': current.locationType.value,
+      'unit': unit.value,
+      if (current.openWeatherApiKey != null)
+        'open_weather_api_key': current.openWeatherApiKey,
+    };
+
+    return await _repository.updateConfiguration(updateData);
   }
 }

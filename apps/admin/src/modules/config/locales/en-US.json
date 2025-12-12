@@ -23,6 +23,12 @@
     },
     "configModules": {
       "title": "Modules config"
+    },
+    "configModuleEdit": {
+      "title": "Edit module: {module}"
+    },
+    "configPluginEdit": {
+      "title": "Edit plugin: {plugin}"
     }
   },
   "breadcrumbs": {
@@ -35,22 +41,8 @@
     "configPlugins": "plugins config",
     "configModules": "modules config"
   },
-  "headings": {
-    "config": "Configuration"
-  },
-  "subHeadings": {
-    "config": "Smart panel configuration"
-  },
-  "tabs": {
-    "configAudio": "Audio config",
-    "configDisplay": "Display config",
-    "configLanguage": "Language config",
-    "configWeather": "Weather config",
-    "configSystem": "System config",
-    "configPlugins": "Plugins config",
-    "configModules": "Modules config"
-  },
   "messages": {
+    "loadError": "Failed to load configuration",
     "configAudio": {
       "edited": "Changes saved! The audio config has been updated.",
       "notEdited": "Something went wrong. Audio config update was not successful."
@@ -78,7 +70,65 @@
     "configModule": {
       "edited": "Changes saved! The module config has been updated.",
       "notEdited": "Something went wrong. Module config update was not successful."
+    },
+    "moduleConfigNotFound": {
+      "title": "Module Configuration Not Found",
+      "message": "The configuration for module \"{module}\" could not be loaded. Please check if the module is properly installed and configured."
+    },
+    "moduleNotFound": {
+      "title": "Module Not Found",
+      "message": "Module \"{module}\" was not found in the system. Please verify that the module is installed and enabled."
+    },
+    "moduleElementNotFound": {
+      "title": "Module Element Not Registered",
+      "message": "The configuration element for module \"{module}\" is not registered. This module may not support configuration editing."
+    },
+    "moduleComponentsNotFound": {
+      "message": "The module \"{module}\" does not have any configuration components available."
+    },
+    "moduleFormNotFound": {
+      "title": "Configuration Form Not Available",
+      "message": "The configuration form component for module \"{module}\" is not available. This module may not support configuration editing through the user interface."
+    },
+    "pluginConfigNotFound": {
+      "title": "Plugin Configuration Not Found",
+      "message": "The configuration for plugin \"{plugin}\" could not be loaded. Please check if the plugin is properly installed and configured."
+    },
+    "pluginNotFound": {
+      "title": "Plugin Not Found",
+      "message": "Plugin \"{plugin}\" was not found in the system. Please verify that the plugin is installed and enabled."
+    },
+    "pluginElementNotFound": {
+      "title": "Plugin Element Not Registered",
+      "message": "The configuration element for plugin \"{plugin}\" is not registered. This plugin may not support configuration editing."
+    },
+    "pluginComponentsNotFound": {
+      "message": "The plugin \"{plugin}\" does not have any configuration components available."
+    },
+    "pluginFormNotFound": {
+      "title": "Configuration Form Not Available",
+      "message": "The configuration form component for plugin \"{plugin}\" is not available. This plugin may not support configuration editing through the user interface."
     }
+  },
+  "headings": {
+    "config": "Configuration",
+    "misc": {
+      "discard": "Discard Changes"
+    }
+  },
+  "subHeadings": {
+    "config": "Smart panel configuration",
+    "configModule": "Module configuration",
+    "configPlugin": "Plugin configuration"
+  },
+  "tabs": {
+    "configAudio": "Audio config",
+    "configDisplay": "Display config",
+    "configLanguage": "Language config",
+    "configWeather": "Weather config",
+    "configSystem": "System config",
+    "configPlugins": "Plugins config",
+    "configModules": "Modules config"
   },
   "texts": {
     "loadingAudioConfig": "Loading audio config...",
@@ -87,7 +137,10 @@
     "loadingWeatherConfig": "Loading weather config...",
     "loadingSystemConfig": "Loading system config...",
     "loadingPluginConfig": "Loading plugin config...",
-    "loadingModuleConfig": "Loading module config..."
+    "loadingModuleConfig": "Loading module config...",
+    "misc": {
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    }
   },
   "fields": {
     "speaker": {
@@ -197,6 +250,21 @@
     },
     "myLocation": {
       "title": "My location"
+    },
+    "discard": {
+      "title": "Discard"
+    },
+    "close": {
+      "title": "Close"
+    },
+    "retry": {
+      "title": "Retry"
+    },
+    "yes": {
+      "title": "Yes"
+    },
+    "no": {
+      "title": "No"
     }
   },
   "languages": {

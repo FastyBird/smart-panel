@@ -10,28 +10,9 @@ import { FactoryResetRegistryService } from '../system/services/factory-reset-re
 import { SystemModule } from '../system/system.module';
 
 import { GenerateAdminExtensionsCommand } from './commands/generate-admin-extensions.command';
-import {
-	CONFIG_MODULE_API_TAG_DESCRIPTION,
-	CONFIG_MODULE_API_TAG_NAME,
-	CONFIG_MODULE_NAME,
-	WeatherLocationType,
-} from './config.constants';
+import { CONFIG_MODULE_API_TAG_DESCRIPTION, CONFIG_MODULE_API_TAG_NAME, CONFIG_MODULE_NAME } from './config.constants';
 import { CONFIG_SWAGGER_EXTRA_MODELS } from './config.openapi';
 import { ConfigController } from './controllers/config.controller';
-import {
-	UpdateWeatherCityIdConfigDto,
-	UpdateWeatherCityNameConfigDto,
-	UpdateWeatherConfigDto,
-	UpdateWeatherLatLonConfigDto,
-	UpdateWeatherZipCodeConfigDto,
-} from './dto/config.dto';
-import {
-	WeatherCityIdConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherZipCodeConfigModel,
-} from './models/config.model';
 import { ConfigService } from './services/config.service';
 import { ModulesTypeMapperService } from './services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from './services/plugins-type-mapper.service';
@@ -71,61 +52,5 @@ export class ConfigModule {
 		for (const model of CONFIG_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
-
-		this.discriminatorRegistry.register({
-			parentClass: WeatherConfigModel,
-			discriminatorProperty: 'location_type',
-			discriminatorValue: WeatherLocationType.LAT_LON,
-			modelClass: WeatherLatLonConfigModel,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: UpdateWeatherConfigDto,
-			discriminatorProperty: 'location_type',
-			discriminatorValue: WeatherLocationType.LAT_LON,
-			modelClass: UpdateWeatherLatLonConfigDto,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: WeatherConfigModel,
-			discriminatorProperty: 'location_type',
-			discriminatorValue: WeatherLocationType.CITY_NAME,
-			modelClass: WeatherCityNameConfigModel,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: UpdateWeatherConfigDto,
-			discriminatorProperty: 'location_type',
-			discriminatorValue: WeatherLocationType.CITY_NAME,
-			modelClass: UpdateWeatherCityNameConfigDto,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: WeatherConfigModel,
-			discriminatorProperty: 'location_type',
-			discriminatorValue: WeatherLocationType.CITY_ID,
-			modelClass: WeatherCityIdConfigModel,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: UpdateWeatherConfigDto,
-			discriminatorProperty: 'location_type',
-			discriminatorValue: WeatherLocationType.CITY_ID,
-			modelClass: UpdateWeatherCityIdConfigDto,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: WeatherConfigModel,
-			discriminatorProperty: 'location_type',
-			discriminatorValue: WeatherLocationType.ZIP_CODE,
-			modelClass: WeatherZipCodeConfigModel,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: UpdateWeatherConfigDto,
-			discriminatorProperty: 'location_type',
-			discriminatorValue: WeatherLocationType.ZIP_CODE,
-			modelClass: UpdateWeatherZipCodeConfigDto,
-		});
 	}
 }

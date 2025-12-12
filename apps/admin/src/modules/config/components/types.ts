@@ -1,4 +1,2 @@
-export * from './config-language-form.types';
-export * from './config-weather-form.types';
-export * from './config-system-form.types';
+// Language, weather, and system form types removed - these configs are now accessed via modules
 export * from './config-pluign.types';

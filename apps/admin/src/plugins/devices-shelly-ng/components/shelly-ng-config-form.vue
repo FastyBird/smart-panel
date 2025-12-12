@@ -3,13 +3,21 @@
 		ref="formEl"
 		:model="model"
 		:rules="rules"
-		:label-position="props.layout === Layout.PHONE ? 'top' : 'right'"
-		:label-width="180"
+		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('devicesShellyNgPlugin.headings.aboutPluginStatus')"
+			:description="t('devicesShellyNgPlugin.texts.aboutPluginStatus')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('devicesShellyNgPlugin.fields.config.enabled.title')"
 			prop="enabled"
+			label-position="left"
+			class="mt-3"
 		>
 			<el-switch
 				v-model="model.enabled"
@@ -30,6 +38,7 @@
 			:label="t('devicesShellyNgPlugin.fields.config.mdns.enabled.title')"
 			prop="mdns.enabled"
 			class="mt-3"
+			label-position="left"
 		>
 			<el-switch
 				v-model="model.mdns.enabled"

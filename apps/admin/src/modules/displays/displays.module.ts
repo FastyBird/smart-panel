@@ -46,20 +46,10 @@ export default {
 		app.provide(displaysStoreKey, displaysStore);
 		storesManager.addStore(displaysStoreKey, displaysStore);
 
-		// Register main displays module
 		modulesManager.addModule(displaysAdminModuleKey, {
 			type: DISPLAYS_MODULE_NAME,
 			name: 'Displays',
 			description: 'Manage your display devices and their access tokens.',
-			elements: [],
-		});
-
-		// Register displays config module (backend uses 'displays' as type, not 'displays-module')
-		const displaysConfigModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Displays-Config');
-		modulesManager.addModule(displaysConfigModuleKey, {
-			type: 'displays',
-			name: 'Displays Configuration',
-			description: 'Configure display registration and permit join settings.',
 			elements: [
 				{
 					type: CONFIG_MODULE_MODULE_TYPE,

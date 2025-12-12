@@ -1,6 +1,6 @@
 import { FieldType, ISchemaOptions } from 'influx';
 
-export const DISPLAYS_MODULE_NAME = 'displays';
+export const DISPLAYS_MODULE_NAME = 'displays-module';
 export const DISPLAYS_MODULE_PREFIX = 'displays-module';
 export const DISPLAYS_MODULE_API_TAG_NAME = 'Displays module';
 export const DISPLAYS_MODULE_API_TAG_DESCRIPTION =

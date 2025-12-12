@@ -11,9 +11,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/backend_discovery.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
-import 'package:fastybird_smart_panel/modules/config/export.dart'
-    as config_module;
-import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart'
     as dashboard_module;
 import 'package:fastybird_smart_panel/modules/devices/export.dart'
@@ -348,12 +346,6 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider.value(
           value: locator<displays_module.DisplayRepository>(),
-        ),
-        ChangeNotifierProvider.value(
-          value: locator<config_module.LanguageConfigRepository>(),
-        ),
-        ChangeNotifierProvider.value(
-          value: locator<config_module.WeatherConfigRepository>(),
         ),
         ChangeNotifierProvider.value(
           value: locator<weather_module.CurrentWeatherRepository>(),

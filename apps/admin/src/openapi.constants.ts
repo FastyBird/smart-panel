@@ -54,21 +54,8 @@ export type DashboardModuleUpdateDataSourceSchema = components['schemas']['Dashb
 export type DashboardModuleDataSourceSchema = components['schemas']['DashboardModuleDataDataSource'];
 
 // Config Module Schemas
-export type ConfigModuleWeatherSchema = components['schemas']['ConfigModuleDataWeather'];
-export type ConfigModuleWeatherLatLonSchema = components['schemas']['ConfigModuleDataWeatherLatLon'];
-export type ConfigModuleWeatherCityNameSchema = components['schemas']['ConfigModuleDataWeatherCityName'];
-export type ConfigModuleWeatherCityIdSchema = components['schemas']['ConfigModuleDataWeatherCityId'];
-export type ConfigModuleWeatherZipCodeSchema = components['schemas']['ConfigModuleDataWeatherZipCode'];
-export type ConfigModuleUpdateWeatherSchema = components['schemas']['ConfigModuleUpdateWeather'];
-export type ConfigModuleUpdateWeatherLatLonSchema = components['schemas']['ConfigModuleUpdateWeatherLatLon'];
-export type ConfigModuleUpdateWeatherCityNameSchema = components['schemas']['ConfigModuleUpdateWeatherCityName'];
-export type ConfigModuleUpdateWeatherCityIdSchema = components['schemas']['ConfigModuleUpdateWeatherCityId'];
-export type ConfigModuleUpdateWeatherZipCodeSchema = components['schemas']['ConfigModuleUpdateWeatherZipCode'];
-export type ConfigModuleSystemSchema = components['schemas']['ConfigModuleDataSystem'];
-export type ConfigModuleUpdateSystemSchema = components['schemas']['ConfigModuleUpdateSystem'];
+// Weather, System, and Language section schemas removed - these configs are now accessed via modules (weather-module, system-module)
 export type ConfigModuleAppSchema = components['schemas']['ConfigModuleDataApp'];
-export type ConfigModuleLanguageSchema = components['schemas']['ConfigModuleDataLanguage'];
-export type ConfigModuleUpdateLanguageSchema = components['schemas']['ConfigModuleUpdateLanguage'];
 export type ConfigModulePluginSchema = components['schemas']['ConfigModuleDataPlugin'];
 export type ConfigModuleUpdatePluginSchema = components['schemas']['ConfigModuleUpdatePlugin'];
 export type ConfigModuleModuleSchema = components['schemas']['ConfigModuleDataModule'];
@@ -243,10 +230,8 @@ export type DashboardModuleUpdateDataSourceOperation = operations['update-dashbo
 export type DashboardModuleDeleteDataSourceOperation = operations['delete-dashboard-module-data-source'];
 
 // Config Module Operations
-export type ConfigModuleGetConfigSectionOperation = operations['get-config-module-config-section'];
-export type ConfigModuleUpdateLanguageOperation = operations['update-config-module-language'];
-export type ConfigModuleUpdateWeatherOperation = operations['update-config-module-weather'];
-export type ConfigModuleUpdateSystemOperation = operations['update-config-module-system'];
+// Language, Weather, and System section operations removed - these configs are now accessed via modules
+export type ConfigModuleGetConfigSectionOperation = operations['get-config-module-config-section']; // Deprecated but kept for backward compatibility
 export type ConfigModuleGetConfigPluginOperation = operations['get-config-module-config-plugin'];
 export type ConfigModuleUpdateConfigPluginOperation = operations['update-config-module-config-plugin'];
 export type ConfigModuleGetConfigModuleOperation = operations['get-config-module-config-module'];
@@ -309,19 +294,9 @@ export { DevicesModuleDataDeviceConnectionStatusStatus as DevicesModuleDeviceCon
 
 // Config Module Enums
 // ===================
-export { ConfigModuleUpdateLanguageLanguage as ConfigModuleLanguageLanguage } from './openapi';
+// Language, Weather, and System section enums removed - these configs are now accessed via modules
 
-export { ConfigModuleUpdateLanguageTime_format as ConfigModuleLanguageTimeFormat } from './openapi';
-
-export { ConfigModuleUpdateWeatherUnit as ConfigModuleWeatherUnit } from './openapi';
-
-export { ConfigModuleUpdateLanguageType as ConfigModuleLanguageType } from './openapi';
-
-export { ConfigModuleUpdateWeatherType as ConfigModuleWeatherType } from './openapi';
-
-export { ConfigModuleUpdateSystemType as ConfigModuleSystemType } from './openapi';
-
-export { PathsConfigModuleConfigSectionGetParametersPathSection as ConfigModuleSection } from './openapi';
+// ConfigModuleSection removed - section-based endpoints are deprecated
 
 // System Module Enums
 // ===================
@@ -342,11 +317,5 @@ export { SystemModuleDataExtensionAdminType } from './openapi';
 export { SystemModuleDataExtensionBackendType } from './openapi';
 
 // Weather Config Location Types
+// Weather location type enums removed - weather config is now accessed via weather-module
 // ==============================
-export {
-	ConfigModuleUpdateWeatherLocation_type as ConfigModuleWeatherLocationType,
-	ConfigModuleUpdateWeatherLatLonLocation_type as ConfigModuleWeatherLatLonLocationType,
-	ConfigModuleUpdateWeatherCityNameLocation_type as ConfigModuleWeatherCityNameLocationType,
-	ConfigModuleUpdateWeatherCityIdLocation_type as ConfigModuleWeatherCityIdLocationType,
-	ConfigModuleUpdateWeatherZipCodeLocation_type as ConfigModuleWeatherZipCodeLocationType,
-} from './openapi';

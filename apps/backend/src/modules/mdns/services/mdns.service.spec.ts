@@ -38,7 +38,6 @@ describe('MdnsService', () => {
 	const createMockConfig = (overrides?: Partial<MdnsConfigModel>): MdnsConfigModel => {
 		const config = new MdnsConfigModel();
 		config.type = MDNS_MODULE_NAME;
-		config.enabled = true;
 		config.serviceName = MDNS_DEFAULT_SERVICE_NAME;
 		config.serviceType = MDNS_DEFAULT_SERVICE_TYPE;
 		Object.assign(config, overrides);
@@ -102,28 +101,6 @@ describe('MdnsService', () => {
 		expect(service).toBeDefined();
 	});
 
-	describe('isEnabled', () => {
-		it('should return true when enabled is true', () => {
-			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(createMockConfig({ enabled: true }));
-
-			expect(service.isEnabled()).toBe(true);
-		});
-
-		it('should return false when enabled is false', () => {
-			jest.spyOn(configService, 'getModuleConfig').mockReturnValue(createMockConfig({ enabled: false }));
-
-			expect(service.isEnabled()).toBe(false);
-		});
-
-		it('should return true by default when config is not available', () => {
-			jest.spyOn(configService, 'getModuleConfig').mockImplementation(() => {
-				throw new Error('Config not found');
-			});
-
-			expect(service.isEnabled()).toBe(true);
-		});
-	});
-
 	describe('getServiceName', () => {
 		it('should return configured service name', () => {
 			jest
@@ -179,15 +156,6 @@ describe('MdnsService', () => {
 				}),
 			);
 			expect(service.isCurrentlyAdvertising()).toBe(true);
-		});
-
-		it('should not advertise when mDNS is disabled', () => {
-			jest.spyOn(service, 'isEnabled').mockReturnValue(false);
-
-			service.advertise(3000);
-
-			expect(mockPublish).not.toHaveBeenCalled();
-			expect(service.isCurrentlyAdvertising()).toBe(false);
 		});
 
 		it('should not advertise twice', () => {

@@ -12,7 +12,12 @@ import {
 	type ModuleInjectionKey,
 } from '../../common';
 
+import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
+
+import { WeatherConfigForm } from './components/components';
 import enUS from './locales/en-US.json';
+import { WeatherConfigEditFormSchema } from './schemas/config.schemas';
+import { WeatherConfigSchema, WeatherConfigUpdateReqSchema } from './store/config.store.schemas';
 import { weatherDayStoreKey, weatherForecastStoreKey } from './store/keys';
 import { registerWeatherDayStore, registerWeatherForecastStore } from './store/stores';
 import { EventType, WEATHER_MODULE_EVENT_PREFIX, WEATHER_MODULE_NAME } from './weather.constants';
@@ -47,7 +52,22 @@ export default {
 			type: WEATHER_MODULE_NAME,
 			name: 'Weather',
 			description: 'Stay up to date with current conditions and upcoming forecasts.',
-			elements: [],
+			elements: [
+				{
+					type: CONFIG_MODULE_MODULE_TYPE,
+					components: {
+						moduleConfigEditForm: WeatherConfigForm,
+					},
+					schemas: {
+						moduleConfigSchema: WeatherConfigSchema,
+						moduleConfigEditFormSchema: WeatherConfigEditFormSchema,
+						moduleConfigUpdateReqSchema: WeatherConfigUpdateReqSchema,
+					},
+					modules: [CONFIG_MODULE_NAME],
+				},
+			],
+			modules: [CONFIG_MODULE_NAME],
+			isCore: true,
 		});
 
 		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {

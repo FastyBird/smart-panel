@@ -3,13 +3,21 @@
 		ref="formEl"
 		:model="model"
 		:rules="rules"
-		:label-position="props.layout === Layout.PHONE ? 'top' : 'right'"
-		:label-width="180"
+		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('devicesHomeAssistantPlugin.headings.aboutConnectionSettings')"
+			:description="t('devicesHomeAssistantPlugin.texts.aboutConnectionSettings')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.config.enabled.title')"
 			prop="enabled"
+			label-position="left"
+			class="mt-3"
 		>
 			<el-switch
 				v-model="model.enabled"
@@ -47,7 +55,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IHomeAssistantConfigEditForm } from '../schemas/config.types';

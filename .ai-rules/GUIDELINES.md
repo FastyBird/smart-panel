@@ -59,6 +59,9 @@ pnpm run start:prod
 ### Admin
 
 ```bash
+# Build open api specification
+pnpm run generate:openapi
+
 # Build admin interface
 pnpm run admin:build
 
@@ -69,6 +72,9 @@ pnpm --filter @fastybird/smart-panel-admin build
 ### Flutter Panel
 
 ```bash
+# Build open api specification
+pnpm run generate:openapi
+
 # Rebuild API and specs (run this after OpenAPI changes)
 melos rebuild-all
 

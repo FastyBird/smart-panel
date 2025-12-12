@@ -4,12 +4,13 @@ import { ConsoleLogger, Injectable, LoggerService } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as ConfigModuleEventType, SectionType } from '../../config/config.constants';
-import { SystemConfigModel } from '../../config/models/config.model';
+import { EventType as ConfigModuleEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { ILogger } from '../logger/logger';
 import { RingBuffer } from '../logger/ring-buffer';
+import { SystemConfigModel } from '../models/config.model';
 import { LogEntryModel } from '../models/system.model';
+import { SYSTEM_MODULE_NAME } from '../system.constants';
 import { LogEntrySource, LogEntryType } from '../system.constants';
 
 const LEVEL_MAP: Record<LogEntryType, number> = {
@@ -210,7 +211,7 @@ export class SystemLoggerService implements LoggerService {
 
 	private get config(): SystemConfigModel {
 		if (!this.systemConfig) {
-			this.systemConfig = this.configService.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
+			this.systemConfig = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
 		}
 
 		return this.systemConfig;

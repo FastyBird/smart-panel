@@ -1,10 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
-import { SectionType } from '../config/config.constants';
 import { ConfigModule } from '../config/config.module';
-import { SystemConfigModel } from '../config/models/config.model';
 import { ConfigService } from '../config/services/config.service';
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
@@ -18,6 +17,8 @@ import { WebsocketModule } from '../websocket/websocket.module';
 import { ExtensionsController } from './controllers/extensions.controller';
 import { LogsController } from './controllers/logs.controller';
 import { SystemController } from './controllers/system.controller';
+import { UpdateSystemConfigDto } from './dto/update-config.dto';
+import { SystemConfigModel } from './models/config.model';
 import { SystemStatsProvider } from './providers/system-stats.provider';
 import { FactoryResetRegistryService } from './services/factory-reset-registry.service';
 import { SystemCommandService } from './services/system-command.service';
@@ -50,7 +51,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 	controllers: [SystemController, LogsController, ExtensionsController],
 	exports: [SystemService, FactoryResetRegistryService, SystemLoggerService],
 })
-export class SystemModule {
+export class SystemModule implements OnModuleInit {
 	constructor(
 		private readonly eventRegistry: CommandEventRegistryService,
 		private readonly systemCommandService: SystemCommandService,
@@ -59,9 +60,17 @@ export class SystemModule {
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly configService: ConfigService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
 	) {}
 
 	onModuleInit() {
+		// Register system config model with ModulesTypeMapperService
+		this.modulesMapperService.registerMapping<SystemConfigModel, UpdateSystemConfigDto>({
+			type: SYSTEM_MODULE_NAME,
+			class: SystemConfigModel,
+			configDto: UpdateSystemConfigDto,
+		});
+
 		this.eventRegistry.register(
 			EventType.SYSTEM_REBOOT_SET,
 			EventHandlerName.INTERNAL_PLATFORM_ACTION,
@@ -85,7 +94,8 @@ export class SystemModule {
 
 		this.statsRegistryService.register(SYSTEM_MODULE_NAME, this.systemStatsProvider);
 
-		const moduleConfig = this.configService.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
+		// Get system config using module config endpoint
+		const moduleConfig = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
 
 		this.systemLoggerService.setAllowedTypes(moduleConfig.logLevels as unknown as LogEntryType[]);
 

@@ -4,30 +4,30 @@ import fetch from 'node-fetch';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { SectionType } from '../../config/config.constants';
-import {
-	WeatherCityIdConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherZipCodeConfigModel,
-} from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
+import { TemperatureUnitType } from '../../system/system.constants';
 import { GeolocationCityDto, GeolocationZipDto } from '../dto/geolocation.dto';
+import { WeatherConfigModel } from '../models/config.model';
 import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
+import { WeatherLocationType } from '../weather.constants';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 @Injectable()
 export class GeolocationService {
 	private readonly logger = new Logger(GeolocationService.name);
-	private readonly apiKey: string | null;
+	private apiKey: string | null = null;
 	private readonly itemsLimit: number = 5;
 
 	private readonly API_URL = 'https://api.openweathermap.org/geo/1.0';
 
 	constructor(private readonly configService: ConfigService) {
-		this.apiKey = this.getConfig().openWeatherApiKey;
+		// Config will be loaded lazily on first use to avoid issues during module initialization
+		// when mappings might not be registered yet
 	}
 
 	async getCoordinatesByCity(city: string): Promise<GeolocationCityModel[] | null> {
+		this.ensureApiKeyLoaded();
+
 		try {
 			const url = `${this.API_URL}/direct?q=${encodeURIComponent(city)}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -70,6 +70,8 @@ export class GeolocationService {
 	}
 
 	async getCoordinatesByZip(zip: string): Promise<GeolocationZipModel | null> {
+		this.ensureApiKeyLoaded();
+
 		try {
 			const url = `${this.API_URL}/zip?zip=${encodeURIComponent(zip)}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -98,6 +100,8 @@ export class GeolocationService {
 	}
 
 	async getCityByCoordinates(lat: number, lon: number): Promise<GeolocationCityModel[] | null> {
+		this.ensureApiKeyLoaded();
+
 		try {
 			const url = `${this.API_URL}/reverse?lat=${lat}&lon=${lon}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -139,18 +143,28 @@ export class GeolocationService {
 		}
 	}
 
-	private getConfig():
-		| WeatherLatLonConfigModel
-		| WeatherCityNameConfigModel
-		| WeatherCityIdConfigModel
-		| WeatherZipCodeConfigModel {
-		return this.configService.getConfigSection<
-			WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
-		>(SectionType.WEATHER, [
-			WeatherLatLonConfigModel,
-			WeatherCityNameConfigModel,
-			WeatherCityIdConfigModel,
-			WeatherZipCodeConfigModel,
-		]);
+	private ensureApiKeyLoaded(): void {
+		if (this.apiKey === null) {
+			this.apiKey = this.getConfig().openWeatherApiKey;
+		}
+	}
+
+	private getConfig(): WeatherConfigModel {
+		try {
+			return this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
+		} catch {
+			// If config doesn't exist yet (e.g., during migration or mapping not registered), return default config
+			return toInstance(WeatherConfigModel, {
+				type: WEATHER_MODULE_NAME,
+				locationType: WeatherLocationType.LAT_LON,
+				unit: TemperatureUnitType.CELSIUS,
+				openWeatherApiKey: null,
+				latitude: null,
+				longitude: null,
+				cityName: null,
+				cityId: null,
+				zipCode: null,
+			});
+		}
 	}
 }

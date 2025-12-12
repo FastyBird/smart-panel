@@ -1,23 +1,14 @@
 import type { StoreInjectionKey } from '../../../common';
 
 import type { IConfigAppStoreActions, IConfigAppStoreState } from './config-app.store.types';
-import type { IConfigLanguageStoreActions, IConfigLanguageStoreState } from './config-language.store.types';
+// Language, weather, and system store types removed - these configs are now accessed via modules
 import type { IConfigModulesStoreActions, IConfigModulesStoreState } from './config-modules.store.types';
 import type { IConfigPluginsStoreActions, IConfigPluginsStoreState } from './config-plugins.store.types';
-import type { IConfigSystemStoreActions, IConfigSystemStoreState } from './config-system.store.types';
-import type { IConfigWeatherStoreActions, IConfigWeatherStoreState } from './config-weather.store.types';
 
 export const configAppStoreKey: StoreInjectionKey<string, IConfigAppStoreState, object, IConfigAppStoreActions> =
 	Symbol('FB-Module-Config-ConfigApp');
 
-export const configLanguageStoreKey: StoreInjectionKey<string, IConfigLanguageStoreState, object, IConfigLanguageStoreActions> =
-	Symbol('FB-Module-Config-ConfigLanguage');
-
-export const configWeatherStoreKey: StoreInjectionKey<string, IConfigWeatherStoreState, object, IConfigWeatherStoreActions> =
-	Symbol('FB-Module-Config-ConfigWeather');
-
-export const configSystemStoreKey: StoreInjectionKey<string, IConfigSystemStoreState, object, IConfigSystemStoreActions> =
-	Symbol('FB-Module-Config-ConfigSystem');
+// Language, weather, and system store keys removed - these configs are now accessed via modules
 
 export const configPluginsStoreKey: StoreInjectionKey<string, IConfigPluginsStoreState, object, IConfigPluginsStoreActions> =
 	Symbol('FB-Module-Config-ConfigPlugins');
