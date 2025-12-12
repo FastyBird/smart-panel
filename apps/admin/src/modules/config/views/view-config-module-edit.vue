@@ -364,8 +364,18 @@ watch(
 	{ immediate: false }
 );
 
-onMounted((): void => {
+onMounted(async (): Promise<void> => {
 	emit('update:remoteFormChanged', remoteFormChanged.value);
+	
+	// If config module wasn't loaded in onBeforeMount (e.g., route params not ready), try again
+	if (!configModule.value && !isLoading.value && !loadError.value && currentModuleType.value) {
+		await fetchConfigModule().catch((error: unknown): void => {
+			const err = error as Error;
+
+			loadError.value = true;
+			console.error('Failed to fetch config module:', err);
+		});
+	}
 });
 
 watch(
