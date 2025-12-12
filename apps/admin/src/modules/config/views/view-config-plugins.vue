@@ -8,8 +8,8 @@
 			<el-card
 				v-for="plugin in plugins"
 				:key="String(plugin.type)"
-				shadow="hover"
-				class="cursor-pointer transition-all hover:shadow-lg"
+				shadow="never"
+				class="config-plugin-card"
 				@click="onPluginEdit(plugin.type)"
 			>
 					<div class="flex flex-col items-center justify-center p-6 text-center">
@@ -228,3 +228,34 @@ useMeta({
 	title: t('configModule.meta.configPlugins.title'),
 });
 </script>
+
+<style scoped lang="scss">
+:deep(.config-plugin-card) {
+	border: 1px solid var(--el-border-color);
+	border-radius: var(--el-border-radius-base);
+	background-color: var(--el-bg-color);
+	cursor: pointer;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: none;
+
+	&:hover {
+		border-color: var(--el-text-color-regular);
+		background-color: var(--el-fill-color-light);
+		box-shadow: 0 0 0 1px var(--el-text-color-regular) inset,
+			0 2px 4px 0 rgba(0, 0, 0, 0.12),
+			0 0 6px 0 rgba(0, 0, 0, 0.04);
+	}
+
+	&:active {
+		border-color: var(--el-color-primary);
+		background-color: var(--el-fill-color);
+		box-shadow: 0 0 0 1px var(--el-color-primary) inset,
+			0 2px 4px 0 rgba(0, 0, 0, 0.12),
+			0 0 6px 0 rgba(0, 0, 0, 0.04);
+	}
+
+	.el-card__body {
+		padding: var(--el-card-padding);
+	}
+}
+</style>

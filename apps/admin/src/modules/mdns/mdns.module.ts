@@ -32,7 +32,7 @@ export default {
 		modulesManager.addModule(mdnsAdminModuleKey, {
 			type: MDNS_MODULE_NAME,
 			name: 'mDNS',
-			description: 'Configure mDNS service advertisement settings',
+			description: 'Network discovery of Smart Panel service on local network',
 			elements: [
 				{
 					type: CONFIG_MODULE_MODULE_TYPE,

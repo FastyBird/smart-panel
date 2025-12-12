@@ -30,7 +30,7 @@ export default {
 			source: 'com.fastybird.smart-panel.plugin.logger-rotating-file',
 			name: 'Rotating File Logger',
 			description:
-				'Adds optional file-based log persistence with daily rotation and automatic cleanup. Useful for long-term log retention or offline analysis.',
+				'File-based log persistence with daily rotation and automatic cleanup for long-term retention.',
 			links: {
 				documentation: 'http://www.fastybird.com',
 				devDocumentation: 'http://www.fastybird.com',
