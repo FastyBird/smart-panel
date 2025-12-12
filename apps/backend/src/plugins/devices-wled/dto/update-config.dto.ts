@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -94,6 +94,70 @@ export class WledUpdatePollingDto {
 }
 
 /**
+ * WLED mDNS discovery update DTO
+ */
+@ApiSchema({ name: 'DevicesWledPluginUpdateConfigMdns' })
+export class WledUpdateMdnsDto {
+	@ApiPropertyOptional({
+		description: 'Whether mDNS discovery is enabled',
+		example: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
+	enabled?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Network interface for mDNS discovery (null for all interfaces)',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"interface","reason":"Interface must be a valid string."}]' })
+	interface?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Automatically add discovered devices to the system',
+		example: false,
+		name: 'auto_add',
+	})
+	@Expose({ name: 'auto_add' })
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"auto_add","reason":"Auto add must be a boolean value."}]' })
+	autoAdd?: boolean;
+}
+
+/**
+ * WLED WebSocket update DTO
+ */
+@ApiSchema({ name: 'DevicesWledPluginUpdateConfigWebSocket' })
+export class WledUpdateWebSocketDto {
+	@ApiPropertyOptional({
+		description: 'Whether to use WebSocket for real-time state updates',
+		example: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
+	enabled?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'WebSocket reconnection interval in milliseconds',
+		example: 5000,
+		minimum: 1000,
+		name: 'reconnect_interval',
+	})
+	@Expose({ name: 'reconnect_interval' })
+	@IsOptional()
+	@IsInt({ message: '[{"field":"reconnect_interval","reason":"Reconnect interval must be a whole number."}]' })
+	@Min(1000, {
+		message: '[{"field":"reconnect_interval","reason":"Reconnect interval minimum value must be at least 1000ms."}]',
+	})
+	reconnectInterval?: number;
+}
+
+/**
  * Main WLED plugin configuration update DTO
  */
 @ApiSchema({ name: 'DevicesWledPluginUpdateConfig' })
@@ -136,4 +200,24 @@ export class WledUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@ValidateNested()
 	@Type(() => WledUpdatePollingDto)
 	polling?: WledUpdatePollingDto;
+
+	@ApiPropertyOptional({
+		description: 'mDNS discovery configuration',
+		type: () => WledUpdateMdnsDto,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => WledUpdateMdnsDto)
+	mdns?: WledUpdateMdnsDto;
+
+	@ApiPropertyOptional({
+		description: 'WebSocket configuration',
+		type: () => WledUpdateWebSocketDto,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => WledUpdateWebSocketDto)
+	websocket?: WledUpdateWebSocketDto;
 }

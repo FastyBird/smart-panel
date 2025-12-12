@@ -1,17 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
+	createSegmentBindings,
 	DEVICES_WLED_TYPE,
+	NIGHTLIGHT_BINDINGS,
+	SYNC_BINDINGS,
 	WLED_CHANNEL_IDENTIFIERS,
 	WLED_DEFAULT_MANUFACTURER,
 	WLED_DEFAULT_MODEL,
 	WLED_DEVICE_DESCRIPTOR,
+	WLED_LIGHT_PROPERTY_IDENTIFIERS,
+	WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS,
+	WLED_SYNC_PROPERTY_IDENTIFIERS,
 	WledPropertyBinding,
 } from '../devices-wled.constants';
 import { CreateWledChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -99,6 +105,9 @@ export class WledDeviceMapperService {
 		// Create channels and properties
 		await this.createDeviceInformationChannel(device, context.info);
 		await this.createLightChannel(device, context.state);
+		await this.createNightlightChannel(device, context.state);
+		await this.createSyncChannel(device, context.state);
+		await this.createSegmentChannels(device, context.state);
 
 		// Set connection state to CONNECTED
 		await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -124,27 +133,54 @@ export class WledDeviceMapperService {
 			return;
 		}
 
-		// Find light channel
-		const lightChannel = await this.channelsService.findOneBy<WledChannelEntity>(
-			'identifier',
-			WLED_CHANNEL_IDENTIFIERS.LIGHT,
+		// Update light channel
+		await this.updateChannelProperties(
 			device.id,
+			WLED_CHANNEL_IDENTIFIERS.LIGHT,
+			this.extractLightStateProperties(state),
+		);
+
+		// Update nightlight channel
+		await this.updateChannelProperties(
+			device.id,
+			WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
+			this.extractNightlightStateProperties(state),
+		);
+
+		// Update sync channel
+		await this.updateChannelProperties(device.id, WLED_CHANNEL_IDENTIFIERS.SYNC, this.extractSyncStateProperties(state));
+
+		// Update segment channels
+		for (let i = 0; i < state.segments.length; i++) {
+			const channelIdentifier = `${WLED_CHANNEL_IDENTIFIERS.SEGMENT}_${i}`;
+			await this.updateChannelProperties(device.id, channelIdentifier, this.extractSegmentStateProperties(state, i));
+		}
+	}
+
+	/**
+	 * Update properties for a specific channel
+	 */
+	private async updateChannelProperties(
+		deviceId: string,
+		channelIdentifier: string,
+		propertyUpdates: Record<string, string | number | boolean>,
+	): Promise<void> {
+		const channel = await this.channelsService.findOneBy<WledChannelEntity>(
+			'identifier',
+			channelIdentifier,
+			deviceId,
 			DEVICES_WLED_TYPE,
 		);
 
-		if (!lightChannel) {
-			this.logger.warn(`[WLED][MAPPER] Light channel not found for device ${identifier}`);
+		if (!channel) {
 			return;
 		}
-
-		// Update light properties
-		const propertyUpdates = this.extractStateProperties(state);
 
 		for (const [propertyIdentifier, value] of Object.entries(propertyUpdates)) {
 			const property = await this.channelsPropertiesService.findOneBy<WledChannelPropertyEntity>(
 				'identifier',
 				propertyIdentifier,
-				lightChannel.id,
+				channel.id,
 				DEVICES_WLED_TYPE,
 			);
 
@@ -264,7 +300,7 @@ export class WledDeviceMapperService {
 		}
 
 		// Extract state values
-		const propertyValues = this.extractStateProperties(state);
+		const propertyValues = this.extractLightStateProperties(state);
 
 		// Create/update properties
 		for (const binding of channelDescriptor.bindings) {
@@ -273,20 +309,201 @@ export class WledDeviceMapperService {
 	}
 
 	/**
-	 * Extract property values from WLED state
+	 * Create the nightlight channel with control properties
 	 */
-	private extractStateProperties(state: WledState): Record<string, string | number | boolean> {
+	private async createNightlightChannel(device: WledDeviceEntity, state: WledState): Promise<void> {
+		const channelIdentifier = WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT;
+		const channelDescriptor = WLED_DEVICE_DESCRIPTOR.channels.find((c) => c.identifier === channelIdentifier);
+
+		if (!channelDescriptor) {
+			return;
+		}
+
+		// Find or create channel
+		let channel = await this.channelsService.findOneBy<WledChannelEntity>(
+			'identifier',
+			channelIdentifier,
+			device.id,
+			DEVICES_WLED_TYPE,
+		);
+
+		if (!channel) {
+			this.logger.debug(`[WLED][MAPPER] Creating nightlight channel for device ${device.identifier}`);
+
+			const createChannelDto: CreateWledChannelDto = {
+				type: DEVICES_WLED_TYPE,
+				identifier: channelIdentifier,
+				name: channelDescriptor.name,
+				category: channelDescriptor.category,
+				device: device.id,
+			};
+
+			channel = await this.channelsService.create<WledChannelEntity, CreateWledChannelDto>(createChannelDto);
+		}
+
+		// Extract state values
+		const propertyValues = this.extractNightlightStateProperties(state);
+
+		// Create/update properties
+		for (const binding of NIGHTLIGHT_BINDINGS) {
+			await this.createOrUpdateProperty(channel, binding, propertyValues[binding.propertyIdentifier]);
+		}
+	}
+
+	/**
+	 * Create the sync channel with control properties
+	 */
+	private async createSyncChannel(device: WledDeviceEntity, state: WledState): Promise<void> {
+		const channelIdentifier = WLED_CHANNEL_IDENTIFIERS.SYNC;
+		const channelDescriptor = WLED_DEVICE_DESCRIPTOR.channels.find((c) => c.identifier === channelIdentifier);
+
+		if (!channelDescriptor) {
+			return;
+		}
+
+		// Find or create channel
+		let channel = await this.channelsService.findOneBy<WledChannelEntity>(
+			'identifier',
+			channelIdentifier,
+			device.id,
+			DEVICES_WLED_TYPE,
+		);
+
+		if (!channel) {
+			this.logger.debug(`[WLED][MAPPER] Creating sync channel for device ${device.identifier}`);
+
+			const createChannelDto: CreateWledChannelDto = {
+				type: DEVICES_WLED_TYPE,
+				identifier: channelIdentifier,
+				name: channelDescriptor.name,
+				category: channelDescriptor.category,
+				device: device.id,
+			};
+
+			channel = await this.channelsService.create<WledChannelEntity, CreateWledChannelDto>(createChannelDto);
+		}
+
+		// Extract state values
+		const propertyValues = this.extractSyncStateProperties(state);
+
+		// Create/update properties
+		for (const binding of SYNC_BINDINGS) {
+			await this.createOrUpdateProperty(channel, binding, propertyValues[binding.propertyIdentifier]);
+		}
+	}
+
+	/**
+	 * Create segment channels based on the number of segments in the device
+	 */
+	private async createSegmentChannels(device: WledDeviceEntity, state: WledState): Promise<void> {
+		for (let i = 0; i < state.segments.length; i++) {
+			const channelIdentifier = `${WLED_CHANNEL_IDENTIFIERS.SEGMENT}_${i}`;
+
+			// Find or create channel
+			let channel = await this.channelsService.findOneBy<WledChannelEntity>(
+				'identifier',
+				channelIdentifier,
+				device.id,
+				DEVICES_WLED_TYPE,
+			);
+
+			if (!channel) {
+				this.logger.debug(`[WLED][MAPPER] Creating segment ${i} channel for device ${device.identifier}`);
+
+				const createChannelDto: CreateWledChannelDto = {
+					type: DEVICES_WLED_TYPE,
+					identifier: channelIdentifier,
+					name: `Segment ${i}`,
+					category: ChannelCategory.LIGHT,
+					device: device.id,
+				};
+
+				channel = await this.channelsService.create<WledChannelEntity, CreateWledChannelDto>(createChannelDto);
+			}
+
+			// Extract state values for this segment
+			const propertyValues = this.extractSegmentStateProperties(state, i);
+			const segmentBindings = createSegmentBindings(i);
+
+			// Create/update properties
+			for (const binding of segmentBindings) {
+				await this.createOrUpdateProperty(channel, binding, propertyValues[binding.propertyIdentifier]);
+			}
+		}
+	}
+
+	/**
+	 * Extract light property values from WLED state
+	 */
+	private extractLightStateProperties(state: WledState): Record<string, string | number | boolean> {
 		const segment = state.segments[0]; // Primary segment
 
 		return {
-			state: state.on,
-			brightness: state.brightness,
-			color_red: segment?.colors?.[0]?.[0] ?? 0,
-			color_green: segment?.colors?.[0]?.[1] ?? 0,
-			color_blue: segment?.colors?.[0]?.[2] ?? 0,
-			effect: segment?.effect ?? 0,
-			effect_speed: segment?.effectSpeed ?? 128,
-			effect_intensity: segment?.effectIntensity ?? 128,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE]: state.on,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.BRIGHTNESS]: state.brightness,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.COLOR_RED]: segment?.colors?.[0]?.[0] ?? 0,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.COLOR_GREEN]: segment?.colors?.[0]?.[1] ?? 0,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.COLOR_BLUE]: segment?.colors?.[0]?.[2] ?? 0,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.EFFECT]: segment?.effect ?? 0,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.EFFECT_SPEED]: segment?.effectSpeed ?? 128,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.EFFECT_INTENSITY]: segment?.effectIntensity ?? 128,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.PALETTE]: segment?.palette ?? 0,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.PRESET]: state.preset ?? -1,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.LIVE_OVERRIDE]: state.liveOverride ?? 0,
+		};
+	}
+
+	/**
+	 * Extract nightlight property values from WLED state
+	 */
+	private extractNightlightStateProperties(state: WledState): Record<string, string | number | boolean> {
+		const nl = state.nightlight;
+
+		return {
+			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.STATE]: nl?.on ?? false,
+			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.DURATION]: nl?.duration ?? 60,
+			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.MODE]: nl?.mode ?? 0,
+			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.TARGET_BRIGHTNESS]: nl?.targetBrightness ?? 0,
+			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.REMAINING]: nl?.remaining ?? -1,
+		};
+	}
+
+	/**
+	 * Extract sync property values from WLED state
+	 */
+	private extractSyncStateProperties(state: WledState): Record<string, string | number | boolean> {
+		const udp = state.udp;
+
+		return {
+			[WLED_SYNC_PROPERTY_IDENTIFIERS.SEND]: udp?.send ?? false,
+			[WLED_SYNC_PROPERTY_IDENTIFIERS.RECEIVE]: udp?.receive ?? false,
+		};
+	}
+
+	/**
+	 * Extract segment property values from WLED state
+	 */
+	private extractSegmentStateProperties(state: WledState, segmentId: number): Record<string, string | number | boolean> {
+		const segment = state.segments[segmentId];
+
+		if (!segment) {
+			return {};
+		}
+
+		return {
+			state: segment.on ?? true,
+			brightness: segment.brightness ?? 255,
+			color_red: segment.colors?.[0]?.[0] ?? 0,
+			color_green: segment.colors?.[0]?.[1] ?? 0,
+			color_blue: segment.colors?.[0]?.[2] ?? 0,
+			effect: segment.effect ?? 0,
+			effect_speed: segment.effectSpeed ?? 128,
+			effect_intensity: segment.effectIntensity ?? 128,
+			palette: segment.palette ?? 0,
+			start: segment.start ?? 0,
+			stop: segment.stop ?? 0,
+			reverse: segment.reverse ?? false,
+			mirror: segment.mirror ?? false,
 		};
 	}
 

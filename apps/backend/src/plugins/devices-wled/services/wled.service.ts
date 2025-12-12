@@ -426,12 +426,9 @@ export class WledService {
 	async handleMdnsDeviceDiscovered(device: WledMdnsDiscoveredDevice): Promise<void> {
 		this.logger.log(`[WLED][SERVICE] mDNS discovered device: ${device.name} at ${device.host}`);
 
-		// Check if we already have this device configured
-		const existingDevice = await this.devicesService.findOneBy<WledDeviceEntity>(
-			'hostname',
-			device.host,
-			DEVICES_WLED_TYPE,
-		);
+		// Check if we already have this device configured by hostname
+		const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		const existingDevice = devices.find((d) => d.hostname === device.host);
 
 		if (existingDevice) {
 			this.logger.debug(`[WLED][SERVICE] Device at ${device.host} already exists in database`);

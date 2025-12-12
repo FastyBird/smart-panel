@@ -24,8 +24,9 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 
 	/**
 	 * Start mDNS discovery for WLED devices
+	 * @param _networkInterface Reserved for future use (network interface selection)
 	 */
-	async start(networkInterface?: string): Promise<void> {
+	async start(_networkInterface?: string): Promise<void> {
 		if (this.isRunning) {
 			this.logger.warn('[WLED][MDNS] Discovery is already running');
 			return;
@@ -35,9 +36,9 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 
 		try {
 			// Create Bonjour instance
-			this.bonjour = new Bonjour(
-				networkInterface ? { interface: networkInterface } : undefined,
-			);
+			// Note: bonjour-service doesn't support network interface selection in constructor
+			// The networkInterface parameter is reserved for future use
+			this.bonjour = new Bonjour();
 
 			// Browse for _wled._tcp services
 			this.browser = this.bonjour.find({ type: 'wled' }, (service: Service) => {
