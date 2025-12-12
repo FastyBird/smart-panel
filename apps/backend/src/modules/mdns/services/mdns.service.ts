@@ -42,13 +42,13 @@ export class MdnsService implements OnApplicationShutdown {
 		} catch (error) {
 			this.logger.warn('[MDNS] Failed to load mDNS configuration, using defaults', error);
 
-		// Return default configuration
-		const defaultConfig = new MdnsConfigModel();
-		defaultConfig.type = MDNS_MODULE_NAME;
-		defaultConfig.serviceName = MDNS_DEFAULT_SERVICE_NAME;
-		defaultConfig.serviceType = MDNS_DEFAULT_SERVICE_TYPE;
+			// Return default configuration
+			const defaultConfig = new MdnsConfigModel();
+			defaultConfig.type = MDNS_MODULE_NAME;
+			defaultConfig.serviceName = MDNS_DEFAULT_SERVICE_NAME;
+			defaultConfig.serviceType = MDNS_DEFAULT_SERVICE_TYPE;
 
-		return defaultConfig;
+			return defaultConfig;
 		}
 	}
 

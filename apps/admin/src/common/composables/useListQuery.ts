@@ -72,7 +72,7 @@ const sortFromQuery = (q: unknown, defaults: ISortEntry[]): ISortEntry[] | undef
 		return undefined;
 	}
 
-	const arr = Array.isArray(q) ? q : q != null ? [q] : [];
+	const arr = Array.isArray(q) ? q : q !== null ? [q] : [];
 
 	if (!arr.length) {
 		return undefined;

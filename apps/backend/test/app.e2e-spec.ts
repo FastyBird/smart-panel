@@ -42,6 +42,9 @@ describe('FastyBird Smart Panel (e2e)', () => {
 		useContainer(moduleFixture, { fallbackOnErrors: true });
 
 		await app.init();
+
+		// Wait for all modules to initialize (especially module mappings)
+		await new Promise((resolve) => setTimeout(resolve, 100));
 	});
 
 	afterAll(async () => {

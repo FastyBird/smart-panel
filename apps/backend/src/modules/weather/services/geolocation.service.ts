@@ -4,12 +4,12 @@ import fetch from 'node-fetch';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { TemperatureUnitType } from '../../system/system.constants';
-import { WeatherLocationType } from '../weather.constants';
 import { ConfigService } from '../../config/services/config.service';
+import { TemperatureUnitType } from '../../system/system.constants';
 import { GeolocationCityDto, GeolocationZipDto } from '../dto/geolocation.dto';
 import { WeatherConfigModel } from '../models/config.model';
 import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
+import { WeatherLocationType } from '../weather.constants';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 @Injectable()

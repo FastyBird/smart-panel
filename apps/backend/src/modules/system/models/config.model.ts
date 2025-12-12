@@ -3,8 +3,8 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsString } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
-import { LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
 import { ModuleConfigModel } from '../../config/models/config.model';
+import { LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataSystem' })

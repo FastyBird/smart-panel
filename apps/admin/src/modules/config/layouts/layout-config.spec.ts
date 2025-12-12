@@ -1,7 +1,7 @@
 import { type ComponentPublicInstance, computed } from 'vue';
 import { type Router, createMemoryHistory, createRouter } from 'vue-router';
 
-import { ElButton, ElTabPane, ElTabs } from 'element-plus';
+import { ElTabPane, ElTabs } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
@@ -11,7 +11,7 @@ import { RouteNames } from '../config.constants';
 
 import LayoutConfig from './layout-config.vue';
 
-type LayoutConfigInstance = ComponentPublicInstance<{ activeTab: string; remoteFormSubmit: boolean }>;
+type LayoutConfigInstance = ComponentPublicInstance<{ activeTab: string }>;
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -70,8 +70,7 @@ describe('LayoutConfig.vue', (): void => {
 
 	it('renders correctly', async (): Promise<void> => {
 		expect(wrapper.findComponent(ElTabs).exists()).toBe(true);
-
-		expect(wrapper.findComponent(ElButton).exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="view-header"]').exists()).toBe(true);
 	});
 
 	it('displays correct tab and updates on route change', async (): Promise<void> => {
@@ -83,11 +82,8 @@ describe('LayoutConfig.vue', (): void => {
 		expect(wrapper.vm.activeTab).toBe('modules');
 	});
 
-	it('calls onSave when save button is clicked', async (): Promise<void> => {
-		expect(wrapper.find('[data-test-id="view-header"]').findComponent(ElButton).exists()).toBe(true);
-
-		await wrapper.find('[data-test-id="view-header"]').findComponent(ElButton).trigger('click');
-
-		expect(wrapper.vm.remoteFormSubmit).toBe(true);
+	it('renders view header correctly', async (): Promise<void> => {
+		expect(wrapper.find('[data-test-id="view-header"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="app-breadcrumbs"]').exists()).toBe(true);
 	});
 });

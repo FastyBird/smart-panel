@@ -43,8 +43,8 @@
 					/>
 				</el-select>
 				<el-button
-					@click="onUseMyLocation"
 					class="px-2!"
+					@click="onUseMyLocation"
 				>
 					<template #icon>
 						<icon icon="mdi:map-marker-account-outline" />
@@ -172,7 +172,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
+import { onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElSelect, ElOption, type FormRules } from 'element-plus';
@@ -287,18 +287,18 @@ watch(
 );
 
 watch(
-	(): number | null => model.latitude,
+	(): number | null | undefined => model.latitude,
 	(): void => {
-		if (model.locationType === 'lat_lon' && model.latitude !== null && model.longitude !== null) {
+		if (model.locationType === 'lat_lon' && model.latitude !== null && typeof model.latitude !== 'undefined' && model.longitude !== null && typeof model.longitude !== 'undefined') {
 			setMarker(model.latitude, model.longitude);
 		}
 	}
 );
 
 watch(
-	(): number | null => model.longitude,
+	(): number | null | undefined => model.longitude,
 	(): void => {
-		if (model.locationType === 'lat_lon' && model.latitude !== null && model.longitude !== null) {
+		if (model.locationType === 'lat_lon' && model.latitude !== null && typeof model.latitude !== 'undefined' && model.longitude !== null && typeof model.longitude !== 'undefined') {
 			setMarker(model.latitude, model.longitude);
 		}
 	}

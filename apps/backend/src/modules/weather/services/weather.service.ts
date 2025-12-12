@@ -10,14 +10,14 @@ import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
-import { LanguageType, TemperatureUnitType } from '../../system/system.constants';
-import { WeatherLocationType } from '../weather.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { SystemConfigModel } from '../../system/models/config.model';
+import { LanguageType, TemperatureUnitType } from '../../system/system.constants';
 import { ForecastDto, ForecastListItemDto } from '../dto/forecast.dto';
 import { WeatherDto } from '../dto/weather.dto';
 import { WeatherConfigModel } from '../models/config.model';
 import { CurrentDayModel, ForecastDayModel, LocationModel, LocationWeatherModel } from '../models/weather.model';
+import { WeatherLocationType } from '../weather.constants';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { EventType } from '../weather.constants';
 import { WeatherException, WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
