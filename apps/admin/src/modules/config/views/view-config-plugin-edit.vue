@@ -163,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
@@ -315,15 +315,6 @@ const onRetry = async (): Promise<void> => {
 		console.error('Failed to fetch config plugin:', err);
 	});
 };
-
-onBeforeMount(async (): Promise<void> => {
-	await fetchConfigPlugin().catch((error: unknown): void => {
-		const err = error as Error;
-
-		loadError.value = true;
-		console.error('Failed to fetch config plugin:', err);
-	});
-});
 
 // Watch for route changes and refetch config
 watch(
