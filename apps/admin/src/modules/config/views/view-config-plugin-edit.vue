@@ -43,12 +43,30 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div
-		v-loading="isLoading || !configPlugin"
+		v-loading="isLoading || (!configPlugin && !loadError)"
 		:element-loading-text="t('configModule.texts.loadingPluginConfig')"
 		class="flex flex-col overflow-hidden h-full"
 	>
+		<div
+			v-if="loadError"
+			class="flex flex-col items-center justify-center h-full p-4"
+		>
+			<el-result
+				icon="error"
+				:title="t('configModule.messages.loadError', 'Failed to load configuration')"
+			>
+				<template #extra>
+					<el-button
+						type="primary"
+						@click="onRetry"
+					>
+						{{ t('configModule.buttons.retry.title', 'Retry') }}
+					</el-button>
+				</template>
+			</el-result>
+		</div>
 		<el-scrollbar
-			v-if="configPlugin && element?.components?.pluginConfigEditForm"
+			v-else-if="configPlugin && element?.components?.pluginConfigEditForm"
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
@@ -165,7 +183,6 @@ import {
 import { useConfigPlugin } from '../composables/useConfigPlugin';
 import { usePlugin } from '../composables/usePlugin';
 import { FormResult, RouteNames } from '../config.constants';
-import { ConfigException } from '../config.exceptions';
 import IconWithChild from '../../../common/components/icon-with-child.vue';
 
 import type { IViewConfigPluginEditProps } from './view-config-plugin-edit.types';
@@ -200,6 +217,7 @@ const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResult>(props.remoteFormResult);
 const remoteFormReset = ref<boolean>(props.remoteFormReset);
 const remoteFormChanged = ref<boolean>(false);
+const loadError = ref<boolean>(false);
 
 const pluginName = computed<string>((): string => {
 	return plugin.value?.name || props.plugin;
@@ -288,24 +306,44 @@ const onClose = (): void => {
 	}
 };
 
+const onRetry = async (): Promise<void> => {
+	loadError.value = false;
+	await fetchConfigPlugin().catch((error: unknown): void => {
+		const err = error as Error;
+
+		loadError.value = true;
+		console.error('Failed to fetch config plugin:', err);
+	});
+};
+
 onBeforeMount(async (): Promise<void> => {
 	await fetchConfigPlugin().catch((error: unknown): void => {
 		const err = error as Error;
 
-		throw new ConfigException('Something went wrong', err);
+		loadError.value = true;
+		console.error('Failed to fetch config plugin:', err);
 	});
 });
 
 // Watch for route changes and refetch config
 watch(
 	(): string => props.plugin,
-	async (): Promise<void> => {
+	async (val: string): Promise<void> => {
+		if (!val || val.trim() === '') {
+			// Don't fetch if plugin type is empty
+			return;
+		}
+		
+		loadError.value = false;
+
 		await fetchConfigPlugin().catch((error: unknown): void => {
 			const err = error as Error;
 
-			throw new ConfigException('Something went wrong', err);
+			loadError.value = true;
+			console.error('Failed to fetch config plugin:', err);
 		});
-	}
+	},
+	{ immediate: true }
 );
 
 onMounted((): void => {
