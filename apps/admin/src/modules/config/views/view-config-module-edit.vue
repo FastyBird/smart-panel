@@ -43,12 +43,30 @@
 	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div
-		v-loading="isLoading || !configModule"
+		v-loading="isLoading || (!configModule && !loadError)"
 		:element-loading-text="t('configModule.texts.loadingModuleConfig')"
 		class="flex flex-col overflow-hidden h-full"
 	>
+		<div
+			v-if="loadError"
+			class="flex flex-col items-center justify-center h-full p-4"
+		>
+			<el-result
+				icon="error"
+				:title="t('configModule.messages.loadError')"
+			>
+				<template #extra>
+					<el-button
+						type="primary"
+						@click="onRetry"
+					>
+						{{ t('configModule.buttons.retry.title') }}
+					</el-button>
+				</template>
+			</el-result>
+		</div>
 		<el-scrollbar
-			v-if="configModule"
+			v-else-if="configModule"
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
@@ -141,7 +159,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElIcon, ElMessageBox, ElResult, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -157,7 +175,6 @@ import { ConfigModule } from '../components/components';
 import { useConfigModule } from '../composables/useConfigModule';
 import { useModule } from '../composables/useModule';
 import { FormResult, RouteNames } from '../config.constants';
-import { ConfigException } from '../config.exceptions';
 
 import type { IViewConfigModuleEditProps } from './view-config-module-edit.types';
 
@@ -190,6 +207,7 @@ const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResult>(props.remoteFormResult);
 const remoteFormReset = ref<boolean>(props.remoteFormReset);
 const remoteFormChanged = ref<boolean>(false);
+const loadError = ref<boolean>(false);
 
 const moduleType = computed<string>((): string => {
 	const moduleParam = route.params.module;
@@ -278,11 +296,22 @@ const onClose = (): void => {
 	}
 };
 
+const onRetry = async (): Promise<void> => {
+	loadError.value = false;
+	await fetchConfigModule().catch((error: unknown): void => {
+		const err = error as Error;
+
+		loadError.value = true;
+		console.error('Failed to fetch config module:', err);
+	});
+};
+
 onBeforeMount(async (): Promise<void> => {
 	await fetchConfigModule().catch((error: unknown): void => {
 		const err = error as Error;
 
-		throw new ConfigException('Something went wrong', err);
+		loadError.value = true;
+		console.error('Failed to fetch config module:', err);
 	});
 });
 
@@ -290,10 +319,12 @@ onBeforeMount(async (): Promise<void> => {
 watch(
 	(): string => moduleType.value,
 	async (): Promise<void> => {
+		loadError.value = false;
 		await fetchConfigModule().catch((error: unknown): void => {
 			const err = error as Error;
 
-			throw new ConfigException('Something went wrong', err);
+			loadError.value = true;
+			console.error('Failed to fetch config module:', err);
 		});
 	}
 );

@@ -10,7 +10,7 @@
 			:label="t('weatherModule.fields.config.locationType.title')"
 			prop="locationType"
 		>
-			<div class="flex flex-row items-center gap-2">
+			<div class="flex flex-row items-center gap-2 w-full">
 				<el-select
 					v-model="model.locationType"
 					:placeholder="t('weatherModule.fields.config.locationType.placeholder')"
@@ -36,6 +36,7 @@
 				</el-select>
 				<el-button
 					@click="onUseMyLocation"
+					class="px-2!"
 				>
 					<template #icon>
 						<icon icon="mdi:map-marker-account-outline" />

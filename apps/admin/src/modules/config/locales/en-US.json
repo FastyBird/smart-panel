@@ -221,6 +221,9 @@
     "close": {
       "title": "Close"
     },
+    "retry": {
+      "title": "Retry"
+    },
     "yes": {
       "title": "Yes"
     },

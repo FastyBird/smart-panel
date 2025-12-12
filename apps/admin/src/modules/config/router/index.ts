@@ -60,7 +60,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'Plugins',
 					icon: 'mdi:toy-brick',
-					menu: 4100,
+					menu: 3000,
 				},
 				children: [
 					{
