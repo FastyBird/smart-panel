@@ -1,4 +1,5 @@
 import { WeatherLocationEntity } from '../entities/locations.entity';
+import { WeatherAlertModel } from '../models/alert.model';
 import { CurrentDayModel, ForecastDayModel } from '../models/weather.model';
 
 /**
@@ -22,6 +23,12 @@ export interface IWeatherProvider {
 	getDescription(): string;
 
 	/**
+	 * Whether this provider supports weather alerts
+	 * @returns true if alerts are supported
+	 */
+	supportsAlerts(): boolean;
+
+	/**
 	 * Fetches current weather data for the given location
 	 * @param location The weather location entity
 	 * @returns Current day weather model or null if fetch failed
@@ -34,4 +41,11 @@ export interface IWeatherProvider {
 	 * @returns Array of forecast day models or null if fetch failed
 	 */
 	getForecastWeather(location: WeatherLocationEntity): Promise<ForecastDayModel[] | null>;
+
+	/**
+	 * Fetches weather alerts for the given location
+	 * @param location The weather location entity
+	 * @returns Array of weather alerts or null if not supported/failed
+	 */
+	getAlerts?(location: WeatherLocationEntity): Promise<WeatherAlertModel[] | null>;
 }

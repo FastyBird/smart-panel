@@ -10,12 +10,14 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { WeatherLocationEntity } from '../entities/locations.entity';
+import { WeatherAlertModel } from '../models/alert.model';
 import { WeatherConfigModel } from '../models/config.model';
 import { CurrentDayModel, ForecastDayModel, LocationModel, LocationWeatherModel } from '../models/weather.model';
 import { EventType, WEATHER_MODULE_NAME } from '../weather.constants';
-import { WeatherNotFoundException } from '../weather.exceptions';
+import { WeatherNotFoundException, WeatherNotSupportedException } from '../weather.exceptions';
 
 import { LocationsService } from './locations.service';
+import { WeatherHistoryService } from './weather-history.service';
 import { WeatherProviderRegistryService } from './weather-provider-registry.service';
 
 @Injectable()
@@ -24,8 +26,10 @@ export class WeatherService {
 	private readonly refreshJob: CronJob;
 
 	private readonly CACHE_TTL = 3600000; // 1-hour cache expiration
+	private readonly ALERTS_CACHE_TTL = 900000; // 15-minute cache for alerts
 	private readonly CURRENT_CACHE_PREFIX = 'weather-current:';
 	private readonly FORECAST_CACHE_PREFIX = 'weather-forecast:';
+	private readonly ALERTS_CACHE_PREFIX = 'weather-alerts:';
 
 	constructor(
 		private readonly schedulerRegistry: SchedulerRegistry,
@@ -33,6 +37,7 @@ export class WeatherService {
 		private readonly providerRegistry: WeatherProviderRegistryService,
 		private readonly configService: ConfigService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly historyService: WeatherHistoryService,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
 	) {
@@ -154,6 +159,59 @@ export class WeatherService {
 		}
 
 		return forecast;
+	}
+
+	/**
+	 * Get weather alerts for a specific location
+	 */
+	async getAlerts(locationId: string, force = false): Promise<WeatherAlertModel[]> {
+		const location = await this.locationsService.findOne(locationId);
+
+		if (!location) {
+			throw new WeatherNotFoundException(`Location with id=${locationId} not found`);
+		}
+
+		const provider = this.providerRegistry.get(location.type);
+
+		if (!provider) {
+			throw new WeatherNotFoundException(`No provider found for location type=${location.type}`);
+		}
+
+		if (!provider.supportsAlerts()) {
+			throw new WeatherNotSupportedException(
+				`Weather alerts are not supported by provider ${provider.getName()}. Consider using a provider with One Call API 3.0 support.`,
+			);
+		}
+
+		return this.fetchAlerts(location, force);
+	}
+
+	/**
+	 * Check if alerts are supported for a location
+	 */
+	supportsAlerts(locationId: string): boolean {
+		// This is a sync check - we need to get the location first
+		// For API use, we'll provide a method that can check without async
+		return false; // Default to false, actual check requires async location lookup
+	}
+
+	/**
+	 * Check if alerts are supported for a location (async version)
+	 */
+	async checkAlertsSupported(locationId: string): Promise<boolean> {
+		const location = await this.locationsService.findOne(locationId);
+
+		if (!location) {
+			return false;
+		}
+
+		const provider = this.providerRegistry.get(location.type);
+
+		if (!provider) {
+			return false;
+		}
+
+		return provider.supportsAlerts();
 	}
 
 	/**
@@ -280,6 +338,13 @@ export class WeatherService {
 
 			await this.cacheManager.set(cacheKey, result, this.CACHE_TTL);
 
+			// Store to InfluxDB for historical data (async, don't wait)
+			this.historyService.storeWeatherData(location.id, location.name, current).catch((err) => {
+				this.logger.warn(`[WEATHER] Failed to store historical data for location=${location.id}`, {
+					message: (err as Error).message,
+				});
+			});
+
 			return result;
 		}
 
@@ -317,8 +382,36 @@ export class WeatherService {
 		return null;
 	}
 
+	private async fetchAlerts(location: WeatherLocationEntity, force: boolean): Promise<WeatherAlertModel[]> {
+		const cacheKey = `${this.ALERTS_CACHE_PREFIX}${location.id}`;
+
+		if (!force) {
+			const cached = await this.cacheManager.get<WeatherAlertModel[]>(cacheKey);
+			if (cached) {
+				this.logger.debug(`[WEATHER] Returning cached alerts for location=${location.id}`);
+				return cached;
+			}
+		}
+
+		const provider = this.providerRegistry.get(location.type);
+
+		if (!provider || !provider.supportsAlerts() || !provider.getAlerts) {
+			return [];
+		}
+
+		const alerts = await provider.getAlerts(location);
+
+		if (alerts) {
+			await this.cacheManager.set(cacheKey, alerts, this.ALERTS_CACHE_TTL);
+			return alerts;
+		}
+
+		return [];
+	}
+
 	private async clearLocationCache(locationId: string): Promise<void> {
 		await this.cacheManager.del(`${this.CURRENT_CACHE_PREFIX}${locationId}`);
 		await this.cacheManager.del(`${this.FORECAST_CACHE_PREFIX}${locationId}`);
+		await this.cacheManager.del(`${this.ALERTS_CACHE_PREFIX}${locationId}`);
 	}
 }

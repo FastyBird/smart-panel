@@ -1,4 +1,13 @@
-import { Controller, Get, Logger, NotFoundException, Param, ParseUUIDPipe } from '@nestjs/common';
+import {
+	Controller,
+	Get,
+	HttpException,
+	HttpStatus,
+	Logger,
+	NotFoundException,
+	Param,
+	ParseUUIDPipe,
+} from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -7,6 +16,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
+import { LocationAlertsResponseModel } from '../models/alert.model';
 import {
 	AllLocationsWeatherResponseModel,
 	LocationCurrentResponseModel,
@@ -15,7 +25,7 @@ import {
 } from '../models/weather-response.model';
 import { WeatherService } from '../services/weather.service';
 import { WEATHER_MODULE_API_TAG_NAME } from '../weather.constants';
-import { WeatherNotFoundException } from '../weather.exceptions';
+import { WeatherNotFoundException, WeatherNotSupportedException } from '../weather.exceptions';
 
 @ApiTags(WEATHER_MODULE_API_TAG_NAME)
 @Controller('weather')
@@ -184,6 +194,55 @@ export class WeatherController {
 		} catch (error) {
 			if (error instanceof WeatherNotFoundException) {
 				throw new NotFoundException(error.message);
+			}
+
+			throw error;
+		}
+	}
+
+	@ApiOperation({
+		tags: [WEATHER_MODULE_API_TAG_NAME],
+		summary: 'Get weather alerts for specific location',
+		description:
+			'Retrieve active weather alerts/warnings for a specific location. Note: Requires a weather provider that supports alerts (e.g., OpenWeatherMap One Call API 3.0).',
+		operationId: 'get-weather-module-location-alerts',
+	})
+	@ApiParam({
+		name: 'locationId',
+		description: 'Location ID',
+		type: 'string',
+		format: 'uuid',
+		required: true,
+	})
+	@ApiSuccessResponse(LocationAlertsResponseModel, 'Weather alerts retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiNotFoundResponse('Location not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':locationId/alerts')
+	async getAlerts(@Param('locationId', ParseUUIDPipe) locationId: string): Promise<LocationAlertsResponseModel> {
+		this.logger.debug(`[LOOKUP] Fetching weather alerts for location=${locationId}`);
+
+		try {
+			const data = await this.weatherService.getAlerts(locationId);
+
+			const response = new LocationAlertsResponseModel();
+			response.data = data;
+
+			return response;
+		} catch (error) {
+			if (error instanceof WeatherNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+
+			if (error instanceof WeatherNotSupportedException) {
+				throw new HttpException(
+					{
+						statusCode: HttpStatus.NOT_IMPLEMENTED,
+						message: error.message,
+						error: 'Not Implemented',
+					},
+					HttpStatus.NOT_IMPLEMENTED,
+				);
 			}
 
 			throw error;

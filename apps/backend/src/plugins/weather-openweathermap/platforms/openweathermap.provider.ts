@@ -29,6 +29,12 @@ export class OpenWeatherMapProvider implements IWeatherProvider {
 		return WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_DESCRIPTION;
 	}
 
+	supportsAlerts(): boolean {
+		// OpenWeatherMap 2.5 API does not support weather alerts
+		// Alerts require One Call API 3.0 which would be a separate plugin
+		return false;
+	}
+
 	async getCurrentWeather(location: WeatherLocationEntity): Promise<CurrentDayModel | null> {
 		if (!(location instanceof OpenWeatherMapLocationEntity)) {
 			this.logger.error(`[WEATHER] Invalid location type: expected OpenWeatherMapLocationEntity`);

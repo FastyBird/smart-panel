@@ -20,6 +20,7 @@ import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { WeatherNotFoundException } from '../weather.exceptions';
 
 import { LocationsService } from './locations.service';
+import { WeatherHistoryService } from './weather-history.service';
 import { WeatherProviderRegistryService } from './weather-provider-registry.service';
 import { WeatherService } from './weather.service';
 
@@ -85,6 +86,12 @@ describe('WeatherService', () => {
 						get: jest.fn().mockResolvedValue(null),
 						set: jest.fn().mockResolvedValue(undefined),
 						del: jest.fn().mockResolvedValue(undefined),
+					},
+				},
+				{
+					provide: WeatherHistoryService,
+					useValue: {
+						storeWeatherData: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 			],
@@ -181,7 +188,7 @@ describe('WeatherService', () => {
 
 			const result = await service.getWeather(mockLocation.id);
 
-			expect(result.location.id).toBe(mockLocation.id);
+			expect(result.locationId).toBe(mockLocation.id);
 			expect(result.current).toEqual(cachedCurrent);
 			expect(result.forecast).toEqual(cachedForecast);
 		});

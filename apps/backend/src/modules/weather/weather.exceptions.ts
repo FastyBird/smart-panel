@@ -18,3 +18,10 @@ export class WeatherValidationException extends WeatherException {
 		this.name = 'WeatherValidationException';
 	}
 }
+
+export class WeatherNotSupportedException extends WeatherException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'WeatherNotSupportedException';
+	}
+}
