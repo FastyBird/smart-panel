@@ -7,5 +7,7 @@ export * from './useStatesDataSource';
 export * from './useDiscoveredDevicesOptions';
 export * from './useEntitiesOptions';
 export * from './useAttributesOptions';
+export * from './useMappingPreview';
+export * from './useDeviceAdoption';
 
 export * from './types';

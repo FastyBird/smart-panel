@@ -1,7 +1,13 @@
-import type { ComputedRef, Ref } from 'vue';
+import type { ComputedRef, Reactive, Ref } from 'vue';
 
+import type { FormInstance } from 'element-plus';
+
+import type { FormResultType, IDevice } from '../../../modules/devices';
+import type { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import type { IAdoptDeviceRequest, IMappingEntityOverride, IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
 import type { IHomeAssistantDiscoveredDevice } from '../store/home-assistant-discovered-devices.store.types';
 import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
+import type { IDeviceAddForm } from '../../../modules/devices/schemas/devices.types';
 
 export interface IDiscoveredDevicesFilter {
 	search: string | undefined;
@@ -89,4 +95,41 @@ export interface IUseEntitiesOptions {
 export interface IUseAttributesOptions {
 	attributesOptions: ComputedRef<{ value: string; label: string }[]>;
 	isLoading: ComputedRef<boolean>;
+}
+
+export interface IUseMappingPreview {
+	preview: Ref<IMappingPreviewResponse | null>;
+	isLoading: Ref<boolean>;
+	error: Ref<Error | null>;
+	fetchPreview: (haDeviceId: string, overrides?: IMappingPreviewRequest) => Promise<IMappingPreviewResponse>;
+	updatePreview: (haDeviceId: string, overrides: IMappingPreviewRequest) => Promise<IMappingPreviewResponse>;
+	clearPreview: () => void;
+}
+
+export interface IUseDeviceAdoption {
+	isAdopting: Ref<boolean>;
+	error: Ref<Error | null>;
+	adoptDevice: (request: IAdoptDeviceRequest) => Promise<IDevice>;
+}
+
+export interface IUseDeviceAddForm<TForm extends IDeviceAddForm = IDeviceAddForm> {
+	categoriesOptions: ComputedRef<{ value: DevicesModuleDeviceCategory; label: string }[]>;
+	activeStep: Ref<'one' | 'two' | 'three' | 'four'>;
+	preview: Ref<IMappingPreviewResponse | null>;
+	isPreviewLoading: Ref<boolean>;
+	previewError: Ref<Error | null>;
+	isAdopting: Ref<boolean>;
+	adoptionError: Ref<Error | null>;
+	devicesOptions: ComputedRef<{ value: IHomeAssistantDiscoveredDevice['id']; label: IHomeAssistantDiscoveredDevice['name'] }[]>;
+	devicesOptionsLoading: ComputedRef<boolean>;
+	entityOverrides: Ref<IMappingEntityOverride[] | undefined>;
+	model: Reactive<TForm>;
+	stepOneFormEl: Ref<FormInstance | undefined>;
+	stepTwoFormEl: Ref<FormInstance | undefined>;
+	stepThreeFormEl: Ref<FormInstance | undefined>;
+	stepFourFormEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submitStep: (step: 'one' | 'two' | 'three' | 'four') => Promise<'ok' | 'added'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
 }
