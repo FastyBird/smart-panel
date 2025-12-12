@@ -3,7 +3,8 @@ import 'package:fastybird_smart_panel/core/utils/enum.dart';
 enum DeviceType {
   devicesThirdParty('devices-third-party'),
   devicesHomeAssistant('devices-home-assistant'),
-  devicesShellyNg('devices-shelly-ng');
+  devicesShellyNg('devices-shelly-ng'),
+  devicesShellyV1('devices-shelly-v1');
 
   final String value;
 
