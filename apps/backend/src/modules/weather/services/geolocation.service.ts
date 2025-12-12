@@ -15,23 +15,19 @@ import { WEATHER_MODULE_NAME } from '../weather.constants';
 @Injectable()
 export class GeolocationService {
 	private readonly logger = new Logger(GeolocationService.name);
-	private readonly apiKey: string | null;
+	private apiKey: string | null = null;
 	private readonly itemsLimit: number = 5;
 
 	private readonly API_URL = 'https://api.openweathermap.org/geo/1.0';
 
 	constructor(private readonly configService: ConfigService) {
-		// Load config lazily - will be loaded on first use
-		// This avoids issues during module initialization when mappings might not be registered yet
-		try {
-			this.apiKey = this.getConfig().openWeatherApiKey;
-		} catch {
-			// If config is not available yet, use null (will be loaded on first API call)
-			this.apiKey = null;
-		}
+		// Config will be loaded lazily on first use to avoid issues during module initialization
+		// when mappings might not be registered yet
 	}
 
 	async getCoordinatesByCity(city: string): Promise<GeolocationCityModel[] | null> {
+		this.ensureApiKeyLoaded();
+
 		try {
 			const url = `${this.API_URL}/direct?q=${encodeURIComponent(city)}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -74,6 +70,8 @@ export class GeolocationService {
 	}
 
 	async getCoordinatesByZip(zip: string): Promise<GeolocationZipModel | null> {
+		this.ensureApiKeyLoaded();
+
 		try {
 			const url = `${this.API_URL}/zip?zip=${encodeURIComponent(zip)}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -102,6 +100,8 @@ export class GeolocationService {
 	}
 
 	async getCityByCoordinates(lat: number, lon: number): Promise<GeolocationCityModel[] | null> {
+		this.ensureApiKeyLoaded();
+
 		try {
 			const url = `${this.API_URL}/reverse?lat=${lat}&lon=${lon}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -140,6 +140,12 @@ export class GeolocationService {
 			this.logger.error(`[GEOLOCATION] Failed to fetch city for lat=${lat}, lon=${lon}`, error);
 
 			return null;
+		}
+	}
+
+	private ensureApiKeyLoaded(): void {
+		if (this.apiKey === null) {
+			this.apiKey = this.getConfig().openWeatherApiKey;
 		}
 	}
 

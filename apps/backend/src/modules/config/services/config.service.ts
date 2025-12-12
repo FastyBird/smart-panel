@@ -652,8 +652,6 @@ export class ConfigService {
 			throw new ConfigNotFoundException(`Configuration section 'modules' not found.`);
 		}
 
-		const mapping = this.modulesMapperService.getMapping<TConfig, UpdateModuleConfigDto>(module);
-
 		const moduleConfig = configSection.find((cfg) => cfg.type === module);
 
 		if (!moduleConfig) {
@@ -661,6 +659,8 @@ export class ConfigService {
 
 			throw new ConfigNotFoundException(`Configuration module '${module}' not found.`);
 		}
+
+		const mapping = this.modulesMapperService.getMapping<TConfig, UpdateModuleConfigDto>(module);
 
 		const instance = toInstance(mapping.class, moduleConfig, {
 			excludeExtraneousValues: false,
