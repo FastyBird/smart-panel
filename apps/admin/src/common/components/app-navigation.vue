@@ -46,7 +46,7 @@
 				<el-menu-item
 					v-else
 					:key="`${index}-item`"
-					:index="`main-${index}`"
+					:index="`${index}`"
 					:route="{ name: item.name }"
 					@click="emit('click')"
 				>
@@ -158,12 +158,12 @@ const activeIndex = computed<string | undefined>((): string | undefined => {
 			if (mainMenuItems[name].children) {
 				for (const subName of Object.keys(mainMenuItems[name].children)) {
 					if (route.matched.find((matched) => matched.name === subName) !== undefined) {
-						return `child-${name}-${subName}`;
+						return subName;
 					}
 				}
 			}
 
-			return `main-${name}`;
+			return name;
 		}
 	}
 
