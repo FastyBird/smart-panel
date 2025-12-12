@@ -109,7 +109,6 @@ import {
 	AppBar,
 	AppBarButton,
 	AppBarButtonAlign,
-	AppBarHeading,
 	ViewError,
 	useBreakpoints,
 } from '../../../common';
@@ -123,17 +122,7 @@ defineOptions({
 	name: 'ViewConfigPlugins',
 });
 
-const props = withDefaults(defineProps<ViewConfigPluginsProps>(), {
-	remoteFormSubmit: false,
-	remoteFormResult: FormResult.NONE,
-	remoteFormReset: false,
-});
-
-const emit = defineEmits<{
-	(e: 'update:remoteFormSubmit', remoteFormSubmit: boolean): void;
-	(e: 'update:remoteFormResult', remoteFormResult: FormResult): void;
-	(e: 'update:remoteFormReset', remoteFormReset: boolean): void;
-}>();
+const props = defineProps<ViewConfigPluginsProps>();
 
 const { t } = useI18n();
 const route = useRoute();
@@ -144,28 +133,12 @@ const { isLGDevice } = useBreakpoints();
 const { plugins } = usePlugins();
 
 const showDrawer = ref<boolean>(false);
-const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
-const remoteFormResult = ref<FormResult>(props.remoteFormResult);
+const remoteFormSubmit = ref<boolean>(false);
+const remoteFormResult = ref<FormResult>(FormResult.NONE);
 const remoteFormChanged = ref<boolean>(false);
 
 const isPluginsListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.CONFIG_PLUGINS;
-});
-
-const currentPluginType = computed<string>((): string => {
-	const pluginParam = route.params.plugin;
-	return (Array.isArray(pluginParam) ? pluginParam[0] : pluginParam) || '';
-});
-
-const currentPlugin = computed<IPlugin | undefined>((): IPlugin | undefined => {
-	if (!currentPluginType.value) {
-		return undefined;
-	}
-	return plugins.value.find((p) => p.type === currentPluginType.value);
-});
-
-const currentPluginName = computed<string>((): string => {
-	return currentPlugin.value?.name || currentPluginType.value;
 });
 
 const onPluginEdit = (pluginType: IPlugin['type']): void => {
@@ -242,27 +215,6 @@ watch(
 	(): boolean => props.remoteFormSubmit,
 	(val: boolean): void => {
 		remoteFormSubmit.value = val;
-	}
-);
-
-watch(
-	(): FormResult => props.remoteFormResult,
-	(val: FormResult): void => {
-		remoteFormResult.value = val;
-	}
-);
-
-watch(
-	(): boolean => remoteFormSubmit.value,
-	(val: boolean): void => {
-		emit('update:remoteFormSubmit', val);
-	}
-);
-
-watch(
-	(): FormResult => remoteFormResult.value,
-	(val: FormResult): void => {
-		emit('update:remoteFormResult', val);
 	}
 );
 

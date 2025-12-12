@@ -37,39 +37,11 @@
 		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
 	</app-bar-button>
 
-	<app-bar-button
-		v-if="!isMDDevice"
-		:align="AppBarButtonAlign.RIGHT"
-		teleport
-		small
-		@click="onSave"
-	>
-		<span class="uppercase">{{ t('configModule.buttons.save.title') }}</span>
-	</app-bar-button>
-
 	<view-header
 		:heading="t('configModule.headings.config')"
 		:sub-heading="t('configModule.subHeadings.config')"
 		icon="mdi:cog"
-	>
-		<template #extra>
-			<div class="flex items-center">
-				<el-button
-					plain
-					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult === FormResult.WORKING"
-					type="primary"
-					class="px-4! ml-2!"
-					@click="onSave"
-				>
-					<template #icon>
-						<icon icon="mdi:content-save" />
-					</template>
-					{{ t('configModule.buttons.save.title') }}
-				</el-button>
-			</div>
-		</template>
-	</view-header>
+	/>
 
 	<el-tabs
 		v-if="isMDDevice"
@@ -91,11 +63,7 @@
 				</span>
 			</template>
 
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_MODULES || route.name === RouteNames.CONFIG_MODULE_EDIT"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
+			<router-view v-if="isModulesRoute" />
 		</el-tab-pane>
 
 		<el-tab-pane
@@ -112,18 +80,12 @@
 				</span>
 			</template>
 
-			<router-view
-				v-if="route.name === RouteNames.CONFIG_PLUGINS || route.name === RouteNames.CONFIG_PLUGIN_EDIT"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-			/>
+			<router-view v-if="isPluginsRoute" />
 		</el-tab-pane>
 	</el-tabs>
 
 	<router-view
 		v-if="!isMDDevice"
-		v-model:remote-form-submit="remoteFormSubmit"
-		v-model:remote-form-result="remoteFormResult"
 		class="p-2"
 	/>
 </template>
@@ -133,12 +95,12 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { type RouteLocationRaw, type RouteRecordName, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElTabPane, ElTabs, type TabsPaneContext } from 'element-plus';
+import { ElIcon, ElTabPane, ElTabs, type TabsPaneContext } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { FormResult, RouteNames } from '../config.constants';
+import { RouteNames } from '../config.constants';
 
 type PageTabName = 'modules' | 'plugins';
 
@@ -154,8 +116,18 @@ const { isMDDevice } = useBreakpoints();
 const activeTab = ref<PageTabName>('modules');
 
 const mounted = ref<boolean>(false);
-const remoteFormSubmit = ref<boolean>(false);
-const remoteFormResult = ref<FormResult>(FormResult.NONE);
+
+const isModulesRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.CONFIG_MODULES || 
+		route.name === RouteNames.CONFIG_MODULE_EDIT ||
+		route.path.startsWith('/config/modules');
+});
+
+const isPluginsRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.CONFIG_PLUGINS || 
+		route.name === RouteNames.CONFIG_PLUGIN_EDIT ||
+		route.path.startsWith('/config/plugins');
+});
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
 	const items = [
@@ -193,16 +165,12 @@ const onTabClick = (pane: TabsPaneContext): void => {
 	}
 };
 
-const onSave = (): void => {
-	remoteFormSubmit.value = true;
-};
-
 onMounted((): void => {
 	mounted.value = true;
 
-	if ((route.name === RouteNames.CONFIG_PLUGINS || route.name === RouteNames.CONFIG_PLUGIN_EDIT) && activeTab.value !== 'plugins') {
+	if ((route.name === RouteNames.CONFIG_PLUGINS || route.name === RouteNames.CONFIG_PLUGIN_EDIT || route.path.startsWith('/config/plugins')) && activeTab.value !== 'plugins') {
 		activeTab.value = 'plugins';
-	} else if ((route.name === RouteNames.CONFIG_MODULES || route.name === RouteNames.CONFIG_MODULE_EDIT) && activeTab.value !== 'modules') {
+	} else if ((route.name === RouteNames.CONFIG_MODULES || route.name === RouteNames.CONFIG_MODULE_EDIT || route.path.startsWith('/config/modules')) && activeTab.value !== 'modules') {
 		activeTab.value = 'modules';
 	}
 });
@@ -214,11 +182,31 @@ watch(
 			return;
 		}
 
-		if (val === RouteNames.CONFIG_PLUGINS || val === RouteNames.CONFIG_PLUGIN_EDIT) {
+		if (val === RouteNames.CONFIG_PLUGINS || val === RouteNames.CONFIG_PLUGIN_EDIT || route.path.startsWith('/config/plugins')) {
 			if (activeTab.value !== 'plugins') {
 				activeTab.value = 'plugins';
 			}
-		} else if (val === RouteNames.CONFIG_MODULES || val === RouteNames.CONFIG_MODULE_EDIT) {
+		} else if (val === RouteNames.CONFIG_MODULES || val === RouteNames.CONFIG_MODULE_EDIT || route.path.startsWith('/config/modules')) {
+			if (activeTab.value !== 'modules') {
+				activeTab.value = 'modules';
+			}
+		}
+	},
+	{ immediate: false }
+);
+
+watch(
+	(): string => route.path,
+	(): void => {
+		if (!mounted.value) {
+			return;
+		}
+
+		if (route.path.startsWith('/config/plugins')) {
+			if (activeTab.value !== 'plugins') {
+				activeTab.value = 'plugins';
+			}
+		} else if (route.path.startsWith('/config/modules')) {
 			if (activeTab.value !== 'modules') {
 				activeTab.value = 'modules';
 			}

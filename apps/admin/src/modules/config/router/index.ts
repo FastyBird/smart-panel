@@ -38,7 +38,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 						path: ':module',
 						name: RouteNames.CONFIG_MODULE_EDIT,
 						component: () => import('../views/view-config-module-edit.vue'),
-						props: false,
+						props: true,
 						meta: {
 							guards: {
 								authenticated: true,
@@ -67,7 +67,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 						path: ':plugin',
 						name: RouteNames.CONFIG_PLUGIN_EDIT,
 						component: () => import('../views/view-config-plugin-edit.vue'),
-						props: false,
+						props: true,
 						meta: {
 							guards: {
 								authenticated: true,

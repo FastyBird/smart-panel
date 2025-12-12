@@ -48,29 +48,47 @@
 		class="flex flex-col overflow-hidden h-full"
 	>
 		<el-scrollbar
-			v-if="configPlugin"
+			v-if="configPlugin && element?.components?.pluginConfigEditForm"
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
-				:is="element?.components?.pluginConfigEditForm"
-				v-if="configPlugin && element?.components?.pluginConfigEditForm"
+				:is="element.components.pluginConfigEditForm"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
 				v-model:remote-form-changed="remoteFormChanged"
 				:config="configPlugin"
 			/>
-			<div
-				v-else
-				class="p-4"
-			>
-				<p v-if="!configPlugin">Loading config...</p>
-				<p v-else-if="!element">Loading plugin element...</p>
-				<p v-else-if="!element?.components?.pluginConfigEditForm">
-					Plugin "{{ pluginType }}" does not have a configuration form component registered.
-				</p>
-			</div>
 		</el-scrollbar>
+
+		<div
+			v-else
+			class="flex flex-col items-center justify-center h-full p-4"
+		>
+			<el-result>
+				<template #icon>
+					<icon-with-child
+						type="primary"
+						:size="80"
+					>
+						<template #primary>
+							<icon icon="mdi:package-variant" />
+						</template>
+						<template #secondary>
+							<icon icon="mdi:error" />
+						</template>
+					</icon-with-child>
+				</template>
+
+				<template #title>
+					<h1>Error title here</h1>
+				</template>
+
+				<template #sub-title>
+					Error message here
+				</template>
+			</el-result>
+		</div>
 
 		<div
 			v-if="isMDDevice"
@@ -130,7 +148,7 @@
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
 import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
@@ -144,7 +162,6 @@ import {
 	SUBMIT_FORM_SM,
 	useBreakpoints,
 } from '../../../common';
-import { ConfigPlugin } from '../components/components';
 import { useConfigPlugin } from '../composables/useConfigPlugin';
 import { usePlugin } from '../composables/usePlugin';
 import { FormResult, RouteNames } from '../config.constants';
@@ -154,7 +171,6 @@ import type { IViewConfigPluginEditProps } from './view-config-plugin-edit.types
 
 defineOptions({
 	name: 'ViewConfigPluginEdit',
-	inheritAttrs: false,
 });
 
 const props = withDefaults(defineProps<IViewConfigPluginEditProps>(), {
@@ -171,49 +187,22 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const route = useRoute();
 const router = useRouter();
 const { meta } = useMeta({});
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+const { configPlugin, isLoading, fetchConfigPlugin } = useConfigPlugin({ type: props.plugin });
+const { plugin, element } = usePlugin({ name: props.plugin });
 
 const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResult>(props.remoteFormResult);
 const remoteFormReset = ref<boolean>(props.remoteFormReset);
 const remoteFormChanged = ref<boolean>(false);
 
-const pluginType = computed<string>((): string => {
-	const pluginParam = route.params.plugin;
-	return (Array.isArray(pluginParam) ? pluginParam[0] : pluginParam) || '';
-});
-
-// Use a ref to track the current plugin type and update it when route changes
-const currentPluginType = ref<string>(pluginType.value);
-watch(
-	(): string => pluginType.value,
-	(val: string): void => {
-		currentPluginType.value = val;
-	},
-	{ immediate: true }
-);
-
-const pluginComposable = computed(() => {
-	// Re-create composable when plugin type changes
-	return usePlugin({ name: currentPluginType.value });
-});
-
 const pluginName = computed<string>((): string => {
-	return pluginComposable.value.plugin.value?.name || pluginType.value;
+	return plugin.value?.name || props.plugin;
 });
-
-// Create composable reactively based on plugin type
-const configPluginComposable = computed(() => useConfigPlugin({ type: currentPluginType.value }));
-const configPlugin = computed(() => configPluginComposable.value.configPlugin.value);
-const isLoading = computed(() => configPluginComposable.value.isLoading.value);
-const fetchConfigPlugin = (): Promise<void> => {
-	return configPluginComposable.value.fetchConfigPlugin();
-};
-const element = computed(() => pluginComposable.value.element.value);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -231,7 +220,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 		if (pluginName.value) {
 			items.push({
 				label: pluginName.value,
-				route: router.resolve({ name: RouteNames.CONFIG_PLUGIN_EDIT, params: { plugin: pluginType.value } }),
+				route: router.resolve({ name: RouteNames.CONFIG_PLUGIN_EDIT, params: { plugin: props.plugin } }),
 			});
 		}
 
@@ -279,7 +268,7 @@ onBeforeMount(async (): Promise<void> => {
 
 // Watch for route changes and refetch config
 watch(
-	(): string => pluginType.value,
+	(): string => props.plugin,
 	async (): Promise<void> => {
 		await fetchConfigPlugin().catch((error: unknown): void => {
 			const err = error as Error;

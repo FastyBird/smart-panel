@@ -66,38 +66,47 @@
 			</el-result>
 		</div>
 		<el-scrollbar
-			v-else-if="configModule"
+			v-else-if="configModule && element?.components?.moduleConfigEditForm"
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
-				:is="element?.components?.moduleConfigEditForm"
-				v-if="configModule && element?.components?.moduleConfigEditForm"
+				:is="element.components.moduleConfigEditForm"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
 				v-model:remote-form-changed="remoteFormChanged"
 				:config="configModule"
 			/>
-			<div
-				v-else
-				class="p-4"
-			>
-				<p v-if="!configModule">Loading config...</p>
-				<p v-else-if="!moduleComposable.value.module.value">
-					Module "{{ moduleType }}" not found in modules list.
-				</p>
-				<p v-else-if="!element">
-					Module "{{ moduleType }}" does not have a config element (type: module) registered.
-				</p>
-				<p v-else-if="!element?.components">
-					Module "{{ moduleType }}" config element does not have components.
-				</p>
-				<p v-else-if="!element?.components?.moduleConfigEditForm">
-					Module "{{ moduleType }}" does not have a configuration form component registered.
-					Available components: {{ Object.keys(element.components || {}) }}
-				</p>
-			</div>
 		</el-scrollbar>
+
+		<div
+			v-else
+			class="flex flex-col items-center justify-center h-full p-4"
+		>
+			<el-result>
+				<template #icon>
+					<icon-with-child
+						type="primary"
+						:size="80"
+					>
+						<template #primary>
+							<icon icon="mdi:package-variant" />
+						</template>
+						<template #secondary>
+							<icon icon="mdi:error" />
+						</template>
+					</icon-with-child>
+				</template>
+
+				<template #title>
+					<h1>Error title here</h1>
+				</template>
+
+				<template #sub-title>
+					Error message here
+				</template>
+			</el-result>
+		</div>
 
 		<div
 			v-if="isMDDevice"
@@ -157,7 +166,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
 import { ElButton, ElIcon, ElMessageBox, ElResult, ElScrollbar, vLoading } from 'element-plus';
 
@@ -171,16 +180,15 @@ import {
 	SUBMIT_FORM_SM,
 	useBreakpoints,
 } from '../../../common';
-import { ConfigModule } from '../components/components';
 import { useConfigModule } from '../composables/useConfigModule';
 import { useModule } from '../composables/useModule';
 import { FormResult, RouteNames } from '../config.constants';
+import IconWithChild from '../../../common/components/icon-with-child.vue';
 
 import type { IViewConfigModuleEditProps } from './view-config-module-edit.types';
 
 defineOptions({
 	name: 'ViewConfigModuleEdit',
-	inheritAttrs: false,
 });
 
 const props = withDefaults(defineProps<IViewConfigModuleEditProps>(), {
@@ -197,11 +205,13 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const route = useRoute();
 const router = useRouter();
 const { meta } = useMeta({});
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+const { configModule, isLoading, fetchConfigModule } = useConfigModule({ type: props.module });
+const { module, element } = useModule({ name: props.module });
 
 const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResult>(props.remoteFormResult);
@@ -209,46 +219,9 @@ const remoteFormReset = ref<boolean>(props.remoteFormReset);
 const remoteFormChanged = ref<boolean>(false);
 const loadError = ref<boolean>(false);
 
-const moduleType = computed<string>((): string => {
-	const moduleParam = route.params.module;
-	return (Array.isArray(moduleParam) ? moduleParam[0] : moduleParam) || '';
-});
-
-// Use a ref to track the current module type and update it when route changes
-const currentModuleType = ref<string>(moduleType.value || '');
-
-const moduleComposable = computed(() => {
-	// Re-create composable when module type changes
-	return useModule({ name: currentModuleType.value });
-});
-
 const moduleName = computed<string>((): string => {
-	return moduleComposable.value.module.value?.name || moduleType.value;
+	return module.value?.name || props.module;
 });
-
-// Create composable reactively based on module type
-const configModuleComposable = computed(() => {
-	if (!currentModuleType.value) {
-		// Return a dummy composable if no module type
-		return {
-			configModule: computed(() => null),
-			isLoading: computed(() => false),
-			fetchConfigModule: async (): Promise<void> => {
-				throw new Error('Module type is required');
-			},
-		};
-	}
-	return useConfigModule({ type: currentModuleType.value });
-});
-const configModule = computed(() => configModuleComposable.value.configModule.value);
-const isLoading = computed(() => configModuleComposable.value.isLoading.value);
-const fetchConfigModule = (): Promise<void> => {
-	if (!currentModuleType.value) {
-		return Promise.reject(new Error('Module type is required'));
-	}
-	return configModuleComposable.value.fetchConfigModule();
-};
-const element = computed(() => moduleComposable.value.element.value);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -266,7 +239,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 		if (moduleName.value) {
 			items.push({
 				label: moduleName.value,
-				route: router.resolve({ name: RouteNames.CONFIG_MODULE_EDIT, params: { module: moduleType.value } }),
+				route: router.resolve({ name: RouteNames.CONFIG_MODULE_EDIT, params: { module: props.module } }),
 			});
 		}
 
@@ -316,17 +289,15 @@ const onRetry = async (): Promise<void> => {
 
 // Watch for route changes and refetch config
 watch(
-	(): string => moduleType.value,
+	(): string => props.module,
 	async (val: string): Promise<void> => {
 		if (!val || val.trim() === '') {
 			// Don't fetch if module type is empty
 			return;
 		}
 		
-		// Update current module type
-		currentModuleType.value = val;
-		
 		loadError.value = false;
+
 		await fetchConfigModule().catch((error: unknown): void => {
 			const err = error as Error;
 
