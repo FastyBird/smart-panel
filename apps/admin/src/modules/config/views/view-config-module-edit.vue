@@ -163,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
@@ -210,8 +210,11 @@ const { meta } = useMeta({});
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { configModule, isLoading, fetchConfigModule } = useConfigModule({ type: props.module });
-const { module, element } = useModule({ name: props.module });
+// Create reactive refs from props to ensure composables react to prop changes
+const moduleTypeRef = toRef(props, 'module');
+
+const { configModule, isLoading, fetchConfigModule } = useConfigModule({ type: moduleTypeRef });
+const { module, element } = useModule({ name: moduleTypeRef });
 
 const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResult>(props.remoteFormResult);
