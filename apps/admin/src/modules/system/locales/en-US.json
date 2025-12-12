@@ -194,6 +194,7 @@
       "logLevels": {
         "title": "Log Levels",
         "description": "Enabled log levels",
+        "placeholder": "Select which log levels should be monitored",
         "values": {
           "silent": "Silent",
           "verbose": "Verbose",

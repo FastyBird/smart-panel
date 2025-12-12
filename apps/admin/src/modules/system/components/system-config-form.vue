@@ -77,18 +77,19 @@
 			:label="t('systemModule.fields.config.logLevels.title')"
 			prop="logLevels"
 		>
-			<el-checkbox-group
+			<el-select
 				v-model="model.logLevels"
+				:placeholder="t('systemModule.fields.config.logLevels.placeholder')"
 				name="logLevels"
+				multiple
 			>
-				<el-checkbox
+				<el-option
 					v-for="level in logLevels"
 					:key="level.value"
-					:label="level.value"
-				>
-					{{ level.label }}
-				</el-checkbox>
-			</el-checkbox-group>
+					:label="level.label"
+					:value="level.value"
+				/>
+			</el-select>
 		</el-form-item>
 	</el-form>
 </template>
@@ -97,7 +98,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCheckbox, ElCheckboxGroup, ElDivider, ElForm, ElFormItem, ElSelect, ElOption, type FormRules } from 'element-plus';
+import { ElDivider, ElForm, ElFormItem, ElSelect, ElOption, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { ISystemConfigEditForm } from '../schemas/config.types';

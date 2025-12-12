@@ -10,58 +10,62 @@
 			:label="t('weatherModule.fields.config.locationType.title')"
 			prop="locationType"
 		>
-			<el-select
-				v-model="model.locationType"
-				:placeholder="t('weatherModule.fields.config.locationType.placeholder')"
-				name="locationType"
-			>
-				<el-option
-					:label="t('weatherModule.fields.config.locationType.values.latLon')"
-					value="lat_lon"
-				/>
-				<el-option
-					:label="t('weatherModule.fields.config.locationType.values.cityName')"
-					value="city_name"
-				/>
-				<el-option
-					:label="t('weatherModule.fields.config.locationType.values.cityId')"
-					value="city_id"
-				/>
-				<el-option
-					:label="t('weatherModule.fields.config.locationType.values.zipCode')"
-					value="zip_code"
-				/>
-			</el-select>
+			<div class="flex flex-row items-center gap-2">
+				<el-select
+					v-model="model.locationType"
+					:placeholder="t('weatherModule.fields.config.locationType.placeholder')"
+					name="locationType"
+					class="flex-1"
+				>
+					<el-option
+						:label="t('weatherModule.fields.config.locationType.values.latLon')"
+						value="lat_lon"
+					/>
+					<el-option
+						:label="t('weatherModule.fields.config.locationType.values.cityName')"
+						value="city_name"
+					/>
+					<el-option
+						:label="t('weatherModule.fields.config.locationType.values.cityId')"
+						value="city_id"
+					/>
+					<el-option
+						:label="t('weatherModule.fields.config.locationType.values.zipCode')"
+						value="zip_code"
+					/>
+				</el-select>
+				<el-button
+					@click="onUseMyLocation"
+				>
+					<template #icon>
+						<icon icon="mdi:map-marker-account-outline" />
+					</template>
+					{{ t('configModule.buttons.myLocation.title') }}
+				</el-button>
+			</div>
 		</el-form-item>
 
 		<el-form-item
 			v-if="model.locationType === 'lat_lon'"
-			:label="t('weatherModule.fields.config.latitude.title')"
+			:label="t('configModule.fields.coordinates.title')"
 			prop="latitude"
 		>
-			<el-input-number
-				v-model="model.latitude"
-				:min="-90"
-				:max="90"
-				:step="0.0001"
-				:placeholder="t('weatherModule.fields.config.latitude.placeholder')"
-				name="latitude"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			v-if="model.locationType === 'lat_lon'"
-			:label="t('weatherModule.fields.config.longitude.title')"
-			prop="longitude"
-		>
-			<el-input-number
-				v-model="model.longitude"
-				:min="-180"
-				:max="180"
-				:step="0.0001"
-				:placeholder="t('weatherModule.fields.config.longitude.placeholder')"
-				name="longitude"
-			/>
+			<div class="flex flex-row gap-2">
+				<el-input
+					v-model="model.latitude"
+					:placeholder="t('configModule.fields.latitude.placeholder')"
+					name="latitude"
+					type="number"
+					step="0.0001"
+				/>
+				<el-input
+					v-model="model.longitude"
+					:placeholder="t('configModule.fields.longitude.placeholder')"
+					name="longitude"
+					type="number"
+					step="0.0001"
+				/>
+			</div>
 		</el-form-item>
 
 		<el-form-item
@@ -134,14 +138,38 @@
 			/>
 		</el-form-item>
 	</el-form>
+
+	<div
+		v-if="model.locationType === 'lat_lon'"
+		style="height: 50vh; width: 100%"
+	>
+		<l-map
+			v-model="zoom"
+			v-model:zoom="zoom"
+			:use-global-leaflet="false"
+			:center="center"
+			@click="onMapClick"
+		>
+			<l-tile-layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"></l-tile-layer>
+			<l-marker
+				v-if="marker"
+				:lat-lng="marker"
+			/>
+		</l-map>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElSelect, ElOption, type FormRules } from 'element-plus';
+import { ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElSelect, ElOption, type FormRules } from 'element-plus';
+import 'leaflet/dist/leaflet.css';
 
+import { Icon } from '@iconify/vue';
+import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
+
+import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { IWeatherConfigEditForm } from '../schemas/config.types';
 
@@ -166,6 +194,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IWeatherConfigEditForm>({
 	config: props.config,
@@ -174,6 +203,94 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 		error: t('weatherModule.messages.config.notEdited'),
 	},
 });
+
+const zoom = ref<number>(10);
+const center = ref<[number, number]>([50.083328, 14.46667]); // Prague
+const marker = ref<[number, number] | null>(null);
+
+const onMapClick = (e: { latlng: { lat: number; lng: number } }): void => {
+	if (model.locationType !== 'lat_lon') {
+		return;
+	}
+
+	const { lat, lng } = e.latlng;
+
+	setMarker(lat, lng);
+
+	model.latitude = lat;
+	model.longitude = lng;
+};
+
+const onUseMyLocation = (): void => {
+	if (!navigator.geolocation) {
+		flashMessage.error('Geolocation is not supported by your browser.');
+
+		return;
+	}
+
+	navigator.geolocation.getCurrentPosition(
+		(pos) => {
+			const lat = pos.coords.latitude;
+			const lng = pos.coords.longitude;
+
+			model.latitude = lat;
+			model.longitude = lng;
+
+			model.locationType = 'lat_lon';
+
+			setMarker(lat, lng);
+		},
+		(err) => {
+			flashMessage.error('Unable to retrieve your location.');
+
+			console.error(err);
+		}
+	);
+};
+
+const setMarker = (lat: number, lon: number): void => {
+	marker.value = [lat, lon];
+	center.value = [lat, lon];
+
+	if (model.locationType === 'lat_lon') {
+		zoom.value = 18;
+	} else {
+		zoom.value = 13;
+	}
+};
+
+onBeforeMount(async (): Promise<void> => {
+	if (model.latitude && model.longitude) {
+		setMarker(model.latitude, model.longitude);
+	}
+});
+
+watch(
+	(): string => model.locationType,
+	(): void => {
+		if (model.locationType === 'lat_lon' && model.latitude && model.longitude) {
+			setMarker(model.latitude, model.longitude);
+		}
+	}
+);
+
+watch(
+	(): number | null => model.latitude,
+	(): void => {
+		if (model.locationType === 'lat_lon' && model.latitude !== null && model.longitude !== null) {
+			setMarker(model.latitude, model.longitude);
+		}
+	}
+);
+
+watch(
+	(): number | null => model.longitude,
+	(): void => {
+		if (model.locationType === 'lat_lon' && model.latitude !== null && model.longitude !== null) {
+			setMarker(model.latitude, model.longitude);
+		}
+	}
+);
 
 const rules = reactive<FormRules<IWeatherConfigEditForm>>({
 	locationType: [{ required: true, message: t('weatherModule.fields.config.locationType.validation.required'), trigger: 'change' }],
