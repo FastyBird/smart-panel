@@ -46,16 +46,12 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					params: {
 						path: { id: haDeviceId },
 					},
-					body: requestBody
-						? {
-								data: requestBody,
-							}
-						: undefined,
+					body: requestBody as never,
 				}
 			);
 
-			if (typeof responseData !== 'undefined') {
-				const transformed = transformMappingPreviewResponse(responseData);
+			if (typeof responseData !== 'undefined' && responseData.data) {
+				const transformed = transformMappingPreviewResponse(responseData.data);
 
 				preview.value = transformed;
 				isLoading.value = false;
@@ -67,28 +63,28 @@ export const useMappingPreview = (): IUseMappingPreview => {
 
 			if (apiError) {
 				// OpenAPI operation type will be generated when OpenAPI spec is updated
-				errorReason = getErrorReason(apiError, errorReason);
+				errorReason = getErrorReason(apiError as never, errorReason);
 			}
 
 			throw new DevicesHomeAssistantApiException(errorReason, response.status);
 		} catch (err: unknown) {
 			isLoading.value = false;
 
-			const err = err as Error;
+			const errorObj = err as Error;
 
-			if (err instanceof DevicesHomeAssistantValidationException) {
-				error.value = err;
-				flashMessage.error(err.message);
-			} else if (err instanceof DevicesHomeAssistantApiException) {
-				error.value = err;
-				flashMessage.error(err.message);
+			if (errorObj instanceof DevicesHomeAssistantValidationException) {
+				error.value = errorObj;
+				flashMessage.error(errorObj.message);
+			} else if (errorObj instanceof DevicesHomeAssistantApiException) {
+				error.value = errorObj;
+				flashMessage.error(errorObj.message);
 			} else {
-				error.value = err;
-				logger.error('Failed to fetch mapping preview:', err);
+				error.value = errorObj;
+				logger.error('Failed to fetch mapping preview:', errorObj);
 				flashMessage.error('Failed to load mapping preview. Please try again.');
 			}
 
-			throw err;
+			throw errorObj;
 		}
 	};
 

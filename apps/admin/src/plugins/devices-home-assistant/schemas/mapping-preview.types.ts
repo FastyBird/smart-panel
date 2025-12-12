@@ -1,14 +1,6 @@
 import { z } from 'zod';
 
 import {
-	DevicesModuleChannelCategory,
-	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
-	DevicesModuleChannelPropertyPermissions,
-	DevicesModuleDeviceCategory,
-} from '../../../openapi.constants';
-
-import {
 	AdoptChannelDefinitionSchema,
 	AdoptDeviceRequestSchema,
 	AdoptPropertyDefinitionSchema,

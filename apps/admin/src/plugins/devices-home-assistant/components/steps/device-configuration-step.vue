@@ -10,6 +10,7 @@
 			:label="t('devicesHomeAssistantPlugin.fields.devices.name.title')"
 			prop="name"
 		>
+			<!-- eslint-disable vue/no-mutating-props -->
 			<el-input
 				v-model="model.name"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.name.placeholder')"
@@ -23,6 +24,7 @@
 			:label="t('devicesHomeAssistantPlugin.fields.devices.category.title')"
 			prop="category"
 		>
+			<!-- eslint-disable vue/no-mutating-props -->
 			<el-select
 				v-model="model.category"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.category.placeholder')"
@@ -53,6 +55,7 @@
 			:label="t('devicesHomeAssistantPlugin.fields.devices.description.title')"
 			prop="description"
 		>
+			<!-- eslint-disable vue/no-mutating-props -->
 			<el-input
 				v-model="model.description"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.description.placeholder')"
@@ -67,6 +70,7 @@
 			prop="enabled"
 			label-position="left"
 		>
+			<!-- eslint-disable vue/no-mutating-props -->
 			<el-switch
 				v-model="model.enabled"
 				name="enabled"
@@ -113,7 +117,7 @@ interface IDeviceConfigurationStepProps {
 	preview: IMappingPreviewResponse | null;
 }
 
-const props = defineProps<IDeviceConfigurationStepProps>();
+defineProps<IDeviceConfigurationStepProps>();
 
 const { t } = useI18n();
 

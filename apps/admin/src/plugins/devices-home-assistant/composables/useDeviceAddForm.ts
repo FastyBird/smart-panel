@@ -4,10 +4,10 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { deepClone, getSchemaDefaults, injectStoresManager, router, useFlashMessage, useLogger } from '../../../common';
+import { deepClone, getSchemaDefaults, router, useFlashMessage, useLogger } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { FormResult, type FormResultType, type IDevice, RouteNames as DevicesRouteNames, devicesStoreKey } from '../../../modules/devices';
-import { DevicesApiException, DevicesValidationException } from '../../../modules/devices/devices.exceptions';
+import { FormResult, type FormResultType, type IDevice, RouteNames as DevicesRouteNames } from '../../../modules/devices';
+import { DevicesApiException } from '../../../modules/devices/devices.exceptions';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDeviceAddFormSchema } from '../schemas/devices.schemas';
@@ -24,9 +24,6 @@ interface IUseDeviceAddFormProps {
 }
 
 export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddForm<IHomeAssistantDeviceAddForm> => {
-	const storesManager = injectStoresManager();
-
-	const devicesStore = storesManager.getStore(devicesStoreKey);
 
 	const { t } = useI18n();
 
@@ -42,17 +39,6 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 	const { devicesOptions, areLoading: devicesOptionsLoading } = useDiscoveredDevicesOptions();
 
 	const categoriesOptions = computed<{ value: DevicesModuleDeviceCategory; label: string }[]>(() => {
-		// If we have a preview, use the suggested device category
-		if (preview.value?.suggestedDevice) {
-			const suggested = preview.value.suggestedDevice.category;
-			const allCategories = Object.values(DevicesModuleDeviceCategory).map((value) => ({
-				value,
-				label: t(`devicesModule.categories.devices.${value}`),
-			}));
-
-			return allCategories;
-		}
-
 		return Object.values(DevicesModuleDeviceCategory).map((value) => ({
 			value,
 			label: t(`devicesModule.categories.devices.${value}`),

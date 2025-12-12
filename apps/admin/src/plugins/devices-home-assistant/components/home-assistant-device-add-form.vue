@@ -171,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -182,7 +182,7 @@ import {
 } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
-import { SUBMIT_FORM_SM, useFlashMessage } from '../../../common';
+import { SUBMIT_FORM_SM } from '../../../common';
 import { FormResult, type FormResultType, useDevices } from '../../../modules/devices';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
 import DeviceConfigurationStep from './steps/device-configuration-step.vue';
@@ -211,9 +211,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const flashMessage = useFlashMessage();
-
-const { devices, loaded: devicesLoaded, fetchDevices } = useDevices();
+const { loaded: devicesLoaded, fetchDevices } = useDevices();
 
 const {
 	activeStep,
@@ -221,7 +219,6 @@ const {
 	isPreviewLoading,
 	previewError,
 	isAdopting,
-	adoptionError,
 	categoriesOptions,
 	devicesOptions,
 	devicesOptionsLoading,
@@ -241,12 +238,12 @@ const {
 const onProcessStep = async (): Promise<void> => {
 	try {
 		await submitStep(activeStep.value);
-	} catch (error) {
+	} catch {
 		// Error is already handled in the composable
 	}
 };
 
-const onDeviceChange = (deviceId: string): void => {
+const onDeviceChange = (): void => {
 	// Device change is handled by the composable watcher
 };
 
@@ -261,7 +258,7 @@ const onApplyChanges = async (): Promise<void> => {
 
 	try {
 		await submitStep('three');
-	} catch (error) {
+	} catch {
 		// Error is already handled
 	}
 };

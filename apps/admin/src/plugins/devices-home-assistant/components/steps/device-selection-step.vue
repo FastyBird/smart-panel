@@ -10,10 +10,12 @@
 			:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
 			prop="haDeviceId"
 		>
+			<!-- eslint-disable vue/no-mutating-props -->
 			<el-select
 				v-model="model.haDeviceId"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
 				:loading="devicesOptionsLoading"
+				:disabled="devicesOptions.length === 0"
 				name="haDeviceId"
 				filterable
 				@change="onDeviceChange"
@@ -25,6 +27,11 @@
 					:value="item.value"
 				/>
 			</el-select>
+			<template v-if="!devicesOptionsLoading && devicesOptions.length === 0">
+				<div class="text-sm text-gray-500 mt-2">
+					{{ t('devicesHomeAssistantPlugin.messages.devices.noDiscoveredDevices') }}
+				</div>
+			</template>
 		</el-form-item>
 
 		<el-alert
@@ -39,18 +46,6 @@
 				<dd class="m-0 inline-block font-bold">
 					{{ selectedDeviceInfo.name }}
 				</dd>
-				<template v-if="selectedDeviceInfo.manufacturer">
-					<dt>{{ t('devicesHomeAssistantPlugin.fields.devices.manufacturer.title') }}:</dt>
-					<dd class="m-0 inline-block">
-						{{ selectedDeviceInfo.manufacturer }}
-					</dd>
-				</template>
-				<template v-if="selectedDeviceInfo.model">
-					<dt>{{ t('devicesHomeAssistantPlugin.fields.devices.model.title') }}:</dt>
-					<dd class="m-0 inline-block">
-						{{ selectedDeviceInfo.model }}
-					</dd>
-				</template>
 			</dl>
 		</el-alert>
 

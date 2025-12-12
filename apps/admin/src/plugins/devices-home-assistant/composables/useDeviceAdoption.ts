@@ -1,9 +1,8 @@
-import { ref } from 'vue';
+import { ref, type Ref } from 'vue';
 
-import { getErrorReason, injectStoresManager, snakeToCamel, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { getPluginElement } from '../../../modules/devices';
-import { DeviceSchema, transformDeviceResponse, type IDevice, devicesStoreKey } from '../../../modules/devices';
+import { DeviceSchema, transformDeviceResponse, type IDevice, devicesStoreKey, useDevicesPlugins } from '../../../modules/devices';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IAdoptDeviceRequest } from '../schemas/mapping-preview.types';
@@ -21,6 +20,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 	const flashMessage = useFlashMessage();
 	const storesManager = injectStoresManager();
 
+	const { getElement: getPluginElement } = useDevicesPlugins();
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 
 	const isAdopting = ref<boolean>(false);
@@ -42,9 +42,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				error: apiError,
 				response,
 			} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/adopt`, {
-				body: {
-					data: requestBody,
-				},
+				body: requestBody as never,
 			});
 
 			if (typeof responseData !== 'undefined' && responseData.data) {
@@ -72,28 +70,28 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 
 			if (apiError) {
 				// OpenAPI operation type will be generated when OpenAPI spec is updated
-				errorReason = getErrorReason(apiError, errorReason);
+				errorReason = getErrorReason(apiError as never, errorReason);
 			}
 
 			throw new DevicesHomeAssistantApiException(errorReason, response.status);
 		} catch (err: unknown) {
 			isAdopting.value = false;
 
-			const err = err as Error;
+			const errorObj = err as Error;
 
-			if (err instanceof DevicesHomeAssistantValidationException) {
-				error.value = err;
-				flashMessage.error(err.message);
-			} else if (err instanceof DevicesHomeAssistantApiException) {
-				error.value = err;
-				flashMessage.error(err.message);
+			if (errorObj instanceof DevicesHomeAssistantValidationException) {
+				error.value = errorObj;
+				flashMessage.error(errorObj.message);
+			} else if (errorObj instanceof DevicesHomeAssistantApiException) {
+				error.value = errorObj;
+				flashMessage.error(errorObj.message);
 			} else {
-				error.value = err;
-				logger.error('Failed to adopt device:', err);
+				error.value = errorObj;
+				logger.error('Failed to adopt device:', errorObj);
 				flashMessage.error('Failed to adopt device. Please try again.');
 			}
 
-			throw err;
+			throw errorObj;
 		}
 	};
 

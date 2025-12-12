@@ -1,12 +1,9 @@
 import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import {
-	AdoptChannelDefinitionSchema,
 	AdoptDeviceRequestSchema,
-	AdoptPropertyDefinitionSchema,
 	EntityMappingPreviewSchema,
 	HaDeviceInfoSchema,
-	MappingEntityOverrideSchema,
 	MappingPreviewRequestSchema,
 	MappingPreviewResponseSchema,
 	PropertyMappingPreviewSchema,
@@ -14,12 +11,9 @@ import {
 	SuggestedDeviceSchema,
 } from '../schemas/mapping-preview.schemas';
 import type {
-	IAdoptChannelDefinition,
 	IAdoptDeviceRequest,
-	IAdoptPropertyDefinition,
 	IEntityMappingPreview,
 	IHaDeviceInfo,
-	IMappingEntityOverride,
 	IMappingPreviewRequest,
 	IMappingPreviewResponse,
 	IPropertyMappingPreview,

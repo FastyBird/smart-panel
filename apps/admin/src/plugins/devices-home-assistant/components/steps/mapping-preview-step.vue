@@ -49,7 +49,11 @@
 	</div>
 
 	<div v-else class="text-center py-8 text-gray-500">
-		{{ t('devicesHomeAssistantPlugin.messages.mapping.previewLoading') }}
+		<el-icon :size="48" class="mb-4">
+			<icon icon="mdi:information-outline" />
+		</el-icon>
+		<p>{{ t('devicesHomeAssistantPlugin.messages.mapping.noPreview') }}</p>
+		<p class="text-sm mt-2">{{ t('devicesHomeAssistantPlugin.messages.mapping.selectDeviceFirst') }}</p>
 	</div>
 </template>
 

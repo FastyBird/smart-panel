@@ -179,7 +179,8 @@
     "devices": {
       "created": "New Home Assistant device added successfully.",
       "notCreated": "Something went wrong. Unable to create the Home Assistant device.",
-      "exists": "Device is already adopted in the system."
+      "exists": "Device is already adopted in the system.",
+      "noDiscoveredDevices": "No Home Assistant devices are available. Make sure your Home Assistant instance is connected and devices are discovered."
     },
     "mapping": {
       "previewLoading": "Loading mapping preview...",
@@ -187,7 +188,9 @@
       "adoptionSuccess": "Device {device} adopted successfully",
       "adoptionError": "Failed to adopt device",
       "readyToAdopt": "Device is ready to be adopted",
-      "notReadyToAdopt": "Device has missing required mappings"
+      "notReadyToAdopt": "Device has missing required mappings",
+      "noPreview": "No mapping preview available",
+      "selectDeviceFirst": "Please select a device in step 1 to generate a mapping preview"
     }
   },
   "buttons": {

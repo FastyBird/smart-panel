@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
-	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
 } from '../../../openapi.constants';
@@ -31,7 +31,7 @@ export const PropertyMappingPreviewSchema = z.object({
 	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
 	name: z.string(),
 	haAttribute: z.string(),
-	dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
 	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
@@ -93,7 +93,7 @@ export const MappingPreviewResponseSchema = z.object({
 export const AdoptPropertyDefinitionSchema = z.object({
 	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
 	haAttribute: z.string(),
-	dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
+	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
 	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),

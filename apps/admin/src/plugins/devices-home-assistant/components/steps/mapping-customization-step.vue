@@ -1,6 +1,10 @@
 <template>
 	<div v-if="!preview" class="text-center py-8 text-gray-500">
-		{{ t('devicesHomeAssistantPlugin.messages.mapping.previewLoading') }}
+		<el-icon :size="48" class="mb-4">
+			<icon icon="mdi:information-outline" />
+		</el-icon>
+		<p>{{ t('devicesHomeAssistantPlugin.messages.mapping.noPreview') }}</p>
+		<p class="text-sm mt-2">{{ t('devicesHomeAssistantPlugin.messages.mapping.selectDeviceFirst') }}</p>
 	</div>
 
 	<div v-else class="space-y-4">
@@ -35,7 +39,7 @@
 						</div>
 						<el-checkbox
 							:model-value="isEntitySkipped(entity.entityId)"
-							@change="(val) => toggleEntitySkip(entity.entityId, val)"
+							@change="(val) => toggleEntitySkip(entity.entityId, val === true)"
 						>
 							{{ t('devicesHomeAssistantPlugin.buttons.skip') }}
 						</el-checkbox>
@@ -76,10 +80,11 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElForm, ElFormItem, ElOption, ElSelect, ElTag, type FormInstance } from 'element-plus';
+import { ElAlert, ElButton, ElCheckbox, ElForm, ElFormItem, ElIcon, ElOption, ElSelect, ElTag, type FormInstance } from 'element-plus';
+import { Icon } from '@iconify/vue';
 
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
-import type { IEntityMappingPreview, IMappingEntityOverride, IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
+import type { IMappingEntityOverride, IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
 interface IMappingCustomizationStepProps {
 	preview: IMappingPreviewResponse | null;
