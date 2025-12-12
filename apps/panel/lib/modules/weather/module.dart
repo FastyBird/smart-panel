@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/weather/constants.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:flutter/foundation.dart';
 
@@ -15,6 +16,7 @@ class WeatherModuleService {
 
   late CurrentWeatherRepository _currentWeatherRepository;
   late ForecastWeatherRepository _forecastWeatherRepository;
+  late LocationsRepository _locationsRepository;
 
   late WeatherService _weatherService;
 
@@ -30,9 +32,13 @@ class WeatherModuleService {
     _forecastWeatherRepository = ForecastWeatherRepository(
       apiClient: apiClient.weatherModule,
     );
+    _locationsRepository = LocationsRepository(
+      apiClient: apiClient.weatherModule,
+    );
 
     locator.registerSingleton(_currentWeatherRepository);
     locator.registerSingleton(_forecastWeatherRepository);
+    locator.registerSingleton(_locationsRepository);
   }
 
   Future<void> initialize() async {
@@ -56,6 +62,7 @@ class WeatherModuleService {
     _weatherService = WeatherService(
       currentDayRepository: _currentWeatherRepository,
       forecastRepository: _forecastWeatherRepository,
+      locationsRepository: _locationsRepository,
       configurationRepository: weatherConfigRepo,
     );
 
@@ -63,6 +70,9 @@ class WeatherModuleService {
 
     // Fetch configuration (will be done by config module, but ensure it's loaded)
     await weatherConfigRepo.fetchConfiguration();
+
+    // Fetch locations first, then weather data
+    await _initializeLocations();
     await _initializeWeatherData();
 
     await _weatherService.initialize();
@@ -124,11 +134,26 @@ class WeatherModuleService {
 
   bool get isLoading => _isLoading;
 
+  LocationsRepository get locationsRepository => _locationsRepository;
+
   void dispose() {
     _socketService.unregisterEventHandler(
       WeatherModuleConstants.weatherInfoEvent,
       _socketEventHandler,
     );
+  }
+
+  Future<void> _initializeLocations() async {
+    try {
+      await _locationsRepository.fetchLocations();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[WEATHER MODULE] Error fetching locations: ${e.toString()}',
+        );
+      }
+      // Locations fetch error is not critical - weather may still work with default
+    }
   }
 
   Future<void> _initializeWeatherData() async {

@@ -432,9 +432,13 @@
   "@settings_weather_settings_temperature_location_title": {
     "description": "Label for displaying the weather location setting."
   },
-  "settings_weather_settings_temperature_location_description": "Weather location is configured in the administrator app.",
+  "settings_weather_settings_temperature_location_description": "Select from available locations configured in the administrator app.",
   "@settings_weather_settings_temperature_location_description": {
-    "description": "Description explaining that the weather location is configured externally."
+    "description": "Description explaining that the weather location can be selected from configured options."
+  },
+  "settings_weather_settings_temperature_location_single": "Location is configured in the administrator app.",
+  "@settings_weather_settings_temperature_location_single": {
+    "description": "Description explaining that the weather location is configured externally when only one location exists."
   },
   "settings_maintenance_title": "Maintenance",
   "@settings_maintenance_title": {

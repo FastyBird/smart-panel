@@ -18,8 +18,8 @@ import { WeatherConfigForm } from './components/components';
 import enUS from './locales/en-US.json';
 import { WeatherConfigEditFormSchema } from './schemas/config.schemas';
 import { WeatherConfigSchema, WeatherConfigUpdateReqSchema } from './store/config.store.schemas';
-import { weatherDayStoreKey, weatherForecastStoreKey } from './store/keys';
-import { registerWeatherDayStore, registerWeatherForecastStore } from './store/stores';
+import { weatherDayStoreKey, weatherForecastStoreKey, weatherLocationsStoreKey } from './store/keys';
+import { registerWeatherDayStore, registerWeatherForecastStore, registerWeatherLocationsStore } from './store/stores';
 import { EventType, WEATHER_MODULE_EVENT_PREFIX, WEATHER_MODULE_NAME } from './weather.constants';
 
 const weatherAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Weather');
@@ -47,6 +47,11 @@ export default {
 
 		app.provide(weatherForecastStoreKey, weatherForecastStore);
 		storesManager.addStore(weatherForecastStoreKey, weatherForecastStore);
+
+		const weatherLocationsStore = registerWeatherLocationsStore(options.store);
+
+		app.provide(weatherLocationsStoreKey, weatherLocationsStore);
+		storesManager.addStore(weatherLocationsStoreKey, weatherLocationsStore);
 
 		modulesManager.addModule(weatherAdminModuleKey, {
 			type: WEATHER_MODULE_NAME,

@@ -9,7 +9,9 @@ import 'package:fastybird_smart_panel/features/settings/presentation/widgets/set
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
+import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,25 +29,31 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   final ConfigModuleService _configModule = locator<ConfigModuleService>();
+  final WeatherService _weatherService = locator<WeatherService>();
   late final ModuleConfigRepository<WeatherConfigModel> _repository =
       _configModule.getModuleRepository<WeatherConfigModel>('weather-module');
 
   WeatherUnit _unit = WeatherUnit.celsius;
+  String? _selectedLocationId;
+  List<WeatherLocationModel> _locations = [];
 
   @override
   void initState() {
     super.initState();
 
     _syncStateWithRepository();
+    _syncLocations();
 
     _repository.addListener(_syncStateWithRepository);
+    _weatherService.addListener(_syncLocations);
   }
 
   @override
   void dispose() {
-    super.dispose();
-
     _repository.removeListener(_syncStateWithRepository);
+    _weatherService.removeListener(_syncLocations);
+
+    super.dispose();
   }
 
   void _syncStateWithRepository() {
@@ -55,6 +63,13 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
         _unit = config.unit;
       });
     }
+  }
+
+  void _syncLocations() {
+    setState(() {
+      _locations = _weatherService.locations;
+      _selectedLocationId = _weatherService.selectedLocationId;
+    });
   }
 
   @override
@@ -152,8 +167,11 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                   ),
                 ),
                 subtitle: Text(
-                  localizations
-                      .settings_weather_settings_temperature_location_description,
+                  _locations.length > 1
+                      ? localizations
+                          .settings_weather_settings_temperature_location_description
+                      : localizations
+                          .settings_weather_settings_temperature_location_single,
                   style: TextStyle(
                     fontSize: _screenService.scale(
                       8,
@@ -161,6 +179,58 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                     ),
                   ),
                 ),
+                trailing: _locations.length > 1
+                    ? DropdownButtonHideUnderline(
+                        child: DropdownButton2<String>(
+                          isExpanded: false,
+                          isDense: true,
+                          items: _getLocationItems(),
+                          value: _selectedLocationId,
+                          onChanged: (String? value) {
+                            _handleLocationChange(value);
+                          },
+                          selectedItemBuilder: (BuildContext context) {
+                            return _locations.map<Widget>((location) {
+                              return Container(
+                                alignment: Alignment.centerRight,
+                                width: _screenService.scale(
+                                  80,
+                                  density: _visualDensityService.density,
+                                ),
+                                child: Text(
+                                  location.name,
+                                  textAlign: TextAlign.end,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: AppFontSize.extraSmall,
+                                  ),
+                                ),
+                              );
+                            }).toList();
+                          },
+                          menuItemStyleData: MenuItemStyleData(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 0,
+                              horizontal: AppSpacings.pLg,
+                            ),
+                            height: _screenService.scale(
+                              35,
+                              density: _visualDensityService.density,
+                            ),
+                          ),
+                          dropdownStyleData: DropdownStyleData(
+                            padding: EdgeInsets.all(0),
+                            maxHeight: _screenService.scale(
+                              250,
+                              density: _visualDensityService.density,
+                            ),
+                          ),
+                          iconStyleData: const IconStyleData(
+                            openMenuIcon: Icon(Icons.arrow_drop_up),
+                          ),
+                        ),
+                      )
+                    : null,
               ),
             ],
           ),
@@ -234,5 +304,25 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
     };
 
     return await _repository.updateConfiguration(updateData);
+  }
+
+  List<DropdownMenuItem<String>> _getLocationItems() {
+    return _locations.map((location) {
+      return DropdownMenuItem<String>(
+        value: location.id,
+        child: Text(
+          location.name,
+          style: TextStyle(fontSize: AppFontSize.extraSmall),
+        ),
+      );
+    }).toList();
+  }
+
+  void _handleLocationChange(String? locationId) {
+    if (locationId == null) return;
+
+    HapticFeedback.lightImpact();
+
+    _weatherService.selectLocation(locationId);
   }
 }

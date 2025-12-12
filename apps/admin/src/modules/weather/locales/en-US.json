@@ -1,15 +1,54 @@
 {
 	"headings": {
 		"weather": "Weather",
-		"aboutLocationSettings": "Location Settings"
+		"aboutLocationSettings": "Location Settings",
+		"locations": {
+			"list": "Weather Locations",
+			"add": "Add Location",
+			"edit": "Edit Location",
+			"deleteLocation": "Delete Location"
+		}
 	},
 	"messages": {
 		"config": {
 			"edited": "Weather configuration has been successfully updated",
 			"notEdited": "Failed to update weather configuration"
+		},
+		"locations": {
+			"created": "Location \"{location}\" has been created",
+			"notCreated": "Failed to create location \"{location}\"",
+			"updated": "Location \"{location}\" has been updated",
+			"notUpdated": "Failed to update location \"{location}\"",
+			"deleted": "Location has been deleted",
+			"notDeleted": "Failed to delete location",
+			"noLocations": "No locations configured. Add a location to get weather data.",
+			"confirmDeleteLocation": "Are you sure you want to delete location \"{name}\"?"
 		}
 	},
+	"buttons": {
+		"addLocation": {
+			"title": "Add Location"
+		},
+		"save": {
+			"title": "Save"
+		},
+		"cancel": {
+			"title": "Cancel"
+		},
+		"yes": "Yes",
+		"no": "No"
+	},
 	"fields": {
+		"location": {
+			"name": {
+				"title": "Location Name",
+				"description": "A friendly name for this location",
+				"placeholder": "e.g., Home, Office, Beach House",
+				"validation": {
+					"required": "Location name is required"
+				}
+			}
+		},
 		"config": {
 			"locationType": {
 				"title": "Location Type",

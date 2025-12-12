@@ -40,6 +40,7 @@ import 'package:fastybird_smart_panel/modules/system/service.dart';
 import 'package:fastybird_smart_panel/modules/weather/module.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -404,6 +405,11 @@ class StartupManagerService {
     if (locator.isRegistered<ForecastWeatherRepository>()) {
       try {
         locator.unregister<ForecastWeatherRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<LocationsRepository>()) {
+      try {
+        locator.unregister<LocationsRepository>();
       } catch (_) {}
     }
     if (locator.isRegistered<WeatherService>()) {
