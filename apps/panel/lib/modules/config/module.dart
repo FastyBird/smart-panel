@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/config/constants.dart';
@@ -16,12 +17,14 @@ class ConfigModuleService {
 
   ConfigModuleService({
     required ApiClient apiClient,
+    required Dio dio,
     required SocketService socketService,
   })  : _socketService = socketService {
     _registrationService = ConfigRegistrationService();
     _repositoryManager = ConfigRepositoryManager(
       registrationService: _registrationService,
       apiClient: apiClient,
+      dio: dio,
     );
   }
 

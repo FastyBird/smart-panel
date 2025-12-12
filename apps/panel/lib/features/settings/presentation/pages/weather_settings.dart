@@ -30,7 +30,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   late final ModuleConfigRepository<WeatherConfigModel> _repository =
       _configModule.getModuleRepository<WeatherConfigModel>('weather-module');
 
-  late WeatherUnit _unit;
+  WeatherUnit _unit = WeatherUnit.celsius;
 
   @override
   void initState() {

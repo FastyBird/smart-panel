@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/modules/config/models/model.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/foundation.dart';
 class ConfigRepositoryManager {
   final ConfigRegistrationService _registrationService;
   final ApiClient _apiClient;
+  final Dio _dio;
 
   final Map<String, ChangeNotifier> _moduleRepositories = {};
   final Map<String, ChangeNotifier> _pluginRepositories = {};
@@ -14,8 +16,10 @@ class ConfigRepositoryManager {
   ConfigRepositoryManager({
     required ConfigRegistrationService registrationService,
     required ApiClient apiClient,
+    required Dio dio,
   })  : _registrationService = registrationService,
-        _apiClient = apiClient;
+        _apiClient = apiClient,
+        _dio = dio;
 
   /// Get or create repository for a module
   ModuleConfigRepository<T> getModuleRepository<T extends Model>(String moduleName) {
@@ -28,6 +32,7 @@ class ConfigRepositoryManager {
       final repository = ModuleConfigRepository<T>(
         moduleName: moduleName,
         apiClient: _apiClient,
+        dio: _dio,
         fromJson: registration.fromJson as T Function(Map<String, dynamic>),
         updateHandler: registration.updateHandler,
       );
@@ -49,6 +54,7 @@ class ConfigRepositoryManager {
       final repository = ModuleConfigRepository<T>(
         moduleName: pluginName,
         apiClient: _apiClient,
+        dio: _dio,
         fromJson: registration.fromJson as T Function(Map<String, dynamic>),
         updateHandler: registration.updateHandler,
       );

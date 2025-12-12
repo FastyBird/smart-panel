@@ -32,15 +32,24 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   late final ModuleConfigRepository<SystemConfigModel> _repository =
       _configModule.getModuleRepository<SystemConfigModel>('system-module');
 
-  late String _timezone;
-  late Language _language;
-  late TimeFormat _timeFormat;
+  String? _timezone;
+  Language _language = Language.english;
+  TimeFormat _timeFormat = TimeFormat.twentyFourHour;
 
   @override
   void initState() {
     super.initState();
 
     _syncStateWithRepository();
+    
+    // If repository data is null, fetch it
+    if (_repository.data == null) {
+      _repository.fetchConfiguration().then((_) {
+        _syncStateWithRepository();
+      }).catchError((_) {
+        // Error fetching configuration - will be handled by UI state
+      });
+    }
 
     _repository.addListener(_syncStateWithRepository);
   }
@@ -379,7 +388,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
     HapticFeedback.lightImpact();
 
-    final String backup = _timezone;
+    final String? backup = _timezone;
 
     setState(() {
       _timezone = value;
@@ -452,8 +461,18 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   }
 
   Future<bool> _updateLanguage(Language language) async {
-    final current = _repository.data;
-    if (current == null) return false;
+    var current = _repository.data;
+    if (current == null) {
+      try {
+        await _repository.fetchConfiguration();
+        current = _repository.data;
+        if (current == null) {
+          return false;
+        }
+      } catch (e) {
+        return false;
+      }
+    }
 
     final updateData = <String, dynamic>{
       'type': 'system-module',
@@ -462,12 +481,28 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
       'time_format': current.timeFormat.value,
     };
 
-    return await _repository.updateConfiguration(updateData);
+    try {
+      return await _repository.updateConfiguration(updateData);
+    } catch (e) {
+      return false;
+    }
   }
 
-  Future<bool> _updateTimezone(String timezone) async {
-    final current = _repository.data;
-    if (current == null) return false;
+  Future<bool> _updateTimezone(String? timezone) async {
+    if (timezone == null) return false;
+    
+    var current = _repository.data;
+    if (current == null) {
+      try {
+        await _repository.fetchConfiguration();
+        current = _repository.data;
+        if (current == null) {
+          return false;
+        }
+      } catch (e) {
+        return false;
+      }
+    }
 
     final updateData = <String, dynamic>{
       'type': 'system-module',
@@ -480,8 +515,18 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   }
 
   Future<bool> _updateTimeFormat(TimeFormat format) async {
-    final current = _repository.data;
-    if (current == null) return false;
+    var current = _repository.data;
+    if (current == null) {
+      try {
+        await _repository.fetchConfiguration();
+        current = _repository.data;
+        if (current == null) {
+          return false;
+        }
+      } catch (e) {
+        return false;
+      }
+    }
 
     final updateData = <String, dynamic>{
       'type': 'system-module',

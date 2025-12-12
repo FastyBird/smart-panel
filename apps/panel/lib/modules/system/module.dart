@@ -96,6 +96,11 @@ class SystemModuleService {
       // Build update data with all current fields
       final currentConfig = repo.data;
       if (currentConfig == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[SYSTEM MODULE] Cannot update config: current configuration is null',
+          );
+        }
         return false;
       }
 
@@ -107,9 +112,15 @@ class SystemModuleService {
         if (data.containsKey('log_levels')) 'log_levels': data['log_levels'],
       };
 
-      // Use the repository's update method
-      return await repo.updateConfiguration(updateDataMap);
-    } catch (e) {
+      // Use the repository's raw update method to avoid infinite recursion
+      return await repo.updateConfigurationRaw(updateDataMap);
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SYSTEM MODULE] Error updating system config: ${e.toString()}',
+        );
+        debugPrint('[SYSTEM MODULE] Stack trace: $stackTrace');
+      }
       return false;
     }
   }

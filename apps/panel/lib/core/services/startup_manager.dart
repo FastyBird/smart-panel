@@ -335,24 +335,36 @@ class StartupManagerService {
     }
 
     // Unregister all module services
-    try {
-      locator.unregister<ConfigModuleService>();
-    } catch (_) {}
-    try {
-      locator.unregister<DisplaysModuleService>();
-    } catch (_) {}
-    try {
-      locator.unregister<SystemModuleService>();
-    } catch (_) {}
-    try {
-      locator.unregister<WeatherModuleService>();
-    } catch (_) {}
-    try {
-      locator.unregister<DevicesModuleService>();
-    } catch (_) {}
-    try {
-      locator.unregister<DashboardModuleService>();
-    } catch (_) {}
+    if (locator.isRegistered<ConfigModuleService>()) {
+      try {
+        locator.unregister<ConfigModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<DisplaysModuleService>()) {
+      try {
+        locator.unregister<DisplaysModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<SystemModuleService>()) {
+      try {
+        locator.unregister<SystemModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<WeatherModuleService>()) {
+      try {
+        locator.unregister<WeatherModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<DevicesModuleService>()) {
+      try {
+        locator.unregister<DevicesModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<DashboardModuleService>()) {
+      try {
+        locator.unregister<DashboardModuleService>();
+      } catch (_) {}
+    }
 
     // Unregister all repositories and services registered by modules
     // Config module repositories (LanguageConfigRepository moved to system module)
@@ -360,86 +372,130 @@ class StartupManagerService {
     // SystemConfigRepository is registered by system module
 
     // Displays module repositories
-    try {
-      locator.unregister<DisplayRepository>();
-    } catch (_) {}
+    if (locator.isRegistered<DisplayRepository>()) {
+      try {
+        locator.unregister<DisplayRepository>();
+      } catch (_) {}
+    }
 
     // System module repositories and services
-    try {
-      locator.unregister<SystemInfoRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<ThrottleStatusRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<SystemService>();
-    } catch (_) {}
+    if (locator.isRegistered<SystemInfoRepository>()) {
+      try {
+        locator.unregister<SystemInfoRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<ThrottleStatusRepository>()) {
+      try {
+        locator.unregister<ThrottleStatusRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<SystemService>()) {
+      try {
+        locator.unregister<SystemService>();
+      } catch (_) {}
+    }
 
     // Weather module repositories and services
-    try {
-      locator.unregister<CurrentWeatherRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<ForecastWeatherRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<WeatherService>();
-    } catch (_) {}
+    if (locator.isRegistered<CurrentWeatherRepository>()) {
+      try {
+        locator.unregister<CurrentWeatherRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<ForecastWeatherRepository>()) {
+      try {
+        locator.unregister<ForecastWeatherRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<WeatherService>()) {
+      try {
+        locator.unregister<WeatherService>();
+      } catch (_) {}
+    }
 
     // Devices module repositories and services
-    try {
-      locator.unregister<DevicesRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<DeviceControlsRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<ChannelsRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<ChannelControlsRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<ChannelPropertiesRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<DevicesService>();
-    } catch (_) {}
+    if (locator.isRegistered<DevicesRepository>()) {
+      try {
+        locator.unregister<DevicesRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<DeviceControlsRepository>()) {
+      try {
+        locator.unregister<DeviceControlsRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<ChannelsRepository>()) {
+      try {
+        locator.unregister<ChannelsRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<ChannelControlsRepository>()) {
+      try {
+        locator.unregister<ChannelControlsRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<ChannelPropertiesRepository>()) {
+      try {
+        locator.unregister<ChannelPropertiesRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<DevicesService>()) {
+      try {
+        locator.unregister<DevicesService>();
+      } catch (_) {}
+    }
 
     // Dashboard module repositories and services
-    try {
-      locator.unregister<PagesRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<CardsRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<TilesRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<DataSourcesRepository>();
-    } catch (_) {}
-    try {
-      locator.unregister<DashboardService>();
-    } catch (_) {}
+    if (locator.isRegistered<PagesRepository>()) {
+      try {
+        locator.unregister<PagesRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<CardsRepository>()) {
+      try {
+        locator.unregister<CardsRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<TilesRepository>()) {
+      try {
+        locator.unregister<TilesRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<DataSourcesRepository>()) {
+      try {
+        locator.unregister<DataSourcesRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<DashboardService>()) {
+      try {
+        locator.unregister<DashboardService>();
+      } catch (_) {}
+    }
 
     // Unregister API client and Dio instance
-    try {
-      locator.unregister<ApiClient>();
-    } catch (_) {}
-    try {
-      locator.unregister<Dio>();
-    } catch (_) {}
+    if (locator.isRegistered<ApiClient>()) {
+      try {
+        locator.unregister<ApiClient>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<Dio>()) {
+      try {
+        locator.unregister<Dio>();
+      } catch (_) {}
+    }
 
     // Unregister SocketService
-    try {
-      locator.unregister<SocketService>();
-    } catch (_) {}
+    if (locator.isRegistered<SocketService>()) {
+      try {
+        locator.unregister<SocketService>();
+      } catch (_) {}
+    }
 
     // Unregister SystemActionsService
-    try {
-      locator.unregister<SystemActionsService>();
-    } catch (_) {}
+    if (locator.isRegistered<SystemActionsService>()) {
+      try {
+        locator.unregister<SystemActionsService>();
+      } catch (_) {}
+    }
   }
 
   /// Register modules with the current API client
@@ -448,6 +504,7 @@ class StartupManagerService {
     // Register modules with the new API client
     var configModuleService = ConfigModuleService(
       apiClient: _apiClient,
+      dio: _apiIoService,
       socketService: _socketClient,
     );
     var displaysModuleService = DisplaysModuleService(

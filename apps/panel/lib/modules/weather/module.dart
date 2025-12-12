@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/weather/constants.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
+import 'package:flutter/foundation.dart';
 
 class WeatherModuleService {
   final SocketService _socketService;
@@ -84,6 +85,11 @@ class WeatherModuleService {
       // Build update data with all current fields
       final currentConfig = repo.data;
       if (currentConfig == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[WEATHER MODULE] Cannot update config: current configuration is null',
+          );
+        }
         return false;
       }
 
@@ -95,9 +101,15 @@ class WeatherModuleService {
           'open_weather_api_key': currentConfig.openWeatherApiKey,
       };
 
-      // Use the repository's update method
-      return await repo.updateConfiguration(updateDataMap);
-    } catch (e) {
+      // Use the repository's raw update method to avoid infinite recursion
+      return await repo.updateConfigurationRaw(updateDataMap);
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint(
+          '[WEATHER MODULE] Error updating weather config: ${e.toString()}',
+        );
+        debugPrint('[WEATHER MODULE] Stack trace: $stackTrace');
+      }
       return false;
     }
   }

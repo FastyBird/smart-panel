@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 class ModuleConfigRepository<T extends Model> extends ChangeNotifier {
   final String _moduleName;
   final ApiClient _apiClient;
+  final Dio _dio;
   final T Function(Map<String, dynamic>) _fromJson;
   final Future<bool> Function(String name, Map<String, dynamic> data)? _updateHandler;
 
@@ -14,10 +15,12 @@ class ModuleConfigRepository<T extends Model> extends ChangeNotifier {
   ModuleConfigRepository({
     required String moduleName,
     required ApiClient apiClient,
+    required Dio dio,
     required T Function(Map<String, dynamic>) fromJson,
     Future<bool> Function(String name, Map<String, dynamic> data)? updateHandler,
   })  : _moduleName = moduleName,
         _apiClient = apiClient,
+        _dio = dio,
         _fromJson = fromJson,
         _updateHandler = updateHandler;
 
@@ -68,44 +71,60 @@ class ModuleConfigRepository<T extends Model> extends ChangeNotifier {
 
   Future<bool> updateConfiguration(Map<String, dynamic> data) async {
     if (_updateHandler != null) {
-      return await _updateHandler(_moduleName, data);
+      try {
+        return await _updateHandler(_moduleName, data);
+      } catch (e) {
+        rethrow;
+      }
     }
 
     // Default update logic using API
     return await _updateConfigurationRaw(data);
   }
 
+  /// Updates configuration directly via API, bypassing the update handler.
+  /// This should be used by update handlers to avoid infinite recursion.
+  Future<bool> updateConfigurationRaw(Map<String, dynamic> requestBody) async {
+    return await _updateConfigurationRaw(requestBody);
+  }
+
   Future<bool> _updateConfigurationRaw(Map<String, dynamic> requestBody) async {
     return await _handleApiCall(() async {
-      // Get the Dio instance from ApiClient
-      final dio = (_apiClient as dynamic)._dio as Dio;
-      final baseUrl = (_apiClient as dynamic)._baseUrl as String?;
+      // Create request body with data field
+      final body = <String, dynamic>{
+        'data': requestBody,
+      };
 
-      // Build the full URL
-      final url = baseUrl != null
-          ? '$baseUrl/config-module/config/module/$_moduleName'
-          : '/config-module/config/module/$_moduleName';
+      // Build the URL
+      final url = '/config-module/config/module/$_moduleName';
 
-      // Create request body with data field if not already wrapped
-      final body = requestBody.containsKey('data')
-          ? requestBody
-          : <String, dynamic>{'data': requestBody};
+      try {
+        // Make the PATCH request using the Dio instance
+        final response = await _dio.patch<Map<String, dynamic>>(
+          url,
+          data: body,
+          options: Options(
+            headers: {'Content-Type': 'application/json'},
+          ),
+        );
 
-      // Make the request
-      final response = await dio.patch<Map<String, dynamic>>(
-        url,
-        data: body,
-      );
+        // Extract the actual config data from the response
+        final rawResponse = response.data;
+        if (rawResponse is Map<String, dynamic> &&
+            rawResponse['data'] is Map<String, dynamic>) {
+          final configData = rawResponse['data'] as Map<String, dynamic>;
+          insertConfiguration(configData);
+        }
 
-      // Extract the actual config data from the response
-      final rawResponse = response.data;
-      if (rawResponse is Map<String, dynamic> &&
-          rawResponse['data'] is Map<String, dynamic>) {
-        final configData = rawResponse['data'] as Map<String, dynamic>;
-        insertConfiguration(configData);
+        return true;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CONFIG MODULE][UPDATE CONFIGURATION] Error making PATCH request for $_moduleName: ${e.toString()}',
+          );
+        }
+        rethrow;
       }
-
-      return true;
     }, 'update configuration');
   }
 
