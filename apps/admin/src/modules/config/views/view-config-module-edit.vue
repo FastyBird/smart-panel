@@ -53,14 +53,14 @@
 		>
 			<el-result
 				icon="error"
-				:title="t('configModule.messages.loadError')"
+				:title="t('configModule.messages.loadError', 'Failed to load configuration')"
 			>
 				<template #extra>
 					<el-button
 						type="primary"
 						@click="onRetry"
 					>
-						{{ t('configModule.buttons.retry.title') }}
+						{{ t('configModule.buttons.retry.title', 'Retry') }}
 					</el-button>
 				</template>
 			</el-result>
