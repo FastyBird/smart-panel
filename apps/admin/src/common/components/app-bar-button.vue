@@ -12,8 +12,9 @@
 					ns.b(),
 					ns.m(`align-${props.align}`),
 					...(props.classes ?? []),
-					{ 'pr-0!': 'icon' in $slots && props.align !== AppBarButtonAlign.LEFT },
-					{ 'pl-0!': 'icon' in $slots && props.align !== AppBarButtonAlign.RIGHT },
+					{ 'pr-0!': 'icon' in $slots && 'default' in $slots && props.align !== AppBarButtonAlign.LEFT },
+					{ 'pl-0!': 'icon' in $slots && 'default' in $slots && props.align !== AppBarButtonAlign.RIGHT },
+					{ 'p-1!': 'icon' in $slots && !('default' in $slots) },
 				]"
 				class="ml-0!"
 				type="primary"
@@ -36,8 +37,9 @@
 				ns.b(),
 				ns.m(`align-${props.align}`),
 				...(props.classes ?? []),
-				{ 'pr-0!': 'icon' in $slots && props.align !== AppBarButtonAlign.LEFT },
-				{ 'pl-0!': 'icon' in $slots && props.align !== AppBarButtonAlign.RIGHT },
+				{ 'pr-0!': 'icon' in $slots && 'default' in $slots && props.align !== AppBarButtonAlign.LEFT },
+				{ 'pl-0!': 'icon' in $slots && 'default' in $slots && props.align !== AppBarButtonAlign.RIGHT },
+				{ 'p-1!': 'icon' in $slots && !('default' in $slots) },
 			]"
 			class="ml-0!"
 			type="primary"
