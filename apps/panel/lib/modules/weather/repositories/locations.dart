@@ -2,12 +2,23 @@ import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 
+typedef PrimaryLocationIdProvider = String? Function();
+
 class LocationsRepository extends Repository<List<WeatherLocationModel>> {
   String? _selectedLocationId;
+  PrimaryLocationIdProvider? _primaryLocationIdProvider;
 
   LocationsRepository({required super.apiClient}) {
     data = [];
   }
+
+  /// Set a function to provide the primary location ID from config
+  void setPrimaryLocationIdProvider(PrimaryLocationIdProvider provider) {
+    _primaryLocationIdProvider = provider;
+  }
+
+  /// Get the primary location ID from config
+  String? get primaryLocationId => _primaryLocationIdProvider?.call();
 
   /// Get all locations
   List<WeatherLocationModel> get locations => data ?? [];
@@ -63,9 +74,25 @@ class LocationsRepository extends Repository<List<WeatherLocationModel>> {
 
         data = newData;
 
-        // Auto-select first location if none selected
+        // Auto-select location if none selected
         if (_selectedLocationId == null && newData.isNotEmpty) {
-          _selectedLocationId = newData.first.id;
+          // Prefer primary location from config, fall back to first location
+          final primaryId = primaryLocationId;
+          if (primaryId != null && newData.any((loc) => loc.id == primaryId)) {
+            _selectedLocationId = primaryId;
+            if (kDebugMode) {
+              debugPrint(
+                '[WEATHER MODULE][LOCATIONS] Auto-selected primary location: $primaryId',
+              );
+            }
+          } else {
+            _selectedLocationId = newData.first.id;
+            if (kDebugMode) {
+              debugPrint(
+                '[WEATHER MODULE][LOCATIONS] Auto-selected first location: ${newData.first.id}',
+              );
+            }
+          }
         }
 
         notifyListeners();

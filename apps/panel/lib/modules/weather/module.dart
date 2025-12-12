@@ -3,7 +3,6 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
-import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/weather/constants.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
@@ -55,8 +54,10 @@ class WeatherModuleService {
     // Get weather config repository from config module
     final weatherConfigRepo = configModule.getModuleRepository<WeatherConfigModel>('weather-module');
 
-    // Weather config is now managed by config module
-    // No need to create wrapper or register separately
+    // Set up primary location provider so locations repository can use it for auto-selection
+    _locationsRepository.setPrimaryLocationIdProvider(
+      () => weatherConfigRepo.data?.primaryLocationId,
+    );
 
     // Create weather service with config from config module
     _weatherService = WeatherService(
@@ -87,12 +88,10 @@ class WeatherModuleService {
 
   Future<bool> _updateWeatherConfig(String name, Map<String, dynamic> data) async {
     // Custom update handler for weather config
-    // This handles the update logic that was in WeatherConfigRepository.setWeatherUnit
     try {
       final configModule = locator<ConfigModuleService>();
       final repo = configModule.getModuleRepository<WeatherConfigModel>(name);
-      
-      // Build update data with all current fields
+
       final currentConfig = repo.data;
       if (currentConfig == null) {
         if (kDebugMode) {
@@ -105,10 +104,8 @@ class WeatherModuleService {
 
       final updateDataMap = <String, dynamic>{
         'type': name,
-        'location_type': _convertWeatherLocationTypeToApiString(currentConfig.locationType),
-        'unit': data['unit'] ?? _convertWeatherUnitToApiString(currentConfig.unit),
-        if (currentConfig.openWeatherApiKey != null)
-          'open_weather_api_key': currentConfig.openWeatherApiKey,
+        if (data.containsKey('primary_location_id'))
+          'primary_location_id': data['primary_location_id'],
       };
 
       // Use the repository's raw update method to avoid infinite recursion
@@ -122,14 +119,6 @@ class WeatherModuleService {
       }
       return false;
     }
-  }
-
-  String _convertWeatherLocationTypeToApiString(WeatherLocationType locationType) {
-    return locationType.value;
-  }
-
-  String _convertWeatherUnitToApiString(WeatherUnit unit) {
-    return unit.value;
   }
 
   bool get isLoading => _isLoading;

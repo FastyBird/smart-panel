@@ -1,0 +1,37 @@
+{
+	"headings": {
+		"aboutApiSettings": "OpenWeatherMap API Settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"apiKey": {
+				"title": "API Key",
+				"placeholder": "Enter your OpenWeatherMap API key",
+				"description": "Get your free API key from openweathermap.org",
+				"validation": {
+					"required": "Please enter your API key"
+				}
+			},
+			"unit": {
+				"title": "Temperature Unit",
+				"placeholder": "Select temperature unit",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "OpenWeatherMap settings have been updated",
+			"notEdited": "Failed to update OpenWeatherMap settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your OpenWeatherMap API settings. You need a valid API key to fetch weather data. Select your preferred temperature unit for weather displays."
+	}
+}

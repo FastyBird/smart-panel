@@ -1,7 +1,9 @@
 import type { App } from 'vue';
+import type { RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
 
+import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
 	injectLogger,
@@ -16,6 +18,7 @@ import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { WeatherConfigForm } from './components/components';
 import enUS from './locales/en-US.json';
+import { ModuleRoutes } from './router';
 import { WeatherConfigEditFormSchema } from './schemas/config.schemas';
 import { WeatherConfigSchema, WeatherConfigUpdateReqSchema } from './store/config.store.schemas';
 import { weatherDayStoreKey, weatherForecastStoreKey, weatherLocationsStoreKey } from './store/keys';
@@ -74,6 +77,15 @@ export default {
 			modules: [CONFIG_MODULE_NAME],
 			isCore: true,
 		});
+
+		// Register routes
+		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
+
+		if (rootRoute) {
+			ModuleRoutes.forEach((route: RouteRecordRaw): void => {
+				options.router.addRoute(AppRouteNames.ROOT, route);
+			});
+		}
 
 		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {
 			if (!data?.event?.startsWith(WEATHER_MODULE_EVENT_PREFIX)) {

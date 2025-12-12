@@ -10,6 +10,15 @@
 			"deleteLocation": "Delete Location"
 		}
 	},
+	"subHeadings": {
+		"weather": "Manage weather locations and settings"
+	},
+	"breadcrumbs": {
+		"weather": "Weather",
+		"locations": "Locations",
+		"addLocation": "Add Location",
+		"editLocation": "Edit Location"
+	},
 	"messages": {
 		"config": {
 			"edited": "Weather configuration has been successfully updated",
@@ -23,6 +32,7 @@
 			"deleted": "Location has been deleted",
 			"notDeleted": "Failed to delete location",
 			"noLocations": "No locations configured. Add a location to get weather data.",
+			"notFound": "Location not found",
 			"confirmDeleteLocation": "Are you sure you want to delete location \"{name}\"?"
 		}
 	},
@@ -40,7 +50,7 @@
 		"no": "No"
 	},
 	"fields": {
-		"location": {
+		"locations": {
 			"name": {
 				"title": "Location Name",
 				"description": "A friendly name for this location",
@@ -48,6 +58,10 @@
 				"validation": {
 					"required": "Location name is required"
 				}
+			},
+			"type": {
+				"title": "Provider Type",
+				"placeholder": "Select weather provider"
 			}
 		},
 		"config": {

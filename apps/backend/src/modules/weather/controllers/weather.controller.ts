@@ -47,6 +47,36 @@ export class WeatherController {
 
 	@ApiOperation({
 		tags: [WEATHER_MODULE_API_TAG_NAME],
+		summary: 'Get weather data for primary location',
+		description: 'Retrieve current weather and forecast for the primary configured location',
+		operationId: 'get-weather-module-primary-weather',
+	})
+	@ApiSuccessResponse(LocationWeatherResponseModel, 'Primary location weather data retrieved successfully')
+	@ApiBadRequestResponse('Invalid request parameters')
+	@ApiNotFoundResponse('No primary location configured or weather data could not be loaded')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('primary')
+	async getPrimaryWeather(): Promise<LocationWeatherResponseModel> {
+		this.logger.debug('[LOOKUP] Fetching weather data for primary location');
+
+		try {
+			const data = await this.weatherService.getPrimaryWeather();
+
+			const response = new LocationWeatherResponseModel();
+			response.data = data;
+
+			return response;
+		} catch (error) {
+			if (error instanceof WeatherNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+
+			throw error;
+		}
+	}
+
+	@ApiOperation({
+		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get weather data for specific location',
 		description: 'Retrieve current weather and forecast for a specific location',
 		operationId: 'get-weather-module-location-weather',

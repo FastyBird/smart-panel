@@ -8,9 +8,11 @@ import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
+import { ConfigService } from '../../config/services/config.service';
 import { WeatherLocationEntity } from '../entities/locations.entity';
+import { WeatherConfigModel } from '../models/config.model';
 import { CurrentDayModel, ForecastDayModel, LocationModel, LocationWeatherModel } from '../models/weather.model';
-import { EventType } from '../weather.constants';
+import { EventType, WEATHER_MODULE_NAME } from '../weather.constants';
 import { WeatherNotFoundException } from '../weather.exceptions';
 
 import { LocationsService } from './locations.service';
@@ -29,6 +31,7 @@ export class WeatherService {
 		private readonly schedulerRegistry: SchedulerRegistry,
 		private readonly locationsService: LocationsService,
 		private readonly providerRegistry: WeatherProviderRegistryService,
+		private readonly configService: ConfigService,
 		private readonly eventEmitter: EventEmitter2,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
@@ -69,6 +72,31 @@ export class WeatherService {
 		}
 
 		return weatherResults;
+	}
+
+	/**
+	 * Get the primary location ID from config
+	 */
+	getPrimaryLocationId(): string | null {
+		try {
+			const config = this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
+			return config.primaryLocationId;
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Get weather data for the primary location
+	 */
+	async getPrimaryWeather(force = false): Promise<LocationWeatherModel> {
+		const primaryLocationId = this.getPrimaryLocationId();
+
+		if (!primaryLocationId) {
+			throw new WeatherNotFoundException('No primary location configured');
+		}
+
+		return this.getWeather(primaryLocationId, force);
 	}
 
 	/**

@@ -58,6 +58,7 @@ import { PagesTilesPlugin } from './plugins/pages-tiles';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview';
 import { TilesTimePlugin } from './plugins/tiles-time';
 import { TilesWeatherPlugin } from './plugins/tiles-weather';
+import { WeatherOpenweathermapPlugin } from './plugins/weather-openweathermap';
 
 const app = createApp(AppMain);
 
@@ -149,6 +150,7 @@ app.use(TilesTimePlugin);
 app.use(TilesWeatherPlugin);
 app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
 app.use(LoggerRotatingFilePlugin, pluginOptions);
+app.use(WeatherOpenweathermapPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 
