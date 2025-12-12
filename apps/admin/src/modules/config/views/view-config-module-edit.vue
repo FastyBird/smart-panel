@@ -154,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
@@ -216,15 +216,6 @@ const moduleType = computed<string>((): string => {
 
 // Use a ref to track the current module type and update it when route changes
 const currentModuleType = ref<string>(moduleType.value || '');
-watch(
-	(): string => moduleType.value,
-	(val: string): void => {
-		if (val) {
-			currentModuleType.value = val;
-		}
-	},
-	{ immediate: true }
-);
 
 const moduleComposable = computed(() => {
 	// Re-create composable when module type changes
@@ -327,9 +318,13 @@ const onRetry = async (): Promise<void> => {
 watch(
 	(): string => moduleType.value,
 	async (val: string): Promise<void> => {
-		if (!val) {
+		if (!val || val.trim() === '') {
+			// Don't fetch if module type is empty
 			return;
 		}
+		
+		// Update current module type
+		currentModuleType.value = val;
 		
 		loadError.value = false;
 		await fetchConfigModule().catch((error: unknown): void => {
