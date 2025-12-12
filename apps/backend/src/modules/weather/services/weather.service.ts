@@ -9,12 +9,9 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import {
-	EventType as ConfigModuleEventType,
-	LanguageType,
-	TemperatureUnitType,
-	WeatherLocationType,
-} from '../../config/config.constants';
+import { EventType as ConfigModuleEventType } from '../../config/config.constants';
+import { LanguageType, TemperatureUnitType } from '../../system/system.constants';
+import { WeatherLocationType } from '../weather.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { ForecastDto, ForecastListItemDto } from '../dto/forecast.dto';

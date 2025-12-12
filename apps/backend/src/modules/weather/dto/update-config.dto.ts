@@ -3,7 +3,8 @@ import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateIf } f
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { TemperatureUnitType, WeatherLocationType } from '../../config/config.constants';
+import { TemperatureUnitType } from '../../system/system.constants';
+import { WeatherLocationType } from '../weather.constants';
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
 import { WEATHER_MODULE_NAME } from '../weather.constants';
 

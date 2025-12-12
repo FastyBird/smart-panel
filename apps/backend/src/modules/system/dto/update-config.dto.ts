@@ -3,7 +3,7 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsOptional, IsString } from 'class-vali
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { LanguageType, LogLevelType, TimeFormatType } from '../../config/config.constants';
+import { LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
