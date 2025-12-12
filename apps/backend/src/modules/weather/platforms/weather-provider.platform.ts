@@ -12,6 +12,16 @@ export interface IWeatherProvider {
 	getType(): string;
 
 	/**
+	 * Returns the human-readable name of the provider
+	 */
+	getName(): string;
+
+	/**
+	 * Returns a description of the provider
+	 */
+	getDescription(): string;
+
+	/**
 	 * Fetches current weather data for the given location
 	 * @param location The weather location entity
 	 * @returns Current day weather model or null if fetch failed

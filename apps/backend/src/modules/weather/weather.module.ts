@@ -9,6 +9,7 @@ import { SwaggerModule } from '../swagger/swagger.module';
 
 import { GeolocationController } from './controllers/geolocation.controller';
 import { LocationsController } from './controllers/locations.controller';
+import { ProvidersController } from './controllers/providers.controller';
 import { WeatherController } from './controllers/weather.controller';
 import { UpdateWeatherConfigDto } from './dto/update-config.dto';
 import { WeatherLocationEntity } from './entities/locations.entity';
@@ -32,7 +33,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 })
 @Module({
 	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), ConfigModule, SwaggerModule],
-	controllers: [WeatherController, GeolocationController, LocationsController],
+	controllers: [WeatherController, GeolocationController, LocationsController, ProvidersController],
 	providers: [
 		WeatherService,
 		GeolocationService,

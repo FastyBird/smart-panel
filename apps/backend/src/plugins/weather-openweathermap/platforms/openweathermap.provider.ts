@@ -5,7 +5,11 @@ import { CurrentDayModel, ForecastDayModel } from '../../../modules/weather/mode
 import { IWeatherProvider } from '../../../modules/weather/platforms/weather-provider.platform';
 import { OpenWeatherMapLocationEntity } from '../entities/locations-openweathermap.entity';
 import { OpenWeatherMapHttpService } from '../services/openweathermap-http.service';
-import { WEATHER_OPENWEATHERMAP_PLUGIN_TYPE } from '../weather-openweathermap.constants';
+import {
+	WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_DESCRIPTION,
+	WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_NAME,
+	WEATHER_OPENWEATHERMAP_PLUGIN_TYPE,
+} from '../weather-openweathermap.constants';
 
 @Injectable()
 export class OpenWeatherMapProvider implements IWeatherProvider {
@@ -15,6 +19,14 @@ export class OpenWeatherMapProvider implements IWeatherProvider {
 
 	getType(): string {
 		return WEATHER_OPENWEATHERMAP_PLUGIN_TYPE;
+	}
+
+	getName(): string {
+		return WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_NAME;
+	}
+
+	getDescription(): string {
+		return WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_DESCRIPTION;
 	}
 
 	async getCurrentWeather(location: WeatherLocationEntity): Promise<CurrentDayModel | null> {

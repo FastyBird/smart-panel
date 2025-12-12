@@ -5,12 +5,16 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../config/services/config.service';
-import { TemperatureUnitType } from '../../system/system.constants';
 import { GeolocationCityDto, GeolocationZipDto } from '../dto/geolocation.dto';
-import { WeatherConfigModel } from '../models/config.model';
 import { GeolocationCityModel, GeolocationZipModel } from '../models/geolocation.model';
-import { WeatherLocationType } from '../weather.constants';
-import { WEATHER_MODULE_NAME } from '../weather.constants';
+
+const WEATHER_OPENWEATHERMAP_PLUGIN_NAME = 'weather-openweathermap';
+
+interface IOpenWeatherMapConfig {
+	type: string;
+	enabled: boolean;
+	apiKey: string | null;
+}
 
 @Injectable()
 export class GeolocationService {
@@ -145,26 +149,16 @@ export class GeolocationService {
 
 	private ensureApiKeyLoaded(): void {
 		if (this.apiKey === null) {
-			this.apiKey = this.getConfig().openWeatherApiKey;
+			this.apiKey = this.getPluginConfig().apiKey;
 		}
 	}
 
-	private getConfig(): WeatherConfigModel {
+	private getPluginConfig(): IOpenWeatherMapConfig {
 		try {
-			return this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
+			return this.configService.getPluginConfig<IOpenWeatherMapConfig>(WEATHER_OPENWEATHERMAP_PLUGIN_NAME);
 		} catch {
 			// If config doesn't exist yet (e.g., during migration or mapping not registered), return default config
-			return toInstance(WeatherConfigModel, {
-				type: WEATHER_MODULE_NAME,
-				locationType: WeatherLocationType.LAT_LON,
-				unit: TemperatureUnitType.CELSIUS,
-				openWeatherApiKey: null,
-				latitude: null,
-				longitude: null,
-				cityName: null,
-				cityId: null,
-				zipCode: null,
-			});
+			return { type: WEATHER_OPENWEATHERMAP_PLUGIN_NAME, enabled: false, apiKey: null };
 		}
 	}
 }

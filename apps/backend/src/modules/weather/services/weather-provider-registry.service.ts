@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { WeatherProviderModel } from '../models/provider.model';
 import { IWeatherProvider } from '../platforms/weather-provider.platform';
 
 @Injectable()
@@ -61,5 +62,19 @@ export class WeatherProviderRegistryService {
 	 */
 	has(type: string): boolean {
 		return type in this.providers;
+	}
+
+	/**
+	 * Get all registered providers with their metadata
+	 * @returns Array of provider info objects
+	 */
+	getAll(): WeatherProviderModel[] {
+		return Object.values(this.providers).map((provider) => {
+			const model = new WeatherProviderModel();
+			model.type = provider.getType();
+			model.name = provider.getName();
+			model.description = provider.getDescription();
+			return model;
+		});
 	}
 }
