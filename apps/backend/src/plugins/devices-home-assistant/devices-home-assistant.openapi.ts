@@ -47,6 +47,7 @@ import {
 import {
 	EntityMappingPreviewModel,
 	HaDeviceInfoModel,
+	MappingPreviewModel,
 	MappingPreviewResponseModel,
 	MappingWarningModel,
 	PropertyMappingPreviewModel,
@@ -90,6 +91,7 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HomeAssistantDeviceRegistryModel,
 	HomeAssistantConfigModel,
 	// Mapping preview models
+	MappingPreviewModel,
 	MappingPreviewResponseModel,
 	EntityMappingPreviewModel,
 	PropertyMappingPreviewModel,

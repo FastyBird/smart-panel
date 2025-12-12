@@ -31,7 +31,10 @@ import {
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,
 } from '../models/home-assistant-response.model';
-import { MappingPreviewResponseModel } from '../models/mapping-preview.model';
+import {
+	MappingPreviewModel,
+	MappingPreviewResponseModel,
+} from '../models/mapping-preview.model';
 import { DeviceAdoptionService } from '../services/device-adoption.service';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 import { MappingPreviewService } from '../services/mapping-preview.service';
@@ -200,7 +203,9 @@ export class HomeAssistantDiscoveredDevicesController {
 					`entities=${preview.entities.length}, warnings=${preview.warnings.length}, readyToAdopt=${preview.readyToAdopt}`,
 			);
 
-			return preview;
+			const response = new MappingPreviewResponseModel();
+			response.data = preview;
+			return response;
 		} catch (error) {
 			const err = error as Error;
 

@@ -15,7 +15,7 @@ import {
 } from '../devices-home-assistant.exceptions';
 import { AdoptDeviceRequestDto, MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
-import { MappingPreviewResponseModel } from '../models/mapping-preview.model';
+import { MappingPreviewModel } from '../models/mapping-preview.model';
 import { DeviceAdoptionService } from '../services/device-adoption.service';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 import { MappingPreviewService } from '../services/mapping-preview.service';
@@ -28,7 +28,7 @@ describe('HomeAssistantDiscoveredDevicesController', () => {
 	let mappingPreviewService: jest.Mocked<MappingPreviewService>;
 	let deviceAdoptionService: jest.Mocked<DeviceAdoptionService>;
 
-	const mockMappingPreviewResponse: MappingPreviewResponseModel = {
+	const mockMappingPreviewResponse: MappingPreviewModel = {
 		haDevice: {
 			id: 'device123',
 			name: 'Test Light',
@@ -151,7 +151,7 @@ describe('HomeAssistantDiscoveredDevicesController', () => {
 
 			const result = await controller.previewMapping('device123');
 
-			expect(result).toEqual(mockMappingPreviewResponse);
+			expect(result.data).toEqual(mockMappingPreviewResponse);
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(mappingPreviewService.generatePreview).toHaveBeenCalledWith('device123', undefined);
 		});

@@ -3,6 +3,8 @@ import { IsArray, IsBoolean, IsEnum, IsObject, IsOptional, IsString, ValidateNes
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
+
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -15,7 +17,7 @@ import {
 // Property Mapping Preview
 // ============================================================================
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginPropertyMappingPreview' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataPropertyMappingPreview' })
 export class PropertyMappingPreviewModel {
 	@ApiProperty({
 		description: 'Property category',
@@ -104,7 +106,7 @@ export class PropertyMappingPreviewModel {
 // Channel Mapping Preview
 // ============================================================================
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginSuggestedChannel' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataSuggestedChannel' })
 export class SuggestedChannelModel {
 	@ApiProperty({
 		description: 'Channel category',
@@ -135,7 +137,7 @@ export class SuggestedChannelModel {
 // Entity Mapping Preview
 // ============================================================================
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginEntityMappingPreview' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataEntityMappingPreview' })
 export class EntityMappingPreviewModel {
 	@ApiProperty({
 		description: 'Home Assistant entity ID',
@@ -241,7 +243,7 @@ export class EntityMappingPreviewModel {
 // Mapping Warning
 // ============================================================================
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginMappingWarning' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataMappingWarning' })
 export class MappingWarningModel {
 	@ApiProperty({
 		description: 'Warning type',
@@ -285,7 +287,7 @@ export class MappingWarningModel {
 // Suggested Device
 // ============================================================================
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginSuggestedDevice' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataSuggestedDevice' })
 export class SuggestedDeviceModel {
 	@ApiProperty({
 		description: 'Device category',
@@ -316,7 +318,7 @@ export class SuggestedDeviceModel {
 // HA Device Info
 // ============================================================================
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHaDeviceInfo' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataHaDeviceInfo' })
 export class HaDeviceInfoModel {
 	@ApiProperty({
 		description: 'Home Assistant device ID',
@@ -356,11 +358,11 @@ export class HaDeviceInfoModel {
 }
 
 // ============================================================================
-// Mapping Preview Response
+// Mapping Preview (Data Model)
 // ============================================================================
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginMappingPreviewResponse' })
-export class MappingPreviewResponseModel {
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataMappingPreview' })
+export class MappingPreviewModel {
 	@ApiProperty({
 		description: 'Home Assistant device information',
 		type: () => HaDeviceInfoModel,
@@ -409,4 +411,21 @@ export class MappingPreviewResponseModel {
 	@Expose({ name: 'ready_to_adopt' })
 	@IsBoolean()
 	readyToAdopt: boolean;
+}
+
+// ============================================================================
+// Mapping Preview Response Model
+// ============================================================================
+
+/**
+ * Response wrapper for MappingPreviewModel
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginResMappingPreview' })
+export class MappingPreviewResponseModel extends BaseSuccessResponseModel<MappingPreviewModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => MappingPreviewModel,
+	})
+	@Expose()
+	declare data: MappingPreviewModel;
 }

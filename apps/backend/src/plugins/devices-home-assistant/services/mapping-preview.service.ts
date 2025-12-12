@@ -14,7 +14,7 @@ import { HomeAssistantDeviceRegistryResultModel, HomeAssistantStateModel } from 
 import {
 	EntityMappingPreviewModel,
 	HaDeviceInfoModel,
-	MappingPreviewResponseModel,
+	MappingPreviewModel,
 	MappingWarningModel,
 	PropertyMappingPreviewModel,
 	SuggestedDeviceModel,
@@ -47,7 +47,7 @@ export class MappingPreviewService {
 	/**
 	 * Generate a mapping preview for a Home Assistant device
 	 */
-	async generatePreview(haDeviceId: string, options?: MappingPreviewRequestDto): Promise<MappingPreviewResponseModel> {
+	async generatePreview(haDeviceId: string, options?: MappingPreviewRequestDto): Promise<MappingPreviewModel> {
 		this.logger.debug(`[MAPPING PREVIEW] Generating preview for HA device: ${haDeviceId}`);
 
 		// Fetch device information and states
@@ -153,13 +153,14 @@ export class MappingPreviewService {
 			);
 		}
 
-		return {
-			haDevice: this.createHaDeviceInfo(deviceRegistry),
-			suggestedDevice: this.createSuggestedDevice(deviceRegistry, suggestedDeviceCategory, mappedChannelCategories),
-			entities: entityPreviews,
-			warnings,
-			readyToAdopt,
-		};
+		const preview = new MappingPreviewModel();
+		preview.haDevice = this.createHaDeviceInfo(deviceRegistry);
+		preview.suggestedDevice = this.createSuggestedDevice(deviceRegistry, suggestedDeviceCategory, mappedChannelCategories);
+		preview.entities = entityPreviews;
+		preview.warnings = warnings;
+		preview.readyToAdopt = readyToAdopt;
+
+		return preview;
 	}
 
 	/**
