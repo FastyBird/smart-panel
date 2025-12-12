@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/modules/config/models/model.dart';
-import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 
 class WeatherConfigModel extends Model {
   final WeatherLocationType _locationType;

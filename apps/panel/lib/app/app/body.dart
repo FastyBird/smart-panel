@@ -9,9 +9,11 @@ import 'package:fastybird_smart_panel/features/dashboard/presentation/details/de
 import 'package:fastybird_smart_panel/features/overlay/presentation/lock.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/screen_saver.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system.dart';
+import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
-import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
@@ -25,8 +27,9 @@ class AppBody extends StatefulWidget {
 
 class _AppBodyState extends State<AppBody> {
   final DisplayRepository _displayRepository = locator<DisplayRepository>();
-  final SystemConfigRepository _systemConfigRepository =
-      locator<SystemConfigRepository>();
+  final ConfigModuleService _configModule = locator<ConfigModuleService>();
+  late final ModuleConfigRepository<SystemConfigModel> _systemConfigRepository =
+      _configModule.getModuleRepository<SystemConfigModel>('system-module');
   final NavigationService _navigator = locator<NavigationService>();
 
   bool _hasDarkMode = false;
@@ -65,9 +68,10 @@ class _AppBodyState extends State<AppBody> {
   }
 
   void _syncStateWithRepository() {
+    final config = _systemConfigRepository.data;
     setState(() {
       _hasDarkMode = _displayRepository.hasDarkMode;
-      _language = _systemConfigRepository.language;
+      _language = config?.language ?? Language.english;
       _screenLockDuration = _displayRepository.screenLockDuration;
       _hasScreenSaver = _displayRepository.hasScreenSaver;
     });

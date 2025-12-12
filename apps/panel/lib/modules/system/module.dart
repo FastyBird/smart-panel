@@ -4,7 +4,9 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/system/constants.dart';
+import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:fastybird_smart_panel/modules/system/events/factory_reset_done.dart';
 import 'package:fastybird_smart_panel/modules/system/events/factory_reset_error.dart';
 import 'package:fastybird_smart_panel/modules/system/events/factory_reset_in_progress.dart';
@@ -14,9 +16,7 @@ import 'package:fastybird_smart_panel/modules/system/events/power_off_in_progres
 import 'package:fastybird_smart_panel/modules/system/events/reboot_done.dart';
 import 'package:fastybird_smart_panel/modules/system/events/reboot_error.dart';
 import 'package:fastybird_smart_panel/modules/system/events/reboot_in_progress.dart';
-import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:fastybird_smart_panel/modules/system/models/system_action.dart';
-import 'package:fastybird_smart_panel/modules/system/repositories/config.dart';
 import 'package:flutter/foundation.dart';
 
 class SystemModuleService {
@@ -25,7 +25,6 @@ class SystemModuleService {
 
   late SystemInfoRepository _systemInfoRepository;
   late ThrottleStatusRepository _throttleStatusRepository;
-  late SystemConfigRepository _systemConfigRepository;
 
   late bool processingReboot = false;
   late bool processingPowerOff = false;
@@ -47,9 +46,6 @@ class SystemModuleService {
     _throttleStatusRepository = ThrottleStatusRepository(
       apiClient: apiClient.systemModule,
     );
-    _systemConfigRepository = SystemConfigRepository(
-      apiClient: apiClient,
-    );
 
     _systemService = SystemService(
       systemInfoRepository: _systemInfoRepository,
@@ -58,7 +54,6 @@ class SystemModuleService {
 
     locator.registerSingleton(_systemInfoRepository);
     locator.registerSingleton(_throttleStatusRepository);
-    locator.registerSingleton(_systemConfigRepository);
 
     locator.registerSingleton(_systemService);
   }
@@ -66,7 +61,16 @@ class SystemModuleService {
   Future<void> initialize(String appUid) async {
     _isLoading = true;
 
-    await _systemConfigRepository.fetchConfiguration();
+    // Register system config model with config module
+    final configModule = locator<ConfigModuleService>();
+    configModule.registerModule<SystemConfigModel>(
+      'system-module',
+      SystemConfigModel.fromJson,
+      updateHandler: _updateSystemConfig,
+    );
+
+    // System config is now managed by config module
+    // No need to create wrapper or register separately
     await _systemService.initialize(appUid);
 
     _isLoading = false;
@@ -81,6 +85,41 @@ class SystemModuleService {
         '[SYSTEM MODULE][MODULE] Module was successfully initialized',
       );
     }
+  }
+
+  Future<bool> _updateSystemConfig(String name, Map<String, dynamic> data) async {
+    // Custom update handler for system config
+    try {
+      final configModule = locator<ConfigModuleService>();
+      final repo = configModule.getModuleRepository<SystemConfigModel>(name);
+      
+      // Build update data with all current fields
+      final currentConfig = repo.data;
+      if (currentConfig == null) {
+        return false;
+      }
+
+      final updateDataMap = <String, dynamic>{
+        'type': name,
+        'language': data['language'] ?? _convertLanguageToApiString(currentConfig.language),
+        'timezone': data['timezone'] ?? currentConfig.timezone,
+        'time_format': data['time_format'] ?? _convertTimeFormatToApiString(currentConfig.timeFormat),
+        if (data.containsKey('log_levels')) 'log_levels': data['log_levels'],
+      };
+
+      // Use the repository's update method
+      return await repo.updateConfiguration(updateDataMap);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  String _convertLanguageToApiString(Language language) {
+    return language.value;
+  }
+
+  String _convertTimeFormatToApiString(TimeFormat timeFormat) {
+    return timeFormat.value;
   }
 
   bool get isLoading => _isLoading;

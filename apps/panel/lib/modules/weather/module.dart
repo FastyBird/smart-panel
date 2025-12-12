@@ -1,8 +1,10 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
+import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/weather/constants.dart';
-import 'package:fastybird_smart_panel/modules/weather/repositories/config.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
@@ -12,7 +14,6 @@ class WeatherModuleService {
 
   late CurrentWeatherRepository _currentWeatherRepository;
   late ForecastWeatherRepository _forecastWeatherRepository;
-  late WeatherConfigRepository _weatherConfigRepository;
 
   late WeatherService _weatherService;
 
@@ -28,27 +29,39 @@ class WeatherModuleService {
     _forecastWeatherRepository = ForecastWeatherRepository(
       apiClient: apiClient.weatherModule,
     );
-    _weatherConfigRepository = WeatherConfigRepository(
-      apiClient: apiClient,
-    );
-
-    _weatherService = WeatherService(
-      currentDayRepository: _currentWeatherRepository,
-      forecastRepository: _forecastWeatherRepository,
-      configurationRepository: _weatherConfigRepository,
-    );
 
     locator.registerSingleton(_currentWeatherRepository);
     locator.registerSingleton(_forecastWeatherRepository);
-    locator.registerSingleton(_weatherConfigRepository);
-
-    locator.registerSingleton(_weatherService);
   }
 
   Future<void> initialize() async {
     _isLoading = true;
 
-    await _weatherConfigRepository.fetchConfiguration();
+    // Register weather config model with config module
+    final configModule = locator<ConfigModuleService>();
+    configModule.registerModule<WeatherConfigModel>(
+      'weather-module',
+      WeatherConfigModel.fromJson,
+      updateHandler: _updateWeatherConfig,
+    );
+
+    // Get weather config repository from config module
+    final weatherConfigRepo = configModule.getModuleRepository<WeatherConfigModel>('weather-module');
+
+    // Weather config is now managed by config module
+    // No need to create wrapper or register separately
+
+    // Create weather service with config from config module
+    _weatherService = WeatherService(
+      currentDayRepository: _currentWeatherRepository,
+      forecastRepository: _forecastWeatherRepository,
+      configurationRepository: weatherConfigRepo,
+    );
+
+    locator.registerSingleton(_weatherService);
+
+    // Fetch configuration (will be done by config module, but ensure it's loaded)
+    await weatherConfigRepo.fetchConfiguration();
     await _initializeWeatherData();
 
     await _weatherService.initialize();
@@ -59,6 +72,42 @@ class WeatherModuleService {
       WeatherModuleConstants.weatherInfoEvent,
       _socketEventHandler,
     );
+  }
+
+  Future<bool> _updateWeatherConfig(String name, Map<String, dynamic> data) async {
+    // Custom update handler for weather config
+    // This handles the update logic that was in WeatherConfigRepository.setWeatherUnit
+    try {
+      final configModule = locator<ConfigModuleService>();
+      final repo = configModule.getModuleRepository<WeatherConfigModel>(name);
+      
+      // Build update data with all current fields
+      final currentConfig = repo.data;
+      if (currentConfig == null) {
+        return false;
+      }
+
+      final updateDataMap = <String, dynamic>{
+        'type': name,
+        'location_type': _convertWeatherLocationTypeToApiString(currentConfig.locationType),
+        'unit': data['unit'] ?? _convertWeatherUnitToApiString(currentConfig.unit),
+        if (currentConfig.openWeatherApiKey != null)
+          'open_weather_api_key': currentConfig.openWeatherApiKey,
+      };
+
+      // Use the repository's update method
+      return await repo.updateConfiguration(updateDataMap);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  String _convertWeatherLocationTypeToApiString(WeatherLocationType locationType) {
+    return locationType.value;
+  }
+
+  String _convertWeatherUnitToApiString(WeatherUnit unit) {
+    return unit.value;
   }
 
   bool get isLoading => _isLoading;

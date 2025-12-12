@@ -1,18 +1,21 @@
 import 'package:fastybird_smart_panel/modules/config/models/model.dart';
-import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 
-class LanguageConfigModel extends Model {
+class SystemConfigModel extends Model {
   final Language _language;
   final String _timezone;
   final TimeFormat _timeFormat;
+  final List<String>? _logLevels;
 
-  LanguageConfigModel({
+  SystemConfigModel({
     required Language language,
     required String timezone,
     required TimeFormat timeFormat,
+    List<String>? logLevels,
   })  : _language = language,
         _timezone = timezone,
-        _timeFormat = timeFormat;
+        _timeFormat = timeFormat,
+        _logLevels = logLevels;
 
   Language get language => _language;
 
@@ -20,42 +23,54 @@ class LanguageConfigModel extends Model {
 
   TimeFormat get timeFormat => _timeFormat;
 
-  factory LanguageConfigModel.fromJson(Map<String, dynamic> json) {
+  List<String>? get logLevels => _logLevels;
+
+  factory SystemConfigModel.fromJson(Map<String, dynamic> json) {
     Language? language = Language.fromValue(json['language']);
 
     TimeFormat? timeFormat = TimeFormat.fromValue(json['time_format']);
 
-    return LanguageConfigModel(
+    List<String>? logLevels;
+    if (json['log_levels'] is List) {
+      logLevels = (json['log_levels'] as List).map((e) => e.toString()).toList();
+    }
+
+    return SystemConfigModel(
       language: language ?? Language.english,
-      timezone: json['timezone'],
+      timezone: json['timezone'] ?? '',
       timeFormat: timeFormat ?? TimeFormat.twentyFourHour,
+      logLevels: logLevels,
     );
   }
 
-  LanguageConfigModel copyWith({
+  SystemConfigModel copyWith({
     Language? language,
     String? timezone,
     TimeFormat? timeFormat,
+    List<String>? logLevels,
   }) {
-    return LanguageConfigModel(
+    return SystemConfigModel(
       language: language ?? _language,
       timezone: timezone ?? _timezone,
       timeFormat: timeFormat ?? _timeFormat,
+      logLevels: logLevels ?? _logLevels,
     );
   }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LanguageConfigModel &&
+      (other is SystemConfigModel &&
           other._language.value == _language.value &&
           other._timezone == _timezone &&
-          other._timeFormat.value == _timeFormat.value);
+          other._timeFormat.value == _timeFormat.value &&
+          other._logLevels == _logLevels);
 
   @override
   int get hashCode => Object.hashAll([
         _language.value,
         _timezone,
         _timeFormat.value,
+        _logLevels,
       ]);
 }
