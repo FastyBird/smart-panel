@@ -5,7 +5,18 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
+
+## Implementation Progress
+
+### Completed
+- [x] Phase 1: Backend - Weather Module Foundation (100%)
+- [x] Phase 2: Backend - OpenWeatherMap Plugin (100%)
+- [x] Phase 3: Backend - Multi-Location Weather Service (100%)
+
+### In Progress
+- [ ] Phase 4: Admin - Location Management (0%)
+- [ ] Phase 5: Panel (Flutter) - Multi-Location Support (0%)
 
 ## 1. Business goal
 
@@ -67,48 +78,48 @@ Following the device plugin pattern, **query types are provider-specific**:
 ## 4. Acceptance criteria
 
 ### Backend - Base Location Entity
-- [ ] `WeatherLocationEntity` with `@TableInheritance` on `type` column
-- [ ] Common fields: `id`, `name`, `type` (discriminator), `createdAt`, `updatedAt`
-- [ ] Entity stored in `weather_module_locations` table
+- [x] `WeatherLocationEntity` with `@TableInheritance` on `type` column
+- [x] Common fields: `id`, `name`, `type` (discriminator), `createdAt`, `updatedAt`
+- [x] Entity stored in `weather_module_locations` table
 
 ### Backend - Location Type Mapper
-- [ ] `LocationsTypeMapperService` manages type-to-class mappings
-- [ ] Interface: `registerMapping()`, `getMapping()`, `listTypes()`
-- [ ] Exported from weather module for plugin use
+- [x] `LocationsTypeMapperService` manages type-to-class mappings
+- [x] Interface: `registerMapping()`, `getMapping()`, `listTypes()`
+- [x] Exported from weather module for plugin use
 
 ### Backend - Location API
-- [ ] `GET /weather-module/locations` - list all locations
-- [ ] `GET /weather-module/locations/:id` - get single location
-- [ ] `POST /weather-module/locations` - create location (type determines entity)
-- [ ] `PATCH /weather-module/locations/:id` - update location
-- [ ] `DELETE /weather-module/locations/:id` - delete location
-- [ ] OpenAPI with polymorphic schemas via discriminator
-- [ ] Proper error handling (404, 422 validation errors)
+- [x] `GET /weather-module/locations` - list all locations
+- [x] `GET /weather-module/locations/:id` - get single location
+- [x] `POST /weather-module/locations` - create location (type determines entity)
+- [x] `PATCH /weather-module/locations/:id` - update location
+- [x] `DELETE /weather-module/locations/:id` - delete location
+- [x] OpenAPI with polymorphic schemas via discriminator
+- [x] Proper error handling (404, 422 validation errors)
 
 ### Backend - Weather Provider Interface
-- [ ] `IWeatherProvider` interface: `getType()`, `getCurrentWeather()`, `getForecastWeather()`
-- [ ] `WeatherProviderRegistryService` manages provider registration
-- [ ] Provider returns standardized `CurrentDayModel` and `ForecastDayModel[]`
+- [x] `IWeatherProvider` interface: `getType()`, `getCurrentWeather()`, `getForecastWeather()`
+- [x] `WeatherProviderRegistryService` manages provider registration
+- [x] Provider returns standardized `CurrentDayModel` and `ForecastDayModel[]`
 
 ### Backend - OpenWeatherMap Plugin
-- [ ] Plugin at `apps/backend/src/plugins/weather-openweathermap/`
-- [ ] `OpenWeatherMapLocationEntity` extends `WeatherLocationEntity` with:
+- [x] Plugin at `apps/backend/src/plugins/weather-openweathermap/`
+- [x] `OpenWeatherMapLocationEntity` extends `WeatherLocationEntity` with:
   - `locationType`: enum (`lat_lon`, `city_name`, `city_id`, `zip_code`)
   - `latitude`, `longitude` (for lat_lon)
   - `cityName`, `countryCode` (for city_name)
   - `cityId` (for city_id)
   - `zipCode` (for zip_code)
-- [ ] Plugin configuration model with `apiKey` and `unit` (celsius/fahrenheit)
-- [ ] Implements `IWeatherProvider` interface
-- [ ] Registers location type mapping in `onModuleInit`
-- [ ] Registers discriminator for OpenAPI
-- [ ] Existing OpenWeatherMap logic extracted from weather module
+- [x] Plugin configuration model with `apiKey` and `unit` (celsius/fahrenheit)
+- [x] Implements `IWeatherProvider` interface
+- [x] Registers location type mapping in `onModuleInit`
+- [x] Registers discriminator for OpenAPI
+- [x] Existing OpenWeatherMap logic extracted from weather module
 
 ### Backend - Multi-Location Weather Service
-- [ ] Weather service fetches data for ALL configured locations
-- [ ] Cache key includes location ID: `weather-{current|forecast}:{locationId}`
-- [ ] Cron job refreshes weather for all locations
-- [ ] WebSocket event includes location ID in payload
+- [x] Weather service fetches data for ALL configured locations
+- [x] Cache key includes location ID: `weather-{current|forecast}:{locationId}`
+- [x] Cron job refreshes weather for all locations
+- [x] WebSocket event includes location ID in payload
 - [ ] Rate limiting respects provider limits across all locations
 
 ### Backend - Module Configuration
