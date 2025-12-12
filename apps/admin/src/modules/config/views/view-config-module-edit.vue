@@ -99,11 +99,11 @@
 				</template>
 
 				<template #title>
-					<h1>Error title here</h1>
+					<h1>{{ errorTitle }}</h1>
 				</template>
 
 				<template #sub-title>
-					Error message here
+					{{ errorMessage }}
 				</template>
 			</el-result>
 		</div>
@@ -221,6 +221,35 @@ const loadError = ref<boolean>(false);
 
 const moduleName = computed<string>((): string => {
 	return module.value?.name || props.module;
+});
+
+const errorTitle = computed<string>((): string => {
+	if (!configModule.value) {
+		return t('configModule.messages.moduleConfigNotFound.title');
+	}
+	if (!module.value) {
+		return t('configModule.messages.moduleNotFound.title');
+	}
+	if (!element.value) {
+		return t('configModule.messages.moduleElementNotFound.title');
+	}
+	return t('configModule.messages.moduleFormNotFound.title');
+});
+
+const errorMessage = computed<string>((): string => {
+	if (!configModule.value) {
+		return t('configModule.messages.moduleConfigNotFound.message', { module: moduleName.value });
+	}
+	if (!module.value) {
+		return t('configModule.messages.moduleNotFound.message', { module: props.module });
+	}
+	if (!element.value) {
+		return t('configModule.messages.moduleElementNotFound.message', { module: moduleName.value });
+	}
+	if (!element.value.components) {
+		return t('configModule.messages.moduleComponentsNotFound.message', { module: moduleName.value });
+	}
+	return t('configModule.messages.moduleFormNotFound.message', { module: moduleName.value });
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

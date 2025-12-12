@@ -33,7 +33,6 @@ export const MdnsConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigM
 export const MdnsConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
 	z.object({
 		type: z.literal(MDNS_MODULE_NAME),
-		enabled: z.boolean(),
 		service_name: z.string(),
 		service_type: z.string(),
 	})

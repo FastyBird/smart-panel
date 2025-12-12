@@ -72,7 +72,7 @@
 						:size="80"
 					>
 						<template #primary>
-							<icon icon="mdi:package-variant" />
+							<icon icon="mdi:toy-brick" />
 						</template>
 						<template #secondary>
 							<icon icon="mdi:error" />
@@ -81,11 +81,11 @@
 				</template>
 
 				<template #title>
-					<h1>Error title here</h1>
+					<h1>{{ errorTitle }}</h1>
 				</template>
 
 				<template #sub-title>
-					Error message here
+					{{ errorMessage }}
 				</template>
 			</el-result>
 		</div>
@@ -150,7 +150,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
+import { ElButton, ElIcon, ElMessageBox, ElResult, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -166,6 +166,7 @@ import { useConfigPlugin } from '../composables/useConfigPlugin';
 import { usePlugin } from '../composables/usePlugin';
 import { FormResult, RouteNames } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
+import IconWithChild from '../../../common/components/icon-with-child.vue';
 
 import type { IViewConfigPluginEditProps } from './view-config-plugin-edit.types';
 
@@ -202,6 +203,35 @@ const remoteFormChanged = ref<boolean>(false);
 
 const pluginName = computed<string>((): string => {
 	return plugin.value?.name || props.plugin;
+});
+
+const errorTitle = computed<string>((): string => {
+	if (!configPlugin.value) {
+		return t('configModule.messages.pluginConfigNotFound.title');
+	}
+	if (!plugin.value) {
+		return t('configModule.messages.pluginNotFound.title');
+	}
+	if (!element.value) {
+		return t('configModule.messages.pluginElementNotFound.title');
+	}
+	return t('configModule.messages.pluginFormNotFound.title');
+});
+
+const errorMessage = computed<string>((): string => {
+	if (!configPlugin.value) {
+		return t('configModule.messages.pluginConfigNotFound.message', { plugin: pluginName.value });
+	}
+	if (!plugin.value) {
+		return t('configModule.messages.pluginNotFound.message', { plugin: props.plugin });
+	}
+	if (!element.value) {
+		return t('configModule.messages.pluginElementNotFound.message', { plugin: pluginName.value });
+	}
+	if (!element.value.components) {
+		return t('configModule.messages.pluginComponentsNotFound.message', { plugin: pluginName.value });
+	}
+	return t('configModule.messages.pluginFormNotFound.message', { plugin: pluginName.value });
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

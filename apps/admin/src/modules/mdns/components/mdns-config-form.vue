@@ -7,17 +7,6 @@
 		status-icon
 	>
 		<el-form-item
-			:label="t('mdnsModule.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-form-item
 			:label="t('mdnsModule.fields.config.serviceName.title')"
 			prop="serviceName"
 		>
@@ -45,7 +34,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { IMdnsConfigEditForm } from '../schemas/config.types';

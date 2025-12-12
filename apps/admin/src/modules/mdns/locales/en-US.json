@@ -7,13 +7,6 @@
 	},
 	"fields": {
 		"config": {
-			"enabled": {
-				"title": "Enable mDNS",
-				"description": "Enable or disable mDNS service advertisement",
-				"validation": {
-					"required": "Enabled field is required"
-				}
-			},
 			"serviceName": {
 				"title": "Service Name",
 				"description": "mDNS service name to advertise",
