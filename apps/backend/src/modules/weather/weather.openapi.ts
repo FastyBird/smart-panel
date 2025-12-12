@@ -1,8 +1,11 @@
 /**
  * OpenAPI extra models for Weather module
  */
+import { WeatherLocationEntity } from './entities/locations.entity';
 import { GeolocationCityModel, GeolocationZipModel } from './models/geolocation.model';
+import { LocationResponseModel, LocationsResponseModel } from './models/locations-response.model';
 import {
+	AllLocationsWeatherResponseModel,
 	GeolocationCityToCoordinatesResponseModel,
 	GeolocationCoordinatesToCityResponseModel,
 	GeolocationZipToCoordinatesResponseModel,
@@ -24,11 +27,14 @@ import {
 export const WEATHER_SWAGGER_EXTRA_MODELS = [
 	// Response models
 	LocationWeatherResponseModel,
+	AllLocationsWeatherResponseModel,
 	LocationCurrentResponseModel,
 	LocationForecastResponseModel,
 	GeolocationCityToCoordinatesResponseModel,
 	GeolocationCoordinatesToCityResponseModel,
 	GeolocationZipToCoordinatesResponseModel,
+	LocationResponseModel,
+	LocationsResponseModel,
 	// Data models
 	WindModel,
 	WeatherModel,
@@ -40,4 +46,5 @@ export const WEATHER_SWAGGER_EXTRA_MODELS = [
 	LocationWeatherModel,
 	GeolocationCityModel,
 	GeolocationZipModel,
+	WeatherLocationEntity,
 ];

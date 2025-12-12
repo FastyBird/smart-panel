@@ -52,6 +52,8 @@ import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
 import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin';
+import { WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX } from './plugins/weather-openweathermap/weather-openweathermap.constants';
+import { WeatherOpenweathermapPlugin } from './plugins/weather-openweathermap/weather-openweathermap.plugin';
 
 export interface AppRegisterOptions {
 	moduleExtensions?: Array<{ routePrefix: string; extensionClass: Type<unknown> }>;
@@ -178,6 +180,10 @@ export class AppModule {
 								path: DEVICES_SHELLY_V1_PLUGIN_PREFIX,
 								module: DevicesShellyV1Plugin,
 							},
+							{
+								path: WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX,
+								module: WeatherOpenweathermapPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -209,6 +215,7 @@ export class AppModule {
 				TilesWeatherPlugin,
 				DataSourcesDeviceChannelPlugin,
 				LoggerRotatingFilePlugin,
+				WeatherOpenweathermapPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
 					inject: [NestConfigService],

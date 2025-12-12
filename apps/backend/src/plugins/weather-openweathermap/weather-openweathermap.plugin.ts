@@ -1,0 +1,102 @@
+import { Module, OnModuleInit } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { ConfigModule } from '../../modules/config/config.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
+import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../../modules/swagger/swagger.module';
+import { CreateLocationDto } from '../../modules/weather/dto/create-location.dto';
+import { UpdateLocationDto } from '../../modules/weather/dto/update-location.dto';
+import { WeatherLocationEntity } from '../../modules/weather/entities/locations.entity';
+import { LocationsTypeMapperService } from '../../modules/weather/services/locations-type-mapper.service';
+import { WeatherProviderRegistryService } from '../../modules/weather/services/weather-provider-registry.service';
+import { WeatherModule } from '../../modules/weather/weather.module';
+
+import { CreateOpenWeatherMapLocationDto } from './dto/create-location.dto';
+import { UpdateOpenWeatherMapConfigDto } from './dto/update-config.dto';
+import { UpdateOpenWeatherMapLocationDto } from './dto/update-location.dto';
+import { OpenWeatherMapLocationEntity } from './entities/locations-openweathermap.entity';
+import { OpenWeatherMapConfigModel } from './models/config.model';
+import { OpenWeatherMapProvider } from './platforms/openweathermap.provider';
+import { OpenWeatherMapHttpService } from './services/openweathermap-http.service';
+import {
+	WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_DESCRIPTION,
+	WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_NAME,
+	WEATHER_OPENWEATHERMAP_PLUGIN_NAME,
+	WEATHER_OPENWEATHERMAP_PLUGIN_TYPE,
+} from './weather-openweathermap.constants';
+import { WEATHER_OPENWEATHERMAP_PLUGIN_SWAGGER_EXTRA_MODELS } from './weather-openweathermap.openapi';
+
+@ApiTag({
+	tagName: WEATHER_OPENWEATHERMAP_PLUGIN_NAME,
+	displayName: WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_NAME,
+	description: WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_DESCRIPTION,
+})
+@Module({
+	imports: [TypeOrmModule.forFeature([OpenWeatherMapLocationEntity]), WeatherModule, ConfigModule, SwaggerModule],
+	providers: [OpenWeatherMapHttpService, OpenWeatherMapProvider],
+	exports: [OpenWeatherMapHttpService, OpenWeatherMapProvider],
+})
+export class WeatherOpenweathermapPlugin implements OnModuleInit {
+	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
+		private readonly locationsMapper: LocationsTypeMapperService,
+		private readonly providerRegistry: WeatherProviderRegistryService,
+		private readonly openWeatherMapProvider: OpenWeatherMapProvider,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+	) {}
+
+	onModuleInit() {
+		// Register plugin configuration
+		this.configMapper.registerMapping<OpenWeatherMapConfigModel, UpdateOpenWeatherMapConfigDto>({
+			type: WEATHER_OPENWEATHERMAP_PLUGIN_NAME,
+			class: OpenWeatherMapConfigModel,
+			configDto: UpdateOpenWeatherMapConfigDto,
+		});
+
+		// Register location type mapping
+		this.locationsMapper.registerMapping<
+			OpenWeatherMapLocationEntity,
+			CreateOpenWeatherMapLocationDto,
+			UpdateOpenWeatherMapLocationDto
+		>({
+			type: WEATHER_OPENWEATHERMAP_PLUGIN_TYPE,
+			class: OpenWeatherMapLocationEntity,
+			createDto: CreateOpenWeatherMapLocationDto,
+			updateDto: UpdateOpenWeatherMapLocationDto,
+		});
+
+		// Register weather provider
+		this.providerRegistry.register(this.openWeatherMapProvider);
+
+		// Register swagger models
+		for (const model of WEATHER_OPENWEATHERMAP_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
+
+		// Register discriminators for OpenAPI polymorphism
+		this.discriminatorRegistry.register({
+			parentClass: WeatherLocationEntity,
+			discriminatorProperty: 'type',
+			discriminatorValue: WEATHER_OPENWEATHERMAP_PLUGIN_TYPE,
+			modelClass: OpenWeatherMapLocationEntity,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: CreateLocationDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: WEATHER_OPENWEATHERMAP_PLUGIN_TYPE,
+			modelClass: CreateOpenWeatherMapLocationDto,
+		});
+
+		this.discriminatorRegistry.register({
+			parentClass: UpdateLocationDto,
+			discriminatorProperty: 'type',
+			discriminatorValue: WEATHER_OPENWEATHERMAP_PLUGIN_TYPE,
+			modelClass: UpdateOpenWeatherMapLocationDto,
+		});
+	}
+}

@@ -21,6 +21,20 @@ export class LocationWeatherResponseModel extends BaseSuccessResponseModel<Locat
 }
 
 /**
+ * Response wrapper for array of LocationWeatherModel
+ */
+@ApiSchema({ name: 'WeatherModuleResAllLocationsWeather' })
+export class AllLocationsWeatherResponseModel extends BaseSuccessResponseModel<LocationWeatherModel[]> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(LocationWeatherModel) },
+	})
+	@Expose()
+	declare data: LocationWeatherModel[];
+}
+
+/**
  * Response wrapper for CurrentDayModel
  */
 @ApiSchema({ name: 'WeatherModuleResLocationCurrent' })
