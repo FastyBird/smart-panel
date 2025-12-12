@@ -71,7 +71,9 @@
     },
     "misc": {
       "discard": "Discard changes?"
-    }
+    },
+    "aboutLanguageSettings": "Language Settings",
+    "aboutSystemSettings": "System Settings"
   },
   "subHeadings": {
     "system": "Smart panel system status information",
@@ -149,16 +151,12 @@
     },
     "misc": {
       "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
-    }
+    },
+    "aboutLanguageSettings": "Configure the interface language, timezone, and time format for the Smart Panel. These settings affect how dates, times, and text are displayed throughout the system.",
+    "aboutSystemSettings": "Manage system-wide logging configuration. Select which log severity levels to monitor and display in the application logs."
   },
   "fields": {
     "config": {
-      "languageSettings": {
-        "title": "Language Settings"
-      },
-      "systemSettings": {
-        "title": "System Settings"
-      },
       "language": {
         "title": "Language",
         "description": "Application language",

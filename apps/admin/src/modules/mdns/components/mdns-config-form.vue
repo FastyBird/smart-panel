@@ -6,9 +6,17 @@
 		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('mdnsModule.headings.aboutServiceAdvertisement')"
+			:description="t('mdnsModule.texts.aboutServiceAdvertisement')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('mdnsModule.fields.config.serviceName.title')"
 			prop="serviceName"
+			class="mt-3"
 		>
 			<el-input
 				v-model="model.serviceName"
@@ -34,7 +42,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { IMdnsConfigEditForm } from '../schemas/config.types';

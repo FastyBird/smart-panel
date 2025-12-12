@@ -1,4 +1,7 @@
 {
+  "headings": {
+    "aboutFileLoggingSettings": "File Logging Settings"
+  },
   "fields": {
     "config": {
       "enabled": {
@@ -40,5 +43,8 @@
       "edited": "Changes saved! The Rotating File Logger plugin config has been updated.",
       "notEdited": "Something went wrong. Rotating File Logger plugin config update was not successful."
     }
+  },
+  "texts": {
+    "aboutFileLoggingSettings": "Configure file-based log persistence with daily rotation and automatic cleanup. When enabled, logs are saved to files for long-term retention and offline analysis. Files are automatically rotated daily and cleaned up based on retention settings."
   }
 }

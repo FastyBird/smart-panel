@@ -6,10 +6,18 @@
 		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('devicesShellyNgPlugin.headings.aboutPluginStatus')"
+			:description="t('devicesShellyNgPlugin.texts.aboutPluginStatus')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('devicesShellyNgPlugin.fields.config.enabled.title')"
 			prop="enabled"
 			label-position="left"
+			class="mt-3"
 		>
 			<el-switch
 				v-model="model.enabled"

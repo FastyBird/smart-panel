@@ -6,9 +6,17 @@
 		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('displaysModule.headings.aboutDisplayConfiguration')"
+			:description="t('displaysModule.texts.aboutDisplayConfiguration')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('displaysModule.fields.config.deploymentMode.title')"
 			prop="deploymentMode"
+			class="mt-3"
 		>
 			<el-select
 				v-model="model.deploymentMode"
@@ -52,7 +60,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInputNumber, ElSelect, ElOption, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElSelect, ElOption, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { IDisplaysConfigEditForm } from '../schemas/config.types';

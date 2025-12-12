@@ -1,5 +1,6 @@
 {
   "headings": {
+    "aboutPluginStatus": "Plugin Status",
     "aboutMdns": "MDNS settings",
     "aboutWebsockets": "Websockets settings",
     "device": {
@@ -160,6 +161,7 @@
     }
   },
   "texts": {
+    "aboutPluginStatus": "Enable or disable the Shelly Next Generation device integration. When enabled, Shelly devices can be discovered and controlled through the Smart Panel.",
     "aboutMdns": "Configure how the plugin discovers Shelly devices on your local network using Multicast DNS (mDNS). This enables automatic detection without needing to manually enter IP addresses.",
     "aboutWebsockets": "Manage WebSocket connection parameters for Shelly devices. These settings control communication stability, request handling, and reconnection behavior."
   },

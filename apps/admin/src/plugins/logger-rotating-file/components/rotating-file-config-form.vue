@@ -6,10 +6,18 @@
 		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('loggerRotatingFilePlugin.headings.aboutFileLoggingSettings')"
+			:description="t('loggerRotatingFilePlugin.texts.aboutFileLoggingSettings')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('loggerRotatingFilePlugin.fields.config.enabled.title')"
 			prop="enabled"
 			label-position="left"
+			class="mt-3"
 		>
 			<el-switch
 				v-model="model.enabled"
@@ -73,7 +81,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IRotatingFileConfigEditForm } from '../schemas/config.types';

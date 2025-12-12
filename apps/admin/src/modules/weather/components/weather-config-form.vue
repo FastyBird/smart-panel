@@ -6,9 +6,17 @@
 		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('weatherModule.headings.aboutLocationSettings')"
+			:description="t('weatherModule.texts.aboutLocationSettings')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('weatherModule.fields.config.locationType.title')"
 			prop="locationType"
+			class="mt-3"
 		>
 			<div class="flex flex-row items-center gap-2 w-full">
 				<el-select
@@ -106,9 +114,12 @@
 			/>
 		</el-form-item>
 
+		<hr />
+
 		<el-form-item
 			:label="t('weatherModule.fields.config.unit.title')"
 			prop="unit"
+			class="mt-3"
 		>
 			<el-select
 				v-model="model.unit"
@@ -164,7 +175,7 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElSelect, ElOption, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElSelect, ElOption, type FormRules } from 'element-plus';
 import 'leaflet/dist/leaflet.css';
 
 import { Icon } from '@iconify/vue';

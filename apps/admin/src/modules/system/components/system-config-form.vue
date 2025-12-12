@@ -6,13 +6,17 @@
 		label-position="top"
 		status-icon
 	>
-		<el-divider content-position="left">
-			{{ t('systemModule.fields.config.languageSettings.title') }}
-		</el-divider>
+		<el-alert
+			type="info"
+			:title="t('systemModule.headings.aboutLanguageSettings')"
+			:description="t('systemModule.texts.aboutLanguageSettings')"
+			:closable="false"
+		/>
 
 		<el-form-item
 			:label="t('systemModule.fields.config.language.title')"
 			prop="language"
+			class="mt-3"
 		>
 			<el-select
 				v-model="model.language"
@@ -69,13 +73,19 @@
 			</el-select>
 		</el-form-item>
 
-		<el-divider content-position="left">
-			{{ t('systemModule.fields.config.systemSettings.title') }}
-		</el-divider>
+		<el-divider />
+
+		<el-alert
+			type="info"
+			:title="t('systemModule.headings.aboutSystemSettings')"
+			:description="t('systemModule.texts.aboutSystemSettings')"
+			:closable="false"
+		/>
 
 		<el-form-item
 			:label="t('systemModule.fields.config.logLevels.title')"
 			prop="logLevels"
+			class="mt-3"
 		>
 			<el-select
 				v-model="model.logLevels"
@@ -98,7 +108,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElDivider, ElForm, ElFormItem, ElSelect, ElOption, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElSelect, ElOption, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { ISystemConfigEditForm } from '../schemas/config.types';

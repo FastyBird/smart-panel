@@ -1,6 +1,7 @@
 {
 	"headings": {
-		"weather": "Weather"
+		"weather": "Weather",
+		"aboutLocationSettings": "Location Settings"
 	},
 	"messages": {
 		"config": {
@@ -84,6 +85,9 @@
 				"placeholder": "Enter your OpenWeatherMap API key"
 			}
 		}
+	},
+	"texts": {
+		"aboutLocationSettings": "Configure how to identify your location for weather data. Choose from coordinates, city name, OpenWeather city ID, or ZIP code. You can click on the map or use 'My Location' to auto-detect coordinates."
 	},
 	"conditions": {
 		"thunderstormWithLightRain": "Thunderstorm with light rain",
