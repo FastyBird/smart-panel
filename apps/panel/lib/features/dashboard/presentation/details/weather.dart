@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/openweather.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/weather/export.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/view.dart';
@@ -33,6 +34,9 @@ class WeatherDetailPage extends StatelessWidget {
     ) {
       final currentDay = weatherService.currentDay;
       final forecast = weatherService.forecast;
+      final locations = weatherService.locations;
+      final selectedLocation = weatherService.selectedLocation;
+      final hasMultipleLocations = weatherService.hasMultipleLocations;
 
       return Scaffold(
         appBar: AppTopBar(
@@ -44,6 +48,14 @@ class WeatherDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Location selector (only shown when multiple locations exist)
+                if (hasMultipleLocations)
+                  _renderLocationSelector(
+                    context,
+                    locations,
+                    selectedLocation,
+                    weatherService,
+                  ),
                 Padding(
                   padding: EdgeInsets.symmetric(
                     vertical: AppSpacings.pMd,
@@ -67,6 +79,64 @@ class WeatherDetailPage extends StatelessWidget {
         ),
       );
     });
+  }
+
+  Widget _renderLocationSelector(
+    BuildContext context,
+    List<WeatherLocationModel> locations,
+    WeatherLocationModel? selectedLocation,
+    WeatherService weatherService,
+  ) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pLg,
+        vertical: AppSpacings.pSm,
+      ),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+        ),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppColorsLight.infoLight
+              : AppColorsDark.infoLight,
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: selectedLocation?.id,
+            isExpanded: true,
+            icon: Icon(
+              Icons.location_on,
+              size: AppFontSize.small,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.secondary
+                  : AppTextColorDark.secondary,
+            ),
+            style: TextStyle(
+              fontSize: AppFontSize.small,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.primary
+                  : AppTextColorDark.primary,
+            ),
+            dropdownColor: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.surface
+                : AppColorsDark.surface,
+            items: locations.map((location) {
+              return DropdownMenuItem<String>(
+                value: location.id,
+                child: Text(location.name),
+              );
+            }).toList(),
+            onChanged: (String? locationId) {
+              if (locationId != null) {
+                weatherService.selectLocation(locationId);
+              }
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _renderCurrent(BuildContext context, CurrentDayView? currentDay) {

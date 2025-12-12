@@ -62,6 +62,47 @@
 			"type": {
 				"title": "Provider Type",
 				"placeholder": "Select weather provider"
+			},
+			"citySearch": {
+				"title": "Search City",
+				"placeholder": "Start typing to search for a city...",
+				"description": "Search for a city and we'll auto-fill the coordinates"
+			},
+			"locationType": {
+				"title": "Location Type",
+				"placeholder": "Select how to identify the location",
+				"values": {
+					"latLon": "Latitude/Longitude",
+					"cityName": "City Name"
+				},
+				"validation": {
+					"required": "Location type is required"
+				}
+			},
+			"latitude": {
+				"title": "Latitude",
+				"placeholder": "e.g., 51.5074",
+				"validation": {
+					"required": "Latitude is required"
+				}
+			},
+			"longitude": {
+				"title": "Longitude",
+				"placeholder": "e.g., -0.1278",
+				"validation": {
+					"required": "Longitude is required"
+				}
+			},
+			"cityName": {
+				"title": "City Name",
+				"placeholder": "e.g., London",
+				"validation": {
+					"required": "City name is required"
+				}
+			},
+			"countryCode": {
+				"title": "Country Code",
+				"placeholder": "e.g., GB"
 			}
 		},
 		"config": {
@@ -147,7 +188,8 @@
 	},
 	"texts": {
 		"aboutLocationSettings": "Configure how to identify your location for weather data. Choose from coordinates, city name, OpenWeather city ID, or ZIP code. You can click on the map or use 'My Location' to auto-detect coordinates.",
-		"aboutPrimaryLocation": "Select the primary location to display in weather widgets. Locations can be managed in the Locations section. Weather data will be fetched for all configured locations."
+		"aboutPrimaryLocation": "Select the primary location to display in weather widgets. Locations can be managed in the Locations section. Weather data will be fetched for all configured locations.",
+		"orEnterManually": "Or enter location manually"
 	},
 	"conditions": {
 		"thunderstormWithLightRain": "Thunderstorm with light rain",

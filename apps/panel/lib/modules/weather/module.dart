@@ -84,6 +84,20 @@ class WeatherModuleService {
       WeatherModuleConstants.weatherInfoEvent,
       _socketEventHandler,
     );
+
+    // Register location change event handlers
+    _socketService.registerEventHandler(
+      WeatherModuleConstants.locationCreatedEvent,
+      _locationCreatedHandler,
+    );
+    _socketService.registerEventHandler(
+      WeatherModuleConstants.locationUpdatedEvent,
+      _locationUpdatedHandler,
+    );
+    _socketService.registerEventHandler(
+      WeatherModuleConstants.locationDeletedEvent,
+      _locationDeletedHandler,
+    );
   }
 
   Future<bool> _updateWeatherConfig(String name, Map<String, dynamic> data) async {
@@ -130,6 +144,18 @@ class WeatherModuleService {
       WeatherModuleConstants.weatherInfoEvent,
       _socketEventHandler,
     );
+    _socketService.unregisterEventHandler(
+      WeatherModuleConstants.locationCreatedEvent,
+      _locationCreatedHandler,
+    );
+    _socketService.unregisterEventHandler(
+      WeatherModuleConstants.locationUpdatedEvent,
+      _locationUpdatedHandler,
+    );
+    _socketService.unregisterEventHandler(
+      WeatherModuleConstants.locationDeletedEvent,
+      _locationDeletedHandler,
+    );
   }
 
   Future<void> _initializeLocations() async {
@@ -166,6 +192,39 @@ class WeatherModuleService {
           .toList();
 
       _forecastWeatherRepository.insertForecast(mapped);
+    }
+  }
+
+  void _locationCreatedHandler(String event, Map<String, dynamic> payload) {
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE] Location created event received: ${payload['id']}',
+      );
+    }
+    // Refresh the locations list to include the new location
+    _locationsRepository.refresh();
+  }
+
+  void _locationUpdatedHandler(String event, Map<String, dynamic> payload) {
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE] Location updated event received: ${payload['id']}',
+      );
+    }
+    // Refresh the locations list to get updated data
+    _locationsRepository.refresh();
+  }
+
+  void _locationDeletedHandler(String event, Map<String, dynamic> payload) {
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE] Location deleted event received: ${payload['id']}',
+      );
+    }
+    // Remove the deleted location from local data and refresh
+    final deletedId = payload['id'] as String?;
+    if (deletedId != null) {
+      _locationsRepository.removeLocation(deletedId);
     }
   }
 }

@@ -6,38 +6,24 @@
 			</div>
 		</template>
 
-		<location-add-form
-			v-model:remote-form-submit="remoteFormSubmit"
-			v-model:remote-form-result="remoteFormResult"
+		<openweathermap-location-form
+			:id="newLocationId"
 			@added="onLocationAdded"
+			@cancel="onCancel"
 		/>
-
-		<template #footer>
-			<div class="flex justify-end gap-2">
-				<el-button @click="onCancel">
-					{{ t('weatherModule.buttons.cancel.title') }}
-				</el-button>
-				<el-button
-					type="primary"
-					:loading="remoteFormResult === FormResult.WORKING"
-					@click="onSubmit"
-				>
-					{{ t('weatherModule.buttons.save.title') }}
-				</el-button>
-			</div>
-		</template>
 	</el-card>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import { v4 as uuid } from 'uuid';
 
-import { ElButton, ElCard } from 'element-plus';
+import { ElCard } from 'element-plus';
 
-import { LocationAddForm } from '../components/components';
-import { FormResult, type FormResultType, RouteNames } from '../weather.constants';
+import OpenweathermapLocationForm from '../components/openweathermap-location-form.vue';
+import { RouteNames } from '../weather.constants';
 
 defineOptions({
 	name: 'ViewLocationAdd',
@@ -46,12 +32,7 @@ defineOptions({
 const router = useRouter();
 const { t } = useI18n();
 
-const remoteFormSubmit = ref<boolean>(false);
-const remoteFormResult = ref<FormResultType>(FormResult.NONE);
-
-const onSubmit = (): void => {
-	remoteFormSubmit.value = true;
-};
+const newLocationId = computed(() => uuid());
 
 const onCancel = (): void => {
 	router.push({ name: RouteNames.WEATHER_LOCATIONS });
@@ -60,13 +41,4 @@ const onCancel = (): void => {
 const onLocationAdded = (): void => {
 	router.push({ name: RouteNames.WEATHER_LOCATIONS });
 };
-
-watch(
-	(): FormResultType => remoteFormResult.value,
-	(val: FormResultType): void => {
-		if (val === FormResult.OK) {
-			router.push({ name: RouteNames.WEATHER_LOCATIONS });
-		}
-	}
-);
 </script>
