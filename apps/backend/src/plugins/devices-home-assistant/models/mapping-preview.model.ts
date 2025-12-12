@@ -4,7 +4,6 @@ import { IsArray, IsBoolean, IsEnum, IsObject, IsOptional, IsString, ValidateNes
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
-
 import {
 	ChannelCategory,
 	DataTypeType,

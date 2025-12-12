@@ -31,10 +31,7 @@ import {
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,
 } from '../models/home-assistant-response.model';
-import {
-	MappingPreviewModel,
-	MappingPreviewResponseModel,
-} from '../models/mapping-preview.model';
+import { MappingPreviewResponseModel } from '../models/mapping-preview.model';
 import { DeviceAdoptionService } from '../services/device-adoption.service';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 import { MappingPreviewService } from '../services/mapping-preview.service';

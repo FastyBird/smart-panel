@@ -155,7 +155,11 @@ export class MappingPreviewService {
 
 		const preview = new MappingPreviewModel();
 		preview.haDevice = this.createHaDeviceInfo(deviceRegistry);
-		preview.suggestedDevice = this.createSuggestedDevice(deviceRegistry, suggestedDeviceCategory, mappedChannelCategories);
+		preview.suggestedDevice = this.createSuggestedDevice(
+			deviceRegistry,
+			suggestedDeviceCategory,
+			mappedChannelCategories,
+		);
 		preview.entities = entityPreviews;
 		preview.warnings = warnings;
 		preview.readyToAdopt = readyToAdopt;
