@@ -11,6 +11,7 @@ export const WeatherLocationSchema = z.object({
 	draft: z.boolean().default(false),
 	type: z.string().trim().nonempty(),
 	name: z.string().trim().nonempty(),
+	order: z.number().int().nonnegative().default(0),
 	createdAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
 		.transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -106,6 +107,7 @@ export const WeatherLocationResSchema = z.object({
 	id: z.string().uuid(),
 	type: z.string(),
 	name: z.string().trim().nonempty(),
+	order: z.number().int().nonnegative().default(0),
 	created_at: z.string(),
 	updated_at: z.string().nullable(),
 });

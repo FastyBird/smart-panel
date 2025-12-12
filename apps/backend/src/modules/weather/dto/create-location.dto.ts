@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -39,6 +39,18 @@ export class CreateLocationDto {
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;
+
+	@ApiPropertyOptional({
+		description: 'Display order (lower numbers appear first)',
+		type: 'integer',
+		example: 0,
+		default: 0,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"order","reason":"Order must be a valid integer."}]' })
+	@Min(0, { message: '[{"field":"order","reason":"Order must be a non-negative integer."}]' })
+	order?: number;
 }
 
 @ApiSchema({ name: 'WeatherModuleReqCreateLocation' })

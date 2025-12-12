@@ -38,7 +38,7 @@ export class LocationsService {
 
 		this.logger.debug('[LOOKUP ALL] Fetching all locations');
 
-		const locations = (await repository.find()) as TLocation[];
+		const locations = (await repository.find({ order: { order: 'ASC', createdAt: 'ASC' } as any })) as TLocation[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${locations.length} locations`);
 
@@ -147,6 +147,36 @@ export class LocationsService {
 		this.eventEmitter.emit(EventType.LOCATION_UPDATED, updatedLocation);
 
 		return updatedLocation;
+	}
+
+	async reorder(items: { id: string; order: number }[]): Promise<WeatherLocationEntity[]> {
+		this.logger.debug(`[REORDER] Reordering ${items.length} locations`);
+
+		const updatedLocations: WeatherLocationEntity[] = [];
+
+		for (const item of items) {
+			const location = await this.findOne(item.id);
+
+			if (!location) {
+				this.logger.warn(`[REORDER] Location with id=${item.id} not found, skipping`);
+				continue;
+			}
+
+			location.order = item.order;
+
+			await this.repository.save(location);
+
+			updatedLocations.push(location);
+		}
+
+		this.logger.debug(`[REORDER] Successfully reordered ${updatedLocations.length} locations`);
+
+		// Emit event for each updated location
+		for (const location of updatedLocations) {
+			this.eventEmitter.emit(EventType.LOCATION_UPDATED, location);
+		}
+
+		return this.findAll();
 	}
 
 	async remove(id: string): Promise<void> {

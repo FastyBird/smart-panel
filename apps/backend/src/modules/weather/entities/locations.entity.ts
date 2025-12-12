@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsString } from 'class-validator';
+import { IsInt, IsString, Min } from 'class-validator';
 import { Column, Entity, TableInheritance } from 'typeorm';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
@@ -19,6 +19,18 @@ export class WeatherLocationEntity extends BaseEntity {
 	@IsString()
 	@Column()
 	name: string;
+
+	@ApiProperty({
+		description: 'Display order (lower numbers appear first)',
+		type: 'integer',
+		example: 0,
+		default: 0,
+	})
+	@Expose()
+	@IsInt()
+	@Min(0)
+	@Column({ type: 'int', default: 0 })
+	order: number = 0;
 
 	@ApiProperty({
 		description: 'Location type (weather provider)',
