@@ -4,12 +4,10 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { deepClone, getSchemaDefaults, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
+import { deepClone, getSchemaDefaults, injectStoresManager, router, useFlashMessage, useLogger } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
+import { FormResult, type FormResultType, type IDevice, RouteNames as DevicesRouteNames, devicesStoreKey } from '../../../modules/devices';
 import { DevicesApiException, DevicesValidationException } from '../../../modules/devices/devices.exceptions';
-import { router } from '../../../common';
-import { RouteNames as DevicesRouteNames } from '../../../modules/devices';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDeviceAddFormSchema } from '../schemas/devices.schemas';

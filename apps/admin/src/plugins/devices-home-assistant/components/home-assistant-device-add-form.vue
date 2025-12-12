@@ -1,134 +1,194 @@
 <template>
-	<el-form
-		ref="formEl"
-		:model="model"
-		:rules="rules"
-		label-position="top"
-		status-icon
+	<el-collapse
+		v-model="activeStep"
+		accordion
+		expand-icon-position="left"
 	>
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.id.title')"
-			prop="id"
+		<!-- Step 1: Device Selection -->
+		<el-collapse-item
+			:title="t('devicesHomeAssistantPlugin.headings.device.deviceSelection')"
+			name="one"
 		>
-			<el-input
-				v-model="model.id"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.id.placeholder')"
-				name="id"
-				required
-				disabled
-			/>
-		</el-form-item>
+			<template #icon>
+				<el-icon :size="20">
+					<icon icon="mdi:devices" />
+				</el-icon>
+			</template>
 
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.identifier.title')"
-			prop="identifier"
-		>
-			<el-input
-				v-model="model.identifier"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.identifier.placeholder')"
-				name="identifier"
+			<device-selection-step
+				:model="model"
+				:step-one-form-el="stepOneFormEl"
+				:devices-options="devicesOptions"
+				:devices-options-loading="devicesOptionsLoading"
+				@device-change="onDeviceChange"
 			/>
-		</el-form-item>
+		</el-collapse-item>
 
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.name.title')"
-			prop="name"
+		<!-- Step 2: Mapping Preview -->
+		<el-collapse-item
+			:title="t('devicesHomeAssistantPlugin.headings.device.mappingPreview')"
+			name="two"
+			:disabled="!model.haDeviceId"
 		>
-			<el-input
-				v-model="model.name"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.name.placeholder')"
-				name="name"
+			<template #icon>
+				<el-icon :size="20">
+					<icon icon="mdi:eye" />
+				</el-icon>
+			</template>
+
+			<mapping-preview-step
+				:preview="preview"
+				:is-preview-loading="isPreviewLoading"
+				:preview-error="previewError"
 			/>
-		</el-form-item>
+		</el-collapse-item>
 
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.category.title')"
-			prop="category"
+		<!-- Step 3: Mapping Customization (Optional) -->
+		<el-collapse-item
+			:title="t('devicesHomeAssistantPlugin.headings.device.mappingCustomization')"
+			name="three"
+			:disabled="!preview"
 		>
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
+			<template #icon>
+				<el-icon :size="20">
+					<icon icon="mdi:tune" />
+				</el-icon>
+			</template>
+
+			<mapping-customization-step
+				:preview="preview"
+				:is-preview-loading="isPreviewLoading"
+				:entity-overrides="entityOverrides"
+				@update-overrides="onUpdateOverrides"
+				@apply-changes="onApplyChanges"
+			/>
+		</el-collapse-item>
+
+		<!-- Step 4: Device Configuration -->
+		<el-collapse-item
+			:title="t('devicesHomeAssistantPlugin.headings.device.deviceConfiguration')"
+			name="four"
+			:disabled="!preview"
+		>
+			<template #icon>
+				<el-icon :size="20">
+					<icon icon="mdi:cog" />
+				</el-icon>
+			</template>
+
+			<device-configuration-step
+				:model="model"
+				:step-four-form-el="stepFourFormEl"
+				:categories-options="categoriesOptions"
+				:preview="preview"
+			/>
+		</el-collapse-item>
+	</el-collapse>
+
+	<!-- Step Navigation Buttons -->
+	<teleport
+		v-if="activeStep === 'one'"
+		defer
+		:to="`#${SUBMIT_FORM_SM}`"
+	>
+		<el-button
+			:loading="formResult === FormResult.WORKING"
+			:disabled="formResult !== FormResult.NONE"
+			type="primary"
+			@click="onProcessStep"
+		>
+			<template
+				v-if="formResult === FormResult.ERROR"
+				#icon
 			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
+				<icon icon="mdi:cross-circle" />
+			</template>
+			{{ t('devicesHomeAssistantPlugin.buttons.next') }}
+		</el-button>
+	</teleport>
 
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.description.title')"
-			prop="description"
-		>
-			<el-input
-				v-model="model.description"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.description.placeholder')"
-				:rows="4"
-				type="textarea"
-				name="description"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.enabled.title')"
-			prop="enabled"
-			label-position="left"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
-			prop="haDeviceId"
-		>
-			<el-select
-				v-model="model.haDeviceId"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
-				:loading="devicesOptionsLoading"
-				name="haDeviceId"
-				filterable
+	<teleport
+		v-else-if="activeStep === 'two'"
+		defer
+		:to="`#${SUBMIT_FORM_SM}`"
+	>
+		<div class="flex gap-2">
+			<el-button @click="activeStep = 'one'">
+				{{ t('devicesHomeAssistantPlugin.buttons.previous') }}
+			</el-button>
+			<el-button
+				type="primary"
+				@click="onProcessStep"
 			>
-				<el-option
-					v-for="item in devicesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-	</el-form>
+				{{ t('devicesHomeAssistantPlugin.buttons.next') }}
+			</el-button>
+		</div>
+	</teleport>
+
+	<teleport
+		v-else-if="activeStep === 'three'"
+		defer
+		:to="`#${SUBMIT_FORM_SM}`"
+	>
+		<div class="flex gap-2">
+			<el-button @click="activeStep = 'two'">
+				{{ t('devicesHomeAssistantPlugin.buttons.previous') }}
+			</el-button>
+			<el-button
+				type="primary"
+				@click="onProcessStep"
+			>
+				{{ t('devicesHomeAssistantPlugin.buttons.next') }}
+			</el-button>
+		</div>
+	</teleport>
+
+	<teleport
+		v-else-if="activeStep === 'four'"
+		defer
+		:to="`#${SUBMIT_FORM_SM}`"
+	>
+		<div class="flex gap-2">
+			<el-button @click="activeStep = 'three'">
+				{{ t('devicesHomeAssistantPlugin.buttons.previous') }}
+			</el-button>
+			<el-button
+				:loading="formResult === FormResult.WORKING || isAdopting"
+				:disabled="formResult !== FormResult.NONE && formResult !== FormResult.WORKING"
+				type="primary"
+				@click="onProcessStep"
+			>
+				<template
+					v-if="formResult === FormResult.ERROR"
+					#icon
+				>
+					<icon icon="mdi:cross-circle" />
+				</template>
+				{{ t('devicesHomeAssistantPlugin.buttons.adoptDevice') }}
+			</el-button>
+		</div>
+	</teleport>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
+import {
+	ElButton,
+	ElCollapse,
+	ElCollapseItem,
+	ElIcon,
+} from 'element-plus';
+import { Icon } from '@iconify/vue';
 
-import { FormResult, type FormResultType, useDeviceAddForm } from '../../../modules/devices';
-import { useDiscoveredDevicesOptions } from '../composables/useDiscoveredDevicesOptions';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
-import type { IHomeAssistantDeviceAddForm } from '../schemas/devices.types';
+import { SUBMIT_FORM_SM, useFlashMessage } from '../../../common';
+import { FormResult, type FormResultType, useDevices } from '../../../modules/devices';
+import { useDeviceAddForm } from '../composables/useDeviceAddForm';
+import DeviceConfigurationStep from './steps/device-configuration-step.vue';
+import DeviceSelectionStep from './steps/device-selection-step.vue';
+import MappingCustomizationStep from './steps/mapping-customization-step.vue';
+import MappingPreviewStep from './steps/mapping-preview-step.vue';
 
 import type { IHomeAssistantDeviceAddFormProps } from './home-assistant-device-add-form.types';
 
@@ -151,17 +211,67 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm<IHomeAssistantDeviceAddForm>({
+const flashMessage = useFlashMessage();
+
+const { devices, loaded: devicesLoaded, fetchDevices } = useDevices();
+
+const {
+	activeStep,
+	preview,
+	isPreviewLoading,
+	previewError,
+	isAdopting,
+	adoptionError,
+	categoriesOptions,
+	devicesOptions,
+	devicesOptionsLoading,
+	entityOverrides,
+	model,
+	stepOneFormEl,
+	stepTwoFormEl,
+	stepThreeFormEl,
+	stepFourFormEl,
+	formChanged,
+	submitStep,
+	formResult,
+} = useDeviceAddForm({
 	id: props.id,
-	type: DEVICES_HOME_ASSISTANT_TYPE,
 });
 
-const { devicesOptions, areLoading: devicesOptionsLoading } = useDiscoveredDevicesOptions();
+const onProcessStep = async (): Promise<void> => {
+	try {
+		await submitStep(activeStep.value);
+	} catch (error) {
+		// Error is already handled in the composable
+	}
+};
 
-const rules = reactive<FormRules<IHomeAssistantDeviceAddForm>>({
-	category: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
-	name: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
-	haDeviceId: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.required'), trigger: 'change' }],
+const onDeviceChange = (deviceId: string): void => {
+	// Device change is handled by the composable watcher
+};
+
+const onUpdateOverrides = (overrides: typeof entityOverrides.value): void => {
+	entityOverrides.value = overrides;
+};
+
+const onApplyChanges = async (): Promise<void> => {
+	if (!model.haDeviceId) {
+		return;
+	}
+
+	try {
+		await submitStep('three');
+	} catch (error) {
+		// Error is already handled
+	}
+};
+
+onMounted((): void => {
+	if (!devicesLoaded.value) {
+		fetchDevices().catch(() => {
+			// Could be ignored
+		});
+	}
 });
 
 watch(
@@ -177,9 +287,7 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			submit().catch(() => {
-				// The form is not valid
-			});
+			await onProcessStep();
 		}
 	}
 );
@@ -190,9 +298,10 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
-			if (!formEl.value) return;
-
-			formEl.value.resetFields();
+			stepOneFormEl.value?.resetFields();
+			stepTwoFormEl.value?.resetFields();
+			stepThreeFormEl.value?.resetFields();
+			stepFourFormEl.value?.resetFields();
 		}
 	}
 );

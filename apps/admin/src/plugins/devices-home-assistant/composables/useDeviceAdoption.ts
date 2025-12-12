@@ -47,9 +47,9 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 			if (typeof responseData !== 'undefined' && responseData.data) {
 				isAdopting.value = false;
 
-				// Transform the response to match IDevice type
-				// The response should be a DeviceResponseModel with the device data
-				const device = responseData.data as unknown as IDevice;
+				// The response is a DeviceResponseModel with the device data
+				// responseData.data is already the device object
+				const device = responseData.data as IDevice;
 
 				return device;
 			}
