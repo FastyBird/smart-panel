@@ -69,11 +69,16 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	const entityOverrides = ref<IMappingPreviewRequest['entityOverrides']>([]);
 
-	const submitStep = async (step: 'one' | 'two' | 'three' | 'four'): Promise<'ok' | 'added'> => {
+	const submitStep = async (step: 'one' | 'two' | 'three' | 'four', formEl?: FormInstance): Promise<'ok' | 'added'> => {
 		if (step === 'one') {
-			stepOneFormEl.value!.clearValidate();
+			const form = formEl || stepOneFormEl.value;
+			if (!form) {
+				throw new DevicesHomeAssistantValidationException('Form reference not available');
+			}
 
-			const valid = await stepOneFormEl.value!.validate();
+			form.clearValidate();
+
+			const valid = await form.validate();
 
 			if (!valid) throw new DevicesHomeAssistantValidationException('Form not valid');
 
@@ -152,11 +157,22 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 			return 'ok';
 		} else if (step === 'four') {
-			stepFourFormEl.value!.clearValidate();
+			const form = formEl || stepFourFormEl.value;
+			if (!form) {
+				logger.error('Step four form reference not available', { formEl, stepFourFormEl: stepFourFormEl.value });
+				throw new DevicesHomeAssistantValidationException('Form reference not available');
+			}
 
-			const valid = await stepFourFormEl.value!.validate();
+			form.clearValidate();
 
-			if (!valid) throw new DevicesHomeAssistantValidationException('Form not valid');
+			const valid = await form.validate();
+
+			if (!valid) {
+				logger.error('Step four form validation failed');
+				throw new DevicesHomeAssistantValidationException('Form not valid');
+			}
+
+			logger.info('Step four form validation passed, proceeding with adoption');
 
 			const parsedModel = HomeAssistantDeviceAddFormSchema.safeParse(model);
 
@@ -200,8 +216,12 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					channels,
 				};
 
+				logger.info('Calling adoptDevice with request:', adoptRequest);
+
 				// Adopt the device
 				const adoptedDevice = await adoptDevice(adoptRequest);
+
+				logger.info('Device adopted successfully:', adoptedDevice);
 
 				formResult.value = FormResult.OK;
 

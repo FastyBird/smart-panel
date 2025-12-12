@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
@@ -112,7 +112,6 @@ import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.type
 
 interface IDeviceConfigurationStepProps {
 	model: IHomeAssistantDeviceAddForm;
-	stepFourFormEl: FormInstance | undefined;
 	categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[];
 	preview: IMappingPreviewResponse | null;
 }
@@ -121,8 +120,14 @@ defineProps<IDeviceConfigurationStepProps>();
 
 const { t } = useI18n();
 
+const stepFourFormEl = ref<FormInstance | undefined>(undefined);
+
 const rules = reactive<FormRules<IHomeAssistantDeviceAddForm>>({
 	name: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
 	category: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
+});
+
+defineExpose({
+	stepFourFormEl,
 });
 </script>

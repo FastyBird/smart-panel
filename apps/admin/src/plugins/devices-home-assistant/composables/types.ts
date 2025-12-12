@@ -129,7 +129,7 @@ export interface IUseDeviceAddForm<TForm extends IDeviceAddForm = IDeviceAddForm
 	stepThreeFormEl: Ref<FormInstance | undefined>;
 	stepFourFormEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
-	submitStep: (step: 'one' | 'two' | 'three' | 'four') => Promise<'ok' | 'added'>;
+	submitStep: (step: 'one' | 'two' | 'three' | 'four', formEl?: FormInstance) => Promise<'ok' | 'added'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
 }

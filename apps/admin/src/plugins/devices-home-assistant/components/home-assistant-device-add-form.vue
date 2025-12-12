@@ -16,8 +16,8 @@
 			</template>
 
 			<device-selection-step
+				ref="deviceSelectionStepRef"
 				:model="model"
-				:step-one-form-el="stepOneFormEl"
 				:devices-options="devicesOptions"
 				:devices-options-loading="devicesOptionsLoading"
 				@device-change="onDeviceChange"
@@ -77,8 +77,8 @@
 			</template>
 
 			<device-configuration-step
+				ref="deviceConfigurationStepRef"
 				:model="model"
-				:step-four-form-el="stepFourFormEl"
 				:categories-options="categoriesOptions"
 				:preview="preview"
 			/>
@@ -171,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -213,6 +213,9 @@ const { t } = useI18n();
 
 const { loaded: devicesLoaded, fetchDevices } = useDevices();
 
+const deviceSelectionStepRef = ref<InstanceType<typeof DeviceSelectionStep> | null>(null);
+const deviceConfigurationStepRef = ref<InstanceType<typeof DeviceConfigurationStep> | null>(null);
+
 const {
 	activeStep,
 	preview,
@@ -224,10 +227,8 @@ const {
 	devicesOptionsLoading,
 	entityOverrides,
 	model,
-	stepOneFormEl,
 	stepTwoFormEl,
 	stepThreeFormEl,
-	stepFourFormEl,
 	formChanged,
 	submitStep,
 	formResult,
@@ -235,11 +236,30 @@ const {
 	id: props.id,
 });
 
+const stepOneFormEl = computed(() => deviceSelectionStepRef.value?.stepOneFormEl);
+const stepFourFormEl = computed(() => deviceConfigurationStepRef.value?.stepFourFormEl);
+
 const onProcessStep = async (): Promise<void> => {
 	try {
-		await submitStep(activeStep.value);
-	} catch {
-		// Error is already handled in the composable
+		// For step one and four, we need to pass the form ref since they're in child components
+		if (activeStep.value === 'one') {
+			if (!stepOneFormEl.value) {
+				console.error('Step one form reference not available', { deviceSelectionStepRef: deviceSelectionStepRef.value });
+				throw new Error('Form reference not available');
+			}
+			await submitStep(activeStep.value, stepOneFormEl.value);
+		} else if (activeStep.value === 'four') {
+			if (!stepFourFormEl.value) {
+				console.error('Step four form reference not available', { deviceConfigurationStepRef: deviceConfigurationStepRef.value });
+				throw new Error('Form reference not available');
+			}
+			await submitStep(activeStep.value, stepFourFormEl.value);
+		} else {
+			await submitStep(activeStep.value);
+		}
+	} catch (error) {
+		// Error is already handled in the composable, but log it for debugging
+		console.error('Error in onProcessStep:', error);
 	}
 };
 

@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
@@ -71,7 +71,6 @@ import type { IHomeAssistantDeviceAddForm } from '../../schemas/devices.types';
 
 interface IDeviceSelectionStepProps {
 	model: IHomeAssistantDeviceAddForm;
-	stepOneFormEl: FormInstance | undefined;
 	devicesOptions: { value: string; label: string }[];
 	devicesOptionsLoading: boolean;
 }
@@ -101,4 +100,10 @@ const rules = reactive<FormRules<IHomeAssistantDeviceAddForm>>({
 const onDeviceChange = (deviceId: string): void => {
 	emit('device-change', deviceId);
 };
+
+const stepOneFormEl = ref<FormInstance | undefined>(undefined);
+
+defineExpose({
+	stepOneFormEl,
+});
 </script>
