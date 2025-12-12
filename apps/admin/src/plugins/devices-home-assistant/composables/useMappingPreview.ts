@@ -2,7 +2,6 @@ import { ref, type Ref } from 'vue';
 
 import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import type { DevicesHomeAssistantPluginPreviewMappingOperation } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
@@ -67,7 +66,8 @@ export const useMappingPreview = (): IUseMappingPreview => {
 			let errorReason: string | null = 'Failed to fetch mapping preview.';
 
 			if (apiError) {
-				errorReason = getErrorReason<DevicesHomeAssistantPluginPreviewMappingOperation>(apiError, errorReason);
+				// OpenAPI operation type will be generated when OpenAPI spec is updated
+				errorReason = getErrorReason(apiError, errorReason);
 			}
 
 			throw new DevicesHomeAssistantApiException(errorReason, response.status);

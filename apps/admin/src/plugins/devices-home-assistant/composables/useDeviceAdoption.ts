@@ -1,9 +1,9 @@
 import { ref } from 'vue';
 
-import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, snakeToCamel, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import type { DevicesHomeAssistantPluginAdoptDeviceOperation } from '../../../openapi.constants';
-import type { IDevice } from '../../../modules/devices';
+import { getPluginElement } from '../../../modules/devices';
+import { DeviceSchema, transformDeviceResponse, type IDevice, devicesStoreKey } from '../../../modules/devices';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IAdoptDeviceRequest } from '../schemas/mapping-preview.types';
@@ -19,6 +19,9 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 	const backend = useBackend();
 	const logger = useLogger();
 	const flashMessage = useFlashMessage();
+	const storesManager = injectStoresManager();
+
+	const devicesStore = storesManager.getStore(devicesStoreKey);
 
 	const isAdopting = ref<boolean>(false);
 	const error = ref<Error | null>(null);
@@ -47,17 +50,29 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 			if (typeof responseData !== 'undefined' && responseData.data) {
 				isAdopting.value = false;
 
-				// The response is a DeviceResponseModel with the device data
-				// responseData.data is already the device object
-				const device = responseData.data as IDevice;
+				// Transform the response device to match IDevice type
+				const element = getPluginElement(responseData.data.type);
+				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-				return device;
+				// Store the device in the store
+				devicesStore.set({
+					id: transformed.id,
+					data: transformed,
+				});
+
+				// The backend should return the device with channels and controls
+				// If the response includes relations, they will be handled when the device is fetched
+				// For now, we just store the device and let the store handle relations when needed
+				// The device detail page will fetch the full device with relations
+
+				return transformed;
 			}
 
 			let errorReason: string | null = 'Failed to adopt device.';
 
 			if (apiError) {
-				errorReason = getErrorReason<DevicesHomeAssistantPluginAdoptDeviceOperation>(apiError, errorReason);
+				// OpenAPI operation type will be generated when OpenAPI spec is updated
+				errorReason = getErrorReason(apiError, errorReason);
 			}
 
 			throw new DevicesHomeAssistantApiException(errorReason, response.status);
