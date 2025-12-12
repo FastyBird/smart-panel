@@ -71,7 +71,7 @@ I want to consolidate display definitions from the `users` and `system` modules 
 ## 5. Example scenarios (optional)
 
 ### Scenario: Display Registration
-1. Panel app calls `POST /displays-module/register` with MAC address and device info
+1. Panel app calls `POST /module/displays/register` with MAC address and device info
 2. Backend creates `DisplayEntity` with all provided information
 3. Backend generates long-lived token with `TokenOwnerType.DISPLAY`
 4. Backend returns token and display data to panel app

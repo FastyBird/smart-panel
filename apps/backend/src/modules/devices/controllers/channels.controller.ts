@@ -119,7 +119,7 @@ export class ChannelsController {
 	@ApiCreatedSuccessResponse(
 		ChannelResponseModel,
 		'The channel was successfully created. The response includes the complete details of the newly created channel, such as its unique identifier, name, category, and timestamps.',
-		'/api/v1/devices-module/channels/123e4567-e89b-12d3-a456-426614174000',
+		'/api/v1/modules/devices/channels/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported channel type')
 	@ApiUnprocessableEntityResponse('Channel could not be created')

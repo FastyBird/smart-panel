@@ -119,7 +119,7 @@ export class DevicesController {
 	@ApiCreatedSuccessResponse(
 		DeviceResponseModel,
 		'The device was successfully created. The response includes the complete details of the newly created device, such as its unique identifier, name, category, and timestamps.',
-		'/api/v1/devices-module/devices/123e4567-e89b-12d3-a456-426614174000',
+		'/api/v1/modules/devices/devices/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported device type')
 	@ApiUnprocessableEntityResponse('Device could not be created')

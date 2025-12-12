@@ -7,7 +7,7 @@ Implement security levels for display registration based on three deployment mod
 3. **Combined** - All-in-One + allows other standalone displays via network
 
 ## Current State
-- Registration endpoint: `POST /displays-module/register`
+- Registration endpoint: `POST /modules/displays/register`
 - Currently: `@Public()` - no authentication required
 - Protection: Only User-Agent validation
 - No IP-based restrictions
@@ -196,7 +196,7 @@ async getPermitJoinStatus(): Promise<{ active: boolean; expiresAt?: Date; remain
 ```dart
 Future<bool> checkRegistrationStatus() async {
   try {
-    final response = await _apiClient.get('/displays-module/register/status');
+    final response = await _apiClient.get('/modules/displays/register/status');
     return response.data['open'] == true;
   } catch (e) {
     return false;

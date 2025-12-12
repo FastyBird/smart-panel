@@ -84,7 +84,7 @@ export class ExtensionsController {
 						description: a.description ?? undefined,
 						version: this.readPkgVersionSafe(a.packageDir),
 						source: bundledSet.has(a.pkgName) ? ExtensionSourceType.BUNDLED : ExtensionSourceType.RUNTIME,
-						// We’ll serve files under /api/system-module/extensions/assets/<pkg>/<...>
+						// We’ll serve files under /api/v1/modules/system/extensions/assets/<pkg>/<...>
 						remoteUrl: `:baseUrl/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
 					}),
 				);
@@ -154,7 +154,7 @@ export class ExtensionsController {
 					description: a.description ?? undefined,
 					version: this.readPkgVersionSafe(a.packageDir),
 					source: bundledSet.has(a.pkgName) ? ExtensionSourceType.BUNDLED : ExtensionSourceType.RUNTIME,
-					// We’ll serve files under /api/system-module/extensions/assets/<pkg>/<...>
+					// We’ll serve files under /api/v1/modules/system/extensions/assets/<pkg>/<...>
 					remoteUrl: `:baseUrl/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
 				}),
 			);
