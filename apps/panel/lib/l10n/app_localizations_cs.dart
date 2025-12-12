@@ -13,7 +13,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get value_not_set => 'Nenastaveno';
 
   @override
-  String get value_loading => 'Loading';
+  String get value_loading => 'Načítání';
 
   @override
   String get information => 'Informace';
@@ -100,10 +100,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get message_error_tiles_not_configured_description => 'Nakonfigurujte alespoň jednu dlaždici na obrazovce.';
 
   @override
-  String get message_error_cards_not_configured_title => 'No cards configured!';
+  String get message_error_cards_not_configured_title => 'Žádné karty nejsou nakonfigurovány!';
 
   @override
-  String get message_error_cards_not_configured_description => 'Please configure at least one card on the screen.';
+  String get message_error_cards_not_configured_description => 'Nakonfigurujte alespoň jednu kartu na obrazovce.';
 
   @override
   String get message_error_device_not_found_title => 'Zařízení nenalezeno!';
@@ -124,10 +124,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get message_error_no_device_detail_preparing_description => 'Pro vybrané zařízení stránka s podrobnostmi ještě není připravena.';
 
   @override
-  String get message_error_page_not_found_title => 'Page Not Found!';
+  String get message_error_page_not_found_title => 'Stránka nenalezena!';
 
   @override
-  String get message_error_page_not_found_description => 'Requested page could not be found in the application.';
+  String get message_error_page_not_found_description => 'Požadovaná stránka nebyla nalezena v aplikaci.';
 
   @override
   String get electrical_energy_consumption_title => 'Spotřeba energie';
@@ -178,10 +178,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get electrical_power_over_voltage_description => 'Varování: Elektřina je příliš silná.';
 
   @override
-  String get electrical_power_over_power_title => 'Over Power';
+  String get electrical_power_over_power_title => 'Přetížení výkonu';
 
   @override
-  String get electrical_power_over_power_description => 'Warning: Power consumption is too high';
+  String get electrical_power_over_power_description => 'Varování: Spotřeba energie je příliš vysoká.';
 
   @override
   String get light_state_off => 'Vypnuto';
@@ -475,178 +475,178 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_about_memory_usage_title => 'Využití paměti';
 
   @override
-  String get weather_forecast_title => 'Weather forecast';
+  String get weather_forecast_title => 'Předpověď počasí';
 
   @override
-  String get weather_forecast_feels_like => 'Feels like:';
+  String get weather_forecast_feels_like => 'Pocitová teplota:';
 
   @override
-  String get weather_forecast_humidity => 'Humidity:';
+  String get weather_forecast_humidity => 'Vlhkost:';
 
   @override
-  String get weather_condition_thunderstorm_with_light_rain => 'Thunderstorm with light rain';
+  String get weather_condition_thunderstorm_with_light_rain => 'Bouřka s lehkým deštěm';
 
   @override
-  String get weather_condition_thunderstorm_with_rain => 'Thunderstorm with rain';
+  String get weather_condition_thunderstorm_with_rain => 'Bouřka s deštěm';
 
   @override
-  String get weather_condition_thunderstorm_with_heavy_rain => 'Thunderstorm with heavy rain';
+  String get weather_condition_thunderstorm_with_heavy_rain => 'Bouřka s prudkým deštěm';
 
   @override
-  String get weather_condition_light_thunderstorm => 'Light thunderstorm';
+  String get weather_condition_light_thunderstorm => 'Lehká bouřka';
 
   @override
-  String get weather_condition_thunderstorm => 'Thunderstorm';
+  String get weather_condition_thunderstorm => 'Bouřka';
 
   @override
-  String get weather_condition_heavy_thunderstorm => 'Heavy thunderstorm';
+  String get weather_condition_heavy_thunderstorm => 'Silná bouřka';
 
   @override
-  String get weather_condition_ragged_thunderstorm => 'Ragged thunderstorm';
+  String get weather_condition_ragged_thunderstorm => 'Nepravidelná bouřka';
 
   @override
-  String get weather_condition_thunderstorm_with_light_drizzle => 'Thunderstorm with light drizzle';
+  String get weather_condition_thunderstorm_with_light_drizzle => 'Bouřka s lehkým mrholením';
 
   @override
-  String get weather_condition_thunderstorm_with_drizzle => 'Thunderstorm with drizzle';
+  String get weather_condition_thunderstorm_with_drizzle => 'Bouřka s mrholením';
 
   @override
-  String get weather_condition_thunderstorm_with_heavy_drizzle => 'Thunderstorm with heavy drizzle';
+  String get weather_condition_thunderstorm_with_heavy_drizzle => 'Bouřka s hustým mrholením';
 
   @override
-  String get weather_condition_light_intensity_drizzle => 'Light intensity drizzle';
+  String get weather_condition_light_intensity_drizzle => 'Lehké mrholení';
 
   @override
-  String get weather_condition_drizzle => 'Drizzle';
+  String get weather_condition_drizzle => 'Mrholení';
 
   @override
-  String get weather_condition_heavy_intensity_drizzle => 'Heavy intensity drizzle';
+  String get weather_condition_heavy_intensity_drizzle => 'Husté mrholení';
 
   @override
-  String get weather_condition_light_intensity_drizzle_rain => 'Light intensity drizzle rain';
+  String get weather_condition_light_intensity_drizzle_rain => 'Lehké mrholení přecházející v déšť';
 
   @override
-  String get weather_condition_drizzle_rain => 'Drizzle rain';
+  String get weather_condition_drizzle_rain => 'Mrholení s deštěm';
 
   @override
-  String get weather_condition_heavy_intensity_drizzle_rain => 'Heavy intensity drizzle rain';
+  String get weather_condition_heavy_intensity_drizzle_rain => 'Husté mrholení přecházející v déšť';
 
   @override
-  String get weather_condition_shower_rain_and_drizzle => 'Shower rain and drizzle';
+  String get weather_condition_shower_rain_and_drizzle => 'Přeháňky s mrholením';
 
   @override
-  String get weather_condition_heavy_shower_rain_and_drizzle => 'Heavy shower rain and drizzle';
+  String get weather_condition_heavy_shower_rain_and_drizzle => 'Silné přeháňky s mrholením';
 
   @override
-  String get weather_condition_shower_drizzle => 'Shower drizzle';
+  String get weather_condition_shower_drizzle => 'Přeháňkové mrholení';
 
   @override
-  String get weather_condition_light_rain => 'Light rain';
+  String get weather_condition_light_rain => 'Lehký déšť';
 
   @override
-  String get weather_condition_moderate_rain => 'Moderate rain';
+  String get weather_condition_moderate_rain => 'Mírný déšť';
 
   @override
-  String get weather_condition_heavy_intensity_rain => 'Heavy intensity rain';
+  String get weather_condition_heavy_intensity_rain => 'Silný déšť';
 
   @override
-  String get weather_condition_very_heavy_rain => 'Very heavy rain';
+  String get weather_condition_very_heavy_rain => 'Velmi silný déšť';
 
   @override
-  String get weather_condition_extreme_rain => 'Extreme rain';
+  String get weather_condition_extreme_rain => 'Extrémní déšť';
 
   @override
-  String get weather_condition_freezing_rain => 'Freezing rain';
+  String get weather_condition_freezing_rain => 'Mrznoucí déšť';
 
   @override
-  String get weather_condition_light_intensity_shower_rain => 'Light intensity shower rain';
+  String get weather_condition_light_intensity_shower_rain => 'Lehké dešťové přeháňky';
 
   @override
-  String get weather_condition_shower_rain => 'Shower rain';
+  String get weather_condition_shower_rain => 'Dešťové přeháňky';
 
   @override
-  String get weather_condition_heavy_intensity_shower_rain => 'Heavy intensity shower rain';
+  String get weather_condition_heavy_intensity_shower_rain => 'Silné dešťové přeháňky';
 
   @override
-  String get weather_condition_ragged_shower_rain => 'Ragged shower rain';
+  String get weather_condition_ragged_shower_rain => 'Nepravidelné dešťové přeháňky';
 
   @override
-  String get weather_condition_light_snow => 'Light snow';
+  String get weather_condition_light_snow => 'Lehký sníh';
 
   @override
-  String get weather_condition_snow => 'Snow';
+  String get weather_condition_snow => 'Sníh';
 
   @override
-  String get weather_condition_heavy_snow => 'Heavy snow';
+  String get weather_condition_heavy_snow => 'Silný sníh';
 
   @override
-  String get weather_condition_sleet => 'Sleet';
+  String get weather_condition_sleet => 'Sněhová krupice';
 
   @override
-  String get weather_condition_light_shower_sleet => 'Light shower sleet';
+  String get weather_condition_light_shower_sleet => 'Lehké přeháňky se sněhovou krupicí';
 
   @override
-  String get weather_condition_shower_sleet => 'Shower sleet';
+  String get weather_condition_shower_sleet => 'Přeháňky se sněhovou krupicí';
 
   @override
-  String get weather_condition_light_rain_and_snow => 'Light rain and snow';
+  String get weather_condition_light_rain_and_snow => 'Lehký déšť se sněhem';
 
   @override
-  String get weather_condition_rain_and_snow => 'Rain and snow';
+  String get weather_condition_rain_and_snow => 'Déšť se sněhem';
 
   @override
-  String get weather_condition_light_shower_snow => 'Light shower snow';
+  String get weather_condition_light_shower_snow => 'Lehké sněhové přeháňky';
 
   @override
-  String get weather_condition_shower_snow => 'Shower snow';
+  String get weather_condition_shower_snow => 'Sněhové přeháňky';
 
   @override
-  String get weather_condition_heavy_shower_snow => 'Heavy shower snow';
+  String get weather_condition_heavy_shower_snow => 'Silné sněhové přeháňky';
 
   @override
-  String get weather_condition_mist => 'Mist';
+  String get weather_condition_mist => 'Mlha';
 
   @override
-  String get weather_condition_smoke => 'Smoke';
+  String get weather_condition_smoke => 'Kouř';
 
   @override
-  String get weather_condition_haze => 'Haze';
+  String get weather_condition_haze => 'Zákal';
 
   @override
-  String get weather_condition_fog => 'Fog';
+  String get weather_condition_fog => 'Hustá mlha';
 
   @override
-  String get weather_condition_sand => 'Sand';
+  String get weather_condition_sand => 'Písek';
 
   @override
-  String get weather_condition_dust => 'Dust';
+  String get weather_condition_dust => 'Prach';
 
   @override
-  String get weather_condition_volcanic_ash => 'Volcanic ash';
+  String get weather_condition_volcanic_ash => 'Sopečný popel';
 
   @override
-  String get weather_condition_squalls => 'Squalls';
+  String get weather_condition_squalls => 'Nárazový vítr';
 
   @override
-  String get weather_condition_tornado => 'Tornado';
+  String get weather_condition_tornado => 'Tornádo';
 
   @override
-  String get weather_condition_clear_sky => 'Clear sky';
+  String get weather_condition_clear_sky => 'Jasná obloha';
 
   @override
-  String get weather_condition_few_clouds => 'Few clouds';
+  String get weather_condition_few_clouds => 'Málo oblačnosti';
 
   @override
-  String get weather_condition_scattered_clouds => 'Scattered clouds';
+  String get weather_condition_scattered_clouds => 'Rozptýlená oblačnost';
 
   @override
-  String get weather_condition_broken_clouds => 'Broken clouds';
+  String get weather_condition_broken_clouds => 'Polojasno';
 
   @override
-  String get weather_condition_overcast_clouds => 'Overcast clouds';
+  String get weather_condition_overcast_clouds => 'Zataženo';
 
   @override
-  String get weather_condition_unknown => 'Unknown';
+  String get weather_condition_unknown => 'Neznámé';
 
   @override
   String get discovery_searching_title => 'Hledání bran';
