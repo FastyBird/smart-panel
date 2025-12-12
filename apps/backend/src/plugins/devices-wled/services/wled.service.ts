@@ -14,11 +14,14 @@ import {
 	WledDeviceDisconnectedEvent,
 	WledDeviceErrorEvent,
 	WledDeviceStateChangedEvent,
+	WledMdnsDiscoveredDevice,
+	WledMdnsEventType,
 } from '../interfaces/wled.interface';
 import { WledConfigModel, WledDeviceHostConfigModel } from '../models/config.model';
 
 import { WledDeviceMapperService } from './device-mapper.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
+import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
 
 type ServiceState = 'stopped' | 'starting' | 'started' | 'stopping';
 
@@ -44,6 +47,7 @@ export class WledService {
 		private readonly wledAdapter: WledClientAdapterService,
 		private readonly deviceMapper: WledDeviceMapperService,
 		private readonly devicesService: DevicesService,
+		private readonly mdnsDiscoverer: WledMdnsDiscovererService,
 	) {}
 
 	/**
@@ -118,11 +122,20 @@ export class WledService {
 			this.logger.log('[WLED][SERVICE] Starting WLED plugin service');
 
 			try {
+				// Configure WebSocket
+				this.wledAdapter.configureWebSocket(
+					this.config.websocket.enabled,
+					this.config.websocket.reconnectInterval,
+				);
+
 				// Initialize all devices to UNKNOWN connection state
 				await this.initializeDeviceStates();
 
 				// Connect to configured WLED devices
 				await this.connectToConfiguredDevices();
+
+				// Start mDNS discovery if enabled
+				await this.startMdnsDiscovery();
 
 				// Start state polling
 				this.startPolling();
@@ -170,6 +183,9 @@ export class WledService {
 			try {
 				// Stop polling
 				this.stopPolling();
+
+				// Stop mDNS discovery
+				this.mdnsDiscoverer.stop();
 
 				// Disconnect all devices
 				this.wledAdapter.disconnectAll();
@@ -382,6 +398,76 @@ export class WledService {
 				stack: error instanceof Error ? error.stack : undefined,
 			});
 		}
+	}
+
+	/**
+	 * Start mDNS discovery if enabled
+	 */
+	private async startMdnsDiscovery(): Promise<void> {
+		if (!this.config.mdns.enabled) {
+			this.logger.debug('[WLED][SERVICE] mDNS discovery is disabled');
+			return;
+		}
+
+		try {
+			await this.mdnsDiscoverer.start(this.config.mdns.interface ?? undefined);
+			this.logger.log('[WLED][SERVICE] mDNS discovery started');
+		} catch (error) {
+			this.logger.error('[WLED][SERVICE] Failed to start mDNS discovery', {
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Handle mDNS device discovered event
+	 */
+	@OnEvent(WledMdnsEventType.DEVICE_DISCOVERED)
+	async handleMdnsDeviceDiscovered(device: WledMdnsDiscoveredDevice): Promise<void> {
+		this.logger.log(`[WLED][SERVICE] mDNS discovered device: ${device.name} at ${device.host}`);
+
+		// Check if we already have this device configured
+		const existingDevice = await this.devicesService.findOneBy<WledDeviceEntity>(
+			'hostname',
+			device.host,
+			DEVICES_WLED_TYPE,
+		);
+
+		if (existingDevice) {
+			this.logger.debug(`[WLED][SERVICE] Device at ${device.host} already exists in database`);
+
+			// If device is not connected, try to connect
+			if (!this.wledAdapter.isConnected(device.host)) {
+				this.logger.debug(`[WLED][SERVICE] Connecting to existing device at ${device.host}`);
+				await this.connectToDevice({
+					host: device.host,
+					name: existingDevice.name,
+					identifier: existingDevice.identifier,
+				});
+			}
+			return;
+		}
+
+		// Auto-add device if enabled
+		if (this.config.mdns.autoAdd) {
+			this.logger.log(`[WLED][SERVICE] Auto-adding discovered device: ${device.name} at ${device.host}`);
+			await this.connectToDevice({
+				host: device.host,
+				name: device.name,
+				identifier: device.mac ? `wled-${device.mac.replace(/:/g, '').toLowerCase()}` : undefined,
+			});
+		} else {
+			this.logger.log(
+				`[WLED][SERVICE] Discovered device ${device.name} at ${device.host} - auto-add disabled, add manually`,
+			);
+		}
+	}
+
+	/**
+	 * Get discovered devices from mDNS
+	 */
+	getDiscoveredDevices(): WledMdnsDiscoveredDevice[] {
+		return this.mdnsDiscoverer.getDiscoveredDevices();
 	}
 
 	/**

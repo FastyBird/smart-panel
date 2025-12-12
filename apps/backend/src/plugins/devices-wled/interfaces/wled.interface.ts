@@ -194,4 +194,58 @@ export interface RegisteredWledDevice {
 	enabled: boolean;
 	context?: WledDeviceContext;
 	lastSeen?: Date;
+	websocket?: WebSocket;
+}
+
+/**
+ * WLED preset interface
+ */
+export interface WledPreset {
+	id: number;
+	name: string;
+}
+
+/**
+ * mDNS discovered device
+ */
+export interface WledMdnsDiscoveredDevice {
+	host: string;
+	name: string;
+	mac?: string;
+	port: number;
+}
+
+/**
+ * mDNS discovery events
+ */
+export enum WledMdnsEventType {
+	DEVICE_DISCOVERED = 'WledMdns.Device.Discovered',
+	DEVICE_REMOVED = 'WledMdns.Device.Removed',
+}
+
+/**
+ * Nightlight update options
+ */
+export interface WledNightlightUpdate {
+	on?: boolean;
+	duration?: number; // minutes
+	mode?: number; // 0=instant, 1=fade, 2=color fade, 3=sunrise
+	targetBrightness?: number;
+}
+
+/**
+ * UDP sync update options
+ */
+export interface WledUdpSyncUpdate {
+	send?: boolean;
+	receive?: boolean;
+}
+
+/**
+ * Extended state update options for WLED
+ */
+export interface WledStateUpdateExtended extends WledStateUpdate {
+	nightlight?: WledNightlightUpdate;
+	udpSync?: WledUdpSyncUpdate;
+	liveOverride?: number; // 0=off, 1=until live data ends, 2=until reboot
 }

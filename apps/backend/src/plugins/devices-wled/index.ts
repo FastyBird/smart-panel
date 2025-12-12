@@ -21,4 +21,5 @@ export * from './platforms/wled.device.platform';
 
 export * from './services/device-mapper.service';
 export * from './services/wled-client-adapter.service';
+export * from './services/wled-mdns-discoverer.service';
 export * from './services/wled.service';

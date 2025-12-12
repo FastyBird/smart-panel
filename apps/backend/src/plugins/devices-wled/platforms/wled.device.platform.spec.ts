@@ -43,6 +43,10 @@ describe('WledDevicePlatform', () => {
 		const mockWledAdapter = {
 			getDeviceByIdentifier: jest.fn(),
 			updateState: jest.fn(),
+			updateStateExtended: jest.fn(),
+			setNightlight: jest.fn(),
+			setUdpSync: jest.fn(),
+			updateSegment: jest.fn(),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -118,7 +122,7 @@ describe('WledDevicePlatform', () => {
 				connected: true,
 				enabled: true,
 			});
-			wledAdapter.updateState.mockResolvedValue(true);
+			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
 			const result = await platform.process({
 				device,
@@ -128,7 +132,7 @@ describe('WledDevicePlatform', () => {
 			});
 
 			expect(result).toBe(true);
-			expect(wledAdapter.updateState).toHaveBeenCalled();
+			expect(wledAdapter.updateStateExtended).toHaveBeenCalled();
 		});
 	});
 
@@ -152,7 +156,7 @@ describe('WledDevicePlatform', () => {
 			]);
 
 			expect(result).toBe(false);
-			expect(wledAdapter.updateState).not.toHaveBeenCalled();
+			expect(wledAdapter.updateStateExtended).not.toHaveBeenCalled();
 		});
 
 		it('should return false if device not found in adapter', async () => {
@@ -221,7 +225,7 @@ describe('WledDevicePlatform', () => {
 				connected: true,
 				enabled: true,
 			});
-			wledAdapter.updateState.mockResolvedValue(true);
+			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
 			const result = await platform.processBatch([
 				{
@@ -233,10 +237,9 @@ describe('WledDevicePlatform', () => {
 			]);
 
 			expect(result).toBe(true);
-			expect(wledAdapter.updateState).toHaveBeenCalledWith(
+			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',
 				expect.objectContaining({ on: true }),
-				0,
 			);
 		});
 
@@ -255,7 +258,7 @@ describe('WledDevicePlatform', () => {
 				connected: true,
 				enabled: true,
 			});
-			wledAdapter.updateState.mockResolvedValue(true);
+			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
 			const result = await platform.processBatch([
 				{
@@ -267,10 +270,9 @@ describe('WledDevicePlatform', () => {
 			]);
 
 			expect(result).toBe(true);
-			expect(wledAdapter.updateState).toHaveBeenCalledWith(
+			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',
 				expect.objectContaining({ brightness: 200 }),
-				0,
 			);
 		});
 
@@ -302,7 +304,7 @@ describe('WledDevicePlatform', () => {
 				connected: true,
 				enabled: true,
 			});
-			wledAdapter.updateState.mockResolvedValue(true);
+			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
 			const result = await platform.processBatch([
 				{ device, channel, property: redProperty, value: 255 },
@@ -311,14 +313,13 @@ describe('WledDevicePlatform', () => {
 			]);
 
 			expect(result).toBe(true);
-			expect(wledAdapter.updateState).toHaveBeenCalledWith(
+			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',
 				expect.objectContaining({
 					segment: expect.objectContaining({
 						colors: [[255, 128, 64]],
 					}),
 				}),
-				0,
 			);
 		});
 
@@ -337,7 +338,7 @@ describe('WledDevicePlatform', () => {
 				connected: true,
 				enabled: true,
 			});
-			wledAdapter.updateState.mockResolvedValue(true);
+			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
 			const result = await platform.processBatch([
 				{
@@ -349,14 +350,13 @@ describe('WledDevicePlatform', () => {
 			]);
 
 			expect(result).toBe(true);
-			expect(wledAdapter.updateState).toHaveBeenCalledWith(
+			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',
 				expect.objectContaining({
 					segment: expect.objectContaining({
 						effect: 5,
 					}),
 				}),
-				0,
 			);
 		});
 
@@ -382,7 +382,7 @@ describe('WledDevicePlatform', () => {
 			]);
 
 			expect(result).toBe(false);
-			expect(wledAdapter.updateState).not.toHaveBeenCalled();
+			expect(wledAdapter.updateStateExtended).not.toHaveBeenCalled();
 		});
 
 		it('should handle string boolean values', async () => {
@@ -400,16 +400,15 @@ describe('WledDevicePlatform', () => {
 				connected: true,
 				enabled: true,
 			});
-			wledAdapter.updateState.mockResolvedValue(true);
+			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
 			await platform.processBatch([
 				{ device, channel, property, value: 'true' },
 			]);
 
-			expect(wledAdapter.updateState).toHaveBeenCalledWith(
+			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',
 				expect.objectContaining({ on: true }),
-				0,
 			);
 		});
 
@@ -428,16 +427,15 @@ describe('WledDevicePlatform', () => {
 				connected: true,
 				enabled: true,
 			});
-			wledAdapter.updateState.mockResolvedValue(true);
+			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
 			await platform.processBatch([
 				{ device, channel, property, value: 1 },
 			]);
 
-			expect(wledAdapter.updateState).toHaveBeenCalledWith(
+			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',
 				expect.objectContaining({ on: true }),
-				0,
 			);
 		});
 	});

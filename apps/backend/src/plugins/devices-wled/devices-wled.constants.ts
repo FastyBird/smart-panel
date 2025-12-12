@@ -19,6 +19,9 @@ export const DEVICES_WLED_API_TAG_DESCRIPTION = 'WLED addressable LED controller
 export const WLED_CHANNEL_IDENTIFIERS = {
 	DEVICE_INFORMATION: 'device_information',
 	LIGHT: 'light',
+	SEGMENT: 'segment', // Base identifier for segments (segment_0, segment_1, etc.)
+	NIGHTLIGHT: 'nightlight',
+	SYNC: 'sync',
 } as const;
 
 // Device information property identifiers
@@ -43,6 +46,41 @@ export const WLED_LIGHT_PROPERTY_IDENTIFIERS = {
 	EFFECT: 'effect',
 	EFFECT_SPEED: 'effect_speed',
 	EFFECT_INTENSITY: 'effect_intensity',
+	PALETTE: 'palette',
+	PRESET: 'preset',
+	LIVE_OVERRIDE: 'live_override',
+} as const;
+
+// Segment channel property identifiers (per-segment control)
+export const WLED_SEGMENT_PROPERTY_IDENTIFIERS = {
+	STATE: 'state',
+	BRIGHTNESS: 'brightness',
+	COLOR_RED: 'color_red',
+	COLOR_GREEN: 'color_green',
+	COLOR_BLUE: 'color_blue',
+	EFFECT: 'effect',
+	EFFECT_SPEED: 'effect_speed',
+	EFFECT_INTENSITY: 'effect_intensity',
+	PALETTE: 'palette',
+	START: 'start',
+	STOP: 'stop',
+	REVERSE: 'reverse',
+	MIRROR: 'mirror',
+} as const;
+
+// Nightlight channel property identifiers
+export const WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS = {
+	STATE: 'state',
+	DURATION: 'duration',
+	MODE: 'mode',
+	TARGET_BRIGHTNESS: 'target_brightness',
+	REMAINING: 'remaining',
+} as const;
+
+// Sync channel property identifiers
+export const WLED_SYNC_PROPERTY_IDENTIFIERS = {
+	SEND: 'send',
+	RECEIVE: 'receive',
 } as const;
 
 // Property binding interface - maps WLED properties to panel properties
@@ -226,10 +264,268 @@ export const LIGHT_BINDINGS: WledPropertyBinding[] = [
 		min: 0,
 		max: 255,
 	},
+	{
+		wledProperty: 'state.seg[0].pal',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.LIGHT,
+		propertyIdentifier: WLED_LIGHT_PROPERTY_IDENTIFIERS.PALETTE,
+		category: PropertyCategory.MODE,
+		dataType: DataTypeType.UCHAR,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Palette',
+		min: 0,
+		max: 255,
+	},
+	{
+		wledProperty: 'state.ps',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.LIGHT,
+		propertyIdentifier: WLED_LIGHT_PROPERTY_IDENTIFIERS.PRESET,
+		category: PropertyCategory.MODE,
+		dataType: DataTypeType.SHORT,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Preset',
+		min: -1,
+		max: 250,
+	},
+	{
+		wledProperty: 'state.lor',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.LIGHT,
+		propertyIdentifier: WLED_LIGHT_PROPERTY_IDENTIFIERS.LIVE_OVERRIDE,
+		category: PropertyCategory.MODE,
+		dataType: DataTypeType.UCHAR,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Live Override',
+		min: 0,
+		max: 2,
+	},
+];
+
+// Nightlight channel bindings
+export const NIGHTLIGHT_BINDINGS: WledPropertyBinding[] = [
+	{
+		wledProperty: 'state.nl.on',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
+		propertyIdentifier: WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.STATE,
+		category: PropertyCategory.ON,
+		dataType: DataTypeType.BOOL,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Nightlight Active',
+	},
+	{
+		wledProperty: 'state.nl.dur',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
+		propertyIdentifier: WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.DURATION,
+		category: PropertyCategory.DURATION,
+		dataType: DataTypeType.UINT,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Duration',
+		min: 1,
+		max: 255,
+		unit: 'min',
+	},
+	{
+		wledProperty: 'state.nl.mode',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
+		propertyIdentifier: WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.MODE,
+		category: PropertyCategory.MODE,
+		dataType: DataTypeType.UCHAR,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Mode',
+		min: 0,
+		max: 3,
+	},
+	{
+		wledProperty: 'state.nl.tbri',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
+		propertyIdentifier: WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.TARGET_BRIGHTNESS,
+		category: PropertyCategory.BRIGHTNESS,
+		dataType: DataTypeType.UCHAR,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Target Brightness',
+		min: 0,
+		max: 255,
+	},
+	{
+		wledProperty: 'state.nl.rem',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
+		propertyIdentifier: WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.REMAINING,
+		category: PropertyCategory.DURATION,
+		dataType: DataTypeType.INT,
+		permissions: [PermissionType.READ_ONLY],
+		name: 'Time Remaining',
+		unit: 'sec',
+	},
+];
+
+// Sync channel bindings
+export const SYNC_BINDINGS: WledPropertyBinding[] = [
+	{
+		wledProperty: 'state.udpn.send',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.SYNC,
+		propertyIdentifier: WLED_SYNC_PROPERTY_IDENTIFIERS.SEND,
+		category: PropertyCategory.ON,
+		dataType: DataTypeType.BOOL,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Send Sync',
+	},
+	{
+		wledProperty: 'state.udpn.recv',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.SYNC,
+		propertyIdentifier: WLED_SYNC_PROPERTY_IDENTIFIERS.RECEIVE,
+		category: PropertyCategory.ON,
+		dataType: DataTypeType.BOOL,
+		permissions: [PermissionType.READ_WRITE],
+		name: 'Receive Sync',
+	},
 ];
 
 // Combined property bindings
-export const PROPERTY_BINDINGS: WledPropertyBinding[] = [...DEVICE_INFO_BINDINGS, ...LIGHT_BINDINGS];
+export const PROPERTY_BINDINGS: WledPropertyBinding[] = [
+	...DEVICE_INFO_BINDINGS,
+	...LIGHT_BINDINGS,
+	...NIGHTLIGHT_BINDINGS,
+	...SYNC_BINDINGS,
+];
+
+// Segment property bindings factory (creates bindings for a specific segment ID)
+export const createSegmentBindings = (segmentId: number): WledPropertyBinding[] => {
+	const channelIdentifier = `${WLED_CHANNEL_IDENTIFIERS.SEGMENT}_${segmentId}`;
+
+	return [
+		{
+			wledProperty: `state.seg[${segmentId}].on`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.STATE,
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'State',
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].bri`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.BRIGHTNESS,
+			category: PropertyCategory.BRIGHTNESS,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Brightness',
+			min: 0,
+			max: 255,
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].col[0][0]`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.COLOR_RED,
+			category: PropertyCategory.COLOR_RED,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Red',
+			min: 0,
+			max: 255,
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].col[0][1]`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.COLOR_GREEN,
+			category: PropertyCategory.COLOR_GREEN,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Green',
+			min: 0,
+			max: 255,
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].col[0][2]`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.COLOR_BLUE,
+			category: PropertyCategory.COLOR_BLUE,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Blue',
+			min: 0,
+			max: 255,
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].fx`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT,
+			category: PropertyCategory.MODE,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Effect',
+			min: 0,
+			max: 255,
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].sx`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT_SPEED,
+			category: PropertyCategory.SPEED,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Effect Speed',
+			min: 0,
+			max: 255,
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].ix`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT_INTENSITY,
+			category: PropertyCategory.LEVEL,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Effect Intensity',
+			min: 0,
+			max: 255,
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].pal`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.PALETTE,
+			category: PropertyCategory.MODE,
+			dataType: DataTypeType.UCHAR,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Palette',
+			min: 0,
+			max: 255,
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].start`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.START,
+			category: PropertyCategory.GENERIC,
+			dataType: DataTypeType.UINT,
+			permissions: [PermissionType.READ_ONLY],
+			name: 'Start LED',
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].stop`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.STOP,
+			category: PropertyCategory.GENERIC,
+			dataType: DataTypeType.UINT,
+			permissions: [PermissionType.READ_ONLY],
+			name: 'Stop LED',
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].rev`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.REVERSE,
+			category: PropertyCategory.GENERIC,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Reverse',
+		},
+		{
+			wledProperty: `state.seg[${segmentId}].mi`,
+			channelIdentifier,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.MIRROR,
+			category: PropertyCategory.GENERIC,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+			name: 'Mirror',
+		},
+	];
+};
 
 // Device descriptor
 export interface WledDeviceDescriptor {
@@ -259,6 +555,18 @@ export const WLED_DEVICE_DESCRIPTOR: WledDeviceDescriptor = {
 			name: 'Light',
 			category: ChannelCategory.LIGHT,
 			bindings: LIGHT_BINDINGS,
+		},
+		{
+			identifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
+			name: 'Nightlight',
+			category: ChannelCategory.GENERIC,
+			bindings: NIGHTLIGHT_BINDINGS,
+		},
+		{
+			identifier: WLED_CHANNEL_IDENTIFIERS.SYNC,
+			name: 'Sync',
+			category: ChannelCategory.GENERIC,
+			bindings: SYNC_BINDINGS,
 		},
 	],
 };

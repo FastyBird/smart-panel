@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -90,6 +90,64 @@ export class WledPollingConfigModel {
 }
 
 /**
+ * WLED mDNS discovery configuration
+ */
+@ApiSchema({ name: 'DevicesWledPluginDataMdnsConfig' })
+export class WledMdnsConfigModel {
+	@Expose()
+	@IsBoolean()
+	@ApiProperty({
+		description: 'Whether mDNS discovery is enabled',
+		example: true,
+	})
+	enabled: boolean = true;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	@ApiPropertyOptional({
+		description: 'Network interface for mDNS discovery (null for all interfaces)',
+		nullable: true,
+		example: null,
+	})
+	interface: string | null = null;
+
+	@Expose({ name: 'auto_add' })
+	@IsBoolean()
+	@ApiProperty({
+		name: 'auto_add',
+		description: 'Automatically add discovered devices to the system',
+		example: false,
+	})
+	autoAdd: boolean = false;
+}
+
+/**
+ * WLED WebSocket configuration
+ */
+@ApiSchema({ name: 'DevicesWledPluginDataWebSocketConfig' })
+export class WledWebSocketConfigModel {
+	@Expose()
+	@IsBoolean()
+	@ApiProperty({
+		description: 'Whether to use WebSocket for real-time state updates',
+		example: true,
+	})
+	enabled: boolean = true;
+
+	@Expose({ name: 'reconnect_interval' })
+	@IsInt()
+	@Min(1000)
+	@ApiProperty({
+		name: 'reconnect_interval',
+		description: 'WebSocket reconnection interval in milliseconds',
+		example: 5000,
+		minimum: 1000,
+	})
+	reconnectInterval: number = 5000;
+}
+
+/**
  * Main WLED plugin configuration model
  */
 @ApiSchema({ name: 'DevicesWledPluginDataConfig' })
@@ -129,4 +187,22 @@ export class WledConfigModel extends PluginConfigModel {
 		type: () => WledPollingConfigModel,
 	})
 	polling: WledPollingConfigModel = new WledPollingConfigModel();
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => WledMdnsConfigModel)
+	@ApiProperty({
+		description: 'mDNS discovery configuration',
+		type: () => WledMdnsConfigModel,
+	})
+	mdns: WledMdnsConfigModel = new WledMdnsConfigModel();
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => WledWebSocketConfigModel)
+	@ApiProperty({
+		description: 'WebSocket configuration',
+		type: () => WledWebSocketConfigModel,
+	})
+	websocket: WledWebSocketConfigModel = new WledWebSocketConfigModel();
 }

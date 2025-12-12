@@ -1,3 +1,5 @@
+import WebSocket from 'ws';
+
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Injectable, Logger } from '@nestjs/common';
 
@@ -9,10 +11,13 @@ import {
 	WledDeviceContext,
 	WledEffect,
 	WledInfo,
+	WledNightlightUpdate,
 	WledPalette,
 	WledSegment,
 	WledState,
 	WledStateUpdate,
+	WledStateUpdateExtended,
+	WledUdpSyncUpdate,
 } from '../interfaces/wled.interface';
 
 /**
@@ -116,8 +121,20 @@ export class WledClientAdapterService {
 
 	private readonly devices = new Map<string, RegisteredWledDevice>();
 	private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
+	private readonly websockets = new Map<string, WebSocket>();
+	private readonly wsReconnectTimers = new Map<string, NodeJS.Timeout>();
+	private wsReconnectInterval = 5000;
+	private wsEnabled = false;
 
 	constructor(private readonly eventEmitter: EventEmitter2) {}
+
+	/**
+	 * Configure WebSocket settings
+	 */
+	configureWebSocket(enabled: boolean, reconnectInterval: number = 5000): void {
+		this.wsEnabled = enabled;
+		this.wsReconnectInterval = reconnectInterval;
+	}
 
 	/**
 	 * Connect to a WLED device and fetch its initial state
@@ -148,6 +165,11 @@ export class WledClientAdapterService {
 				host,
 				info: context.info,
 			});
+
+			// Connect WebSocket if enabled
+			if (this.wsEnabled) {
+				this.connectWebSocket(host);
+			}
 		} catch (error) {
 			this.logger.error(`[WLED][ADAPTER] Failed to connect to WLED device at ${host}`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -173,6 +195,9 @@ export class WledClientAdapterService {
 				clearTimeout(timer);
 				this.debounceTimers.delete(host);
 			}
+
+			// Close WebSocket connection
+			this.disconnectWebSocket(host);
 
 			this.devices.delete(host);
 
@@ -427,6 +452,247 @@ export class WledClientAdapterService {
 	}
 
 	/**
+	 * Set palette for the primary segment
+	 */
+	async setPalette(host: string, paletteId: number): Promise<boolean> {
+		return this.updateState(
+			host,
+			{
+				segment: {
+					id: 0,
+					palette: paletteId,
+				},
+			},
+			0,
+		);
+	}
+
+	/**
+	 * Set active preset
+	 */
+	async setPreset(host: string, presetId: number): Promise<boolean> {
+		return this.updateState(host, { preset: presetId }, 0);
+	}
+
+	/**
+	 * Update nightlight settings
+	 */
+	async setNightlight(host: string, options: WledNightlightUpdate): Promise<boolean> {
+		return this.updateStateExtended(host, { nightlight: options });
+	}
+
+	/**
+	 * Update UDP sync settings
+	 */
+	async setUdpSync(host: string, options: WledUdpSyncUpdate): Promise<boolean> {
+		return this.updateStateExtended(host, { udpSync: options });
+	}
+
+	/**
+	 * Set live override mode
+	 */
+	async setLiveOverride(host: string, mode: number): Promise<boolean> {
+		return this.updateStateExtended(host, { liveOverride: mode });
+	}
+
+	/**
+	 * Update segment state
+	 */
+	async updateSegment(
+		host: string,
+		segmentId: number,
+		update: Partial<{
+			on: boolean;
+			brightness: number;
+			colors: number[][];
+			effect: number;
+			effectSpeed: number;
+			effectIntensity: number;
+			palette: number;
+			reverse: boolean;
+			mirror: boolean;
+		}>,
+	): Promise<boolean> {
+		return this.updateState(
+			host,
+			{
+				segment: {
+					id: segmentId,
+					...update,
+				},
+			},
+			0,
+		);
+	}
+
+	/**
+	 * Update state with extended options (nightlight, sync, live override)
+	 */
+	async updateStateExtended(host: string, update: WledStateUpdateExtended): Promise<boolean> {
+		const device = this.devices.get(host);
+
+		if (!device) {
+			this.logger.warn(`[WLED][ADAPTER] Cannot update state: device ${host} not registered`);
+			return false;
+		}
+
+		try {
+			const apiPayload = this.convertExtendedStateUpdateToApi(update);
+
+			this.logger.debug(`[WLED][ADAPTER] Sending extended state update to ${host}: ${JSON.stringify(apiPayload)}`);
+
+			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
+
+			if (device.context) {
+				const newState = this.convertApiStateToState(response);
+				device.context.state = newState;
+				device.lastSeen = new Date();
+
+				this.eventEmitter.emit(WledAdapterEventType.DEVICE_STATE_CHANGED, {
+					host,
+					state: newState,
+				});
+			}
+
+			return true;
+		} catch (error) {
+			this.logger.error(`[WLED][ADAPTER] Failed to update extended state for device ${host}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+
+			this.eventEmitter.emit(WledAdapterEventType.DEVICE_ERROR, {
+				host,
+				error: error instanceof Error ? error : new Error(String(error)),
+			});
+
+			return false;
+		}
+	}
+
+	/**
+	 * Connect WebSocket for real-time updates
+	 */
+	private connectWebSocket(host: string): void {
+		// Clear any existing reconnect timer
+		const reconnectTimer = this.wsReconnectTimers.get(host);
+		if (reconnectTimer) {
+			clearTimeout(reconnectTimer);
+			this.wsReconnectTimers.delete(host);
+		}
+
+		// Close existing WebSocket if any
+		const existingWs = this.websockets.get(host);
+		if (existingWs) {
+			existingWs.close();
+			this.websockets.delete(host);
+		}
+
+		const wsUrl = `ws://${host}/ws`;
+		this.logger.debug(`[WLED][ADAPTER] Connecting WebSocket to ${wsUrl}`);
+
+		try {
+			const ws = new WebSocket(wsUrl);
+
+			ws.on('open', () => {
+				this.logger.log(`[WLED][ADAPTER] WebSocket connected to ${host}`);
+				this.websockets.set(host, ws);
+
+				const device = this.devices.get(host);
+				if (device) {
+					device.websocket = ws as unknown as globalThis.WebSocket;
+				}
+			});
+
+			ws.on('message', (data: WebSocket.Data) => {
+				try {
+					const message = JSON.parse(data.toString());
+
+					// WLED sends state updates through WebSocket
+					if (message.state) {
+						const device = this.devices.get(host);
+						if (device?.context) {
+							const newState = this.convertApiStateToState(message.state);
+							const previousState = device.context.state;
+							device.context.state = newState;
+							device.lastSeen = new Date();
+
+							this.eventEmitter.emit(WledAdapterEventType.DEVICE_STATE_CHANGED, {
+								host,
+								state: newState,
+								previousState,
+							});
+						}
+					}
+				} catch (error) {
+					this.logger.warn(`[WLED][ADAPTER] Failed to parse WebSocket message from ${host}`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
+				}
+			});
+
+			ws.on('close', () => {
+				this.logger.debug(`[WLED][ADAPTER] WebSocket disconnected from ${host}`);
+				this.websockets.delete(host);
+
+				const device = this.devices.get(host);
+				if (device) {
+					device.websocket = undefined;
+				}
+
+				// Schedule reconnection if device is still registered and enabled
+				if (device?.enabled && this.wsEnabled) {
+					this.scheduleWebSocketReconnect(host);
+				}
+			});
+
+			ws.on('error', (error: Error) => {
+				this.logger.warn(`[WLED][ADAPTER] WebSocket error for ${host}`, {
+					message: error.message,
+				});
+			});
+		} catch (error) {
+			this.logger.error(`[WLED][ADAPTER] Failed to create WebSocket for ${host}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Disconnect WebSocket
+	 */
+	private disconnectWebSocket(host: string): void {
+		// Clear reconnect timer
+		const reconnectTimer = this.wsReconnectTimers.get(host);
+		if (reconnectTimer) {
+			clearTimeout(reconnectTimer);
+			this.wsReconnectTimers.delete(host);
+		}
+
+		// Close WebSocket
+		const ws = this.websockets.get(host);
+		if (ws) {
+			ws.close();
+			this.websockets.delete(host);
+		}
+	}
+
+	/**
+	 * Schedule WebSocket reconnection
+	 */
+	private scheduleWebSocketReconnect(host: string): void {
+		const timer = setTimeout(() => {
+			this.wsReconnectTimers.delete(host);
+
+			const device = this.devices.get(host);
+			if (device?.connected && this.wsEnabled) {
+				this.connectWebSocket(host);
+			}
+		}, this.wsReconnectInterval);
+
+		this.wsReconnectTimers.set(host, timer);
+	}
+
+	/**
 	 * Fetch full device context (state, info, effects, palettes)
 	 */
 	private async fetchDeviceContext(host: string, timeout: number): Promise<WledDeviceContext> {
@@ -612,6 +878,55 @@ export class WledClientAdapterService {
 
 				return apiSeg;
 			});
+		}
+
+		return apiPayload;
+	}
+
+	/**
+	 * Convert extended state update to API format
+	 */
+	private convertExtendedStateUpdateToApi(update: WledStateUpdateExtended): Record<string, unknown> {
+		// Start with base conversion
+		const apiPayload = this.convertStateUpdateToApi(update);
+
+		// Add nightlight settings
+		if (update.nightlight) {
+			const nl: Record<string, unknown> = {};
+
+			if (update.nightlight.on !== undefined) {
+				nl.on = update.nightlight.on;
+			}
+			if (update.nightlight.duration !== undefined) {
+				nl.dur = update.nightlight.duration;
+			}
+			if (update.nightlight.mode !== undefined) {
+				nl.mode = update.nightlight.mode;
+			}
+			if (update.nightlight.targetBrightness !== undefined) {
+				nl.tbri = update.nightlight.targetBrightness;
+			}
+
+			apiPayload.nl = nl;
+		}
+
+		// Add UDP sync settings
+		if (update.udpSync) {
+			const udpn: Record<string, unknown> = {};
+
+			if (update.udpSync.send !== undefined) {
+				udpn.send = update.udpSync.send;
+			}
+			if (update.udpSync.receive !== undefined) {
+				udpn.recv = update.udpSync.receive;
+			}
+
+			apiPayload.udpn = udpn;
+		}
+
+		// Add live override
+		if (update.liveOverride !== undefined) {
+			apiPayload.lor = update.liveOverride;
 		}
 
 		return apiPayload;

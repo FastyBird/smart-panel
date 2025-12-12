@@ -42,6 +42,7 @@ import { WledConfigModel } from './models/config.model';
 import { WledDevicePlatform } from './platforms/wled.device.platform';
 import { WledDeviceMapperService } from './services/device-mapper.service';
 import { WledClientAdapterService } from './services/wled-client-adapter.service';
+import { WledMdnsDiscovererService } from './services/wled-mdns-discoverer.service';
 import { WledService } from './services/wled.service';
 
 @ApiTag({
@@ -59,6 +60,7 @@ import { WledService } from './services/wled.service';
 	],
 	providers: [
 		WledClientAdapterService,
+		WledMdnsDiscovererService,
 		WledDeviceMapperService,
 		WledDevicePlatform,
 		WledService,
