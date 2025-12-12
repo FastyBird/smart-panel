@@ -215,11 +215,13 @@ const moduleType = computed<string>((): string => {
 });
 
 // Use a ref to track the current module type and update it when route changes
-const currentModuleType = ref<string>(moduleType.value);
+const currentModuleType = ref<string>(moduleType.value || '');
 watch(
 	(): string => moduleType.value,
 	(val: string): void => {
-		currentModuleType.value = val;
+		if (val) {
+			currentModuleType.value = val;
+		}
 	},
 	{ immediate: true }
 );
@@ -234,10 +236,25 @@ const moduleName = computed<string>((): string => {
 });
 
 // Create composable reactively based on module type
-const configModuleComposable = computed(() => useConfigModule({ type: currentModuleType.value }));
+const configModuleComposable = computed(() => {
+	if (!currentModuleType.value) {
+		// Return a dummy composable if no module type
+		return {
+			configModule: computed(() => null),
+			isLoading: computed(() => false),
+			fetchConfigModule: async (): Promise<void> => {
+				throw new Error('Module type is required');
+			},
+		};
+	}
+	return useConfigModule({ type: currentModuleType.value });
+});
 const configModule = computed(() => configModuleComposable.value.configModule.value);
 const isLoading = computed(() => configModuleComposable.value.isLoading.value);
 const fetchConfigModule = (): Promise<void> => {
+	if (!currentModuleType.value) {
+		return Promise.reject(new Error('Module type is required'));
+	}
 	return configModuleComposable.value.fetchConfigModule();
 };
 const element = computed(() => moduleComposable.value.element.value);
@@ -307,6 +324,18 @@ const onRetry = async (): Promise<void> => {
 };
 
 onBeforeMount(async (): Promise<void> => {
+	// Wait for route params to be available
+	if (!moduleType.value) {
+		// Wait a bit for route to be ready
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		
+		// If still no module type, show error
+		if (!moduleType.value) {
+			loadError.value = true;
+			return;
+		}
+	}
+	
 	await fetchConfigModule().catch((error: unknown): void => {
 		const err = error as Error;
 
@@ -318,7 +347,12 @@ onBeforeMount(async (): Promise<void> => {
 // Watch for route changes and refetch config
 watch(
 	(): string => moduleType.value,
-	async (): Promise<void> => {
+	async (val: string): Promise<void> => {
+		if (!val) {
+			loadError.value = true;
+			return;
+		}
+		
 		loadError.value = false;
 		await fetchConfigModule().catch((error: unknown): void => {
 			const err = error as Error;
@@ -326,7 +360,8 @@ watch(
 			loadError.value = true;
 			console.error('Failed to fetch config module:', err);
 		});
-	}
+	},
+	{ immediate: false }
 );
 
 onMounted((): void => {
