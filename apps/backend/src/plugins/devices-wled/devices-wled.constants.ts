@@ -19,6 +19,7 @@ export const DEVICES_WLED_API_TAG_DESCRIPTION = 'WLED addressable LED controller
 export const WLED_CHANNEL_IDENTIFIERS = {
 	DEVICE_INFORMATION: 'device_information',
 	LIGHT: 'light',
+	ELECTRICAL_POWER: 'electrical_power', // spec-compliant optional channel for lighting
 	SEGMENT: 'segment', // Base identifier for segments (segment_0, segment_1, etc.)
 	NIGHTLIGHT: 'nightlight',
 	SYNC: 'sync',
@@ -86,6 +87,12 @@ export const WLED_SYNC_PROPERTY_IDENTIFIERS = {
 	RECEIVE: 'receive',
 } as const;
 
+// Electrical power channel property identifiers (spec-compliant optional channel)
+export const WLED_ELECTRICAL_POWER_PROPERTY_IDENTIFIERS = {
+	POWER: 'power', // required by spec (W)
+	CURRENT: 'current', // optional (A)
+} as const;
+
 // ============================================================================
 // Value Conversion Helpers (WLED <-> Spec)
 // ============================================================================
@@ -102,6 +109,26 @@ export const wledBrightnessToSpec = (wledBrightness: number): number => {
  */
 export const specBrightnessToWled = (specBrightness: number): number => {
 	return Math.round((specBrightness / 100) * 255);
+};
+
+/**
+ * WLED default voltage for addressable LEDs (5V)
+ */
+export const WLED_DEFAULT_VOLTAGE = 5;
+
+/**
+ * Convert WLED power (mA) to spec power (W) using default 5V
+ * Power (W) = Voltage (V) × Current (A) = 5V × (mA / 1000)
+ */
+export const wledPowerToWatts = (wledPowerMa: number): number => {
+	return (WLED_DEFAULT_VOLTAGE * wledPowerMa) / 1000;
+};
+
+/**
+ * Convert WLED current (mA) to spec current (A)
+ */
+export const wledCurrentToAmps = (wledCurrentMa: number): number => {
+	return wledCurrentMa / 1000;
 };
 
 // Property binding interface - maps WLED properties to panel properties
@@ -405,6 +432,37 @@ export const SYNC_BINDINGS: WledPropertyBinding[] = [
 	},
 ];
 
+// Electrical power channel bindings (spec-compliant optional channel for lighting)
+// WLED provides estimated power consumption via ledInfo.power (in mA)
+export const ELECTRICAL_POWER_BINDINGS: WledPropertyBinding[] = [
+	// Required by spec: power in Watts
+	{
+		wledProperty: 'info.leds.power',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.ELECTRICAL_POWER,
+		propertyIdentifier: WLED_ELECTRICAL_POWER_PROPERTY_IDENTIFIERS.POWER,
+		category: PropertyCategory.POWER,
+		dataType: DataTypeType.FLOAT,
+		permissions: [PermissionType.READ_ONLY],
+		name: 'Power',
+		unit: 'W',
+		min: 0,
+		max: 10000,
+	},
+	// Optional by spec: current in Amps (calculated from power at 5V)
+	{
+		wledProperty: 'info.leds.power',
+		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.ELECTRICAL_POWER,
+		propertyIdentifier: WLED_ELECTRICAL_POWER_PROPERTY_IDENTIFIERS.CURRENT,
+		category: PropertyCategory.CURRENT,
+		dataType: DataTypeType.FLOAT,
+		permissions: [PermissionType.READ_ONLY],
+		name: 'Current',
+		unit: 'A',
+		min: 0,
+		max: 100,
+	},
+];
+
 // Combined property bindings
 export const PROPERTY_BINDINGS: WledPropertyBinding[] = [
 	...DEVICE_INFO_BINDINGS,
@@ -586,6 +644,12 @@ export const WLED_DEVICE_DESCRIPTOR: WledDeviceDescriptor = {
 			name: 'Light',
 			category: ChannelCategory.LIGHT,
 			bindings: LIGHT_BINDINGS,
+		},
+		{
+			identifier: WLED_CHANNEL_IDENTIFIERS.ELECTRICAL_POWER,
+			name: 'Electrical Power',
+			category: ChannelCategory.ELECTRICAL_POWER,
+			bindings: ELECTRICAL_POWER_BINDINGS,
 		},
 		{
 			identifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,

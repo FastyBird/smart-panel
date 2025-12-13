@@ -7,20 +7,24 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
-	createSegmentBindings,
 	DEVICES_WLED_TYPE,
+	ELECTRICAL_POWER_BINDINGS,
 	NIGHTLIGHT_BINDINGS,
 	SYNC_BINDINGS,
 	WLED_CHANNEL_IDENTIFIERS,
 	WLED_DEFAULT_MANUFACTURER,
 	WLED_DEFAULT_MODEL,
 	WLED_DEVICE_DESCRIPTOR,
+	WLED_ELECTRICAL_POWER_PROPERTY_IDENTIFIERS,
 	WLED_LIGHT_PROPERTY_IDENTIFIERS,
 	WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS,
 	WLED_SEGMENT_PROPERTY_IDENTIFIERS,
 	WLED_SYNC_PROPERTY_IDENTIFIERS,
-	wledBrightnessToSpec,
 	WledPropertyBinding,
+	createSegmentBindings,
+	wledBrightnessToSpec,
+	wledCurrentToAmps,
+	wledPowerToWatts,
 } from '../devices-wled.constants';
 import { CreateWledChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateWledChannelDto } from '../dto/create-channel.dto';
@@ -107,6 +111,7 @@ export class WledDeviceMapperService {
 		// Create channels and properties
 		await this.createDeviceInformationChannel(device, context.info);
 		await this.createLightChannel(device, context.state);
+		await this.createElectricalPowerChannel(device, context.info);
 		await this.createNightlightChannel(device, context.state);
 		await this.createSyncChannel(device, context.state);
 		await this.createSegmentChannels(device, context.state);
@@ -150,7 +155,11 @@ export class WledDeviceMapperService {
 		);
 
 		// Update sync channel
-		await this.updateChannelProperties(device.id, WLED_CHANNEL_IDENTIFIERS.SYNC, this.extractSyncStateProperties(state));
+		await this.updateChannelProperties(
+			device.id,
+			WLED_CHANNEL_IDENTIFIERS.SYNC,
+			this.extractSyncStateProperties(state),
+		);
 
 		// Update segment channels
 		for (let i = 0; i < state.segments.length; i++) {
@@ -395,6 +404,49 @@ export class WledDeviceMapperService {
 	}
 
 	/**
+	 * Create the electrical_power channel with power monitoring properties
+	 * WLED provides estimated power consumption via ledInfo.power (in mA)
+	 */
+	private async createElectricalPowerChannel(device: WledDeviceEntity, info: WledInfo): Promise<void> {
+		const channelIdentifier = WLED_CHANNEL_IDENTIFIERS.ELECTRICAL_POWER;
+		const channelDescriptor = WLED_DEVICE_DESCRIPTOR.channels.find((c) => c.identifier === channelIdentifier);
+
+		if (!channelDescriptor) {
+			return;
+		}
+
+		// Find or create channel
+		let channel = await this.channelsService.findOneBy<WledChannelEntity>(
+			'identifier',
+			channelIdentifier,
+			device.id,
+			DEVICES_WLED_TYPE,
+		);
+
+		if (!channel) {
+			this.logger.debug(`[WLED][MAPPER] Creating electrical_power channel for device ${device.identifier}`);
+
+			const createChannelDto: CreateWledChannelDto = {
+				type: DEVICES_WLED_TYPE,
+				identifier: channelIdentifier,
+				name: channelDescriptor.name,
+				category: channelDescriptor.category,
+				device: device.id,
+			};
+
+			channel = await this.channelsService.create<WledChannelEntity, CreateWledChannelDto>(createChannelDto);
+		}
+
+		// Extract power values (convert from mA to W and A)
+		const propertyValues = this.extractElectricalPowerProperties(info);
+
+		// Create/update properties
+		for (const binding of ELECTRICAL_POWER_BINDINGS) {
+			await this.createOrUpdateProperty(channel, binding, propertyValues[binding.propertyIdentifier]);
+		}
+	}
+
+	/**
 	 * Create segment channels based on the number of segments in the device
 	 */
 	private async createSegmentChannels(device: WledDeviceEntity, state: WledState): Promise<void> {
@@ -487,11 +539,28 @@ export class WledDeviceMapperService {
 	}
 
 	/**
+	 * Extract electrical power property values from WLED info (with spec-compliant conversion)
+	 * - power converted from mA to W (using 5V default)
+	 * - current converted from mA to A
+	 */
+	private extractElectricalPowerProperties(info: WledInfo): Record<string, string | number | boolean> {
+		const powerMa = info.ledInfo?.power ?? 0;
+
+		return {
+			[WLED_ELECTRICAL_POWER_PROPERTY_IDENTIFIERS.POWER]: wledPowerToWatts(powerMa),
+			[WLED_ELECTRICAL_POWER_PROPERTY_IDENTIFIERS.CURRENT]: wledCurrentToAmps(powerMa),
+		};
+	}
+
+	/**
 	 * Extract segment property values from WLED state (with spec-compliant conversion)
 	 * - 'on' instead of 'state'
 	 * - brightness converted from 0-255 to 0-100%
 	 */
-	private extractSegmentStateProperties(state: WledState, segmentId: number): Record<string, string | number | boolean> {
+	private extractSegmentStateProperties(
+		state: WledState,
+		segmentId: number,
+	): Record<string, string | number | boolean> {
 		const segment = state.segments[segmentId];
 
 		if (!segment) {
