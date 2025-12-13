@@ -20,59 +20,49 @@
 			ref="stepThreeFormEl"
 			label-position="top"
 		>
-			<div class="space-y-4">
-				<div
-					v-for="entity in preview.entities"
-					:key="entity.entityId"
-					class="border rounded p-4"
-				>
-					<div class="flex items-center justify-between mb-3">
-						<div>
-							<span class="font-semibold">{{ entity.entityId }}</span>
-							<el-tag
-								:type="entity.status === 'mapped' ? 'success' : entity.status === 'partial' ? 'warning' : 'danger'"
-								size="small"
-								class="ml-2"
-							>
-								{{ entity.status }}
-							</el-tag>
-						</div>
-						<el-checkbox
-							:model-value="isEntitySkipped(entity.entityId)"
-							@change="(val) => toggleEntitySkip(entity.entityId, val === true)"
-						>
-							{{ t('devicesHomeAssistantPlugin.buttons.skip') }}
-						</el-checkbox>
-					</div>
-
-					<el-form-item
-						v-if="!isEntitySkipped(entity.entityId)"
-						:label="t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel')"
+			<div
+				v-for="entity in preview.entities"
+				:key="entity.entityId"
+			>
+				<div class="flex items-center gap-3 mb-3">
+					<el-checkbox
+						:model-value="isEntityEnabled(entity.entityId)"
+						@change="(val) => toggleEntityEnabled(entity.entityId, val === true)"
 					>
-						<el-select
-							:model-value="getEntityChannelCategory(entity.entityId)"
-							:placeholder="t('devicesHomeAssistantPlugin.fields.devices.category.placeholder')"
-							@change="(val) => updateEntityChannelCategory(entity.entityId, val)"
+						{{ t('devicesHomeAssistantPlugin.buttons.use') }}
+					</el-checkbox>
+					<div class="flex-1">
+						<span class="font-semibold">{{ entity.entityId }}</span>
+						<el-tag
+							:type="entity.status === 'mapped' ? 'success' : entity.status === 'partial' ? 'warning' : 'danger'"
+							size="small"
+							class="ml-2"
 						>
-							<el-option
-								v-for="category in channelCategories"
-								:key="category.value"
-								:label="category.label"
-								:value="category.value"
-							/>
-						</el-select>
-					</el-form-item>
+							{{ entity.status }}
+						</el-tag>
+					</div>
 				</div>
+
+				<el-form-item
+					v-if="isEntityEnabled(entity.entityId) || hasOverrideWithoutCategory(entity.entityId)"
+					:label="t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel')"
+					:required="!getEntityChannelCategory(entity.entityId)"
+				>
+					<el-select
+						:model-value="getEntityChannelCategory(entity.entityId)"
+						:placeholder="t('devicesHomeAssistantPlugin.fields.devices.category.placeholder')"
+						@change="(val) => updateEntityChannelCategory(entity.entityId, val)"
+					>
+						<el-option
+							v-for="category in channelCategories"
+							:key="category.value"
+							:label="category.label"
+							:value="category.value"
+						/>
+					</el-select>
+				</el-form-item>
 			</div>
 		</el-form>
-
-		<el-button
-			type="primary"
-			:loading="isPreviewLoading"
-			@click="onApplyChanges"
-		>
-			{{ t('devicesHomeAssistantPlugin.buttons.applyChanges') }}
-		</el-button>
 	</div>
 </template>
 
@@ -80,7 +70,7 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElForm, ElFormItem, ElIcon, ElOption, ElSelect, ElTag, type FormInstance } from 'element-plus';
+import { ElAlert, ElCheckbox, ElForm, ElFormItem, ElIcon, ElOption, ElSelect, ElTag, type FormInstance } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
@@ -92,11 +82,12 @@ interface IMappingCustomizationStepProps {
 	entityOverrides: IMappingEntityOverride[] | undefined;
 }
 
+// Props are used in template and in functions below
+ 
 const props = defineProps<IMappingCustomizationStepProps>();
 
 const emit = defineEmits<{
 	(e: 'update-overrides', overrides: IMappingEntityOverride[]): void;
-	(e: 'apply-changes'): void;
 }>();
 
 const { t } = useI18n();
@@ -104,43 +95,111 @@ const { t } = useI18n();
 const stepThreeFormEl = ref<FormInstance | undefined>(undefined);
 
 const channelCategories = computed(() => {
-	return Object.values(DevicesModuleChannelCategory).map((value) => ({
-		value,
-		label: t(`devicesModule.categories.channels.${value}`),
-	}));
+	return Object.values(DevicesModuleChannelCategory)
+		.filter((value) => {
+			// Filter out generic category
+			return value !== DevicesModuleChannelCategory.generic;
+		})
+		.map((value) => ({
+			value,
+			label: t(`devicesModule.categories.channels.${value}`),
+		}));
 });
 
-const isEntitySkipped = (entityId: string): boolean => {
-	return props.entityOverrides?.some((o) => o.entityId === entityId && o.skip === true) ?? false;
+const isEntityEnabled = (entityId: string): boolean => {
+	const entity = props.preview?.entities.find((e) => e.entityId === entityId);
+	const override = props.entityOverrides?.find((o) => o.entityId === entityId);
+	
+	// If there's an explicit skip override, entity is disabled
+	if (override?.skip === true) {
+		return false;
+	}
+	
+	// If there's an override with a channel category (and no skip), entity is enabled
+	if (override?.channelCategory) {
+		return true;
+	}
+	
+	// If there's an override without category (user checked but hasn't selected category yet), entity is enabled
+	// This allows the checkbox to stay checked and show the category selector
+	if (override && !override.skip && !override.channelCategory) {
+		return true;
+	}
+
+	// By default, entities with a valid suggested channel category are enabled
+	// (excluding generic which is not supported)
+	const suggestedCategory = entity?.suggestedChannel?.category;
+	if (suggestedCategory) {
+		return suggestedCategory !== DevicesModuleChannelCategory.generic;
+	}
+	
+	// Entities without a suggested category are disabled by default
+	return false;
 };
 
 const getEntityChannelCategory = (entityId: string): DevicesModuleChannelCategory | undefined => {
 	const override = props.entityOverrides?.find((o) => o.entityId === entityId);
-	return override?.channelCategory;
+	if (override?.channelCategory) {
+		return override.channelCategory;
+	}
+	// Return suggested category if no override and it's a valid category
+	const entity = props.preview?.entities.find((e) => e.entityId === entityId);
+	const suggestedCategory = entity?.suggestedChannel?.category;
+	if (suggestedCategory && suggestedCategory !== DevicesModuleChannelCategory.generic) {
+		return suggestedCategory;
+	}
+	return undefined;
 };
 
-const toggleEntitySkip = (entityId: string, skip: boolean): void => {
+const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 	const currentOverrides = [...(props.entityOverrides || [])];
 	const existingIndex = currentOverrides.findIndex((o) => o.entityId === entityId);
+	const entity = props.preview?.entities.find((e) => e.entityId === entityId);
+	const suggestedCategory = entity?.suggestedChannel?.category;
+	const isValidSuggestedCategory = suggestedCategory && suggestedCategory !== DevicesModuleChannelCategory.generic;
 
-	if (skip) {
-		if (existingIndex >= 0) {
-			currentOverrides[existingIndex] = { ...currentOverrides[existingIndex], skip: true };
-		} else {
-			currentOverrides.push({ entityId, skip: true });
-		}
-	} else {
+	if (enabled) {
+		// Enable: remove skip flag and ensure there's a valid category
 		if (existingIndex >= 0) {
 			const override = currentOverrides[existingIndex];
 			if (override.channelCategory) {
+				// Keep existing custom category, just remove skip
 				currentOverrides[existingIndex] = { entityId, channelCategory: override.channelCategory };
-			} else {
+			} else if (isValidSuggestedCategory) {
+				// Entity is back to default state with valid suggested category, remove override
 				currentOverrides.splice(existingIndex, 1);
+			} else {
+				// No valid category yet - add override without category to allow user to select one
+				// This will show the category selector
+				currentOverrides[existingIndex] = { entityId };
 			}
+		} else {
+			// No existing override
+			if (isValidSuggestedCategory) {
+				// Entity has valid suggested category, it's already enabled by default
+				// No override needed
+			} else {
+				// Entity needs a category - add override without category (user must select)
+				// This allows the checkbox to be checked, and category selector will be shown
+				currentOverrides.push({ entityId });
+			}
+		}
+	} else {
+		// Disable: set skip flag
+		if (existingIndex >= 0) {
+			const override = currentOverrides[existingIndex];
+			currentOverrides[existingIndex] = { ...override, skip: true };
+		} else {
+			currentOverrides.push({ entityId, skip: true });
 		}
 	}
 
 	emit('update-overrides', currentOverrides);
+};
+
+const hasOverrideWithoutCategory = (entityId: string): boolean => {
+	const override = props.entityOverrides?.find((o) => o.entityId === entityId);
+	return override !== undefined && !override.skip && !override.channelCategory;
 };
 
 const updateEntityChannelCategory = (entityId: string, category: DevicesModuleChannelCategory): void => {
@@ -154,9 +213,5 @@ const updateEntityChannelCategory = (entityId: string, category: DevicesModuleCh
 	}
 
 	emit('update-overrides', currentOverrides);
-};
-
-const onApplyChanges = (): void => {
-	emit('apply-changes');
 };
 </script>

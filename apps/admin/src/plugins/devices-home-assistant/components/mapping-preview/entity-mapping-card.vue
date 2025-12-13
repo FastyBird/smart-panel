@@ -1,5 +1,5 @@
 <template>
-	<el-card class="mb-2">
+	<el-card shadow="never" class="mb-2">
 		<template #header>
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
@@ -67,7 +67,7 @@
 				:title="t('devicesHomeAssistantPlugin.fields.mapping.missingRequiredProperties')"
 				:closable="false"
 				show-icon
-				:description="entity.missingRequiredProperties.map((p) => t(`devicesModule.categories.channels.properties.${p}`)).join(', ')"
+				:description="entity.missingRequiredProperties.map((p) => t(`devicesModule.categories.channelsProperties.${p}`)).join(', ')"
 			/>
 		</div>
 	</el-card>

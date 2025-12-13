@@ -114,8 +114,10 @@ export interface IUseDeviceAdoption {
 
 export interface IUseDeviceAddForm<TForm extends IDeviceAddForm = IDeviceAddForm> {
 	categoriesOptions: ComputedRef<{ value: DevicesModuleDeviceCategory; label: string }[]>;
-	activeStep: Ref<'one' | 'two' | 'three' | 'four'>;
+	activeStep: Ref<'one' | 'two' | 'three' | 'four' | 'five'>;
+	reachedSteps: Ref<Set<'one' | 'two' | 'three' | 'four' | 'five'>>;
 	preview: Ref<IMappingPreviewResponse | null>;
+	suggestedCategory: Ref<DevicesModuleDeviceCategory | null>;
 	isPreviewLoading: Ref<boolean>;
 	previewError: Ref<Error | null>;
 	isAdopting: Ref<boolean>;
@@ -128,8 +130,9 @@ export interface IUseDeviceAddForm<TForm extends IDeviceAddForm = IDeviceAddForm
 	stepTwoFormEl: Ref<FormInstance | undefined>;
 	stepThreeFormEl: Ref<FormInstance | undefined>;
 	stepFourFormEl: Ref<FormInstance | undefined>;
+	stepFiveFormEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
-	submitStep: (step: 'one' | 'two' | 'three' | 'four', formEl?: FormInstance) => Promise<'ok' | 'added'>;
+	submitStep: (step: 'one' | 'two' | 'three' | 'four' | 'five', formEl?: FormInstance) => Promise<'ok' | 'added'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
 }

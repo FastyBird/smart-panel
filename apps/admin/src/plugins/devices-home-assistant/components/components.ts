@@ -7,6 +7,7 @@ export { default as SelectDiscoveredDeviceEntity } from './select-discovered-dev
 
 // Step components
 export { default as DeviceSelectionStep } from './steps/device-selection-step.vue';
+export { default as CategorySelectionStep } from './steps/category-selection-step.vue';
 export { default as MappingPreviewStep } from './steps/mapping-preview-step.vue';
 export { default as MappingCustomizationStep } from './steps/mapping-customization-step.vue';
 export { default as DeviceConfigurationStep } from './steps/device-configuration-step.vue';

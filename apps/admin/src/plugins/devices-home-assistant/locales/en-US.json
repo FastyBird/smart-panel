@@ -161,6 +161,7 @@
   "headings": {
     "device": {
       "deviceSelection": "Device Selection",
+      "categorySelection": "Category Selection",
       "mappingPreview": "Mapping Preview",
       "mappingCustomization": "Mapping Customization",
       "deviceConfiguration": "Device Configuration"
@@ -190,7 +191,11 @@
       "readyToAdopt": "Device is ready to be adopted",
       "notReadyToAdopt": "Device has missing required mappings",
       "noPreview": "No mapping preview available",
-      "selectDeviceFirst": "Please select a device in step 1 to generate a mapping preview"
+      "selectDeviceFirst": "Please select a device in step 1 to generate a mapping preview",
+      "invalidSuggestedCategory": "The suggested category is not supported. Please select a valid category."
+    },
+    "categorySelection": {
+      "description": "Based on the device's entities, a category has been suggested. Please review and select the correct category for this device. The mapping preview will be updated based on your selection."
     }
   },
   "buttons": {
@@ -200,7 +205,11 @@
     "next": "Next",
     "previous": "Previous",
     "skip": "Skip",
+    "use": "Use",
     "applyChanges": "Apply Changes"
+  },
+  "labels": {
+    "suggested": "Suggested"
   },
   "misc": {
     "options": {
@@ -216,7 +225,7 @@
   "texts": {
     "aboutConnectionSettings": "Configure the connection to your Home Assistant instance. When enabled, devices from Home Assistant will be available in the Smart Panel. You'll need a long-lived access token from Home Assistant and the hostname or IP address of your instance.",
     "mapping": {
-      "customizationDescription": "You can customize the mapping by changing channel categories for entities or skipping entities that you don't want to include. Click 'Apply Changes' to update the preview."
+      "customizationDescription": "You can customize the mapping by changing channel categories for entities or enabling/disabling entities. By default, all entities with a suggested channel category are enabled. Click 'Next' to proceed with the selected configuration."
     }
   }
 }

@@ -1,6 +1,6 @@
 <template>
 	<el-collapse
-		v-model="activeStep"
+		v-model="controlledActiveStep"
 		accordion
 		expand-icon-position="left"
 	>
@@ -24,11 +24,31 @@
 			/>
 		</el-collapse-item>
 
-		<!-- Step 2: Mapping Preview -->
+		<!-- Step 2: Category Selection -->
+		<el-collapse-item
+			:title="t('devicesHomeAssistantPlugin.headings.device.categorySelection')"
+			name="two"
+			:disabled="!reachedSteps.has('two')"
+		>
+			<template #icon>
+				<el-icon :size="20">
+					<icon icon="mdi:tag" />
+				</el-icon>
+			</template>
+
+			<category-selection-step
+				ref="categorySelectionStepRef"
+				:model="model"
+				:categories-options="categoriesOptions"
+				:suggested-category="suggestedCategory"
+			/>
+		</el-collapse-item>
+
+		<!-- Step 3: Mapping Preview -->
 		<el-collapse-item
 			:title="t('devicesHomeAssistantPlugin.headings.device.mappingPreview')"
-			name="two"
-			:disabled="!model.haDeviceId"
+			name="three"
+			:disabled="!reachedSteps.has('three')"
 		>
 			<template #icon>
 				<el-icon :size="20">
@@ -43,11 +63,11 @@
 			/>
 		</el-collapse-item>
 
-		<!-- Step 3: Mapping Customization (Optional) -->
+		<!-- Step 4: Mapping Customization (Optional) -->
 		<el-collapse-item
 			:title="t('devicesHomeAssistantPlugin.headings.device.mappingCustomization')"
-			name="three"
-			:disabled="!preview"
+			name="four"
+			:disabled="!reachedSteps.has('four')"
 		>
 			<template #icon>
 				<el-icon :size="20">
@@ -60,15 +80,14 @@
 				:is-preview-loading="isPreviewLoading"
 				:entity-overrides="entityOverrides"
 				@update-overrides="onUpdateOverrides"
-				@apply-changes="onApplyChanges"
 			/>
 		</el-collapse-item>
 
-		<!-- Step 4: Device Configuration -->
+		<!-- Step 5: Device Configuration -->
 		<el-collapse-item
 			:title="t('devicesHomeAssistantPlugin.headings.device.deviceConfiguration')"
-			name="four"
-			:disabled="!preview"
+			name="five"
+			:disabled="!reachedSteps.has('five')"
 		>
 			<template #icon>
 				<el-icon :size="20">
@@ -79,7 +98,6 @@
 			<device-configuration-step
 				ref="deviceConfigurationStepRef"
 				:model="model"
-				:categories-options="categoriesOptions"
 				:preview="preview"
 			/>
 		</el-collapse-item>
@@ -113,10 +131,12 @@
 		:to="`#${SUBMIT_FORM_SM}`"
 	>
 		<div class="flex gap-2">
-			<el-button @click="activeStep = 'one'">
+			<el-button @click="onPreviousStep">
 				{{ t('devicesHomeAssistantPlugin.buttons.previous') }}
 			</el-button>
 			<el-button
+				:loading="formResult === FormResult.WORKING"
+				:disabled="formResult !== FormResult.NONE"
 				type="primary"
 				@click="onProcessStep"
 			>
@@ -131,7 +151,7 @@
 		:to="`#${SUBMIT_FORM_SM}`"
 	>
 		<div class="flex gap-2">
-			<el-button @click="activeStep = 'two'">
+			<el-button @click="onPreviousStep">
 				{{ t('devicesHomeAssistantPlugin.buttons.previous') }}
 			</el-button>
 			<el-button
@@ -149,7 +169,25 @@
 		:to="`#${SUBMIT_FORM_SM}`"
 	>
 		<div class="flex gap-2">
-			<el-button @click="activeStep = 'three'">
+			<el-button @click="onPreviousStep">
+				{{ t('devicesHomeAssistantPlugin.buttons.previous') }}
+			</el-button>
+			<el-button
+				type="primary"
+				@click="onProcessStep"
+			>
+				{{ t('devicesHomeAssistantPlugin.buttons.next') }}
+			</el-button>
+		</div>
+	</teleport>
+
+	<teleport
+		v-else-if="activeStep === 'five'"
+		defer
+		:to="`#${SUBMIT_FORM_SM}`"
+	>
+		<div class="flex gap-2">
+			<el-button @click="onPreviousStep">
 				{{ t('devicesHomeAssistantPlugin.buttons.previous') }}
 			</el-button>
 			<el-button
@@ -171,7 +209,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -185,6 +223,7 @@ import { Icon } from '@iconify/vue';
 import { SUBMIT_FORM_SM } from '../../../common';
 import { FormResult, type FormResultType, useDevices } from '../../../modules/devices';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
+import CategorySelectionStep from './steps/category-selection-step.vue';
 import DeviceConfigurationStep from './steps/device-configuration-step.vue';
 import DeviceSelectionStep from './steps/device-selection-step.vue';
 import MappingCustomizationStep from './steps/mapping-customization-step.vue';
@@ -214,11 +253,14 @@ const { t } = useI18n();
 const { loaded: devicesLoaded, fetchDevices } = useDevices();
 
 const deviceSelectionStepRef = ref<InstanceType<typeof DeviceSelectionStep> | null>(null);
+const categorySelectionStepRef = ref<InstanceType<typeof CategorySelectionStep> | null>(null);
 const deviceConfigurationStepRef = ref<InstanceType<typeof DeviceConfigurationStep> | null>(null);
 
 const {
 	activeStep,
+	reachedSteps,
 	preview,
+	suggestedCategory,
 	isPreviewLoading,
 	previewError,
 	isAdopting,
@@ -227,7 +269,6 @@ const {
 	devicesOptionsLoading,
 	entityOverrides,
 	model,
-	stepTwoFormEl,
 	stepThreeFormEl,
 	formChanged,
 	submitStep,
@@ -237,23 +278,64 @@ const {
 });
 
 const stepOneFormEl = computed(() => deviceSelectionStepRef.value?.stepOneFormEl);
-const stepFourFormEl = computed(() => deviceConfigurationStepRef.value?.stepFourFormEl);
+const stepTwoFormEl = computed(() => categorySelectionStepRef.value?.stepTwoFormEl);
+const stepFiveFormEl = computed(() => deviceConfigurationStepRef.value?.stepFourFormEl);
+
+// Controlled active step that validates before allowing changes
+const controlledActiveStep = computed({
+	get: () => activeStep.value,
+	set: async (newStep: 'one' | 'two' | 'three' | 'four' | 'five') => {
+		const currentStep = activeStep.value;
+		
+		// Prevent opening steps that haven't been reached
+		if (!reachedSteps.value.has(newStep)) {
+			// Revert to current step - don't allow the change
+			// Use nextTick to ensure Element Plus processes the revert after its internal update
+			await nextTick();
+			activeStep.value = currentStep;
+			return;
+		}
+
+		const stepOrder: ('one' | 'two' | 'three' | 'four' | 'five')[] = ['one', 'two', 'three', 'four', 'five'];
+		const currentIndex = stepOrder.indexOf(currentStep);
+		const newIndex = stepOrder.indexOf(newStep);
+
+		// If going backwards, remove current step and all following steps from reachedSteps
+		if (newIndex < currentIndex) {
+			reachedSteps.value.delete(currentStep);
+			if (currentIndex < stepOrder.length - 1) {
+				stepOrder.slice(currentIndex + 1).forEach((step) => {
+					reachedSteps.value.delete(step);
+				});
+			}
+		}
+
+		// Allow the change
+		activeStep.value = newStep;
+	},
+});
 
 const onProcessStep = async (): Promise<void> => {
 	try {
-		// For step one and four, we need to pass the form ref since they're in child components
+		// For steps with forms in child components, we need to pass the form ref
 		if (activeStep.value === 'one') {
 			if (!stepOneFormEl.value) {
 				console.error('Step one form reference not available', { deviceSelectionStepRef: deviceSelectionStepRef.value });
 				throw new Error('Form reference not available');
 			}
 			await submitStep(activeStep.value, stepOneFormEl.value);
-		} else if (activeStep.value === 'four') {
-			if (!stepFourFormEl.value) {
-				console.error('Step four form reference not available', { deviceConfigurationStepRef: deviceConfigurationStepRef.value });
+		} else if (activeStep.value === 'two') {
+			if (!stepTwoFormEl.value) {
+				console.error('Step two form reference not available', { categorySelectionStepRef: categorySelectionStepRef.value });
 				throw new Error('Form reference not available');
 			}
-			await submitStep(activeStep.value, stepFourFormEl.value);
+			await submitStep(activeStep.value, stepTwoFormEl.value);
+		} else if (activeStep.value === 'five') {
+			if (!stepFiveFormEl.value) {
+				console.error('Step five form reference not available', { deviceConfigurationStepRef: deviceConfigurationStepRef.value });
+				throw new Error('Form reference not available');
+			}
+			await submitStep(activeStep.value, stepFiveFormEl.value);
 		} else {
 			await submitStep(activeStep.value);
 		}
@@ -271,15 +353,25 @@ const onUpdateOverrides = (overrides: typeof entityOverrides.value): void => {
 	entityOverrides.value = overrides;
 };
 
-const onApplyChanges = async (): Promise<void> => {
-	if (!model.haDeviceId) {
-		return;
-	}
 
-	try {
-		await submitStep('three');
-	} catch {
-		// Error is already handled
+const onPreviousStep = (): void => {
+	const stepOrder: ('one' | 'two' | 'three' | 'four' | 'five')[] = ['one', 'two', 'three', 'four', 'five'];
+	const currentIndex = stepOrder.indexOf(activeStep.value);
+	
+	if (currentIndex > 0) {
+		const previousStep = stepOrder[currentIndex - 1];
+		const currentStep = activeStep.value;
+		
+		// Remove current step and all following steps from reachedSteps
+		reachedSteps.value.delete(currentStep);
+		if (currentIndex < stepOrder.length - 1) {
+			stepOrder.slice(currentIndex + 1).forEach((step) => {
+				reachedSteps.value.delete(step);
+			});
+		}
+		
+		// Move to previous step
+		activeStep.value = previousStep;
 	}
 };
 
@@ -318,7 +410,7 @@ watch(
 			stepOneFormEl.value?.resetFields();
 			stepTwoFormEl.value?.resetFields();
 			stepThreeFormEl.value?.resetFields();
-			stepFourFormEl.value?.resetFields();
+			stepFiveFormEl.value?.resetFields();
 		}
 	}
 );

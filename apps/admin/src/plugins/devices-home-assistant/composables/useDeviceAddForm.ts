@@ -39,17 +39,20 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 	const { devicesOptions, areLoading: devicesOptionsLoading } = useDiscoveredDevicesOptions();
 
 	const categoriesOptions = computed<{ value: DevicesModuleDeviceCategory; label: string }[]>(() => {
-		return Object.values(DevicesModuleDeviceCategory).map((value) => ({
-			value,
-			label: t(`devicesModule.categories.devices.${value}`),
-		}));
+		return Object.values(DevicesModuleDeviceCategory)
+			.filter((value) => value !== DevicesModuleDeviceCategory.generic)
+			.map((value) => ({
+				value,
+				label: t(`devicesModule.categories.devices.${value}`),
+			}));
 	});
 
 	const model = reactive<IHomeAssistantDeviceAddForm>({
 		...getSchemaDefaults(HomeAssistantDeviceAddFormSchema),
 		id,
 		type: DEVICES_HOME_ASSISTANT_TYPE,
-		category: DevicesModuleDeviceCategory.generic,
+		// Don't default to generic - use first non-generic category or let user select
+		category: Object.values(DevicesModuleDeviceCategory).find((c) => c !== DevicesModuleDeviceCategory.generic) || DevicesModuleDeviceCategory.sensor,
 		name: '',
 		description: '',
 		enabled: true,
@@ -62,14 +65,17 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 	const stepTwoFormEl = ref<FormInstance | undefined>(undefined);
 	const stepThreeFormEl = ref<FormInstance | undefined>(undefined);
 	const stepFourFormEl = ref<FormInstance | undefined>(undefined);
+	const stepFiveFormEl = ref<FormInstance | undefined>(undefined);
 
-	const activeStep = ref<'one' | 'two' | 'three' | 'four'>('one');
+	const activeStep = ref<'one' | 'two' | 'three' | 'four' | 'five'>('one');
+	const reachedSteps = ref<Set<'one' | 'two' | 'three' | 'four' | 'five'>>(new Set(['one']));
 
 	const formChanged = ref<boolean>(false);
 
 	const entityOverrides = ref<IMappingPreviewRequest['entityOverrides']>([]);
+	const suggestedCategory = ref<DevicesModuleDeviceCategory | null>(null);
 
-	const submitStep = async (step: 'one' | 'two' | 'three' | 'four', formEl?: FormInstance): Promise<'ok' | 'added'> => {
+	const submitStep = async (step: 'one' | 'two' | 'three' | 'four' | 'five', formEl?: FormInstance): Promise<'ok' | 'added'> => {
 		if (step === 'one') {
 			const form = formEl || stepOneFormEl.value;
 			if (!form) {
@@ -85,16 +91,22 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			formResult.value = FormResult.WORKING;
 
 			try {
-				// Fetch mapping preview
+				// Fetch mapping preview without category to get suggestion
 				await fetchPreview(model.haDeviceId);
 
 				// Auto-populate device info from preview
 				if (preview.value) {
 					model.name = preview.value.haDevice.name || model.name;
-					model.category = preview.value.suggestedDevice.category;
+					suggestedCategory.value = preview.value.suggestedDevice.category;
+					// Only set category if it's not generic (generic should not be used)
+					const suggestedCat = preview.value.suggestedDevice.category;
+					if (suggestedCat !== DevicesModuleDeviceCategory.generic) {
+						model.category = suggestedCat;
+					}
 				}
 
 				activeStep.value = 'two';
+				reachedSteps.value.add('two');
 
 				formResult.value = FormResult.NONE;
 
@@ -113,33 +125,70 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				throw error;
 			}
 		} else if (step === 'two') {
-			// Step 2 is just preview, no validation needed
-			// User can proceed to step 3 or go back
-			activeStep.value = 'three';
+			// Step 2: Category selection - validate and fetch preview with selected category
+			const form = formEl || stepTwoFormEl.value;
+			if (!form) {
+				throw new DevicesHomeAssistantValidationException('Form reference not available');
+			}
+
+			form.clearValidate();
+
+			const valid = await form.validate();
+
+			if (!valid) throw new DevicesHomeAssistantValidationException('Form not valid');
+
+			formResult.value = FormResult.WORKING;
+
+			try {
+				// Fetch mapping preview with selected category
+				await fetchPreview(model.haDeviceId, {
+					deviceCategory: model.category,
+				});
+
+				// Auto-populate device name from preview if not set
+				if (preview.value && !model.name) {
+					model.name = preview.value.haDevice.name || model.name;
+				}
+
+				activeStep.value = 'three';
+				reachedSteps.value.add('three');
+
+				formResult.value = FormResult.NONE;
+
+				return 'ok';
+			} catch (error: unknown) {
+				formResult.value = FormResult.ERROR;
+
+				timer = window.setTimeout(clear, 2000);
+
+				if (error instanceof DevicesHomeAssistantValidationException) {
+					flashMessage.error(error.message);
+				} else {
+					flashMessage.error(t('devicesHomeAssistantPlugin.messages.mapping.previewError'));
+				}
+
+				throw error;
+			}
+		} else if (step === 'three') {
+			// Step 3 is just preview, no validation needed
+			// User can proceed to step 4 or go back
+			activeStep.value = 'four';
+			reachedSteps.value.add('four');
 
 			return 'ok';
-		} else if (step === 'three') {
-			// Step 3 is customization, optional
-			// If user made changes, update preview
+		} else if (step === 'four') {
+			// Step 4 is customization, optional
+			// If user made changes, update preview before proceeding
 			if (entityOverrides.value && entityOverrides.value.length > 0) {
 				formResult.value = FormResult.WORKING;
 
 				try {
 					const overrides: IMappingPreviewRequest = {
 						entityOverrides: entityOverrides.value,
+						deviceCategory: model.category,
 					};
 
-					// Update preview with overrides
-					if (preview.value) {
-						overrides.deviceCategory = preview.value.suggestedDevice.category;
-					}
-
 					await fetchPreview(model.haDeviceId, overrides);
-
-					// Update device category if changed
-					if (preview.value) {
-						model.category = preview.value.suggestedDevice.category;
-					}
 
 					formResult.value = FormResult.NONE;
 				} catch (error: unknown) {
@@ -153,13 +202,15 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				}
 			}
 
-			activeStep.value = 'four';
+			// Proceed to next step
+			activeStep.value = 'five';
+			reachedSteps.value.add('five');
 
 			return 'ok';
-		} else if (step === 'four') {
-			const form = formEl || stepFourFormEl.value;
+		} else if (step === 'five') {
+			const form = formEl || stepFiveFormEl.value;
 			if (!form) {
-				logger.error('Step four form reference not available', { formEl, stepFourFormEl: stepFourFormEl.value });
+				logger.error('Step five form reference not available', { formEl, stepFiveFormEl: stepFiveFormEl.value });
 				throw new DevicesHomeAssistantValidationException('Form reference not available');
 			}
 
@@ -168,11 +219,11 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			const valid = await form.validate();
 
 			if (!valid) {
-				logger.error('Step four form validation failed');
+				logger.error('Step five form validation failed');
 				throw new DevicesHomeAssistantValidationException('Form not valid');
 			}
 
-			logger.info('Step four form validation passed, proceeding with adoption');
+			logger.info('Step five form validation passed, proceeding with adoption');
 
 			const parsedModel = HomeAssistantDeviceAddFormSchema.safeParse(model);
 
@@ -193,21 +244,48 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				}
 
 				// Build channels from preview entities
+				// Use overrides if available, otherwise use suggested channel
+				// Filter out: skipped entities, channels with no properties
 				const channels = preview.value.entities
-					.filter((entity) => entity.status !== 'skipped' && entity.suggestedChannel)
-					.map((entity) => ({
-						entityId: entity.entityId,
-						category: entity.suggestedChannel!.category,
-						name: entity.suggestedChannel!.name,
-						properties: entity.suggestedProperties.map((prop) => ({
-							category: prop.category,
-							haAttribute: prop.haAttribute,
-							dataType: prop.dataType,
-							permissions: prop.permissions,
-							unit: prop.unit ?? null,
-							format: prop.format ?? null,
-						})),
-					}));
+					.filter((entity) => {
+						// Skip if explicitly skipped
+						if (entity.status === 'skipped') {
+							return false;
+						}
+						// Check if there's an override that skips this entity
+						const override = entityOverrides.value?.find((o) => o.entityId === entity.entityId);
+						if (override?.skip) {
+							return false;
+						}
+						// Must have a suggested channel or an override with category
+						if (!entity.suggestedChannel && !override?.channelCategory) {
+							return false;
+						}
+						// Must have at least one property
+						if (!entity.suggestedProperties || entity.suggestedProperties.length === 0) {
+							return false;
+						}
+						return true;
+					})
+					.map((entity) => {
+						const override = entityOverrides.value?.find((o) => o.entityId === entity.entityId);
+						const channelCategory = override?.channelCategory || entity.suggestedChannel!.category;
+						const channelName = entity.suggestedChannel?.name || entity.entityId;
+
+						return {
+							entityId: entity.entityId,
+							category: channelCategory,
+							name: channelName,
+							properties: entity.suggestedProperties.map((prop) => ({
+								category: prop.category,
+								haAttribute: prop.haAttribute,
+								dataType: prop.dataType,
+								permissions: prop.permissions,
+								unit: prop.unit ?? null,
+								format: prop.format ?? null,
+							})),
+						};
+					});
 
 				const adoptRequest: IAdoptDeviceRequest = {
 					haDeviceId: model.haDeviceId,
@@ -284,9 +362,11 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		(): IMappingPreviewResponse | null => preview.value,
 		(val: IMappingPreviewResponse | null): void => {
 			if (val) {
-				// Auto-populate device name and category from preview
-				model.name = val.haDevice.name || model.name;
-				model.category = val.suggestedDevice.category;
+				// Auto-populate device name from preview if not set
+				if (!model.name) {
+					model.name = val.haDevice.name || model.name;
+				}
+				// Don't auto-update category after step 2 - user has selected it
 			}
 		}
 	);
@@ -294,7 +374,9 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 	return {
 		categoriesOptions,
 		activeStep,
+		reachedSteps,
 		preview,
+		suggestedCategory,
 		isPreviewLoading,
 		previewError,
 		isAdopting,
@@ -307,6 +389,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		stepTwoFormEl,
 		stepThreeFormEl,
 		stepFourFormEl,
+		stepFiveFormEl,
 		formChanged,
 		submitStep,
 		clear,

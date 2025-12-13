@@ -18,39 +18,6 @@
 			/>
 		</el-form-item>
 
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.category.title')"
-			prop="category"
-		>
-			<!-- eslint-disable vue/no-mutating-props -->
-			<el-select
-				v-model="model.category"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.category.placeholder')"
-				name="category"
-				filterable
-			>
-				<el-option
-					v-for="item in categoriesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			v-if="model.category"
-			type="info"
-			:title="t('devicesModule.fields.devices.category.description')"
-			:description="t(`devicesModule.texts.devices.description.${model.category}`)"
-			:closable="false"
-			show-icon
-		/>
-
-		<el-divider />
-
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.devices.description.title')"
 			prop="description"
@@ -104,15 +71,12 @@
 import { reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
-
-import { DevicesModuleDeviceCategory } from '../../../../openapi.constants';
+import { ElDivider, ElForm, ElFormItem, ElInput, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
 import type { IHomeAssistantDeviceAddForm } from '../../schemas/devices.types';
 import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
 interface IDeviceConfigurationStepProps {
 	model: IHomeAssistantDeviceAddForm;
-	categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[];
 	preview: IMappingPreviewResponse | null;
 }
 
@@ -124,7 +88,6 @@ const stepFourFormEl = ref<FormInstance | undefined>(undefined);
 
 const rules = reactive<FormRules<IHomeAssistantDeviceAddForm>>({
 	name: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
-	category: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
 });
 
 defineExpose({
