@@ -19,6 +19,7 @@ export const ExtensionSchema = z.object({
 	author: z.string().optional(),
 	enabled: z.boolean(),
 	isCore: z.boolean(),
+	canToggleEnabled: z.boolean(),
 	links: ExtensionLinksSchema.optional(),
 });
 

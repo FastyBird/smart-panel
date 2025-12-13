@@ -5,7 +5,7 @@ import { ModulesTypeMapperService } from '../../config/services/modules-type-map
 import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
 import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../../config/dto/config.dto';
 import { CORE_MODULES, CORE_PLUGINS, ExtensionKind } from '../extensions.constants';
-import { CoreExtensionModificationException, ExtensionNotFoundException } from '../extensions.exceptions';
+import { ExtensionNotConfigurableException, ExtensionNotFoundException } from '../extensions.exceptions';
 import { ExtensionLinksModel, ExtensionModel } from '../models/extension.model';
 
 /**
@@ -132,9 +132,9 @@ export class ExtensionsService {
 
 		const extension = this.findOne(type);
 
-		// Prevent modifying core extensions
-		if (extension.isCore) {
-			throw new CoreExtensionModificationException(type);
+		// Check if extension supports enable/disable based on its config schema
+		if (!extension.canToggleEnabled) {
+			throw new ExtensionNotConfigurableException(type);
 		}
 
 		// Update the config based on extension kind
@@ -149,11 +149,31 @@ export class ExtensionsService {
 	}
 
 	/**
+	 * Check if a DTO class has the 'enabled' property
+	 */
+	private hasEnabledProperty(dtoClass: new (...args: unknown[]) => unknown): boolean {
+		// Create an instance and check if 'enabled' is defined
+		// We check the prototype and metadata to determine if the property exists
+		const instance = new dtoClass();
+		return 'enabled' in instance || Object.prototype.hasOwnProperty.call(dtoClass.prototype, 'enabled');
+	}
+
+	/**
 	 * Build extension model for a module
 	 */
 	private buildModuleExtension(type: string): ExtensionModel {
 		const metadata = this.moduleMetadata.get(type);
 		const isCore = CORE_MODULES.includes(type);
+
+		// Check if the DTO supports enabled property
+		let canToggleEnabled = false;
+		try {
+			const mapping = this.modulesMapperService.getMapping(type);
+			canToggleEnabled = this.hasEnabledProperty(mapping.configDto);
+		} catch {
+			// Mapping not found, default to false
+			canToggleEnabled = false;
+		}
 
 		// Get enabled status from config
 		let enabled = true;
@@ -162,11 +182,6 @@ export class ExtensionsService {
 			enabled = moduleConfig.enabled ?? true;
 		} catch {
 			// Module config not found, default to enabled
-			enabled = true;
-		}
-
-		// Core modules are always enabled
-		if (isCore) {
 			enabled = true;
 		}
 
@@ -179,6 +194,7 @@ export class ExtensionsService {
 		extension.author = metadata?.author;
 		extension.enabled = enabled;
 		extension.isCore = isCore;
+		extension.canToggleEnabled = canToggleEnabled;
 
 		if (metadata?.links) {
 			const links = new ExtensionLinksModel();
@@ -200,6 +216,16 @@ export class ExtensionsService {
 		const metadata = this.pluginMetadata.get(type);
 		const isCore = CORE_PLUGINS.includes(type);
 
+		// Check if the DTO supports enabled property
+		let canToggleEnabled = false;
+		try {
+			const mapping = this.pluginsMapperService.getMapping(type);
+			canToggleEnabled = this.hasEnabledProperty(mapping.configDto);
+		} catch {
+			// Mapping not found, default to false
+			canToggleEnabled = false;
+		}
+
 		// Get enabled status from config
 		let enabled = true;
 		try {
@@ -207,11 +233,6 @@ export class ExtensionsService {
 			enabled = pluginConfig.enabled ?? true;
 		} catch {
 			// Plugin config not found, default to enabled
-			enabled = true;
-		}
-
-		// Core plugins are always enabled
-		if (isCore) {
 			enabled = true;
 		}
 
@@ -224,6 +245,7 @@ export class ExtensionsService {
 		extension.author = metadata?.author;
 		extension.enabled = enabled;
 		extension.isCore = isCore;
+		extension.canToggleEnabled = canToggleEnabled;
 
 		if (metadata?.links) {
 			const links = new ExtensionLinksModel();

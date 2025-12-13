@@ -127,13 +127,22 @@ export class ExtensionModel {
 	enabled: boolean;
 
 	@ApiProperty({
-		description: 'Whether the extension is a core extension (cannot be disabled)',
+		description: 'Whether the extension is a core extension (cannot be removed)',
 		type: 'boolean',
 		example: false,
 	})
 	@Expose({ name: 'is_core' })
 	@IsBoolean()
 	isCore: boolean;
+
+	@ApiProperty({
+		description: 'Whether the extension can be enabled/disabled (determined by config schema)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'can_toggle_enabled' })
+	@IsBoolean()
+	canToggleEnabled: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Extension links',

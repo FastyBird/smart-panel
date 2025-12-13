@@ -32,7 +32,7 @@
 				</div>
 				<el-switch
 					:model-value="extension.enabled"
-					:disabled="extension.isCore"
+					:disabled="!extension.canToggleEnabled"
 					:active-text="t('extensionsModule.labels.enabled')"
 					:inactive-text="t('extensionsModule.labels.disabled')"
 					@change="onToggleEnabled"

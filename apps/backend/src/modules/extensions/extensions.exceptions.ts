@@ -6,8 +6,8 @@ export class ExtensionNotFoundException extends NotFoundException {
 	}
 }
 
-export class CoreExtensionModificationException extends BadRequestException {
+export class ExtensionNotConfigurableException extends BadRequestException {
 	constructor(type: string) {
-		super(`Extension '${type}' is a core extension and cannot be modified.`);
+		super(`Extension '${type}' does not support enable/disable configuration.`);
 	}
 }

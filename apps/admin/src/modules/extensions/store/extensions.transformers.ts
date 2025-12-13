@@ -12,6 +12,7 @@ export const transformExtensionResponse = (response: IExtensionRes): IExtension 
 		author: response.author,
 		enabled: response.enabled,
 		isCore: response.is_core,
+		canToggleEnabled: response.can_toggle_enabled,
 		links: response.links
 			? {
 					documentation: response.links.documentation,

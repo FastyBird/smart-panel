@@ -19,6 +19,7 @@ export interface IExtension {
 	author?: string;
 	enabled: boolean;
 	isCore: boolean;
+	canToggleEnabled: boolean;
 	links?: IExtensionLinks;
 }
 
@@ -31,6 +32,7 @@ export interface IExtensionRes {
 	author?: string;
 	enabled: boolean;
 	is_core: boolean;
+	can_toggle_enabled: boolean;
 	links?: {
 		documentation?: string;
 		dev_documentation?: string;
