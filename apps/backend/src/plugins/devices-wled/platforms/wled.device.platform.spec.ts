@@ -111,7 +111,7 @@ describe('WledDevicePlatform', () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
 			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE,
+				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
 				PropertyCategory.ON,
 				DataTypeType.BOOL,
 			);
@@ -141,7 +141,7 @@ describe('WledDevicePlatform', () => {
 			const device = createMockDevice('wled-test', false);
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
 			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE,
+				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
 				PropertyCategory.ON,
 				DataTypeType.BOOL,
 			);
@@ -163,7 +163,7 @@ describe('WledDevicePlatform', () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
 			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE,
+				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
 				PropertyCategory.ON,
 				DataTypeType.BOOL,
 			);
@@ -186,7 +186,7 @@ describe('WledDevicePlatform', () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
 			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE,
+				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
 				PropertyCategory.ON,
 				DataTypeType.BOOL,
 			);
@@ -214,7 +214,7 @@ describe('WledDevicePlatform', () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
 			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE,
+				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
 				PropertyCategory.ON,
 				DataTypeType.BOOL,
 			);
@@ -243,7 +243,7 @@ describe('WledDevicePlatform', () => {
 			);
 		});
 
-		it('should update brightness property', async () => {
+		it('should update brightness property (spec 0-100% to WLED 0-255)', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
 			const property = createMockProperty(
@@ -260,19 +260,20 @@ describe('WledDevicePlatform', () => {
 			});
 			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
+			// Input: spec brightness 80% -> Output: WLED brightness 204 (80% of 255)
 			const result = await platform.processBatch([
 				{
 					device,
 					channel,
 					property,
-					value: 200,
+					value: 80, // spec percentage
 				},
 			]);
 
 			expect(result).toBe(true);
 			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',
-				expect.objectContaining({ brightness: 200 }),
+				expect.objectContaining({ brightness: 204 }), // 80% of 255 = 204
 			);
 		});
 
@@ -389,7 +390,7 @@ describe('WledDevicePlatform', () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
 			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE,
+				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
 				PropertyCategory.ON,
 				DataTypeType.BOOL,
 			);
@@ -416,7 +417,7 @@ describe('WledDevicePlatform', () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
 			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE,
+				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
 				PropertyCategory.ON,
 				DataTypeType.BOOL,
 			);

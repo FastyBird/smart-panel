@@ -24,25 +24,27 @@ export const WLED_CHANNEL_IDENTIFIERS = {
 	SYNC: 'sync',
 } as const;
 
-// Device information property identifiers
+// Device information property identifiers (spec-compliant)
 export const WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS = {
 	MANUFACTURER: 'manufacturer',
 	MODEL: 'model',
 	SERIAL_NUMBER: 'serial_number',
-	FIRMWARE_VERSION: 'firmware_version',
-	HARDWARE_VERSION: 'hardware_version',
+	FIRMWARE_REVISION: 'firmware_revision', // spec-compliant name
+	HARDWARE_REVISION: 'hardware_revision', // spec-compliant name
+	// Non-spec properties (generic category)
 	MAC_ADDRESS: 'mac_address',
 	LED_COUNT: 'led_count',
 	IP_ADDRESS: 'ip_address',
 } as const;
 
-// Light channel property identifiers
+// Light channel property identifiers (spec-compliant)
 export const WLED_LIGHT_PROPERTY_IDENTIFIERS = {
-	STATE: 'state',
-	BRIGHTNESS: 'brightness',
+	ON: 'on', // spec-compliant (was 'state')
+	BRIGHTNESS: 'brightness', // spec: 0-100%
 	COLOR_RED: 'color_red',
 	COLOR_GREEN: 'color_green',
 	COLOR_BLUE: 'color_blue',
+	// Non-spec properties (use generic/mode categories)
 	EFFECT: 'effect',
 	EFFECT_SPEED: 'effect_speed',
 	EFFECT_INTENSITY: 'effect_intensity',
@@ -51,13 +53,14 @@ export const WLED_LIGHT_PROPERTY_IDENTIFIERS = {
 	LIVE_OVERRIDE: 'live_override',
 } as const;
 
-// Segment channel property identifiers (per-segment control)
+// Segment channel property identifiers (spec-compliant light channel)
 export const WLED_SEGMENT_PROPERTY_IDENTIFIERS = {
-	STATE: 'state',
+	ON: 'on', // spec-compliant (was 'state')
 	BRIGHTNESS: 'brightness',
 	COLOR_RED: 'color_red',
 	COLOR_GREEN: 'color_green',
 	COLOR_BLUE: 'color_blue',
+	// Non-spec properties
 	EFFECT: 'effect',
 	EFFECT_SPEED: 'effect_speed',
 	EFFECT_INTENSITY: 'effect_intensity',
@@ -68,20 +71,38 @@ export const WLED_SEGMENT_PROPERTY_IDENTIFIERS = {
 	MIRROR: 'mirror',
 } as const;
 
-// Nightlight channel property identifiers
+// Nightlight channel property identifiers (generic channel - not in spec)
 export const WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS = {
-	STATE: 'state',
+	ON: 'on', // consistent naming
 	DURATION: 'duration',
 	MODE: 'mode',
 	TARGET_BRIGHTNESS: 'target_brightness',
 	REMAINING: 'remaining',
 } as const;
 
-// Sync channel property identifiers
+// Sync channel property identifiers (generic channel - not in spec)
 export const WLED_SYNC_PROPERTY_IDENTIFIERS = {
 	SEND: 'send',
 	RECEIVE: 'receive',
 } as const;
+
+// ============================================================================
+// Value Conversion Helpers (WLED <-> Spec)
+// ============================================================================
+
+/**
+ * Convert WLED brightness (0-255) to spec brightness (0-100%)
+ */
+export const wledBrightnessToSpec = (wledBrightness: number): number => {
+	return Math.round((wledBrightness / 255) * 100);
+};
+
+/**
+ * Convert spec brightness (0-100%) to WLED brightness (0-255)
+ */
+export const specBrightnessToWled = (specBrightness: number): number => {
+	return Math.round((specBrightness / 100) * 255);
+};
 
 // Property binding interface - maps WLED properties to panel properties
 export interface WledPropertyBinding {
@@ -99,8 +120,9 @@ export interface WledPropertyBinding {
 	step?: number;
 }
 
-// Device information channel bindings
+// Device information channel bindings (spec-compliant required properties first)
 export const DEVICE_INFO_BINDINGS: WledPropertyBinding[] = [
+	// Required by spec: manufacturer, model, serial_number, firmware_revision
 	{
 		wledProperty: 'info.brand',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
@@ -131,21 +153,23 @@ export const DEVICE_INFO_BINDINGS: WledPropertyBinding[] = [
 	{
 		wledProperty: 'info.ver',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
-		propertyIdentifier: WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_VERSION,
+		propertyIdentifier: WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_REVISION,
 		category: PropertyCategory.FIRMWARE_REVISION,
 		dataType: DataTypeType.STRING,
 		permissions: [PermissionType.READ_ONLY],
-		name: 'Firmware Version',
+		name: 'Firmware Revision',
 	},
+	// Optional by spec: hardware_revision
 	{
 		wledProperty: 'info.arch',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
-		propertyIdentifier: WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.HARDWARE_VERSION,
+		propertyIdentifier: WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.HARDWARE_REVISION,
 		category: PropertyCategory.HARDWARE_REVISION,
 		dataType: DataTypeType.STRING,
 		permissions: [PermissionType.READ_ONLY],
-		name: 'Hardware Architecture',
+		name: 'Hardware Revision',
 	},
+	// Non-spec properties (generic category)
 	{
 		wledProperty: 'info.mac',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
@@ -175,17 +199,19 @@ export const DEVICE_INFO_BINDINGS: WledPropertyBinding[] = [
 	},
 ];
 
-// Light channel bindings
+// Light channel bindings (spec-compliant: 'on' required, brightness 0-100%)
 export const LIGHT_BINDINGS: WledPropertyBinding[] = [
+	// Required by spec: 'on' property
 	{
 		wledProperty: 'state.on',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.LIGHT,
-		propertyIdentifier: WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE,
+		propertyIdentifier: WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
 		category: PropertyCategory.ON,
 		dataType: DataTypeType.BOOL,
 		permissions: [PermissionType.READ_WRITE],
-		name: 'State',
+		name: 'On',
 	},
+	// Optional by spec: brightness 0-100% (WLED uses 0-255, conversion needed)
 	{
 		wledProperty: 'state.bri',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.LIGHT,
@@ -195,7 +221,7 @@ export const LIGHT_BINDINGS: WledPropertyBinding[] = [
 		permissions: [PermissionType.READ_WRITE],
 		name: 'Brightness',
 		min: 0,
-		max: 255,
+		max: 100, // spec-compliant range
 		unit: '%',
 	},
 	{
@@ -299,12 +325,12 @@ export const LIGHT_BINDINGS: WledPropertyBinding[] = [
 	},
 ];
 
-// Nightlight channel bindings
+// Nightlight channel bindings (generic channel - WLED-specific feature)
 export const NIGHTLIGHT_BINDINGS: WledPropertyBinding[] = [
 	{
 		wledProperty: 'state.nl.on',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
-		propertyIdentifier: WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.STATE,
+		propertyIdentifier: WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.ON,
 		category: PropertyCategory.ON,
 		dataType: DataTypeType.BOOL,
 		permissions: [PermissionType.READ_WRITE],
@@ -342,7 +368,8 @@ export const NIGHTLIGHT_BINDINGS: WledPropertyBinding[] = [
 		permissions: [PermissionType.READ_WRITE],
 		name: 'Target Brightness',
 		min: 0,
-		max: 255,
+		max: 100, // spec-compliant range (WLED uses 0-255, conversion needed)
+		unit: '%',
 	},
 	{
 		wledProperty: 'state.nl.rem',
@@ -387,19 +414,22 @@ export const PROPERTY_BINDINGS: WledPropertyBinding[] = [
 ];
 
 // Segment property bindings factory (creates bindings for a specific segment ID)
+// Segments are mapped as light channels (spec allows multiple: true for light)
 export const createSegmentBindings = (segmentId: number): WledPropertyBinding[] => {
 	const channelIdentifier = `${WLED_CHANNEL_IDENTIFIERS.SEGMENT}_${segmentId}`;
 
 	return [
+		// Required by spec: 'on' property
 		{
 			wledProperty: `state.seg[${segmentId}].on`,
 			channelIdentifier,
-			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.STATE,
+			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.ON,
 			category: PropertyCategory.ON,
 			dataType: DataTypeType.BOOL,
 			permissions: [PermissionType.READ_WRITE],
-			name: 'State',
+			name: 'On',
 		},
+		// Optional by spec: brightness 0-100%
 		{
 			wledProperty: `state.seg[${segmentId}].bri`,
 			channelIdentifier,
@@ -409,7 +439,8 @@ export const createSegmentBindings = (segmentId: number): WledPropertyBinding[] 
 			permissions: [PermissionType.READ_WRITE],
 			name: 'Brightness',
 			min: 0,
-			max: 255,
+			max: 100, // spec-compliant range
+			unit: '%',
 		},
 		{
 			wledProperty: `state.seg[${segmentId}].col[0][0]`,

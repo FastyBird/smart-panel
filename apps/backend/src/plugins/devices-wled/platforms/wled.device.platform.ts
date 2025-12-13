@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import {
 	DEVICES_WLED_TYPE,
+	specBrightnessToWled,
 	WLED_CHANNEL_IDENTIFIERS,
 	WLED_LIGHT_PROPERTY_IDENTIFIERS,
 	WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS,
@@ -191,6 +192,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 
 	/**
 	 * Execute nightlight channel command
+	 * Converts spec-compliant values to WLED format (brightness 0-100% -> 0-255)
 	 */
 	private async executeNightlightCommand(
 		device: WledDeviceEntity,
@@ -202,7 +204,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 
 			for (const { property, value } of propertyUpdates) {
 				switch (property.identifier) {
-					case WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.STATE:
+					case WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.ON:
 						nightlightUpdate.on = this.coerceBoolean(value);
 						break;
 					case WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.DURATION:
@@ -212,7 +214,8 @@ export class WledDevicePlatform implements IDevicePlatform {
 						nightlightUpdate.mode = this.coerceNumber(value, 0, 3);
 						break;
 					case WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.TARGET_BRIGHTNESS:
-						nightlightUpdate.targetBrightness = this.coerceNumber(value, 0, 255);
+						// Convert spec brightness (0-100%) to WLED brightness (0-255)
+						nightlightUpdate.targetBrightness = specBrightnessToWled(this.coerceNumber(value, 0, 100));
 						break;
 				}
 			}
@@ -271,6 +274,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 
 	/**
 	 * Execute segment-specific command
+	 * Converts spec-compliant values to WLED format (brightness 0-100% -> 0-255)
 	 */
 	private async executeSegmentCommand(
 		device: WledDeviceEntity,
@@ -296,11 +300,12 @@ export class WledDevicePlatform implements IDevicePlatform {
 
 			for (const { property, value } of propertyUpdates) {
 				switch (property.identifier) {
-					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.STATE:
+					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.ON:
 						segmentUpdate.on = this.coerceBoolean(value);
 						break;
 					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.BRIGHTNESS:
-						segmentUpdate.brightness = this.coerceNumber(value, 0, 255);
+						// Convert spec brightness (0-100%) to WLED brightness (0-255)
+						segmentUpdate.brightness = specBrightnessToWled(this.coerceNumber(value, 0, 100));
 						break;
 					case WLED_SEGMENT_PROPERTY_IDENTIFIERS.COLOR_RED:
 						colors[0] = this.coerceNumber(value, 0, 255);
@@ -356,6 +361,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 
 	/**
 	 * Build WLED state update from main light property updates
+	 * Converts spec-compliant values to WLED format (brightness 0-100% -> 0-255)
 	 */
 	private buildMainLightStateUpdate(
 		propertyUpdates: Array<{ property: WledChannelPropertyEntity; value: string | number | boolean }>,
@@ -376,12 +382,13 @@ export class WledDevicePlatform implements IDevicePlatform {
 
 		for (const { property, value } of propertyUpdates) {
 			switch (property.identifier) {
-				case WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE:
+				case WLED_LIGHT_PROPERTY_IDENTIFIERS.ON:
 					stateUpdate.on = this.coerceBoolean(value);
 					break;
 
 				case WLED_LIGHT_PROPERTY_IDENTIFIERS.BRIGHTNESS:
-					stateUpdate.brightness = this.coerceNumber(value, 0, 255);
+					// Convert spec brightness (0-100%) to WLED brightness (0-255)
+					stateUpdate.brightness = specBrightnessToWled(this.coerceNumber(value, 0, 100));
 					break;
 
 				case WLED_LIGHT_PROPERTY_IDENTIFIERS.COLOR_RED:

@@ -17,7 +17,9 @@ import {
 	WLED_DEVICE_DESCRIPTOR,
 	WLED_LIGHT_PROPERTY_IDENTIFIERS,
 	WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS,
+	WLED_SEGMENT_PROPERTY_IDENTIFIERS,
 	WLED_SYNC_PROPERTY_IDENTIFIERS,
+	wledBrightnessToSpec,
 	WledPropertyBinding,
 } from '../devices-wled.constants';
 import { CreateWledChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -433,14 +435,16 @@ export class WledDeviceMapperService {
 	}
 
 	/**
-	 * Extract light property values from WLED state
+	 * Extract light property values from WLED state (with spec-compliant conversion)
+	 * - 'on' instead of 'state'
+	 * - brightness converted from 0-255 to 0-100%
 	 */
 	private extractLightStateProperties(state: WledState): Record<string, string | number | boolean> {
 		const segment = state.segments[0]; // Primary segment
 
 		return {
-			[WLED_LIGHT_PROPERTY_IDENTIFIERS.STATE]: state.on,
-			[WLED_LIGHT_PROPERTY_IDENTIFIERS.BRIGHTNESS]: state.brightness,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.ON]: state.on,
+			[WLED_LIGHT_PROPERTY_IDENTIFIERS.BRIGHTNESS]: wledBrightnessToSpec(state.brightness),
 			[WLED_LIGHT_PROPERTY_IDENTIFIERS.COLOR_RED]: segment?.colors?.[0]?.[0] ?? 0,
 			[WLED_LIGHT_PROPERTY_IDENTIFIERS.COLOR_GREEN]: segment?.colors?.[0]?.[1] ?? 0,
 			[WLED_LIGHT_PROPERTY_IDENTIFIERS.COLOR_BLUE]: segment?.colors?.[0]?.[2] ?? 0,
@@ -454,16 +458,18 @@ export class WledDeviceMapperService {
 	}
 
 	/**
-	 * Extract nightlight property values from WLED state
+	 * Extract nightlight property values from WLED state (with spec-compliant conversion)
+	 * - 'on' instead of 'state'
+	 * - target_brightness converted from 0-255 to 0-100%
 	 */
 	private extractNightlightStateProperties(state: WledState): Record<string, string | number | boolean> {
 		const nl = state.nightlight;
 
 		return {
-			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.STATE]: nl?.on ?? false,
+			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.ON]: nl?.on ?? false,
 			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.DURATION]: nl?.duration ?? 60,
 			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.MODE]: nl?.mode ?? 0,
-			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.TARGET_BRIGHTNESS]: nl?.targetBrightness ?? 0,
+			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.TARGET_BRIGHTNESS]: wledBrightnessToSpec(nl?.targetBrightness ?? 0),
 			[WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS.REMAINING]: nl?.remaining ?? -1,
 		};
 	}
@@ -481,7 +487,9 @@ export class WledDeviceMapperService {
 	}
 
 	/**
-	 * Extract segment property values from WLED state
+	 * Extract segment property values from WLED state (with spec-compliant conversion)
+	 * - 'on' instead of 'state'
+	 * - brightness converted from 0-255 to 0-100%
 	 */
 	private extractSegmentStateProperties(state: WledState, segmentId: number): Record<string, string | number | boolean> {
 		const segment = state.segments[segmentId];
@@ -491,19 +499,19 @@ export class WledDeviceMapperService {
 		}
 
 		return {
-			state: segment.on ?? true,
-			brightness: segment.brightness ?? 255,
-			color_red: segment.colors?.[0]?.[0] ?? 0,
-			color_green: segment.colors?.[0]?.[1] ?? 0,
-			color_blue: segment.colors?.[0]?.[2] ?? 0,
-			effect: segment.effect ?? 0,
-			effect_speed: segment.effectSpeed ?? 128,
-			effect_intensity: segment.effectIntensity ?? 128,
-			palette: segment.palette ?? 0,
-			start: segment.start ?? 0,
-			stop: segment.stop ?? 0,
-			reverse: segment.reverse ?? false,
-			mirror: segment.mirror ?? false,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.ON]: segment.on ?? true,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.BRIGHTNESS]: wledBrightnessToSpec(segment.brightness ?? 255),
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.COLOR_RED]: segment.colors?.[0]?.[0] ?? 0,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.COLOR_GREEN]: segment.colors?.[0]?.[1] ?? 0,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.COLOR_BLUE]: segment.colors?.[0]?.[2] ?? 0,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT]: segment.effect ?? 0,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT_SPEED]: segment.effectSpeed ?? 128,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.EFFECT_INTENSITY]: segment.effectIntensity ?? 128,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.PALETTE]: segment.palette ?? 0,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.START]: segment.start ?? 0,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.STOP]: segment.stop ?? 0,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.REVERSE]: segment.reverse ?? false,
+			[WLED_SEGMENT_PROPERTY_IDENTIFIERS.MIRROR]: segment.mirror ?? false,
 		};
 	}
 
