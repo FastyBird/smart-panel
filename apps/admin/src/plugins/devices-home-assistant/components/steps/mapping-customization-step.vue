@@ -94,6 +94,10 @@ const { t } = useI18n();
 
 const stepThreeFormEl = ref<FormInstance | undefined>(undefined);
 
+defineExpose({
+	stepThreeFormEl,
+});
+
 const channelCategories = computed(() => {
 	return Object.values(DevicesModuleChannelCategory)
 		.filter((value) => {

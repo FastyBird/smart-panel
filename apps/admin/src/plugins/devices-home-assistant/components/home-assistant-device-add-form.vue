@@ -76,6 +76,7 @@
 			</template>
 
 			<mapping-customization-step
+				ref="mappingCustomizationStepRef"
 				:preview="preview"
 				:is-preview-loading="isPreviewLoading"
 				:entity-overrides="entityOverrides"
@@ -255,6 +256,7 @@ const { loaded: devicesLoaded, fetchDevices } = useDevices();
 
 const deviceSelectionStepRef = ref<InstanceType<typeof DeviceSelectionStep> | null>(null);
 const categorySelectionStepRef = ref<InstanceType<typeof CategorySelectionStep> | null>(null);
+const mappingCustomizationStepRef = ref<InstanceType<typeof MappingCustomizationStep> | null>(null);
 const deviceConfigurationStepRef = ref<InstanceType<typeof DeviceConfigurationStep> | null>(null);
 
 const {
@@ -284,6 +286,10 @@ const stepOneFormEl = computed(() => {
 });
 const stepTwoFormEl = computed(() => {
 	const exposed = categorySelectionStepRef.value?.stepTwoFormEl;
+	return exposed ? unref(exposed) : undefined;
+});
+const stepFourFormEl = computed(() => {
+	const exposed = mappingCustomizationStepRef.value?.stepThreeFormEl;
 	return exposed ? unref(exposed) : undefined;
 });
 const stepFiveFormEl = computed(() => {
@@ -402,8 +408,11 @@ watch(
 		if (val) {
 			stepOneFormEl.value?.resetFields();
 			stepTwoFormEl.value?.resetFields();
-			stepThreeFormEl.value?.resetFields();
+			// Step 3 (mapping preview) has no form - it's just a display component
+			stepFourFormEl.value?.resetFields();
 			stepFiveFormEl.value?.resetFields();
+			// Clear entity overrides since they control the form state in step 4
+			entityOverrides.value = [];
 		}
 	}
 );
