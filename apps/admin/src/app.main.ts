@@ -47,6 +47,7 @@ import { UsersModule } from './modules/users';
 import { WeatherModule } from './modules/weather';
 import type { OpenApiPaths } from './openapi.constants';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
+import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng';
 import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1';
@@ -149,6 +150,7 @@ app.use(TilesDevicePreviewPlugin, pluginOptions);
 app.use(TilesTimePlugin);
 app.use(TilesWeatherPlugin);
 app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
+app.use(DataSourcesWeatherPlugin, pluginOptions);
 app.use(LoggerRotatingFilePlugin, pluginOptions);
 app.use(WeatherOpenweathermapPlugin, pluginOptions);
 

@@ -36,6 +36,7 @@ import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
+import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant/devices-home-assistant.plugin';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/devices-shelly-ng.constants';
@@ -220,6 +221,7 @@ export class AppModule {
 				TilesTimePlugin,
 				TilesWeatherPlugin,
 				DataSourcesDeviceChannelPlugin,
+				DataSourcesWeatherPlugin,
 				LoggerRotatingFilePlugin,
 				WeatherOpenweathermapPlugin,
 				WeatherOpenweathermapOnecallPlugin,
