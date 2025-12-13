@@ -54,6 +54,8 @@ import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
 import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin';
 import { WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX } from './plugins/weather-openweathermap/weather-openweathermap.constants';
 import { WeatherOpenweathermapPlugin } from './plugins/weather-openweathermap/weather-openweathermap.plugin';
+import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX } from './plugins/weather-openweathermap-onecall/weather-openweathermap-onecall.constants';
+import { WeatherOpenweathermapOnecallPlugin } from './plugins/weather-openweathermap-onecall/weather-openweathermap-onecall.plugin';
 
 export interface AppRegisterOptions {
 	moduleExtensions?: Array<{ routePrefix: string; extensionClass: Type<unknown> }>;
@@ -184,6 +186,10 @@ export class AppModule {
 								path: WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX,
 								module: WeatherOpenweathermapPlugin,
 							},
+							{
+								path: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX,
+								module: WeatherOpenweathermapOnecallPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -216,6 +222,7 @@ export class AppModule {
 				DataSourcesDeviceChannelPlugin,
 				LoggerRotatingFilePlugin,
 				WeatherOpenweathermapPlugin,
+				WeatherOpenweathermapOnecallPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
 					inject: [NestConfigService],
