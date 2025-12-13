@@ -23,7 +23,8 @@ class WeatherCurrentDataSourceWidget
       weatherService,
       _,
     ) {
-      final CurrentDayView? currentDay = weatherService.currentDay;
+      // Use data source's locationId to get location-specific weather
+      final CurrentDayView? currentDay = weatherService.getCurrentDayByLocation(dataSource.locationId);
 
       if (currentDay == null) {
         return _renderLoader(context);

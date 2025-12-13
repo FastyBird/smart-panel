@@ -23,7 +23,8 @@ class WeatherForecastDayDataSourceWidget
       weatherService,
       _,
     ) {
-      final List<ForecastDayView> forecast = weatherService.forecast;
+      // Use data source's locationId to get location-specific forecast
+      final List<ForecastDayView> forecast = weatherService.getForecastByLocation(dataSource.locationId);
 
       if (forecast.isEmpty || dataSource.dayOffset >= forecast.length) {
         return _renderLoader(context);

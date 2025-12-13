@@ -37,12 +37,67 @@ class WeatherService extends ChangeNotifier {
     _updateData();
   }
 
+  /// Get current weather for the primary/selected location (backward compatible)
   CurrentDayView? get currentDay => _currentDay;
 
+  /// Get forecast for the primary/selected location (backward compatible)
   List<ForecastDayView> get forecast => _forecast;
+
+  /// Get current weather for a specific location
+  /// Falls back to primary location weather if locationId is null or not found
+  CurrentDayView? getCurrentDayByLocation(String? locationId) {
+    final configuration = _configurationRepository.data;
+    if (configuration == null) return null;
+
+    // If no locationId specified, return primary/global weather
+    if (locationId == null) {
+      return _currentDay;
+    }
+
+    // Try to get location-specific weather
+    final locationWeather = _currentDayRepository.getByLocation(locationId);
+    if (locationWeather != null) {
+      return CurrentDayView(
+        weatherModel: locationWeather,
+        configModel: configuration,
+      );
+    }
+
+    // Fall back to primary weather if location-specific not available
+    return _currentDay;
+  }
+
+  /// Get forecast for a specific location
+  /// Falls back to primary location forecast if locationId is null or not found
+  List<ForecastDayView> getForecastByLocation(String? locationId) {
+    final configuration = _configurationRepository.data;
+    if (configuration == null) return [];
+
+    // If no locationId specified, return primary/global forecast
+    if (locationId == null) {
+      return _forecast;
+    }
+
+    // Try to get location-specific forecast
+    final locationForecast = _forecastRepository.getByLocation(locationId);
+    if (locationForecast != null) {
+      return locationForecast.map((day) => ForecastDayView(
+        weatherModel: day,
+        configModel: configuration,
+      )).toList();
+    }
+
+    // Fall back to primary forecast if location-specific not available
+    return _forecast;
+  }
 
   /// Get all weather locations
   List<WeatherLocationModel> get locations => _locationsRepository.locations;
+
+  /// Get location by ID
+  WeatherLocationModel? getLocation(String locationId) {
+    return _locationsRepository.locations.where((l) => l.id == locationId).firstOrNull;
+  }
 
   /// Get the currently selected location
   WeatherLocationModel? get selectedLocation => _locationsRepository.selectedLocation;

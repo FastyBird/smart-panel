@@ -181,9 +181,15 @@ class WeatherModuleService {
   }
 
   void _socketEventHandler(String event, Map<String, dynamic> payload) {
+    // Extract location_id from payload if available
+    final locationId = payload['location_id'] as String?;
+
     if (payload.containsKey('current') &&
         payload['current'] is Map<String, dynamic>) {
-      _currentWeatherRepository.insertWeather(payload['current']);
+      _currentWeatherRepository.insertWeather(
+        payload['current'],
+        locationId: locationId,
+      );
     }
 
     if (payload.containsKey('forecast') && payload['forecast'] is List) {
@@ -191,7 +197,10 @@ class WeatherModuleService {
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
 
-      _forecastWeatherRepository.insertForecast(mapped);
+      _forecastWeatherRepository.insertForecast(
+        mapped,
+        locationId: locationId,
+      );
     }
   }
 
