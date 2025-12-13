@@ -239,6 +239,13 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					throw new DevicesHomeAssistantValidationException('Mapping preview is required for device adoption.');
 				}
 
+				// Check if device is ready to adopt
+				if (!preview.value.readyToAdopt) {
+					throw new DevicesHomeAssistantValidationException(
+						t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
+					);
+				}
+
 				// Build channels from preview entities
 				// Use overrides if available, otherwise use suggested channel
 				// Filter out: skipped entities, channels with no properties
