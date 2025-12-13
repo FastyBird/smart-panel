@@ -5,4 +5,6 @@ class DayWeatherTileView extends TileView<DayWeatherTileModel> {
   DayWeatherTileView({
     required super.tileModel,
   });
+
+  String? get locationId => tileModel.locationId;
 }

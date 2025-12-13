@@ -3,6 +3,8 @@ import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 
 abstract class WeatherTileModel extends TileModel {
+  final String? _locationId;
+
   WeatherTileModel({
     required super.id,
     required super.parentType,
@@ -13,9 +15,13 @@ abstract class WeatherTileModel extends TileModel {
     required super.col,
     super.rowSpan,
     super.colSpan,
+    String? locationId,
     super.createdAt,
     super.updatedAt,
-  });
+  }) : _locationId =
+            locationId != null ? UuidUtils.validateUuid(locationId) : null;
+
+  String? get locationId => _locationId;
 }
 
 class DayWeatherTileModel extends WeatherTileModel {
@@ -28,6 +34,7 @@ class DayWeatherTileModel extends WeatherTileModel {
     required super.col,
     super.rowSpan,
     super.colSpan,
+    super.locationId,
     super.createdAt,
     super.updatedAt,
   }) : super(
@@ -57,6 +64,7 @@ class DayWeatherTileModel extends WeatherTileModel {
       col: json['col'],
       rowSpan: json['row_span'],
       colSpan: json['col_span'],
+      locationId: json['location_id'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -77,6 +85,7 @@ class ForecastWeatherTileModel extends WeatherTileModel {
     required super.col,
     super.rowSpan,
     super.colSpan,
+    super.locationId,
     super.createdAt,
     super.updatedAt,
   }) : super(
@@ -106,6 +115,7 @@ class ForecastWeatherTileModel extends WeatherTileModel {
       col: json['col'],
       rowSpan: json['row_span'],
       colSpan: json['col_span'],
+      locationId: json['location_id'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
