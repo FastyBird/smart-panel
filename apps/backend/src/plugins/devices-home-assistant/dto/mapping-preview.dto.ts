@@ -135,6 +135,17 @@ export class AdoptPropertyDefinitionDto {
 	@Expose()
 	@IsOptional()
 	format?: (string | number)[] | null;
+
+	@ApiPropertyOptional({
+		description: 'Home Assistant entity ID for this property (used when consolidating channels)',
+		type: 'string',
+		nullable: true,
+		name: 'ha_entity_id',
+	})
+	@Expose({ name: 'ha_entity_id' })
+	@IsOptional()
+	@IsString()
+	haEntityId?: string | null;
 }
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginAdoptChannelDefinition' })

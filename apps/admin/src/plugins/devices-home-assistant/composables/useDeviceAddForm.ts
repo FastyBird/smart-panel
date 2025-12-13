@@ -283,6 +283,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 								permissions: prop.permissions,
 								unit: prop.unit ?? null,
 								format: prop.format ?? null,
+								// Include entity ID from property if available (for consolidated channels)
+								haEntityId: prop.haEntityId ?? entity.entityId,
 							})),
 						};
 					});

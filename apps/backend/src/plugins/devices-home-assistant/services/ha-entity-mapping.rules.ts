@@ -629,41 +629,6 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DETECTED }],
 	},
 
-	// ============================================================================
-	// BINARY SENSOR ENTITIES - Tamper
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.BINARY_SENSOR,
-		device_class: 'tamper',
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.SENSOR,
-		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.TAMPERED }],
-	},
-
-	// ============================================================================
-	// BINARY SENSOR ENTITIES - Problem/Fault
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.BINARY_SENSOR,
-		device_class: 'problem',
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.SENSOR,
-		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.FAULT }],
-	},
-
-	// ============================================================================
-	// BINARY SENSOR ENTITIES - Running
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.BINARY_SENSOR,
-		device_class: 'running',
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.SENSOR,
-		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ACTIVE }],
-	},
 
 	// ============================================================================
 	// BINARY SENSOR ENTITIES - Plug/Power
@@ -713,41 +678,6 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DETECTED }],
 	},
 
-	// ============================================================================
-	// SENSOR ENTITIES - Distance
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.SENSOR,
-		device_class: 'distance',
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.SENSOR,
-		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DISTANCE }],
-	},
-
-	// ============================================================================
-	// SENSOR ENTITIES - Duration
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.SENSOR,
-		device_class: 'duration',
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.SENSOR,
-		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DURATION }],
-	},
-
-	// ============================================================================
-	// SENSOR ENTITIES - Frequency
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.SENSOR,
-		device_class: 'frequency',
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.SENSOR,
-		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.FREQUENCY }],
-	},
 
 	// ============================================================================
 	// SENSOR ENTITIES - Signal Strength
@@ -761,17 +691,6 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.LINK_QUALITY }],
 	},
 
-	// ============================================================================
-	// SENSOR ENTITIES - Speed
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.SENSOR,
-		device_class: ['speed', 'wind_speed'],
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.SENSOR,
-		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.SPEED }],
-	},
 
 	// ============================================================================
 	// SENSOR ENTITIES - Nitrogen Dioxide (NO2)
@@ -821,41 +740,6 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.RATE }],
 	},
 
-	// ============================================================================
-	// BUTTON ENTITIES
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.BUTTON,
-		device_class: null,
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.GENERIC,
-		priority: 10,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.EVENT }],
-	},
-
-	// ============================================================================
-	// INPUT BUTTON ENTITIES
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.INPUT_BUTTON,
-		device_class: null,
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.GENERIC,
-		priority: 10,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.EVENT }],
-	},
-
-	// ============================================================================
-	// REMOTE ENTITIES
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.REMOTE,
-		device_class: null,
-		channel_category: ChannelCategory.GENERIC,
-		device_category_hint: DeviceCategory.GENERIC,
-		priority: 10,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON }],
-	},
 ];
 
 /**

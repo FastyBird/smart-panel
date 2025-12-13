@@ -99,6 +99,17 @@ export class PropertyMappingPreviewModel {
 	})
 	@Expose({ name: 'current_value' })
 	currentValue: string | number | boolean | null;
+
+	@ApiPropertyOptional({
+		description: 'Home Assistant entity ID that this property belongs to (used for consolidation)',
+		type: 'string',
+		nullable: true,
+		name: 'ha_entity_id',
+	})
+	@Expose({ name: 'ha_entity_id' })
+	@IsOptional()
+	@IsString()
+	haEntityId?: string | null;
 }
 
 // ============================================================================

@@ -72,22 +72,19 @@ export class MappingPreviewService {
 		const mappedChannelCategories: ChannelCategory[] = [];
 
 		// Process each entity
+		const rawEntityPreviews: EntityMappingPreviewModel[] = [];
 		for (const entityRegistry of deviceEntities) {
 			const entityState = discoveredDevice.states.find((s) => s.entityId === entityRegistry.entityId);
 			const override = entityOverrides.get(entityRegistry.entityId);
 
 			// Skip if explicitly skipped
 			if (override?.skip) {
-				entityPreviews.push(this.createSkippedEntityPreview(entityRegistry.entityId, entityState));
+				rawEntityPreviews.push(this.createSkippedEntityPreview(entityRegistry.entityId, entityState));
 				continue;
 			}
 
 			const entityPreview = this.processEntity(entityRegistry.entityId, entityState, override?.channelCategory);
-			entityPreviews.push(entityPreview);
-
-			if (entityPreview.suggestedChannel) {
-				mappedChannelCategories.push(entityPreview.suggestedChannel.category);
-			}
+			rawEntityPreviews.push(entityPreview);
 
 			// Add warnings for unmapped entities
 			if (entityPreview.status === 'unmapped') {
@@ -97,6 +94,22 @@ export class MappingPreviewService {
 					message: `Entity "${entityRegistry.entityId}" could not be automatically mapped`,
 					suggestion: 'You can manually select a channel category for this entity',
 				});
+			}
+		}
+
+		// Consolidate entities that map to the same channel category
+		// This prevents multiple channels of the same category (e.g., multiple ELECTRICAL_POWER channels)
+		const consolidatedPreviews = this.consolidateEntitiesByChannelCategory(rawEntityPreviews, discoveredDevice.states);
+
+		// Separate skipped/unmapped entities from mapped ones for tracking
+		for (const preview of consolidatedPreviews) {
+			if (preview.status === 'skipped' || preview.status === 'unmapped') {
+				entityPreviews.push(preview);
+			} else if (preview.suggestedChannel) {
+				entityPreviews.push(preview);
+				mappedChannelCategories.push(preview.suggestedChannel.category);
+			} else {
+				entityPreviews.push(preview);
 			}
 		}
 
@@ -193,6 +206,7 @@ export class MappingPreviewService {
 			rule,
 			state,
 			overrideChannelCategory ?? rule.channel_category,
+			entityId,
 		);
 
 		// Determine mapping status
@@ -226,6 +240,7 @@ export class MappingPreviewService {
 		rule: HaEntityMappingRule,
 		state: HomeAssistantStateModel | undefined,
 		channelCategory: ChannelCategory,
+		entityId: string,
 	): {
 		suggestedProperties: PropertyMappingPreviewModel[];
 		unmappedAttributes: string[];
@@ -235,24 +250,24 @@ export class MappingPreviewService {
 		const mappedAttributes = new Set<string>();
 		const mappedPropertyCategories = new Set<PropertyCategory>();
 
-		// Apply property bindings from the rule
-		for (const binding of rule.property_bindings) {
-			const propertyMetadata = getPropertyMetadata(channelCategory, binding.property_category);
-			if (!propertyMetadata) {
-				// Property not defined in channel spec, skip
-				continue;
-			}
+			// Apply property bindings from the rule
+			for (const binding of rule.property_bindings) {
+				const propertyMetadata = getPropertyMetadata(channelCategory, binding.property_category);
+				if (!propertyMetadata) {
+					// Property not defined in channel spec, skip
+					continue;
+				}
 
-			// Check if attribute exists in state
-			const attributeValue = this.getAttributeValue(binding, state);
-			const hasValue = attributeValue !== undefined && attributeValue !== null;
+				// Check if attribute exists in state
+				const attributeValue = this.getAttributeValue(binding, state);
+				const hasValue = attributeValue !== undefined && attributeValue !== null;
 
-			if (hasValue || propertyMetadata.required) {
-				suggestedProperties.push(this.createPropertyPreview(binding, propertyMetadata, attributeValue));
-				mappedAttributes.add(binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.ha_attribute);
-				mappedPropertyCategories.add(binding.property_category);
+				if (hasValue || propertyMetadata.required) {
+					suggestedProperties.push(this.createPropertyPreview(binding, propertyMetadata, attributeValue, entityId));
+					mappedAttributes.add(binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.ha_attribute);
+					mappedPropertyCategories.add(binding.property_category);
+				}
 			}
-		}
 
 		// Find unmapped attributes (excluding internal ones)
 		const internalAttributes = [
@@ -363,6 +378,7 @@ export class MappingPreviewService {
 		binding: HaPropertyBinding,
 		metadata: PropertyMetadata,
 		currentValue: unknown,
+		entityId?: string,
 	): PropertyMappingPreviewModel {
 		return {
 			category: binding.property_category,
@@ -374,6 +390,7 @@ export class MappingPreviewService {
 			format: metadata.format,
 			required: metadata.required,
 			currentValue: this.normalizeValue(currentValue),
+			haEntityId: entityId ?? null,
 		};
 	}
 
@@ -548,5 +565,151 @@ export class MappingPreviewService {
 			return JSON.stringify(value);
 		}
 		return String(value as string | number);
+	}
+
+	/**
+	 * Consolidate entities that map to the same channel category into a single entity preview
+	 * This prevents creating multiple channels of the same category (e.g., multiple ELECTRICAL_POWER channels
+	 * from voltage, power, and current entities should be merged into one channel with all properties)
+	 */
+	private consolidateEntitiesByChannelCategory(
+		entityPreviews: EntityMappingPreviewModel[],
+		states: HomeAssistantStateModel[],
+	): EntityMappingPreviewModel[] {
+		// Separate skipped and unmapped entities (these don't need consolidation)
+		const skippedOrUnmapped = entityPreviews.filter(
+			(e) => e.status === 'skipped' || e.status === 'unmapped' || !e.suggestedChannel,
+		);
+		const mappableEntities = entityPreviews.filter(
+			(e) => e.status !== 'skipped' && e.status !== 'unmapped' && e.suggestedChannel !== null,
+		);
+
+		// Group by channel category
+		const groupedByCategory = new Map<ChannelCategory, EntityMappingPreviewModel[]>();
+		for (const entity of mappableEntities) {
+			if (!entity.suggestedChannel) continue;
+
+			const category = entity.suggestedChannel.category;
+			const existing = groupedByCategory.get(category) ?? [];
+			existing.push(entity);
+			groupedByCategory.set(category, existing);
+		}
+
+		const consolidated: EntityMappingPreviewModel[] = [];
+
+		// Process each group
+		for (const [category, entities] of groupedByCategory.entries()) {
+			if (entities.length === 1) {
+				// No consolidation needed
+				consolidated.push(entities[0]);
+				continue;
+			}
+
+			// Multiple entities map to the same category - consolidate them
+			this.logger.debug(
+				`[MAPPING PREVIEW] Consolidating ${entities.length} entities into single channel category: ${category}`,
+				{ entityIds: entities.map((e) => e.entityId) },
+			);
+
+			// Select primary entity (prefer one with more important properties or first one)
+			// For ELECTRICAL_POWER, prefer entity with POWER property
+			let primaryEntity = entities[0];
+			if (category === ChannelCategory.ELECTRICAL_POWER) {
+				const entityWithPower = entities.find((e) =>
+					e.suggestedProperties.some((p) => p.category === PropertyCategory.POWER),
+				);
+				if (entityWithPower) {
+					primaryEntity = entityWithPower;
+				}
+			}
+
+			// Merge properties from all entities
+			// Use a map keyed by property category + entity ID to preserve properties from different entities
+			// But then consolidate by category (keeping the first one we see, or prefer POWER for ELECTRICAL_POWER)
+			const propertyMap = new Map<PropertyCategory, PropertyMappingPreviewModel>();
+			const allUnmappedAttributes = new Set<string>();
+			const allMissingRequired = new Set<PropertyCategory>();
+
+			for (const entity of entities) {
+				// Merge properties, preserving entity ID information
+				for (const prop of entity.suggestedProperties) {
+					// Ensure property has entity ID set
+					if (!prop.haEntityId) {
+						prop.haEntityId = entity.entityId;
+					}
+
+					// If property category already exists, only override if this is a "better" property
+					// (e.g., prefer POWER property for ELECTRICAL_POWER category)
+					const existing = propertyMap.get(prop.category);
+					if (!existing) {
+						propertyMap.set(prop.category, prop);
+					} else if (category === ChannelCategory.ELECTRICAL_POWER && prop.category === PropertyCategory.POWER) {
+						// Prefer POWER property for ELECTRICAL_POWER channel
+						propertyMap.set(prop.category, prop);
+					}
+					// Otherwise keep existing property (don't override)
+				}
+
+				// Collect unmapped attributes
+				for (const attr of entity.unmappedAttributes) {
+					allUnmappedAttributes.add(attr);
+				}
+
+				// Collect missing required properties
+				for (const prop of entity.missingRequiredProperties) {
+					allMissingRequired.add(prop);
+				}
+			}
+
+			// Remove properties that are now mapped from missing required
+			for (const prop of propertyMap.keys()) {
+				allMissingRequired.delete(prop);
+			}
+
+			// Determine overall status
+			let status: 'mapped' | 'partial' | 'unmapped' = 'mapped';
+			if (allMissingRequired.size > 0) {
+				status = 'partial';
+			}
+
+			// Generate consolidated channel name
+			const friendlyNames = entities
+				.map((e) => {
+					const state = states.find((s) => s.entityId === e.entityId);
+					return (state?.attributes?.friendly_name as string | undefined) ?? e.entityId;
+				})
+				.filter((name, index, arr) => arr.indexOf(name) === index); // Unique names
+			const channelName =
+				friendlyNames.length === 1
+					? friendlyNames[0]
+					: this.generateChannelName(primaryEntity.entityId, category);
+
+			// Create consolidated entity preview
+			const consolidatedPreview: EntityMappingPreviewModel = {
+				entityId: primaryEntity.entityId, // Use primary entity ID
+				domain: primaryEntity.domain,
+				deviceClass: primaryEntity.deviceClass,
+				currentState: primaryEntity.currentState,
+				attributes: { ...primaryEntity.attributes }, // Merge attributes from primary
+				status,
+				suggestedChannel: {
+					category,
+					name: channelName,
+					confidence: primaryEntity.suggestedChannel?.confidence ?? 'medium',
+				},
+				suggestedProperties: Array.from(propertyMap.values()),
+				unmappedAttributes: Array.from(allUnmappedAttributes),
+				missingRequiredProperties: Array.from(allMissingRequired),
+			};
+
+			consolidated.push(consolidatedPreview);
+
+			this.logger.debug(
+				`[MAPPING PREVIEW] Consolidated ${entities.length} entities into channel "${channelName}" (${category}) with ${consolidatedPreview.suggestedProperties.length} properties`,
+			);
+		}
+
+		// Return consolidated entities plus skipped/unmapped ones
+		return [...consolidated, ...skippedOrUnmapped];
 	}
 }

@@ -466,7 +466,8 @@ export class DeviceAdoptionService {
 			invalid: null,
 			step: null,
 			value: null,
-			ha_entity_id: channelDef.entityId,
+			// Use property's entity ID if provided (for consolidated channels), otherwise use channel entity ID
+			ha_entity_id: propDef.haEntityId ?? channelDef.entityId,
 			ha_attribute: propDef.haAttribute,
 		}));
 
