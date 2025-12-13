@@ -9,7 +9,7 @@ import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { FormResult, type FormResultType, type IDevice, RouteNames as DevicesRouteNames } from '../../../modules/devices';
 import { DevicesApiException } from '../../../modules/devices/devices.exceptions';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
-import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
+import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDeviceAddFormSchema } from '../schemas/devices.schemas';
 import type { IHomeAssistantDeviceAddForm } from '../schemas/devices.types';
 import type { IMappingPreviewResponse, IAdoptDeviceRequest, IMappingPreviewRequest } from '../schemas/mapping-preview.types';
@@ -210,7 +210,6 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		} else if (step === 'five') {
 			const form = formEl || stepFiveFormEl.value;
 			if (!form) {
-				logger.error('Step five form reference not available', { formEl, stepFiveFormEl: stepFiveFormEl.value });
 				throw new DevicesHomeAssistantValidationException('Form reference not available');
 			}
 
@@ -219,11 +218,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			const valid = await form.validate();
 
 			if (!valid) {
-				logger.error('Step five form validation failed');
 				throw new DevicesHomeAssistantValidationException('Form not valid');
 			}
-
-			logger.info('Step five form validation passed, proceeding with adoption');
 
 			const parsedModel = HomeAssistantDeviceAddFormSchema.safeParse(model);
 
@@ -276,16 +272,16 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 							entityId: entity.entityId,
 							category: channelCategory,
 							name: channelName,
-							properties: entity.suggestedProperties.map((prop) => ({
-								category: prop.category,
-								haAttribute: prop.haAttribute,
-								dataType: prop.dataType,
-								permissions: prop.permissions,
-								unit: prop.unit ?? null,
-								format: prop.format ?? null,
-								// Include entity ID from property if available (for consolidated channels)
-								haEntityId: prop.haEntityId ?? entity.entityId,
-							})),
+						properties: entity.suggestedProperties.map((prop) => ({
+							category: prop.category,
+							haAttribute: prop.haAttribute,
+							dataType: prop.dataType,
+							permissions: prop.permissions,
+							unit: prop.unit ?? null,
+							format: prop.format ?? null,
+							// Include entity ID for consolidated channels (each property can map to a different entity)
+							haEntityId: entity.entityId,
+						})),
 						};
 					});
 
@@ -296,12 +292,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					channels,
 				};
 
-				logger.info('Calling adoptDevice with request:', adoptRequest);
-
 				// Adopt the device
 				const adoptedDevice = await adoptDevice(adoptRequest);
-
-				logger.info('Device adopted successfully:', adoptedDevice);
 
 				formResult.value = FormResult.OK;
 
@@ -327,9 +319,16 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 				timer = window.setTimeout(clear, 2000);
 
-				if (error instanceof DevicesApiException && error.code === 422) {
-					flashMessage.error(error.message);
-				} else {
+				// Error message is already displayed by useDeviceAdoption composable
+				// Don't show duplicate error messages here
+				// Only log for debugging if it's an unexpected error type
+				if (
+					!(error instanceof DevicesHomeAssistantApiException) &&
+					!(error instanceof DevicesHomeAssistantValidationException) &&
+					!(error instanceof DevicesApiException)
+				) {
+					logger.error('Unexpected error during device adoption:', error);
+					// Only show generic error for truly unexpected errors
 					flashMessage.error(errorMessage);
 				}
 

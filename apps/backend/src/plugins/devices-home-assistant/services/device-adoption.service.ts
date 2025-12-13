@@ -72,7 +72,7 @@ export class DeviceAdoptionService {
 			);
 		}
 
-		// Create the device
+		// Validate device DTO
 		const createDeviceDto = toInstance(CreateHomeAssistantDeviceDto, {
 			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: request.category,
@@ -86,7 +86,11 @@ export class DeviceAdoptionService {
 			throw new DevicesHomeAssistantValidationException('Device validation failed');
 		}
 
-		// Create the device first (without channels - we'll add them separately)
+		// Pre-validate the complete device structure BEFORE creating anything
+		// This ensures we don't create a device that will fail validation later
+		await this.preValidateDeviceStructure(request, haDevice);
+
+		// Create the device (now we're confident it will be valid)
 		const device = await this.devicesService.create<HomeAssistantDeviceEntity, CreateHomeAssistantDeviceDto>(
 			createDeviceDto,
 		);
@@ -114,13 +118,14 @@ export class DeviceAdoptionService {
 				await this.createChannel(device, channelDef);
 			}
 
-			// Validate the complete device structure against specifications before finalizing
+			// Final validation (should pass since we pre-validated, but double-check)
 			await this.validateDeviceStructure(device.id);
 
 			// Return the fully loaded device
 			return await this.devicesService.findOne<HomeAssistantDeviceEntity>(device.id, DEVICES_HOME_ASSISTANT_TYPE);
 		} catch (error) {
 			// If channel creation fails, we should clean up the device
+			// This should rarely happen now since we pre-validate, but keep as safety net
 			this.logger.error(`[DEVICE ADOPTION] Failed to create channels, cleaning up device: ${device.id}`, error);
 			try {
 				await this.devicesService.remove(device.id);
@@ -491,6 +496,299 @@ export class DeviceAdoptionService {
 		await this.channelsService.create(createChannelDto);
 
 		this.logger.debug(`[DEVICE ADOPTION] Created channel ${channelDef.category} for device: ${device.id}`);
+	}
+
+	/**
+	 * Pre-validate the device structure BEFORE creating the device
+	 * This ensures we don't create a device that will fail validation later
+	 */
+	private async preValidateDeviceStructure(
+		request: AdoptDeviceRequestDto,
+		haDevice: {
+			manufacturer: string | null;
+			model: string | null;
+			serialNumber: string | null;
+			swVersion: string | null;
+			hwVersion: string | null;
+			connections: [string, string][];
+		},
+	): Promise<void> {
+		this.logger.debug(`[DEVICE ADOPTION] Pre-validating device structure before creation`);
+
+		const validationErrors: string[] = [];
+		const deviceInformationChannels = request.channels.filter(
+			(ch) => ch.category === ChannelCategory.DEVICE_INFORMATION,
+		);
+		const otherChannels = request.channels.filter((ch) => ch.category !== ChannelCategory.DEVICE_INFORMATION);
+
+		// Validate device_information channel (will be auto-created)
+		const deviceInfoRawSchema = channelsSchema[ChannelCategory.DEVICE_INFORMATION] as object | undefined;
+		if (!deviceInfoRawSchema || typeof deviceInfoRawSchema !== 'object') {
+			validationErrors.push(
+				`Device information channel: Missing or invalid schema specification`,
+			);
+		} else {
+			const deviceInfoCategorySpec = toInstance(
+				ChannelSpecModel,
+				{
+					...deviceInfoRawSchema,
+					properties: 'properties' in deviceInfoRawSchema && deviceInfoRawSchema.properties ? Object.values(deviceInfoRawSchema.properties) : [],
+				},
+				{
+					excludeExtraneousValues: false,
+				},
+			);
+
+			// Simulate the properties that would be created for device_information
+			const connectionTypeRaw = haDevice.connections.length ? haDevice.connections[0][0] : null;
+			const connectionType =
+				connectionTypeRaw && connectionTypeRaw in this.CONNECTION_TYPE_MAP
+					? this.CONNECTION_TYPE_MAP[connectionTypeRaw]
+					: null;
+
+			const haDeviceInformationProperties: Record<PropertyCategory, unknown> = {
+				[PropertyCategory.MANUFACTURER]: haDevice.manufacturer,
+				[PropertyCategory.MODEL]: haDevice.model,
+				[PropertyCategory.SERIAL_NUMBER]: haDevice.serialNumber || 'N/A',
+				[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion,
+				[PropertyCategory.HARDWARE_REVISION]: haDevice.hwVersion,
+				[PropertyCategory.CONNECTION_TYPE]: connectionType,
+				[PropertyCategory.STATUS]: ConnectionState.UNKNOWN,
+			} as Record<PropertyCategory, unknown>;
+
+			// Collect base properties from HA registry
+			const basePropertyCategories = new Set(
+				Object.entries(haDeviceInformationProperties)
+					.filter(([, value]) => value != null)
+					.map(([category]) => category as PropertyCategory)
+			);
+
+			// Add properties from mapping channels
+			const mappingPropertyCategories = new Set<string>();
+			for (const mappingChannel of deviceInformationChannels) {
+				for (const propDef of mappingChannel.properties) {
+					mappingPropertyCategories.add(propDef.category);
+				}
+			}
+
+			// Check for required properties
+			const requiredProperties = deviceInfoCategorySpec.properties.filter((p) => p.required);
+			const allPropertyCategories = new Set([...basePropertyCategories, ...mappingPropertyCategories]);
+
+			for (const requiredProp of requiredProperties) {
+				if (!allPropertyCategories.has(requiredProp.category)) {
+					validationErrors.push(
+						`Device information channel: Missing required property ${requiredProp.category}`,
+					);
+				}
+			}
+
+			// Validate mapping properties
+			for (const mappingChannel of deviceInformationChannels) {
+				for (const propDef of mappingChannel.properties) {
+					const spec = deviceInfoCategorySpec.properties.find((p) => p.category === propDef.category);
+					if (!spec && !basePropertyCategories.has(propDef.category)) {
+						// Property not in spec and not in base properties - check if it's a valid category
+						const propertyCategoryValues = Object.values(PropertyCategory) as string[];
+						if (!propertyCategoryValues.includes(propDef.category)) {
+							validationErrors.push(
+								`Device information channel: Property ${propDef.category} is not a valid property category`,
+							);
+						}
+					}
+
+					if (spec && propDef.dataType !== spec.data_type) {
+						validationErrors.push(
+							`Device information channel, Property ${propDef.category}: Data type mismatch (expected ${spec.data_type}, got ${propDef.dataType})`,
+						);
+					}
+				}
+			}
+		}
+
+		// Validate other channels
+		for (const channelDef of otherChannels) {
+			const rawSchema = channelsSchema[channelDef.category as keyof typeof channelsSchema] as object | undefined;
+
+			if (!rawSchema || typeof rawSchema !== 'object') {
+				validationErrors.push(
+					`Channel ${channelDef.category}: Missing or invalid schema specification`,
+				);
+				continue;
+			}
+
+			const categorySpec = toInstance(
+				ChannelSpecModel,
+				{
+					...rawSchema,
+					properties: 'properties' in rawSchema && rawSchema.properties ? Object.values(rawSchema.properties) : [],
+				},
+				{
+					excludeExtraneousValues: false,
+				},
+			);
+
+			// Check for required properties
+			const requiredProperties = categorySpec.properties.filter((p) => p.required);
+			const channelPropertyCategories = new Set(channelDef.properties.map((p) => p.category));
+
+			for (const requiredProp of requiredProperties) {
+				if (!channelPropertyCategories.has(requiredProp.category)) {
+					validationErrors.push(
+						`Channel ${channelDef.category}: Missing required property ${requiredProp.category}`,
+					);
+				}
+			}
+
+			// Validate each property against its spec
+			for (const propDef of channelDef.properties) {
+				const propSpec = categorySpec.properties.find((p) => p.category === propDef.category);
+				if (!propSpec) {
+					validationErrors.push(
+						`Channel ${channelDef.category}: Property ${propDef.category} is not defined in specification`,
+					);
+					continue;
+				}
+
+				// Validate property data type matches spec
+				if (propDef.dataType !== propSpec.data_type) {
+					validationErrors.push(
+						`Channel ${channelDef.category}, Property ${propDef.category}: Data type mismatch (expected ${propSpec.data_type}, got ${propDef.dataType})`,
+					);
+				}
+			}
+
+			// Validate channel DTO structure
+			const properties = channelDef.properties.map((propDef) => ({
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: propDef.category,
+				permissions: propDef.permissions,
+				data_type: propDef.dataType,
+				unit: propDef.unit ?? null,
+				format: propDef.format ?? null,
+				invalid: null,
+				step: null,
+				value: null,
+				ha_entity_id: propDef.haEntityId ?? channelDef.entityId,
+				ha_attribute: propDef.haAttribute,
+			}));
+
+			// Use a temporary device ID for validation (won't be used to create)
+			const tempDeviceId = '00000000-0000-0000-0000-000000000000';
+			const createChannelDto = toInstance(CreateHomeAssistantChannelDto, {
+				device: tempDeviceId,
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: channelDef.category,
+				name: channelDef.name,
+				properties,
+			});
+
+			const channelValidationErrors = await validate(createChannelDto, { skipMissingProperties: true });
+			if (channelValidationErrors.length) {
+				// Format validation errors in a user-friendly way
+				const formattedErrors = this.formatValidationErrors(channelValidationErrors);
+				validationErrors.push(
+					`Channel ${channelDef.category} (${channelDef.name}): ${formattedErrors}`,
+				);
+			}
+		}
+
+		if (validationErrors.length > 0) {
+			this.logger.error(`[DEVICE ADOPTION] Pre-validation failed:`, validationErrors);
+			
+			// Format errors for user display - group by channel and make more readable
+			const formattedErrors = this.formatValidationErrorsForDisplay(validationErrors);
+			throw new DevicesHomeAssistantValidationException(
+				`Device structure validation failed:\n\n${formattedErrors}`,
+			);
+		}
+
+		this.logger.debug(`[DEVICE ADOPTION] Pre-validation passed - device structure is valid`);
+	}
+
+	/**
+	 * Format validation errors into human-readable messages
+	 */
+	private formatValidationErrors(validationErrors: unknown[]): string {
+		const messages: string[] = [];
+
+		for (const error of validationErrors) {
+			if (typeof error === 'object' && error !== null && 'constraints' in error) {
+				const constraints = (error as { constraints?: Record<string, string> }).constraints;
+				if (constraints) {
+					// Extract constraint messages
+					for (const [constraintType, constraintMessage] of Object.entries(constraints)) {
+						// Try to parse JSON if it's a stringified array
+						try {
+							const parsed = JSON.parse(constraintMessage);
+							if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && 'reason' in parsed[0]) {
+								messages.push((parsed[0] as { reason: string }).reason);
+							} else {
+								messages.push(constraintMessage);
+							}
+						} catch {
+							// Not JSON, use as-is
+							messages.push(constraintMessage);
+						}
+					}
+				} else if ('property' in error && 'value' in error) {
+					// Fallback: show property name if no constraints
+					const property = (error as { property?: string }).property;
+					if (property) {
+						messages.push(`Invalid value for ${property}`);
+					}
+				}
+			} else if (typeof error === 'string') {
+				messages.push(error);
+			}
+		}
+
+		// Remove duplicates and return formatted message
+		const uniqueMessages = Array.from(new Set(messages));
+		return uniqueMessages.length > 0 ? uniqueMessages.join('; ') : 'Validation failed';
+	}
+
+	/**
+	 * Format validation errors for user display - group by channel and make more readable
+	 */
+	private formatValidationErrorsForDisplay(errors: string[]): string {
+		const channelErrors: Map<string, string[]> = new Map();
+		const otherErrors: string[] = [];
+
+		for (const error of errors) {
+			// Check if error is for a specific channel
+			const channelMatch = error.match(/^Channel\s+([^:]+):\s*(.+)$/);
+			if (channelMatch) {
+				const channelName = channelMatch[1].trim();
+				const errorMessage = channelMatch[2].trim();
+				
+				if (!channelErrors.has(channelName)) {
+					channelErrors.set(channelName, []);
+				}
+				channelErrors.get(channelName)!.push(errorMessage);
+			} else {
+				otherErrors.push(error);
+			}
+		}
+
+		const formatted: string[] = [];
+
+		// Add channel-specific errors
+		for (const [channelName, channelErrorMessages] of channelErrors.entries()) {
+			// Remove duplicates and format
+			const uniqueMessages = Array.from(new Set(channelErrorMessages));
+			formatted.push(`• ${channelName}:`);
+			for (const msg of uniqueMessages) {
+				formatted.push(`  - ${msg}`);
+			}
+		}
+
+		// Add other errors
+		for (const error of otherErrors) {
+			formatted.push(`• ${error}`);
+		}
+
+		return formatted.join('\n');
 	}
 
 	/**

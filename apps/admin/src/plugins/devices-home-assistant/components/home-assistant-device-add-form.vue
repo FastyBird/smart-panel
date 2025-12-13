@@ -317,32 +317,15 @@ const controlledActiveStep = computed({
 });
 
 const onProcessStep = async (): Promise<void> => {
-	try {
-		// For steps with forms in child components, we need to pass the form ref
-		if (activeStep.value === 'one') {
-			if (!stepOneFormEl.value) {
-				console.error('Step one form reference not available', { deviceSelectionStepRef: deviceSelectionStepRef.value });
-				throw new Error('Form reference not available');
-			}
-			await submitStep(activeStep.value, stepOneFormEl.value);
-		} else if (activeStep.value === 'two') {
-			if (!stepTwoFormEl.value) {
-				console.error('Step two form reference not available', { categorySelectionStepRef: categorySelectionStepRef.value });
-				throw new Error('Form reference not available');
-			}
-			await submitStep(activeStep.value, stepTwoFormEl.value);
-		} else if (activeStep.value === 'five') {
-			if (!stepFiveFormEl.value) {
-				console.error('Step five form reference not available', { deviceConfigurationStepRef: deviceConfigurationStepRef.value });
-				throw new Error('Form reference not available');
-			}
-			await submitStep(activeStep.value, stepFiveFormEl.value);
-		} else {
-			await submitStep(activeStep.value);
-		}
-	} catch (error) {
-		// Error is already handled in the composable, but log it for debugging
-		console.error('Error in onProcessStep:', error);
+	// For steps with forms in child components, we need to pass the form ref
+	if (activeStep.value === 'one') {
+		await submitStep(activeStep.value, stepOneFormEl.value);
+	} else if (activeStep.value === 'two') {
+		await submitStep(activeStep.value, stepTwoFormEl.value);
+	} else if (activeStep.value === 'five') {
+		await submitStep(activeStep.value, stepFiveFormEl.value);
+	} else {
+		await submitStep(activeStep.value);
 	}
 };
 

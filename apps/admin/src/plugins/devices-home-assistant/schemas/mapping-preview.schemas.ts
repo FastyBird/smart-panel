@@ -97,6 +97,7 @@ export const AdoptPropertyDefinitionSchema = z.object({
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	unit: z.string().nullable().optional(),
 	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	haEntityId: z.string().optional(),
 });
 
 export const AdoptChannelDefinitionSchema = z.object({

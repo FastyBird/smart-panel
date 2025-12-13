@@ -34,6 +34,8 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 		isAdopting.value = true;
 		error.value = null;
 
+		let storedDeviceId: string | null = null;
+
 		try {
 			const requestBody = transformAdoptDeviceRequest(request);
 
@@ -45,6 +47,19 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				body: requestBody as never,
 			});
 
+			// Check for errors first - if there's an error or non-2xx status, don't process response data
+			if (apiError || response.status < 200 || response.status >= 300) {
+				let errorReason: string | null = 'Failed to adopt device.';
+
+				if (apiError) {
+					// OpenAPI operation type will be generated when OpenAPI spec is updated
+					errorReason = getErrorReason(apiError as never, errorReason);
+				}
+
+				throw new DevicesHomeAssistantApiException(errorReason, response.status);
+			}
+
+			// Only process and store device if response is successful (2xx status) and has data
 			if (typeof responseData !== 'undefined' && responseData.data) {
 				isAdopting.value = false;
 
@@ -58,6 +73,9 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 					data: transformed,
 				});
 
+				// Track the stored device ID in case we need to remove it on error
+				storedDeviceId = transformed.id;
+
 				// The backend should return the device with channels and controls
 				// If the response includes relations, they will be handled when the device is fetched
 				// For now, we just store the device and let the store handle relations when needed
@@ -66,18 +84,22 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				return transformed;
 			}
 
-			let errorReason: string | null = 'Failed to adopt device.';
-
-			if (apiError) {
-				// OpenAPI operation type will be generated when OpenAPI spec is updated
-				errorReason = getErrorReason(apiError as never, errorReason);
-			}
-
-			throw new DevicesHomeAssistantApiException(errorReason, response.status);
+			// If we get here, response was successful but no data - this shouldn't happen
+			throw new DevicesHomeAssistantApiException('Device adoption succeeded but no device data was returned.', response.status);
 		} catch (err: unknown) {
 			isAdopting.value = false;
 
 			const errorObj = err as Error;
+
+			// If device was stored but adoption failed, remove it from the store
+			// This is a critical cleanup step - the device should not remain in the store if adoption fails
+			if (storedDeviceId) {
+				try {
+					devicesStore.unset({ id: storedDeviceId });
+				} catch (unsetError) {
+					logger.error(`[DEVICE ADOPTION] Failed to remove device ${storedDeviceId} from store:`, unsetError);
+				}
+			}
 
 			if (errorObj instanceof DevicesHomeAssistantValidationException) {
 				error.value = errorObj;
@@ -87,7 +109,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				flashMessage.error(errorObj.message);
 			} else {
 				error.value = errorObj;
-				logger.error('Failed to adopt device:', errorObj);
+				logger.error('[DEVICE ADOPTION] Failed to adopt device:', errorObj);
 				flashMessage.error('Failed to adopt device. Please try again.');
 			}
 
