@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DeviceExistsConstraintValidator } from '../../../modules/devices/validators/device-exists-constraint.validator';
@@ -63,6 +64,12 @@ describe('DeviceAdoptionService', () => {
 
 		const channelsServiceMock: Partial<jest.Mocked<ChannelsService>> = {
 			create: jest.fn(),
+			findAll: jest.fn().mockResolvedValue([]),
+		};
+
+		const channelsPropertiesServiceMock: Partial<jest.Mocked<ChannelsPropertiesService>> = {
+			create: jest.fn(),
+			findAll: jest.fn().mockResolvedValue([]),
 		};
 
 		// Mock the device exists validator
@@ -76,12 +83,16 @@ describe('DeviceAdoptionService', () => {
 				{ provide: HomeAssistantWsService, useValue: homeAssistantWsServiceMock },
 				{ provide: DevicesService, useValue: devicesServiceMock },
 				{ provide: ChannelsService, useValue: channelsServiceMock },
+				{ provide: ChannelsPropertiesService, useValue: channelsPropertiesServiceMock },
 				{ provide: DeviceExistsConstraintValidator, useValue: deviceExistsValidatorMock },
 			],
 		}).compile();
 
 		// Use container so validators can access module's DI
 		useContainer(module, { fallbackOnErrors: true });
+
+		// Mock validate function to bypass validation in tests
+		jest.spyOn(require('class-validator'), 'validate').mockResolvedValue([]);
 
 		service = module.get(DeviceAdoptionService);
 		homeAssistantWsService = module.get(HomeAssistantWsService);

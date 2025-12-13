@@ -250,24 +250,24 @@ export class MappingPreviewService {
 		const mappedAttributes = new Set<string>();
 		const mappedPropertyCategories = new Set<PropertyCategory>();
 
-			// Apply property bindings from the rule
-			for (const binding of rule.property_bindings) {
-				const propertyMetadata = getPropertyMetadata(channelCategory, binding.property_category);
-				if (!propertyMetadata) {
-					// Property not defined in channel spec, skip
-					continue;
-				}
-
-				// Check if attribute exists in state
-				const attributeValue = this.getAttributeValue(binding, state);
-				const hasValue = attributeValue !== undefined && attributeValue !== null;
-
-				if (hasValue || propertyMetadata.required) {
-					suggestedProperties.push(this.createPropertyPreview(binding, propertyMetadata, attributeValue, entityId));
-					mappedAttributes.add(binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.ha_attribute);
-					mappedPropertyCategories.add(binding.property_category);
-				}
+		// Apply property bindings from the rule
+		for (const binding of rule.property_bindings) {
+			const propertyMetadata = getPropertyMetadata(channelCategory, binding.property_category);
+			if (!propertyMetadata) {
+				// Property not defined in channel spec, skip
+				continue;
 			}
+
+			// Check if attribute exists in state
+			const attributeValue = this.getAttributeValue(binding, state);
+			const hasValue = attributeValue !== undefined && attributeValue !== null;
+
+			if (hasValue || propertyMetadata.required) {
+				suggestedProperties.push(this.createPropertyPreview(binding, propertyMetadata, attributeValue, entityId));
+				mappedAttributes.add(binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.ha_attribute);
+				mappedPropertyCategories.add(binding.property_category);
+			}
+		}
 
 		// Find unmapped attributes (excluding internal ones)
 		const internalAttributes = [
@@ -680,9 +680,7 @@ export class MappingPreviewService {
 				})
 				.filter((name, index, arr) => arr.indexOf(name) === index); // Unique names
 			const channelName =
-				friendlyNames.length === 1
-					? friendlyNames[0]
-					: this.generateChannelName(primaryEntity.entityId, category);
+				friendlyNames.length === 1 ? friendlyNames[0] : this.generateChannelName(primaryEntity.entityId, category);
 
 			// Create consolidated entity preview
 			const consolidatedPreview: EntityMappingPreviewModel = {

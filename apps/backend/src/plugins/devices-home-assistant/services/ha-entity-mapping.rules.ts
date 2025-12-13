@@ -363,6 +363,18 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 	},
 
 	// ============================================================================
+	// BINARY SENSOR ENTITIES - Tamper
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.BINARY_SENSOR,
+		device_class: 'tamper',
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.SENSOR,
+		priority: 20,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DETECTED }],
+	},
+
+	// ============================================================================
 	// CLIMATE ENTITIES (Thermostat)
 	// ============================================================================
 	{
@@ -629,7 +641,6 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DETECTED }],
 	},
 
-
 	// ============================================================================
 	// BINARY SENSOR ENTITIES - Plug/Power
 	// ============================================================================
@@ -678,7 +689,6 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DETECTED }],
 	},
 
-
 	// ============================================================================
 	// SENSOR ENTITIES - Signal Strength
 	// ============================================================================
@@ -690,7 +700,6 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		priority: 20,
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.LINK_QUALITY }],
 	},
-
 
 	// ============================================================================
 	// SENSOR ENTITIES - Nitrogen Dioxide (NO2)
@@ -740,6 +749,29 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.RATE }],
 	},
 
+	// ============================================================================
+	// BUTTON ENTITIES
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.BUTTON,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 5,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON }],
+	},
+
+	// ============================================================================
+	// REMOTE ENTITIES
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.REMOTE,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 5,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON }],
+	},
 ];
 
 /**

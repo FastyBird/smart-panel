@@ -3,10 +3,10 @@ import { validate } from 'class-validator';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, ConnectionState, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
-import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { channelsSchema } from '../../../spec/channels';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
@@ -14,8 +14,8 @@ import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
-import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { CreateHomeAssistantChannelPropertyDto } from '../dto/create-channel-property.dto';
+import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { CreateHomeAssistantDeviceDto } from '../dto/create-device.dto';
 import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
@@ -197,15 +197,13 @@ export class DeviceAdoptionService {
 
 		// Check if device_information channel already exists
 		const existingChannels = await this.channelsService.findAll(device.id, DEVICES_HOME_ASSISTANT_TYPE);
-		const existingDeviceInfoChannel = existingChannels.find(
-			(ch) => ch.category === ChannelCategory.DEVICE_INFORMATION,
-		);
+		const existingDeviceInfoChannel = existingChannels.find((ch) => ch.category === ChannelCategory.DEVICE_INFORMATION);
 
 		if (existingDeviceInfoChannel) {
 			this.logger.debug(
 				`[DEVICE ADOPTION] Device information channel already exists for device ${device.id}, merging mapping properties into it`,
 			);
-			
+
 			// If channel exists, merge mapping properties into it instead of creating a new one
 			if (mappingDeviceInfoChannels.length > 0) {
 				await this.mergePropertiesIntoExistingChannel(
@@ -255,9 +253,9 @@ export class DeviceAdoptionService {
 
 		// Merge properties from mapping device_information channels
 		// Create a map to track properties by category (mapping properties take precedence for HA bindings)
-		type PropertyType = NonNullable<typeof baseProperties[0]>;
+		type PropertyType = NonNullable<(typeof baseProperties)[0]>;
 		const propertyMap = new Map<string, PropertyType>();
-		
+
 		// Add base properties first
 		for (const prop of baseProperties) {
 			if (prop) {
@@ -275,29 +273,29 @@ export class DeviceAdoptionService {
 				this.logger.debug(
 					`[DEVICE ADOPTION] Processing property: category=${propDef.category}, dataType=${propDef.dataType}, haAttribute=${propDef.haAttribute}`,
 				);
-				
+
 				const spec = categorySpec.properties.find((p) => p.category === propDef.category);
-				
+
 				// Check if property category is valid (exists in PropertyCategory enum)
 				// Convert to string for comparison to handle enum vs string
 				const propertyCategoryValues = Object.values(PropertyCategory) as string[];
 				const isValidPropertyCategory = propertyCategoryValues.includes(propDef.category);
-				
+
 				if (!isValidPropertyCategory) {
 					this.logger.warn(
 						`[DEVICE ADOPTION] Property ${propDef.category} from mapping channel ${mappingChannel.entityId} is not a valid property category (valid values: ${propertyCategoryValues.slice(0, 5).join(', ')}...), skipping`,
 					);
 					continue;
 				}
-				
+
 				this.logger.debug(
 					`[DEVICE ADOPTION] Property ${propDef.category} is valid, spec found: ${spec ? 'yes' : 'no'}`,
 				);
-				
+
 				// Use spec if available, otherwise use defaults
 				const formatValue = propDef.format ?? spec?.format ?? null;
 				const existingProp = propertyMap.get(propDef.category);
-				
+
 				propertyMap.set(propDef.category, {
 					type: DEVICES_HOME_ASSISTANT_TYPE,
 					category: propDef.category,
@@ -311,7 +309,7 @@ export class DeviceAdoptionService {
 					ha_entity_id: mappingChannel.entityId,
 					ha_attribute: propDef.haAttribute,
 				});
-				
+
 				if (spec) {
 					this.logger.debug(
 						`[DEVICE ADOPTION] Merged property ${propDef.category} from mapping channel ${mappingChannel.entityId} with HA entity binding (from spec)`,
@@ -329,7 +327,7 @@ export class DeviceAdoptionService {
 		this.logger.debug(
 			`[DEVICE ADOPTION] Device information channel will have ${mergedProperties.length} properties: ${mergedProperties.map((p) => p.category).join(', ')}`,
 		);
-		
+
 		// Log each property in detail for debugging
 		for (const prop of mergedProperties) {
 			this.logger.debug(
@@ -344,13 +342,13 @@ export class DeviceAdoptionService {
 			name: 'Device information',
 			properties: mergedProperties,
 		});
-		
+
 		this.logger.debug(
 			`[DEVICE ADOPTION] CreateChannelDto has ${createChannelDto.properties?.length ?? 0} properties after transformation`,
 		);
 
 		const channelValidationErrors = await validate(createChannelDto, { skipMissingProperties: true });
-		
+
 		if (channelValidationErrors.length) {
 			this.logger.debug(
 				`[DEVICE ADOPTION] Validation errors details: ${JSON.stringify(channelValidationErrors, null, 2)}`,
@@ -386,13 +384,11 @@ export class DeviceAdoptionService {
 			this.logger.debug(
 				`[DEVICE ADOPTION] Merging properties from mapping channel ${mappingChannel.entityId} into existing device_information channel`,
 			);
-			
+
 			for (const propDef of mappingChannel.properties) {
 				// Skip if property already exists
 				if (existingPropertyCategories.has(propDef.category)) {
-					this.logger.debug(
-						`[DEVICE ADOPTION] Property ${propDef.category} already exists in channel, skipping`,
-					);
+					this.logger.debug(`[DEVICE ADOPTION] Property ${propDef.category} already exists in channel, skipping`);
 					continue;
 				}
 
@@ -401,9 +397,7 @@ export class DeviceAdoptionService {
 				const isValidPropertyCategory = propertyCategoryValues.includes(propDef.category);
 
 				if (!isValidPropertyCategory) {
-					this.logger.warn(
-						`[DEVICE ADOPTION] Property ${propDef.category} is not a valid property category, skipping`,
-					);
+					this.logger.warn(`[DEVICE ADOPTION] Property ${propDef.category} is not a valid property category, skipping`);
 					continue;
 				}
 
@@ -524,15 +518,16 @@ export class DeviceAdoptionService {
 		// Validate device_information channel (will be auto-created)
 		const deviceInfoRawSchema = channelsSchema[ChannelCategory.DEVICE_INFORMATION] as object | undefined;
 		if (!deviceInfoRawSchema || typeof deviceInfoRawSchema !== 'object') {
-			validationErrors.push(
-				`Device information channel: Missing or invalid schema specification`,
-			);
+			validationErrors.push(`Device information channel: Missing or invalid schema specification`);
 		} else {
 			const deviceInfoCategorySpec = toInstance(
 				ChannelSpecModel,
 				{
 					...deviceInfoRawSchema,
-					properties: 'properties' in deviceInfoRawSchema && deviceInfoRawSchema.properties ? Object.values(deviceInfoRawSchema.properties) : [],
+					properties:
+						'properties' in deviceInfoRawSchema && deviceInfoRawSchema.properties
+							? Object.values(deviceInfoRawSchema.properties)
+							: [],
 				},
 				{
 					excludeExtraneousValues: false,
@@ -560,7 +555,7 @@ export class DeviceAdoptionService {
 			const basePropertyCategories = new Set(
 				Object.entries(haDeviceInformationProperties)
 					.filter(([, value]) => value != null)
-					.map(([category]) => category as PropertyCategory)
+					.map(([category]) => category as PropertyCategory),
 			);
 
 			// Add properties from mapping channels
@@ -577,9 +572,7 @@ export class DeviceAdoptionService {
 
 			for (const requiredProp of requiredProperties) {
 				if (!allPropertyCategories.has(requiredProp.category)) {
-					validationErrors.push(
-						`Device information channel: Missing required property ${requiredProp.category}`,
-					);
+					validationErrors.push(`Device information channel: Missing required property ${requiredProp.category}`);
 				}
 			}
 
@@ -611,9 +604,7 @@ export class DeviceAdoptionService {
 			const rawSchema = channelsSchema[channelDef.category as keyof typeof channelsSchema] as object | undefined;
 
 			if (!rawSchema || typeof rawSchema !== 'object') {
-				validationErrors.push(
-					`Channel ${channelDef.category}: Missing or invalid schema specification`,
-				);
+				validationErrors.push(`Channel ${channelDef.category}: Missing or invalid schema specification`);
 				continue;
 			}
 
@@ -634,9 +625,7 @@ export class DeviceAdoptionService {
 
 			for (const requiredProp of requiredProperties) {
 				if (!channelPropertyCategories.has(requiredProp.category)) {
-					validationErrors.push(
-						`Channel ${channelDef.category}: Missing required property ${requiredProp.category}`,
-					);
+					validationErrors.push(`Channel ${channelDef.category}: Missing required property ${requiredProp.category}`);
 				}
 			}
 
@@ -687,20 +676,16 @@ export class DeviceAdoptionService {
 			if (channelValidationErrors.length) {
 				// Format validation errors in a user-friendly way
 				const formattedErrors = this.formatValidationErrors(channelValidationErrors);
-				validationErrors.push(
-					`Channel ${channelDef.category} (${channelDef.name}): ${formattedErrors}`,
-				);
+				validationErrors.push(`Channel ${channelDef.category} (${channelDef.name}): ${formattedErrors}`);
 			}
 		}
 
 		if (validationErrors.length > 0) {
 			this.logger.error(`[DEVICE ADOPTION] Pre-validation failed:`, validationErrors);
-			
+
 			// Format errors for user display - group by channel and make more readable
 			const formattedErrors = this.formatValidationErrorsForDisplay(validationErrors);
-			throw new DevicesHomeAssistantValidationException(
-				`Device structure validation failed:\n\n${formattedErrors}`,
-			);
+			throw new DevicesHomeAssistantValidationException(`Device structure validation failed:\n\n${formattedErrors}`);
 		}
 
 		this.logger.debug(`[DEVICE ADOPTION] Pre-validation passed - device structure is valid`);
@@ -717,11 +702,17 @@ export class DeviceAdoptionService {
 				const constraints = (error as { constraints?: Record<string, string> }).constraints;
 				if (constraints) {
 					// Extract constraint messages
-					for (const [constraintType, constraintMessage] of Object.entries(constraints)) {
+					for (const constraintMessage of Object.values(constraints)) {
 						// Try to parse JSON if it's a stringified array
 						try {
-							const parsed = JSON.parse(constraintMessage);
-							if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && 'reason' in parsed[0]) {
+							const parsed = JSON.parse(constraintMessage) as unknown;
+							if (
+								Array.isArray(parsed) &&
+								parsed.length > 0 &&
+								typeof parsed[0] === 'object' &&
+								parsed[0] !== null &&
+								'reason' in parsed[0]
+							) {
 								messages.push((parsed[0] as { reason: string }).reason);
 							} else {
 								messages.push(constraintMessage);
@@ -761,11 +752,11 @@ export class DeviceAdoptionService {
 			if (channelMatch) {
 				const channelName = channelMatch[1].trim();
 				const errorMessage = channelMatch[2].trim();
-				
+
 				if (!channelErrors.has(channelName)) {
 					channelErrors.set(channelName, []);
 				}
-				channelErrors.get(channelName)!.push(errorMessage);
+				channelErrors.get(channelName).push(errorMessage);
 			} else {
 				otherErrors.push(error);
 			}
@@ -810,9 +801,7 @@ export class DeviceAdoptionService {
 			const rawSchema = channelsSchema[channel.category as keyof typeof channelsSchema] as object | undefined;
 
 			if (!rawSchema || typeof rawSchema !== 'object') {
-				validationErrors.push(
-					`Channel ${channel.id} (${channel.category}): Missing or invalid schema specification`,
-				);
+				validationErrors.push(`Channel ${channel.id} (${channel.category}): Missing or invalid schema specification`);
 				continue;
 			}
 
