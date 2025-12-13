@@ -1,0 +1,48 @@
+{
+	"meta": {
+		"extensions": {
+			"list": {
+				"title": "Extensions"
+			}
+		}
+	},
+	"headings": {
+		"list": "Extensions"
+	},
+	"subHeadings": {
+		"list": "Manage your application modules and plugins"
+	},
+	"breadcrumbs": {
+		"extensions": {
+			"list": "Extensions"
+		}
+	},
+	"tabs": {
+		"all": "All Extensions",
+		"modules": "Modules",
+		"plugins": "Plugins"
+	},
+	"labels": {
+		"module": "Module",
+		"plugin": "Plugin",
+		"core": "Core",
+		"enabled": "Enabled",
+		"disabled": "Disabled",
+		"version": "Version",
+		"author": "Author"
+	},
+	"buttons": {
+		"documentation": "Docs",
+		"repository": "Repository",
+		"issues": "Issues"
+	},
+	"messages": {
+		"noExtensions": "No extensions found",
+		"noDescription": "No description available",
+		"extensionEnabled": "Extension has been enabled",
+		"extensionDisabled": "Extension has been disabled",
+		"updateError": "Failed to update extension",
+		"coreExtensionError": "Core extensions cannot be modified",
+		"loadError": "Failed to load extensions"
+	}
+}

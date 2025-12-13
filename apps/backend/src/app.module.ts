@@ -22,6 +22,8 @@ import { DEVICES_MODULE_PREFIX } from './modules/devices/devices.constants';
 import { DevicesModule } from './modules/devices/devices.module';
 import { DISPLAYS_MODULE_PREFIX } from './modules/displays/displays.constants';
 import { DisplaysModule } from './modules/displays/displays.module';
+import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.constants';
+import { ExtensionsModule } from './modules/extensions/extensions.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SeedModule } from './modules/seed/seeding.module';
@@ -138,6 +140,10 @@ export class AppModule {
 								module: DisplaysModule,
 							},
 							{
+								path: EXTENSIONS_MODULE_PREFIX,
+								module: ExtensionsModule,
+							},
+							{
 								path: SYSTEM_MODULE_PREFIX,
 								module: SystemModule,
 							},
@@ -201,6 +207,7 @@ export class AppModule {
 				DashboardModule,
 				DevicesModule,
 				DisplaysModule,
+				ExtensionsModule,
 				PlatformModule,
 				SeedModule,
 				StatsModule,

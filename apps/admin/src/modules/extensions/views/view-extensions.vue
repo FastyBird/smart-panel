@@ -1,0 +1,165 @@
+<template>
+	<app-breadcrumbs :items="breadcrumbs" />
+
+	<app-bar-heading
+		v-if="!isMDDevice"
+		teleport
+	>
+		<template #icon>
+			<icon
+				icon="mdi:puzzle"
+				class="w[20px] h[20px]"
+			/>
+		</template>
+
+		<template #title>
+			{{ t('extensionsModule.headings.list') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('extensionsModule.subHeadings.list') }}
+		</template>
+	</app-bar-heading>
+
+	<app-bar-button
+		v-if="!isMDDevice"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="router.push('/')"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+
+		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
+	</app-bar-button>
+
+	<view-header
+		:heading="t('extensionsModule.headings.list')"
+		:sub-heading="t('extensionsModule.subHeadings.list')"
+		icon="mdi:puzzle"
+	/>
+
+	<div class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden">
+		<el-tabs
+			v-model="activeTab"
+			class="extensions-tabs"
+		>
+			<el-tab-pane
+				:label="t('extensionsModule.tabs.all')"
+				name="all"
+			>
+				<extensions-list
+					:items="extensions"
+					:loading="areLoading"
+					@toggle-enabled="onToggleEnabled"
+				/>
+			</el-tab-pane>
+
+			<el-tab-pane
+				:label="t('extensionsModule.tabs.modules')"
+				name="modules"
+			>
+				<extensions-list
+					:items="modules"
+					:loading="areLoading"
+					@toggle-enabled="onToggleEnabled"
+				/>
+			</el-tab-pane>
+
+			<el-tab-pane
+				:label="t('extensionsModule.tabs.plugins')"
+				name="plugins"
+			>
+				<extensions-list
+					:items="plugins"
+					:loading="areLoading"
+					@toggle-enabled="onToggleEnabled"
+				/>
+			</el-tab-pane>
+		</el-tabs>
+	</div>
+</template>
+
+<script setup lang="ts">
+import { computed, onBeforeMount, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useMeta } from 'vue-meta';
+import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
+
+import { ElIcon, ElTabPane, ElTabs } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
+
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { ExtensionsList } from '../components/components';
+import { useExtensionActions, useExtensions } from '../composables/composables';
+import { RouteNames } from '../extensions.constants';
+import { ExtensionsException } from '../extensions.exceptions';
+import type { IExtension } from '../store/extensions.store.types';
+
+import type { IViewExtensionsProps } from './view-extensions.types';
+
+defineOptions({
+	name: 'ViewExtensions',
+});
+
+const props = defineProps<IViewExtensionsProps>();
+
+const router = useRouter();
+const { t } = useI18n();
+
+useMeta({
+	title: t('extensionsModule.meta.extensions.list.title'),
+});
+
+const { isMDDevice } = useBreakpoints();
+
+const { extensions, modules, plugins, areLoading, fetchExtensions } = useExtensions();
+const { toggleEnabled } = useExtensionActions();
+
+const activeTab = ref<string>('all');
+
+const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
+	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
+		return [
+			{
+				label: t('extensionsModule.breadcrumbs.extensions.list'),
+				route: router.resolve({ name: RouteNames.EXTENSIONS }),
+			},
+		];
+	}
+);
+
+const onToggleEnabled = async (type: IExtension['type'], enabled: boolean): Promise<void> => {
+	await toggleEnabled(type, enabled);
+};
+
+onBeforeMount((): void => {
+	fetchExtensions().catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new ExtensionsException('Something went wrong', err);
+	});
+});
+</script>
+
+<style scoped>
+.extensions-tabs {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.extensions-tabs :deep(.el-tabs__content) {
+	flex: 1;
+	overflow: auto;
+}
+
+.extensions-tabs :deep(.el-tab-pane) {
+	height: 100%;
+}
+</style>
