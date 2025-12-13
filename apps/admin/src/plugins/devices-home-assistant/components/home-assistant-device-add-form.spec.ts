@@ -9,46 +9,49 @@ import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants
 
 import HomeAssistantDeviceAddForm from './home-assistant-device-add-form.vue';
 
-const mockSubmit = vi.fn().mockResolvedValue(undefined);
+const mockSubmit = vi.fn().mockResolvedValue('ok' as 'ok' | 'added');
 
 vi.mock('../../../modules/devices', async () => {
 	const actual = await vi.importActual('../../../modules/devices');
 
 	return {
 		...actual,
-		useDeviceAddForm: () => ({
-			activeStep: ref('one'),
-			reachedSteps: ref(new Set(['one'])),
-			preview: ref(null),
-			suggestedCategory: ref(null),
-			isPreviewLoading: ref(false), // This comes from useMappingPreview's isLoading
-			previewError: ref(null), // This comes from useMappingPreview's error
-			isAdopting: ref(false),
-			categoriesOptions: [
-				{ value: 'generic', label: 'Generic' },
-				{ value: 'lighting', label: 'Lighting' },
-			],
-			devicesOptions: [],
-			devicesOptionsLoading: ref(false),
-			entityOverrides: ref([]),
-			model: {
-				id: 'abc123',
-				name: '',
-				category: '',
-				description: '',
-				haDeviceId: '',
-			},
-			stepThreeFormEl: ref(null),
-			formChanged: ref(false),
-			formResult: ref('none'),
-			submitStep: mockSubmit,
-		}),
 		useDevices: () => ({
 			loaded: ref(true),
 			fetchDevices: vi.fn().mockResolvedValue([]),
 		}),
 	};
 });
+
+vi.mock('../composables/useDeviceAddForm', () => ({
+	useDeviceAddForm: () => ({
+		activeStep: ref('one'),
+		reachedSteps: ref(new Set(['one'])),
+		preview: ref(null),
+		suggestedCategory: ref(null),
+		isPreviewLoading: ref(false), // This comes from useMappingPreview's isLoading
+		previewError: ref(null), // This comes from useMappingPreview's error
+		isAdopting: ref(false),
+		categoriesOptions: [
+			{ value: 'generic', label: 'Generic' },
+			{ value: 'lighting', label: 'Lighting' },
+		],
+		devicesOptions: [],
+		devicesOptionsLoading: ref(false),
+		entityOverrides: ref([]),
+		model: {
+			id: 'abc123',
+			name: '',
+			category: '',
+			description: '',
+			haDeviceId: '',
+		},
+		stepThreeFormEl: ref(null),
+		formChanged: ref(false),
+		formResult: ref('none'),
+		submitStep: mockSubmit,
+	}),
+}));
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -157,7 +160,7 @@ describe('HomeAssistantDeviceAddForm.vue', () => {
 				if (teleportTarget.parentNode) {
 					teleportTarget.parentNode.removeChild(teleportTarget);
 				}
-			} catch (e) {
+			} catch {
 				// Ignore cleanup errors
 			}
 		}
