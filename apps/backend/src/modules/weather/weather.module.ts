@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
@@ -32,7 +34,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	description: WEATHER_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), ConfigModule, SwaggerModule, InfluxDbModule],
+	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), ConfigModule, SwaggerModule, InfluxDbModule, ExtensionsModule],
 	controllers: [WeatherController, LocationsController, HistoryController],
 	providers: [
 		WeatherService,
@@ -53,6 +55,7 @@ export class WeatherModule implements OnModuleInit {
 	constructor(
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -65,5 +68,17 @@ export class WeatherModule implements OnModuleInit {
 		for (const model of WEATHER_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: WEATHER_MODULE_NAME,
+			name: 'Weather',
+			description: 'Weather forecasts and geolocation services',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }

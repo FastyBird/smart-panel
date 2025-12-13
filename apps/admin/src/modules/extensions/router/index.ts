@@ -19,4 +19,17 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			menu: 9000,
 		},
 	},
+	{
+		path: 'extensions/:type',
+		name: RouteNames.EXTENSION_DETAIL,
+		component: () => import('../views/view-extension-detail.vue'),
+		props: true,
+		meta: {
+			guards: {
+				authenticated: true,
+				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+			},
+			title: 'Extension Detail',
+		},
+	},
 ];

@@ -91,49 +91,64 @@
 				</div>
 			</div>
 
-			<div
-				v-if="hasLinks"
-				class="extension-card__links"
-			>
-				<el-button
-					v-if="extension.links?.documentation"
-					type="primary"
-					size="small"
-					link
-					@click="openLink(extension.links.documentation)"
+			<div class="extension-card__footer">
+				<div
+					v-if="hasLinks"
+					class="extension-card__links"
 				>
-					<icon
-						icon="mdi:book-open-page-variant"
-						class="mr-1"
-					/>
-					{{ t('extensionsModule.buttons.documentation') }}
-				</el-button>
-				<el-button
-					v-if="extension.links?.repository"
-					type="primary"
-					size="small"
-					link
-					@click="openLink(extension.links.repository)"
-				>
-					<icon
-						icon="mdi:github"
-						class="mr-1"
-					/>
-					{{ t('extensionsModule.buttons.repository') }}
-				</el-button>
-				<el-button
-					v-if="extension.links?.bugsTracking"
-					type="primary"
-					size="small"
-					link
-					@click="openLink(extension.links.bugsTracking)"
-				>
-					<icon
-						icon="mdi:bug"
-						class="mr-1"
-					/>
-					{{ t('extensionsModule.buttons.issues') }}
-				</el-button>
+					<el-button
+						v-if="extension.links?.documentation"
+						type="primary"
+						size="small"
+						link
+						@click="openLink(extension.links.documentation)"
+					>
+						<icon
+							icon="mdi:book-open-page-variant"
+							class="mr-1"
+						/>
+						{{ t('extensionsModule.buttons.documentation') }}
+					</el-button>
+					<el-button
+						v-if="extension.links?.repository"
+						type="primary"
+						size="small"
+						link
+						@click="openLink(extension.links.repository)"
+					>
+						<icon
+							icon="mdi:github"
+							class="mr-1"
+						/>
+						{{ t('extensionsModule.buttons.repository') }}
+					</el-button>
+					<el-button
+						v-if="extension.links?.bugsTracking"
+						type="primary"
+						size="small"
+						link
+						@click="openLink(extension.links.bugsTracking)"
+					>
+						<icon
+							icon="mdi:bug"
+							class="mr-1"
+						/>
+						{{ t('extensionsModule.buttons.issues') }}
+					</el-button>
+				</div>
+
+				<div class="extension-card__actions-bottom">
+					<el-button
+						size="small"
+						@click="onDetailClick"
+					>
+						<icon
+							icon="mdi:information-outline"
+							class="mr-1"
+						/>
+						{{ t('extensionsModule.buttons.viewDetails') }}
+					</el-button>
+				</div>
 			</div>
 		</div>
 	</el-card>
@@ -181,6 +196,10 @@ const hasLinks = computed<boolean>(() => {
 
 const onToggleEnabled = (value: boolean | string | number): void => {
 	emit('toggle-enabled', props.extension.type, value as boolean);
+};
+
+const onDetailClick = (): void => {
+	emit('detail', props.extension.type);
 };
 
 const openLink = (url: string): void => {
@@ -282,12 +301,24 @@ const openLink = (url: string): void => {
 	flex-shrink: 0;
 }
 
+.extension-card__footer {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	margin-top: 0.5rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--el-border-color-lighter);
+}
+
 .extension-card__links {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5rem;
-	margin-top: 0.5rem;
-	padding-top: 0.75rem;
-	border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.extension-card__actions-bottom {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
 }
 </style>

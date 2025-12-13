@@ -10,6 +10,8 @@ import { PageEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { PageCreateBuilderRegistryService } from '../../modules/dashboard/services/page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from '../../modules/dashboard/services/page-relations-loader-registry.service';
 import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -25,7 +27,7 @@ import { TilesPageNestedBuilderService } from './services/page-create-nested-bui
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([TilesPageEntity]), DashboardModule, ConfigModule, SwaggerModule],
+	imports: [TypeOrmModule.forFeature([TilesPageEntity]), DashboardModule, ConfigModule, ExtensionsModule, SwaggerModule],
 	providers: [PageRelationsLoaderService, TilesPageNestedBuilderService, TilesPageNestedBuilderService],
 })
 export class PagesTilesPlugin {
@@ -38,6 +40,7 @@ export class PagesTilesPlugin {
 		private readonly tilesPageNestedBuilderService: TilesPageNestedBuilderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -81,6 +84,18 @@ export class PagesTilesPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: PAGES_TILES_TYPE,
 			modelClass: UpdateTilesPageDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerPluginMetadata({
+			type: PAGES_TILES_PLUGIN_NAME,
+			name: 'Tiles Page',
+			description: 'Dashboard page type for displaying tiles with widgets',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

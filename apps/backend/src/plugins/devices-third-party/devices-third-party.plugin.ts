@@ -15,6 +15,8 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -49,7 +51,7 @@ import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platfor
 	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule, SwaggerModule],
+	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule, ExtensionsModule, SwaggerModule],
 	providers: [ThirdPartyDevicePlatform],
 	controllers: [ThirdPartyDemoController],
 })
@@ -63,6 +65,7 @@ export class DevicesThirdPartyPlugin {
 		private readonly thirdPartyDevicePlatform: ThirdPartyDevicePlatform,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -168,6 +171,18 @@ export class DevicesThirdPartyPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
 			modelClass: UpdateThirdPartyChannelPropertyDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_THIRD_PARTY_PLUGIN_NAME,
+			name: 'Third Party Devices',
+			description: 'Support for integrating third-party devices via custom protocols',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

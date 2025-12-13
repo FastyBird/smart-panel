@@ -21,6 +21,7 @@ export type FormResultType = FormResult.NONE | FormResult.WORKING | FormResult.E
 export const RouteNames = {
 	EXTENSIONS: 'extensions_module-extensions',
 	EXTENSION: 'extensions_module-extension',
+	EXTENSION_DETAIL: 'extensions_module-extension-detail',
 };
 
 export const DEFAULT_PAGE = 1;

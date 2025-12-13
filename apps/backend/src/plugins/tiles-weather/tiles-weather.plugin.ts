@@ -8,6 +8,8 @@ import { CreateTileDto } from '../../modules/dashboard/dto/create-tile.dto';
 import { UpdateTileDto } from '../../modules/dashboard/dto/update-tile.dto';
 import { TileEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -29,6 +31,7 @@ import { TILES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-weather.opena
 		TypeOrmModule.forFeature([DayWeatherTileEntity, ForecastWeatherTileEntity]),
 		DashboardModule,
 		ConfigModule,
+		ExtensionsModule,
 		SwaggerModule,
 	],
 })
@@ -38,6 +41,7 @@ export class TilesWeatherPlugin {
 		private readonly tilesMapper: TilesTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -109,6 +113,18 @@ export class TilesWeatherPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: TILES_WEATHER_FORECAST_TYPE,
 			modelClass: UpdateForecastWeatherTileDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerPluginMetadata({
+			type: TILES_WEATHER_PLUGIN_NAME,
+			name: 'Weather Tiles',
+			description: 'Dashboard tiles for displaying current weather and forecasts',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

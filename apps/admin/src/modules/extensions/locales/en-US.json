@@ -3,18 +3,24 @@
 		"extensions": {
 			"list": {
 				"title": "Extensions"
+			},
+			"detail": {
+				"title": "Extension Detail"
 			}
 		}
 	},
 	"headings": {
-		"list": "Extensions"
+		"list": "Extensions",
+		"detail": "Extension Detail"
 	},
 	"subHeadings": {
-		"list": "Manage your application modules and plugins"
+		"list": "Manage your application modules and plugins",
+		"detail": "View extension information and configuration"
 	},
 	"breadcrumbs": {
 		"extensions": {
-			"list": "Extensions"
+			"list": "Extensions",
+			"detail": "Detail"
 		}
 	},
 	"tabs": {
@@ -26,21 +32,45 @@
 		"module": "Module",
 		"plugin": "Plugin",
 		"core": "Core",
+		"addon": "Add-on",
 		"enabled": "Enabled",
 		"disabled": "Disabled",
 		"version": "Version",
-		"author": "Author"
+		"author": "Author",
+		"type": "Type",
+		"status": "Status",
+		"configuration": "Configuration"
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Search extensions..."
+		},
+		"kind": {
+			"title": "Kind"
+		},
+		"enabled": {
+			"title": "Status"
+		},
+		"type": {
+			"title": "Type"
+		}
+	},
+	"states": {
+		"all": "All"
 	},
 	"buttons": {
 		"documentation": "Docs",
 		"repository": "Repository",
 		"issues": "Issues",
-		"remove": "Remove"
+		"remove": "Remove",
+		"configure": "Configure",
+		"viewDetails": "View Details"
 	},
 	"tooltips": {
 		"coreCannotBeRemoved": "Core extensions cannot be removed",
 		"removeNotSupported": "Extension removal is not yet supported",
-		"cannotToggleEnabled": "This extension cannot be enabled/disabled"
+		"cannotToggleEnabled": "This extension cannot be enabled/disabled",
+		"openConfiguration": "Open extension configuration"
 	},
 	"messages": {
 		"noExtensions": "No extensions found",
@@ -50,6 +80,7 @@
 		"updateError": "Failed to update extension",
 		"coreExtensionError": "Core extensions cannot be modified",
 		"notConfigurableError": "This extension does not support enable/disable",
-		"loadError": "Failed to load extensions"
+		"loadError": "Failed to load extensions",
+		"noMatchingExtensions": "No extensions match your filters"
 	}
 }

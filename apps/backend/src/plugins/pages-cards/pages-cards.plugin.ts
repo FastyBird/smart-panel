@@ -9,6 +9,8 @@ import { UpdatePageDto } from '../../modules/dashboard/dto/update-page.dto';
 import { PageEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { PageCreateBuilderRegistryService } from '../../modules/dashboard/services/page-create-builder-registry.service';
 import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -43,6 +45,7 @@ import { PluginResetService } from './services/plugin-reset.service';
 		TypeOrmModule.forFeature([CardsPageEntity, CardEntity]),
 		DashboardModule,
 		ConfigModule,
+		ExtensionsModule,
 		SystemModule,
 		SwaggerModule,
 	],
@@ -60,6 +63,7 @@ export class PagesCardsPlugin {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -109,6 +113,18 @@ export class PagesCardsPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: PAGES_CARDS_TYPE,
 			modelClass: UpdateCardsPageDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerPluginMetadata({
+			type: PAGES_CARDS_PLUGIN_NAME,
+			name: 'Cards Page',
+			description: 'Dashboard page type for displaying information cards',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

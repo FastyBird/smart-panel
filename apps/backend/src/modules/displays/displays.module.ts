@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
@@ -43,6 +45,7 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		TypeOrmModule.forFeature([DisplayEntity]),
 		AuthModule,
 		ConfigModule,
+		ExtensionsModule,
 		forwardRef(() => SystemModule),
 		InfluxDbModule,
 	],
@@ -67,6 +70,7 @@ export class DisplaysModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly influxDbService: InfluxDbService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -90,5 +94,17 @@ export class DisplaysModule implements OnModuleInit {
 		for (const model of DISPLAYS_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: DISPLAYS_MODULE_NAME,
+			name: 'Displays',
+			description: 'Manage connected display panels and their registration',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }

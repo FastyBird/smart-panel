@@ -8,7 +8,7 @@
 
 		<el-empty
 			v-else-if="items.length === 0"
-			:description="t('extensionsModule.messages.noExtensions')"
+			:description="emptyMessage"
 		/>
 
 		<div
@@ -20,6 +20,7 @@
 				:key="extension.type"
 				:extension="extension"
 				@toggle-enabled="onToggleEnabled"
+				@detail="onDetail"
 			/>
 		</div>
 	</div>
@@ -43,6 +44,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<IExtensionsListProps>(), {
 	loading: false,
+	filtersActive: false,
 });
 
 const emit = defineEmits<IExtensionsListEmits>();
@@ -64,8 +66,18 @@ const sortedItems = computed<IExtension[]>(() => {
 	});
 });
 
+const emptyMessage = computed<string>(() => {
+	return props.filtersActive
+		? t('extensionsModule.messages.noMatchingExtensions')
+		: t('extensionsModule.messages.noExtensions');
+});
+
 const onToggleEnabled = (type: IExtension['type'], enabled: boolean): void => {
 	emit('toggle-enabled', type, enabled);
+};
+
+const onDetail = (type: IExtension['type']): void => {
+	emit('detail', type);
 };
 </script>
 
