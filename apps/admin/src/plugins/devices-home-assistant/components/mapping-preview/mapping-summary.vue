@@ -43,18 +43,6 @@
 					{{ skippedCount }}
 				</el-tag>
 			</dd>
-
-			<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.suggestedCategory') }}:</dt>
-			<dd class="m-0">
-				{{ t(`devicesModule.categories.devices.${preview.suggestedDevice.category}`) }}
-				<el-tag
-					:type="preview.suggestedDevice.confidence === 'high' ? 'success' : preview.suggestedDevice.confidence === 'medium' ? 'warning' : 'danger'"
-					size="small"
-					class="ml-2"
-				>
-					{{ preview.suggestedDevice.confidence }}
-				</el-tag>
-			</dd>
 		</dl>
 	</el-card>
 </template>

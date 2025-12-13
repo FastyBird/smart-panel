@@ -132,6 +132,7 @@
       "partial": "Partial",
       "unmapped": "Unmapped",
       "skipped": "Skipped",
+      "excluded": "Excluded",
       "suggestedCategory": "Suggested category",
       "suggestedChannel": "Suggested channel",
       "properties": "Properties",

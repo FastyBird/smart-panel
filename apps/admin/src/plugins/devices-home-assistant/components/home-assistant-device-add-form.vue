@@ -95,11 +95,12 @@
 				</el-icon>
 			</template>
 
-			<device-configuration-step
-				ref="deviceConfigurationStepRef"
-				:model="model"
-				:preview="preview"
-			/>
+				<device-configuration-step
+					ref="deviceConfigurationStepRef"
+					:model="model"
+					:preview="preview"
+					:entity-overrides="entityOverrides"
+				/>
 		</el-collapse-item>
 	</el-collapse>
 
