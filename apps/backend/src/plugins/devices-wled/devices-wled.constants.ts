@@ -196,12 +196,12 @@ export const DEVICE_INFO_BINDINGS: WledPropertyBinding[] = [
 		permissions: [PermissionType.READ_ONLY],
 		name: 'Hardware Revision',
 	},
-	// Non-spec properties (generic category)
+	// Non-spec WLED-specific properties (using closest matching categories)
 	{
 		wledProperty: 'info.mac',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
 		propertyIdentifier: WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.MAC_ADDRESS,
-		category: PropertyCategory.GENERIC,
+		category: PropertyCategory.LINK_QUALITY, // Network identifier, no perfect match
 		dataType: DataTypeType.STRING,
 		permissions: [PermissionType.READ_ONLY],
 		name: 'MAC Address',
@@ -210,7 +210,7 @@ export const DEVICE_INFO_BINDINGS: WledPropertyBinding[] = [
 		wledProperty: 'info.leds.count',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
 		propertyIdentifier: WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.LED_COUNT,
-		category: PropertyCategory.GENERIC,
+		category: PropertyCategory.LEVEL, // Numeric count value
 		dataType: DataTypeType.UINT,
 		permissions: [PermissionType.READ_ONLY],
 		name: 'LED Count',
@@ -219,7 +219,7 @@ export const DEVICE_INFO_BINDINGS: WledPropertyBinding[] = [
 		wledProperty: 'info.ip',
 		channelIdentifier: WLED_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
 		propertyIdentifier: WLED_DEVICE_INFO_PROPERTY_IDENTIFIERS.IP_ADDRESS,
-		category: PropertyCategory.GENERIC,
+		category: PropertyCategory.SOURCE, // Network source/address
 		dataType: DataTypeType.STRING,
 		permissions: [PermissionType.READ_ONLY],
 		name: 'IP Address',
@@ -581,7 +581,7 @@ export const createSegmentBindings = (segmentId: number): WledPropertyBinding[] 
 			wledProperty: `state.seg[${segmentId}].start`,
 			channelIdentifier,
 			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.START,
-			category: PropertyCategory.GENERIC,
+			category: PropertyCategory.POSITION, // Segment start position
 			dataType: DataTypeType.UINT,
 			permissions: [PermissionType.READ_ONLY],
 			name: 'Start LED',
@@ -590,7 +590,7 @@ export const createSegmentBindings = (segmentId: number): WledPropertyBinding[] 
 			wledProperty: `state.seg[${segmentId}].stop`,
 			channelIdentifier,
 			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.STOP,
-			category: PropertyCategory.GENERIC,
+			category: PropertyCategory.POSITION, // Segment stop position
 			dataType: DataTypeType.UINT,
 			permissions: [PermissionType.READ_ONLY],
 			name: 'Stop LED',
@@ -599,7 +599,7 @@ export const createSegmentBindings = (segmentId: number): WledPropertyBinding[] 
 			wledProperty: `state.seg[${segmentId}].rev`,
 			channelIdentifier,
 			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.REVERSE,
-			category: PropertyCategory.GENERIC,
+			category: PropertyCategory.MODE, // Segment mode setting
 			dataType: DataTypeType.BOOL,
 			permissions: [PermissionType.READ_WRITE],
 			name: 'Reverse',
@@ -608,7 +608,7 @@ export const createSegmentBindings = (segmentId: number): WledPropertyBinding[] 
 			wledProperty: `state.seg[${segmentId}].mi`,
 			channelIdentifier,
 			propertyIdentifier: WLED_SEGMENT_PROPERTY_IDENTIFIERS.MIRROR,
-			category: PropertyCategory.GENERIC,
+			category: PropertyCategory.MODE, // Segment mode setting
 			dataType: DataTypeType.BOOL,
 			permissions: [PermissionType.READ_WRITE],
 			name: 'Mirror',
@@ -654,13 +654,13 @@ export const WLED_DEVICE_DESCRIPTOR: WledDeviceDescriptor = {
 		{
 			identifier: WLED_CHANNEL_IDENTIFIERS.NIGHTLIGHT,
 			name: 'Nightlight',
-			category: ChannelCategory.GENERIC,
+			category: ChannelCategory.LIGHT,
 			bindings: NIGHTLIGHT_BINDINGS,
 		},
 		{
 			identifier: WLED_CHANNEL_IDENTIFIERS.SYNC,
 			name: 'Sync',
-			category: ChannelCategory.GENERIC,
+			category: ChannelCategory.SWITCHER,
 			bindings: SYNC_BINDINGS,
 		},
 	],
