@@ -50,7 +50,8 @@ export const useMappingPreview = (): IUseMappingPreview => {
 				}
 			);
 
-			if (typeof responseData !== 'undefined' && responseData.data) {
+			// Validate response status is in 2xx range before accepting data
+			if (response.status >= 200 && response.status < 300 && typeof responseData !== 'undefined' && responseData.data) {
 				const transformed = transformMappingPreviewResponse(responseData.data);
 
 				preview.value = transformed;
