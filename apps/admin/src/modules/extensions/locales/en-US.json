@@ -34,7 +34,13 @@
 	"buttons": {
 		"documentation": "Docs",
 		"repository": "Repository",
-		"issues": "Issues"
+		"issues": "Issues",
+		"remove": "Remove"
+	},
+	"tooltips": {
+		"coreCannotBeRemoved": "Core extensions cannot be removed",
+		"removeNotSupported": "Extension removal is not yet supported",
+		"cannotToggleEnabled": "This extension cannot be enabled/disabled"
 	},
 	"messages": {
 		"noExtensions": "No extensions found",
@@ -43,6 +49,7 @@
 		"extensionDisabled": "Extension has been disabled",
 		"updateError": "Failed to update extension",
 		"coreExtensionError": "Core extensions cannot be modified",
+		"notConfigurableError": "This extension does not support enable/disable",
 		"loadError": "Failed to load extensions"
 	}
 }

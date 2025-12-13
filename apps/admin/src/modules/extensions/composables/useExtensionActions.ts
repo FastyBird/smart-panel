@@ -34,7 +34,7 @@ export const useExtensionActions = (): IUseExtensionActions => {
 		} catch (error: unknown) {
 			if (error instanceof ExtensionsApiException) {
 				if (error.code === 400) {
-					flashMessage.error(t('extensionsModule.messages.coreExtensionError'));
+					flashMessage.error(t('extensionsModule.messages.notConfigurableError'));
 				} else {
 					flashMessage.error(t('extensionsModule.messages.updateError'));
 				}

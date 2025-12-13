@@ -30,13 +30,27 @@
 						</el-tag>
 					</div>
 				</div>
-				<el-switch
-					:model-value="extension.enabled"
-					:disabled="!extension.canToggleEnabled"
-					:active-text="t('extensionsModule.labels.enabled')"
-					:inactive-text="t('extensionsModule.labels.disabled')"
-					@change="onToggleEnabled"
-				/>
+				<div class="extension-card__actions">
+					<el-switch
+						:model-value="extension.enabled"
+						:disabled="!extension.canToggleEnabled"
+						:active-text="t('extensionsModule.labels.enabled')"
+						:inactive-text="t('extensionsModule.labels.disabled')"
+						@change="onToggleEnabled"
+					/>
+					<el-tooltip
+						:content="extension.isCore ? t('extensionsModule.tooltips.coreCannotBeRemoved') : t('extensionsModule.tooltips.removeNotSupported')"
+						placement="top"
+					>
+						<el-button
+							type="danger"
+							size="small"
+							:icon="DeleteIcon"
+							circle
+							disabled
+						/>
+					</el-tooltip>
+				</div>
 			</div>
 		</template>
 
@@ -126,10 +140,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, h } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElSwitch, ElTag } from 'element-plus';
+import { ElButton, ElCard, ElSwitch, ElTag, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -137,6 +151,8 @@ import { ExtensionKind } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
 
 import type { IExtensionCardEmits, IExtensionCardProps } from './extension-card.types';
+
+const DeleteIcon = h(Icon, { icon: 'mdi:delete' });
 
 defineOptions({
 	name: 'ExtensionCard',
@@ -257,6 +273,13 @@ const openLink = (url: string): void => {
 
 .extension-card__meta-icon {
 	font-size: 1rem;
+}
+
+.extension-card__actions {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-shrink: 0;
 }
 
 .extension-card__links {
