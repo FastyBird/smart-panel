@@ -210,7 +210,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, unref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -278,9 +278,18 @@ const {
 	id: props.id,
 });
 
-const stepOneFormEl = computed(() => deviceSelectionStepRef.value?.stepOneFormEl);
-const stepTwoFormEl = computed(() => categorySelectionStepRef.value?.stepTwoFormEl);
-const stepFiveFormEl = computed(() => deviceConfigurationStepRef.value?.stepFourFormEl);
+const stepOneFormEl = computed(() => {
+	const exposed = deviceSelectionStepRef.value?.stepOneFormEl;
+	return exposed ? unref(exposed) : undefined;
+});
+const stepTwoFormEl = computed(() => {
+	const exposed = categorySelectionStepRef.value?.stepTwoFormEl;
+	return exposed ? unref(exposed) : undefined;
+});
+const stepFiveFormEl = computed(() => {
+	const exposed = deviceConfigurationStepRef.value?.stepFourFormEl;
+	return exposed ? unref(exposed) : undefined;
+});
 
 // Controlled active step that validates before allowing changes
 const controlledActiveStep = computed({
