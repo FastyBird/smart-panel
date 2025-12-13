@@ -1,9 +1,10 @@
 import { ref } from 'vue';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
+import { SUBMIT_FORM_SM } from '../../../common';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
 import HomeAssistantDeviceAddForm from './home-assistant-device-add-form.vue';
@@ -20,8 +21,8 @@ vi.mock('../../../modules/devices', async () => {
 			reachedSteps: ref(new Set(['one'])),
 			preview: ref(null),
 			suggestedCategory: ref(null),
-			isPreviewLoading: ref(false),
-			previewError: ref(null),
+			isPreviewLoading: ref(false), // This comes from useMappingPreview's isLoading
+			previewError: ref(null), // This comes from useMappingPreview's error
 			isAdopting: ref(false),
 			categoriesOptions: [
 				{ value: 'generic', label: 'Generic' },
@@ -65,9 +66,10 @@ vi.mock('../composables/useDiscoveredDevicesOptions', () => ({
 vi.mock('../composables/useMappingPreview', () => ({
 	useMappingPreview: () => ({
 		preview: ref(null),
-		isPreviewLoading: ref(false),
-		previewError: ref(null),
+		isLoading: ref(false),
+		error: ref(null),
 		fetchPreview: vi.fn().mockResolvedValue({ data: { data: null } }),
+		clearPreview: vi.fn(),
 	}),
 }));
 
@@ -120,14 +122,47 @@ vi.mock('../../../common/services/plugins', () => ({
 
 describe('HomeAssistantDeviceAddForm.vue', () => {
 	let wrapper: ReturnType<typeof mount>;
+	let teleportTarget: HTMLDivElement;
 
 	beforeEach(() => {
+		// Create teleport target element
+		teleportTarget = document.createElement('div');
+		teleportTarget.id = SUBMIT_FORM_SM;
+		document.body.appendChild(teleportTarget);
+
 		wrapper = mount(HomeAssistantDeviceAddForm, {
 			props: {
 				id: 'abc123',
 				type: DEVICES_HOME_ASSISTANT_TYPE,
 			},
+			global: {
+				stubs: {
+					'device-selection-step': true,
+					'category-selection-step': true,
+					'mapping-preview-step': true,
+					'mapping-customization-step': true,
+					'device-configuration-step': true,
+				},
+			},
 		});
+	});
+
+	afterEach(async () => {
+		if (wrapper) {
+			await wrapper.unmount();
+		}
+		// Clean up teleport target
+		if (teleportTarget) {
+			try {
+				if (teleportTarget.parentNode) {
+					teleportTarget.parentNode.removeChild(teleportTarget);
+				}
+			} catch (e) {
+				// Ignore cleanup errors
+			}
+		}
+		// Wait for any pending async operations
+		await new Promise((resolve) => setTimeout(resolve, 0));
 	});
 
 	it('renders collapse component', () => {

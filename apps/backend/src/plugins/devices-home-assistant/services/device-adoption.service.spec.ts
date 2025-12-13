@@ -92,7 +92,9 @@ describe('DeviceAdoptionService', () => {
 		useContainer(module, { fallbackOnErrors: true });
 
 		// Mock validate function to bypass validation in tests
-		jest.spyOn(require('class-validator'), 'validate').mockResolvedValue([]);
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+		const classValidator = require('class-validator');
+		jest.spyOn(classValidator, 'validate').mockResolvedValue([]);
 
 		service = module.get(DeviceAdoptionService);
 		homeAssistantWsService = module.get(HomeAssistantWsService);
