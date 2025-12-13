@@ -272,7 +272,6 @@ const {
 	devicesOptionsLoading,
 	entityOverrides,
 	model,
-	stepThreeFormEl,
 	formChanged,
 	submitStep,
 	formResult,
