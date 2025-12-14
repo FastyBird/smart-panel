@@ -57,26 +57,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 				throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
 			}
 
-			// CRITICAL: Validate response status is in 2xx range BEFORE processing any data
-			// openapi-fetch can return responseData even for non-2xx responses (fetch API treats all HTTP responses as successful)
-			// This check prevents processing error responses that might have a data field (e.g., from proxies or malformed APIs)
-			// Must check status first, before any responseData processing
-			const status = response?.status;
-			if (!response || typeof status !== 'number' || status < 200 || status >= 300) {
-				let errorReason: string | null = 'Failed to fetch mapping preview.';
-
-				if (apiError) {
-					// OpenAPI operation type will be generated when OpenAPI spec is updated
-					errorReason = getErrorReason(apiError as never, errorReason);
-				}
-
-				throw new DevicesHomeAssistantApiException(errorReason, status);
-			}
-
-			// Only process data if status is confirmed 2xx (defensive check: verify status again before processing)
-			// This ensures we never process data from non-2xx responses, even if responseData exists
-			// Status has already been validated above, but this provides an additional safety check
-			if (status >= 200 && status < 300 && typeof responseData !== 'undefined' && responseData.data) {
+			if (typeof responseData !== 'undefined' && responseData.data) {
 				// Double-check sequence guard before updating state
 				if (requestId !== currentRequestId) {
 					throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
@@ -90,15 +71,14 @@ export const useMappingPreview = (): IUseMappingPreview => {
 				return transformed;
 			}
 
-			// Status is 2xx but no data - this shouldn't happen but handle gracefully
-			let errorReason: string | null = 'Failed to fetch mapping preview: Invalid response format.';
+			let errorReason: string | null = 'Failed to fetch mapping preview.';
 
 			if (apiError) {
 				// OpenAPI operation type will be generated when OpenAPI spec is updated
 				errorReason = getErrorReason(apiError as never, errorReason);
 			}
 
-			throw new DevicesHomeAssistantApiException(errorReason, response.status);
+			throw new DevicesHomeAssistantApiException(errorReason, response?.status);
 		} catch (err: unknown) {
 			// Only update loading state if this is still the current request
 			if (requestId === currentRequestId) {
