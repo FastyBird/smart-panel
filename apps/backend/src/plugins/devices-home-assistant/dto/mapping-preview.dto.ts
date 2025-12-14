@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -212,6 +212,24 @@ export class AdoptDeviceRequestDto {
 	@Expose()
 	@IsEnum(DeviceCategory)
 	category: DeviceCategory;
+
+	@ApiPropertyOptional({
+		description: 'Device description',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
+	@IsString({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
+	@ValidateIf((_, value) => value !== null)
+	description?: string | null;
+
+	@ApiPropertyOptional({ description: 'Whether device is enabled', type: 'boolean', example: true })
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
+	enabled?: boolean;
 
 	@ApiProperty({
 		description: 'Channel definitions',

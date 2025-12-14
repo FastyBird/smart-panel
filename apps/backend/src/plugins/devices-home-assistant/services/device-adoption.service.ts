@@ -77,6 +77,8 @@ export class DeviceAdoptionService {
 			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: request.category,
 			name: request.name,
+			description: request.description ?? null,
+			enabled: request.enabled ?? true,
 			ha_device_id: request.haDeviceId,
 		});
 

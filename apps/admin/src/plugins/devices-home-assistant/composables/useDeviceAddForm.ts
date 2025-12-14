@@ -368,6 +368,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					haDeviceId: model.haDeviceId,
 					name: model.name,
 					category: model.category,
+					description: model.description ?? null,
+					enabled: model.enabled,
 					channels,
 				};
 

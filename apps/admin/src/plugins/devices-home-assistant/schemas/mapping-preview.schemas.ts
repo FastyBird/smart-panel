@@ -111,5 +111,12 @@ export const AdoptDeviceRequestSchema = z.object({
 	haDeviceId: z.string(),
 	name: z.string(),
 	category: z.nativeEnum(DevicesModuleDeviceCategory),
+	description: z
+		.string()
+		.trim()
+		.transform((val) => (val === '' ? null : val))
+		.nullable()
+		.optional(),
+	enabled: z.boolean().default(true).optional(),
 	channels: z.array(AdoptChannelDefinitionSchema),
 });
