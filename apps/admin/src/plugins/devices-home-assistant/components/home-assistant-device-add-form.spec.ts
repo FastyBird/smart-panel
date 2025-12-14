@@ -50,6 +50,7 @@ vi.mock('../composables/useDeviceAddForm', () => ({
 		formChanged: ref(false),
 		formResult: ref('none'),
 		submitStep: mockSubmit,
+		clearPreview: vi.fn(),
 	}),
 }));
 
