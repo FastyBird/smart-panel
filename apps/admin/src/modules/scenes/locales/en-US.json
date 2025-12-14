@@ -1,0 +1,50 @@
+{
+	"scenes": {
+		"headings": {
+			"list": "Scenes",
+			"add": "Add Scene",
+			"edit": "Edit Scene",
+			"delete": "Delete Scene"
+		},
+		"subHeadings": {
+			"list": "Manage automation scenes for your smart home"
+		},
+		"breadcrumbs": {
+			"scenes": "Scenes"
+		},
+		"fields": {
+			"name": "Name",
+			"category": "Category",
+			"enabled": "Enabled",
+			"actions": "Actions"
+		},
+		"buttons": {
+			"add": {
+				"title": "Add Scene"
+			},
+			"delete": "Delete",
+			"cancel": "Cancel"
+		},
+		"messages": {
+			"triggered": "Scene \"{name}\" triggered successfully",
+			"triggerFailed": "Failed to trigger scene",
+			"confirmDelete": "Are you sure you want to delete scene \"{name}\"?",
+			"deleted": "Scene deleted successfully",
+			"addFormPlaceholder": "Scene add form will be implemented here",
+			"editFormPlaceholder": "Scene edit form will be implemented here"
+		},
+		"categories": {
+			"generic": "Generic",
+			"lighting": "Lighting",
+			"climate": "Climate",
+			"security": "Security",
+			"entertainment": "Entertainment",
+			"morning": "Morning",
+			"evening": "Evening",
+			"away": "Away",
+			"home": "Home",
+			"sleep": "Sleep",
+			"custom": "Custom"
+		}
+	}
+}
