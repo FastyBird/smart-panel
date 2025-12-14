@@ -650,6 +650,8 @@ export class DeviceAdoptionService {
 			}
 
 			// Validate channel DTO structure
+			// Note: We skip device validation during pre-validation since the device doesn't exist yet
+			// The device will be validated when the channel is actually created
 			const properties = channelDef.properties.map((propDef) => ({
 				type: DEVICES_HOME_ASSISTANT_TYPE,
 				category: propDef.category,
@@ -665,7 +667,9 @@ export class DeviceAdoptionService {
 			}));
 
 			// Use a temporary device ID for validation (won't be used to create)
-			const tempDeviceId = '00000000-0000-0000-0000-000000000000';
+			// We skip device validation during pre-validation since the device doesn't exist yet
+			// Use a valid version 4 UUID format to pass UUID validation
+			const tempDeviceId = '123e4567-e89b-12d3-a456-426614174000';
 			const createChannelDto = toInstance(CreateHomeAssistantChannelDto, {
 				device: tempDeviceId,
 				type: DEVICES_HOME_ASSISTANT_TYPE,
@@ -674,10 +678,45 @@ export class DeviceAdoptionService {
 				properties,
 			});
 
-			const channelValidationErrors = await validate(createChannelDto, { skipMissingProperties: true });
-			if (channelValidationErrors.length) {
+			// Validate the channel DTO but skip the device field validation
+			// The device field will be validated when the channel is actually created
+			const channelValidationErrors = await validate(createChannelDto, {
+				skipMissingProperties: true,
+				skipUndefinedProperties: true,
+			});
+
+			// Filter out device existence validation errors since we're pre-validating before device creation
+			// We still want to catch UUID format errors for the device field
+			const filteredErrors = channelValidationErrors.filter((error) => {
+				if (typeof error === 'object' && error !== null && 'property' in error) {
+					const property = (error as { property?: string }).property;
+					// Skip device field validation errors during pre-validation, but only if it's about device existence
+					// Keep UUID format errors as those are still relevant
+					if (property === 'device') {
+						// Check if this is a device existence error (not a UUID format error)
+						const constraints = (error as { constraints?: Record<string, string> }).constraints;
+						if (constraints) {
+							// Check if any constraint message mentions "does not exist" or "does not exist"
+							// The error message might be combined with other messages
+							const hasExistenceError = Object.values(constraints).some((msg) => {
+								const msgStr = typeof msg === 'string' ? msg : String(msg);
+								return msgStr.includes('does not exist') || msgStr.includes('The specified device');
+							});
+							if (hasExistenceError) {
+								// Skip device existence errors during pre-validation
+								// If there are other errors (like UUID format), we'll keep those
+								// But typically if existence fails, we skip the whole error for this property
+								return false;
+							}
+						}
+					}
+				}
+				return true;
+			});
+
+			if (filteredErrors.length) {
 				// Format validation errors in a user-friendly way
-				const formattedErrors = this.formatValidationErrors(channelValidationErrors);
+				const formattedErrors = this.formatValidationErrors(filteredErrors);
 				validationErrors.push(`Channel ${channelDef.category} (${channelDef.name}): ${formattedErrors}`);
 			}
 		}

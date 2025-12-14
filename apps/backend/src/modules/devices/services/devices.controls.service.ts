@@ -113,11 +113,15 @@ export class DevicesControlsService {
 			where: { id, device: { id: deviceId } },
 		});
 
+		// Capture control entity before removal to preserve ID for event emission
+		const controlForEvent = { ...control };
+
 		await manager.remove(control);
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for deviceId=${deviceId}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_CONTROL_DELETED, control);
+		// Emit event with the control entity captured before removal to preserve ID
+		this.eventEmitter.emit(EventType.DEVICE_CONTROL_DELETED, controlForEvent);
 	}
 
 	async getOneOrThrow(id: string, deviceId: string): Promise<DeviceControlEntity> {

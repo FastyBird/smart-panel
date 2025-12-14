@@ -305,6 +305,9 @@ export class ChannelsService {
 		if (typeof manager !== 'undefined') {
 			const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
 
+			// Capture channel ID and data before removal to preserve for event emission
+			const channelForEvent = { ...channel };
+
 			const properties = await manager.find<ChannelPropertyEntity>(ChannelPropertyEntity, {
 				where: { channel: { id } },
 			});
@@ -323,8 +326,12 @@ export class ChannelsService {
 
 			this.logger.log(`[DELETE] Successfully removed channel with id=${id}`);
 
-			this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
+			// Emit event with the channel entity captured before removal to preserve ID
+			this.eventEmitter.emit(EventType.CHANNEL_DELETED, channelForEvent);
 		} else {
+			// Get the full channel entity before removal to preserve ID for event emission
+			const fullChannel = await this.getOneOrThrow(id);
+
 			await this.dataSource.transaction(async (manager) => {
 				const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
 
@@ -346,7 +353,8 @@ export class ChannelsService {
 
 				this.logger.log(`[DELETE] Successfully removed channel with id=${id}`);
 
-				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
+				// Emit event with the full channel entity captured before removal to preserve ID
+				this.eventEmitter.emit(EventType.CHANNEL_DELETED, fullChannel);
 			});
 		}
 	}

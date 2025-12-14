@@ -113,11 +113,15 @@ export class ChannelsControlsService {
 			where: { id, channel: { id: channelId } },
 		});
 
+		// Capture control entity before removal to preserve ID for event emission
+		const controlForEvent = { ...control };
+
 		await manager.remove(control);
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for channelId=${channelId}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_DELETED, control);
+		// Emit event with the control entity captured before removal to preserve ID
+		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_DELETED, controlForEvent);
 	}
 
 	async getOneOrThrow(id: string, channelId: string): Promise<ChannelControlEntity> {

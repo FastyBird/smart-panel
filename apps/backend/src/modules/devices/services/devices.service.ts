@@ -249,6 +249,9 @@ export class DevicesService {
 	async remove(id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Removing device with id=${id}`);
 
+		// Get the full device entity before removal to preserve ID for event emission
+		const fullDevice = await this.getOneOrThrow(id);
+
 		await this.dataSource.transaction(async (manager) => {
 			const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
 
@@ -268,7 +271,8 @@ export class DevicesService {
 
 			this.logger.log(`[DELETE] Successfully removed device with id=${id}`);
 
-			this.eventEmitter.emit(EventType.DEVICE_DELETED, device);
+			// Emit event with the full device entity captured before removal to preserve ID
+			this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
 		});
 	}
 
