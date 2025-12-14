@@ -233,7 +233,8 @@ const plugin = computed<IPlugin<IChannelPluginsComponents, IChannelPluginsSchema
 });
 
 const element = computed<IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
-	return (plugin.value?.elements ?? []).find((element) => element.type === props.device?.type);
+	const type = props.device?.type ?? selectedType.value;
+	return (plugin.value?.elements ?? []).find((element) => element.type === type);
 });
 
 const isDeviceDetailRoute = computed<boolean>(
