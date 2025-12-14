@@ -341,6 +341,20 @@ const controlledActiveStep = computed({
 				reachedSteps.value.delete(step);
 			});
 			
+			// Clear step-dependent state when going back to earlier steps
+			// This prevents stale mapping data from being used after changing earlier choices
+			if (validNewStep === 'one' || validNewStep === 'two') {
+				// Going back to device/category selection: clear preview and entityOverrides
+				// These depend on device/category, so they must be regenerated
+				clearPreview();
+				entityOverrides.value = [];
+			} else if (validNewStep === 'three') {
+				// Going back to preview step: clear entityOverrides
+				// Preview should still be valid, but overrides should be reset
+				entityOverrides.value = [];
+			}
+			// Going back to step 4: keep entityOverrides (they're still valid for current preview)
+			
 			// Allow the change (going backwards doesn't require validation)
 			activeStep.value = validNewStep;
 			return;
@@ -437,6 +451,20 @@ const onPreviousStep = (): void => {
 				reachedSteps.value.delete(step);
 			});
 		}
+		
+		// Clear step-dependent state when going back to earlier steps
+		// This prevents stale mapping data from being used after changing earlier choices
+		if (previousStep === 'one' || previousStep === 'two') {
+			// Going back to device/category selection: clear preview and entityOverrides
+			// These depend on device/category, so they must be regenerated
+			clearPreview();
+			entityOverrides.value = [];
+		} else if (previousStep === 'three') {
+			// Going back to preview step: clear entityOverrides
+			// Preview should still be valid, but overrides should be reset
+			entityOverrides.value = [];
+		}
+		// Going back to step 4: keep entityOverrides (they're still valid for current preview)
 		
 		// Move to previous step
 		activeStep.value = previousStep;
