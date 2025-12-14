@@ -315,6 +315,14 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			const errorMessage = t('devicesHomeAssistantPlugin.messages.devices.notCreated', { device: model.name });
 
 			try {
+				// Defensive check: Re-verify readyToAdopt before building adoption request
+				// This prevents race conditions or stale preview data from allowing adoption
+				if (!preview.value || preview.value.readyToAdopt !== true) {
+					throw new DevicesHomeAssistantValidationException(
+						t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
+					);
+				}
+
 				// Build adoption request from preview and model
 
 				// Build channels from preview entities
