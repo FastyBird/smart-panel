@@ -200,8 +200,20 @@ const getCategoryValidationRules = (entityId: string) => {
 	return formRules.value[propName] || [];
 };
 
+// Reset method to properly clear form state and ensure checkboxes are reset
+const resetForm = (): void => {
+	// Clear all form model keys (handle both cases: preview exists or was cleared)
+	const keysToDelete = Object.keys(formModel).filter((key) => key.startsWith('category_'));
+	for (const key of keysToDelete) {
+		delete formModel[key];
+	}
+	// Reset form fields (clears validation state and resets to initial values)
+	stepThreeFormEl.value?.resetFields();
+};
+
 defineExpose({
 	stepThreeFormEl,
+	resetForm,
 });
 
 const channelCategories = computed(() => {

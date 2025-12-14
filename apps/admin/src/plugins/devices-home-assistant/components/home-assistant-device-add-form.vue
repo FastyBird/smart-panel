@@ -403,7 +403,7 @@ watch(
 
 watch(
 	(): boolean => props.remoteFormReset,
-	(val: boolean): void => {
+	async (val: boolean): Promise<void> => {
 		emit('update:remote-form-reset', false);
 
 		if (val) {
@@ -429,13 +429,15 @@ watch(
 				(c) => c !== DevicesModuleDeviceCategory.generic
 			) || DevicesModuleDeviceCategory.sensor;
 			
+			// Wait for prop changes to propagate to child components
+			await nextTick();
+			
 			// Reset form fields (this clears validation state and resets to initial values)
-			// Note: For step 4, resetFields() will reset to values computed from entityOverrides
-			// which is now empty, so the form will show the default state
 			stepOneFormEl.value?.resetFields();
 			stepTwoFormEl.value?.resetFields();
 			// Step 3 (mapping preview) has no form - it's just a display component
-			stepFourFormEl.value?.resetFields();
+			// Step 4: Use the exposed resetForm method to properly reset form and checkbox state
+			mappingCustomizationStepRef.value?.resetForm?.();
 			stepFiveFormEl.value?.resetFields();
 		}
 	}
