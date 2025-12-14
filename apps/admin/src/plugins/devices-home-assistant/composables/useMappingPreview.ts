@@ -51,7 +51,20 @@ export const useMappingPreview = (): IUseMappingPreview => {
 			);
 
 			// Validate response status is in 2xx range before accepting data
-			if (response.status >= 200 && response.status < 300 && typeof responseData !== 'undefined' && responseData.data) {
+			// Check status first to reject non-2xx responses immediately, even if they contain a body
+			if (response.status < 200 || response.status >= 300) {
+				let errorReason: string | null = 'Failed to fetch mapping preview.';
+
+				if (apiError) {
+					// OpenAPI operation type will be generated when OpenAPI spec is updated
+					errorReason = getErrorReason(apiError as never, errorReason);
+				}
+
+				throw new DevicesHomeAssistantApiException(errorReason, response.status);
+			}
+
+			// Only process data if status is 2xx
+			if (typeof responseData !== 'undefined' && responseData.data) {
 				const transformed = transformMappingPreviewResponse(responseData.data);
 
 				preview.value = transformed;
@@ -60,7 +73,8 @@ export const useMappingPreview = (): IUseMappingPreview => {
 				return transformed;
 			}
 
-			let errorReason: string | null = 'Failed to fetch mapping preview.';
+			// Status is 2xx but no data - this shouldn't happen but handle gracefully
+			let errorReason: string | null = 'Failed to fetch mapping preview: Invalid response format.';
 
 			if (apiError) {
 				// OpenAPI operation type will be generated when OpenAPI spec is updated
