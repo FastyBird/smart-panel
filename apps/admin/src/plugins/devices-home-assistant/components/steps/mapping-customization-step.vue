@@ -18,6 +18,7 @@
 
 		<el-form
 			ref="stepThreeFormEl"
+			:model="formModel"
 			label-position="top"
 		>
 			<div
@@ -67,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElCheckbox, ElForm, ElFormItem, ElIcon, ElOption, ElSelect, ElTag, type FormInstance } from 'element-plus';
@@ -91,6 +92,11 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+// Form model required for resetFields() to work properly
+// The form fields are controlled via :model-value bindings, but Element Plus
+// requires a :model prop on el-form for resetFields() to function
+const formModel = reactive<Record<string, unknown>>({});
 
 const stepThreeFormEl = ref<FormInstance | undefined>(undefined);
 
