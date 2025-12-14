@@ -40,7 +40,7 @@
 			<div class="grid grid-cols-2 gap-2 text-sm">
 				<div
 					v-for="property in entity.suggestedProperties"
-					:key="property.category"
+					:key="`${property.category}-${property.haAttribute}`"
 					class="flex items-center gap-2"
 				>
 					<span class="text-gray-600">{{ property.name }}:</span>
