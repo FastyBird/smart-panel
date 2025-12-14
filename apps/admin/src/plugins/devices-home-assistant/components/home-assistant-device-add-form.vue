@@ -303,11 +303,26 @@ const stepFiveFormEl = computed(() => {
 // Controlled active step that validates before allowing changes
 const controlledActiveStep = computed({
 	get: () => activeStep.value,
-	set: async (newStep: 'one' | 'two' | 'three' | 'four' | 'five') => {
+	set: async (newStep: 'one' | 'two' | 'three' | 'four' | 'five' | string | null | undefined) => {
 		const currentStep = activeStep.value;
 		
+		// Handle empty/invalid values from ElCollapse in accordion mode when panel is collapsed
+		// This prevents the wizard from breaking when collapse emits empty string or null
+		const validSteps = ['one', 'two', 'three', 'four', 'five'] as const;
+		const isValidStep = newStep && validSteps.includes(newStep as typeof validSteps[number]);
+		if (!isValidStep) {
+			// Revert to current step - don't allow collapse to empty state
+			// Use nextTick to ensure Element Plus processes the revert after its internal update
+			await nextTick();
+			activeStep.value = currentStep;
+			return;
+		}
+		
+		// TypeScript now knows newStep is a valid step
+		const validNewStep = newStep as 'one' | 'two' | 'three' | 'four' | 'five';
+		
 		// Prevent opening steps that haven't been reached
-		if (!reachedSteps.value.has(newStep)) {
+		if (!reachedSteps.value.has(validNewStep)) {
 			// Revert to current step - don't allow the change
 			// Use nextTick to ensure Element Plus processes the revert after its internal update
 			await nextTick();
@@ -317,9 +332,9 @@ const controlledActiveStep = computed({
 
 		const stepOrder: ('one' | 'two' | 'three' | 'four' | 'five')[] = ['one', 'two', 'three', 'four', 'five'];
 		const currentIndex = stepOrder.indexOf(currentStep);
-		const newIndex = stepOrder.indexOf(newStep);
+		const newIndex = stepOrder.indexOf(validNewStep);
 
-		// If going backwards, remove all steps after newStep (including currentStep and any intermediate steps)
+		// If going backwards, remove all steps after validNewStep (including currentStep and any intermediate steps)
 		if (newIndex < currentIndex) {
 			// Remove all steps from newIndex + 1 onwards (all steps after the target step)
 			stepOrder.slice(newIndex + 1).forEach((step) => {
@@ -327,7 +342,7 @@ const controlledActiveStep = computed({
 			});
 			
 			// Allow the change (going backwards doesn't require validation)
-			activeStep.value = newStep;
+			activeStep.value = validNewStep;
 			return;
 		}
 
@@ -361,7 +376,7 @@ const controlledActiveStep = computed({
 				}
 			} else {
 				// Step 3 or other steps don't require validation, allow navigation
-				activeStep.value = newStep;
+				activeStep.value = validNewStep;
 				return;
 			}
 		}
@@ -372,7 +387,7 @@ const controlledActiveStep = computed({
 		}
 
 		// Allow the change (shouldn't reach here, but kept as fallback)
-		activeStep.value = newStep;
+		activeStep.value = validNewStep;
 	},
 });
 
