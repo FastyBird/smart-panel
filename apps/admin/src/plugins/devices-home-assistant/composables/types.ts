@@ -134,5 +134,6 @@ export interface IUseDeviceAddForm<TForm extends IDeviceAddForm = IDeviceAddForm
 	formChanged: Ref<boolean>;
 	submitStep: (step: 'one' | 'two' | 'three' | 'four' | 'five', formEl?: FormInstance) => Promise<'ok' | 'added'>;
 	clear: () => void;
+	clearPreview: () => void;
 	formResult: Ref<FormResultType>;
 }

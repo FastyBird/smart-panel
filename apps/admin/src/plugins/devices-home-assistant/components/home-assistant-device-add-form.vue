@@ -223,6 +223,7 @@ import {
 import { Icon } from '@iconify/vue';
 
 import { SUBMIT_FORM_SM } from '../../../common';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { FormResult, type FormResultType, useDevices } from '../../../modules/devices';
 import { useDeviceAddForm } from '../composables/useDeviceAddForm';
 import CategorySelectionStep from './steps/category-selection-step.vue';
@@ -274,6 +275,7 @@ const {
 	model,
 	formChanged,
 	submitStep,
+	clearPreview,
 	formResult,
 } = useDeviceAddForm({
 	id: props.id,
@@ -405,10 +407,27 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
-			// Clear entity overrides FIRST since they control the form state in step 4
-			// The form fields in mapping-customization-step are controlled by entityOverrides
-			// via :model-value bindings, so clearing this will update the form display
+			// Reset wizard state FIRST - this ensures UI is in correct state
+			activeStep.value = 'one';
+			reachedSteps.value = new Set(['one']);
+			
+			// Clear preview and related state
+			clearPreview();
+			suggestedCategory.value = null;
+			
+			// Clear entity overrides (controls form state in step 4)
 			entityOverrides.value = [];
+			
+			// Reset model to initial values
+			// Keep id and type as they are props/constants
+			model.name = '';
+			model.description = '';
+			model.enabled = true;
+			model.haDeviceId = '';
+			// Reset category to default (first non-generic category or sensor)
+			model.category = Object.values(DevicesModuleDeviceCategory).find(
+				(c) => c !== DevicesModuleDeviceCategory.generic
+			) || DevicesModuleDeviceCategory.sensor;
 			
 			// Reset form fields (this clears validation state and resets to initial values)
 			// Note: For step 4, resetFields() will reset to values computed from entityOverrides

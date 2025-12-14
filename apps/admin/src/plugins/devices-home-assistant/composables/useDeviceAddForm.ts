@@ -472,6 +472,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		formChanged,
 		submitStep,
 		clear,
+		clearPreview,
 		formResult,
 	};
 };
