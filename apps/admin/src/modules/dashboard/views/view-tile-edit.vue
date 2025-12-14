@@ -194,11 +194,11 @@ const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
 const plugin = computed<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.elements.find((element) => element.type === tile.value?.type));
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === tile.value?.type));
 });
 
 const element = computed<IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === tile.value?.type);
+	return (plugin.value?.elements ?? []).find((element) => element.type === tile.value?.type);
 });
 
 const formSchema = computed<typeof TileEditFormSchema>((): typeof TileEditFormSchema => {

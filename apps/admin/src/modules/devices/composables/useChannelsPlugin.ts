@@ -22,7 +22,7 @@ export const useChannelsPlugin = ({ type }: IUsePluginProps): IUseChannelsPlugin
 
 	const element = computed<IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(
 		(): IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined => {
-			return plugin.value?.elements.find(
+			return (plugin.value?.elements ?? []).find(
 				(element) => element.type === type && (typeof element.modules === 'undefined' || element.modules.includes(DEVICES_MODULE_NAME))
 			);
 		}

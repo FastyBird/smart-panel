@@ -206,7 +206,7 @@ const plugin = computed<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | u
 });
 
 const element = computed<IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === tile.value?.type);
+	return (plugin.value?.elements ?? []).find((element) => element.type === tile.value?.type);
 });
 
 const formSchema = computed<typeof TileEditFormSchema>((): typeof TileEditFormSchema => {

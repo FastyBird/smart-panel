@@ -199,11 +199,11 @@ const isDetailRoute = computed<boolean>(
 );
 
 const plugin = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.elements.find((element) => element.type === device.value?.type));
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === device.value?.type));
 });
 
 const element = computed<IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === device.value?.type);
+	return (plugin.value?.elements ?? []).find((element) => element.type === device.value?.type);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
