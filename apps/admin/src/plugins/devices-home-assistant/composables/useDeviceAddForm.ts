@@ -5,7 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { deepClone, getSchemaDefaults, router, useFlashMessage, useLogger } from '../../../common';
-import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { FormResult, type FormResultType, type IDevice, RouteNames as DevicesRouteNames } from '../../../modules/devices';
 import { DevicesApiException } from '../../../modules/devices/devices.exceptions';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
@@ -250,7 +250,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 				// Build channels from preview entities
 				// Use overrides if available, otherwise use suggested channel
-				// Filter out: skipped entities, channels with no properties
+				// Filter out: skipped entities, channels with no properties, channels with generic category
 				const channels = preview.value.entities
 					.filter((entity) => {
 						// Skip if explicitly skipped
@@ -264,6 +264,12 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 						}
 						// Must have a suggested channel or an override with category
 						if (!entity.suggestedChannel && !override?.channelCategory) {
+							return false;
+						}
+						// Calculate what the final channel category would be
+						const finalChannelCategory = override?.channelCategory || entity.suggestedChannel?.category;
+						// Filter out entities whose final category is generic (not supported)
+						if (finalChannelCategory === DevicesModuleChannelCategory.generic) {
 							return false;
 						}
 						// Must have at least one property
