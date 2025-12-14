@@ -229,22 +229,24 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				throw new DevicesHomeAssistantValidationException('Failed to validate create device model.');
 			}
 
+			// Check preview and readiness BEFORE starting adoption process
+			if (!preview.value) {
+				throw new DevicesHomeAssistantValidationException('Mapping preview is required for device adoption.');
+			}
+
+			// Check if device is ready to adopt - enforce this check before proceeding
+			if (!preview.value.readyToAdopt) {
+				throw new DevicesHomeAssistantValidationException(
+					t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
+				);
+			}
+
 			formResult.value = FormResult.WORKING;
 
 			const errorMessage = t('devicesHomeAssistantPlugin.messages.devices.notCreated', { device: model.name });
 
 			try {
 				// Build adoption request from preview and model
-				if (!preview.value) {
-					throw new DevicesHomeAssistantValidationException('Mapping preview is required for device adoption.');
-				}
-
-				// Check if device is ready to adopt
-				if (!preview.value.readyToAdopt) {
-					throw new DevicesHomeAssistantValidationException(
-						t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
-					);
-				}
 
 				// Build channels from preview entities
 				// Use overrides if available, otherwise use suggested channel
