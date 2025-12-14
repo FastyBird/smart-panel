@@ -59,7 +59,8 @@ export const useMappingPreview = (): IUseMappingPreview => {
 
 			// Validate response status is in 2xx range before accepting data
 			// Check status first to reject non-2xx responses immediately, even if they contain a body
-			if (response.status < 200 || response.status >= 300) {
+			// This prevents processing error responses that might have a data field (e.g., from proxies or malformed APIs)
+			if (!response || response.status < 200 || response.status >= 300) {
 				let errorReason: string | null = 'Failed to fetch mapping preview.';
 
 				if (apiError) {
@@ -67,11 +68,12 @@ export const useMappingPreview = (): IUseMappingPreview => {
 					errorReason = getErrorReason(apiError as never, errorReason);
 				}
 
-				throw new DevicesHomeAssistantApiException(errorReason, response.status);
+				throw new DevicesHomeAssistantApiException(errorReason, response?.status);
 			}
 
-			// Only process data if status is 2xx
-			if (typeof responseData !== 'undefined' && responseData.data) {
+			// Only process data if status is 2xx (defensive check: verify status again before processing)
+			// This ensures we never process data from non-2xx responses, even if responseData exists
+			if (response.status >= 200 && response.status < 300 && typeof responseData !== 'undefined' && responseData.data) {
 				// Double-check sequence guard before updating state
 				if (requestId !== currentRequestId) {
 					throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
