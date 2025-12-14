@@ -159,9 +159,17 @@ watch(
 	() => [props.entityOverrides, props.preview],
 	() => {
 		if (props.preview) {
+			// Update form model with current category values
 			for (const entity of props.preview.entities) {
 				const category = getEntityChannelCategory(entity.entityId);
 				formModel[`category_${sanitizeEntityIdForForm(entity.entityId)}`] = category;
+			}
+		} else {
+			// When preview is cleared, clear all form model keys
+			// This ensures the form model is clean when preview is null
+			const keysToDelete = Object.keys(formModel).filter((key) => key.startsWith('category_'));
+			for (const key of keysToDelete) {
+				delete formModel[key];
 			}
 		}
 	},
