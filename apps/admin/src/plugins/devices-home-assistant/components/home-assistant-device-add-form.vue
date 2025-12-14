@@ -175,6 +175,8 @@
 				{{ t('devicesHomeAssistantPlugin.buttons.previous') }}
 			</el-button>
 			<el-button
+				:loading="formResult === FormResult.WORKING || isPreviewLoading"
+				:disabled="formResult !== FormResult.NONE || isPreviewLoading"
 				type="primary"
 				@click="onProcessStep"
 			>
@@ -194,7 +196,7 @@
 			</el-button>
 			<el-button
 				:loading="formResult === FormResult.WORKING || isAdopting"
-				:disabled="formResult !== FormResult.NONE && formResult !== FormResult.WORKING || !preview?.readyToAdopt"
+				:disabled="formResult !== FormResult.NONE || !preview?.readyToAdopt"
 				type="primary"
 				@click="onProcessStep"
 			>
