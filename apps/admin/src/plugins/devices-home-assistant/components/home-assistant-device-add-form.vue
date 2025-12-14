@@ -334,6 +334,8 @@ const onProcessStep = async (): Promise<void> => {
 		await submitStep(activeStep.value, stepOneFormEl.value);
 	} else if (activeStep.value === 'two') {
 		await submitStep(activeStep.value, stepTwoFormEl.value);
+	} else if (activeStep.value === 'four') {
+		await submitStep(activeStep.value, stepFourFormEl.value);
 	} else if (activeStep.value === 'five') {
 		await submitStep(activeStep.value, stepFiveFormEl.value);
 	} else {
