@@ -194,7 +194,7 @@
 			</el-button>
 			<el-button
 				:loading="formResult === FormResult.WORKING || isAdopting"
-				:disabled="formResult !== FormResult.NONE && formResult !== FormResult.WORKING"
+				:disabled="formResult !== FormResult.NONE && formResult !== FormResult.WORKING || !preview?.readyToAdopt"
 				type="primary"
 				@click="onProcessStep"
 			>

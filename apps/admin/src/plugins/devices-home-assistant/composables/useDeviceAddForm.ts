@@ -271,6 +271,19 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 			return 'ok';
 		} else if (step === 'five') {
+			// Check preview and readiness FIRST - before any form validation
+			// This prevents wasting time on validation if the device isn't ready to adopt
+			if (!preview.value) {
+				throw new DevicesHomeAssistantValidationException('Mapping preview is required for device adoption.');
+			}
+
+			// Enforce readyToAdopt check - this is critical to prevent adoption of incomplete mappings
+			if (!preview.value.readyToAdopt) {
+				throw new DevicesHomeAssistantValidationException(
+					t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
+				);
+			}
+
 			const form = formEl || stepFiveFormEl.value;
 			if (!form) {
 				throw new DevicesHomeAssistantValidationException('Form reference not available');
@@ -290,18 +303,6 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				logger.error('Schema validation failed with:', parsedModel.error);
 
 				throw new DevicesHomeAssistantValidationException('Failed to validate create device model.');
-			}
-
-			// Check preview and readiness BEFORE starting adoption process
-			if (!preview.value) {
-				throw new DevicesHomeAssistantValidationException('Mapping preview is required for device adoption.');
-			}
-
-			// Check if device is ready to adopt - enforce this check before proceeding
-			if (!preview.value.readyToAdopt) {
-				throw new DevicesHomeAssistantValidationException(
-					t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
-				);
 			}
 
 			formResult.value = FormResult.WORKING;
