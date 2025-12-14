@@ -14,11 +14,18 @@ I want to see an animated emoji face that expresses different emotions based on 
 
 ## 2. Context
 
+- **Prerequisite**: Complete FEATURE-AI-ASSISTANT-PANEL-FACE-MVP first (standalone demo)
 - Inspired by ESP32 EchoEar and XiaoZhi AI emotion display
 - Use Flutter CustomPaint for smooth vector-based animations
 - Follow existing widget patterns in `lib/core/widgets/`
 - Look at `flip_clock.dart` for animation controller patterns
 - Face should work on various screen sizes (responsive)
+
+### Child Tasks
+
+| Task ID | Description | Size |
+|---------|-------------|------|
+| FEATURE-AI-ASSISTANT-PANEL-FACE-MVP | Standalone face demo without backend | small |
 
 ### Emotion States
 

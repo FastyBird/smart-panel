@@ -128,14 +128,33 @@ And TTS generates speech via local Piper
 
 ## 9. Child Tasks
 
-| Task ID | Description | Size |
-|---------|-------------|------|
-| FEATURE-AI-ASSISTANT-BACKEND | Backend assistant module and service infrastructure | medium |
-| FEATURE-AI-ASSISTANT-PANEL-FACE | Flutter emoji face widget with animations | medium |
-| FEATURE-AI-ASSISTANT-PANEL-VOICE | Flutter voice recording and playback | medium |
-| FEATURE-AI-ASSISTANT-ADMIN | Admin configuration UI for assistant settings | small |
-| FEATURE-AI-ASSISTANT-LLM-PROVIDERS | LLM provider implementations (Ollama, OpenAI, etc.) | medium |
-| FEATURE-AI-ASSISTANT-VOICE-PROVIDERS | STT and TTS provider implementations | medium |
+| Task ID | Description | Size | Priority |
+|---------|-------------|------|----------|
+| **FEATURE-AI-ASSISTANT-PANEL-FACE-MVP** | **Standalone face demo (no backend)** | **small** | **1 - Start here** |
+| FEATURE-AI-ASSISTANT-BACKEND | Backend assistant module and service infrastructure | medium | 2 |
+| FEATURE-AI-ASSISTANT-PANEL-FACE | Flutter emoji face widget with animations | medium | 3 |
+| FEATURE-AI-ASSISTANT-PANEL-VOICE | Flutter voice recording and playback | medium | 4 |
+| FEATURE-AI-ASSISTANT-ADMIN | Admin configuration UI for assistant settings | small | 5 |
+| FEATURE-AI-ASSISTANT-LLM-PROVIDERS | LLM provider implementations (Ollama, OpenAI, etc.) | medium | 6 |
+| FEATURE-AI-ASSISTANT-VOICE-PROVIDERS | STT and TTS provider implementations | medium | 7 |
+
+### Recommended Implementation Order
+
+```
+1. FEATURE-AI-ASSISTANT-PANEL-FACE-MVP  ← Start here (visual foundation)
+   │
+2. FEATURE-AI-ASSISTANT-BACKEND         ← Core infrastructure
+   │
+   ├─► 3. FEATURE-AI-ASSISTANT-PANEL-FACE    (integrate face with backend)
+   │
+   ├─► 4. FEATURE-AI-ASSISTANT-LLM-PROVIDERS (add LLM capabilities)
+   │
+   └─► 5. FEATURE-AI-ASSISTANT-ADMIN         (configuration UI)
+       │
+6. FEATURE-AI-ASSISTANT-VOICE-PROVIDERS      (STT/TTS)
+   │
+7. FEATURE-AI-ASSISTANT-PANEL-VOICE          (voice I/O on panel)
+```
 
 ## 10. Architecture Diagram
 
