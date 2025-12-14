@@ -96,6 +96,52 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+// Helper functions - defined before watch/computed that use them
+const isEntityEnabled = (entityId: string): boolean => {
+	const entity = props.preview?.entities.find((e) => e.entityId === entityId);
+	const override = props.entityOverrides?.find((o) => o.entityId === entityId);
+	
+	// If there's an explicit skip override, entity is disabled
+	if (override?.skip === true) {
+		return false;
+	}
+	
+	// If there's an override with a channel category (and no skip), entity is enabled
+	if (override?.channelCategory) {
+		return true;
+	}
+	
+	// If there's an override without category (user checked but hasn't selected category yet), entity is enabled
+	// This allows the checkbox to stay checked and show the category selector
+	if (override && !override.skip && !override.channelCategory) {
+		return true;
+	}
+
+	// By default, entities with a valid suggested channel category are enabled
+	// (excluding generic which is not supported)
+	const suggestedCategory = entity?.suggestedChannel?.category;
+	if (suggestedCategory) {
+		return suggestedCategory !== DevicesModuleChannelCategory.generic;
+	}
+	
+	// Entities without a suggested category are disabled by default
+	return false;
+};
+
+const getEntityChannelCategory = (entityId: string): DevicesModuleChannelCategory | undefined => {
+	const override = props.entityOverrides?.find((o) => o.entityId === entityId);
+	if (override?.channelCategory) {
+		return override.channelCategory;
+	}
+	// Return suggested category if no override and it's a valid category
+	const entity = props.preview?.entities.find((e) => e.entityId === entityId);
+	const suggestedCategory = entity?.suggestedChannel?.category;
+	if (suggestedCategory && suggestedCategory !== DevicesModuleChannelCategory.generic) {
+		return suggestedCategory;
+	}
+	return undefined;
+};
+
 // Form model required for resetFields() to work properly
 // The form fields are controlled via :model-value bindings, but Element Plus
 // requires a :model prop on el-form for resetFields() to function
@@ -163,51 +209,6 @@ const channelCategories = computed(() => {
 			label: t(`devicesModule.categories.channels.${value}`),
 		}));
 });
-
-const isEntityEnabled = (entityId: string): boolean => {
-	const entity = props.preview?.entities.find((e) => e.entityId === entityId);
-	const override = props.entityOverrides?.find((o) => o.entityId === entityId);
-	
-	// If there's an explicit skip override, entity is disabled
-	if (override?.skip === true) {
-		return false;
-	}
-	
-	// If there's an override with a channel category (and no skip), entity is enabled
-	if (override?.channelCategory) {
-		return true;
-	}
-	
-	// If there's an override without category (user checked but hasn't selected category yet), entity is enabled
-	// This allows the checkbox to stay checked and show the category selector
-	if (override && !override.skip && !override.channelCategory) {
-		return true;
-	}
-
-	// By default, entities with a valid suggested channel category are enabled
-	// (excluding generic which is not supported)
-	const suggestedCategory = entity?.suggestedChannel?.category;
-	if (suggestedCategory) {
-		return suggestedCategory !== DevicesModuleChannelCategory.generic;
-	}
-	
-	// Entities without a suggested category are disabled by default
-	return false;
-};
-
-const getEntityChannelCategory = (entityId: string): DevicesModuleChannelCategory | undefined => {
-	const override = props.entityOverrides?.find((o) => o.entityId === entityId);
-	if (override?.channelCategory) {
-		return override.channelCategory;
-	}
-	// Return suggested category if no override and it's a valid category
-	const entity = props.preview?.entities.find((e) => e.entityId === entityId);
-	const suggestedCategory = entity?.suggestedChannel?.category;
-	if (suggestedCategory && suggestedCategory !== DevicesModuleChannelCategory.generic) {
-		return suggestedCategory;
-	}
-	return undefined;
-};
 
 const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 	const currentOverrides = [...(props.entityOverrides || [])];
