@@ -19,6 +19,7 @@
 		<el-form
 			ref="stepThreeFormEl"
 			:model="formModel"
+			:rules="formRules"
 			label-position="top"
 		>
 			<div
@@ -47,7 +48,9 @@
 				<el-form-item
 					v-if="isEntityEnabled(entity.entityId) || hasOverrideWithoutCategory(entity.entityId)"
 					:label="t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel')"
+					:prop="`category_${entity.entityId}`"
 					:required="!getEntityChannelCategory(entity.entityId)"
+					:rules="getCategoryValidationRules(entity.entityId)"
 				>
 					<el-select
 						:model-value="getEntityChannelCategory(entity.entityId)"
@@ -68,10 +71,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElCheckbox, ElForm, ElFormItem, ElIcon, ElOption, ElSelect, ElTag, type FormInstance } from 'element-plus';
+import { ElAlert, ElCheckbox, ElForm, ElFormItem, ElIcon, ElOption, ElSelect, ElTag, type FormInstance, type FormRules } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
@@ -96,9 +99,54 @@ const { t } = useI18n();
 // Form model required for resetFields() to work properly
 // The form fields are controlled via :model-value bindings, but Element Plus
 // requires a :model prop on el-form for resetFields() to function
+// We also track category values here for validation
 const formModel = reactive<Record<string, unknown>>({});
 
+// Update form model when entity overrides or preview changes
+watch(
+	() => [props.entityOverrides, props.preview],
+	() => {
+		if (props.preview) {
+			for (const entity of props.preview.entities) {
+				const category = getEntityChannelCategory(entity.entityId);
+				formModel[`category_${entity.entityId}`] = category;
+			}
+		}
+	},
+	{ immediate: true, deep: true }
+);
+
 const stepThreeFormEl = ref<FormInstance | undefined>(undefined);
+
+// Form validation rules
+const formRules = computed<FormRules>(() => {
+	const rules: FormRules = {};
+	
+	if (props.preview) {
+		for (const entity of props.preview.entities) {
+			const entityId = entity.entityId;
+			const propName = `category_${entityId}`;
+			
+			// Only add validation rule if entity is enabled and missing a category
+			if (isEntityEnabled(entityId) && !getEntityChannelCategory(entityId)) {
+				rules[propName] = [
+					{
+						required: true,
+						message: t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel.validation.required'),
+						trigger: 'change',
+					},
+				];
+			}
+		}
+	}
+	
+	return rules;
+});
+
+const getCategoryValidationRules = (entityId: string) => {
+	const propName = `category_${entityId}`;
+	return formRules.value[propName] || [];
+};
 
 defineExpose({
 	stepThreeFormEl,
@@ -175,23 +223,32 @@ const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 			if (override.channelCategory) {
 				// Keep existing custom category, just remove skip
 				currentOverrides[existingIndex] = { entityId, channelCategory: override.channelCategory };
+				// Update form model
+				formModel[`category_${entityId}`] = override.channelCategory;
 			} else if (isValidSuggestedCategory) {
 				// Entity is back to default state with valid suggested category, remove override
 				currentOverrides.splice(existingIndex, 1);
+				// Update form model with suggested category
+				formModel[`category_${entityId}`] = suggestedCategory;
 			} else {
 				// No valid category yet - add override without category to allow user to select one
 				// This will show the category selector
 				currentOverrides[existingIndex] = { entityId };
+				// Clear form model to trigger validation
+				formModel[`category_${entityId}`] = undefined;
 			}
 		} else {
 			// No existing override
 			if (isValidSuggestedCategory) {
 				// Entity has valid suggested category, it's already enabled by default
-				// No override needed
+				// No override needed, but update form model
+				formModel[`category_${entityId}`] = suggestedCategory;
 			} else {
 				// Entity needs a category - add override without category (user must select)
 				// This allows the checkbox to be checked, and category selector will be shown
 				currentOverrides.push({ entityId });
+				// Clear form model to trigger validation
+				formModel[`category_${entityId}`] = undefined;
 			}
 		}
 	} else {
@@ -202,6 +259,8 @@ const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 		} else {
 			currentOverrides.push({ entityId, skip: true });
 		}
+		// Clear form model for disabled entities
+		delete formModel[`category_${entityId}`];
 	}
 
 	emit('update-overrides', currentOverrides);
@@ -221,6 +280,9 @@ const updateEntityChannelCategory = (entityId: string, category: DevicesModuleCh
 	} else {
 		currentOverrides.push({ entityId, channelCategory: category });
 	}
+
+	// Update form model for validation
+	formModel[`category_${entityId}`] = category;
 
 	emit('update-overrides', currentOverrides);
 };

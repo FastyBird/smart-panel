@@ -134,7 +134,12 @@
       "skipped": "Skipped",
       "excluded": "Excluded",
       "suggestedCategory": "Suggested category",
-      "suggestedChannel": "Suggested channel",
+      "suggestedChannel": {
+        "title": "Suggested channel",
+        "validation": {
+          "required": "Please select a channel category for this entity"
+        }
+      },
       "properties": "Properties",
       "unmappedAttributes": "Unmapped attributes",
       "missingRequiredProperties": "Missing required properties"
@@ -193,7 +198,8 @@
       "notReadyToAdopt": "Device has missing required mappings",
       "noPreview": "No mapping preview available",
       "selectDeviceFirst": "Please select a device in step 1 to generate a mapping preview",
-      "invalidSuggestedCategory": "The suggested category is not supported. Please select a valid category."
+      "invalidSuggestedCategory": "The suggested category is not supported. Please select a valid category.",
+      "missingChannelCategory": "The following entities are enabled but missing a channel category: {entities}. Please select a channel category for each enabled entity before proceeding."
     },
     "categorySelection": {
       "description": "Based on the device's entities, a category has been suggested. Please review and select the correct category for this device. The mapping preview will be updated based on your selection."
