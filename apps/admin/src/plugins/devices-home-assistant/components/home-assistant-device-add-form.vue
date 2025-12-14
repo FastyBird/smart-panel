@@ -315,14 +315,12 @@ const controlledActiveStep = computed({
 		const currentIndex = stepOrder.indexOf(currentStep);
 		const newIndex = stepOrder.indexOf(newStep);
 
-		// If going backwards, remove current step and all following steps from reachedSteps
+		// If going backwards, remove all steps after newStep (including currentStep and any intermediate steps)
 		if (newIndex < currentIndex) {
-			reachedSteps.value.delete(currentStep);
-			if (currentIndex < stepOrder.length - 1) {
-				stepOrder.slice(currentIndex + 1).forEach((step) => {
-					reachedSteps.value.delete(step);
-				});
-			}
+			// Remove all steps from newIndex + 1 onwards (all steps after the target step)
+			stepOrder.slice(newIndex + 1).forEach((step) => {
+				reachedSteps.value.delete(step);
+			});
 		}
 
 		// Allow the change
