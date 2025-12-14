@@ -201,6 +201,10 @@ const getCategoryValidationRules = (entityId: string) => {
 };
 
 // Reset method to properly clear form state and ensure checkboxes are reset
+// This method is called by the parent component's reset handler to ensure
+// all form state (including checkbox states controlled by entityOverrides prop)
+// is properly cleared. The parent component clears entityOverrides before
+// calling this method, which will reset the checkbox states.
 const resetForm = (): void => {
 	// Clear all form model keys (handle both cases: preview exists or was cleared)
 	const keysToDelete = Object.keys(formModel).filter((key) => key.startsWith('category_'));
@@ -211,6 +215,10 @@ const resetForm = (): void => {
 	stepThreeFormEl.value?.resetFields();
 };
 
+// Expose both the form instance (for validation) and the resetForm method
+// The form instance is exposed so it can be accessed via stepFourFormEl in the parent component
+// However, resetForm() should be used for proper reset as it handles both form fields
+// and ensures the form model is cleared (checkbox states are reset via entityOverrides prop)
 defineExpose({
 	stepThreeFormEl,
 	resetForm,

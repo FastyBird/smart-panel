@@ -439,7 +439,13 @@ watch(
 			stepTwoFormEl.value?.resetFields();
 			// Step 3 (mapping preview) has no form - it's just a display component
 			// Step 4: Use the exposed resetForm method to properly reset form and checkbox state
-			mappingCustomizationStepRef.value?.resetForm?.();
+			// Note: We use resetForm() instead of stepFourFormEl.value?.resetFields() because
+			// resetForm() properly clears the form model and ensures all state is reset.
+			// The checkbox states are controlled by entityOverrides prop (cleared above),
+			// but resetForm() ensures the form model and validation state are also cleared.
+			if (mappingCustomizationStepRef.value?.resetForm) {
+				mappingCustomizationStepRef.value.resetForm();
+			}
 			stepFiveFormEl.value?.resetFields();
 		}
 	}
