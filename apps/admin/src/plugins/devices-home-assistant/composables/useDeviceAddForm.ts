@@ -185,91 +185,95 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 			form.clearValidate();
 
-			// Validate that all enabled entities have a channelCategory selected
-			// This prevents sending invalid entityOverrides like { entityId } without a category
-			if (preview.value) {
-				const invalidEntities: string[] = [];
-				
-				for (const entity of preview.value.entities) {
-					const override = entityOverrides.value?.find((o) => o.entityId === entity.entityId);
+			formResult.value = FormResult.WORKING;
+
+			try {
+				// Validate that all enabled entities have a channelCategory selected
+				// This prevents sending invalid entityOverrides like { entityId } without a category
+				if (preview.value) {
+					const invalidEntities: string[] = [];
 					
-					// Skip validation for explicitly skipped entities
-					if (override?.skip === true) {
-						continue;
+					for (const entity of preview.value.entities) {
+						const override = entityOverrides.value?.find((o) => o.entityId === entity.entityId);
+						
+						// Skip validation for explicitly skipped entities
+						if (override?.skip === true) {
+							continue;
+						}
+						
+						// Check if entity has a valid channelCategory
+						// Entity has a category if:
+						// 1. Override has channelCategory, OR
+						// 2. No override but entity has valid suggested category (not generic)
+						const hasOverrideCategory = override?.channelCategory !== undefined;
+						const suggestedCategory = entity.suggestedChannel?.category;
+						const hasValidSuggestedCategory = suggestedCategory !== undefined && 
+							suggestedCategory !== DevicesModuleChannelCategory.generic;
+						
+						// Entity is enabled but missing a category
+						// This happens when override exists without skip and without channelCategory
+						// AND entity doesn't have a valid suggested category to fall back to
+						// This creates invalid overrides like { entityId } which can cause adoption to fail
+						const isEnabledWithoutCategory = (override && !override.skip && !hasOverrideCategory && !hasValidSuggestedCategory);
+						
+						if (isEnabledWithoutCategory) {
+							invalidEntities.push(entity.entityId);
+						}
 					}
 					
-					// Check if entity has a valid channelCategory
-					// Entity has a category if:
-					// 1. Override has channelCategory, OR
-					// 2. No override but entity has valid suggested category (not generic)
-					const hasOverrideCategory = override?.channelCategory !== undefined;
-					const suggestedCategory = entity.suggestedChannel?.category;
-					const hasValidSuggestedCategory = suggestedCategory !== undefined && 
-						suggestedCategory !== DevicesModuleChannelCategory.generic;
-					
-					// Entity is enabled but missing a category
-					// This happens when override exists without skip and without channelCategory
-					// AND entity doesn't have a valid suggested category to fall back to
-					// This creates invalid overrides like { entityId } which can cause adoption to fail
-					const isEnabledWithoutCategory = (override && !override.skip && !hasOverrideCategory && !hasValidSuggestedCategory);
-					
-					if (isEnabledWithoutCategory) {
-						invalidEntities.push(entity.entityId);
+					if (invalidEntities.length > 0) {
+						// Trigger validation errors on the form fields
+						await form.validate().catch(() => {
+							// Validation will fail, which is expected
+						});
+						
+						// Show error message
+						const entityList = invalidEntities.slice(0, 3).join(', ');
+						const moreCount = invalidEntities.length > 3 ? ` (+${invalidEntities.length - 3} more)` : '';
+						throw new DevicesHomeAssistantValidationException(
+							t('devicesHomeAssistantPlugin.messages.mapping.missingChannelCategory', {
+								entities: entityList + moreCount,
+							})
+						);
 					}
 				}
-				
-				if (invalidEntities.length > 0) {
-					// Trigger validation errors on the form fields
-					await form.validate().catch(() => {
-						// Validation will fail, which is expected
-					});
-					
-					// Show error message
-					const entityList = invalidEntities.slice(0, 3).join(', ');
-					const moreCount = invalidEntities.length > 3 ? ` (+${invalidEntities.length - 3} more)` : '';
-					throw new DevicesHomeAssistantValidationException(
-						t('devicesHomeAssistantPlugin.messages.mapping.missingChannelCategory', {
-							entities: entityList + moreCount,
-						})
-					);
+
+				const valid = await form.validate();
+
+				if (!valid) {
+					throw new DevicesHomeAssistantValidationException('Form not valid');
 				}
-			}
 
-			const valid = await form.validate();
-
-			if (!valid) {
-				throw new DevicesHomeAssistantValidationException('Form not valid');
-			}
-
-			// If user made changes, update preview before proceeding
-			if (entityOverrides.value && entityOverrides.value.length > 0) {
-				formResult.value = FormResult.WORKING;
-
-				try {
+				// If user made changes, update preview before proceeding
+				if (entityOverrides.value && entityOverrides.value.length > 0) {
 					const overrides: IMappingPreviewRequest = {
 						entityOverrides: entityOverrides.value,
 						deviceCategory: model.category,
 					};
 
 					await fetchPreview(model.haDeviceId, overrides);
-
-					formResult.value = FormResult.NONE;
-				} catch (error: unknown) {
-					formResult.value = FormResult.ERROR;
-
-					timer = window.setTimeout(clear, 2000);
-
-					flashMessage.error(t('devicesHomeAssistantPlugin.messages.mapping.previewError'));
-
-					throw error;
 				}
+
+				// Proceed to next step
+				activeStep.value = 'five';
+				reachedSteps.value.add('five');
+
+				formResult.value = FormResult.NONE;
+
+				return 'ok';
+			} catch (error: unknown) {
+				formResult.value = FormResult.ERROR;
+
+				timer = window.setTimeout(clear, 2000);
+
+				if (error instanceof DevicesHomeAssistantValidationException) {
+					flashMessage.error(error.message);
+				} else {
+					flashMessage.error(t('devicesHomeAssistantPlugin.messages.mapping.previewError'));
+				}
+
+				throw error;
 			}
-
-			// Proceed to next step
-			activeStep.value = 'five';
-			reachedSteps.value.add('five');
-
-			return 'ok';
 		} else if (step === 'five') {
 			// Check preview and readiness FIRST - before any form validation
 			// This prevents wasting time on validation if the device isn't ready to adopt
