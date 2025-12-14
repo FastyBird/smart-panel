@@ -278,7 +278,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			}
 
 			// Enforce readyToAdopt check - this is critical to prevent adoption of incomplete mappings
-			if (!preview.value.readyToAdopt) {
+			// Use explicit strict equality check to ensure we only proceed when readyToAdopt is explicitly true
+			if (preview.value.readyToAdopt !== true) {
 				throw new DevicesHomeAssistantValidationException(
 					t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt')
 				);
