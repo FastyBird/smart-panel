@@ -333,17 +333,24 @@ const controlledActiveStep = computed({
 });
 
 const onProcessStep = async (): Promise<void> => {
-	// For steps with forms in child components, we need to pass the form ref
-	if (activeStep.value === 'one') {
-		await submitStep(activeStep.value, stepOneFormEl.value);
-	} else if (activeStep.value === 'two') {
-		await submitStep(activeStep.value, stepTwoFormEl.value);
-	} else if (activeStep.value === 'four') {
-		await submitStep(activeStep.value, stepFourFormEl.value);
-	} else if (activeStep.value === 'five') {
-		await submitStep(activeStep.value, stepFiveFormEl.value);
-	} else {
-		await submitStep(activeStep.value);
+	try {
+		// For steps with forms in child components, we need to pass the form ref
+		if (activeStep.value === 'one') {
+			await submitStep(activeStep.value, stepOneFormEl.value);
+		} else if (activeStep.value === 'two') {
+			await submitStep(activeStep.value, stepTwoFormEl.value);
+		} else if (activeStep.value === 'four') {
+			await submitStep(activeStep.value, stepFourFormEl.value);
+		} else if (activeStep.value === 'five') {
+			await submitStep(activeStep.value, stepFiveFormEl.value);
+		} else {
+			await submitStep(activeStep.value);
+		}
+	} catch {
+		// submitStep() already handles error display and formResult state internally
+		// We catch here to prevent unhandled promise rejections
+		// The error is already handled by submitStep(), so we just need to prevent it from bubbling
+		// This ensures consistent UI state even when validation/API failures occur
 	}
 };
 
@@ -398,7 +405,13 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			await onProcessStep();
+			try {
+				await onProcessStep();
+			} catch {
+				// onProcessStep() already handles errors internally via submitStep()
+				// We catch here to prevent unhandled promise rejections during remote-triggered submits
+				// This ensures consistent UI state even when validation/API failures occur
+			}
 		}
 	}
 );
