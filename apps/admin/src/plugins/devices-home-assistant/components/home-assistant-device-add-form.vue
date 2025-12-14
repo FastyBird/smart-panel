@@ -405,13 +405,19 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
+			// Clear entity overrides FIRST since they control the form state in step 4
+			// The form fields in mapping-customization-step are controlled by entityOverrides
+			// via :model-value bindings, so clearing this will update the form display
+			entityOverrides.value = [];
+			
+			// Reset form fields (this clears validation state and resets to initial values)
+			// Note: For step 4, resetFields() will reset to values computed from entityOverrides
+			// which is now empty, so the form will show the default state
 			stepOneFormEl.value?.resetFields();
 			stepTwoFormEl.value?.resetFields();
 			// Step 3 (mapping preview) has no form - it's just a display component
 			stepFourFormEl.value?.resetFields();
 			stepFiveFormEl.value?.resetFields();
-			// Clear entity overrides since they control the form state in step 4
-			entityOverrides.value = [];
 		}
 	}
 );
