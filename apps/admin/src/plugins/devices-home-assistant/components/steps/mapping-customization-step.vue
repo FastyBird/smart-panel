@@ -159,10 +159,20 @@ watch(
 	() => [props.entityOverrides, props.preview],
 	() => {
 		if (props.preview) {
-			// Update form model with current category values
+			// Update form model with current category values only for enabled entities
+			// Disabled entities should not have form model keys to prevent cleared values from reappearing
 			for (const entity of props.preview.entities) {
-				const category = getEntityChannelCategory(entity.entityId);
-				formModel[`category_${sanitizeEntityIdForForm(entity.entityId)}`] = category;
+				const entityId = entity.entityId;
+				const formKey = `category_${sanitizeEntityIdForForm(entityId)}`;
+				
+				if (isEntityEnabled(entityId)) {
+					// Only set form model for enabled entities
+					const category = getEntityChannelCategory(entityId);
+					formModel[formKey] = category;
+				} else {
+					// Remove form model key for disabled entities
+					delete formModel[formKey];
+				}
 			}
 		} else {
 			// When preview is cleared, clear all form model keys
