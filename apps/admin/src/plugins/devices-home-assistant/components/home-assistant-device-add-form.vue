@@ -325,9 +325,53 @@ const controlledActiveStep = computed({
 			stepOrder.slice(newIndex + 1).forEach((step) => {
 				reachedSteps.value.delete(step);
 			});
+			
+			// Allow the change (going backwards doesn't require validation)
+			activeStep.value = newStep;
+			return;
 		}
 
-		// Allow the change
+		// If going forward to a previously-reached step, validate current step first
+		// This ensures preview and data are up-to-date before proceeding
+		// Critical: Step 4 -> Step 5 requires validation to refresh preview with updated entityOverrides
+		if (newIndex > currentIndex) {
+			// Only validate if the current step requires validation before proceeding
+			// Steps 1, 2, and 4 require validation; step 3 doesn't
+			if (currentStep === 'one' || currentStep === 'two' || currentStep === 'four') {
+				try {
+					// Validate and submit current step - this will advance to next step automatically
+					// For step 4, this also refreshes the preview with updated entityOverrides
+					if (currentStep === 'one') {
+						await submitStep(currentStep, stepOneFormEl.value);
+					} else if (currentStep === 'two') {
+						await submitStep(currentStep, stepTwoFormEl.value);
+					} else if (currentStep === 'four') {
+						await submitStep(currentStep, stepFourFormEl.value);
+					}
+					// submitStep() automatically advances to the next step, so we're done
+					// If user was trying to jump multiple steps, they'll be on the next step
+					// and can navigate again if needed
+					return;
+				} catch {
+					// Validation failed - revert to current step
+					// submitStep() already handles error display
+					await nextTick();
+					activeStep.value = currentStep;
+					return;
+				}
+			} else {
+				// Step 3 or other steps don't require validation, allow navigation
+				activeStep.value = newStep;
+				return;
+			}
+		}
+
+		// Same step - no change needed
+		if (newIndex === currentIndex) {
+			return;
+		}
+
+		// Allow the change (shouldn't reach here, but kept as fallback)
 		activeStep.value = newStep;
 	},
 });
