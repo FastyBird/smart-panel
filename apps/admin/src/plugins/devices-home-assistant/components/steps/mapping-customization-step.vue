@@ -48,7 +48,7 @@
 				<el-form-item
 					v-if="isEntityEnabled(entity.entityId) || hasOverrideWithoutCategory(entity.entityId)"
 					:label="t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel')"
-					:prop="`category_${entity.entityId}`"
+					:prop="`category_${sanitizeEntityIdForForm(entity.entityId)}`"
 					:required="!getEntityChannelCategory(entity.entityId)"
 					:rules="getCategoryValidationRules(entity.entityId)"
 				>
@@ -95,6 +95,12 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+// Sanitize entityId for use in form model keys and prop names
+// Replaces dots and other special characters that Element Plus interprets as nested paths
+const sanitizeEntityIdForForm = (entityId: string): string => {
+	return entityId.replace(/[.\[\]]/g, '_');
+};
 
 // Helper functions - defined before watch/computed that use them
 const isEntityEnabled = (entityId: string): boolean => {
@@ -155,7 +161,7 @@ watch(
 		if (props.preview) {
 			for (const entity of props.preview.entities) {
 				const category = getEntityChannelCategory(entity.entityId);
-				formModel[`category_${entity.entityId}`] = category;
+				formModel[`category_${sanitizeEntityIdForForm(entity.entityId)}`] = category;
 			}
 		}
 	},
@@ -171,7 +177,7 @@ const formRules = computed<FormRules>(() => {
 	if (props.preview) {
 		for (const entity of props.preview.entities) {
 			const entityId = entity.entityId;
-			const propName = `category_${entityId}`;
+			const propName = `category_${sanitizeEntityIdForForm(entityId)}`;
 			
 			// Only add validation rule if entity is enabled and missing a category
 			if (isEntityEnabled(entityId) && !getEntityChannelCategory(entityId)) {
@@ -190,7 +196,7 @@ const formRules = computed<FormRules>(() => {
 });
 
 const getCategoryValidationRules = (entityId: string) => {
-	const propName = `category_${entityId}`;
+	const propName = `category_${sanitizeEntityIdForForm(entityId)}`;
 	return formRules.value[propName] || [];
 };
 
@@ -219,39 +225,39 @@ const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 
 	if (enabled) {
 		// Enable: remove skip flag and ensure there's a valid category
-		if (existingIndex >= 0) {
-			const override = currentOverrides[existingIndex];
-			if (override.channelCategory) {
-				// Keep existing custom category, just remove skip
-				currentOverrides[existingIndex] = { entityId, channelCategory: override.channelCategory };
-				// Update form model
-				formModel[`category_${entityId}`] = override.channelCategory;
-			} else if (isValidSuggestedCategory) {
-				// Entity is back to default state with valid suggested category, remove override
-				currentOverrides.splice(existingIndex, 1);
-				// Update form model with suggested category
-				formModel[`category_${entityId}`] = suggestedCategory;
+			if (existingIndex >= 0) {
+				const override = currentOverrides[existingIndex];
+				if (override.channelCategory) {
+					// Keep existing custom category, just remove skip
+					currentOverrides[existingIndex] = { entityId, channelCategory: override.channelCategory };
+					// Update form model
+					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = override.channelCategory;
+				} else if (isValidSuggestedCategory) {
+					// Entity is back to default state with valid suggested category, remove override
+					currentOverrides.splice(existingIndex, 1);
+					// Update form model with suggested category
+					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = suggestedCategory;
+				} else {
+					// No valid category yet - add override without category to allow user to select one
+					// This will show the category selector
+					currentOverrides[existingIndex] = { entityId };
+					// Clear form model to trigger validation
+					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = undefined;
+				}
 			} else {
-				// No valid category yet - add override without category to allow user to select one
-				// This will show the category selector
-				currentOverrides[existingIndex] = { entityId };
-				// Clear form model to trigger validation
-				formModel[`category_${entityId}`] = undefined;
+				// No existing override
+				if (isValidSuggestedCategory) {
+					// Entity has valid suggested category, it's already enabled by default
+					// No override needed, but update form model
+					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = suggestedCategory;
+				} else {
+					// Entity needs a category - add override without category (user must select)
+					// This allows the checkbox to be checked, and category selector will be shown
+					currentOverrides.push({ entityId });
+					// Clear form model to trigger validation
+					formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = undefined;
+				}
 			}
-		} else {
-			// No existing override
-			if (isValidSuggestedCategory) {
-				// Entity has valid suggested category, it's already enabled by default
-				// No override needed, but update form model
-				formModel[`category_${entityId}`] = suggestedCategory;
-			} else {
-				// Entity needs a category - add override without category (user must select)
-				// This allows the checkbox to be checked, and category selector will be shown
-				currentOverrides.push({ entityId });
-				// Clear form model to trigger validation
-				formModel[`category_${entityId}`] = undefined;
-			}
-		}
 	} else {
 		// Disable: set skip flag
 		if (existingIndex >= 0) {
@@ -261,7 +267,7 @@ const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 			currentOverrides.push({ entityId, skip: true });
 		}
 		// Clear form model for disabled entities
-		delete formModel[`category_${entityId}`];
+		delete formModel[`category_${sanitizeEntityIdForForm(entityId)}`];
 	}
 
 	emit('update-overrides', currentOverrides);
@@ -283,7 +289,7 @@ const updateEntityChannelCategory = (entityId: string, category: DevicesModuleCh
 	}
 
 	// Update form model for validation
-	formModel[`category_${entityId}`] = category;
+	formModel[`category_${sanitizeEntityIdForForm(entityId)}`] = category;
 
 	emit('update-overrides', currentOverrides);
 };
