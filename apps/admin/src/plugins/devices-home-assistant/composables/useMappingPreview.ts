@@ -25,11 +25,12 @@ export const useMappingPreview = (): IUseMappingPreview => {
 	const isLoading = ref<boolean>(false);
 	const error = ref<Error | null>(null);
 
-	const fetchPreview = async (haDeviceId: string, overrides?: IMappingPreviewRequest): Promise<IMappingPreviewResponse> => {
-		if (isLoading.value) {
-			throw new DevicesHomeAssistantApiException('Preview is already being loaded.');
-		}
+	// Request sequence guard: track the current request ID to ignore stale responses
+	let currentRequestId = 0;
 
+	const fetchPreview = async (haDeviceId: string, overrides?: IMappingPreviewRequest): Promise<IMappingPreviewResponse> => {
+		// Increment request ID for this new request
+		const requestId = ++currentRequestId;
 		isLoading.value = true;
 		error.value = null;
 
@@ -50,6 +51,12 @@ export const useMappingPreview = (): IUseMappingPreview => {
 				}
 			);
 
+			// Sequence guard: ignore response if this request is no longer the current one
+			if (requestId !== currentRequestId) {
+				// This response is stale - don't update state, but still throw to indicate cancellation
+				throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
+			}
+
 			// Validate response status is in 2xx range before accepting data
 			// Check status first to reject non-2xx responses immediately, even if they contain a body
 			if (response.status < 200 || response.status >= 300) {
@@ -65,6 +72,11 @@ export const useMappingPreview = (): IUseMappingPreview => {
 
 			// Only process data if status is 2xx
 			if (typeof responseData !== 'undefined' && responseData.data) {
+				// Double-check sequence guard before updating state
+				if (requestId !== currentRequestId) {
+					throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
+				}
+
 				const transformed = transformMappingPreviewResponse(responseData.data);
 
 				preview.value = transformed;
@@ -83,16 +95,28 @@ export const useMappingPreview = (): IUseMappingPreview => {
 
 			throw new DevicesHomeAssistantApiException(errorReason, response.status);
 		} catch (err: unknown) {
-			isLoading.value = false;
+			// Only update loading state if this is still the current request
+			if (requestId === currentRequestId) {
+				isLoading.value = false;
+			}
 
 			const errorObj = err as Error;
+
+			// Ignore errors from superseded requests - don't show error messages or update error state
+			if (requestId !== currentRequestId) {
+				// Silently ignore stale request errors
+				throw errorObj;
+			}
 
 			if (errorObj instanceof DevicesHomeAssistantValidationException) {
 				error.value = errorObj;
 				flashMessage.error(errorObj.message);
 			} else if (errorObj instanceof DevicesHomeAssistantApiException) {
-				error.value = errorObj;
-				flashMessage.error(errorObj.message);
+				// Don't show error for superseded requests
+				if (!errorObj.message.includes('superseded')) {
+					error.value = errorObj;
+					flashMessage.error(errorObj.message);
+				}
 			} else {
 				error.value = errorObj;
 				logger.error('Failed to fetch mapping preview:', errorObj);
@@ -108,6 +132,9 @@ export const useMappingPreview = (): IUseMappingPreview => {
 	};
 
 	const clearPreview = (): void => {
+		// Increment request ID to invalidate any in-flight requests
+		// This ensures stale responses from old requests are ignored
+		currentRequestId++;
 		preview.value = null;
 		error.value = null;
 		isLoading.value = false;
