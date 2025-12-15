@@ -186,6 +186,8 @@ const { tile, isLoading, fetchTile } = useTile({ id: props.id });
 
 // Track if tile was previously loaded to detect deletion
 const wasTileLoaded = ref<boolean>(false);
+// Track parent page ID before deletion for redirect
+const parentPageId = ref<string | null>(null);
 
 if (!validateUuid(props.id)) {
 	throw new Error('Element identifier is not valid');
@@ -302,14 +304,27 @@ watch(
 	(val: ITile | null): void => {
 		if (val !== null) {
 			wasTileLoaded.value = true;
+			// Capture parent page ID before deletion
+			if (val.parent?.type === 'page' && val.parent?.id) {
+				parentPageId.value = val.parent.id;
+			}
 		} else if (wasTileLoaded.value && !isLoading.value) {
 			// Tile was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('dashboardModule.messages.tiles.deletedWhileEditing'), { duration: 0 });
-			// Redirect to tile detail (parent page)
-			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.TILE, params: { id: props.id } });
+			// Redirect to parent page if available, otherwise to pages list
+			if (parentPageId.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.PAGE, params: { id: parentPageId.value } });
+				} else {
+					router.push({ name: RouteNames.PAGE, params: { id: parentPageId.value } });
+				}
 			} else {
-				router.push({ name: RouteNames.TILE, params: { id: props.id } });
+				// Fallback to pages list if parent not available
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.PAGES });
+				} else {
+					router.push({ name: RouteNames.PAGES });
+				}
 			}
 		} else if (!isLoading.value && val === null && !wasTileLoaded.value) {
 			// Tile was never loaded - initial load failed
