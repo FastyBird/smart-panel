@@ -35,11 +35,16 @@ export interface IUseEventBus {
 	emit: <Key extends keyof Events>(event: Key, payload: Events[Key]) => void;
 }
 
+export interface IFlashMessageOptions {
+	duration?: number; // Duration in milliseconds. 0 means it won't close automatically
+}
+
 export interface IUseFlashMessage {
-	success: (message: string) => void;
-	info: (message: string) => void;
-	error: (message: string) => void;
-	exception: (errorMessage: string) => void;
+	success: (message: string, options?: IFlashMessageOptions) => void;
+	info: (message: string, options?: IFlashMessageOptions) => void;
+	error: (message: string, options?: IFlashMessageOptions) => void;
+	warning: (message: string, options?: IFlashMessageOptions) => void;
+	exception: (errorMessage: string, options?: IFlashMessageOptions) => void;
 }
 
 export interface IUseListQuery<F> {

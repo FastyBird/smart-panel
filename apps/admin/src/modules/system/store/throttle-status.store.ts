@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type { SystemModuleGetSystemThrottleOperation } from '../../../openapi.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
@@ -74,7 +75,7 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 
 				semaphore.value.getting = true;
 
-				const apiResponse = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/system/throttle`);
+				const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/throttle`);
 
 				try {
 					const { data: responseData, error, response } = apiResponse;

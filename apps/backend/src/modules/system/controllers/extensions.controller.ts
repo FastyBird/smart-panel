@@ -8,6 +8,7 @@ import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common'
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { ApiExcludeEndpoint, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { MODULES_PREFIX } from '../../../app.constants';
 import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -83,8 +84,8 @@ export class ExtensionsController {
 						description: a.description ?? undefined,
 						version: this.readPkgVersionSafe(a.packageDir),
 						source: bundledSet.has(a.pkgName) ? ExtensionSourceType.BUNDLED : ExtensionSourceType.RUNTIME,
-						// We’ll serve files under /api/system-module/extensions/assets/<pkg>/<...>
-						remoteUrl: `:baseUrl/${SYSTEM_MODULE_PREFIX}/extensions/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
+						// We’ll serve files under /api/v1/modules/system/extensions/assets/<pkg>/<...>
+						remoteUrl: `:baseUrl/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
 					}),
 				);
 			}
@@ -153,8 +154,8 @@ export class ExtensionsController {
 					description: a.description ?? undefined,
 					version: this.readPkgVersionSafe(a.packageDir),
 					source: bundledSet.has(a.pkgName) ? ExtensionSourceType.BUNDLED : ExtensionSourceType.RUNTIME,
-					// We’ll serve files under /api/system-module/extensions/assets/<pkg>/<...>
-					remoteUrl: `:baseUrl/${SYSTEM_MODULE_PREFIX}/extensions/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
+					// We’ll serve files under /api/v1/modules/system/extensions/assets/<pkg>/<...>
+					remoteUrl: `:baseUrl/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
 				}),
 			);
 		}

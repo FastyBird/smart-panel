@@ -11,7 +11,7 @@ type ApiDiscoveredDevice = DevicesHomeAssistantPluginDiscoveredDeviceSchema;
 
 export const HomeAssistantDiscoveredDeviceSchema = z.object({
 	id: z.string().trim().nonempty(),
-	name: z.string().trim().nonempty(),
+	name: z.string().trim(),
 	entities: z.array(z.string().trim().nonempty()),
 	adoptedDeviceId: z.string().uuid().nullable(),
 });
@@ -29,7 +29,7 @@ export const HomeAssistantDiscoveredDevicesStateSemaphoreSchema = z.object({
 export const HomeAssistantDiscoveredDevicesSetActionPayloadSchema = z.object({
 	id: z.string().trim().nonempty(),
 	data: z.object({
-		name: z.string().trim().nonempty(),
+		name: z.string().trim(),
 		entities: z.array(z.string().trim().nonempty()),
 		adoptedDeviceId: z.string().uuid().nullable(),
 	}),
@@ -48,7 +48,7 @@ export const HomeAssistantDiscoveredDevicesGetActionPayloadSchema = z.object({
 
 export const HomeAssistantDiscoveredDeviceResSchema: ZodType<ApiDiscoveredDevice> = z.object({
 	id: z.string().trim().nonempty(),
-	name: z.string().trim().nonempty(),
+	name: z.string().trim(),
 	entities: z.array(z.string().trim().nonempty()),
 	adopted_device_id: z.string().uuid().nullable(),
 	states: z.array(HomeAssistantStateResSchema),

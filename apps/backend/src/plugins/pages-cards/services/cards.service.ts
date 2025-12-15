@@ -189,11 +189,15 @@ export class CardsService {
 		const page = await this.pagesService.getOneOrThrow<CardsPageEntity>(pageId);
 		const card = await this.getOneOrThrow(id, page.id);
 
+		// Capture card entity before removal to preserve ID for event emission
+		const cardForEvent = { ...card };
+
 		await this.repository.remove(card);
 
 		this.logger.log(`[PAGES CARDS][CARDS SERVICE] Successfully removed card with id=${id} for pageId=${pageId}`);
 
-		this.eventEmitter.emit(EventType.CARD_DELETED, card);
+		// Emit event with the card entity captured before removal to preserve ID
+		this.eventEmitter.emit(EventType.CARD_DELETED, cardForEvent);
 	}
 
 	async getOneOrThrow(id: string, pageId?: string): Promise<CardEntity> {

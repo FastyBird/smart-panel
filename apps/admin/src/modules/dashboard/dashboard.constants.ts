@@ -1,4 +1,4 @@
-export const DASHBOARD_MODULE_PREFIX = 'dashboard-module';
+export const DASHBOARD_MODULE_PREFIX = 'dashboard';
 
 export const DASHBOARD_MODULE_NAME = 'dashboard-module';
 

@@ -40,6 +40,7 @@
     "removed": "The user: {user} was successfully removed.",
     "removeCanceled": "User: {user} removal has been canceled.",
     "notRemoved": "Something went wrong, and the user: {user} was not removed.",
+    "deletedWhileEditing": "This user was deleted and is no longer available.",
     "usernameEdited": "User username has been successfully updated.",
     "usernameNotEdited": "Failed to update user username. Please try again.",
     "passwordEdited": "User password has been successfully updated.",

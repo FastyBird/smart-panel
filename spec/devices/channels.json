@@ -702,7 +702,7 @@
         "step": null
       },
       "link_quality": {
-        "category": "hardware_revision",
+        "category": "link_quality",
         "required": false,
         "description": {
           "en": ""

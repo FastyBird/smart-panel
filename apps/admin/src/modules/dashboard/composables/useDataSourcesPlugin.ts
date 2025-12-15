@@ -22,7 +22,7 @@ export const useDataSourcesPlugin = ({ type }: IUsePluginProps): IUseDataSources
 
 	const element = computed<IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(
 		(): IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined => {
-			return plugin.value?.elements.find(
+			return (plugin.value?.elements ?? []).find(
 				(element) => element.type === type && (typeof element.modules === 'undefined' || element.modules.includes(DASHBOARD_MODULE_NAME))
 			);
 		}

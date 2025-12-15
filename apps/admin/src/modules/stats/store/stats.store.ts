@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type { StatsModuleGetStatsOperation } from '../../../openapi.constants';
 import { STATS_MODULE_PREFIX } from '../stats.constants';
 import { StatsApiException, StatsValidationException } from '../stats.exceptions';
@@ -73,7 +74,7 @@ export const useStats = defineStore<'stats_module-stats', StatsStoreSetup>('stat
 			semaphore.value.getting = true;
 
 			try {
-				const apiResponse = await backend.client.GET(`/${STATS_MODULE_PREFIX}/stats`);
+				const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${STATS_MODULE_PREFIX}/stats`);
 
 				const { data: responseData, error, response } = apiResponse;
 

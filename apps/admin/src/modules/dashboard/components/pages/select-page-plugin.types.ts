@@ -1,5 +1,5 @@
-import type { IPlugin } from '../../../../common';
+import type { IPluginElement } from '../../../../common';
 
 export interface ISelectPagePluginProps {
-	modelValue: IPlugin['type'] | undefined;
+	modelValue: IPluginElement['type'] | undefined;
 }

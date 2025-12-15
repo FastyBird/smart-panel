@@ -167,7 +167,7 @@ export class BaseErrorResponseModel {
 	@ApiProperty({
 		description: 'The requested API endpoint.',
 		type: 'string',
-		example: '/api/v1/some-module/path/to/endpoint',
+		example: '/api/v1/modules/some-module/path/to/endpoint',
 		readOnly: true,
 	})
 	path: string;
@@ -342,7 +342,7 @@ export class BaseSuccessResponseModel<T = unknown> {
 	@ApiProperty({
 		description: 'The requested API endpoint',
 		type: 'string',
-		example: '/api/v1/auth-module/auth/login',
+		example: '/api/v1/modules/auth/auth/login',
 		readOnly: true,
 	})
 	@Expose()

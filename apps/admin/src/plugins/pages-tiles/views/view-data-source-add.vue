@@ -210,7 +210,7 @@ const plugin = computed<IPlugin<IDataSourcePluginsComponents, IDataSourcePlugins
 });
 
 const element = computed<IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === selectedType.value);
+	return (plugin.value?.elements ?? []).find((element) => element.type === selectedType.value);
 });
 
 const formSchema = computed<typeof DataSourceAddFormSchema>((): typeof DataSourceAddFormSchema => {

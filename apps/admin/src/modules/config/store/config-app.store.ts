@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { type Pinia, type Store, defineStore, storeToRefs } from 'pinia';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type { ConfigModuleGetConfigSectionOperation } from '../../../openapi.constants';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
@@ -117,7 +118,7 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 			semaphore.value.getting = true;
 
 			try {
-				const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config`);
+				const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config`);
 
 				const { data: responseData, error, response } = apiResponse;
 

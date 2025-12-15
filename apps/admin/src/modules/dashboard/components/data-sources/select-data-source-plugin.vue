@@ -47,26 +47,26 @@ defineOptions({
 const props = defineProps<ISelectDataSourcePluginProps>();
 
 const emit = defineEmits<{
-	(e: 'update:modelValue', type: IPlugin['type'] | undefined): void;
+	(e: 'update:modelValue', type: IPluginElement['type'] | undefined): void;
 }>();
 
 const { t } = useI18n();
 
 const { plugins, options: typesOptions } = useDataSourcesPlugins();
 
-const selectedType = ref<IPlugin['type'] | undefined>(props.modelValue);
+const selectedType = ref<IPluginElement['type'] | undefined>(props.modelValue);
 
 const plugin = computed<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.elements.find((element) => element.type === selectedType.value));
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === selectedType.value));
 });
 
 const element = computed<IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === selectedType.value);
+	return (plugin.value?.elements ?? []).find((element) => element.type === selectedType.value);
 });
 
 watch(
-	(): IPlugin['type'] | undefined => selectedType.value,
-	(val: IPlugin['type'] | undefined) => {
+	(): IPluginElement['type'] | undefined => selectedType.value,
+	(val: IPluginElement['type'] | undefined) => {
 		emit('update:modelValue', val);
 	}
 );

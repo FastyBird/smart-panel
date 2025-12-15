@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DashboardModuleGetDataSourceOperation,
 	DashboardModuleGetDataSourcesOperation,
@@ -182,7 +183,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
 						params: {
 							path: { id: payload.id },
 						},
@@ -235,7 +236,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/data-source`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/data-source`, {
 						params: {
 							query: {
 								parent_type: payload.parent.type,
@@ -324,7 +325,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/data-source`, {
+					} = await backend.client.POST(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/data-source`, {
 						body: {
 							data: transformDataSourceCreateRequest<IDataSourceCreateReq>(
 								parsedNewItem.data,
@@ -401,7 +402,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
+					} = await backend.client.PATCH(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
 						params: {
 							path: { id: payload.id },
 						},
@@ -463,7 +464,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/data-source`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/data-source`, {
 					body: {
 						data: transformDataSourceCreateRequest<IDataSourceCreateReq>(
 							parsedSaveItem.data,
@@ -511,7 +512,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {
-					const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
+					const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
 						params: {
 							path: { id: payload.id },
 						},

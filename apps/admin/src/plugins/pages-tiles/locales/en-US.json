@@ -55,6 +55,14 @@
       "editDataSource": "Edit smart panel page data source"
     }
   },
+  "messages": {
+    "tiles": {
+      "deletedWhileEditing": "This tile was deleted and is no longer available."
+    },
+    "dataSources": {
+      "deletedWhileEditing": "This data source was deleted and is no longer available."
+    }
+  },
   "texts": {
     "misc": {
       "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",

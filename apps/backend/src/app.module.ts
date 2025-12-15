@@ -9,7 +9,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { PLUGINS_PREFIX } from './app.constants';
+import { MODULES_PREFIX, PLUGINS_PREFIX } from './app.constants';
 import { getEnvValue, resolveStaticPath } from './common/utils/config.utils';
 import { ApiModule } from './modules/api/api.module';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
@@ -110,46 +110,51 @@ export class AppModule {
 				ScheduleModule.forRoot(),
 				RouterModule.register([
 					{
-						path: AUTH_MODULE_PREFIX,
-						module: AuthModule,
+						path: MODULES_PREFIX,
+						children: [
+							{
+								path: AUTH_MODULE_PREFIX,
+								module: AuthModule,
+							},
+							{
+								path: DEVICES_MODULE_PREFIX,
+								module: DevicesModule,
+							},
+							{
+								path: DASHBOARD_MODULE_PREFIX,
+								module: DashboardModule,
+							},
+							{
+								path: CONFIG_MODULE_PREFIX,
+								module: ConfigModule,
+							},
+							{
+								path: DISPLAYS_MODULE_PREFIX,
+								module: DisplaysModule,
+							},
+							{
+								path: SYSTEM_MODULE_PREFIX,
+								module: SystemModule,
+							},
+							{
+								path: USERS_MODULE_PREFIX,
+								module: UsersModule,
+							},
+							{
+								path: WEATHER_MODULE_PREFIX,
+								module: WeatherModule,
+							},
+							{
+								path: STATS_MODULE_PREFIX,
+								module: StatsModule,
+							},
+							{
+								path: AUTH_MODULE_PREFIX,
+								module: ApiModule,
+							},
+							...moduleRoutes,
+						],
 					},
-					{
-						path: DEVICES_MODULE_PREFIX,
-						module: DevicesModule,
-					},
-					{
-						path: DASHBOARD_MODULE_PREFIX,
-						module: DashboardModule,
-					},
-					{
-						path: CONFIG_MODULE_PREFIX,
-						module: ConfigModule,
-					},
-					{
-						path: DISPLAYS_MODULE_PREFIX,
-						module: DisplaysModule,
-					},
-					{
-						path: SYSTEM_MODULE_PREFIX,
-						module: SystemModule,
-					},
-					{
-						path: USERS_MODULE_PREFIX,
-						module: UsersModule,
-					},
-					{
-						path: WEATHER_MODULE_PREFIX,
-						module: WeatherModule,
-					},
-					{
-						path: STATS_MODULE_PREFIX,
-						module: StatsModule,
-					},
-					{
-						path: AUTH_MODULE_PREFIX,
-						module: ApiModule,
-					},
-					...moduleRoutes,
 					{
 						path: PLUGINS_PREFIX,
 						children: [

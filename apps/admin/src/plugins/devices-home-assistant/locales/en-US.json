@@ -41,6 +41,12 @@
         "validation": {
           "required": "Please select Home Assistant device"
         }
+      },
+      "manufacturer": {
+        "title": "Manufacturer"
+      },
+      "model": {
+        "title": "Model"
       }
     },
     "channels": {
@@ -120,6 +126,24 @@
         }
       }
     },
+    "mapping": {
+      "totalEntities": "Total entities",
+      "mapped": "Mapped",
+      "partial": "Partial",
+      "unmapped": "Unmapped",
+      "skipped": "Skipped",
+      "excluded": "Excluded",
+      "suggestedCategory": "Suggested category",
+      "suggestedChannel": {
+        "title": "Suggested channel",
+        "validation": {
+          "required": "Please select a channel category for this entity"
+        }
+      },
+      "properties": "Properties",
+      "unmappedAttributes": "Unmapped attributes",
+      "missingRequiredProperties": "Missing required properties"
+    },
     "config": {
       "enabled": {
         "title": "Enabled"
@@ -140,11 +164,59 @@
       }
     }
   },
+  "headings": {
+    "device": {
+      "deviceSelection": "Device Selection",
+      "categorySelection": "Category Selection",
+      "mappingPreview": "Mapping Preview",
+      "mappingCustomization": "Mapping Customization",
+      "deviceConfiguration": "Device Configuration"
+    },
+    "mapping": {
+      "entityMappings": "Entity Mappings",
+      "warnings": "Warnings",
+      "summary": "Mapping Summary"
+    }
+  },
   "messages": {
     "config": {
       "edited": "Changes saved! The Home Assistant plugin config has been updated.",
       "notEdited": "Something went wrong. Home Assistant plugin config update was not successful."
+    },
+    "devices": {
+      "created": "New Home Assistant device added successfully.",
+      "notCreated": "Something went wrong. Unable to create the Home Assistant device.",
+      "exists": "Device is already adopted in the system.",
+      "noDiscoveredDevices": "No Home Assistant devices are available. Make sure your Home Assistant instance is connected and devices are discovered."
+    },
+    "mapping": {
+      "previewLoading": "Loading mapping preview...",
+      "previewError": "Failed to load mapping preview",
+      "adoptionSuccess": "Device {device} adopted successfully",
+      "adoptionError": "Failed to adopt device",
+      "readyToAdopt": "Device is ready to be adopted",
+      "notReadyToAdopt": "Device has missing required mappings",
+      "noPreview": "No mapping preview available",
+      "selectDeviceFirst": "Please select a device in step 1 to generate a mapping preview",
+      "invalidSuggestedCategory": "The suggested category is not supported. Please select a valid category.",
+      "missingChannelCategory": "The following entities are enabled but missing a channel category: {entities}. Please select a channel category for each enabled entity before proceeding."
+    },
+    "categorySelection": {
+      "description": "Based on the device's entities, a category has been suggested. Please review and select the correct category for this device. The mapping preview will be updated based on your selection."
     }
+  },
+  "buttons": {
+    "loadPreview": "Load Preview",
+    "updatePreview": "Update Preview",
+    "adoptDevice": "Adopt Device",
+    "next": "Next",
+    "previous": "Previous",
+    "skip": "Skip",
+    "use": "Use",
+    "applyChanges": "Apply Changes"
+  },
+  "labels": {
+    "suggested": "Suggested"
   },
   "misc": {
     "options": {
@@ -158,6 +230,9 @@
     }
   },
   "texts": {
-    "aboutConnectionSettings": "Configure the connection to your Home Assistant instance. When enabled, devices from Home Assistant will be available in the Smart Panel. You'll need a long-lived access token from Home Assistant and the hostname or IP address of your instance."
+    "aboutConnectionSettings": "Configure the connection to your Home Assistant instance. When enabled, devices from Home Assistant will be available in the Smart Panel. You'll need a long-lived access token from Home Assistant and the hostname or IP address of your instance.",
+    "mapping": {
+      "customizationDescription": "You can customize the mapping by changing channel categories for entities or enabling/disabling entities. By default, all entities with a suggested channel category are enabled. Click 'Next' to proceed with the selected configuration."
+    }
   }
 }

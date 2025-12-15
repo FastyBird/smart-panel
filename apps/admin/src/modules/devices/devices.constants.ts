@@ -1,4 +1,4 @@
-export const DEVICES_MODULE_PREFIX = 'devices-module';
+export const DEVICES_MODULE_PREFIX = 'devices';
 
 export const DEVICES_MODULE_NAME = 'devices-module';
 

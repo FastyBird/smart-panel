@@ -190,6 +190,7 @@ import {
 	ViewError,
 	ViewHeader,
 	useBreakpoints,
+	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
@@ -211,12 +212,16 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
+
+// Track if channel was previously loaded to detect deletion
+const wasChannelLoaded = ref<boolean>(false);
 const { canAddAnotherProperty } = useChannelSpecification({ id: props.id });
 const {
 	properties,
@@ -405,6 +410,11 @@ const onAdjustList = (): void => {
 onBeforeMount((): void => {
 	fetchChannel()
 		.then((): void => {
+			// Mark as loaded if channel was successfully fetched
+			if (channel.value !== null) {
+				wasChannelLoaded.value = true;
+			}
+
 			fetchProperties().catch((error: unknown): void => {
 				const err = error as Error;
 
@@ -446,7 +456,8 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && channel.value === null) {
+		// Only throw error if channel was never loaded (initial load failed)
+		if (!val && channel.value === null && !wasChannelLoaded.value) {
 			throw new DevicesException('Channel not found');
 		}
 	}
@@ -456,10 +467,19 @@ watch(
 	(): IChannel | null => channel.value,
 	(val: IChannel | null): void => {
 		if (val !== null) {
+			wasChannelLoaded.value = true;
 			meta.title = t('devicesModule.meta.channels.detail.title', { channel: channel.value?.name });
-		}
-
-		if (!isLoading.value && val === null) {
+		} else if (wasChannelLoaded.value && !isLoading.value) {
+			// Channel was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('devicesModule.messages.channels.deletedWhileEditing'), { duration: 0 });
+			// Redirect to channels list (we can't access device ID from deleted channel)
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.CHANNELS });
+			} else {
+				router.push({ name: RouteNames.CHANNELS });
+			}
+		} else if (!isLoading.value && val === null && !wasChannelLoaded.value) {
+			// Channel was never loaded - initial load failed
 			throw new DevicesException('Channel not found');
 		}
 	}

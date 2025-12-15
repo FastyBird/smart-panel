@@ -142,6 +142,7 @@ import {
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	useBreakpoints,
+	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import { PageEditForm } from '../components/components';
@@ -168,10 +169,14 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+// Track if page was previously loaded to detect deletion
+const wasPageLoaded = ref<boolean>(false);
 
 const { page, isLoading, fetchPage } = usePage({ id: props.id });
 const { icon: pageIcon } = usePageIcon({ id: props.id });
@@ -195,11 +200,11 @@ const isDetailRoute = computed<boolean>(
 );
 
 const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === page.value?.type);
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === page.value?.type));
 });
 
 const element = computed<IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === page.value?.type);
+	return (plugin.value?.elements ?? []).find((element) => element.type === page.value?.type);
 });
 
 const formSchema = computed<typeof PageEditFormSchema>((): typeof PageEditFormSchema => {
@@ -288,8 +293,12 @@ const onClose = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	fetchPage()
 		.then((): void => {
-			if (!isLoading.value && page.value === null) {
+			if (!isLoading.value && page.value === null && !wasPageLoaded.value) {
 				throw new DashboardException('Page not found');
+			}
+			// Mark as loaded if page was successfully fetched
+			if (page.value !== null) {
+				wasPageLoaded.value = true;
 			}
 		})
 		.catch((error: unknown): void => {
@@ -310,7 +319,8 @@ onMounted((): void => {
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && page.value === null) {
+		// Only throw error if page was never loaded (initial load failed)
+		if (!val && page.value === null && !wasPageLoaded.value) {
 			throw new DashboardException('Page not found');
 		}
 	}
@@ -320,10 +330,19 @@ watch(
 	(): IPage | null => page.value,
 	(val: IPage | null): void => {
 		if (val !== null) {
+			wasPageLoaded.value = true;
 			meta.title = t('dashboardModule.meta.pages.edit.title', { page: page.value?.title });
-		}
-
-		if (!isLoading.value && val === null) {
+		} else if (wasPageLoaded.value && !isLoading.value) {
+			// Page was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('dashboardModule.messages.pages.deletedWhileEditing'), { duration: 0 });
+			// Redirect to pages list
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.PAGES });
+			} else {
+				router.push({ name: RouteNames.PAGES });
+			}
+		} else if (!isLoading.value && val === null && !wasPageLoaded.value) {
+			// Page was never loaded - initial load failed
 			throw new DashboardException('Page not found');
 		}
 	}

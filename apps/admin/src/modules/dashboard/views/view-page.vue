@@ -190,6 +190,7 @@ import {
 	ViewError,
 	ViewHeader,
 	useBreakpoints,
+	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import ListDataSourcesAdjust from '../components/data-sources/list-data-sources-adjust.vue';
@@ -214,12 +215,16 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { page, fetchPage, isLoading } = usePage({ id: props.id });
+
+// Track if page was previously loaded to detect deletion
+const wasPageLoaded = ref<boolean>(false);
 const {
 	dataSources,
 	dataSourcesPaginated,
@@ -407,6 +412,11 @@ const onAdjustList = (): void => {
 onBeforeMount((): void => {
 	fetchPage()
 		.then((): void => {
+			// Mark as loaded if page was successfully fetched
+			if (page.value !== null) {
+				wasPageLoaded.value = true;
+			}
+
 			fetchDataSources().catch((error: unknown): void => {
 				const err = error as Error;
 
@@ -446,7 +456,8 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && page.value === null) {
+		// Only throw error if page was never loaded (initial load failed)
+		if (!val && page.value === null && !wasPageLoaded.value) {
 			throw new DashboardException('Page not found');
 		}
 	}
@@ -456,10 +467,19 @@ watch(
 	(): IPage | null => page.value,
 	(val: IPage | null): void => {
 		if (val !== null) {
+			wasPageLoaded.value = true;
 			meta.title = t('dashboardModule.meta.pages.detail.title', { page: page.value?.title });
-		}
-
-		if (!isLoading.value && val === null) {
+		} else if (wasPageLoaded.value && !isLoading.value) {
+			// Page was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('dashboardModule.messages.pages.deletedWhileEditing'), { duration: 0 });
+			// Redirect to pages list
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.PAGES });
+			} else {
+				router.push({ name: RouteNames.PAGES });
+			}
+		} else if (!isLoading.value && val === null && !wasPageLoaded.value) {
+			// Page was never loaded - initial load failed
 			throw new DashboardException('Page not found');
 		}
 	}

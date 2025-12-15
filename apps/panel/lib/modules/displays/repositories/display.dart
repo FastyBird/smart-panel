@@ -274,7 +274,7 @@ class DisplayRepository extends ChangeNotifier {
     }
   }
 
-  /// Fetch current display using /displays-module/displays/me endpoint
+  /// Fetch current display using /modules/displays/displays/me endpoint
   /// This is used when the display has a stored token and needs to fetch its own data
   /// If authentication fails (401), it will attempt to refresh the token and retry once
   Future<FetchDisplayResult> fetchCurrentDisplay({bool retryAfterRefresh = true}) async {

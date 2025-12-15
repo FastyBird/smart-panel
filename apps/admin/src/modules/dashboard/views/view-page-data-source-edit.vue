@@ -146,6 +146,7 @@ import {
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	useBreakpoints,
+	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import DataSourceEditForm from '../components/data-sources/data-source-edit-form.vue';
@@ -171,6 +172,7 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('dashboardModule.meta.pages.editDataSource.title'),
@@ -181,6 +183,9 @@ const { validate: validateUuid } = useUuid();
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { dataSource, isLoading, fetchDataSource } = useDataSource({ id: props.id, parent: 'page', parentId: props.page.id });
+
+// Track if data source was previously loaded to detect deletion
+const wasDataSourceLoaded = ref<boolean>(false);
 
 if (!validateUuid(props.id)) {
 	throw new Error('Element identifier is not valid');
@@ -194,11 +199,11 @@ const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
 const plugin = computed<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === dataSource.value?.type);
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === dataSource.value?.type));
 });
 
 const element = computed<IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === dataSource.value?.type);
+	return (plugin.value?.elements ?? []).find((element) => element.type === dataSource.value?.type);
 });
 
 const formSchema = computed<typeof DataSourceEditFormSchema>((): typeof DataSourceEditFormSchema => {
@@ -266,7 +271,11 @@ const onClose = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	fetchDataSource()
 		.then((): void => {
-			if (!isLoading.value && dataSource.value === null) {
+			// Mark as loaded if data source was successfully fetched
+			if (dataSource.value !== null) {
+				wasDataSourceLoaded.value = true;
+			}
+			if (!isLoading.value && dataSource.value === null && !wasDataSourceLoaded.value) {
 				throw new DashboardException('Data source not found');
 			}
 		})
@@ -288,7 +297,8 @@ onMounted((): void => {
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && dataSource.value === null) {
+		// Only throw error if data source was never loaded (initial load failed)
+		if (!val && dataSource.value === null && !wasDataSourceLoaded.value) {
 			throw new DashboardException('Data source not found');
 		}
 	}
@@ -297,7 +307,28 @@ watch(
 watch(
 	(): IDataSource | null => dataSource.value,
 	(val: IDataSource | null): void => {
-		if (!isLoading.value && val === null) {
+		if (val !== null) {
+			wasDataSourceLoaded.value = true;
+		} else if (wasDataSourceLoaded.value && !isLoading.value) {
+			// Data source was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('dashboardModule.messages.dataSources.deletedWhileEditing'), { duration: 0 });
+			// Redirect to page detail
+			if (props.page?.id) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.PAGE, params: { id: props.page.id } });
+				} else {
+					router.push({ name: RouteNames.PAGE, params: { id: props.page.id } });
+				}
+			} else {
+				// Fallback to pages list
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.PAGES });
+				} else {
+					router.push({ name: RouteNames.PAGES });
+				}
+			}
+		} else if (!isLoading.value && val === null && !wasDataSourceLoaded.value) {
+			// Data source was never loaded - initial load failed
 			throw new DashboardException('Data source not found');
 		}
 	}

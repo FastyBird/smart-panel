@@ -1,4 +1,4 @@
-export const AUTH_MODULE_PREFIX = 'auth-module';
+export const AUTH_MODULE_PREFIX = 'auth';
 
 export const AUTH_MODULE_NAME = 'auth-module';
 

@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	ConfigModuleGetConfigModuleOperation,
 	ConfigModuleGetConfigOperation,
@@ -121,7 +122,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/module/{module}`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/module/{module}`, {
 						params: {
 							path: {
 								module: payload.type,
@@ -173,7 +174,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 				semaphore.value.fetching.items = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/modules`);
+					const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/modules`);
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
@@ -251,7 +252,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/module/{module}`, {
+				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/module/{module}`, {
 					params: {
 						path: {
 							module: payload.data.type,

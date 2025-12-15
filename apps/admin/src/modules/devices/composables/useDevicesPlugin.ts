@@ -22,7 +22,7 @@ export const useDevicesPlugin = ({ type }: IUsePluginProps): IUseDevicesPlugin =
 
 	const element = computed<IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(
 		(): IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined => {
-			return plugin.value?.elements.find(
+			return (plugin.value?.elements ?? []).find(
 				(element) => element.type === type && (typeof element.modules === 'undefined' || element.modules.includes(DEVICES_MODULE_NAME))
 			);
 		}

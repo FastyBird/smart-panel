@@ -283,11 +283,15 @@ export class ChannelsPropertiesService {
 			where: { id },
 		});
 
+		// Capture property entity before removal to preserve ID for event emission
+		const propertyForEvent = { ...property };
+
 		await manager.remove(property);
 
 		this.logger.log(`[DELETE] Successfully removed property with id=${id}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, property);
+		// Emit event with the property entity captured before removal to preserve ID
+		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, propertyForEvent);
 	}
 
 	async getOneOrThrow(id: string): Promise<ChannelPropertyEntity> {

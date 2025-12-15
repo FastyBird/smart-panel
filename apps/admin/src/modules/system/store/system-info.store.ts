@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type { SystemModuleGetSystemInfoOperation } from '../../../openapi.constants';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
@@ -72,7 +73,7 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 
 			semaphore.value.getting = true;
 
-			const apiResponse = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/system/info`);
+			const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/system/info`);
 
 			try {
 				const { data: responseData, error, response } = apiResponse;

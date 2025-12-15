@@ -22,7 +22,7 @@ export const useTilesPlugin = ({ type }: IUsePluginProps): IUseTilesPlugin => {
 
 	const element = computed<IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(
 		(): IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined => {
-			return plugin.value?.elements.find(
+			return (plugin.value?.elements ?? []).find(
 				(element) => element.type === type && (typeof element.modules === 'undefined' || element.modules.includes(DASHBOARD_MODULE_NAME))
 			);
 		}

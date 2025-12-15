@@ -57,11 +57,11 @@ const { plugins, options: typesOptions } = useChannelsPlugins();
 const selectedType = ref<IPluginElement['type'] | undefined>(props.modelValue);
 
 const plugin = computed<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === selectedType.value);
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === selectedType.value));
 });
 
 const element = computed<IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === selectedType.value);
+	return (plugin.value?.elements ?? []).find((element) => element.type === selectedType.value);
 });
 
 watch(

@@ -55,8 +55,10 @@ import { SwitchEntityMapperService } from './mappers/switch.entity.mapper.servic
 import { UniversalEntityMapperService } from './mappers/universal.entity.mapper.service';
 import { HomeAssistantConfigModel } from './models/config.model';
 import { HomeAssistantDevicePlatform } from './platforms/home-assistant.device.platform';
+import { DeviceAdoptionService } from './services/device-adoption.service';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 import { HomeAssistantWsService } from './services/home-assistant.ws.service';
+import { MappingPreviewService } from './services/mapping-preview.service';
 import { StateChangedEventService } from './services/state-changed.event.service';
 import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
 
@@ -90,6 +92,8 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		UniversalEntityMapperService,
 		StateChangedEventService,
 		DevicesServiceSubscriber,
+		MappingPreviewService,
+		DeviceAdoptionService,
 	],
 	controllers: [
 		HomeAssistantDiscoveredDevicesController,

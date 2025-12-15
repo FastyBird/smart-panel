@@ -1,4 +1,4 @@
-export const SYSTEM_MODULE_PREFIX = 'system-module';
+export const SYSTEM_MODULE_PREFIX = 'system';
 
 export const SYSTEM_MODULE_NAME = 'system-module';
 

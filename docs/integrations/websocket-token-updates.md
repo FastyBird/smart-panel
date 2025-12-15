@@ -7,7 +7,7 @@ The registration scenarios are **fully compatible** with the permit join securit
 
 1. **Status Check Before Registration**
    - `_checkRegistrationStatus()` is called before attempting registration
-   - Checks if permit join is open via `/displays-module/register/status` endpoint
+   - Checks if permit join is open via `/modules/displays/register/status` endpoint
    - Throws `InitializationException` if registration is closed
    - Location: `startup_manager.dart:690-743`
 

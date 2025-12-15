@@ -315,6 +315,7 @@
 		"removed": "Display removed successfully",
 		"edited": "Display {display} has been updated",
 		"notEdited": "Display {display} was not updated",
+		"deletedWhileEditing": "This display was deleted and is no longer available.",
 		"permitJoinActivated": "Permit join activated successfully",
 		"permitJoinDeactivated": "Permit join deactivated successfully",
 		"permitJoinError": "Failed to activate permit join",

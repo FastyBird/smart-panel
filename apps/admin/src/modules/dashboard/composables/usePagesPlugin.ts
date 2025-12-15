@@ -22,7 +22,7 @@ export const usePagesPlugin = ({ type }: IUsePluginProps): IUsePagesPlugin => {
 
 	const element = computed<IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(
 		(): IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined => {
-			return plugin.value?.elements.find(
+			return (plugin.value?.elements ?? []).find(
 				(element) => element.type === type && (typeof element.modules === 'undefined' || element.modules.includes(DASHBOARD_MODULE_NAME))
 			);
 		}

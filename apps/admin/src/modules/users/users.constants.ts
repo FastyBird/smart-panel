@@ -1,4 +1,4 @@
-export const USERS_MODULE_PREFIX = 'users-module';
+export const USERS_MODULE_PREFIX = 'users';
 
 export const USERS_MODULE_NAME = 'users-module';
 

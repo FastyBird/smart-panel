@@ -22,7 +22,7 @@ export const useChannelsPropertiesPlugin = ({ type }: IUsePluginProps): IUseChan
 
 	const element = computed<IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(
 		(): IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined => {
-			return plugin.value?.elements.find(
+			return (plugin.value?.elements ?? []).find(
 				(element) => element.type === type && (typeof element.modules === 'undefined' || element.modules.includes(DEVICES_MODULE_NAME))
 			);
 		}

@@ -5,7 +5,7 @@
 ### Answer: ❌ **NO** - Token refresh does NOT require permit join
 
 **Reasoning:**
-- Token refresh endpoint (`/displays-module/displays/me/refresh-token`) is an **authenticated endpoint**
+- Token refresh endpoint (`/modules/displays/displays/me/refresh-token`) is an **authenticated endpoint**
 - It requires a valid token to access (uses `@AuthGuard`)
 - It's only accessible by displays (checks `TokenOwnerType.DISPLAY`)
 - Permit join is only required for **new registrations**, not for existing displays refreshing their tokens

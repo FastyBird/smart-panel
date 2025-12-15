@@ -109,7 +109,7 @@ export class TokensController {
 	@ApiCreatedSuccessResponse(
 		TokenResponseModel,
 		'Token created successfully',
-		'/api/v1/auth-module/auth/123e4567-e89b-12d3-a456-426614174000',
+		'/api/v1/modlues/auth/auth/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid token data or unsupported token type')
 	@ApiInternalServerErrorResponse('Internal server error')

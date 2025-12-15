@@ -1,6 +1,6 @@
 import { FieldType, ISchemaOptions } from 'influx';
 
-export const WEBSOCKET_MODULE_PREFIX = 'websocket-module';
+export const WEBSOCKET_MODULE_PREFIX = 'websocket';
 
 export const WEBSOCKET_MODULE_NAME = 'websocket-module';
 

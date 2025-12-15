@@ -215,11 +215,11 @@ const isChannelDetailRoute = computed<boolean>(
 );
 
 const plugin = computed<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === channel.value?.type) ?? undefined;
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === channel.value?.type)) ?? undefined;
 });
 
 const element = computed<IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === channel.value?.type);
+	return (plugin.value?.elements ?? []).find((element) => element.type === channel.value?.type);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

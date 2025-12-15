@@ -310,7 +310,7 @@ export { SystemModuleCreateLogEntrySource as SystemModuleLogEntrySource } from '
 
 export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './openapi';
 
-export { PathsSystemModuleExtensionsGetParametersQuerySurface as SystemModuleQuerySurface } from './openapi';
+export { PathsModulesSystemExtensionsGetParametersQuerySurface as SystemModuleQuerySurface } from './openapi';
 
 export { SystemModuleDataExtensionAdminType } from './openapi';
 

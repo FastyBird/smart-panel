@@ -147,6 +147,7 @@ import {
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	useBreakpoints,
+	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import { DeviceEditForm } from '../components/components';
@@ -172,6 +173,7 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
@@ -179,6 +181,9 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
 const { icon: deviceIcon } = useDeviceIcon({ id: props.id });
+
+// Track if device was previously loaded to detect deletion
+const wasDeviceLoaded = ref<boolean>(false);
 
 if (!validateUuid(props.id)) {
 	throw new Error('Device identifier is not valid');
@@ -199,11 +204,11 @@ const isDetailRoute = computed<boolean>(
 );
 
 const plugin = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === device.value?.type);
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === device.value?.type));
 });
 
 const element = computed<IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === device.value?.type);
+	return (plugin.value?.elements ?? []).find((element) => element.type === device.value?.type);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -284,8 +289,12 @@ const onClose = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	fetchDevice()
 		.then((): void => {
-			if (!isLoading.value && device.value === null) {
+			if (!isLoading.value && device.value === null && !wasDeviceLoaded.value) {
 				throw new DevicesException('Device not found');
+			}
+			// Mark as loaded if device was successfully fetched
+			if (device.value !== null) {
+				wasDeviceLoaded.value = true;
 			}
 		})
 		.catch((error: unknown): void => {
@@ -306,7 +315,8 @@ onMounted((): void => {
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && device.value === null) {
+		// Only throw error if device was never loaded (initial load failed)
+		if (!val && device.value === null && !wasDeviceLoaded.value) {
 			throw new DevicesException('Device not found');
 		}
 	}
@@ -316,10 +326,19 @@ watch(
 	(): IDevice | null => device.value,
 	(val: IDevice | null): void => {
 		if (val !== null) {
+			wasDeviceLoaded.value = true;
 			meta.title = t('devicesModule.meta.devices.edit.title', { device: device.value?.name });
-		}
-
-		if (!isLoading.value && val === null) {
+		} else if (wasDeviceLoaded.value && !isLoading.value) {
+			// Device was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('devicesModule.messages.devices.deletedWhileEditing'), { duration: 0 });
+			// Redirect to devices list
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.DEVICES });
+			} else {
+				router.push({ name: RouteNames.DEVICES });
+			}
+		} else if (!isLoading.value && val === null && !wasDeviceLoaded.value) {
+			// Device was never loaded - initial load failed
 			throw new DevicesException('Device not found');
 		}
 	}

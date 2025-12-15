@@ -96,7 +96,7 @@ class ModuleConfigRepository<T extends Model> extends ChangeNotifier {
       };
 
       // Build the URL
-      final url = '/config-module/config/module/$_moduleName';
+      final url = '/modules/config/config/module/$_moduleName';
 
       try {
         // Make the PATCH request using the Dio instance

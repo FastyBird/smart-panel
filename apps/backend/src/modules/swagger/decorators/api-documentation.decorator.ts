@@ -68,7 +68,7 @@ export const ApiCreatedSuccessResponse = <TModel extends Type<any> | (abstract n
 		}
 	} else {
 		// Default example
-		example = 'https://smart-panel.local/api/v1/example-module/example-resource/123e4567-e89b-12d3-a456-426614174000';
+		example = 'https://smart-panel.local/api/v1/modules/example/example-resource/123e4567-e89b-12d3-a456-426614174000';
 	}
 
 	return applyDecorators(

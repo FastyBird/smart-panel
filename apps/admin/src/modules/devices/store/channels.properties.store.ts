@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omit, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DevicesModuleGetChannelPropertyOperation,
 	DevicesModuleGetChannelPropertiesOperation,
@@ -171,7 +172,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties/{id}`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties/{id}`, {
 						params: {
 							path: { channelId: payload.channelId, id: payload.id },
 						},
@@ -228,7 +229,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties`, {
 						params: {
 							path: { channelId: payload.channelId },
 						},
@@ -313,7 +314,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties`, {
+					} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties`, {
 						params: {
 							path: { channelId: payload.channelId },
 						},
@@ -395,7 +396,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties/{id}`, {
+					} = await backend.client.PATCH(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties/{id}`, {
 						params: {
 							path: { channelId: payload.channelId, id: payload.id },
 						},
@@ -461,7 +462,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties`, {
+				} = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties`, {
 					params: {
 						path: { channelId: parsedSaveItem.data.channel },
 					},
@@ -514,7 +515,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {
-					const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties/{id}`, {
+					const { error, response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties/{id}`, {
 						params: {
 							path: { channelId: payload.channelId, id: payload.id },
 						},

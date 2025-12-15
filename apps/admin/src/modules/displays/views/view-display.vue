@@ -289,7 +289,7 @@ import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, 
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { useDisplay } from '../composables/composables';
 import { RouteNames } from '../displays.constants';
 import type { IDisplay } from '../store/displays.store.types';
@@ -305,11 +305,15 @@ const props = defineProps<IViewDisplayProps>();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const displayId = computed(() => props.id);
 const { display, isLoading } = useDisplay(displayId);
+
+// Track if display was previously loaded to detect deletion
+const wasDisplayLoaded = ref<boolean>(false);
 
 const formatIpAddress = (ipAddress: string | null | undefined): string => {
 	if (!ipAddress) {
@@ -369,6 +373,11 @@ const onManageTokens = (): void => {
 };
 
 onBeforeMount((): void => {
+	// Mark as loaded if display was successfully fetched
+	if (display.value !== null) {
+		wasDisplayLoaded.value = true;
+	}
+
 	showDrawer.value =
 		route.matched.find((matched) => matched.name === RouteNames.DISPLAY_EDIT || matched.name === RouteNames.DISPLAY_TOKENS) !== undefined;
 });
@@ -385,10 +394,20 @@ watch(
 	(): IDisplay | null => display.value,
 	(val: IDisplay | null): void => {
 		if (val !== null) {
+			wasDisplayLoaded.value = true;
 			meta.title = t('displaysModule.meta.displays.detail.title', { display: val.name || val.macAddress });
-		} else if (val === null && !isLoading.value) {
-			// Display was deleted, redirect to list
-			router.push({ name: RouteNames.DISPLAYS });
+		} else if (wasDisplayLoaded.value && !isLoading.value) {
+			// Display was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('displaysModule.messages.deletedWhileEditing'), { duration: 0 });
+			// Redirect to displays list
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.DISPLAYS });
+			} else {
+				router.push({ name: RouteNames.DISPLAYS });
+			}
+		} else if (!isLoading.value && val === null && !wasDisplayLoaded.value) {
+			// Display was never loaded - initial load failed (but don't throw, just show error state)
+			// The template already handles this with v-else-if="!isLoading"
 		}
 	},
 	{ immediate: true },

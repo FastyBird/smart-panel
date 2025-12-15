@@ -149,6 +149,7 @@ import {
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	useBreakpoints,
+	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import { ChannelPropertyEditForm } from '../components/components';
@@ -175,6 +176,7 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
@@ -182,6 +184,10 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel({ id: props.channelId });
 const { property, isLoading, fetchProperty } = useChannelProperty({ channelId: props.channelId, id: props.id });
+
+// Track if entities were previously loaded to detect deletion
+const wasChannelLoaded = ref<boolean>(false);
+const wasPropertyLoaded = ref<boolean>(false);
 const { icon: propertyIcon } = useChannelPropertyIcon({ id: props.id });
 
 if (!validateUuid(props.channelId)) {
@@ -214,11 +220,11 @@ const isChannelDetailRoute = computed<boolean>(
 );
 
 const plugin = computed<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === property.value?.type);
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === property.value?.type));
 });
 
 const element = computed<IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
-	return plugin.value?.elements.find((element) => element.type === property.value?.type);
+	return (plugin.value?.elements ?? []).find((element) => element.type === property.value?.type);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -317,13 +323,21 @@ const onClose = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	fetchChannel()
 		.then((): void => {
-			if (!isLoadingChannel.value && channel.value === null) {
+			// Mark channel as loaded if successfully fetched
+			if (channel.value !== null) {
+				wasChannelLoaded.value = true;
+			}
+			if (!isLoadingChannel.value && channel.value === null && !wasChannelLoaded.value) {
 				throw new DevicesException('Channel property not found');
 			}
 
 			fetchProperty()
 				.then((): void => {
-					if (!isLoading.value && property.value === null) {
+					// Mark property as loaded if successfully fetched
+					if (property.value !== null) {
+						wasPropertyLoaded.value = true;
+					}
+					if (!isLoading.value && property.value === null && !wasPropertyLoaded.value) {
 						throw new DevicesException('Channel property not found');
 					}
 				})
@@ -355,7 +369,8 @@ onMounted((): void => {
 watch(
 	(): boolean => isLoadingChannel.value,
 	(val: boolean): void => {
-		if (!val && channel.value === null) {
+		// Only throw error if channel was never loaded (initial load failed)
+		if (!val && channel.value === null && !wasChannelLoaded.value) {
 			throw new DevicesException('Channel not found');
 		}
 	}
@@ -364,7 +379,8 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && property.value === null) {
+		// Only throw error if property was never loaded (initial load failed)
+		if (!val && property.value === null && !wasPropertyLoaded.value) {
 			throw new DevicesException('Channel property not found');
 		}
 	}
@@ -373,7 +389,19 @@ watch(
 watch(
 	(): IChannel | null => channel.value,
 	(val: IChannel | null): void => {
-		if (!isLoadingChannel.value && val === null) {
+		if (val !== null) {
+			wasChannelLoaded.value = true;
+		} else if (wasChannelLoaded.value && !isLoadingChannel.value) {
+			// Channel was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('devicesModule.messages.channels.deletedWhileEditing'), { duration: 0 });
+			// Redirect to channels list
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.CHANNELS });
+			} else {
+				router.push({ name: RouteNames.CHANNELS });
+			}
+		} else if (!isLoadingChannel.value && val === null && !wasChannelLoaded.value) {
+			// Channel was never loaded - initial load failed
 			throw new DevicesException('Channel not found');
 		}
 	}
@@ -383,13 +411,37 @@ watch(
 	(): IChannelProperty | null => property.value,
 	(val: IChannelProperty | null): void => {
 		if (val !== null) {
+			wasPropertyLoaded.value = true;
 			meta.title = t('devicesModule.meta.channelsProperties.edit.title', {
 				channel: channel.value?.name,
 				property: property.value?.name ?? t(`devicesModule.categories.channelsProperties.${property.value?.category}`),
 			});
-		}
-
-		if (!isLoading.value && val === null) {
+		} else if (wasPropertyLoaded.value && !isLoading.value) {
+			// Property was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('devicesModule.messages.channelsProperties.deletedWhileEditing'), { duration: 0 });
+			// Redirect to channel detail
+			if (isChannelDetailRoute.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
+				} else {
+					router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
+				}
+			} else if (isDeviceDetailRoute.value && channel.value?.device) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.DEVICE, params: { id: channel.value.device } });
+				} else {
+					router.push({ name: RouteNames.DEVICE, params: { id: channel.value.device } });
+				}
+			} else {
+				// Fallback to channels list
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.CHANNELS });
+				} else {
+					router.push({ name: RouteNames.CHANNELS });
+				}
+			}
+		} else if (!isLoading.value && val === null && !wasPropertyLoaded.value) {
+			// Property was never loaded - initial load failed
 			throw new DevicesException('Channel property not found');
 		}
 	}

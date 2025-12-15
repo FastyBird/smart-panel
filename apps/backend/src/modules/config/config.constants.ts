@@ -1,4 +1,4 @@
-export const CONFIG_MODULE_PREFIX = 'config-module';
+export const CONFIG_MODULE_PREFIX = 'config';
 
 export const CONFIG_MODULE_NAME = 'config-module';
 
