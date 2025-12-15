@@ -8,6 +8,7 @@ import { orderBy } from 'natural-orderby';
 import { tryOnMounted } from '@vueuse/core';
 
 import { deepClone, getErrorReason, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { PLUGINS_PREFIX } from '../../../app.constants';
 import { DevicesApiException, FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_SHELLY_V1_PLUGIN_PREFIX, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
@@ -100,7 +101,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST(`/plugins/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/info`, {
+				} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_SHELLY_V1_PLUGIN_PREFIX}/devices/info`, {
 					body: {
 						data: transformDeviceInfoRequest({
 							hostname: model.hostname,
