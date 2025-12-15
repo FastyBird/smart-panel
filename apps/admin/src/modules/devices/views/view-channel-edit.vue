@@ -292,8 +292,8 @@ const onDiscard = (): void => {
 					} else {
 						router.push({ name: RouteNames.CHANNELS });
 					}
-				} else if (channel.value !== null) {
-					// Channel still exists - redirect to channel detail
+				} else if (wasChannelLoaded.value && channel.value !== null) {
+					// Channel still exists and was previously loaded - redirect to channel detail
 					if (isLGDevice.value) {
 						router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
 					} else {
@@ -346,8 +346,8 @@ const onClose = (): void => {
 			} else {
 				router.push({ name: RouteNames.CHANNELS });
 			}
-		} else if (channel.value !== null) {
-			// Channel still exists - redirect to channel detail
+		} else if (wasChannelLoaded.value && channel.value !== null) {
+			// Channel still exists and was previously loaded - redirect to channel detail
 			if (isLGDevice.value) {
 				router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
 			} else {
