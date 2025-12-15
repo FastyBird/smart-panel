@@ -292,12 +292,19 @@ const onDiscard = (): void => {
 					} else {
 						router.push({ name: RouteNames.CHANNELS });
 					}
-				} else {
+				} else if (channel.value !== null) {
 					// Channel still exists - redirect to channel detail
 					if (isLGDevice.value) {
 						router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
 					} else {
 						router.push({ name: RouteNames.CHANNEL, params: { id: props.id } });
+					}
+				} else {
+					// Channel doesn't exist (never loaded or was deleted) - redirect to channels list
+					if (isLGDevice.value) {
+						router.replace({ name: RouteNames.CHANNELS });
+					} else {
+						router.push({ name: RouteNames.CHANNELS });
 					}
 				}
 			} else {
@@ -339,12 +346,19 @@ const onClose = (): void => {
 			} else {
 				router.push({ name: RouteNames.CHANNELS });
 			}
-		} else {
+		} else if (channel.value !== null) {
 			// Channel still exists - redirect to channel detail
 			if (isLGDevice.value) {
 				router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
 			} else {
 				router.push({ name: RouteNames.CHANNEL, params: { id: props.id } });
+			}
+		} else {
+			// Channel doesn't exist (never loaded or was deleted) - redirect to channels list
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.CHANNELS });
+			} else {
+				router.push({ name: RouteNames.CHANNELS });
 			}
 		}
 	} else {
