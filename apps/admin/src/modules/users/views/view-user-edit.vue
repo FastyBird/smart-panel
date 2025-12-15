@@ -123,7 +123,7 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, UserAvatar, useBreakpoints, useUuid } from '../../../common';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, UserAvatar, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
 import { UserEditForm } from '../components/components';
 import { useUser } from '../composables/composables';
 import type { IUser } from '../store/users.store.types';
@@ -145,10 +145,14 @@ const emit = defineEmits<{
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+// Track if user was previously loaded to detect deletion
+const wasUserLoaded = ref<boolean>(false);
 
 const { user, isLoading, fetchUser } = useUser({ id: props.id });
 
@@ -209,8 +213,12 @@ const onClose = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	fetchUser()
 		.then((): void => {
-			if (!isLoading.value && user.value === null) {
+			if (!isLoading.value && user.value === null && !wasUserLoaded.value) {
 				throw new UsersException('User not found');
+			}
+			// Mark as loaded if user was successfully fetched
+			if (user.value !== null) {
+				wasUserLoaded.value = true;
 			}
 		})
 		.catch((error: unknown): void => {
@@ -231,7 +239,8 @@ onMounted((): void => {
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && user.value === null) {
+		// Only throw error if user was never loaded (initial load failed)
+		if (!val && user.value === null && !wasUserLoaded.value) {
 			throw new UsersException('User not found');
 		}
 	}
@@ -241,10 +250,19 @@ watch(
 	(): IUser | null => user.value,
 	(val: IUser | null): void => {
 		if (val !== null) {
+			wasUserLoaded.value = true;
 			meta.title = t('usersModule.meta.users.edit.title', { user: user.value?.username });
-		}
-
-		if (!isLoading.value && val === null) {
+		} else if (wasUserLoaded.value && !isLoading.value) {
+			// User was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('usersModule.messages.deletedWhileEditing'), { duration: 0 });
+			// Redirect to users list
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.USERS });
+			} else {
+				router.push({ name: RouteNames.USERS });
+			}
+		} else if (!isLoading.value && val === null && !wasUserLoaded.value) {
+			// User was never loaded - initial load failed
 			throw new UsersException('User not found');
 		}
 	}

@@ -120,7 +120,8 @@
       "removed": "The page: {page} was successfully removed.",
       "removeCanceled": "Page: {page} removal has been canceled.",
       "notRemoved": "Something went wrong, and the page: {page} was not removed.",
-      "noDetailAllowed": "This page type cannot be opened because it has no detail view."
+      "noDetailAllowed": "This page type cannot be opened because it has no detail view.",
+      "deletedWhileEditing": "This page was deleted and is no longer available."
     },
     "tiles": {
       "notFound": "The tile you are looking for doesn’t exist or may have been removed.",
@@ -131,7 +132,8 @@
       "notEdited": "Something went wrong. Tile update was not successful.",
       "removed": "The tile was successfully removed.",
       "removeCanceled": "Tile removal has been canceled.",
-      "notRemoved": "Something tile wrong, and the tile was not removed."
+      "notRemoved": "Something tile wrong, and the tile was not removed.",
+      "deletedWhileEditing": "This tile was deleted and is no longer available."
     },
     "dataSources": {
       "notFound": "The data source you are looking for doesn’t exist or may have been removed.",
@@ -142,7 +144,8 @@
       "notEdited": "Something went wrong. Data source update was not successful.",
       "removed": "The data source was successfully removed.",
       "removeCanceled": "Data sources removal has been canceled.",
-      "notRemoved": "Something went wrong, and the data sources was not removed."
+      "notRemoved": "Something went wrong, and the data sources was not removed.",
+      "deletedWhileEditing": "This data source was deleted and is no longer available."
     },
     "misc": {
       "requestError": "Something went wrong, please try again later."

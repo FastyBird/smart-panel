@@ -124,7 +124,7 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, SUBMIT_FORM_SM, useBreakpoints, useUuid } from '../../../common';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, SUBMIT_FORM_SM, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
 import { DisplayEditForm } from '../components/components';
 import { useDisplay } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../displays.constants';
@@ -148,10 +148,14 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+// Track if display was previously loaded to detect deletion
+const wasDisplayLoaded = ref<boolean>(false);
 
 const displayId = computed(() => props.id);
 const { display, isLoading, fetchDisplay } = useDisplay(displayId);
@@ -250,8 +254,12 @@ const onClose = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	fetchDisplay()
 		.then((): void => {
-			if (!isLoading.value && display.value === null) {
+			if (!isLoading.value && display.value === null && !wasDisplayLoaded.value) {
 				throw new DisplaysException('Display not found');
+			}
+			// Mark as loaded if display was successfully fetched
+			if (display.value !== null) {
+				wasDisplayLoaded.value = true;
 			}
 		})
 		.catch((error: unknown): void => {
@@ -272,7 +280,8 @@ onMounted((): void => {
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && display.value === null) {
+		// Only throw error if display was never loaded (initial load failed)
+		if (!val && display.value === null && !wasDisplayLoaded.value) {
 			throw new DisplaysException('Display not found');
 		}
 	}
@@ -282,12 +291,20 @@ watch(
 	(): IDisplay | null => display.value,
 	(val: IDisplay | null): void => {
 		if (val !== null) {
+			wasDisplayLoaded.value = true;
 			meta.title = t('displaysModule.meta.displays.edit.title', { display: display.value?.name || display.value?.macAddress });
-		}
-
-		if (!isLoading.value && val === null) {
-			// Display was deleted, redirect to list
-			router.push({ name: RouteNames.DISPLAYS });
+		} else if (wasDisplayLoaded.value && !isLoading.value) {
+			// Display was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('displaysModule.messages.deletedWhileEditing'), { duration: 0 });
+			// Redirect to displays list
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.DISPLAYS });
+			} else {
+				router.push({ name: RouteNames.DISPLAYS });
+			}
+		} else if (!isLoading.value && val === null && !wasDisplayLoaded.value) {
+			// Display was never loaded - initial load failed
+			throw new DisplaysException('Display not found');
 		}
 	},
 	{ immediate: true },

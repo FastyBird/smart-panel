@@ -147,6 +147,7 @@ import {
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	useBreakpoints,
+	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import { ChannelEditForm } from '../components/components';
@@ -172,12 +173,16 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const { meta } = useMeta({});
+const flashMessage = useFlashMessage();
 
 const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
+
+// Track if channel was previously loaded to detect deletion
+const wasChannelLoaded = ref<boolean>(false);
 const { icon: channelIcon } = useChannelIcon({ id: props.id });
 
 if (!validateUuid(props.id)) {
@@ -318,8 +323,12 @@ const onClose = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	fetchChannel()
 		.then((): void => {
-			if (!isLoading.value && channel.value === null) {
+			if (!isLoading.value && channel.value === null && !wasChannelLoaded.value) {
 				throw new DevicesException('Channel not found');
+			}
+			// Mark as loaded if channel was successfully fetched
+			if (channel.value !== null) {
+				wasChannelLoaded.value = true;
 			}
 		})
 		.catch((error: unknown): void => {
@@ -340,7 +349,8 @@ onMounted((): void => {
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && channel.value === null) {
+		// Only throw error if channel was never loaded (initial load failed)
+		if (!val && channel.value === null && !wasChannelLoaded.value) {
 			throw new DevicesException('Channel not found');
 		}
 	}
@@ -350,10 +360,34 @@ watch(
 	(): IChannel | null => channel.value,
 	(val: IChannel | null): void => {
 		if (val !== null) {
+			wasChannelLoaded.value = true;
 			meta.title = t('devicesModule.meta.channels.edit.title', { channel: channel.value?.name });
-		}
-
-		if (!isLoading.value && val === null) {
+		} else if (wasChannelLoaded.value && !isLoading.value) {
+			// Channel was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('devicesModule.messages.channels.deletedWhileEditing'), { duration: 0 });
+			// Redirect based on route context
+			if (isDeviceDetailRoute.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
+				} else {
+					router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
+				}
+			} else if (isChannelDetailRoute.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
+				} else {
+					router.push({ name: RouteNames.CHANNEL, params: { id: props.id } });
+				}
+			} else {
+				// Redirect to channels list
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.CHANNELS });
+				} else {
+					router.push({ name: RouteNames.CHANNELS });
+				}
+			}
+		} else if (!isLoading.value && val === null && !wasChannelLoaded.value) {
+			// Channel was never loaded - initial load failed
 			throw new DevicesException('Channel not found');
 		}
 	}

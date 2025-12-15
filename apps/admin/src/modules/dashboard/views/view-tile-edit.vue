@@ -146,6 +146,7 @@ import {
 	type IPluginElement,
 	SUBMIT_FORM_SM,
 	useBreakpoints,
+	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import TileEditForm from '../components/tiles/tile-edit-form.vue';
@@ -171,6 +172,7 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('dashboardModule.meta.tiles.edit.title'),
@@ -181,6 +183,12 @@ const { validate: validateUuid } = useUuid();
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { tile, isLoading, fetchTile } = useTile({ id: props.id });
+
+// Track if tile was previously loaded to detect deletion
+const wasTileLoaded = ref<boolean>(false);
+
+// Track if tile was previously loaded to detect deletion
+const wasTileLoaded = ref<boolean>(false);
 
 if (!validateUuid(props.id)) {
 	throw new Error('Element identifier is not valid');
@@ -259,8 +267,12 @@ const onClose = (): void => {
 onBeforeMount(async (): Promise<void> => {
 	fetchTile()
 		.then((): void => {
-			if (!isLoading.value && tile.value === null) {
+			if (!isLoading.value && tile.value === null && !wasTileLoaded.value) {
 				throw new DashboardException('Tile not found');
+			}
+			// Mark as loaded if tile was successfully fetched
+			if (tile.value !== null) {
+				wasTileLoaded.value = true;
 			}
 		})
 		.catch((error: unknown): void => {
@@ -281,7 +293,8 @@ onMounted((): void => {
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && tile.value === null) {
+		// Only throw error if tile was never loaded (initial load failed)
+		if (!val && tile.value === null && !wasTileLoaded.value) {
 			throw new DashboardException('Tile not found');
 		}
 	}
@@ -290,7 +303,19 @@ watch(
 watch(
 	(): ITile | null => tile.value,
 	(val: ITile | null): void => {
-		if (!isLoading.value && val === null) {
+		if (val !== null) {
+			wasTileLoaded.value = true;
+		} else if (wasTileLoaded.value && !isLoading.value) {
+			// Tile was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('dashboardModule.messages.tiles.deletedWhileEditing'), { duration: 0 });
+			// Redirect to tile detail (parent page)
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.TILE, params: { id: props.id } });
+			} else {
+				router.push({ name: RouteNames.TILE, params: { id: props.id } });
+			}
+		} else if (!isLoading.value && val === null && !wasTileLoaded.value) {
+			// Tile was never loaded - initial load failed
 			throw new DashboardException('Tile not found');
 		}
 	}

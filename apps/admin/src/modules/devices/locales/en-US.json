@@ -114,7 +114,8 @@
       "notEdited": "Something went wrong. Device update was not successful.",
       "removed": "The device: {device} was successfully removed.",
       "removeCanceled": "Device: {device} removal has been canceled.",
-      "notRemoved": "Something went wrong, and the device: {device} was not removed."
+      "notRemoved": "Something went wrong, and the device: {device} was not removed.",
+      "deletedWhileEditing": "This device was deleted and is no longer available."
     },
     "channels": {
       "notFound": "The channel you are looking for doesn’t exist or may have been removed.",
@@ -125,7 +126,8 @@
       "removed": "The channel: {channel} was successfully removed.",
       "removeCanceled": "Channel: {channel} removal has been canceled.",
       "notRemoved": "Something went wrong, and the channel: {channel} was not removed.",
-      "noMoreAllowed": "All required and optional channels are assigned to the device. No others can be added."
+      "noMoreAllowed": "All required and optional channels are assigned to the device. No others can be added.",
+      "deletedWhileEditing": "This channel was deleted and is no longer available."
     },
     "channelsProperties": {
       "notFound": "The channel property you are looking for doesn’t exist or may have been removed.",
@@ -136,7 +138,8 @@
       "removed": "The channel property: {property} was successfully removed.",
       "removeCanceled": "Channel property: {property} removal has been canceled.",
       "notRemoved": "Something went wrong, and the channel property: {property} was not removed.",
-      "noMoreAllowed": "All required and optional properties are assigned to the channel. No others can be added."
+      "noMoreAllowed": "All required and optional properties are assigned to the channel. No others can be added.",
+      "deletedWhileEditing": "This channel property was deleted and is no longer available."
     },
     "misc": {
       "requestError": "Something went wrong, please try again later."
