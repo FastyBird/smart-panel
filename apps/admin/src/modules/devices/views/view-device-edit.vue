@@ -330,7 +330,7 @@ watch(
 			meta.title = t('devicesModule.meta.devices.edit.title', { device: device.value?.name });
 		} else if (wasDeviceLoaded.value && !isLoading.value) {
 			// Device was previously loaded but is now null - it was deleted
-			flashMessage.warning(t('devicesModule.messages.devices.deletedWhileEditing', { device: props.id }), { duration: 0 });
+			flashMessage.warning(t('devicesModule.messages.devices.deletedWhileEditing'), { duration: 0 });
 			// Redirect to devices list
 			if (isLGDevice.value) {
 				router.replace({ name: RouteNames.DEVICES });

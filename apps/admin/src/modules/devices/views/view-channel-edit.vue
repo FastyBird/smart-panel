@@ -280,9 +280,9 @@ const onDiscard = (): void => {
 			} else if (isChannelDetailRoute.value) {
 				// If channel was deleted (was loaded but is now null), redirect to device or channels list instead of deleted channel
 				// Never redirect to RouteNames.CHANNEL if channel.value is null to avoid redirecting to deleted channel
-				if (channel.value === null) {
+				if (wasChannelLoaded.value && channel.value === null) {
 					// Channel was deleted - redirect to device if we have device ID, otherwise to channels list
-					if (wasChannelLoaded.value && channelDeviceId.value !== null) {
+					if (channelDeviceId.value !== null) {
 						if (isLGDevice.value) {
 							router.replace({ name: RouteNames.DEVICE, params: { id: channelDeviceId.value } });
 						} else {
@@ -296,15 +296,15 @@ const onDiscard = (): void => {
 							router.push({ name: RouteNames.CHANNELS });
 						}
 					}
-				} else if (wasChannelLoaded.value && channel.value !== null) {
-					// Channel still exists and was previously loaded - redirect to channel detail
+				} else if (channel.value !== null) {
+					// Channel still exists - redirect to channel detail
 					if (isLGDevice.value) {
 						router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
 					} else {
 						router.push({ name: RouteNames.CHANNEL, params: { id: props.id } });
 					}
 				} else {
-					// Channel doesn't exist (never loaded or was deleted) - redirect to channels list
+					// Channel doesn't exist (never loaded) - redirect to channels list
 					if (isLGDevice.value) {
 						router.replace({ name: RouteNames.CHANNELS });
 					} else {
@@ -338,9 +338,9 @@ const onClose = (): void => {
 	} else if (isChannelDetailRoute.value) {
 		// If channel was deleted (was loaded but is now null), redirect to device or channels list instead of deleted channel
 		// Never redirect to RouteNames.CHANNEL if channel.value is null to avoid redirecting to deleted channel
-		if (channel.value === null) {
+		if (wasChannelLoaded.value && channel.value === null) {
 			// Channel was deleted - redirect to device if we have device ID, otherwise to channels list
-			if (wasChannelLoaded.value && channelDeviceId.value !== null) {
+			if (channelDeviceId.value !== null) {
 				if (isLGDevice.value) {
 					router.replace({ name: RouteNames.DEVICE, params: { id: channelDeviceId.value } });
 				} else {
@@ -354,15 +354,15 @@ const onClose = (): void => {
 					router.push({ name: RouteNames.CHANNELS });
 				}
 			}
-		} else if (wasChannelLoaded.value && channel.value !== null) {
-			// Channel still exists and was previously loaded - redirect to channel detail
+		} else if (channel.value !== null) {
+			// Channel still exists - redirect to channel detail
 			if (isLGDevice.value) {
 				router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
 			} else {
 				router.push({ name: RouteNames.CHANNEL, params: { id: props.id } });
 			}
 		} else {
-			// Channel doesn't exist (never loaded or was deleted) - redirect to channels list
+			// Channel doesn't exist (never loaded) - redirect to channels list
 			if (isLGDevice.value) {
 				router.replace({ name: RouteNames.CHANNELS });
 			} else {
