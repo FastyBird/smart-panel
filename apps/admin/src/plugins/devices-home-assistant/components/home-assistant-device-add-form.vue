@@ -300,10 +300,16 @@ const stepFiveFormEl = computed(() => {
 	return exposed ? unref(exposed) : undefined;
 });
 
+// Track pending step change that requires validation
+const pendingStepChange = ref<{
+	targetStep: 'one' | 'two' | 'three' | 'four' | 'five';
+	currentStep: 'one' | 'two' | 'three' | 'four' | 'five';
+} | null>(null);
+
 // Controlled active step that validates before allowing changes
 const controlledActiveStep = computed({
 	get: () => activeStep.value,
-	set: async (newStep: 'one' | 'two' | 'three' | 'four' | 'five' | string | null | undefined) => {
+	set: (newStep: 'one' | 'two' | 'three' | 'four' | 'five' | string | null | undefined) => {
 		const currentStep = activeStep.value;
 		
 		// Handle empty/invalid values from ElCollapse in accordion mode when panel is collapsed
@@ -312,9 +318,10 @@ const controlledActiveStep = computed({
 		const isValidStep = newStep && validSteps.includes(newStep as typeof validSteps[number]);
 		if (!isValidStep) {
 			// Revert to current step - don't allow collapse to empty state
-			// Use nextTick to ensure Element Plus processes the revert after its internal update
-			await nextTick();
-			activeStep.value = currentStep;
+			// Schedule revert in nextTick to ensure Element Plus processes it after its internal update
+			nextTick(() => {
+				activeStep.value = currentStep;
+			});
 			return;
 		}
 		
@@ -324,9 +331,10 @@ const controlledActiveStep = computed({
 		// Prevent opening steps that haven't been reached
 		if (!reachedSteps.value.has(validNewStep)) {
 			// Revert to current step - don't allow the change
-			// Use nextTick to ensure Element Plus processes the revert after its internal update
-			await nextTick();
-			activeStep.value = currentStep;
+			// Schedule revert in nextTick to ensure Element Plus processes it after its internal update
+			nextTick(() => {
+				activeStep.value = currentStep;
+			});
 			return;
 		}
 
@@ -367,27 +375,47 @@ const controlledActiveStep = computed({
 			// Only validate if the current step requires validation before proceeding
 			// Steps 1, 2, and 4 require validation; step 3 doesn't
 			if (currentStep === 'one' || currentStep === 'two' || currentStep === 'four') {
-				try {
-					// Validate and submit current step - this will advance to next step automatically
-					// For step 4, this also refreshes the preview with updated entityOverrides
-					if (currentStep === 'one') {
-						await submitStep(currentStep, stepOneFormEl.value);
-					} else if (currentStep === 'two') {
-						await submitStep(currentStep, stepTwoFormEl.value);
-					} else if (currentStep === 'four') {
-						await submitStep(currentStep, stepFourFormEl.value);
-					}
-					// submitStep() automatically advances to the next step, so we're done
-					// If user was trying to jump multiple steps, they'll be on the next step
-					// and can navigate again if needed
-					return;
-				} catch {
-					// Validation failed - revert to current step
-					// submitStep() already handles error display
-					await nextTick();
+				// Prevent the change immediately and schedule validation
+				// This ensures ElCollapse doesn't get into an inconsistent state
+				pendingStepChange.value = {
+					targetStep: validNewStep,
+					currentStep: currentStep,
+				};
+				
+				// Revert to current step synchronously to prevent ElCollapse from seeing invalid state
+				// We need to schedule this in nextTick to ensure it happens after ElCollapse's internal update
+				nextTick(() => {
 					activeStep.value = currentStep;
-					return;
-				}
+					
+					// Schedule validation to run after the revert completes
+					nextTick(async () => {
+						if (!pendingStepChange.value) return;
+						
+						const { currentStep: stepToValidate } = pendingStepChange.value;
+						pendingStepChange.value = null;
+						
+						try {
+							// Validate and submit current step - this will advance to next step automatically
+							// For step 4, this also refreshes the preview with updated entityOverrides
+							if (stepToValidate === 'one') {
+								await submitStep(stepToValidate, stepOneFormEl.value);
+							} else if (stepToValidate === 'two') {
+								await submitStep(stepToValidate, stepTwoFormEl.value);
+							} else if (stepToValidate === 'four') {
+								await submitStep(stepToValidate, stepFourFormEl.value);
+							}
+							// submitStep() automatically advances to the next step, so we're done
+							// If user was trying to jump multiple steps, they'll be on the next step
+							// and can navigate again if needed
+						} catch {
+							// Validation failed - stay on current step
+							// submitStep() already handles error display
+							// activeStep is already set to currentStep, so no revert needed
+						}
+					});
+				});
+				
+				return;
 			} else {
 				// Step 3 or other steps don't require validation, allow navigation
 				activeStep.value = validNewStep;
