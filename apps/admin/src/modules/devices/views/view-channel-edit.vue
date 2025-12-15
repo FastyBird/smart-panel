@@ -183,6 +183,8 @@ const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
 
 // Track if channel was previously loaded to detect deletion
 const wasChannelLoaded = ref<boolean>(false);
+// Store device ID when channel is loaded (for redirect after deletion)
+const channelDeviceId = ref<IChannel['device'] | null>(null);
 const { icon: channelIcon } = useChannelIcon({ id: props.id });
 
 if (!validateUuid(props.id)) {
@@ -361,6 +363,8 @@ watch(
 	(val: IChannel | null): void => {
 		if (val !== null) {
 			wasChannelLoaded.value = true;
+			// Store device ID for redirect after deletion
+			channelDeviceId.value = val.device;
 			meta.title = t('devicesModule.meta.channels.edit.title', { channel: channel.value?.name });
 		} else if (wasChannelLoaded.value && !isLoading.value) {
 			// Channel was previously loaded but is now null - it was deleted
@@ -373,10 +377,20 @@ watch(
 					router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
 				}
 			} else if (isChannelDetailRoute.value) {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
+				// Channel was deleted - redirect to device if we have device ID, otherwise to channels list
+				if (channelDeviceId.value !== null) {
+					if (isLGDevice.value) {
+						router.replace({ name: RouteNames.DEVICE, params: { id: channelDeviceId.value } });
+					} else {
+						router.push({ name: RouteNames.DEVICE, params: { id: channelDeviceId.value } });
+					}
 				} else {
-					router.push({ name: RouteNames.CHANNEL, params: { id: props.id } });
+					// Fallback to channels list if device ID is not available
+					if (isLGDevice.value) {
+						router.replace({ name: RouteNames.CHANNELS });
+					} else {
+						router.push({ name: RouteNames.CHANNELS });
+					}
 				}
 			} else {
 				// Redirect to channels list
