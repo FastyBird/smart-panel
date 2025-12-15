@@ -278,14 +278,14 @@ const onDiscard = (): void => {
 					router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
 				}
 			} else if (isChannelDetailRoute.value) {
-				// If channel was deleted, redirect to device or channels list instead of deleted channel
-				if (channel.value === null && channelDeviceId.value !== null) {
+				// If channel was deleted (was loaded but is now null), redirect to device or channels list instead of deleted channel
+				if (wasChannelLoaded.value && channel.value === null && channelDeviceId.value !== null) {
 					if (isLGDevice.value) {
 						router.replace({ name: RouteNames.DEVICE, params: { id: channelDeviceId.value } });
 					} else {
 						router.push({ name: RouteNames.DEVICE, params: { id: channelDeviceId.value } });
 					}
-				} else if (channel.value === null) {
+				} else if (wasChannelLoaded.value && channel.value === null) {
 					// Channel was deleted and we don't have device ID - redirect to channels list
 					if (isLGDevice.value) {
 						router.replace({ name: RouteNames.CHANNELS });
@@ -325,14 +325,14 @@ const onClose = (): void => {
 			router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
 		}
 	} else if (isChannelDetailRoute.value) {
-		// If channel was deleted, redirect to device or channels list instead of deleted channel
-		if (channel.value === null && channelDeviceId.value !== null) {
+		// If channel was deleted (was loaded but is now null), redirect to device or channels list instead of deleted channel
+		if (wasChannelLoaded.value && channel.value === null && channelDeviceId.value !== null) {
 			if (isLGDevice.value) {
 				router.replace({ name: RouteNames.DEVICE, params: { id: channelDeviceId.value } });
 			} else {
 				router.push({ name: RouteNames.DEVICE, params: { id: channelDeviceId.value } });
 			}
-		} else if (channel.value === null) {
+		} else if (wasChannelLoaded.value && channel.value === null) {
 			// Channel was deleted and we don't have device ID - redirect to channels list
 			if (isLGDevice.value) {
 				router.replace({ name: RouteNames.CHANNELS });
