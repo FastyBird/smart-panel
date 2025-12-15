@@ -187,9 +187,6 @@ const { tile, isLoading, fetchTile } = useTile({ id: props.id });
 // Track if tile was previously loaded to detect deletion
 const wasTileLoaded = ref<boolean>(false);
 
-// Track if tile was previously loaded to detect deletion
-const wasTileLoaded = ref<boolean>(false);
-
 if (!validateUuid(props.id)) {
 	throw new Error('Element identifier is not valid');
 }

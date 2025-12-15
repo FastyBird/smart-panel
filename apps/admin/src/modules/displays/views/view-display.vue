@@ -312,6 +312,9 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 const displayId = computed(() => props.id);
 const { display, isLoading } = useDisplay(displayId);
 
+// Track if display was previously loaded to detect deletion
+const wasDisplayLoaded = ref<boolean>(false);
+
 const formatIpAddress = (ipAddress: string | null | undefined): string => {
 	if (!ipAddress) {
 		return '-';

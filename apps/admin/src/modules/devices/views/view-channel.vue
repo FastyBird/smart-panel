@@ -472,22 +472,11 @@ watch(
 		} else if (wasChannelLoaded.value && !isLoading.value) {
 			// Channel was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('devicesModule.messages.channels.deletedWhileEditing'), { duration: 0 });
-			// Redirect to channels list (or device detail if available)
-			const deviceId = props.device?.id;
-			if (deviceId) {
-				// Redirect to device detail page
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.DEVICE, params: { id: deviceId } });
-				} else {
-					router.push({ name: RouteNames.DEVICE, params: { id: deviceId } });
-				}
+			// Redirect to channels list (we can't access device ID from deleted channel)
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.CHANNELS });
 			} else {
-				// Redirect to channels list
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.CHANNELS });
-				} else {
-					router.push({ name: RouteNames.CHANNELS });
-				}
+				router.push({ name: RouteNames.CHANNELS });
 			}
 		} else if (!isLoading.value && val === null && !wasChannelLoaded.value) {
 			// Channel was never loaded - initial load failed
