@@ -7,7 +7,7 @@ import { orderBy } from 'natural-orderby';
 
 import { tryOnMounted } from '@vueuse/core';
 
-import { deepClone, getErrorReason, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { deepClone, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { DevicesApiException, FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
@@ -130,13 +130,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					return 'ok';
 				}
 
-				let errorReason: string | null = 'Failed to check device.';
-
-				if (error) {
-					errorReason = getErrorReason<Record<string, unknown>>(error, errorReason);
-				}
-
-				throw new DevicesShellyV1ApiException(errorReason, response.status);
+				throw new DevicesShellyV1ApiException('Failed to check device.', response.status);
 			} catch (error: unknown) {
 				formResult.value = FormResult.ERROR;
 
