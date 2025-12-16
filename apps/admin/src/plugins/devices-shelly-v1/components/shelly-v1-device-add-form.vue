@@ -327,9 +327,9 @@ watch(
 );
 
 watch(
-	(): IShellyV1DeviceInfo | null => deviceInfo.value,
-	(val: IShellyV1DeviceInfo | null): void => {
-		if (val === null) {
+	[(): IShellyV1DeviceInfo | null => deviceInfo.value, (): boolean => devicesLoaded.value],
+	([val, loaded]: [IShellyV1DeviceInfo | null, boolean]): void => {
+		if (val === null || !loaded) {
 			return;
 		}
 
