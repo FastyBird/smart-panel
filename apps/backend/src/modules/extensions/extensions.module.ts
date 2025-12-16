@@ -21,6 +21,7 @@ import { ExtensionsConfigModel } from './models/config.model';
 import { ExtensionsBundledService } from './services/extensions-bundled.service';
 import { ExtensionsService } from './services/extensions.service';
 import { ModuleResetService } from './services/module-reset.service';
+import { PluginServiceManagerService } from './services/plugin-service-manager.service';
 
 @ApiTag({
 	tagName: EXTENSIONS_MODULE_NAME,
@@ -30,8 +31,8 @@ import { ModuleResetService } from './services/module-reset.service';
 @Module({
 	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule)],
 	controllers: [ExtensionsController, DiscoveredExtensionsController],
-	providers: [ExtensionsBundledService, ExtensionsService, ModuleResetService],
-	exports: [ExtensionsBundledService, ExtensionsService],
+	providers: [ExtensionsBundledService, ExtensionsService, ModuleResetService, PluginServiceManagerService],
+	exports: [ExtensionsBundledService, ExtensionsService, PluginServiceManagerService],
 })
 export class ExtensionsModule implements OnModuleInit {
 	constructor(

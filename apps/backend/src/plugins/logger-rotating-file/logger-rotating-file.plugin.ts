@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SystemLoggerService } from '../../modules/system/services/system-logger.service';
 import { SystemModule } from '../../modules/system/system.module';
@@ -16,7 +16,7 @@ import { RotatingFileConfigModel } from './models/config.model';
 import { FileLoggerService } from './services/file-logger.service';
 
 @Module({
-	imports: [NestConfigModule, SystemModule, ConfigModule, ExtensionsModule],
+	imports: [SystemModule, ConfigModule, ExtensionsModule],
 	providers: [FileLoggerService],
 })
 export class LoggerRotatingFilePlugin {
@@ -26,6 +26,7 @@ export class LoggerRotatingFilePlugin {
 		private readonly systemLoggerService: SystemLoggerService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -41,6 +42,7 @@ export class LoggerRotatingFilePlugin {
 			this.swaggerRegistry.register(model);
 		}
 
+		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: LOGGER_ROTATING_FILE_PLUGIN_NAME,
 			name: 'Rotating File Logger',
@@ -89,9 +91,9 @@ smart-panel-2024-01-15.log
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
-	}
 
-	async onApplicationBootstrap() {
-		await this.fileLoggerService.initialize();
+		// Register service with the centralized plugin service manager
+		// The manager handles startup, shutdown, and config-based enable/disable
+		this.pluginServiceManager.register(this.fileLoggerService);
 	}
 }

@@ -1,11 +1,7 @@
-import { Logger, Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
-import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
-import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { CreateChannelPropertyDto } from '../../modules/devices/dto/create-channel-property.dto';
@@ -21,6 +17,7 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -71,7 +68,6 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 })
 @Module({
 	imports: [
-		NestConfigModule,
 		TypeOrmModule.forFeature([
 			HomeAssistantDeviceEntity,
 			HomeAssistantChannelEntity,
@@ -106,11 +102,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 	exports: [HomeAssistantHttpService],
 })
 export class DevicesHomeAssistantPlugin {
-	private readonly logger = new Logger(DevicesHomeAssistantPlugin.name);
-
 	constructor(
-		private readonly configService: NestConfigService,
-		private readonly appConfigService: ConfigService,
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly devicesMapper: DevicesTypeMapperService,
 		private readonly channelsMapper: ChannelsTypeMapperService,
@@ -123,13 +115,13 @@ export class DevicesHomeAssistantPlugin {
 		private readonly homeAssistantLightEntityMapper: LightEntityMapperService,
 		private readonly homeAssistantSensorEntityMapper: SensorEntityMapperService,
 		private readonly homeAssistantSwitchEntityMapper: SwitchEntityMapperService,
-		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly homeAssistantWsService: HomeAssistantWsService,
 		private readonly stateChangedEventService: StateChangedEventService,
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -250,6 +242,7 @@ export class DevicesHomeAssistantPlugin {
 			modelClass: UpdateHomeAssistantChannelPropertyDto,
 		});
 
+		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 			name: 'Home Assistant Devices',
@@ -290,34 +283,15 @@ Integration plugin for connecting Smart Panel to Home Assistant.
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
-	}
 
-	onApplicationBootstrap() {
-		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
+		// Register event handlers (always, regardless of enabled state)
+		this.homeAssistantWsService.registerEventsHandler(
+			this.stateChangedEventService.event,
+			this.stateChangedEventService,
+		);
 
-		if (
-			!isCli &&
-			this.appConfigService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled ===
-				true
-		) {
-			this.homeAssistantWsService.connect();
-			this.homeAssistantWsService.registerEventsHandler(
-				this.stateChangedEventService.event,
-				this.stateChangedEventService,
-			);
-
-			this.homeAssistantHttpService.loadStates().catch((error: unknown) => {
-				const err = error as Error;
-
-				this.logger.error('[HOME ASSISTANT][PLUGIN] Failed to initialize devices states', {
-					message: err.message,
-					stack: err.stack,
-				});
-			});
-		}
-	}
-
-	onModuleDestroy() {
-		this.homeAssistantWsService.disconnect();
+		// Register service with the centralized plugin service manager
+		// The manager handles startup, shutdown, and config-based enable/disable
+		this.pluginServiceManager.register(this.homeAssistantWsService);
 	}
 }

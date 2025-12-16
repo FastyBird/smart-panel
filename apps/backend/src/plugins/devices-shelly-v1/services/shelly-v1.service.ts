@@ -5,8 +5,11 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/system/services/managed-plugin-service.interface';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -38,18 +41,28 @@ import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
-type ServiceState = 'stopped' | 'starting' | 'started' | 'stopping';
-
+/**
+ * Shelly V1 device discovery and synchronization service.
+ *
+ * This service is managed by PluginServiceManagerService and implements
+ * the IManagedPluginService interface for centralized lifecycle management.
+ *
+ * The service handles:
+ * - Device discovery via mDNS/CoAP
+ * - Device state synchronization
+ * - Property change handling
+ * - Periodic device information updates
+ */
 @Injectable()
-export class ShellyV1Service {
+export class ShellyV1Service implements IManagedPluginService {
 	private readonly logger = new Logger(ShellyV1Service.name);
+
+	readonly pluginName = DEVICES_SHELLY_V1_PLUGIN_NAME;
+	readonly serviceId = 'discovery';
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
 
 	private state: ServiceState = 'stopped';
-	private startTimer: NodeJS.Timeout | null = null;
-
-	private desiredEnabled = false;
 	private startStopLock: Promise<void> = Promise.resolve();
 
 	constructor(
@@ -63,53 +76,12 @@ export class ShellyV1Service {
 		private readonly httpClient: ShellyV1HttpClientService,
 	) {}
 
-	async requestStart(delayMs = 1000): Promise<void> {
-		this.desiredEnabled = this.config.enabled === true;
-
-		if (!this.desiredEnabled) {
-			if (this.startTimer) {
-				clearTimeout(this.startTimer);
-
-				this.startTimer = null;
-			}
-
-			await this.ensureStopped();
-
-			return;
-		}
-
-		if (this.startTimer) {
-			clearTimeout(this.startTimer);
-		}
-
-		this.startTimer = setTimeout(() => {
-			this.startTimer = null;
-
-			void this.ensureStarted();
-		}, delayMs);
-	}
-
-	async stop(): Promise<void> {
-		if (this.startTimer) {
-			clearTimeout(this.startTimer);
-
-			this.startTimer = null;
-		}
-
-		await this.ensureStopped();
-	}
-
-	async restart(): Promise<void> {
-		await this.stop();
-		await this.requestStart();
-	}
-
-	private async ensureStarted(): Promise<void> {
+	/**
+	 * Start the service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
 		await this.withLock(async () => {
-			if (this.config.enabled !== true) {
-				return;
-			}
-
 			switch (this.state) {
 				case 'started':
 					return;
@@ -149,7 +121,11 @@ export class ShellyV1Service {
 		});
 	}
 
-	private async ensureStopped(): Promise<void> {
+	/**
+	 * Stop the service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 */
+	async stop(): Promise<void> {
 		await this.withLock(async () => {
 			switch (this.state) {
 				case 'stopped':
@@ -191,6 +167,22 @@ export class ShellyV1Service {
 				throw error;
 			}
 		});
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes without full restart.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 */
+	async onConfigChanged(): Promise<void> {
+		// Clear cached config so next access gets fresh values
+		this.pluginConfig = null;
 	}
 
 	/**
@@ -559,13 +551,6 @@ export class ShellyV1Service {
 			message: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		});
-	}
-
-	@OnEvent(`${ConfigModuleEventType.CONFIG_UPDATED}.${DEVICES_SHELLY_V1_PLUGIN_NAME}`)
-	async handleConfigUpdated(): Promise<void> {
-		this.logger.log('[SHELLY V1][SERVICE] Config updated, restarting service');
-
-		await this.restart();
 	}
 
 	private get config(): ShellyV1ConfigModel {

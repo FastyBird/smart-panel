@@ -3,47 +3,106 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ILogger } from '../../../modules/system/logger/logger';
+import {
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/system/services/managed-plugin-service.interface';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 import { LoggerRotatingFileException } from '../logger-rotating-file.exceptions';
 import { RotatingFileConfigModel } from '../models/config.model';
 
+/**
+ * Rotating file logger service.
+ *
+ * This service is managed by PluginServiceManagerService and implements
+ * the IManagedPluginService interface for centralized lifecycle management.
+ */
 @Injectable()
-export class FileLoggerService implements ILogger {
+export class FileLoggerService implements ILogger, IManagedPluginService {
 	private readonly logger = new Logger(FileLoggerService.name);
+
+	readonly pluginName = LOGGER_ROTATING_FILE_PLUGIN_NAME;
+	readonly serviceId = 'file-logger';
 
 	private dir: string | undefined;
 
 	private pluginConfig: RotatingFileConfigModel | null = null;
+
+	private state: ServiceState = 'stopped';
 
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly scheduler: SchedulerRegistry,
 	) {}
 
-	public async initialize(): Promise<void> {
-		if (this.config.enabled) {
-			await this.validateAndPrepareDir().catch((err: Error) => {
-				this.logger.error(`[ROTATING FILE LOGGER][LOGGER] Rotating file logger disabled: ${err?.message ?? err}`);
+	/**
+	 * Start the service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
+		if (this.state === 'started' || this.state === 'starting') {
+			return;
+		}
 
-				this.dir = undefined;
-			});
+		this.state = 'starting';
 
-			this.registerCleanupJob();
-		} else {
-			this.unregisterCleanupJob();
+		this.logger.log('[ROTATING FILE LOGGER][LOGGER] Starting file logger service');
+
+		await this.validateAndPrepareDir().catch((err: Error) => {
+			this.logger.error(`[ROTATING FILE LOGGER][LOGGER] Rotating file logger disabled: ${err?.message ?? err}`);
 
 			this.dir = undefined;
+			this.state = 'error';
+		});
+
+		if (this.dir) {
+			this.registerCleanupJob();
+			this.state = 'started';
 		}
 	}
 
+	/**
+	 * Stop the service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 */
+	async stop(): Promise<void> {
+		if (this.state === 'stopped' || this.state === 'stopping') {
+			return;
+		}
+
+		this.state = 'stopping';
+
+		this.logger.log('[ROTATING FILE LOGGER][LOGGER] Stopping file logger service');
+
+		this.unregisterCleanupJob();
+
+		this.dir = undefined;
+
+		this.state = 'stopped';
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes without full restart.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 */
+	async onConfigChanged(): Promise<void> {
+		// Clear cached config so next access gets fresh values
+		this.pluginConfig = null;
+	}
+
 	async append(obj: unknown): Promise<void> {
-		if (!this.config.enabled || !this.dir) {
+		if (this.state !== 'started' || !this.dir) {
 			return;
 		}
 
@@ -56,13 +115,6 @@ export class FileLoggerService implements ILogger {
 
 			this.logger.error(`[ROTATING FILE LOGGER][LOGGER] Failed to append log: ${err?.message ?? err}`);
 		}
-	}
-
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	async handleConfigurationUpdatedEvent() {
-		this.pluginConfig = null;
-
-		await this.initialize();
 	}
 
 	private currentName(date = new Date()) {
@@ -113,7 +165,7 @@ export class FileLoggerService implements ILogger {
 		const expr = this.config.cleanupCron ?? '15 3 * * *';
 		const name = `${LOGGER_ROTATING_FILE_PLUGIN_NAME}:cleanup`;
 
-		if (!this.config.enabled || !this.dir) {
+		if (!this.dir) {
 			this.unregisterCleanupJob();
 
 			return;
@@ -157,7 +209,7 @@ export class FileLoggerService implements ILogger {
 	public async cleanup(): Promise<void> {
 		const cfg = this.config;
 
-		if (!cfg.enabled || !this.dir) {
+		if (this.state !== 'started' || !this.dir) {
 			return;
 		}
 

@@ -2,11 +2,13 @@ import { validate } from 'class-validator';
 import WebSocket from 'ws';
 
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import {
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/system/services/managed-plugin-service.interface';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
@@ -27,15 +29,26 @@ export interface WsEventService {
 	handle(event: HomeAssistantStateChangedEventDto): Promise<void>;
 }
 
+/**
+ * Home Assistant WebSocket service for real-time communication.
+ *
+ * This service is managed by PluginServiceManagerService and implements
+ * the IManagedPluginService interface for centralized lifecycle management.
+ */
 @Injectable()
-export class HomeAssistantWsService {
+export class HomeAssistantWsService implements IManagedPluginService {
 	private readonly logger = new Logger(HomeAssistantWsService.name);
+
+	readonly pluginName = DEVICES_HOME_ASSISTANT_PLUGIN_NAME;
+	readonly serviceId = 'websocket';
 
 	private readonly RESPONSE_TIMEOUT_MS = 10000; // 10 seconds
 
 	private ws: WebSocket | null = null;
 
 	private pluginConfig: HomeAssistantConfigModel | null = null;
+
+	private state: ServiceState = 'stopped';
 
 	private nextId = 1;
 
@@ -66,19 +79,71 @@ export class HomeAssistantWsService {
 		this.eventsHandlers.set(event, handler);
 	}
 
-	connect() {
-		if (this.config.enabled !== true) {
-			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Home Assistant plugin is disabled.');
-
+	/**
+	 * Start the service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
+		if (this.state === 'started' || this.state === 'starting') {
 			return;
 		}
 
 		if (this.apiKey === null) {
 			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Missing API key for Home Assistant WS service');
+			this.state = 'error';
 
 			return;
 		}
 
+		this.state = 'starting';
+
+		this.logger.log('[HOME ASSISTANT][WS SERVICE] Starting Home Assistant WebSocket service');
+
+		this.connect();
+
+		this.state = 'started';
+	}
+
+	/**
+	 * Stop the service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 */
+	async stop(): Promise<void> {
+		if (this.state === 'stopped' || this.state === 'stopping') {
+			return;
+		}
+
+		this.state = 'stopping';
+
+		this.logger.log('[HOME ASSISTANT][WS SERVICE] Stopping Home Assistant WebSocket service');
+
+		if (this.reconnectTimeout) {
+			clearTimeout(this.reconnectTimeout);
+			this.reconnectTimeout = null;
+		}
+
+		this.disconnect();
+
+		this.state = 'stopped';
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes without full restart.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 */
+	async onConfigChanged(): Promise<void> {
+		// Clear cached config so next access gets fresh values
+		this.pluginConfig = null;
+	}
+
+	private connect() {
 		this.logger.debug('[HOME ASSISTANT][WS SERVICE] Connecting to Home Assistant WebSocket API...');
 
 		const url = new URL('/api/websocket', this.baseUrl);
@@ -98,9 +163,10 @@ export class HomeAssistantWsService {
 		});
 
 		this.ws.on('close', () => {
-			this.logger.warn('[HOME ASSISTANT][WS SERVICE] WebSocket connection closed. Reconnecting in 5s...');
-
-			this.scheduleReconnect();
+			if (this.state === 'started') {
+				this.logger.warn('[HOME ASSISTANT][WS SERVICE] WebSocket connection closed. Reconnecting...');
+				this.scheduleReconnect();
+			}
 		});
 
 		this.ws.on('error', (err) => {
@@ -108,7 +174,7 @@ export class HomeAssistantWsService {
 		});
 	}
 
-	disconnect() {
+	private disconnect() {
 		this.ws?.close();
 		this.ws = null;
 	}
@@ -231,14 +297,6 @@ export class HomeAssistantWsService {
 
 			this.ws.send(JSON.stringify({ id: messageId, ...data }));
 		});
-	}
-
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	handleConfigurationUpdatedEvent() {
-		this.pluginConfig = null;
-
-		this.disconnect();
-		this.connect();
 	}
 
 	private get config(): HomeAssistantConfigModel {

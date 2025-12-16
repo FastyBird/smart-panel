@@ -1,13 +1,15 @@
 import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 'shellies-ds9';
 
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import {
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/system/services/managed-plugin-service.interface';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
@@ -16,21 +18,24 @@ import { ShellyNgConfigModel } from '../models/config.model';
 import { DatabaseDiscovererService } from './database-discoverer.service';
 import { DeviceManagerService } from './device-manager.service';
 
-type ServiceState = 'stopped' | 'starting' | 'started' | 'stopping';
-
+/**
+ * Shelly NG device discovery and synchronization service.
+ *
+ * This service is managed by PluginServiceManagerService and implements
+ * the IManagedPluginService interface for centralized lifecycle management.
+ */
 @Injectable()
-export class ShellyNgService {
+export class ShellyNgService implements IManagedPluginService {
 	private readonly logger = new Logger(ShellyNgService.name);
+
+	readonly pluginName = DEVICES_SHELLY_NG_PLUGIN_NAME;
+	readonly serviceId = 'discovery';
 
 	private shellies?: Shellies;
 
 	private pluginConfig: ShellyNgConfigModel | null = null;
 
 	private state: ServiceState = 'stopped';
-	private startTimer: NodeJS.Timeout | null = null;
-
-	// Optional: if config updates can flip enabled on/off quickly
-	private desiredEnabled = false;
 	private startStopLock: Promise<void> = Promise.resolve();
 
 	constructor(
@@ -42,55 +47,12 @@ export class ShellyNgService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 	) {}
 
-	async requestStart(delayMs = 1000): Promise<void> {
-		this.desiredEnabled = this.config.enabled === true;
-
-		await this.initialize();
-
-		if (!this.desiredEnabled) {
-			if (this.startTimer) {
-				clearTimeout(this.startTimer);
-
-				this.startTimer = null;
-			}
-
-			await this.ensureStopped();
-
-			return;
-		}
-
-		if (this.startTimer) {
-			clearTimeout(this.startTimer);
-		}
-
-		this.startTimer = setTimeout(() => {
-			this.startTimer = null;
-
-			void this.ensureStarted();
-		}, delayMs);
-	}
-
-	async stop(): Promise<void> {
-		if (this.startTimer) {
-			clearTimeout(this.startTimer);
-
-			this.startTimer = null;
-		}
-
-		await this.ensureStopped();
-	}
-
-	async restart(): Promise<void> {
-		await this.stop();
-		await this.requestStart();
-	}
-
-	private async ensureStarted(): Promise<void> {
+	/**
+	 * Start the service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
 		await this.withLock(async () => {
-			if (this.config.enabled !== true) {
-				return;
-			}
-
 			switch (this.state) {
 				case 'started':
 					return;
@@ -98,18 +60,21 @@ export class ShellyNgService {
 					return;
 				case 'stopping':
 					await this.waitUntil('stopped');
-					if (this.config.enabled === true) {
-						await this.doStart();
-					}
+					await this.doStart();
 					return;
 				case 'stopped':
+					await this.initialize();
 					await this.doStart();
 					return;
 			}
 		});
 	}
 
-	private async ensureStopped(): Promise<void> {
+	/**
+	 * Stop the service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 */
+	async stop(): Promise<void> {
 		await this.withLock(async () => {
 			switch (this.state) {
 				case 'stopped':
@@ -124,6 +89,22 @@ export class ShellyNgService {
 					return;
 			}
 		});
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes without full restart.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 */
+	async onConfigChanged(): Promise<void> {
+		// Clear cached config so next access gets fresh values
+		this.pluginConfig = null;
 	}
 
 	private withLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -141,13 +122,9 @@ export class ShellyNgService {
 			return;
 		}
 
-		if (this.config.enabled !== true) {
-			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Plugin disabled, skipping start.');
-
-			return;
-		}
-
 		this.state = 'starting';
+
+		this.logger.log('[SHELLY NG][SHELLY SERVICE] Starting Shelly NG plugin service');
 
 		try {
 			const devices = await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE);
@@ -248,13 +225,6 @@ export class ShellyNgService {
 		this.delegatesRegistryService.detach();
 
 		this.state = 'stopped';
-	}
-
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	async handleConfigurationUpdatedEvent() {
-		this.pluginConfig = null;
-
-		await this.restart();
 	}
 
 	private get config(): ShellyNgConfigModel {
