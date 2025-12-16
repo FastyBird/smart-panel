@@ -39,7 +39,7 @@ export const useSupportedDevices = (): IUseSupportedDevices => {
 			let errorMessage: string | null = 'Failed to fetch supported devices.';
 
 			if (error) {
-				errorMessage = getErrorReason<object>(error, errorMessage);
+				errorMessage = getErrorReason<Record<string, unknown>>(error, errorMessage);
 			}
 
 			flashMessage.error(errorMessage);

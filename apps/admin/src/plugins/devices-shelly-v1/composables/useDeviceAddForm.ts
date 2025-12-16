@@ -133,7 +133,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				let errorReason: string | null = 'Failed to check device.';
 
 				if (error) {
-					errorReason = getErrorReason<object>(error, errorReason);
+					errorReason = getErrorReason<Record<string, unknown>>(error, errorReason);
 				}
 
 				throw new DevicesShellyV1ApiException(errorReason, response.status);
