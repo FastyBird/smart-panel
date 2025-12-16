@@ -22,6 +22,7 @@ export const ShellyV1ConfigUpdateReqSchema = ConfigPluginUpdateReqSchema.and(
 		type: z.literal(DEVICES_SHELLY_V1_PLUGIN_NAME),
 		discovery: z
 			.object({
+				enabled: z.boolean().optional(),
 				interface: z.string().nullable().optional(),
 			})
 			.optional(),

@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -8,6 +8,15 @@ import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 
 @ApiSchema({ name: 'DevicesShellyV1PluginUpdateConfigDiscovery' })
 export class ShellyV1UpdatePluginConfigDiscoveryDto {
+	@ApiPropertyOptional({
+		description: 'Enable device discovery',
+		example: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Discovery enabled attribute must be a boolean."}]' })
+	enabled?: boolean;
+
 	@ApiPropertyOptional({
 		description: 'Network interface to use for device discovery',
 		example: 'eth0',

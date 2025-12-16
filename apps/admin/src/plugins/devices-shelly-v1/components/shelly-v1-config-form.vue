@@ -35,9 +35,20 @@
 		/>
 
 		<el-form-item
+			:label="t('devicesShellyV1Plugin.fields.config.discovery.enabled.title')"
+			prop="discovery.enabled"
+			class="mt-3"
+			label-position="left"
+		>
+			<el-switch
+				v-model="model.discovery.enabled"
+				name="discoveryEnabled"
+			/>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('devicesShellyV1Plugin.fields.config.discovery.interface.title')"
 			prop="discovery.interface"
-			class="mt-3"
 		>
 			<el-input
 				v-model="model.discovery.interface"
