@@ -38,6 +38,7 @@ export class LocationsService {
 
 		this.logger.debug('[LOOKUP ALL] Fetching all locations');
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const locations = (await repository.find({ order: { order: 'ASC', createdAt: 'ASC' } as any })) as TLocation[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${locations.length} locations`);
@@ -191,7 +192,9 @@ export class LocationsService {
 			if (weatherConfig.primaryLocationId === id) {
 				this.logger.error(`[DELETE] Cannot delete primary location id=${id}`);
 
-				throw new WeatherValidationException('Cannot delete the primary weather location. Please set a different primary location first.');
+				throw new WeatherValidationException(
+					'Cannot delete the primary weather location. Please set a different primary location first.',
+				);
 			}
 		} catch (error) {
 			// If config doesn't exist or other error, allow deletion

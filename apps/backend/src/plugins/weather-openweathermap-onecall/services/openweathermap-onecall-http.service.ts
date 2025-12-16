@@ -100,9 +100,7 @@ export class OpenWeatherMapOneCallHttpService {
 
 	constructor(private readonly configService: ConfigService) {}
 
-	async fetchWeatherData(
-		location: OpenWeatherMapOneCallLocationEntity,
-	): Promise<{
+	async fetchWeatherData(location: OpenWeatherMapOneCallLocationEntity): Promise<{
 		current: CurrentDayModel;
 		forecast: ForecastDayModel[];
 		location: LocationModel;
@@ -131,7 +129,7 @@ export class OpenWeatherMapOneCallHttpService {
 
 			const oneCallData = data as OneCallResponse;
 
-			const current = this.transformCurrentWeather(oneCallData.current!);
+			const current = this.transformCurrentWeather(oneCallData.current);
 			const forecast = this.transformDailyForecast(oneCallData.daily || []);
 			const alerts = this.transformAlerts(oneCallData.alerts || []);
 

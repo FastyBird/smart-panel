@@ -10,7 +10,6 @@ import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:weather_icons/weather_icons.dart';
 
 class WeatherCurrentDataSourceWidget
     extends DataSourceWidget<WeatherCurrentDataSourceView> {

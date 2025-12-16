@@ -8,7 +8,6 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/openweather.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/weather/export.dart';
-import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/view.dart';
@@ -98,8 +97,8 @@ class WeatherDetailPage extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.infoLight
-              : AppColorsDark.infoLight,
+              ? AppColorsLight.infoLight9
+              : AppColorsDark.infoLight9,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: DropdownButtonHideUnderline(
@@ -120,8 +119,8 @@ class WeatherDetailPage extends StatelessWidget {
                   : AppTextColorDark.primary,
             ),
             dropdownColor: Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.surface
-                : AppColorsDark.surface,
+                ? AppBgColorLight.overlay
+                : AppBgColorDark.overlay,
             items: locations.map((location) {
               return DropdownMenuItem<String>(
                 value: location.id,

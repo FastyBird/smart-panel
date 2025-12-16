@@ -295,7 +295,10 @@ export class LocationsController {
 		operationId: 'reorder-weather-module-locations',
 	})
 	@ApiBody({ type: ReqReorderLocationsDto, description: 'Array of location IDs with their new order values' })
-	@ApiSuccessResponse(LocationsResponseModel, 'Locations were successfully reordered. Returns the complete list of locations in their new order.')
+	@ApiSuccessResponse(
+		LocationsResponseModel,
+		'Locations were successfully reordered. Returns the complete list of locations in their new order.',
+	)
 	@ApiBadRequestResponse('Invalid request data')
 	@ApiUnprocessableEntityResponse('Locations could not be reordered')
 	@ApiInternalServerErrorResponse('Internal server error')

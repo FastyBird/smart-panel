@@ -1,7 +1,10 @@
 import { Controller, Get, Logger } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { ApiInternalServerErrorResponse, ApiSuccessResponse } from '../../swagger/decorators/api-documentation.decorator';
+import {
+	ApiInternalServerErrorResponse,
+	ApiSuccessResponse,
+} from '../../swagger/decorators/api-documentation.decorator';
 import { ProvidersResponseModel } from '../models/provider.model';
 import { WeatherProviderRegistryService } from '../services/weather-provider-registry.service';
 import { WEATHER_MODULE_API_TAG_NAME } from '../weather.constants';

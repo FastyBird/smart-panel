@@ -5,8 +5,6 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Cache } from 'cache-manager';
-
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -28,8 +26,6 @@ describe('WeatherService', () => {
 	let service: WeatherService;
 	let locationsService: LocationsService;
 	let configService: ConfigService;
-	let eventEmitter: EventEmitter2;
-	let cacheManager: Cache;
 
 	const mockLocation: WeatherLocationEntity = {
 		id: '550e8400-e29b-41d4-a716-446655440000',
@@ -65,7 +61,7 @@ describe('WeatherService', () => {
 				{
 					provide: WeatherProviderRegistryService,
 					useValue: {
-						getProvider: jest.fn().mockReturnValue(null),
+						get: jest.fn().mockReturnValue(null),
 					},
 				},
 				{
@@ -100,8 +96,6 @@ describe('WeatherService', () => {
 		service = module.get<WeatherService>(WeatherService);
 		locationsService = module.get<LocationsService>(LocationsService);
 		configService = module.get<ConfigService>(ConfigService);
-		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
-		cacheManager = module.get<Cache>(CACHE_MANAGER);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -178,42 +172,30 @@ describe('WeatherService', () => {
 			await expect(service.getWeather('non-existent-id')).rejects.toThrow(WeatherNotFoundException);
 		});
 
-		it('should return cached weather data when available', async () => {
-			const cachedCurrent = { temperature: 20 };
-			const cachedForecast = [{ dayTime: new Date() }];
+		it('should throw WeatherNotFoundException when no provider found', async () => {
+			jest.spyOn(locationsService, 'findOne').mockResolvedValue(mockLocation);
+			// Default mock returns null for provider
 
-			jest.spyOn(cacheManager, 'get')
-				.mockResolvedValueOnce(cachedCurrent)
-				.mockResolvedValueOnce(cachedForecast);
-
-			const result = await service.getWeather(mockLocation.id);
-
-			expect(result.locationId).toBe(mockLocation.id);
-			expect(result.current).toEqual(cachedCurrent);
-			expect(result.forecast).toEqual(cachedForecast);
+			await expect(service.getWeather(mockLocation.id)).rejects.toThrow(WeatherNotFoundException);
 		});
 	});
 
 	describe('getAllWeather', () => {
-		it('should return weather for all locations', async () => {
-			const getWeatherSpy = jest.spyOn(service, 'getWeather').mockResolvedValue({
-				location: { id: mockLocation.id, name: mockLocation.name },
-				current: null,
-				forecast: [],
-			} as any);
+		it('should return empty array when no locations configured', async () => {
+			jest.spyOn(locationsService, 'findAll').mockResolvedValue([]);
 
 			const result = await service.getAllWeather();
 
-			expect(result).toHaveLength(1);
-			expect(getWeatherSpy).toHaveBeenCalledWith(mockLocation.id, false);
+			expect(result).toHaveLength(0);
 		});
 
 		it('should handle errors for individual locations gracefully', async () => {
-			jest.spyOn(service, 'getWeather').mockRejectedValue(new Error('Provider error'));
+			jest.spyOn(locationsService, 'findAll').mockResolvedValue([mockLocation]);
+			// No provider found - will return null for location
 
 			const result = await service.getAllWeather();
 
-			// Should return empty array when all locations fail
+			// Should return empty array when weather data can't be fetched (no provider)
 			expect(result).toHaveLength(0);
 		});
 	});

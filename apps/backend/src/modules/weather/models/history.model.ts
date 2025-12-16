@@ -217,9 +217,12 @@ export class WeatherHistoryPointModel {
 	})
 	@Expose({ name: 'weather_code' })
 	@IsInt()
-	@Transform(({ obj }: { obj: { weather_code?: number; weatherCode?: number } }) => obj.weather_code ?? obj.weatherCode, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { weather_code?: number; weatherCode?: number } }) => obj.weather_code ?? obj.weatherCode,
+		{
+			toClassOnly: true,
+		},
+	)
 	weatherCode: number;
 
 	@ApiProperty({
@@ -230,9 +233,12 @@ export class WeatherHistoryPointModel {
 	})
 	@Expose({ name: 'weather_main' })
 	@IsString()
-	@Transform(({ obj }: { obj: { weather_main?: string; weatherMain?: string } }) => obj.weather_main ?? obj.weatherMain, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { weather_main?: string; weatherMain?: string } }) => obj.weather_main ?? obj.weatherMain,
+		{
+			toClassOnly: true,
+		},
+	)
 	weatherMain: string;
 }
 
@@ -308,9 +314,12 @@ export class WeatherStatisticsModel {
 	@Expose({ name: 'avg_humidity' })
 	@IsOptional()
 	@IsNumber()
-	@Transform(({ obj }: { obj: { avg_humidity?: number; avgHumidity?: number } }) => obj.avg_humidity ?? obj.avgHumidity, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { avg_humidity?: number; avgHumidity?: number } }) => obj.avg_humidity ?? obj.avgHumidity,
+		{
+			toClassOnly: true,
+		},
+	)
 	avgHumidity?: number | null;
 
 	@ApiPropertyOptional({
@@ -323,9 +332,12 @@ export class WeatherStatisticsModel {
 	@Expose({ name: 'avg_pressure' })
 	@IsOptional()
 	@IsNumber()
-	@Transform(({ obj }: { obj: { avg_pressure?: number; avgPressure?: number } }) => obj.avg_pressure ?? obj.avgPressure, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { avg_pressure?: number; avgPressure?: number } }) => obj.avg_pressure ?? obj.avgPressure,
+		{
+			toClassOnly: true,
+		},
+	)
 	avgPressure?: number | null;
 
 	@ApiPropertyOptional({

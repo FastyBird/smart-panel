@@ -18,7 +18,8 @@ export class UpdateDayWeatherTileDto extends UpdateSingleTileDto {
 
 	@ApiPropertyOptional({
 		name: 'location_id',
-		description: 'Weather location ID to display. If not set, uses primary location. Set to null to use primary location.',
+		description:
+			'Weather location ID to display. If not set, uses primary location. Set to null to use primary location.',
 		type: 'string',
 		format: 'uuid',
 		example: '550e8400-e29b-41d4-a716-446655440000',
@@ -42,7 +43,8 @@ export class UpdateForecastWeatherTileDto extends UpdateSingleTileDto {
 
 	@ApiPropertyOptional({
 		name: 'location_id',
-		description: 'Weather location ID to display. If not set, uses primary location. Set to null to use primary location.',
+		description:
+			'Weather location ID to display. If not set, uses primary location. Set to null to use primary location.',
 		type: 'string',
 		format: 'uuid',
 		example: '550e8400-e29b-41d4-a716-446655440000',

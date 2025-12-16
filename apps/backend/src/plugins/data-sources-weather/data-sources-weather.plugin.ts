@@ -23,10 +23,7 @@ import { DATA_SOURCES_WEATHER_PLUGIN_SWAGGER_EXTRA_MODELS } from './data-sources
 import { CreateCurrentWeatherDataSourceDto, CreateForecastDayDataSourceDto } from './dto/create-data-source.dto';
 import { UpdateWeatherDataSourceConfigDto } from './dto/update-config.dto';
 import { UpdateCurrentWeatherDataSourceDto, UpdateForecastDayDataSourceDto } from './dto/update-data-source.dto';
-import {
-	CurrentWeatherDataSourceEntity,
-	ForecastDayDataSourceEntity,
-} from './entities/data-sources-weather.entity';
+import { CurrentWeatherDataSourceEntity, ForecastDayDataSourceEntity } from './entities/data-sources-weather.entity';
 import { WeatherDataSourceConfigModel } from './models/config.model';
 import { WeatherDataSourceRelationsLoaderService } from './services/data-source-relations-loader.service';
 

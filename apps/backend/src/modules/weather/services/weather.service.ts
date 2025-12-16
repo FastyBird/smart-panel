@@ -189,7 +189,7 @@ export class WeatherService {
 	/**
 	 * Check if alerts are supported for a location
 	 */
-	supportsAlerts(locationId: string): boolean {
+	supportsAlerts(_locationId: string): boolean {
 		// This is a sync check - we need to get the location first
 		// For API use, we'll provide a method that can check without async
 		return false; // Default to false, actual check requires async location lookup

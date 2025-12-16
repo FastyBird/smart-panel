@@ -5,10 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSourceEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { IDataSourceRelationsLoader } from '../../../modules/dashboard/entities/dashboard.relations';
 import { LocationsService } from '../../../modules/weather/services/locations.service';
-import {
-	CurrentWeatherDataSourceEntity,
-	ForecastDayDataSourceEntity,
-} from '../entities/data-sources-weather.entity';
+import { CurrentWeatherDataSourceEntity, ForecastDayDataSourceEntity } from '../entities/data-sources-weather.entity';
 
 @Injectable()
 export class WeatherDataSourceRelationsLoaderService implements IDataSourceRelationsLoader {

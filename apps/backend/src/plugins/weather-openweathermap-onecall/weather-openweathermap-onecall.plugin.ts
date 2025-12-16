@@ -35,7 +35,12 @@ import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_SWAGGER_EXTRA_MODELS } from './we
 	description: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([OpenWeatherMapOneCallLocationEntity]), WeatherModule, ConfigModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([OpenWeatherMapOneCallLocationEntity]),
+		WeatherModule,
+		ConfigModule,
+		SwaggerModule,
+	],
 	providers: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallProvider],
 	exports: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallProvider],
 })

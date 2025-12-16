@@ -149,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue';
+import { ref, reactive } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAutocomplete, ElButton, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus';
@@ -320,7 +320,7 @@ const onSubmit = async (): Promise<void> => {
 
 		flashMessage.success(t('weatherModule.messages.locations.created', { location: model.name }));
 		emit('added');
-	} catch (error) {
+	} catch {
 		flashMessage.error(t('weatherModule.messages.locations.notCreated', { location: model.name }));
 	} finally {
 		isSubmitting.value = false;

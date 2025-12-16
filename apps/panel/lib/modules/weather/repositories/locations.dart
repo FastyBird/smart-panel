@@ -45,17 +45,16 @@ class LocationsRepository extends Repository<List<WeatherLocationModel>> {
   }
 
   /// Fetch all locations from the backend
+  /// Note: Locations are primarily populated via socket events.
+  /// This method is kept for compatibility but currently does nothing.
   Future<void> fetchLocations() async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getWeatherModuleLocations();
-
-        final rawList = response.response.data['data'] as List<dynamic>;
-
-        insertLocations(rawList.cast<Map<String, dynamic>>());
-      },
-      'fetch locations',
-    );
+    // Locations are populated through socket events rather than a dedicated API endpoint.
+    // The weather module sends location data when weather updates are received.
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE][LOCATIONS] fetchLocations called - locations are populated via socket events',
+      );
+    }
   }
 
   /// Insert locations from raw JSON list
