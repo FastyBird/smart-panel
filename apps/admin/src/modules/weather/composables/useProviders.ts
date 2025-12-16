@@ -1,6 +1,6 @@
-import { ref, computed } from 'vue';
+import { type ComputedRef, type Ref, ref, computed } from 'vue';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { useBackend, useLogger } from '../../../common';
 import { WEATHER_MODULE_PREFIX } from '../weather.constants';
 
 export interface IWeatherProvider {
@@ -16,9 +16,9 @@ interface IWeatherProviderRes {
 }
 
 interface IUseProviders {
-	providers: ReturnType<typeof computed<IWeatherProvider[]>>;
-	isLoading: ReturnType<typeof ref<boolean>>;
-	error: ReturnType<typeof ref<string | null>>;
+	providers: ComputedRef<IWeatherProvider[]>;
+	isLoading: Ref<boolean>;
+	error: Ref<string | null>;
 	fetchProviders: () => Promise<IWeatherProvider[]>;
 }
 
@@ -41,9 +41,9 @@ export const useProviders = (): IUseProviders => {
 		error.value = null;
 
 		try {
-			const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/providers`);
+			const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/providers` as never);
 
-			const responseData = response.data as { data: IWeatherProviderRes[] } | undefined;
+			const responseData = (response as { data?: { data: IWeatherProviderRes[] } }).data;
 
 			if (typeof responseData !== 'undefined') {
 				providersData.value = responseData.data.map((p) => ({
@@ -57,7 +57,7 @@ export const useProviders = (): IUseProviders => {
 
 			throw new Error('Received invalid response');
 		} catch (err: unknown) {
-			const errorReason = getErrorReason(err);
+			const errorReason = err instanceof Error ? err.message : 'Failed to fetch providers';
 
 			logger.error('[WEATHER_MODULE] Failed to fetch providers:', errorReason);
 			error.value = errorReason;

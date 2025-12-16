@@ -1,6 +1,7 @@
-import { ref } from 'vue';
+import { type Ref, ref } from 'vue';
 
 import { useBackend, useLogger } from '../../../common';
+import { WEATHER_MODULE_PREFIX } from '../weather.constants';
 
 interface IGeolocationCity {
 	name: string;
@@ -17,7 +18,9 @@ interface IUseGeolocation {
 	searchError: Ref<string | null>;
 }
 
-import type { Ref } from 'vue';
+interface IGeolocationResponse {
+	data: IGeolocationCity[];
+}
 
 export const useGeolocation = (): IUseGeolocation => {
 	const backend = useBackend();
@@ -35,21 +38,23 @@ export const useGeolocation = (): IUseGeolocation => {
 		searchError.value = null;
 
 		try {
-			const response = await backend.client.GET('/api/v1/weather-module/geolocation/city-to-coordinates', {
+			const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/geolocation/city-to-coordinates` as never, {
 				params: {
 					query: {
 						city: query,
 					},
 				},
-			});
+			} as never);
 
-			if (response.error) {
-				logger.error('[WEATHER_MODULE] City search failed:', response.error);
+			const typedResponse = response as { data?: IGeolocationResponse; error?: unknown };
+
+			if (typedResponse.error) {
+				logger.error('[WEATHER_MODULE] City search failed:', typedResponse.error);
 				searchError.value = 'Failed to search for cities';
 				return [];
 			}
 
-			return (response.data?.data ?? []) as IGeolocationCity[];
+			return typedResponse.data?.data ?? [];
 		} catch (error) {
 			logger.error('[WEATHER_MODULE] City search error:', error);
 			searchError.value = 'An error occurred while searching';

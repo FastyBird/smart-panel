@@ -20,6 +20,9 @@ import {
 } from './store/tiles.store.schemas';
 import { TILES_WEATHER_PLUGIN_DAY_TYPE, TILES_WEATHER_PLUGIN_FORECAST_TYPE, TILES_WEATHER_PLUGIN_NAME } from './tiles-weather.constants';
 
+// Cast the component to the expected type - the weather tile edit form handles both ITile and weather-specific tiles
+const weatherTileEditFormComponent = markRaw(WeatherTileEditForm) as unknown as ITilePluginsComponents['tileEditForm'];
+
 export const tilesWeatherPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> = Symbol('FB-Plugin-TilesWeather');
 
 export default {
@@ -51,7 +54,7 @@ export default {
 					description:
 						"Displays daily weather information including temperature, conditions, and icons. Perfect for showing today's forecast in a compact tile.",
 					components: {
-						tileEditForm: markRaw(WeatherTileEditForm),
+						tileEditForm: weatherTileEditFormComponent,
 					},
 					schemas: {
 						tileSchema: DayWeatherTileSchema,
@@ -65,7 +68,7 @@ export default {
 					name: 'Forecast Weather Tile',
 					description: 'Shows a multi-day weather forecast in a clear and informative tile layout. Ideal for planning ahead at a glance.',
 					components: {
-						tileEditForm: markRaw(WeatherTileEditForm),
+						tileEditForm: weatherTileEditFormComponent,
 					},
 					schemas: {
 						tileSchema: ForecastWeatherTileSchema,

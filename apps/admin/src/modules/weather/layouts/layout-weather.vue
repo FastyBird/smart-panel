@@ -101,7 +101,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 		});
 		items.push({
 			label: t('weatherModule.breadcrumbs.editLocation'),
-			route: route,
+			route: router.resolve({ name: RouteNames.WEATHER_LOCATION_EDIT, params: route.params }),
 		});
 	}
 

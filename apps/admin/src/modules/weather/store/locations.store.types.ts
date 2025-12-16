@@ -72,15 +72,14 @@ export interface IWeatherLocationsStoreState {
 	firstLoad: Ref<boolean>;
 }
 
-export interface IWeatherLocationsStoreGetters {
+export interface IWeatherLocationsStoreActions {
+	// Getters
 	firstLoadFinished: () => boolean;
 	getting: (id: IWeatherLocation['id']) => boolean;
 	fetching: () => boolean;
 	findAll: () => IWeatherLocation[];
 	findById: (id: IWeatherLocation['id']) => IWeatherLocation | null;
-}
-
-export interface IWeatherLocationsStoreActions {
+	// Actions
 	onEvent: (payload: IWeatherLocationsOnEventActionPayload) => IWeatherLocation;
 	set: (payload: IWeatherLocationsSetActionPayload) => IWeatherLocation;
 	unset: (payload: IWeatherLocationsUnsetActionPayload) => void;
@@ -92,6 +91,6 @@ export interface IWeatherLocationsStoreActions {
 	remove: (payload: IWeatherLocationsRemoveActionPayload) => Promise<boolean>;
 }
 
-export type WeatherLocationsStoreSetup = IWeatherLocationsStoreState & IWeatherLocationsStoreGetters & IWeatherLocationsStoreActions;
+export type WeatherLocationsStoreSetup = IWeatherLocationsStoreState & IWeatherLocationsStoreActions;
 
 export type WeatherLocationsStore = Store<'weather_module-locations', WeatherLocationsStoreSetup>;

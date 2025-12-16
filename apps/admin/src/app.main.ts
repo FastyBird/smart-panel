@@ -148,7 +148,7 @@ app.use(PagesDeviceDetailPlugin, pluginOptions);
 app.use(PagesTilesPlugin, pluginOptions);
 app.use(TilesDevicePreviewPlugin, pluginOptions);
 app.use(TilesTimePlugin);
-app.use(TilesWeatherPlugin);
+app.use(TilesWeatherPlugin, pluginOptions);
 app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
 app.use(DataSourcesWeatherPlugin, pluginOptions);
 app.use(LoggerRotatingFilePlugin, pluginOptions);

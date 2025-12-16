@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { useBackend, useLogger } from '../../../common';
 import { WEATHER_MODULE_PREFIX } from '../weather.constants';
 import { WeatherApiException, WeatherValidationException } from '../weather.exceptions';
 
@@ -34,6 +34,16 @@ import {
 	transformLocationCreateRequest,
 	transformLocationUpdateRequest,
 } from './locations.transformers';
+
+const extractErrorMessage = (error: unknown, fallback: string): string => {
+	if (error instanceof Error) {
+		return error.message;
+	}
+	if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
+		return (error as { message: string }).message;
+	}
+	return fallback;
+};
 
 const defaultSemaphore: IWeatherLocationsStateSemaphore = {
 	fetching: {
@@ -133,13 +143,13 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				}
 
 				try {
-					const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
+					const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
 						params: {
 							path: { id: payload.id },
 						},
-					});
+					} as never);
 
-					const responseData = response.data as { data: IWeatherLocationRes } | undefined;
+					const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
 
 					if (typeof responseData !== 'undefined') {
 						const transformed = transformLocationResponse(responseData.data);
@@ -151,7 +161,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				} catch (error: unknown) {
 					const apiError = error as { status?: number; message?: string };
 
-					const errorReason = getErrorReason(error);
+					const errorReason = extractErrorMessage(error, 'Failed to fetch location');
 
 					if (apiError.status && [401, 403, 404, 422, 500].includes(Number(apiError.status))) {
 						throw new WeatherApiException(errorReason, Number(apiError.status));
@@ -189,9 +199,9 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				firstLoad.value = false;
 
 				try {
-					const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/locations`);
+					const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/locations` as never);
 
-					const responseData = response.data as { data: IWeatherLocationRes[] } | undefined;
+					const responseData = (response as { data?: { data: IWeatherLocationRes[] } }).data;
 
 					if (typeof responseData !== 'undefined') {
 						const locations: IWeatherLocation[] = [];
@@ -211,7 +221,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				} catch (error: unknown) {
 					const apiError = error as { status?: number; message?: string };
 
-					const errorReason = getErrorReason(error);
+					const errorReason = extractErrorMessage(error, 'Failed to fetch locations');
 
 					if (apiError.status && [401, 403, 404, 422, 500].includes(Number(apiError.status))) {
 						throw new WeatherApiException(errorReason, Number(apiError.status));
@@ -275,11 +285,11 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					...omitBy(parsedPayload.data, isUndefined),
 				});
 
-				const response = await backend.client.POST(`/${WEATHER_MODULE_PREFIX}/locations`, {
+				const response = await backend.client.POST(`/${WEATHER_MODULE_PREFIX}/locations` as never, {
 					body: createReq,
-				});
+				} as never);
 
-				const responseData = response.data as { data: IWeatherLocationRes } | undefined;
+				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
 
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformLocationResponse(responseData.data);
@@ -293,7 +303,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 
 				const apiError = error as { status?: number; message?: string };
 
-				const errorReason = getErrorReason(error);
+				const errorReason = extractErrorMessage(error, 'Failed to add location');
 
 				if (apiError.status && [401, 403, 404, 422, 500].includes(Number(apiError.status))) {
 					throw new WeatherApiException(errorReason, Number(apiError.status));
@@ -344,14 +354,14 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					...omitBy(parsedPayload.data, isUndefined),
 				});
 
-				const response = await backend.client.PATCH(`/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
+				const response = await backend.client.PATCH(`/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
 					params: {
 						path: { id: parsedPayload.id },
 					},
 					body: updateReq,
-				});
+				} as never);
 
-				const responseData = response.data as { data: IWeatherLocationRes } | undefined;
+				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
 
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformLocationResponse(responseData.data);
@@ -365,7 +375,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 
 				const apiError = error as { status?: number; message?: string };
 
-				const errorReason = getErrorReason(error);
+				const errorReason = extractErrorMessage(error, 'Failed to edit location');
 
 				if (apiError.status && [401, 403, 404, 422, 500].includes(Number(apiError.status))) {
 					throw new WeatherApiException(errorReason, Number(apiError.status));
@@ -397,11 +407,11 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					name: existing.name,
 				});
 
-				const response = await backend.client.POST(`/${WEATHER_MODULE_PREFIX}/locations`, {
+				const response = await backend.client.POST(`/${WEATHER_MODULE_PREFIX}/locations` as never, {
 					body: createReq,
-				});
+				} as never);
 
-				const responseData = response.data as { data: IWeatherLocationRes } | undefined;
+				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
 
 				if (typeof responseData !== 'undefined') {
 					const transformed = transformLocationResponse(responseData.data);
@@ -413,7 +423,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 			} catch (error: unknown) {
 				const apiError = error as { status?: number; message?: string };
 
-				const errorReason = getErrorReason(error);
+				const errorReason = extractErrorMessage(error, 'Failed to save location');
 
 				if (apiError.status && [401, 403, 404, 422, 500].includes(Number(apiError.status))) {
 					throw new WeatherApiException(errorReason, Number(apiError.status));
@@ -447,13 +457,13 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 			}
 
 			try {
-				const response = await backend.client.DELETE(`/${WEATHER_MODULE_PREFIX}/locations/{id}`, {
+				const response = await backend.client.DELETE(`/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
 					params: {
 						path: { id: payload.id },
 					},
-				});
+				} as never);
 
-				if (response.response.status === 204) {
+				if ((response as { response: { status: number } }).response.status === 204) {
 					return true;
 				}
 
@@ -463,7 +473,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 
 				const apiError = error as { status?: number; message?: string };
 
-				const errorReason = getErrorReason(error);
+				const errorReason = extractErrorMessage(error, 'Failed to delete location');
 
 				if (apiError.status && [401, 403, 404, 422, 500].includes(Number(apiError.status))) {
 					throw new WeatherApiException(errorReason, Number(apiError.status));

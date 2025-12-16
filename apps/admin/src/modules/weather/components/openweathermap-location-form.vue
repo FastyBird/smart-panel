@@ -261,29 +261,31 @@ interface ISearchSuggestion extends IGeolocationCity {
 	value: string;
 }
 
-const handleCitySearch = async (query: string, cb: (suggestions: ISearchSuggestion[]) => void): Promise<void> => {
+const handleCitySearch = (query: string, cb: (suggestions: Record<string, unknown>[]) => void): void => {
 	if (!query || query.length < 2) {
 		cb([]);
 		return;
 	}
 
-	const results = await searchCities(query);
-	const suggestions: ISearchSuggestion[] = results.map((city) => ({
-		...city,
-		value: `${city.name}${city.state ? `, ${city.state}` : ''}, ${city.country}`,
-	}));
+	searchCities(query).then((results) => {
+		const suggestions: ISearchSuggestion[] = results.map((city) => ({
+			...city,
+			value: `${city.name}${city.state ? `, ${city.state}` : ''}, ${city.country}`,
+		}));
 
-	cb(suggestions);
+		cb(suggestions as unknown as Record<string, unknown>[]);
+	});
 };
 
-const handleCitySelect = (item: ISearchSuggestion): void => {
+const handleCitySelect = (item: Record<string, unknown>): void => {
+	const suggestion = item as unknown as ISearchSuggestion;
 	// Auto-fill the form with selected city data
-	model.name = `${item.name}${item.state ? `, ${item.state}` : ''}, ${item.country}`;
+	model.name = `${suggestion.name}${suggestion.state ? `, ${suggestion.state}` : ''}, ${suggestion.country}`;
 	model.locationType = 'lat_lon';
-	model.latitude = item.lat;
-	model.longitude = item.lon;
-	model.cityName = item.name;
-	model.countryCode = item.country;
+	model.latitude = suggestion.lat;
+	model.longitude = suggestion.lon;
+	model.cityName = suggestion.name;
+	model.countryCode = suggestion.country;
 
 	// Clear search query
 	searchQuery.value = '';
@@ -298,7 +300,7 @@ const onSubmit = async (): Promise<void> => {
 	isSubmitting.value = true;
 
 	try {
-		const locationData: Record<string, unknown> = {
+		const locationData: { name: string; type: string } & Record<string, unknown> = {
 			name: model.name,
 			type: 'weather-openweathermap',
 			location_type: model.locationType,
