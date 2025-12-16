@@ -7,7 +7,7 @@ import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 /**
  * Weather provider information model
  */
-@ApiSchema({ name: 'WeatherModuleProvider' })
+@ApiSchema({ name: 'WeatherModuleDataProvider' })
 export class WeatherProviderModel {
 	@ApiProperty({
 		description: 'Provider type identifier',
