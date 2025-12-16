@@ -80,14 +80,13 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
   Future<void> fetchWeather() async {
     return handleApiCall(
       () async {
-        final response = await apiClient.getWeatherModuleCurrent();
+        final response = await apiClient.getWeatherModulePrimaryWeather();
 
-        final raw = response.response.data['data'] as Map<String, dynamic>;
+        final data = response.data.data;
+        final currentData = data.current.toJson();
+        final locationId = data.locationId;
 
-        // Extract location_id if present in response
-        final locationId = raw['location_id'] as String?;
-
-        insertWeather(raw, locationId: locationId);
+        await insertWeather(currentData, locationId: locationId);
       },
       'fetch current weather',
     );

@@ -86,17 +86,13 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
   Future<void> fetchWeather() async {
     return handleApiCall(
       () async {
-        final response = await apiClient.getWeatherModuleForecast();
+        final response = await apiClient.getWeatherModulePrimaryWeather();
 
-        final raw = response.response.data['data'] as List;
+        final data = response.data.data;
+        final forecastData = data.forecast.map((day) => day.toJson()).toList();
+        final locationId = data.locationId;
 
-        // Try to extract location_id from the first item if available
-        String? locationId;
-        if (raw.isNotEmpty && raw.first is Map<String, dynamic>) {
-          locationId = (raw.first as Map<String, dynamic>)['location_id'] as String?;
-        }
-
-        insertForecast(raw.cast<Map<String, dynamic>>(), locationId: locationId);
+        await insertForecast(forecastData, locationId: locationId);
       },
       'fetch forecast weather',
     );
