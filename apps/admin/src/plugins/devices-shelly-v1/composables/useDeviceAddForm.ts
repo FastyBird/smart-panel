@@ -112,17 +112,20 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				});
 
 				if (typeof responseData !== 'undefined') {
-					deviceInfo.value = transformDeviceInfoResponse(responseData.data);
+					const info = transformDeviceInfoResponse(responseData.data);
 
 					// Check if device is reachable
-					if (!deviceInfo.value.reachable) {
+					if (!info.reachable) {
 						throw new DevicesShellyV1ApiException(t('devicesShellyV1Plugin.messages.devices.notReachable'), 404);
 					}
 
 					// Check if authentication is valid
-					if (deviceInfo.value.authRequired && !deviceInfo.value.authValid) {
+					if (info.authRequired && !info.authValid) {
 						throw new DevicesShellyV1ApiException(t('devicesShellyV1Plugin.messages.devices.invalidPassword'), 401);
 					}
+
+					// Only set deviceInfo after validation passes to avoid triggering watchers on invalid data
+					deviceInfo.value = info;
 
 					activeStep.value = 'two';
 
