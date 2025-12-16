@@ -7,9 +7,10 @@ import { orderBy } from 'natural-orderby';
 
 import { tryOnMounted } from '@vueuse/core';
 
-import { deepClone, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { deepClone, getErrorReason, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { DevicesApiException, FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
+import type { DevicesShellyV1PluginCreateDeviceInfoOperation } from '../../../openapi.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { DEVICES_SHELLY_V1_PLUGIN_PREFIX, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1ApiException, DevicesShellyV1ValidationException } from '../devices-shelly-v1.exceptions';
@@ -130,7 +131,13 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					return 'ok';
 				}
 
-				throw new DevicesShellyV1ApiException('Failed to check device.', response.status);
+				let errorReason: string | null = 'Failed to check device.';
+
+				if (error) {
+					errorReason = getErrorReason<DevicesShellyV1PluginCreateDeviceInfoOperation>(error, errorReason);
+				}
+
+				throw new DevicesShellyV1ApiException(errorReason, response.status);
 			} catch (error: unknown) {
 				formResult.value = FormResult.ERROR;
 
