@@ -49,6 +49,7 @@ import type { OpenApiPaths } from './openapi.constants';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng';
+import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file';
 import { PagesCardsPlugin } from './plugins/pages-cards';
@@ -139,6 +140,7 @@ const pluginOptions: IModuleOptions = {
 app.use(DevicesThirdPartyPlugin, pluginOptions);
 app.use(DevicesHomeAssistantPlugin, pluginOptions);
 app.use(DevicesShellyNgPlugin, pluginOptions);
+app.use(DevicesShellyV1Plugin, pluginOptions);
 app.use(PagesCardsPlugin, pluginOptions);
 app.use(PagesDeviceDetailPlugin, pluginOptions);
 app.use(PagesTilesPlugin, pluginOptions);

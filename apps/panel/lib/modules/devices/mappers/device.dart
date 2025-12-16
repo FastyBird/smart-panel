@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/home_assistant_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/shelly_ng_device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/devices/shelly_v1_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/third_party_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
@@ -43,6 +44,9 @@ Map<String, DeviceModel Function(Map<String, dynamic>)> deviceModelMappers = {
   },
   DeviceType.devicesShellyNg.value: (data) {
     return ShellyNgDeviceModel.fromJson(data);
+  },
+  DeviceType.devicesShellyV1.value: (data) {
+    return ShellyV1DeviceModel.fromJson(data);
   },
 };
 

@@ -1,0 +1,179 @@
+{
+  "headings": {
+    "aboutPluginStatus": "Plugin Status",
+    "aboutDiscovery": "Discovery settings",
+    "aboutTimeouts": "Timeout settings",
+    "device": {
+      "deviceConnection": "Device connection",
+      "information": "Device information",
+      "supported": "Congrats! Device is supported",
+      "notSupported": "We are sorry, your device is not supported",
+      "model": "Model",
+      "firmware": "Firmware"
+    }
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Internal identifier",
+        "placeholder": "Device id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Device category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select device category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Device name",
+        "validation": {
+          "required": "Please fill in device name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Device description"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "placeholder": "Enable or disable device"
+      },
+      "password": {
+        "title": "Admin password",
+        "placeholder": "Provide device password if device is protected"
+      },
+      "hostname": {
+        "title": "Device hostname",
+        "placeholder": "Device network name or IP address",
+        "validation": {
+          "required": "Please fill in device hostname or IP address"
+        }
+      }
+    },
+    "channels": {
+      "plugin": {
+        "title": "Channel plugin",
+        "placeholder": "Select channel plugin"
+      },
+      "device": {
+        "title": "Device",
+        "placeholder": "Channel device",
+        "description": "About device",
+        "validation": {
+          "required": "Please select channel device"
+        }
+      },
+      "id": {
+        "title": "Internal identifier",
+        "placeholder": "Channel id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select channel category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel name",
+        "validation": {
+          "required": "Please fill in channel name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Channel description"
+      }
+    },
+    "channelsProperties": {
+      "channel": {
+        "title": "Channel",
+        "placeholder": "Channel property channel",
+        "description": "About channel",
+        "validation": {
+          "required": "Please select channel property channel"
+        }
+      },
+      "id": {
+        "title": "Internal identifier",
+        "placeholder": "Channel property id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel property category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select channel property category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel property name"
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Enabled"
+      },
+      "discovery": {
+        "enabled": {
+          "title": "Discovery enabled"
+        },
+        "interface": {
+          "title": "Interface",
+          "placeholder": "The network interface to use. If none is specified, all available interfaces will be used."
+        }
+      },
+      "timeouts": {
+        "requestTimeout": {
+          "title": "Request timeout",
+          "placeholder": "The time, in seconds, to wait for a response before a request is aborted.",
+          "validation": {
+            "required": "Please fill in request timeout",
+            "number": "Request timeout must be a positive integer"
+          }
+        },
+        "staleTimeout": {
+          "title": "Stale timeout",
+          "placeholder": "The time, in seconds, before a device is considered offline if no status update is received.",
+          "validation": {
+            "required": "Please fill in stale timeout",
+            "number": "Stale timeout must be a positive integer"
+          }
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Changes saved! The Shelly Gen 1 plugin config has been updated.",
+      "notEdited": "Something went wrong. Shelly Gen 1 plugin config update was not successful."
+    },
+    "devices": {
+      "exists": "Device with provided hostname and password is already registered in system.",
+      "created": "New Shelly Gen 1 device added successfully.",
+      "notCreated": "Something went wrong. Unable to create the Shelly Gen 1 device.",
+      "notChecked": "Something went wrong. Device information could not be loaded. Check the device hostname or password.",
+      "notReachable": "Device is not reachable. Please check the hostname or IP address.",
+      "invalidPassword": "Invalid password. Please check the device password.",
+      "edited": "Changes saved! The Shelly Gen 1 device: {device} has been updated.",
+      "notEdited": "Something went wrong. Shelly Gen 1 device update was not successful.",
+      "failedLoadSupportedDevices": "Something went wrong. Plugin supported devices could not be loaded."
+    }
+  },
+  "texts": {
+    "aboutPluginStatus": "Enable or disable the Shelly Gen 1 device integration. When enabled, Shelly devices can be discovered and controlled through the Smart Panel.",
+    "aboutDiscovery": "Configure how the plugin discovers Shelly Gen 1 devices on your local network using Multicast DNS (mDNS). This enables automatic detection without needing to manually enter IP addresses.",
+    "aboutTimeouts": "Configure timeout settings for HTTP communication with Shelly Gen 1 devices. These settings control request handling and device state monitoring."
+  },
+  "buttons": {
+    "next": {
+      "title": "Next"
+    }
+  }
+}

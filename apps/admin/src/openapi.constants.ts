@@ -259,6 +259,10 @@ export type StatsModuleGetStatsOperation = operations['get-stats-module-stats'];
 export type DevicesShellyNgPluginGetSupportedOperation = operations['get-devices-shelly-ng-plugin-supported'];
 export type DevicesShellyNgPluginCreateDeviceInfoOperation = operations['create-devices-shelly-ng-plugin-device-info'];
 
+// Devices Shelly V1 Plugin Operations
+export type DevicesShellyV1PluginGetSupportedOperation = operations['get-devices-shelly-v1-plugin-supported'];
+export type DevicesShellyV1PluginCreateDeviceInfoOperation = operations['create-devices-shelly-v1-plugin-device-info'];
+
 // Pages Cards Plugin Operations
 export type PagesCardsPluginGetPageCardOperation = operations['get-pages-cards-plugin-page-card'];
 export type PagesCardsPluginGetPageCardsOperation = operations['get-pages-cards-plugin-page-cards'];
