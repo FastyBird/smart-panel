@@ -12,6 +12,16 @@ export enum ExtensionKind {
 	PLUGIN = 'plugin',
 }
 
+export enum ExtensionSurface {
+	ADMIN = 'admin',
+	BACKEND = 'backend',
+}
+
+export enum ExtensionSource {
+	BUNDLED = 'bundled',
+	RUNTIME = 'runtime',
+}
+
 /**
  * Core modules that cannot be disabled or removed
  */

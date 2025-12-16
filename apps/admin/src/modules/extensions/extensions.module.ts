@@ -10,8 +10,9 @@ import { injectLogger, injectModulesManager, injectStoresManager, type IModule, 
 import { EXTENSIONS_MODULE_NAME } from './extensions.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
+import { registerDiscoveredExtensionsStore } from './store/discovered-extensions.store';
 import { registerExtensionsStore } from './store/extensions.store';
-import { extensionsStoreKey } from './store/keys';
+import { discoveredExtensionsStoreKey, extensionsStoreKey } from './store/keys';
 
 const extensionsAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Extensions');
 
@@ -32,6 +33,11 @@ export default {
 
 		app.provide(extensionsStoreKey, extensionsStore);
 		storesManager.addStore(extensionsStoreKey, extensionsStore);
+
+		const discoveredExtensionsStore = registerDiscoveredExtensionsStore(options.store);
+
+		app.provide(discoveredExtensionsStoreKey, discoveredExtensionsStore);
+		storesManager.addStore(discoveredExtensionsStoreKey, discoveredExtensionsStore);
 
 		modulesManager.addModule(extensionsAdminModuleKey, {
 			type: EXTENSIONS_MODULE_NAME,

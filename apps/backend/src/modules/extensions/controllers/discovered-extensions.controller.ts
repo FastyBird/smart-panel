@@ -20,142 +20,137 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { ExtensionsResponseModel } from '../models/system-response.model';
-import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
 import {
-	ExtensionKindType,
-	ExtensionSourceType,
-	ExtensionSurfaceType,
-	SYSTEM_MODULE_API_TAG_NAME,
-	SYSTEM_MODULE_PREFIX,
-} from '../system.constants';
+	EXTENSIONS_MODULE_API_TAG_NAME,
+	EXTENSIONS_MODULE_PREFIX,
+	ExtensionSource,
+	ExtensionSurface,
+} from '../extensions.constants';
+import { DiscoveredExtensionAdminModel, DiscoveredExtensionBackendModel } from '../models/discovered-extension.model';
+import { DiscoveredExtensionsResponseModel } from '../models/discovered-extensions-response.model';
 
 interface BundledManifest {
 	bundled: Array<{
 		name: string;
 		version?: string;
-		kind: ExtensionKindType;
+		kind: string;
 		display_name?: string;
 		description?: string;
 	}>;
 }
 
-@ApiTags(SYSTEM_MODULE_API_TAG_NAME)
-@Controller('extensions')
-export class ExtensionsController {
-	private readonly logger = new Logger(ExtensionsController.name);
+@ApiTags(EXTENSIONS_MODULE_API_TAG_NAME)
+@Controller('discovered')
+export class DiscoveredExtensionsController {
+	private readonly logger = new Logger(DiscoveredExtensionsController.name);
 
 	constructor(private readonly configService: NestConfigService) {}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
-		summary: 'List all extensions',
-		description: 'Retrieve a list of all registered extensions, optionally filtered by surface',
-		operationId: 'get-system-module-extensions',
+		tags: [EXTENSIONS_MODULE_API_TAG_NAME],
+		summary: 'List all discovered extensions',
+		description: 'Retrieve a list of all discovered extensions, optionally filtered by surface',
+		operationId: 'get-extensions-module-discovered-extensions',
 	})
 	@ApiQuery({
 		name: 'surface',
 		required: false,
 		description: 'Filter by extension surface',
-		enum: [...Object.values(ExtensionSurfaceType), 'all'],
+		enum: [...Object.values(ExtensionSurface), 'all'],
 	})
-	@ApiSuccessResponse(ExtensionsResponseModel, 'Extensions retrieved successfully')
+	@ApiSuccessResponse(DiscoveredExtensionsResponseModel, 'Extensions retrieved successfully')
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get()
-	async list(@Query('surface') surface: ExtensionSurfaceType | 'all' = 'all'): Promise<ExtensionsResponseModel> {
+	async list(@Query('surface') surface: ExtensionSurface | 'all' = 'all'): Promise<DiscoveredExtensionsResponseModel> {
 		const { admin, backend } = await getDiscoveredExtensions();
 
 		const bundledSet = this.loadBundledSet();
 
-		const out: (ExtensionAdminModel | ExtensionBackendModel)[] = [];
+		const out: (DiscoveredExtensionAdminModel | DiscoveredExtensionBackendModel)[] = [];
 
-		if (surface === ExtensionSurfaceType.ADMIN || surface === 'all') {
+		if (surface === ExtensionSurface.ADMIN || surface === 'all') {
 			for (const a of admin) {
 				if (!a.extensionEntry) continue;
 
 				out.push(
-					toInstance(ExtensionAdminModel, {
+					toInstance(DiscoveredExtensionAdminModel, {
 						name: a.pkgName,
 						kind: a.kind,
-						surface: ExtensionSurfaceType.ADMIN,
+						surface: ExtensionSurface.ADMIN,
 						displayName: a.displayName ?? a.pkgName,
 						description: a.description ?? undefined,
 						version: this.readPkgVersionSafe(a.packageDir),
-						source: bundledSet.has(a.pkgName) ? ExtensionSourceType.BUNDLED : ExtensionSourceType.RUNTIME,
-						// We’ll serve files under /api/v1/modules/system/extensions/assets/<pkg>/<...>
-						remoteUrl: `:baseUrl/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
+						source: bundledSet.has(a.pkgName) ? ExtensionSource.BUNDLED : ExtensionSource.RUNTIME,
+						remoteUrl: `:baseUrl/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
 					}),
 				);
 			}
 		}
 
-		if (surface === ExtensionSurfaceType.BACKEND || surface === 'all') {
+		if (surface === ExtensionSurface.BACKEND || surface === 'all') {
 			for (const b of backend) {
 				out.push(
-					toInstance(ExtensionBackendModel, {
+					toInstance(DiscoveredExtensionBackendModel, {
 						name: b.pkgName,
 						kind: b.kind,
-						surface: ExtensionSurfaceType.BACKEND,
+						surface: ExtensionSurface.BACKEND,
 						displayName: b.displayName ?? b.pkgName,
 						description: b.description ?? undefined,
-						// version may be undefined if discovery didn’t attach packageDir for backend
 						version:
 							'packageDir' in (b as unknown as Record<string, unknown>) &&
 							typeof (b as unknown as { packageDir?: string }).packageDir === 'string'
 								? this.readPkgVersionSafe((b as unknown as { packageDir: string }).packageDir)
 								: undefined,
-						source: bundledSet.has(b.pkgName) ? ExtensionSourceType.BUNDLED : ExtensionSourceType.RUNTIME,
-						// Backend entries expose where the Nest module is mounted
+						source: bundledSet.has(b.pkgName) ? ExtensionSource.BUNDLED : ExtensionSource.RUNTIME,
 						routePrefix: b.routePrefix,
 					}),
 				);
 			}
 		}
 
-		const response = new ExtensionsResponseModel();
+		const response = new DiscoveredExtensionsResponseModel();
 		response.data = out;
 
 		return response;
 	}
 
 	@ApiOperation({
-		tags: [SYSTEM_MODULE_API_TAG_NAME],
-		summary: 'Get extension by name',
-		description: 'Retrieve a specific extension by its name',
-		operationId: 'get-system-module-extension',
+		tags: [EXTENSIONS_MODULE_API_TAG_NAME],
+		summary: 'Get discovered extension by name',
+		description: 'Retrieve a specific discovered extension by its name',
+		operationId: 'get-extensions-module-discovered-extension',
 	})
 	@ApiParam({ name: 'name', description: 'Extension name', type: 'string' })
-	@ApiSuccessResponse(ExtensionsResponseModel, 'Extension retrieved successfully')
+	@ApiSuccessResponse(DiscoveredExtensionsResponseModel, 'Extension retrieved successfully')
 	@ApiBadRequestResponse('Invalid extension name')
 	@ApiNotFoundResponse('Extension not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Public()
 	@Get(':name')
-	async findOne(@Param('name') name: string): Promise<ExtensionsResponseModel> {
+	async findOne(@Param('name') name: string): Promise<DiscoveredExtensionsResponseModel> {
 		this.logger.debug(`[LOOKUP] Fetching extension name=${name}`);
 
 		const { admin, backend } = await getDiscoveredExtensions();
 
 		const bundledSet = this.loadBundledSet();
 
-		const out: (ExtensionAdminModel | ExtensionBackendModel)[] = [];
+		const out: (DiscoveredExtensionAdminModel | DiscoveredExtensionBackendModel)[] = [];
 
 		for (const a of admin) {
 			if (!a.extensionEntry || a.pkgName !== name) continue;
 
 			out.push(
-				toInstance(ExtensionAdminModel, {
+				toInstance(DiscoveredExtensionAdminModel, {
 					name: a.pkgName,
 					kind: a.kind,
-					surface: ExtensionSurfaceType.ADMIN,
+					surface: ExtensionSurface.ADMIN,
 					displayName: a.displayName ?? a.pkgName,
 					description: a.description ?? undefined,
 					version: this.readPkgVersionSafe(a.packageDir),
-					source: bundledSet.has(a.pkgName) ? ExtensionSourceType.BUNDLED : ExtensionSourceType.RUNTIME,
-					// We’ll serve files under /api/v1/modules/system/extensions/assets/<pkg>/<...>
-					remoteUrl: `:baseUrl/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
+					source: bundledSet.has(a.pkgName) ? ExtensionSource.BUNDLED : ExtensionSource.RUNTIME,
+					remoteUrl: `:baseUrl/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered/assets/${encodeURIComponent(a.pkgName)}/${a.extensionEntry}`,
 				}),
 			);
 		}
@@ -164,20 +159,18 @@ export class ExtensionsController {
 			if (b.pkgName !== name) continue;
 
 			out.push(
-				toInstance(ExtensionBackendModel, {
+				toInstance(DiscoveredExtensionBackendModel, {
 					name: b.pkgName,
 					kind: b.kind,
-					surface: ExtensionSurfaceType.BACKEND,
+					surface: ExtensionSurface.BACKEND,
 					displayName: b.displayName ?? b.pkgName,
 					description: b.description ?? undefined,
-					// version may be undefined if discovery didn’t attach packageDir for backend
 					version:
 						'packageDir' in (b as unknown as Record<string, unknown>) &&
 						typeof (b as unknown as { packageDir?: string }).packageDir === 'string'
 							? this.readPkgVersionSafe((b as unknown as { packageDir: string }).packageDir)
 							: undefined,
-					source: bundledSet.has(b.pkgName) ? ExtensionSourceType.BUNDLED : ExtensionSourceType.RUNTIME,
-					// Backend entries expose where the Nest module is mounted
+					source: bundledSet.has(b.pkgName) ? ExtensionSource.BUNDLED : ExtensionSource.RUNTIME,
 					routePrefix: b.routePrefix,
 				}),
 			);
@@ -185,7 +178,7 @@ export class ExtensionsController {
 
 		this.logger.debug(`[LOOKUP] Found extension name=${name}`);
 
-		const response = new ExtensionsResponseModel();
+		const response = new DiscoveredExtensionsResponseModel();
 		response.data = out;
 
 		return response;

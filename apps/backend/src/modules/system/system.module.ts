@@ -14,7 +14,6 @@ import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
 
-import { ExtensionsController } from './controllers/extensions.controller';
 import { LogsController } from './controllers/logs.controller';
 import { SystemController } from './controllers/system.controller';
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
@@ -48,7 +47,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		SystemLoggerService,
 		SystemStatsProvider,
 	],
-	controllers: [SystemController, LogsController, ExtensionsController],
+	controllers: [SystemController, LogsController],
 	exports: [SystemService, FactoryResetRegistryService, SystemLoggerService],
 })
 export class SystemModule implements OnModuleInit {

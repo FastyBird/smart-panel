@@ -25,8 +25,8 @@ import { SystemConfigSchema, SystemConfigUpdateReqSchema } from './store/config.
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
 import { SystemActionsService, provideSystemActionsService } from './services/system-actions.service';
 import { SystemLogsReporterService, provideSystemLogsReporter } from './services/system-logs-reporter.service';
-import { extensionsStoreKey, logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
-import { registerExtensionsStore, registerLogsEntriesStore, registerSystemInfoStore, registerThrottleStatusStore } from './store/stores';
+import { logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
+import { registerLogsEntriesStore, registerSystemInfoStore, registerThrottleStatusStore } from './store/stores';
 import { EventType, SYSTEM_MODULE_EVENT_PREFIX, SYSTEM_MODULE_NAME } from './system.constants';
 
 const systemAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-System');
@@ -62,11 +62,6 @@ export default {
 
 		app.provide(logsEntriesStoreKey, logsEntriesStore);
 		storesManager.addStore(logsEntriesStoreKey, logsEntriesStore);
-
-		const extensionsStore = registerExtensionsStore(options.store);
-
-		app.provide(extensionsStoreKey, extensionsStore);
-		storesManager.addStore(extensionsStoreKey, extensionsStore);
 
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 

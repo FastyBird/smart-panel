@@ -1,10 +1,12 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
+import { DiscoveredExtensionsController } from './controllers/discovered-extensions.controller';
 import { ExtensionsController } from './controllers/extensions.controller';
 import {
 	EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
@@ -22,8 +24,8 @@ import { ExtensionsService } from './services/extensions.service';
 	description: EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [ConfigModule],
-	controllers: [ExtensionsController],
+	imports: [NestConfigModule, ConfigModule],
+	controllers: [ExtensionsController, DiscoveredExtensionsController],
 	providers: [ExtensionsService],
 	exports: [ExtensionsService],
 })

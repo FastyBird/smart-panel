@@ -18,13 +18,7 @@ import {
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import {
-	ExtensionKindType,
-	ExtensionSourceType,
-	ExtensionSurfaceType,
-	LogEntrySource,
-	LogEntryType,
-} from '../system.constants';
+import { LogEntrySource, LogEntryType } from '../system.constants';
 
 type LogArgPrimitive = string | number | boolean | null;
 type EntryLogArg = LogArgPrimitive | Record<string, unknown> | LogArgPrimitive[];
@@ -499,77 +493,6 @@ export class LogEntryModel {
 	@ValidateNested()
 	@Type(() => LogEntryContextModel)
 	context?: LogEntryContextModel;
-}
-
-@ApiSchema({ name: 'SystemModuleDataExtensionBase' })
-export abstract class ExtensionBaseModel {
-	@ApiProperty({ description: 'Extension name', type: 'string', example: 'my-extension' })
-	@Expose()
-	@IsString()
-	name: string;
-
-	@ApiProperty({ description: 'Extension kind', enum: ExtensionKindType })
-	@Expose()
-	@IsEnum(ExtensionKindType)
-	kind: ExtensionKindType;
-
-	@ApiProperty({ description: 'Extension surface', enum: ExtensionSurfaceType })
-	@Expose()
-	@IsEnum(ExtensionSurfaceType)
-	surface: ExtensionSurfaceType;
-
-	@ApiProperty({ name: 'display_name', description: 'Display name', type: 'string', example: 'My Extension' })
-	@Expose({ name: 'display_name' })
-	@IsString()
-	displayName: string;
-
-	@ApiPropertyOptional({
-		description: 'Extension description',
-		type: 'string',
-		nullable: true,
-		example: 'A useful extension',
-	})
-	@Expose()
-	@IsString()
-	@IsOptional()
-	description?: string | null = null;
-
-	@ApiPropertyOptional({ description: 'Extension version', type: 'string', nullable: true, example: '1.0.0' })
-	@Expose()
-	@IsString()
-	@IsOptional()
-	version?: string | null = null;
-
-	@ApiProperty({ description: 'Extension source', enum: ExtensionSourceType })
-	@Expose()
-	@IsEnum(ExtensionSourceType)
-	source: ExtensionSourceType;
-}
-
-@ApiSchema({ name: 'SystemModuleDataExtensionAdmin' })
-export class ExtensionAdminModel extends ExtensionBaseModel {
-	@ApiProperty({ name: 'remote_url', description: 'Remote URL', type: 'string', format: 'uri' })
-	@Expose({ name: 'remote_url' })
-	@IsString()
-	remoteUrl: string;
-
-	@ApiProperty({ description: 'Extension type', type: 'string', example: 'admin' })
-	@Expose()
-	@IsString()
-	type: string = 'admin';
-}
-
-@ApiSchema({ name: 'SystemModuleDataExtensionBackend' })
-export class ExtensionBackendModel extends ExtensionBaseModel {
-	@ApiProperty({ name: 'route_prefix', description: 'Route prefix', type: 'string', example: '/api' })
-	@Expose({ name: 'route_prefix' })
-	@IsString()
-	routePrefix: string;
-
-	@ApiProperty({ description: 'Extension type', type: 'string', example: 'backend' })
-	@Expose()
-	@IsString()
-	type: string = 'backend';
 }
 
 @ApiSchema({ name: 'SystemModuleDataCpuLoad1m' })
