@@ -4,7 +4,6 @@ import { ConfigPluginEditFormSchema } from '../../../modules/config';
 
 export const ShellyV1ConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	discovery: z.object({
-		enabled: z.boolean(),
 		interface: z.string().nullable(),
 	}),
 	timeouts: z.object({
