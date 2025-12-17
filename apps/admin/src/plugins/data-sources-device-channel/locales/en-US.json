@@ -3,7 +3,6 @@
     "device": {
       "title": "Device",
       "placeholder": "Data source device",
-      "description": "About device",
       "validation": {
         "required": "Please select data source device"
       }
@@ -11,7 +10,6 @@
     "channel": {
       "title": "Channel",
       "placeholder": "Data source channel",
-      "description": "About channel",
       "validation": {
         "required": "Please select data source channel"
       }
@@ -19,7 +17,6 @@
     "property": {
       "title": "Property",
       "placeholder": "Data source property",
-      "description": "About property",
       "validation": {
         "required": "Please select data source property"
       }

@@ -3,7 +3,6 @@
     "device": {
       "title": "Device",
       "placeholder": "Tile device",
-      "description": "About device",
       "validation": {
         "required": "Please select tile device"
       }

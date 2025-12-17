@@ -50,9 +50,6 @@
 					"required": "Longitude is required",
 					"range": "Longitude must be between -180 and 180"
 				}
-			},
-			"map": {
-				"title": "Location on map"
 			}
 		}
 	},

@@ -2,13 +2,11 @@
 	"fields": {
 		"locationId": {
 			"title": "Weather location",
-			"placeholder": "Select a location",
-			"description": "Select a weather location to display. If not set, the primary location from weather settings will be used."
+			"placeholder": "Select a location"
 		},
 		"field": {
 			"title": "Data field",
 			"placeholder": "Select a field",
-			"description": "Weather data field to display.",
 			"validation": {
 				"required": "Please select a data field"
 			}
@@ -16,7 +14,6 @@
 		"dayOffset": {
 			"title": "Day offset",
 			"placeholder": "Days from today",
-			"description": "Number of days from today (0 = today, 1 = tomorrow).",
 			"validation": {
 				"required": "Please enter a day offset",
 				"min": "Day offset must be at least 0",
@@ -25,8 +22,7 @@
 		},
 		"icon": {
 			"title": "Custom icon",
-			"placeholder": "mdi:thermometer",
-			"description": "Override the weather icon with a custom icon name."
+			"placeholder": "mdi:thermometer"
 		}
 	},
 	"fieldOptions": {

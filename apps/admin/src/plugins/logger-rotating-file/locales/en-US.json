@@ -18,7 +18,6 @@
         "title": "Retention (days)",
         "placeholder": "How many days to keep log files (e.g. 7)",
         "validation": {
-          "number": "Retention days must be an integer.",
           "min": "Retention days must be at least 1."
         }
       },
