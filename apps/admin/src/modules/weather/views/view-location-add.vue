@@ -243,9 +243,9 @@ watch(
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
 			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.WEATHER_LOCATION_EDIT, params: { id: newLocationId } });
+				router.replace({ name: RouteNames.WEATHER_LOCATIONS });
 			} else {
-				router.push({ name: RouteNames.WEATHER_LOCATION_EDIT, params: { id: newLocationId } });
+				router.push({ name: RouteNames.WEATHER_LOCATIONS });
 			}
 		}
 	}

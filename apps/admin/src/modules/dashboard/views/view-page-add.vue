@@ -268,9 +268,9 @@ watch(
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
 			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.PAGES_EDIT, params: { id: newPageId } });
+				router.replace({ name: RouteNames.PAGES });
 			} else {
-				router.push({ name: RouteNames.PAGES_EDIT, params: { id: newPageId } });
+				router.push({ name: RouteNames.PAGES });
 			}
 		}
 	}

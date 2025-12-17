@@ -381,20 +381,20 @@ watch(
 		if (val === FormResult.OK) {
 			if (isChannelDetailRoute.value) {
 				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.CHANNEL_EDIT_PROPERTY, params: { id: props.channelId, propertyId: newPropertyId } });
+					router.replace({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				} else {
-					router.push({ name: RouteNames.CHANNEL_EDIT_PROPERTY, params: { id: props.channelId, propertyId: newPropertyId } });
+					router.push({ name: RouteNames.CHANNEL, params: { id: props.channelId } });
 				}
 			} else if (isDeviceDetailRoute.value) {
 				if (isLGDevice.value) {
 					router.replace({
-						name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
-						params: { id: channel.value?.device, channelId: props.channelId, propertyId: newPropertyId },
+						name: RouteNames.DEVICE,
+						params: { id: channel.value?.device },
 					});
 				} else {
 					router.push({
-						name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
-						params: { id: channel.value?.device, channelId: props.channelId, propertyId: newPropertyId },
+						name: RouteNames.DEVICE,
+						params: { id: channel.value?.device },
 					});
 				}
 			} else {
