@@ -34,7 +34,7 @@ export const getWeatherIcon = (
 	if (code === 511) {
 		return isNight ? 'wi:night-snow' : 'wi:day-snow';
 	}
-	if (code > 520 && code < 600) {
+	if (code >= 520 && code < 600) {
 		return isNight ? 'wi:night-showers' : 'wi:day-showers';
 	}
 
