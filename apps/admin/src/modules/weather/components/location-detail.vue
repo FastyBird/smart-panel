@@ -23,10 +23,10 @@
 					<icon :icon="weatherIcon" />
 				</el-icon>
 				<el-text class="text-xl font-bold">
-					{{ formatNumber(props.current.temperature, { maximumFractionDigits: 1 }) }}°C
+					{{ formatNumber(props.current.temperature, { maximumFractionDigits: 1 }) }}{{ temperatureUnit }}
 				</el-text>
 				<el-text class="text-gray-500">
-					{{ t('weatherModule.texts.locationDetail.feelsLike', { temp: formatNumber(props.current.feelsLike, { maximumFractionDigits: 1 }) }) }}
+					{{ t('weatherModule.texts.locationDetail.feelsLike', { temp: `${formatNumber(props.current.feelsLike, { maximumFractionDigits: 1 })}${temperatureUnit}` }) }}
 				</el-text>
 			</div>
 		</dd>
@@ -86,6 +86,8 @@ import { ElIcon, ElText } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { formatNumber } from '../../../common';
+import { useConfigModule } from '../../config';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { getWeatherIcon } from '../utils/utils';
 
 import type { ILocationDetailProps } from './location-detail.types';
@@ -97,6 +99,13 @@ defineOptions({
 const props = defineProps<ILocationDetailProps>();
 
 const { t } = useI18n();
+
+const { configModule: weatherConfig } = useConfigModule({ type: WEATHER_MODULE_NAME });
+
+const temperatureUnit = computed<string>(() => {
+	const config = weatherConfig.value as { unit?: string } | null;
+	return config?.unit === 'fahrenheit' ? '°F' : '°C';
+});
 
 const providerName = computed<string>(() => {
 	// Extract provider name from type (e.g., 'openweathermap-onecall' -> 'OpenWeatherMap')

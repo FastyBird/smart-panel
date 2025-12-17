@@ -88,7 +88,7 @@
 			:primary-location-id="primaryLocationId"
 			:weather-by-location="weatherByLocation"
 			:weather-fetch-completed="weatherFetchCompleted"
-			temperature-unit="celsius"
+			:temperature-unit="temperatureUnit"
 			@detail="onLocationDetail"
 			@edit="onLocationEdit"
 			@remove="onLocationRemove"
@@ -174,13 +174,14 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { useConfigModule } from '../../config';
 import ListLocations from '../components/list-locations.vue';
 import ListLocationsAdjust from '../components/list-locations-adjust.vue';
 import { useLocationsActions } from '../composables/useLocationsActions';
 import { useLocationsDataSource } from '../composables/useLocationsDataSource';
 import { useLocationsWeather } from '../composables/useLocationsWeather';
 import type { IWeatherLocation } from '../store/locations.store.types';
-import { RouteNames } from '../weather.constants';
+import { RouteNames, WEATHER_MODULE_NAME } from '../weather.constants';
 import { WeatherException } from '../weather.exceptions';
 
 import type { IViewLocationsProps } from './view-locations.types';
@@ -218,6 +219,12 @@ const {
 } = useLocationsDataSource();
 const locationActions = useLocationsActions();
 const { weatherByLocation, fetchCompleted: weatherFetchCompleted, fetchLocationsWeather } = useLocationsWeather();
+const { configModule: weatherConfig } = useConfigModule({ type: WEATHER_MODULE_NAME });
+
+const temperatureUnit = computed<'celsius' | 'fahrenheit'>((): 'celsius' | 'fahrenheit' => {
+	const config = weatherConfig.value as { unit?: string } | null;
+	return config?.unit === 'fahrenheit' ? 'fahrenheit' : 'celsius';
+});
 
 const mounted = ref<boolean>(false);
 

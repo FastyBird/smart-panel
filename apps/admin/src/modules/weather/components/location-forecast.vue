@@ -14,10 +14,10 @@
 			</el-icon>
 			<div class="mt-2 flex justify-center gap-2">
 				<span class="font-bold">
-					{{ formatTemp(day.temperature.max) }}°
+					{{ formatTemp(day.temperature.max) }}°{{ temperatureUnit }}
 				</span>
 				<span class="text-gray-400">
-					{{ formatTemp(day.temperature.min) }}°
+					{{ formatTemp(day.temperature.min) }}°{{ temperatureUnit }}
 				</span>
 			</div>
 			<div class="text-xs text-gray-500 mt-1 truncate">
@@ -28,11 +28,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import { ElCard, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { formatNumber } from '../../../common';
+import { useConfigModule } from '../../config';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { getWeatherIcon } from '../utils/utils';
 
 import type { ILocationForecastProps } from './location-forecast.types';
@@ -42,6 +46,13 @@ defineOptions({
 });
 
 const props = defineProps<ILocationForecastProps>();
+
+const { configModule: weatherConfig } = useConfigModule({ type: WEATHER_MODULE_NAME });
+
+const temperatureUnit = computed<string>(() => {
+	const config = weatherConfig.value as { unit?: string } | null;
+	return config?.unit === 'fahrenheit' ? 'F' : 'C';
+});
 
 const formatDayName = (date: Date): string => {
 	return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(date);
