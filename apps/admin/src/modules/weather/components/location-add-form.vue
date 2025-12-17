@@ -57,7 +57,7 @@ const props = defineProps<ILocationAddFormProps>();
 const emit = defineEmits<{
 	(e: 'cancel'): void;
 	(e: 'added'): void;
-	(e: 'update:remoteFormChanged', value: boolean): void;
+	(e: 'update:remote-form-changed', value: boolean): void;
 }>();
 
 const { t } = useI18n();
@@ -95,7 +95,7 @@ const onSubmit = async (): Promise<void> => {
 watch(
 	() => formChanged.value,
 	(value) => {
-		emit('update:remoteFormChanged', value);
+		emit('update:remote-form-changed', value);
 	}
 );
 </script>

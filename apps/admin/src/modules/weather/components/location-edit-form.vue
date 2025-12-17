@@ -52,10 +52,10 @@ const props = withDefaults(defineProps<ILocationEditFormProps>(), {
 });
 
 const emit = defineEmits<{
-	(e: 'update:remoteFormSubmit', submit: boolean): void;
-	(e: 'update:remoteFormResult', result: FormResultType): void;
-	(e: 'update:remoteFormReset', reset: boolean): void;
-	(e: 'update:remoteFormChanged', changed: boolean): void;
+	(e: 'update:remote-form-submit', submit: boolean): void;
+	(e: 'update:remote-form-result', result: FormResultType): void;
+	(e: 'update:remote-form-reset', reset: boolean): void;
+	(e: 'update:remote-form-changed', changed: boolean): void;
 }>();
 
 const { t } = useI18n();
@@ -77,22 +77,22 @@ const rules: FormRules = {
 const onSubmit = async (): Promise<void> => {
 	if (!formEl.value) return;
 
-	emit('update:remoteFormResult', FormResult.WORKING);
+	emit('update:remote-form-result', FormResult.WORKING);
 
 	const valid = await formEl.value.validate().catch(() => false);
 	if (!valid) {
-		emit('update:remoteFormResult', FormResult.NONE);
+		emit('update:remote-form-result', FormResult.NONE);
 		return;
 	}
 
 	try {
 		await submit();
-		emit('update:remoteFormResult', FormResult.OK);
+		emit('update:remote-form-result', FormResult.OK);
 	} catch {
-		emit('update:remoteFormResult', FormResult.ERROR);
+		emit('update:remote-form-result', FormResult.ERROR);
 
 		setTimeout(() => {
-			emit('update:remoteFormResult', FormResult.NONE);
+			emit('update:remote-form-result', FormResult.NONE);
 		}, 2000);
 	}
 };
@@ -102,7 +102,7 @@ watch(
 	() => props.remoteFormSubmit,
 	(val) => {
 		if (val) {
-			emit('update:remoteFormSubmit', false);
+			emit('update:remote-form-submit', false);
 			onSubmit();
 		}
 	}
@@ -113,7 +113,7 @@ watch(
 	() => props.remoteFormReset,
 	(val) => {
 		if (val) {
-			emit('update:remoteFormReset', false);
+			emit('update:remote-form-reset', false);
 			formEl.value?.resetFields();
 		}
 	}
@@ -123,7 +123,7 @@ watch(
 watch(
 	() => formChanged.value,
 	(value) => {
-		emit('update:remoteFormChanged', value);
+		emit('update:remote-form-changed', value);
 	}
 );
 </script>
