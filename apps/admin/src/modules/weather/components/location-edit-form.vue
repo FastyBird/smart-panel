@@ -22,11 +22,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput } from 'element-plus';
-import type { FormInstance, FormRules } from 'element-plus';
+import type { FormRules } from 'element-plus';
 
 import { useLocationEditForm } from '../composables/useLocationEditForm';
 import type { IWeatherLocation } from '../store/locations.store.types';
@@ -60,11 +60,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl: composableFormEl, formChanged, submit } = useLocationEditForm({
+const { model, formEl, formChanged, submit } = useLocationEditForm({
 	id: computed(() => props.id),
 });
-
-const formEl = ref<FormInstance | undefined>(composableFormEl.value);
 
 const rules: FormRules = {
 	name: [
