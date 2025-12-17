@@ -38,10 +38,15 @@
 					:value="item.value"
 				/>
 			</el-select>
-			<div class="el-form-item__description">
-				{{ t('dataSourcesWeatherPlugin.fields.locationId.description') }}
-			</div>
 		</el-form-item>
+
+		<el-alert
+			:description="t('dataSourcesWeatherPlugin.fields.locationId.description')"
+			:closable="false"
+			show-icon
+			type="info"
+			class="mb-4"
+		/>
 
 		<el-form-item
 			:label="t('dataSourcesWeatherPlugin.fields.field.title')"
@@ -70,9 +75,6 @@
 				v-model="model.icon"
 				:placeholder="t('dataSourcesWeatherPlugin.fields.icon.placeholder')"
 			/>
-			<div class="el-form-item__description">
-				{{ t('dataSourcesWeatherPlugin.fields.icon.description') }}
-			</div>
 		</el-form-item>
 
 	</el-form>
@@ -82,7 +84,7 @@
 import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
 import { IconPicker } from '../../../common';

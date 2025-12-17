@@ -61,8 +61,8 @@ export default {
 			elements: [
 				{
 					type: DATA_SOURCES_WEATHER_CURRENT_TYPE,
-					name: 'Current weather',
-					description: 'Displays current weather data including temperature, humidity, conditions, and more.',
+					name: 'Day weather',
+					description: 'Displays current day weather data including temperature, humidity, conditions, and more.',
 					components: {
 						dataSourceAddForm: CurrentWeatherDataSourceAddForm,
 						dataSourceEditForm: CurrentWeatherDataSourceEditForm,
