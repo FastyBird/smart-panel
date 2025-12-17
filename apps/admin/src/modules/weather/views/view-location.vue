@@ -267,7 +267,6 @@ import LocationForecast from '../components/location-forecast.vue';
 import { useLocation } from '../composables/useLocation';
 import { useLocationWeather } from '../composables/useLocationWeather';
 import { RouteNames } from '../weather.constants';
-import { WeatherException } from '../weather.exceptions';
 
 import type { IViewLocationProps } from './view-location.types';
 
@@ -384,13 +383,10 @@ const onRetry = async (): Promise<void> => {
 };
 
 onBeforeMount(async (): Promise<void> => {
-	try {
-		await fetchLocation();
-		await fetchLocationWeather(props.id);
-	} catch (error: unknown) {
-		const err = error as Error;
-		throw new WeatherException('Something went wrong', err);
-	}
+	await fetchLocation();
+	await fetchLocationWeather(props.id).catch(() => {
+		// Error is handled by hasError state in useLocationWeather
+	});
 
 	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_DETAIL_EDIT) !== undefined;
 });
