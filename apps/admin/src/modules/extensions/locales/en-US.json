@@ -11,11 +11,13 @@
 	},
 	"headings": {
 		"list": "Extensions",
-		"detail": "Extension Detail"
+		"detail": "Extension Detail",
+		"adjustFilters": "Adjust Filters"
 	},
 	"subHeadings": {
 		"list": "Manage your application modules and plugins",
-		"detail": "View extension information and configuration"
+		"detail": "View extension information and configuration",
+		"adjustFilters": "Filter extensions by various criteria"
 	},
 	"breadcrumbs": {
 		"extensions": {
@@ -46,7 +48,9 @@
 	"fields": {
 		"search": {
 			"placeholder": "Search extensions..."
-		},
+		}
+	},
+	"filters": {
 		"kind": {
 			"title": "Kind"
 		},
@@ -66,7 +70,10 @@
 		"issues": "Issues",
 		"remove": "Remove",
 		"configure": "Configure",
-		"viewDetails": "View Details"
+		"viewDetails": "View Details",
+		"reset": {
+			"title": "Reset Filters"
+		}
 	},
 	"tooltips": {
 		"coreCannotBeRemoved": "Core extensions cannot be removed",

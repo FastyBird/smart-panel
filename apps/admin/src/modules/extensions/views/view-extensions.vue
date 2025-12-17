@@ -53,53 +53,51 @@
 				v-model:filters="filters"
 				:filters-active="filtersActive"
 				@reset-filters="onResetFilters"
+				@adjust-list="onAdjustList"
 			/>
 		</el-card>
 
-		<el-tabs
-			v-model="activeTab"
-			class="extensions-tabs"
-		>
-			<el-tab-pane
-				:label="t('extensionsModule.tabs.all')"
-				name="all"
-			>
-				<extensions-list
-					:items="extensions"
-					:loading="areLoading"
-					:filters-active="filtersActive"
-					@toggle-enabled="onToggleEnabled"
-					@detail="onExtensionDetail"
-				/>
-			</el-tab-pane>
-
-			<el-tab-pane
-				:label="t('extensionsModule.tabs.modules')"
-				name="modules"
-			>
-				<extensions-list
-					:items="modules"
-					:loading="areLoading"
-					:filters-active="filtersActive"
-					@toggle-enabled="onToggleEnabled"
-					@detail="onExtensionDetail"
-				/>
-			</el-tab-pane>
-
-			<el-tab-pane
-				:label="t('extensionsModule.tabs.plugins')"
-				name="plugins"
-			>
-				<extensions-list
-					:items="plugins"
-					:loading="areLoading"
-					:filters-active="filtersActive"
-					@toggle-enabled="onToggleEnabled"
-					@detail="onExtensionDetail"
-				/>
-			</el-tab-pane>
-		</el-tabs>
+		<extensions-list
+			:items="extensions"
+			:loading="areLoading"
+			:filters-active="filtersActive"
+			@toggle-enabled="onToggleEnabled"
+			@detail="onExtensionDetail"
+		/>
 	</div>
+
+	<el-drawer
+		v-model="showDrawer"
+		:show-close="false"
+		size="300px"
+		:with-header="false"
+		:before-close="onCloseDrawer"
+	>
+		<div class="flex flex-col h-full">
+			<app-bar menu-button-hidden>
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="() => onCloseDrawer()"
+					>
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+
+			<list-extensions-adjust
+				v-if="showDrawer"
+				v-model:filters="filters"
+				:filters-active="filtersActive"
+				@reset-filters="onResetFilters"
+			/>
+		</div>
+	</el-drawer>
 </template>
 
 <script setup lang="ts">
@@ -108,12 +106,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElCard, ElIcon, ElTabPane, ElTabs } from 'element-plus';
+import { ElCard, ElDrawer, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { ExtensionsFilter, ExtensionsList } from '../components/components';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { ExtensionsFilter, ExtensionsList, ListExtensionsAdjust } from '../components/components';
 import { useExtensionActions, useExtensionsDataSource } from '../composables/composables';
 import { RouteNames } from '../extensions.constants';
 import { ExtensionsException } from '../extensions.exceptions';
@@ -136,10 +134,10 @@ useMeta({
 
 const { isMDDevice } = useBreakpoints();
 
-const { extensions, modules, plugins, areLoading, fetchExtensions, filters, filtersActive, resetFilter } = useExtensionsDataSource();
+const { extensions, areLoading, fetchExtensions, filters, filtersActive, resetFilter } = useExtensionsDataSource();
 const { toggleEnabled } = useExtensionActions();
 
-const activeTab = ref<string>('all');
+const showDrawer = ref<boolean>(false);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -167,6 +165,15 @@ const onExtensionDetail = (type: IExtension['type']): void => {
 	});
 };
 
+const onAdjustList = (): void => {
+	showDrawer.value = true;
+};
+
+const onCloseDrawer = (done?: () => void): void => {
+	showDrawer.value = false;
+	done?.();
+};
+
 onBeforeMount((): void => {
 	fetchExtensions().catch((error: unknown): void => {
 		const err = error as Error;
@@ -175,20 +182,3 @@ onBeforeMount((): void => {
 	});
 });
 </script>
-
-<style scoped>
-.extensions-tabs {
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-}
-
-.extensions-tabs :deep(.el-tabs__content) {
-	flex: 1;
-	overflow: auto;
-}
-
-.extensions-tabs :deep(.el-tab-pane) {
-	height: 100%;
-}
-</style>
