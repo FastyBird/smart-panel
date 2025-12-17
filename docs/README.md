@@ -26,7 +26,7 @@ docs/
 
 ### For AI Tools
 
-AI tools (Claude Code, Junie, etc.) should primarily reference:
+AI tools (Claude Code, etc.) should primarily reference:
 1. `.ai-rules/GUIDELINES.md` - Comprehensive development guidelines
 2. `.ai-rules/API_CONVENTIONS.md` - API design patterns
 3. `tasks/` - Task specifications for feature implementation

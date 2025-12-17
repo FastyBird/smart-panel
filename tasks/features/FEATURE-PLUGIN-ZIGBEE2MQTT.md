@@ -317,7 +317,7 @@ Then the plugin marks the device/channel as offline in the backend.
     - verify that Devices/Channels/Properties are created and updated,
     - verify that commands publish the expected MQTT messages.
 
-## 8. AI instructions (for Junie / Claude)
+## 8. AI instructions
 
 - Read this file fully before coding.
 - Respect global rules in `/.ai-rules/GUIDELINES.md`.

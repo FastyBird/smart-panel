@@ -137,7 +137,7 @@ And the backend reflects the current effect.
     - or rely on `wled-client` capabilities if it supports subscriptions/events.
 - Align color model and value ranges with existing light/LED plugins so that the panel and admin can reuse existing UI components.
 
-## 8. AI instructions (for Junie / Claude)
+## 8. AI instructions
 
 - Read this file fully before coding.
 - Respect global rules in `/.ai-rules/GUIDELINES.md`.

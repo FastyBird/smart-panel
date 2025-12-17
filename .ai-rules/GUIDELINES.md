@@ -457,7 +457,7 @@ pnpm run cli:prod openapi:generate                   # Generate OpenAPI spec
 
 # AI Coding & Tooling Guidelines
 
-The following rules are intended for **Claude Code**, **Junie**, **JetBrains AI Assistant**, and **Qodo**.
+The following rules are intended for **Claude Code** and **Qodo**.
 
 ## Architecture & Design Rules
 
@@ -561,7 +561,7 @@ Short, high-level description of the change.
 
 ## AI Usage Guidelines
 
-These rules apply to **Claude Code**, **Junie**, **JetBrains AI Assistant**, and **Qodo**:
+These rules apply to **Claude Code** and **Qodo**:
 
 1. AI-generated code is **never auto-mergeable**. A human must always review diffs.
 2. Do **not** modify generated files.
@@ -591,22 +591,6 @@ These rules apply to **Claude Code**, **Junie**, **JetBrains AI Assistant**, and
     - Never edit generated API/spec code.
     - Use existing UI patterns and theming.
 - Use the task files in `tasks/` for feature planning and tracking.
-
-### Junie
-
-- Can perform multi-file edits; use this power carefully and keep changes scoped.
-- When generating backend features:
-    - Create module, controller, service, DTOs, and tests.
-- When working with the panel:
-    - Never edit generated API/spec code.
-    - Use existing UI patterns and theming.
-
-### JetBrains AI Assistant
-
-- For inline suggestions:
-    - Keep changes minimal and in line with existing style.
-- For chat/agent usage:
-    - Explain non-trivial refactors or multi-file changes briefly so they are easy to review.
 
 ### Qodo (GitHub App & IDE Plugin)
 

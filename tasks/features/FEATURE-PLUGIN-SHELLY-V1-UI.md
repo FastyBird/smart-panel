@@ -161,7 +161,7 @@ apps/panel/lib/modules/devices/
 └── views/                # Generic channel/device views
 ```
 
-## 8. AI instructions (for Junie / AI)
+## 8. AI instructions
 
 - Read this file and the parent task (`FEATURE-PLUGIN-SHELLY-V1`) before coding.
 - Start by examining the `devices-shelly-ng` admin plugin structure.

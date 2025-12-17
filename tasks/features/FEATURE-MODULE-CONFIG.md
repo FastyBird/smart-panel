@@ -99,7 +99,7 @@ And the admin app displays a user-friendly error message in the UI.
   - Backend: register the module config schema in `ModulesTypeMapperService` in the module’s NestJS module.
   - Admin: register the module with `ModulesManager` and optionally provide custom schemas/components.
 
-## 8. AI instructions (for Junie / AI)
+## 8. AI instructions
 
 - Read this file entirely (including the detailed design sections below) before making any code changes.
 - Start by replying with a short implementation plan (max 10 steps) that maps directly to the acceptance criteria.

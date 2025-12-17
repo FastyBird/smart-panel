@@ -106,7 +106,7 @@ And further state updates from HA update the Smart Panel properties.
 - Consider organizing mapping rules by domain (e.g. `lightMapping`, `sensorMapping`, etc.).
 - Start with a subset of entities and expand in future tasks.
 
-## 8. AI instructions (for Junie / Claude)
+## 8. AI instructions
 
 - Read this file fully before coding.
 - Respect global rules in `/.ai-rules/GUIDELINES.md`.

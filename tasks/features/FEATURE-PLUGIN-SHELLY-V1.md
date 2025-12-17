@@ -226,7 +226,7 @@ shellies.start();
     7. Tests & docs.
 - When in doubt, prefer a **simple, robust solution** first (limited subset of device types, clear mapping) and extend later.
 
-## 8. AI instructions (for Junie / Claude)
+## 8. AI instructions
 
 - Read this file fully before coding.
 - Respect global rules in `/.ai-rules/GUIDELINES.md`.

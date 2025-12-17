@@ -99,7 +99,7 @@ Then the test fails and blocks the PR.
 - Look at how NestJS docs define response types using `@ApiOkResponse({ type: ... })`.
 - Use a CLI script (`nestjs-command` or simple Node script) to boot the app and dump the OpenAPI schema.
 
-## 8. AI instructions (for Junie / AI)
+## 8. AI instructions
 
 - Read this entire task before making code changes.
 - Start by replying with a short implementation plan (max 10 steps).

@@ -140,7 +140,7 @@ And changes are saved to the config module plugin endpoint
 - Check `apps/panel/lib/modules/weather/module.dart` for weather module structure in panel
 - Check `apps/panel/lib/modules/system/module.dart` for system module structure in panel
 
-## 8. AI instructions (for Junie / AI)
+## 8. AI instructions
 
 - Read this file entirely before making any code changes.
 - Start by replying with a short implementation plan (max 10 steps).

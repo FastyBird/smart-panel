@@ -131,7 +131,7 @@ apps/panel/lib/app/app.dart                              # Modified
 | `FB_MDNS_DISCOVERY_ENABLED` | `true` | Enable panel mDNS discovery |
 | `FB_MDNS_DISCOVERY_TIMEOUT` | `10000` | Discovery timeout in ms |
 
-## 8. AI instructions (for Junie / AI)
+## 8. AI instructions
 
 - Read this file entirely before making any code changes.
 - Backend implementation uses `bonjour-service` (not `@homebridge/ciao`).
