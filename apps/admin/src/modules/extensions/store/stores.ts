@@ -1,8 +1,8 @@
-export * from './discovered-extensions.store';
+export { registerDiscoveredExtensionsStore } from './discovered-extensions.store';
 export * from './discovered-extensions.store.schemas';
 export * from './discovered-extensions.store.types';
 export * from './discovered-extensions.transformers';
-export * from './extensions.store';
+export { registerExtensionsStore } from './extensions.store';
 export * from './extensions.store.schemas';
 export * from './extensions.store.types';
 export * from './extensions.transformers';

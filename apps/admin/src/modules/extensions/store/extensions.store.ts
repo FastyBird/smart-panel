@@ -2,6 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
+import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend, useLogger } from '../../../common';
 import { ExtensionKind, EXTENSIONS_MODULE_PREFIX } from '../extensions.constants';
 import { ExtensionsApiException, ExtensionsValidationException } from '../extensions.exceptions';
@@ -100,7 +101,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
 						params: {
 							path: { type: payload.type },
 						},
@@ -149,11 +150,11 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 					let endpoint: string;
 
 					if (payload?.kind === ExtensionKind.MODULE) {
-						endpoint = `/${EXTENSIONS_MODULE_PREFIX}/extensions/modules`;
+						endpoint = `/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/modules`;
 					} else if (payload?.kind === ExtensionKind.PLUGIN) {
-						endpoint = `/${EXTENSIONS_MODULE_PREFIX}/extensions/plugins`;
+						endpoint = `/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/plugins`;
 					} else {
-						endpoint = `/${EXTENSIONS_MODULE_PREFIX}/extensions`;
+						endpoint = `/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions`;
 					}
 
 					const { data: responseData, error, response } = await backend.client.GET(endpoint as `/${string}`);
@@ -210,7 +211,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
+				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
 					params: {
 						path: {
 							type: payload.type,

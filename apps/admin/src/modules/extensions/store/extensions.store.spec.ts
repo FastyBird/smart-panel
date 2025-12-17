@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MODULES_PREFIX } from '../../../app.constants';
 import { ExtensionKind, EXTENSIONS_MODULE_PREFIX } from '../extensions.constants';
 import { ExtensionsApiException, ExtensionsValidationException } from '../extensions.exceptions';
 
@@ -256,7 +257,7 @@ describe('Extensions Store', () => {
 			expect(result.type).toBe('devices-module');
 			expect(result.kind).toBe(ExtensionKind.MODULE);
 			expect(store.data['devices-module']).toBeDefined();
-			expect(backendClient.GET).toHaveBeenCalledWith(`/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
+			expect(backendClient.GET).toHaveBeenCalledWith(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
 				params: { path: { type: 'devices-module' } },
 			});
 		});
@@ -312,7 +313,7 @@ describe('Extensions Store', () => {
 
 			await store.fetch({ kind: ExtensionKind.MODULE });
 
-			expect(backendClient.GET).toHaveBeenCalledWith(`/${EXTENSIONS_MODULE_PREFIX}/extensions/modules`);
+			expect(backendClient.GET).toHaveBeenCalledWith(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/modules`);
 		});
 
 		it('should fetch only plugins when kind is PLUGIN', async () => {
@@ -324,7 +325,7 @@ describe('Extensions Store', () => {
 
 			await store.fetch({ kind: ExtensionKind.PLUGIN });
 
-			expect(backendClient.GET).toHaveBeenCalledWith(`/${EXTENSIONS_MODULE_PREFIX}/extensions/plugins`);
+			expect(backendClient.GET).toHaveBeenCalledWith(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/plugins`);
 		});
 
 		it('should throw error on fetch failure', async () => {

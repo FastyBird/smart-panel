@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MODULES_PREFIX } from '../../../app.constants';
 import { ExtensionKind, ExtensionSource, ExtensionSurface, EXTENSIONS_MODULE_PREFIX } from '../extensions.constants';
 import { ExtensionsApiException } from '../extensions.exceptions';
 
@@ -171,7 +172,7 @@ describe('Discovered Extensions Store', () => {
 			expect(store.data['test-module']).toBeDefined();
 			expect(store.data['test-module'].admin).toBeDefined();
 			expect(store.data['test-module'].backend).toBeDefined();
-			expect(backendClient.GET).toHaveBeenCalledWith(`/${EXTENSIONS_MODULE_PREFIX}/discovered`);
+			expect(backendClient.GET).toHaveBeenCalledWith(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered`);
 		});
 
 		it('should merge admin and backend extensions by name', async () => {

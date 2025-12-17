@@ -1,4 +1,4 @@
-export const EXTENSIONS_MODULE_PREFIX = 'extensions-module';
+export const EXTENSIONS_MODULE_PREFIX = 'extensions';
 
 export const EXTENSIONS_MODULE_NAME = 'extensions-module';
 

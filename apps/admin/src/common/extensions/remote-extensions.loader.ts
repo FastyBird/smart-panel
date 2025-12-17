@@ -5,12 +5,8 @@ import type { Client } from 'openapi-fetch';
 
 import { MODULES_PREFIX } from '../../app.constants';
 import type { IExtensionOptions } from '../../app.types';
-import { SYSTEM_MODULE_PREFIX } from '../../modules/system';
-import type {
-	SystemModuleGetExtensionsOperation,
-	OpenApiPaths,
-} from '../../openapi.constants';
-import { SystemModuleExtensionSurface, SystemModuleQuerySurface } from '../../openapi.constants';
+import { EXTENSIONS_MODULE_PREFIX, ExtensionSurface } from '../../modules/extensions';
+import type { OpenApiPaths } from '../../openapi.constants';
 import { getErrorReason } from '../utils/api-error.utils';
 
 type PluginInstallFn<TOptions> = (app: App, options?: TOptions) => void;
@@ -54,19 +50,19 @@ export const installRemoteExtensions = async (
 		data: responseData,
 		error,
 		response,
-	} = await backendClient.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/extensions`, {
+	} = await backendClient.GET(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered` as `/${string}`, {
 		params: {
 			query: {
-				surface: SystemModuleQuerySurface.admin,
+				surface: ExtensionSurface.ADMIN,
 			},
 		},
 	});
 
-	if (responseData && Array.isArray(responseData.data)) {
-		const entries = responseData.data;
+	if (responseData && Array.isArray((responseData as { data: unknown[] }).data)) {
+		const entries = (responseData as { data: Array<{ name: string; surface: string; remote_url?: string }> }).data;
 
 		for (const ext of entries) {
-			if (ext.surface !== SystemModuleExtensionSurface.admin) {
+			if (ext.surface !== ExtensionSurface.ADMIN) {
 				continue;
 			}
 
@@ -109,7 +105,7 @@ export const installRemoteExtensions = async (
 	let errorReason: string | null = 'Failed to fetch extensions assets.';
 
 	if (error) {
-		errorReason = getErrorReason<SystemModuleGetExtensionsOperation>(error, errorReason);
+		errorReason = getErrorReason(error, errorReason);
 	}
 
 	logger.error(`${errorReason}${response?.status ? ` (HTTP ${response.status})` : ''}`);

@@ -23,6 +23,7 @@ export class ExtensionsController {
 	@Get()
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'get-extensions-module-extensions',
 		summary: 'List all extensions',
 		description: 'Retrieves a list of all registered extensions (modules and plugins). Requires owner or admin role.',
 	})
@@ -41,6 +42,7 @@ export class ExtensionsController {
 	@Get('modules')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'get-extensions-module-modules',
 		summary: 'List all modules',
 		description: 'Retrieves a list of all registered modules. Requires owner or admin role.',
 	})
@@ -59,6 +61,7 @@ export class ExtensionsController {
 	@Get('plugins')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'get-extensions-module-plugins',
 		summary: 'List all plugins',
 		description: 'Retrieves a list of all registered plugins. Requires owner or admin role.',
 	})
@@ -77,6 +80,7 @@ export class ExtensionsController {
 	@Get(':type')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'get-extensions-module-extension',
 		summary: 'Get extension by type',
 		description: 'Retrieves a specific extension by its type identifier. Requires owner or admin role.',
 	})
@@ -97,6 +101,7 @@ export class ExtensionsController {
 	@Patch(':type')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'update-extensions-module-extension',
 		summary: 'Update extension',
 		description:
 			'Updates an extension configuration (enable/disable). Core extensions cannot be modified. Requires owner or admin role.',

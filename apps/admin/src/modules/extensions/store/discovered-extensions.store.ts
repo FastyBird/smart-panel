@@ -2,6 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
+import { MODULES_PREFIX } from '../../../app.constants';
 import { getErrorReason, useBackend } from '../../../common';
 import { ExtensionSurface, EXTENSIONS_MODULE_PREFIX } from '../extensions.constants';
 import { ExtensionsApiException } from '../extensions.exceptions';
@@ -67,7 +68,7 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${EXTENSIONS_MODULE_PREFIX}/discovered/{name}` as `/${string}`, {
+					} = await backend.client.GET(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered/{name}` as `/${string}`, {
 						params: {
 							path: { name: payload.name },
 						},
@@ -131,7 +132,7 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 				semaphore.value.fetching.items = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET(`/${EXTENSIONS_MODULE_PREFIX}/discovered` as `/${string}`);
+					const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered` as `/${string}`);
 
 					if (typeof responseData !== 'undefined') {
 						const merged: { [name: string]: { admin?: IDiscoveredExtension; backend?: IDiscoveredExtension } } = {};

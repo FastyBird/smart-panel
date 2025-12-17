@@ -38,6 +38,7 @@ export class RegistrationController {
 	@Public()
 	@UseGuards(RegistrationGuard)
 	@ApiOperation({
+		operationId: 'create-displays-module-register',
 		summary: 'Register display',
 		description:
 			'Registers a new display or updates an existing one. Returns a long-lived access token for the display to use in subsequent API and WebSocket requests.',
@@ -78,6 +79,7 @@ export class RegistrationController {
 	@Get('status')
 	@Public()
 	@ApiOperation({
+		operationId: 'get-displays-module-register-status',
 		summary: 'Check registration status',
 		description:
 			'Returns whether registration is currently open. Public endpoint for displays to check before attempting registration.',
