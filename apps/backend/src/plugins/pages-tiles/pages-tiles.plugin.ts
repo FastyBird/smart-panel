@@ -27,7 +27,13 @@ import { TilesPageNestedBuilderService } from './services/page-create-nested-bui
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([TilesPageEntity]), DashboardModule, ConfigModule, ExtensionsModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([TilesPageEntity]),
+		DashboardModule,
+		ConfigModule,
+		ExtensionsModule,
+		SwaggerModule,
+	],
 	providers: [PageRelationsLoaderService, TilesPageNestedBuilderService, TilesPageNestedBuilderService],
 })
 export class PagesTilesPlugin {

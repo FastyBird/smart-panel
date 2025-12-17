@@ -51,7 +51,13 @@ import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platfor
 	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule, ExtensionsModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([ThirdPartyDeviceEntity]),
+		DevicesModule,
+		ConfigModule,
+		ExtensionsModule,
+		SwaggerModule,
+	],
 	providers: [ThirdPartyDevicePlatform],
 	controllers: [ThirdPartyDemoController],
 })

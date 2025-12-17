@@ -17,7 +17,6 @@ jest.mock('node:fs');
 
 describe('ExtensionsBundledService', () => {
 	let service: ExtensionsBundledService;
-	let configService: NestConfigService;
 
 	const mockManifest = {
 		bundled: [
@@ -41,7 +40,6 @@ describe('ExtensionsBundledService', () => {
 		}).compile();
 
 		service = module.get<ExtensionsBundledService>(ExtensionsBundledService);
-		configService = module.get<NestConfigService>(NestConfigService);
 
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);

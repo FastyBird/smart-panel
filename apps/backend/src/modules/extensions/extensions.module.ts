@@ -10,13 +10,13 @@ import { SystemModule } from '../system/system.module';
 
 import { DiscoveredExtensionsController } from './controllers/discovered-extensions.controller';
 import { ExtensionsController } from './controllers/extensions.controller';
+import { UpdateExtensionsConfigDto } from './dto/update-config.dto';
 import {
 	EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
 	EXTENSIONS_MODULE_API_TAG_NAME,
 	EXTENSIONS_MODULE_NAME,
 } from './extensions.constants';
 import { EXTENSIONS_SWAGGER_EXTRA_MODELS } from './extensions.openapi';
-import { UpdateExtensionsConfigDto } from './dto/update-config.dto';
 import { ExtensionsConfigModel } from './models/config.model';
 import { ExtensionsBundledService } from './services/extensions-bundled.service';
 import { ExtensionsService } from './services/extensions.service';

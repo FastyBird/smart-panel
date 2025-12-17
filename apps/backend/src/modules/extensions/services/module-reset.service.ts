@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { clearDiscoveryCache } from './extensions-discovery-cache';
 import { ExtensionsBundledService } from './extensions-bundled.service';
+import { clearDiscoveryCache } from './extensions-discovery-cache';
 
 @Injectable()
 export class ModuleResetService {
@@ -9,7 +9,7 @@ export class ModuleResetService {
 
 	constructor(private readonly bundledService: ExtensionsBundledService) {}
 
-	async reset(): Promise<{ success: boolean; reason?: string }> {
+	reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
 			this.logger.debug(`[RESET] Resetting extensions module caches`);
 
@@ -21,13 +21,13 @@ export class ModuleResetService {
 
 			this.logger.log('[RESET] Extensions module caches were successfully reset');
 
-			return { success: true };
+			return Promise.resolve({ success: true });
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error('[RESET] Failed to reset extensions module', { message: err.message, stack: err.stack });
 
-			return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
+			return Promise.resolve({ success: false, reason: error instanceof Error ? error.message : 'Unknown error' });
 		}
 	}
 }

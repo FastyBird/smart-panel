@@ -57,23 +57,23 @@ describe('ExtensionsController', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all extensions', async () => {
+		it('should return all extensions', () => {
 			const mockExtensions = [
 				createMockExtension({ type: 'module-1', kind: ExtensionKind.MODULE }),
 				createMockExtension({ type: 'plugin-1', kind: ExtensionKind.PLUGIN }),
 			];
 			jest.spyOn(extensionsService, 'findAll').mockReturnValue(mockExtensions);
 
-			const result = await controller.findAll();
+			const result = controller.findAll();
 
 			expect(result.data).toHaveLength(2);
 			expect(extensionsService.findAll).toHaveBeenCalled();
 		});
 
-		it('should return response model with data array', async () => {
+		it('should return response model with data array', () => {
 			jest.spyOn(extensionsService, 'findAll').mockReturnValue([]);
 
-			const result = await controller.findAll();
+			const result = controller.findAll();
 
 			expect(result).toHaveProperty('data');
 			expect(Array.isArray(result.data)).toBe(true);
@@ -81,14 +81,14 @@ describe('ExtensionsController', () => {
 	});
 
 	describe('findAllModules', () => {
-		it('should return only modules', async () => {
+		it('should return only modules', () => {
 			const mockModules = [
 				createMockExtension({ type: 'module-1', kind: ExtensionKind.MODULE }),
 				createMockExtension({ type: 'module-2', kind: ExtensionKind.MODULE }),
 			];
 			jest.spyOn(extensionsService, 'findAllModules').mockReturnValue(mockModules);
 
-			const result = await controller.findAllModules();
+			const result = controller.findAllModules();
 
 			expect(result.data).toHaveLength(2);
 			expect(result.data.every((e) => e.kind === ExtensionKind.MODULE)).toBe(true);
@@ -97,13 +97,11 @@ describe('ExtensionsController', () => {
 	});
 
 	describe('findAllPlugins', () => {
-		it('should return only plugins', async () => {
-			const mockPlugins = [
-				createMockExtension({ type: 'plugin-1', kind: ExtensionKind.PLUGIN }),
-			];
+		it('should return only plugins', () => {
+			const mockPlugins = [createMockExtension({ type: 'plugin-1', kind: ExtensionKind.PLUGIN })];
 			jest.spyOn(extensionsService, 'findAllPlugins').mockReturnValue(mockPlugins);
 
-			const result = await controller.findAllPlugins();
+			const result = controller.findAllPlugins();
 
 			expect(result.data).toHaveLength(1);
 			expect(result.data[0].kind).toBe(ExtensionKind.PLUGIN);
@@ -112,11 +110,11 @@ describe('ExtensionsController', () => {
 	});
 
 	describe('findOne', () => {
-		it('should return a single extension by type', async () => {
+		it('should return a single extension by type', () => {
 			const mockExtension = createMockExtension({ type: 'devices-module' });
 			jest.spyOn(extensionsService, 'findOne').mockReturnValue(mockExtension);
 
-			const result = await controller.findOne('devices-module');
+			const result = controller.findOne('devices-module');
 
 			expect(result.data).toBeDefined();
 			expect(result.data.type).toBe('devices-module');
@@ -125,21 +123,21 @@ describe('ExtensionsController', () => {
 	});
 
 	describe('update', () => {
-		it('should update extension enabled status', async () => {
+		it('should update extension enabled status', () => {
 			const mockExtension = createMockExtension({ type: 'devices-module', enabled: false });
 			jest.spyOn(extensionsService, 'updateEnabled').mockReturnValue(mockExtension);
 
-			const result = await controller.update('devices-module', { data: { enabled: false } });
+			const result = controller.update('devices-module', { data: { enabled: false } });
 
 			expect(result.data.enabled).toBe(false);
 			expect(extensionsService.updateEnabled).toHaveBeenCalledWith('devices-module', false);
 		});
 
-		it('should enable extension', async () => {
+		it('should enable extension', () => {
 			const mockExtension = createMockExtension({ type: 'devices-module', enabled: true });
 			jest.spyOn(extensionsService, 'updateEnabled').mockReturnValue(mockExtension);
 
-			const result = await controller.update('devices-module', { data: { enabled: true } });
+			const result = controller.update('devices-module', { data: { enabled: true } });
 
 			expect(result.data.enabled).toBe(true);
 			expect(extensionsService.updateEnabled).toHaveBeenCalledWith('devices-module', true);

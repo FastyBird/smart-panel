@@ -7,7 +7,6 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 
 import { API_PREFIX } from './app.constants';
 import { AppModule } from './app.module';
-import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
 import { GlobalErrorFilter } from './common/filters/global-error.filter';
 import { InternalServerErrorExceptionFilter } from './common/filters/internal-server-error-exception.filter';
@@ -16,6 +15,7 @@ import { QueryFailedExceptionFilter } from './common/filters/query-failed-except
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
+import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { MdnsService } from './modules/mdns/services/mdns.service';
 import { SwaggerDocumentService } from './modules/swagger/services/swagger-document.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';

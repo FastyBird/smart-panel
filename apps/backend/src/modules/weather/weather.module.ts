@@ -34,7 +34,13 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	description: WEATHER_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), ConfigModule, SwaggerModule, InfluxDbModule, ExtensionsModule],
+	imports: [
+		TypeOrmModule.forFeature([WeatherLocationEntity]),
+		ConfigModule,
+		SwaggerModule,
+		InfluxDbModule,
+		ExtensionsModule,
+	],
 	controllers: [WeatherController, LocationsController, HistoryController],
 	providers: [
 		WeatherService,

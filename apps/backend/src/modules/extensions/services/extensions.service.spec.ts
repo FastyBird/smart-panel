@@ -41,7 +41,9 @@ describe('ExtensionsService', () => {
 
 	const mockModuleMappings = [{ type: 'devices-module', class: MockConfigModel, configDto: MockConfigDto }] as never;
 
-	const mockPluginMappings = [{ type: 'pages-tiles-plugin', class: MockConfigModel, configDto: MockConfigDto }] as never;
+	const mockPluginMappings = [
+		{ type: 'pages-tiles-plugin', class: MockConfigModel, configDto: MockConfigDto },
+	] as never;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -111,7 +113,9 @@ describe('ExtensionsService', () => {
 			service.registerModuleMetadata(metadata);
 
 			// Verify by finding the extension
-			jest.spyOn(modulesMapperService, 'getMappings').mockReturnValue([{ type: 'test-module', class: MockConfigModel, configDto: MockConfigDto }] as never);
+			jest
+				.spyOn(modulesMapperService, 'getMappings')
+				.mockReturnValue([{ type: 'test-module', class: MockConfigModel, configDto: MockConfigDto }] as never);
 
 			const extensions = service.findAllModules();
 			const testModule = extensions.find((e) => e.type === 'test-module');
@@ -133,7 +137,9 @@ describe('ExtensionsService', () => {
 			service.registerPluginMetadata(metadata);
 
 			// Verify by finding the extension
-			jest.spyOn(pluginsMapperService, 'getMappings').mockReturnValue([{ type: 'test-plugin', class: MockConfigModel, configDto: MockConfigDto }] as never);
+			jest
+				.spyOn(pluginsMapperService, 'getMappings')
+				.mockReturnValue([{ type: 'test-plugin', class: MockConfigModel, configDto: MockConfigDto }] as never);
 
 			const extensions = service.findAllPlugins();
 			const testPlugin = extensions.find((e) => e.type === 'test-plugin');
@@ -240,7 +246,9 @@ describe('ExtensionsService', () => {
 
 		it('should set isCore to false for non-bundled extensions', () => {
 			jest.spyOn(bundledService, 'isCore').mockReturnValue(false);
-			jest.spyOn(modulesMapperService, 'getMappings').mockReturnValue([{ type: 'external-module', class: MockConfigModel, configDto: MockConfigDto }] as never);
+			jest
+				.spyOn(modulesMapperService, 'getMappings')
+				.mockReturnValue([{ type: 'external-module', class: MockConfigModel, configDto: MockConfigDto }] as never);
 
 			const modules = service.findAllModules();
 			const externalModule = modules.find((e) => e.type === 'external-module');
@@ -252,7 +260,9 @@ describe('ExtensionsService', () => {
 	describe('formatName', () => {
 		it('should format extension type to human-readable name when no metadata', () => {
 			// Add a mapping without metadata
-			jest.spyOn(modulesMapperService, 'getMappings').mockReturnValue([{ type: 'my-custom-module', class: MockConfigModel, configDto: MockConfigDto }] as never);
+			jest
+				.spyOn(modulesMapperService, 'getMappings')
+				.mockReturnValue([{ type: 'my-custom-module', class: MockConfigModel, configDto: MockConfigDto }] as never);
 
 			const modules = service.findAllModules();
 			const customModule = modules.find((e) => e.type === 'my-custom-module');

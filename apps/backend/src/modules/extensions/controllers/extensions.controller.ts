@@ -8,8 +8,8 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
-import { EXTENSIONS_MODULE_API_TAG_NAME } from '../extensions.constants';
 import { ReqUpdateExtensionDto } from '../dto/update-extension.dto';
+import { EXTENSIONS_MODULE_API_TAG_NAME } from '../extensions.constants';
 import { ExtensionResponseModel, ExtensionsResponseModel } from '../models/extensions-response.model';
 import { ExtensionsService } from '../services/extensions.service';
 
@@ -98,16 +98,14 @@ export class ExtensionsController {
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		summary: 'Update extension',
-		description: 'Updates an extension configuration (enable/disable). Core extensions cannot be modified. Requires owner or admin role.',
+		description:
+			'Updates an extension configuration (enable/disable). Core extensions cannot be modified. Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'type', type: 'string', description: 'Extension type identifier' })
 	@ApiSuccessResponse(ExtensionResponseModel, 'Returns the updated extension')
 	@ApiNotFoundResponse('Extension not found')
 	@ApiBadRequestResponse('Cannot modify core extension')
-	update(
-		@Param('type') type: string,
-		@Body() body: ReqUpdateExtensionDto,
-	): ExtensionResponseModel {
+	update(@Param('type') type: string, @Body() body: ReqUpdateExtensionDto): ExtensionResponseModel {
 		this.logger.debug(`[UPDATE] Updating extension type=${type}`);
 
 		const extension = this.extensionsService.updateEnabled(type, body.data.enabled);

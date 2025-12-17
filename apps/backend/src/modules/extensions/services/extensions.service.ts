@@ -1,12 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../../config/dto/config.dto';
 import { ConfigService } from '../../config/services/config.service';
 import { ModulesTypeMapperService } from '../../config/services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
-import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../../config/dto/config.dto';
 import { ExtensionKind } from '../extensions.constants';
 import { ExtensionNotConfigurableException, ExtensionNotFoundException } from '../extensions.exceptions';
 import { ExtensionLinksModel, ExtensionModel } from '../models/extension.model';
+
 import { ExtensionsBundledService } from './extensions-bundled.service';
 
 /**
@@ -157,7 +158,10 @@ export class ExtensionsService {
 		// Create an instance and check if 'enabled' is defined
 		// We check the prototype and metadata to determine if the property exists
 		const instance = new dtoClass() as object;
-		return 'enabled' in instance || Object.prototype.hasOwnProperty.call(dtoClass.prototype, 'enabled');
+		const hasOnInstance = 'enabled' in instance;
+		const hasOnPrototype = Object.prototype.hasOwnProperty.call(dtoClass.prototype, 'enabled') as boolean;
+
+		return hasOnInstance || hasOnPrototype;
 	}
 
 	/**
