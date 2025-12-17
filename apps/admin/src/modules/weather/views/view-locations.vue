@@ -363,4 +363,26 @@ watch(
 		showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !== undefined;
 	}
 );
+
+// Watch for new locations and re-fetch weather data when locations without weather are detected
+watch(
+	locations,
+	(newLocations): void => {
+		if (!weatherFetchCompleted.value || newLocations.length === 0) {
+			return;
+		}
+
+		// Check if any location doesn't have weather data yet
+		const hasNewLocationsWithoutWeather = newLocations.some(
+			(location) => !location.draft && !(location.id in weatherByLocation.value)
+		);
+
+		if (hasNewLocationsWithoutWeather) {
+			fetchLocationsWeather().catch((error: unknown): void => {
+				console.warn('[WEATHER] Failed to re-fetch locations weather:', error);
+			});
+		}
+	},
+	{ deep: true }
+);
 </script>

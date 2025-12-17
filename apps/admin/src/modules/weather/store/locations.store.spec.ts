@@ -172,7 +172,7 @@ describe('WeatherLocations Store', () => {
 
 	describe('onEvent', () => {
 		it('should handle event and set location', () => {
-			const result = store.onEvent({ id: mockLocation.id, data: mockLocationRes });
+			const result = store.onEvent({ id: mockLocation.id, type: mockLocation.type, data: mockLocationRes });
 
 			expect(result.id).toBe(mockLocation.id);
 			expect(result.name).toBe(mockLocation.name);

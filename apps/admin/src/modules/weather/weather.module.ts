@@ -92,7 +92,7 @@ export default {
 				return;
 			}
 
-			if (typeof data.payload !== 'object') {
+			if (typeof data.payload !== 'object' || data.payload === null) {
 				return;
 			}
 
@@ -107,6 +107,30 @@ export default {
 					if ('forecast' in data.payload && Array.isArray(data.payload.forecast)) {
 						weatherForecastStore.onEvent({
 							data: data.payload.forecast,
+						});
+					}
+					break;
+
+				case EventType.LOCATION_CREATED:
+				case EventType.LOCATION_UPDATED:
+					if (
+						'id' in data.payload &&
+						typeof data.payload.id === 'string' &&
+						'type' in data.payload &&
+						typeof data.payload.type === 'string'
+					) {
+						weatherLocationsStore.onEvent({
+							id: data.payload.id,
+							type: data.payload.type,
+							data: data.payload,
+						});
+					}
+					break;
+
+				case EventType.LOCATION_DELETED:
+					if ('id' in data.payload && typeof data.payload.id === 'string') {
+						weatherLocationsStore.unset({
+							id: data.payload.id,
 						});
 					}
 					break;

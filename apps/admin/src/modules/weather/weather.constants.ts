@@ -6,6 +6,9 @@ export const WEATHER_MODULE_EVENT_PREFIX = 'WeatherModule.';
 
 export enum EventType {
 	WEATHER_INFO = 'WeatherModule.Weather.Info',
+	LOCATION_CREATED = 'WeatherModule.Location.Created',
+	LOCATION_UPDATED = 'WeatherModule.Location.Updated',
+	LOCATION_DELETED = 'WeatherModule.Location.Deleted',
 }
 
 export enum RouteNames {
