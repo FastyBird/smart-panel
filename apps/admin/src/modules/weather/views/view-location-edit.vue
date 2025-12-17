@@ -192,16 +192,30 @@ const remoteFormChanged = ref<boolean>(false);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
-		return [
+		const items: { label: string; route: RouteLocationResolvedGeneric }[] = [
 			{
 				label: t('weatherModule.breadcrumbs.locations'),
 				route: router.resolve({ name: RouteNames.WEATHER_LOCATIONS }),
 			},
-			{
-				label: location.value?.name ?? t('weatherModule.breadcrumbs.editLocation'),
-				route: router.resolve({ name: RouteNames.WEATHER_LOCATION_EDIT, params: { id: props.id } }),
-			},
 		];
+
+		if (isDetailRoute.value) {
+			items.push({
+				label: t('weatherModule.breadcrumbs.locationDetail', { location: location.value?.name }),
+				route: router.resolve({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } }),
+			});
+			items.push({
+				label: t('weatherModule.breadcrumbs.editLocation'),
+				route: router.resolve({ name: RouteNames.WEATHER_LOCATION_DETAIL_EDIT, params: { id: props.id } }),
+			});
+		} else {
+			items.push({
+				label: t('weatherModule.breadcrumbs.editLocation'),
+				route: router.resolve({ name: RouteNames.WEATHER_LOCATION_EDIT, params: { id: props.id } }),
+			});
+		}
+
+		return items;
 	}
 );
 

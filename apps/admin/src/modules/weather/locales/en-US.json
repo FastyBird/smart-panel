@@ -22,7 +22,7 @@
 	},
 	"breadcrumbs": {
 		"locations": "locations",
-		"locationDetail": "detail",
+		"locationDetail": "location: {location}",
 		"addLocation": "add location",
 		"editLocation": "edit location"
 	},

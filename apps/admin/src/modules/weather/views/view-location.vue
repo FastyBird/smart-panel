@@ -308,7 +308,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 				route: router.resolve({ name: RouteNames.WEATHER_LOCATIONS }),
 			},
 			{
-				label: location.value?.name ?? t('weatherModule.breadcrumbs.locationDetail'),
+				label: t('weatherModule.breadcrumbs.locationDetail', { location: location.value?.name }),
 				route: router.resolve({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } }),
 			},
 		];
