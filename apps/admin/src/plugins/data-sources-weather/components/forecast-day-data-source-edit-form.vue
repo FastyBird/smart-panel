@@ -91,19 +91,6 @@
 			</div>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('dataSourcesWeatherPlugin.fields.unit.title')"
-			prop="unit"
-		>
-			<el-input
-				v-model="model.unit"
-				:placeholder="t('dataSourcesWeatherPlugin.fields.unit.placeholder')"
-				name="unit"
-			/>
-			<div class="el-form-item__description">
-				{{ t('dataSourcesWeatherPlugin.fields.unit.description') }}
-			</div>
-		</el-form-item>
 	</el-form>
 </template>
 

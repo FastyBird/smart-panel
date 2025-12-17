@@ -50,7 +50,7 @@ export default {
 		pluginsManager.addPlugin(dataSourcesWeatherPluginKey, {
 			type: DATA_SOURCES_WEATHER_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.data-source-weather',
-			name: 'Weather Data Source',
+			name: 'Weather data source',
 			description:
 				'Enables dashboard tiles, pages, and UI elements to pull real-time weather data. Supports current weather conditions and daily forecasts for displaying temperature, humidity, weather icons, and other meteorological information.',
 			links: {
@@ -61,6 +61,8 @@ export default {
 			elements: [
 				{
 					type: DATA_SOURCES_WEATHER_CURRENT_TYPE,
+					name: 'Current weather',
+					description: 'Displays current weather data including temperature, humidity, conditions, and more.',
 					components: {
 						dataSourceAddForm: CurrentWeatherDataSourceAddForm,
 						dataSourceEditForm: CurrentWeatherDataSourceEditForm,
@@ -75,6 +77,8 @@ export default {
 				},
 				{
 					type: DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE,
+					name: 'Forecast weather',
+					description: 'Displays weather forecast data for a specific day (today, tomorrow, or up to 7 days ahead).',
 					components: {
 						dataSourceAddForm: ForecastDayDataSourceAddForm,
 						dataSourceEditForm: ForecastDayDataSourceEditForm,

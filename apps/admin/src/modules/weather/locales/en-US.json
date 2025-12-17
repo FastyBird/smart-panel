@@ -60,7 +60,7 @@
 			"title": "Discard"
 		},
 		"resetFilters": {
-			"title": "Reset Filters"
+			"title": "Reset filters"
 		},
 		"yes": {
 			"title": "Yes"
@@ -69,7 +69,7 @@
 			"title": "No"
 		},
 		"reset": {
-			"title": "Reset Filters"
+			"title": "Reset filters"
 		},
 		"detail": {
 			"title": "Detail"
@@ -87,11 +87,11 @@
 				"placeholder": "Search locations..."
 			},
 			"provider": {
-				"title": "Weather Provider",
+				"title": "Weather provider",
 				"placeholder": "Select a weather provider"
 			},
 			"name": {
-				"title": "Location Name",
+				"title": "Location name",
 				"placeholder": "e.g., Home, Office, Beach House",
 				"validation": {
 					"required": "Location name is required"
@@ -100,7 +100,7 @@
 		},
 		"config": {
 			"primaryLocation": {
-				"title": "Primary Location",
+				"title": "Primary location",
 				"description": "The default location shown in weather displays",
 				"placeholder": "Select primary location"
 			}
@@ -130,10 +130,10 @@
 	"filters": {
 		"locations": {
 			"types": {
-				"title": "Weather Provider"
+				"title": "Weather provider"
 			},
 			"primary": {
-				"title": "Primary Status",
+				"title": "Primary status",
 				"values": {
 					"all": "All",
 					"primary": "Primary",

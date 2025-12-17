@@ -1,12 +1,12 @@
 {
 	"fields": {
 		"locationId": {
-			"title": "Weather Location",
+			"title": "Weather location",
 			"placeholder": "Select a location",
 			"description": "Select a weather location. If not set, uses the primary location."
 		},
 		"field": {
-			"title": "Data Field",
+			"title": "Data field",
 			"placeholder": "Select a field",
 			"description": "Weather data field to display.",
 			"validation": {
@@ -14,7 +14,7 @@
 			}
 		},
 		"dayOffset": {
-			"title": "Day Offset",
+			"title": "Day offset",
 			"placeholder": "Days from today",
 			"description": "Number of days from today (0 = today, 1 = tomorrow).",
 			"validation": {
@@ -24,26 +24,21 @@
 			}
 		},
 		"icon": {
-			"title": "Custom Icon",
+			"title": "Custom icon",
 			"placeholder": "mdi:thermometer",
 			"description": "Override the weather icon with a custom icon name."
-		},
-		"unit": {
-			"title": "Unit Suffix",
-			"placeholder": "°C",
-			"description": "Unit suffix to display after the value (e.g., °C, %, km/h)."
 		}
 	},
 	"fieldOptions": {
 		"temperature": "Temperature",
-		"temperature_min": "Min Temperature",
-		"temperature_max": "Max Temperature",
-		"feels_like": "Feels Like",
+		"temperature_min": "Min temperature",
+		"temperature_max": "Max temperature",
+		"feels_like": "Feels like",
 		"humidity": "Humidity",
 		"pressure": "Pressure",
-		"weather_icon": "Weather Icon",
-		"weather_main": "Weather Condition",
-		"weather_description": "Weather Description",
-		"wind_speed": "Wind Speed"
+		"weather_icon": "Weather icon",
+		"weather_main": "Weather condition",
+		"weather_description": "Weather description",
+		"wind_speed": "Wind speed"
 	}
 }

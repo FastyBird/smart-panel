@@ -40,7 +40,7 @@ export default {
 		pluginsManager.addPlugin(tilesWeatherPluginKey, {
 			type: TILES_WEATHER_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.tiles-weather',
-			name: 'Day Weather Tile',
+			name: 'Weather tiles',
 			description:
 				"Displays current weather conditions and daily details alongside a multi-day forecast. Provides temperature, conditions, and icons in a clear, compact tile layout - perfect for checking today's weather or planning ahead at a glance.",
 			links: {
@@ -51,7 +51,7 @@ export default {
 			elements: [
 				{
 					type: TILES_WEATHER_PLUGIN_DAY_TYPE,
-					name: 'Day Weather Tile',
+					name: 'Day weather tile',
 					description:
 						"Displays daily weather information including temperature, conditions, and icons. Perfect for showing today's forecast in a compact tile.",
 					components: {
@@ -68,7 +68,7 @@ export default {
 				},
 				{
 					type: TILES_WEATHER_PLUGIN_FORECAST_TYPE,
-					name: 'Forecast Weather Tile',
+					name: 'Forecast weather tile',
 					description: 'Shows a multi-day weather forecast in a clear and informative tile layout. Ideal for planning ahead at a glance.',
 					components: {
 						tileAddForm: weatherTileAddFormComponent,
