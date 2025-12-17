@@ -37,10 +37,15 @@
 					:value="location.id"
 				/>
 			</el-select>
-			<div class="el-form-item__description">
-				{{ t('tilesWeatherPlugin.fields.locationId.description') }}
-			</div>
 		</el-form-item>
+
+		<el-alert
+			:description="t('tilesWeatherPlugin.fields.locationId.description')"
+			:closable="false"
+			show-icon
+			type="info"
+			class="mb-4"
+		/>
 
 		<el-row v-if="props.withPosition">
 			<el-col :span="12">
@@ -102,7 +107,7 @@
 import { onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElRow, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElRow, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useTileAddForm } from '../../../modules/dashboard';
 import { useLocations } from '../../../modules/weather';
