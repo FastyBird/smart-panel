@@ -5,6 +5,8 @@ import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
+import { SystemModule } from '../system/system.module';
 
 import { DiscoveredExtensionsController } from './controllers/discovered-extensions.controller';
 import { ExtensionsController } from './controllers/extensions.controller';
@@ -16,7 +18,9 @@ import {
 import { EXTENSIONS_SWAGGER_EXTRA_MODELS } from './extensions.openapi';
 import { UpdateExtensionsConfigDto } from './dto/update-config.dto';
 import { ExtensionsConfigModel } from './models/config.model';
+import { ExtensionsBundledService } from './services/extensions-bundled.service';
 import { ExtensionsService } from './services/extensions.service';
+import { ModuleResetService } from './services/module-reset.service';
 
 @ApiTag({
 	tagName: EXTENSIONS_MODULE_NAME,
@@ -24,14 +28,16 @@ import { ExtensionsService } from './services/extensions.service';
 	description: EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [NestConfigModule, ConfigModule],
+	imports: [NestConfigModule, ConfigModule, SystemModule],
 	controllers: [ExtensionsController, DiscoveredExtensionsController],
-	providers: [ExtensionsService],
-	exports: [ExtensionsService],
+	providers: [ExtensionsBundledService, ExtensionsService, ModuleResetService],
+	exports: [ExtensionsBundledService, ExtensionsService],
 })
 export class ExtensionsModule implements OnModuleInit {
 	constructor(
 		private readonly extensionsService: ExtensionsService,
+		private readonly moduleReset: ModuleResetService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 	) {}
@@ -43,6 +49,9 @@ export class ExtensionsModule implements OnModuleInit {
 			class: ExtensionsConfigModel,
 			configDto: UpdateExtensionsConfigDto,
 		});
+
+		// Register factory reset handler
+		this.factoryResetRegistry.register(EXTENSIONS_MODULE_NAME, () => this.moduleReset.reset(), 50);
 
 		// Register Swagger models
 		for (const model of EXTENSIONS_SWAGGER_EXTRA_MODELS) {

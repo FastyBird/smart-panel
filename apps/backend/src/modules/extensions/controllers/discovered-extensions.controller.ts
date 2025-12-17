@@ -9,7 +9,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.s
 import { ApiExcludeEndpoint, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { MODULES_PREFIX } from '../../../app.constants';
-import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
+import { getDiscoveredExtensions } from '../services/extensions-discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../api/decorators/raw-route.decorator';

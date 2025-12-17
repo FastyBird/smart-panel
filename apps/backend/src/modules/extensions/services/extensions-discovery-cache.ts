@@ -1,6 +1,6 @@
 import type { DiscoveredAdminExtension, DiscoveredBackendExtension } from '@fastybird/smart-panel-extension-sdk';
 
-import { discoverExtensions } from './extensions.discovery';
+import { discoverExtensions } from './extensions-discovery';
 
 type Discovered = {
 	backend: DiscoveredBackendExtension[];

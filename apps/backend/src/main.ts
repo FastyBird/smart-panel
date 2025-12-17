@@ -7,7 +7,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 
 import { API_PREFIX } from './app.constants';
 import { AppModule } from './app.module';
-import { getDiscoveredExtensions } from './common/extensions/extensions.discovery-cache';
+import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
 import { GlobalErrorFilter } from './common/filters/global-error.filter';
 import { InternalServerErrorExceptionFilter } from './common/filters/internal-server-error-exception.filter';

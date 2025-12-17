@@ -4,9 +4,10 @@ import { ConfigService } from '../../config/services/config.service';
 import { ModulesTypeMapperService } from '../../config/services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
 import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../../config/dto/config.dto';
-import { CORE_MODULES, CORE_PLUGINS, ExtensionKind } from '../extensions.constants';
+import { ExtensionKind } from '../extensions.constants';
 import { ExtensionNotConfigurableException, ExtensionNotFoundException } from '../extensions.exceptions';
 import { ExtensionLinksModel, ExtensionModel } from '../models/extension.model';
+import { ExtensionsBundledService } from './extensions-bundled.service';
 
 /**
  * Extension metadata that can be registered by modules/plugins
@@ -40,6 +41,7 @@ export class ExtensionsService {
 		private readonly configService: ConfigService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly pluginsMapperService: PluginsTypeMapperService,
+		private readonly bundledService: ExtensionsBundledService,
 	) {}
 
 	/**
@@ -154,7 +156,7 @@ export class ExtensionsService {
 	private hasEnabledProperty(dtoClass: new (...args: unknown[]) => unknown): boolean {
 		// Create an instance and check if 'enabled' is defined
 		// We check the prototype and metadata to determine if the property exists
-		const instance = new dtoClass();
+		const instance = new dtoClass() as object;
 		return 'enabled' in instance || Object.prototype.hasOwnProperty.call(dtoClass.prototype, 'enabled');
 	}
 
@@ -163,7 +165,7 @@ export class ExtensionsService {
 	 */
 	private buildModuleExtension(type: string): ExtensionModel {
 		const metadata = this.moduleMetadata.get(type);
-		const isCore = CORE_MODULES.includes(type);
+		const isCore = this.bundledService.isCore(type);
 
 		// Check if the DTO supports enabled property
 		let canToggleEnabled = false;
@@ -214,7 +216,7 @@ export class ExtensionsService {
 	 */
 	private buildPluginExtension(type: string): ExtensionModel {
 		const metadata = this.pluginMetadata.get(type);
-		const isCore = CORE_PLUGINS.includes(type);
+		const isCore = this.bundledService.isCore(type);
 
 		// Check if the DTO supports enabled property
 		let canToggleEnabled = false;

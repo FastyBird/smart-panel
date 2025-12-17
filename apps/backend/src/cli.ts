@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { AppModule } from './app.module';
-import { getDiscoveredExtensions } from './common/extensions/extensions.discovery-cache';
+import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { setGlobalAppInstance } from './common/services/app-instance-holder.service';
 
 async function bootstrap() {
