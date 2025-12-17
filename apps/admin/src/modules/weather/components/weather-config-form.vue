@@ -45,12 +45,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElSelect, ElOption, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
+import { WeatherException } from '../weather.exceptions';
 import { useLocations } from '../composables';
 import type { IWeatherConfigEditForm } from '../schemas/config.types';
 
@@ -84,9 +85,19 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
-const { locations, areLoading: locationsLoading } = useLocations();
+const { locations, areLoading: locationsLoading, fetchLocations } = useLocations();
 
 const rules = reactive<FormRules<IWeatherConfigEditForm>>({});
+
+onBeforeMount((): void => {
+	if (!locationsLoading.value) {
+		fetchLocations().catch((error: unknown): void => {
+			const err = error as Error;
+
+			throw new WeatherException('Failed to fetch locations', err);
+		});
+	}
+});
 
 watch(
 	(): FormResultType => formResult.value,
