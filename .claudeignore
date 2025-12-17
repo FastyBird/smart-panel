@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.dart_tool/
+.pub-cache/
+
+# Generated code (read-only, don't analyze)
+spec/api/v1/openapi.json
+apps/backend/src/spec/
+apps/admin/src/api/openapi.ts
+apps/panel/lib/api/
+apps/panel/lib/spec/
+
+# Build outputs
+dist/
+build/
+.next/
+coverage/
+
+# Large data files
+spec/weather/city.list.json
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
