@@ -46,7 +46,7 @@ const extractErrorMessage = (error: unknown, fallback: string): string => {
 	return fallback;
 };
 
-const defaultSemaphore: IWeatherLocationsStateSemaphore = {
+const createDefaultSemaphore = (): IWeatherLocationsStateSemaphore => ({
 	fetching: {
 		items: false,
 		item: [],
@@ -54,7 +54,7 @@ const defaultSemaphore: IWeatherLocationsStateSemaphore = {
 	creating: [],
 	updating: [],
 	deleting: [],
-};
+});
 
 export const useWeatherLocations = defineStore<'weather_module-locations', WeatherLocationsStoreSetup>(
 	'weather_module-locations',
@@ -62,7 +62,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 		const backend = useBackend();
 		const logger = useLogger();
 
-		const semaphore = ref<IWeatherLocationsStateSemaphore>(defaultSemaphore);
+		const semaphore = ref<IWeatherLocationsStateSemaphore>(createDefaultSemaphore());
 
 		const firstLoad = ref<boolean>(false);
 
