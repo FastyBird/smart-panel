@@ -79,13 +79,13 @@ export const useWeatherForecast = defineStore<'weather_module-weather-forecast',
 
 					const { data: responseData, error, response } = apiResponse;
 
-					if (typeof responseData !== 'undefined') {
+					if (typeof responseData !== 'undefined' && responseData.data?.forecast) {
 						data.value = transformWeatherForecastResponse(responseData.data.forecast);
 
 						return data.value;
 					}
 
-					let errorReason: string | null = 'Failed to fetch weather forecast.';
+					let errorReason: string | null = 'Failed to fetch weather forecast: invalid response structure.';
 
 					if (error) {
 						const typedError = error as { message?: string };

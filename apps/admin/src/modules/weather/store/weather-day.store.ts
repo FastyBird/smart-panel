@@ -79,13 +79,13 @@ export const useWeatherDay = defineStore<'weather_module-weather-day', WeatherDa
 
 					const { data: responseData, error, response } = apiResponse;
 
-					if (typeof responseData !== 'undefined') {
+					if (typeof responseData !== 'undefined' && responseData.data?.current) {
 						data.value = transformWeatherDayResponse(responseData.data.current);
 
 						return data.value;
 					}
 
-					let errorReason: string | null = 'Failed to fetch weather day.';
+					let errorReason: string | null = 'Failed to fetch weather day: invalid response structure.';
 
 					if (error) {
 						const typedError = error as { message?: string };
