@@ -5,14 +5,15 @@
 This is a monorepo for the FastyBird Smart Panel project, consisting of:
 - **Backend**: NestJS application (TypeScript)
 - **Admin**: Vue.js admin interface (TypeScript)
-- **Panel**: Flutter/Dart mobile/embedded application
+- **Panel**: Flutter/Dart embedded application for smart displays
+- **Website**: Documentation website
 
 The project uses **pnpm workspaces** for Node.js packages and **melos** for Dart/Flutter packages.
 
 ## Requirements
 
 - **Node.js**: >= 20
-- **pnpm**: >= 10 (specifically 10.20.0)
+- **pnpm**: >= 10
 - **Dart/Flutter**: For panel app development
 
 ## Initial Setup / Bootstrap
@@ -25,9 +26,9 @@ pnpm run bootstrap
 
 This command will:
 1. Install all dependencies (`pnpm install`)
-2. Generate OpenAPI type definitions (`generate:openapi`)
-3. Generate device/channel specifications (`generate:spec`)
-4. Build the extension SDK and example
+2. Generate device/channel specifications (`generate:spec`)
+3. Build the extension SDK and example
+4. Generate OpenAPI specification from backend (`generate:openapi`)
 5. Run TypeORM database migrations (`typeorm:migration:run`)
 6. Build the backend and admin applications
 
@@ -59,7 +60,7 @@ pnpm run start:prod
 ### Admin
 
 ```bash
-# Build open api specification
+# Generate OpenAPI types first
 pnpm run generate:openapi
 
 # Build admin interface
@@ -72,7 +73,7 @@ pnpm --filter @fastybird/smart-panel-admin build
 ### Flutter Panel
 
 ```bash
-# Build open api specification
+# Generate OpenAPI types first
 pnpm run generate:openapi
 
 # Rebuild API and specs (run this after OpenAPI changes)
@@ -173,11 +174,20 @@ describe('API (e2e)', () => {
 });
 ```
 
-#### Running a Single Test File
+### Admin Tests
 
 ```bash
-cd apps/backend
-pnpm test:unit path/to/file.spec.ts
+# From admin directory
+cd apps/admin
+pnpm run test:unit
+```
+
+### Panel Tests
+
+```bash
+# From panel directory
+cd apps/panel
+flutter test
 ```
 
 ## Code Style
@@ -292,28 +302,24 @@ make docker-bash-root
 
 ## OpenAPI & Spec Generation
 
-### OpenAPI Specification (source of truth)
+### OpenAPI Specification
 
-The file:
+The **backend is the source of truth** for the OpenAPI specification. The spec is generated from NestJS Swagger decorators.
 
-- `spec/api/v1/openapi.json`
-
-is **the canonical source of truth** for the Smart Panel HTTP API.
-
-It is **not generated from the backend code**.
-
-It may be edited manually or maintained through external tools (e.g., Stoplight).  
-Changes to the backend controllers and DTOs **must be reflected in this file**.
-
-### OpenAPI Types
-
-Generate TypeScript types from OpenAPI specification:
+**Generation flow:**
+1. Backend controllers and DTOs are annotated with Swagger decorators
+2. Running `pnpm run generate:openapi` generates `spec/api/v1/openapi.json`
+3. Admin and Panel apps consume this spec to generate type-safe clients
 
 ```bash
+# Generate OpenAPI spec from backend and type definitions for consumers
 pnpm run generate:openapi
 ```
 
-This creates type definitions in `apps/backend/src/openapi.d.ts` from `spec/api/v1/openapi.json`.
+This creates:
+- `spec/api/v1/openapi.json` - OpenAPI specification
+- `apps/admin/src/api/openapi.ts` - TypeScript types for admin
+- `apps/panel/lib/api/` - Dart API client for panel
 
 ### Device/Channel Specs
 
@@ -332,25 +338,71 @@ melos rebuild-spec
 
 ```
 apps/
-  ├── backend/        # NestJS backend application
+  ├── backend/              # NestJS backend application
   │   ├── src/
-  │   │   ├── plugins/       # Feature plugins (devices, data sources, etc.)
-  │   │   ├── migrations/    # TypeORM migrations
-  │   │   └── *.spec.ts      # Unit tests
+  │   │   ├── modules/      # Core modules
+  │   │   │   ├── api/          # API infrastructure
+  │   │   │   ├── auth/         # Authentication & authorization
+  │   │   │   ├── config/       # Configuration management
+  │   │   │   ├── dashboard/    # Dashboard (pages, tiles, data sources)
+  │   │   │   ├── devices/      # Device/channel/property management
+  │   │   │   ├── displays/     # Display registration & management
+  │   │   │   ├── stats/        # Statistics & timeseries
+  │   │   │   ├── system/       # System settings
+  │   │   │   ├── users/        # User management
+  │   │   │   ├── weather/      # Weather module
+  │   │   │   └── websocket/    # WebSocket gateway
+  │   │   ├── plugins/      # Feature plugins
+  │   │   │   ├── devices-home-assistant/    # Home Assistant integration
+  │   │   │   ├── devices-shelly-ng/         # Shelly Gen 2+ devices
+  │   │   │   ├── devices-shelly-v1/         # Shelly Gen 1 devices
+  │   │   │   ├── devices-third-party/       # Third-party devices
+  │   │   │   ├── data-sources-*/            # Data source plugins
+  │   │   │   ├── pages-*/                   # Page type plugins
+  │   │   │   ├── tiles-*/                   # Tile type plugins
+  │   │   │   └── weather-*/                 # Weather provider plugins
+  │   │   ├── migrations/   # TypeORM migrations
+  │   │   └── *.spec.ts     # Unit tests
   │   └── test/
-  │       └── *.e2e-spec.ts  # E2E tests
-  ├── admin/          # Vue.js admin interface
-  └── panel/          # Flutter/Dart panel app
-      ├── lib/
-      │   ├── api/           # Generated API client (excluded from analysis)
-      │   └── spec/          # Generated device/channel specs
-      └── tools/             # Build scripts
+  │       └── *.e2e-spec.ts # E2E tests
+  │
+  ├── admin/                # Vue.js admin interface
+  │   └── src/
+  │       ├── modules/      # Core modules (mirrors backend)
+  │       │   ├── auth/
+  │       │   ├── config/
+  │       │   ├── dashboard/
+  │       │   ├── devices/
+  │       │   ├── displays/
+  │       │   ├── stats/
+  │       │   ├── system/
+  │       │   ├── users/
+  │       │   └── weather/
+  │       └── plugins/      # Feature plugins (mirrors backend)
+  │
+  ├── panel/                # Flutter/Dart panel app
+  │   └── lib/
+  │       ├── api/          # Generated API client (DO NOT EDIT)
+  │       ├── modules/      # Feature modules
+  │       │   ├── config/
+  │       │   ├── dashboard/
+  │       │   ├── devices/
+  │       │   ├── displays/
+  │       │   ├── system/
+  │       │   └── weather/
+  │       └── spec/         # Generated device/channel specs (DO NOT EDIT)
+  │
+  └── website/              # Documentation website
 
 spec/
-  └── api/v1/         # OpenAPI specifications
+  ├── api/v1/              # Generated OpenAPI specification
+  ├── devices/             # Device specifications
+  ├── displays/            # Display specifications
+  └── weather/             # Weather specifications
 
-bin/                  # Utility scripts
-docs/                 # Documentation
+tasks/                     # Task specifications for development
+.ai-rules/                 # AI coding guidelines
+docs/                      # Developer documentation
 ```
 
 ## Common Issues & Tips
@@ -369,8 +421,9 @@ Both TypeScript (via Prettier) and Dart (via analysis_options) enforce specific 
 ### Generated Code
 
 Some directories contain auto-generated code that should not be manually edited:
-- `apps/backend/src/openapi.d.ts` (from OpenAPI spec)
+- `spec/api/v1/openapi.json` (from backend Swagger decorators)
 - `apps/backend/src/spec/` (device/channel specs)
+- `apps/admin/src/api/openapi.ts` (from OpenAPI spec)
 - `apps/panel/lib/api/` (from OpenAPI spec)
 - `apps/panel/lib/spec/` (device/channel specs)
 
@@ -395,15 +448,16 @@ pnpm run cli <command>
 pnpm run cli:prod <command>
 
 # Examples:
-pnpm run cli:prod auth:onboarding           # Create first user
-pnpm run cli:prod config:generate-admin-extensions  # Generate admin extensions
+pnpm run cli:prod auth:onboarding                    # Create first user
+pnpm run cli:prod config:generate-admin-extensions   # Generate admin extensions
+pnpm run cli:prod openapi:generate                   # Generate OpenAPI spec
 ```
 
 ---
 
-# AI Coding & Tooling Guidelines (Unified)
+# AI Coding & Tooling Guidelines
 
-The following rules extend the project documentation above and are intended for **Junie**, **JetBrains AI Assistant**, and **Qodo**.
+The following rules are intended for **Claude Code**, **Junie**, **JetBrains AI Assistant**, and **Qodo**.
 
 ## Architecture & Design Rules
 
@@ -411,7 +465,7 @@ The following rules extend the project documentation above and are intended for 
     - Backend modules (`devices`, `dashboard`, `plugins`, `users`, etc.).
     - Admin app organized by modules, pages, and Pinia stores.
     - Panel app with clear API/spec → UI layering.
-- Avoid “god services” and large classes that mix multiple concerns.
+- Avoid "god services" and large classes that mix multiple concerns.
 - Prefer small, focused services, composables, and widgets.
 - Do not move logic between modules unless there is a clear architectural reason.
 
@@ -421,8 +475,9 @@ Never change generated code manually. If behavior must change, update the genera
 
 Generated code includes (but is not limited to):
 
-- `apps/backend/src/openapi.d.ts`
+- `spec/api/v1/openapi.json`
 - `apps/backend/src/spec/**`
+- `apps/admin/src/api/openapi.ts`
 - `apps/panel/lib/api/**`
 - `apps/panel/lib/spec/**`
 
@@ -453,13 +508,6 @@ Naming:
 - Classes/widgets: `PascalCase`
 - `lib/api/**` and `lib/spec/**` are generated and must not be edited.
 
-### Matter-style Capabilities
-
-When defining device types, channels, properties:
-
-- Use terminology aligned with **Matter** where it makes sense (clusters, features, capabilities).
-- Keep metadata (units, formats, permissions) aligned with the existing spec schemas.
-
 ## Tests
 
 - Backend (NestJS):
@@ -471,7 +519,7 @@ When defining device types, channels, properties:
 - Panel (Flutter):
     - Prefer widget tests for non-trivial UI logic.
 
-**Rule:**  
+**Rule:**
 When adding significant new logic (manually or via AI), add or extend tests, or clearly explain in the PR why tests are omitted.
 
 ## Commits & Pull Requests
@@ -513,7 +561,7 @@ Short, high-level description of the change.
 
 ## AI Usage Guidelines
 
-These rules apply to **Junie**, **JetBrains AI Assistant**, and **Qodo**:
+These rules apply to **Claude Code**, **Junie**, **JetBrains AI Assistant**, and **Qodo**:
 
 1. AI-generated code is **never auto-mergeable**. A human must always review diffs.
 2. Do **not** modify generated files.
@@ -533,6 +581,16 @@ These rules apply to **Junie**, **JetBrains AI Assistant**, and **Qodo**:
     - Data validation & serialization
 
 ## Tool-Specific Notes
+
+### Claude Code
+
+- Can perform multi-file edits across the entire monorepo.
+- When generating backend features:
+    - Create module, controller, service, DTOs, and tests.
+- When working with the panel:
+    - Never edit generated API/spec code.
+    - Use existing UI patterns and theming.
+- Use the task files in `tasks/` for feature planning and tracking.
 
 ### Junie
 
@@ -583,4 +641,4 @@ These rules apply to **Junie**, **JetBrains AI Assistant**, and **Qodo**:
 
 ---
 
-By keeping this file as the unified source of truth for **commands**, **architecture**, **coding style**, and **AI behavior**, all tools (Junie, JetBrains AI Assistant, Qodo) can collaborate effectively while respecting the same rules.
+By keeping this file as the unified source of truth for **commands**, **architecture**, **coding style**, and **AI behavior**, all tools can collaborate effectively while respecting the same rules.

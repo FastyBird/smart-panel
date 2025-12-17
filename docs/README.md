@@ -1,34 +1,32 @@
-# Documentation
+# Smart Panel Documentation
 
-This directory contains all project documentation organized by category.
+This directory contains developer documentation for the Smart Panel project.
 
-## Structure
+## Documentation Structure
 
-- **`architecture/`** - Architectural decisions, patterns, and system design
-- **`security/`** - Security-related documentation, authentication, authorization
-- **`domain/`** - Domain-specific documentation (display registration, token handling, etc.)
-- **`decisions/`** - Architectural and design decision records (ADRs)
-- **`integrations/`** - Integration documentation (WebSockets, APIs, etc.)
+```
+docs/
+├── README.md           # This file
+└── architecture.md     # System architecture overview
+```
 
-## Documentation Index
+## Related Documentation
 
-### Architecture
-- [Multi-Backend Display Migration](./architecture/Multi-Backend-Migration.md) - Implementation for migrating displays between backends
+- **AI Guidelines**: `.ai-rules/GUIDELINES.md` - Development setup, coding style, AI tool guidelines
+- **API Conventions**: `.ai-rules/API_CONVENTIONS.md` - Backend API & Swagger conventions
+- **Task Specifications**: `tasks/` - Feature and technical task specifications
 
-### Security
-- [Display Registration Security](./security/Display-Registration-Security.md) - Security enhancement plan for display registration
-- [Token Refresh and Permit Join](./security/Token-Refresh-Permit-Join.md) - Requirements for token refresh vs permit join
-- [Lost Token and Permit Join UI](./security/Lost-Token-Permit-Join-UI.md) - UI implementation for lost token scenarios
+## Quick Links
 
-### Domain
-- [Display Registration Scenarios](./domain/Display-Registration-Scenarios.md) - Validation scenarios for display registration
-- [Display Registration Validation](./domain/Display-Registration-Validation.md) - Summary of registration validation
-- [Display Deletion and Revocation](./domain/Display-Deletion-Revocation.md) - Scenarios for display deletion and token revocation
-- [Token and Display Reset](./domain/Token-Display-Reset.md) - Analysis of token/display reset behavior
+### For Developers
 
-### Decisions
-- [Refactoring Plan: Displays Module](./decisions/Refactoring-Plan-Displays-Module.md) - Architectural decision record for consolidating display modules
-- [Refactoring Plan: Page-Display Relation](./decisions/Refactoring-Plan-Page-Display-Relation.md) - Architectural decision record for changing page-display relationship to 1:n
+- [Architecture Overview](./architecture.md) - System design and module structure
+- [Development Guidelines](../.ai-rules/GUIDELINES.md) - Setup, build commands, coding style
+- [API Conventions](../.ai-rules/API_CONVENTIONS.md) - Backend API patterns
 
-### Integrations
-- [WebSocket Token Updates](./integrations/WebSocket-Token-Updates.md) - WebSocket integration with token refresh
+### For AI Tools
+
+AI tools (Claude Code, Junie, etc.) should primarily reference:
+1. `.ai-rules/GUIDELINES.md` - Comprehensive development guidelines
+2. `.ai-rules/API_CONVENTIONS.md` - API design patterns
+3. `tasks/` - Task specifications for feature implementation
