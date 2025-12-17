@@ -436,7 +436,7 @@ export class CurrentDayModel {
 	dayTime: Date;
 }
 
-@ApiSchema({ name: 'WeatherModuleDataLocation' })
+@ApiSchema({ name: 'WeatherModuleDataWeatherLocation' })
 export class LocationModel {
 	@ApiProperty({ description: 'Location name', type: 'string', example: 'London' })
 	@Expose()
