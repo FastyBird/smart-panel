@@ -163,7 +163,6 @@ import { ElButton, ElCard, ElSwitch, ElTag, ElTooltip } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { ExtensionKind } from '../extensions.constants';
-import type { IExtension } from '../store/extensions.store.types';
 
 import type { IExtensionCardEmits, IExtensionCardProps } from './extension-card.types';
 

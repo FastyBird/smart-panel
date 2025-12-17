@@ -123,7 +123,7 @@ defineOptions({
 	name: 'ViewExtensions',
 });
 
-const props = defineProps<IViewExtensionsProps>();
+defineProps<IViewExtensionsProps>();
 
 const router = useRouter();
 const { t } = useI18n();

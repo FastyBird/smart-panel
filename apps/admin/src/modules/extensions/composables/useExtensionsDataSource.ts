@@ -1,8 +1,7 @@
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager, useListQuery } from '../../../common';
