@@ -13,4 +13,8 @@ abstract class DataSourceView<M extends DataSourceModel> {
   M get dataSourceModel => _dataSourceModel;
 
   DataSourceType get type => _dataSourceModel.type;
+
+  String get parentType => _dataSourceModel.parentType;
+
+  String get parentId => _dataSourceModel.parentId;
 }

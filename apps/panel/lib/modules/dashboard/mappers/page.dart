@@ -52,9 +52,11 @@ Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
         .map((entry) => entry.value)
         .toList();
 
+    // Query data sources by parentId to include newly created ones
     final List<DataSourceView> dataSources = dashboardService
         .dataSources.entries
-        .where((entry) => page.dataSource.contains(entry.key))
+        .where((entry) =>
+            entry.value.parentId == page.id && entry.value.parentType == 'page')
         .map((entry) => entry.value)
         .toList();
 
@@ -78,9 +80,11 @@ Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
         .map((entry) => entry.value)
         .toList();
 
+    // Query data sources by parentId to include newly created ones
     final List<DataSourceView> dataSources = dashboardService
         .dataSources.entries
-        .where((entry) => page.dataSource.contains(entry.key))
+        .where((entry) =>
+            entry.value.parentId == page.id && entry.value.parentType == 'page')
         .map((entry) => entry.value)
         .toList();
 

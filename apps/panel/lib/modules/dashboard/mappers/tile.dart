@@ -53,9 +53,11 @@ Map<TileType, TileView Function(TileModel)> tileViewsMappers = {
 
     final DashboardService dashboardService = locator<DashboardService>();
 
+    // Query data sources by parentId to include newly created ones
     final List<DataSourceView> dataSources = dashboardService
         .dataSources.entries
-        .where((entry) => tile.dataSource.contains(entry.key))
+        .where((entry) =>
+            entry.value.parentId == tile.id && entry.value.parentType == 'tile')
         .map((entry) => entry.value)
         .toList();
 
