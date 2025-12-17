@@ -270,15 +270,9 @@ watch(
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
 			if (isLGDevice.value) {
-				router.replace({
-					name: RouteNames.TILE_EDIT_DATA_SOURCE,
-					params: { id: props.tile?.id, dataSourceId: newDataSourceId },
-				});
+				router.replace({ name: RouteNames.TILE, params: { id: props.tile?.id } });
 			} else {
-				router.push({
-					name: RouteNames.TILE_EDIT_DATA_SOURCE,
-					params: { id: props.tile?.id, dataSourceId: newDataSourceId },
-				});
+				router.push({ name: RouteNames.TILE, params: { id: props.tile?.id } });
 			}
 		}
 	}

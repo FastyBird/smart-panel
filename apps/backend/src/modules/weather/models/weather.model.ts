@@ -436,7 +436,7 @@ export class CurrentDayModel {
 	dayTime: Date;
 }
 
-@ApiSchema({ name: 'WeatherModuleDataLocation' })
+@ApiSchema({ name: 'WeatherModuleDataWeatherLocation' })
 export class LocationModel {
 	@ApiProperty({ description: 'Location name', type: 'string', example: 'London' })
 	@Expose()
@@ -452,6 +452,21 @@ export class LocationModel {
 
 @ApiSchema({ name: 'WeatherModuleDataLocationWeather' })
 export class LocationWeatherModel {
+	@ApiPropertyOptional({
+		name: 'location_id',
+		description: 'Location ID from database',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+	})
+	@Expose({ name: 'location_id' })
+	@IsOptional()
+	@IsString()
+	@Transform(({ obj }: { obj: { location_id?: string; locationId?: string } }) => obj.location_id ?? obj.locationId, {
+		toClassOnly: true,
+	})
+	locationId?: string | null = null;
+
 	@ApiProperty({ description: 'Current weather', type: CurrentDayModel })
 	@Expose()
 	@ValidateNested()

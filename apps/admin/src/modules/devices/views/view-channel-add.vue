@@ -332,15 +332,15 @@ watch(
 		if (val === FormResult.OK) {
 			if (isDeviceDetailRoute.value) {
 				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { id: props.device?.id, channelId: newChannelId } });
+					router.replace({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
 				} else {
-					router.push({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { id: props.device?.id, channelId: newChannelId } });
+					router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
 				}
 			} else {
 				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.CHANNELS_EDIT, params: { id: newChannelId } });
+					router.replace({ name: RouteNames.CHANNELS });
 				} else {
-					router.push({ name: RouteNames.CHANNELS_EDIT, params: { id: newChannelId } });
+					router.push({ name: RouteNames.CHANNELS });
 				}
 			}
 		}

@@ -21,9 +21,13 @@ type ApiForecastWeatherTile = TilesWeatherPluginForecastWeatherTileSchema;
 // STORE STATE
 // ===========
 
-export const DayWeatherTileSchema = TileSchema.extend({});
+export const DayWeatherTileSchema = TileSchema.extend({
+	locationId: z.string().uuid().optional().nullable().default(null),
+});
 
-export const ForecastWeatherTileSchema = TileSchema.extend({});
+export const ForecastWeatherTileSchema = TileSchema.extend({
+	locationId: z.string().uuid().optional().nullable().default(null),
+});
 
 // BACKEND API
 // ===========
@@ -31,6 +35,7 @@ export const ForecastWeatherTileSchema = TileSchema.extend({});
 export const DayWeatherTileCreateReqSchema: ZodType<ApiCreateDayWeatherTile & { parent: { type: string; id: string } }> = TileCreateReqSchema.and(
 	z.object({
 		type: z.literal(TILES_WEATHER_PLUGIN_DAY_TYPE),
+		location_id: z.string().uuid().optional(),
 	})
 );
 
@@ -38,12 +43,14 @@ export const ForecastWeatherTileCreateReqSchema: ZodType<ApiCreateForecastWeathe
 	TileCreateReqSchema.and(
 		z.object({
 			type: z.literal(TILES_WEATHER_PLUGIN_FORECAST_TYPE),
+			location_id: z.string().uuid().optional(),
 		})
 	);
 
 export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
 	z.object({
 		type: z.literal(TILES_WEATHER_PLUGIN_DAY_TYPE),
+		location_id: z.string().uuid().optional().nullable(),
 	})
 );
 
@@ -51,17 +58,20 @@ export const ForecastWeatherTileUpdateReqSchema: ZodType<ApiUpdateForecastWeathe
 	TileUpdateReqSchema.and(
 		z.object({
 			type: z.literal(TILES_WEATHER_PLUGIN_FORECAST_TYPE),
+			location_id: z.string().uuid().optional().nullable(),
 		})
 	);
 
 export const DayWeatherTileResSchema: ZodType<ApiDayWeatherTile> = TileResSchema.and(
 	z.object({
 		type: z.literal(TILES_WEATHER_PLUGIN_DAY_TYPE),
+		location_id: z.string().uuid().optional(),
 	})
 );
 
 export const ForecastWeatherTileResSchema: ZodType<ApiForecastWeatherTile> = TileResSchema.and(
 	z.object({
 		type: z.literal(TILES_WEATHER_PLUGIN_FORECAST_TYPE),
+		location_id: z.string().uuid().optional(),
 	})
 );

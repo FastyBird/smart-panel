@@ -22,7 +22,9 @@ enum TileType {
 }
 
 enum DataSourceType {
-  deviceChannel('data-sources-device-channel');
+  deviceChannel('data-sources-device-channel'),
+  weatherCurrent('data-source-weather-current'),
+  weatherForecastDay('data-source-weather-forecast-day');
 
   final String value;
 

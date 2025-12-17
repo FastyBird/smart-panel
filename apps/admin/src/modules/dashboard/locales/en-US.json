@@ -196,7 +196,7 @@
   "fields": {
     "pages": {
       "search": {
-        "placeholder": "Search for page"
+        "placeholder": "Search pages..."
       },
       "plugin": {
         "title": "Page plugin",
@@ -233,7 +233,7 @@
     },
     "tiles": {
       "search": {
-        "placeholder": "Search for tile"
+        "placeholder": "Search tiles..."
       },
       "plugin": {
         "title": "Tile plugin",
@@ -272,7 +272,7 @@
     },
     "dataSources": {
       "search": {
-        "placeholder": "Search for data source"
+        "placeholder": "Search data sources..."
       },
       "plugin": {
         "title": "Data source plugin",

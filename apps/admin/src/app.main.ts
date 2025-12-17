@@ -47,6 +47,7 @@ import { UsersModule } from './modules/users';
 import { WeatherModule } from './modules/weather';
 import type { OpenApiPaths } from './openapi.constants';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
+import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng';
 import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1';
@@ -58,6 +59,8 @@ import { PagesTilesPlugin } from './plugins/pages-tiles';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview';
 import { TilesTimePlugin } from './plugins/tiles-time';
 import { TilesWeatherPlugin } from './plugins/tiles-weather';
+import { WeatherOpenweathermapPlugin } from './plugins/weather-openweathermap';
+import { weatherOpenweathermapOnecallPlugin as WeatherOpenweathermapOnecallPlugin } from './plugins/weather-openweathermap-onecall';
 
 const app = createApp(AppMain);
 
@@ -146,9 +149,12 @@ app.use(PagesDeviceDetailPlugin, pluginOptions);
 app.use(PagesTilesPlugin, pluginOptions);
 app.use(TilesDevicePreviewPlugin, pluginOptions);
 app.use(TilesTimePlugin);
-app.use(TilesWeatherPlugin);
+app.use(TilesWeatherPlugin, pluginOptions);
 app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
+app.use(DataSourcesWeatherPlugin, pluginOptions);
 app.use(LoggerRotatingFilePlugin, pluginOptions);
+app.use(WeatherOpenweathermapPlugin, pluginOptions);
+app.use(WeatherOpenweathermapOnecallPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 

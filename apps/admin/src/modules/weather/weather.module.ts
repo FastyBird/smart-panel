@@ -1,7 +1,9 @@
 import type { App } from 'vue';
+import type { RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
 
+import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
 	injectLogger,
@@ -16,10 +18,11 @@ import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
 import { WeatherConfigForm } from './components/components';
 import enUS from './locales/en-US.json';
+import { ModuleRoutes } from './router';
 import { WeatherConfigEditFormSchema } from './schemas/config.schemas';
 import { WeatherConfigSchema, WeatherConfigUpdateReqSchema } from './store/config.store.schemas';
-import { weatherDayStoreKey, weatherForecastStoreKey } from './store/keys';
-import { registerWeatherDayStore, registerWeatherForecastStore } from './store/stores';
+import { weatherDayStoreKey, weatherForecastStoreKey, weatherLocationsStoreKey } from './store/keys';
+import { registerWeatherDayStore, registerWeatherForecastStore, registerWeatherLocationsStore } from './store/stores';
 import { EventType, WEATHER_MODULE_EVENT_PREFIX, WEATHER_MODULE_NAME } from './weather.constants';
 
 const weatherAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Weather');
@@ -48,6 +51,11 @@ export default {
 		app.provide(weatherForecastStoreKey, weatherForecastStore);
 		storesManager.addStore(weatherForecastStoreKey, weatherForecastStore);
 
+		const weatherLocationsStore = registerWeatherLocationsStore(options.store);
+
+		app.provide(weatherLocationsStoreKey, weatherLocationsStore);
+		storesManager.addStore(weatherLocationsStoreKey, weatherLocationsStore);
+
 		modulesManager.addModule(weatherAdminModuleKey, {
 			type: WEATHER_MODULE_NAME,
 			name: 'Weather',
@@ -70,12 +78,21 @@ export default {
 			isCore: true,
 		});
 
+		// Register routes
+		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
+
+		if (rootRoute) {
+			ModuleRoutes.forEach((route: RouteRecordRaw): void => {
+				options.router.addRoute(AppRouteNames.ROOT, route);
+			});
+		}
+
 		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {
 			if (!data?.event?.startsWith(WEATHER_MODULE_EVENT_PREFIX)) {
 				return;
 			}
 
-			if (typeof data.payload !== 'object') {
+			if (typeof data.payload !== 'object' || data.payload === null) {
 				return;
 			}
 
@@ -90,6 +107,30 @@ export default {
 					if ('forecast' in data.payload && Array.isArray(data.payload.forecast)) {
 						weatherForecastStore.onEvent({
 							data: data.payload.forecast,
+						});
+					}
+					break;
+
+				case EventType.LOCATION_CREATED:
+				case EventType.LOCATION_UPDATED:
+					if (
+						'id' in data.payload &&
+						typeof data.payload.id === 'string' &&
+						'type' in data.payload &&
+						typeof data.payload.type === 'string'
+					) {
+						weatherLocationsStore.onEvent({
+							id: data.payload.id,
+							type: data.payload.type,
+							data: data.payload,
+						});
+					}
+					break;
+
+				case EventType.LOCATION_DELETED:
+					if ('id' in data.payload && typeof data.payload.id === 'string') {
+						weatherLocationsStore.unset({
+							id: data.payload.id,
 						});
 					}
 					break;

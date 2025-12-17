@@ -2,9 +2,8 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { useBackend, useLogger } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
-import type { WeatherModuleGetCurrentOperation } from '../../../openapi.constants';
 import { WEATHER_MODULE_PREFIX } from '../weather.constants';
 import { WeatherApiException, WeatherValidationException } from '../weather.exceptions';
 
@@ -76,23 +75,24 @@ export const useWeatherDay = defineStore<'weather_module-weather-day', WeatherDa
 				semaphore.value.getting = true;
 
 				try {
-					const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/weather/current`);
+					const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/weather/primary`, {});
 
 					const { data: responseData, error, response } = apiResponse;
 
-					if (typeof responseData !== 'undefined') {
-						data.value = transformWeatherDayResponse(responseData.data);
+					if (typeof responseData !== 'undefined' && responseData.data?.current) {
+						data.value = transformWeatherDayResponse(responseData.data.current);
 
 						return data.value;
 					}
 
-					let errorReason: string | null = 'Failed to fetch weather day.';
+					let errorReason: string | null = 'Failed to fetch weather day: invalid response structure.';
 
 					if (error) {
-						errorReason = getErrorReason<WeatherModuleGetCurrentOperation>(error, errorReason);
+						const typedError = error as { message?: string };
+						errorReason = typedError.message ?? errorReason;
 					}
 
-					throw new WeatherApiException(errorReason, response.status);
+					throw new WeatherApiException(errorReason, response?.status ?? 500);
 				} finally {
 					semaphore.value.getting = false;
 				}

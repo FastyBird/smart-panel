@@ -30,7 +30,8 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
       weatherService,
       _,
     ) {
-      final weatherForecast = weatherService.forecast;
+      // Use tile's locationId to get location-specific forecast
+      final weatherForecast = weatherService.getForecastByLocation(tile.locationId);
 
       return Container(
         alignment: Alignment.center,

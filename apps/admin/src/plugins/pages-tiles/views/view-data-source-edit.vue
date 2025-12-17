@@ -100,7 +100,7 @@
 
 				<el-button
 					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult !== FormResult.NONE"
+					:disabled="remoteFormResult !== FormResult.NONE || !remoteFormChanged"
 					type="primary"
 					class="order-2"
 					@click="onSubmit"
@@ -203,7 +203,7 @@ const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
 const plugin = computed<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === dataSource.value?.type);
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === dataSource.value?.type));
 });
 
 const element = computed<IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {

@@ -210,7 +210,7 @@ const remoteFormChanged = ref<boolean>(false);
 const selectedType = ref<string | undefined>(undefined);
 
 const plugin = computed<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {
-	return plugins.value.find((plugin) => plugin.type === selectedType.value);
+	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === selectedType.value));
 });
 
 const element = computed<IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {

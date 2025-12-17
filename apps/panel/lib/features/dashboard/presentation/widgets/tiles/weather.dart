@@ -27,7 +27,8 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
       weatherService,
       _,
     ) {
-      final currentWeather = weatherService.currentDay;
+      // Use tile's locationId to get location-specific weather
+      final currentWeather = weatherService.getCurrentDayByLocation(tile.locationId);
 
       String currentTemperature = currentWeather != null
           ? NumberUtils.formatNumber(

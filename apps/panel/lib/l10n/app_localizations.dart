@@ -743,11 +743,17 @@ abstract class AppLocalizations {
   /// **'Weather Location'**
   String get settings_weather_settings_temperature_location_title;
 
-  /// Description explaining that the weather location is configured externally.
+  /// Description explaining that the weather location can be selected from configured options.
   ///
   /// In en, this message translates to:
-  /// **'Weather location is configured in the administrator app.'**
+  /// **'Select from available locations configured in the administrator app.'**
   String get settings_weather_settings_temperature_location_description;
+
+  /// Description explaining that the weather location is configured externally when only one location exists.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is configured in the administrator app.'**
+  String get settings_weather_settings_temperature_location_single;
 
   /// Title for the Maintenance section.
   ///

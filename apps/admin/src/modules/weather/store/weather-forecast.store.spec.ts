@@ -134,7 +134,7 @@ describe('WeatherForecast Store', () => {
 
 	it('should fetch weather day successfully', async () => {
 		(backendClient.GET as Mock).mockResolvedValue({
-			data: { data: [mockWeatherForecastDayRes] },
+			data: { data: { forecast: [mockWeatherForecastDayRes] } },
 			error: undefined,
 			response: { status: 200 },
 		});

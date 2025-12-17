@@ -1,0 +1,85 @@
+{
+	"headings": {
+		"aboutApiSettings": "OpenWeatherMap One Call API 3.0 settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"apiKey": {
+				"title": "API key",
+				"placeholder": "Enter your OpenWeatherMap One Call API key",
+				"description": "Requires a paid subscription to OpenWeatherMap One Call API 3.0"
+			},
+			"unit": {
+				"title": "Temperature unit",
+				"placeholder": "Select temperature unit",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Name",
+				"description": "A friendly name for this location",
+				"placeholder": "e.g., Home, Office, Beach House",
+				"validation": {
+					"required": "Name is required"
+				}
+			},
+			"citySearch": {
+				"title": "Search city",
+				"placeholder": "Start typing to search for a city...",
+				"description": "Search for a city and we'll auto-fill the coordinates"
+			},
+			"latitude": {
+				"title": "Latitude",
+				"placeholder": "e.g., 51.5074",
+				"validation": {
+					"required": "Latitude is required",
+					"range": "Latitude must be between -90 and 90"
+				}
+			},
+			"longitude": {
+				"title": "Longitude",
+				"placeholder": "e.g., -0.1278",
+				"validation": {
+					"required": "Longitude is required",
+					"range": "Longitude must be between -180 and 180"
+				}
+			},
+			"map": {
+				"title": "Location on map"
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "My location"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "OpenWeatherMap One Call settings have been updated",
+			"notEdited": "Failed to update OpenWeatherMap One Call settings"
+		},
+		"locations": {
+			"created": "Location \"{location}\" has been created",
+			"notCreated": "Failed to create location \"{location}\"",
+			"edited": "Location \"{location}\" has been updated",
+			"notEdited": "Failed to update location \"{location}\""
+		},
+		"geolocationNotSupported": "Geolocation is not supported by your browser",
+		"geolocationDenied": "Location access was denied. Please enable location permissions.",
+		"geolocationUnavailable": "Location information is unavailable",
+		"geolocationTimeout": "The request to get your location timed out",
+		"geolocationError": "An error occurred while getting your location"
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your OpenWeatherMap One Call API 3.0 settings. This API requires a paid subscription and provides more detailed weather data including weather alerts.",
+		"orEnterManually": "Or enter location manually"
+	}
+}

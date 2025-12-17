@@ -1,0 +1,130 @@
+{
+	"headings": {
+		"aboutApiSettings": "OpenWeatherMap API settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"apiKey": {
+				"title": "API key",
+				"placeholder": "Enter your OpenWeatherMap API key",
+				"description": "Get your free API key from openweathermap.org",
+				"validation": {
+					"required": "Please enter your API key"
+				}
+			},
+			"unit": {
+				"title": "Temperature unit",
+				"placeholder": "Select temperature unit",
+				"values": {
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
+				}
+			}
+		},
+		"locations": {
+			"name": {
+				"title": "Name",
+				"description": "A friendly name for this location",
+				"placeholder": "e.g., Home, Office, Beach House",
+				"validation": {
+					"required": "Name is required"
+				}
+			},
+			"citySearch": {
+				"title": "Search city",
+				"placeholder": "Start typing to search for a city...",
+				"description": "Search for a city and we'll auto-fill the coordinates"
+			},
+			"locationType": {
+				"title": "Location type",
+				"placeholder": "Select how to identify the location",
+				"values": {
+					"latLon": "GPS coordinates",
+					"cityName": "City name",
+					"cityId": "City ID",
+					"zipCode": "ZIP code"
+				},
+				"validation": {
+					"required": "Location type is required"
+				}
+			},
+			"coordinates": {
+				"title": "Coordinates"
+			},
+			"latitude": {
+				"title": "Latitude",
+				"placeholder": "e.g., 51.5074",
+				"validation": {
+					"required": "Latitude is required",
+					"range": "Latitude must be between -90 and 90"
+				}
+			},
+			"longitude": {
+				"title": "Longitude",
+				"placeholder": "e.g., -0.1278",
+				"validation": {
+					"required": "Longitude is required",
+					"range": "Longitude must be between -180 and 180"
+				}
+			},
+			"map": {
+				"title": "Location on map"
+			},
+			"cityName": {
+				"title": "City name",
+				"placeholder": "e.g., London",
+				"validation": {
+					"required": "City name is required"
+				}
+			},
+			"countryCode": {
+				"title": "Country code",
+				"placeholder": "e.g., GB"
+			},
+			"cityId": {
+				"title": "City ID",
+				"placeholder": "e.g., 2643743",
+				"description": "OpenWeatherMap city ID (find it at openweathermap.org)",
+				"validation": {
+					"required": "City ID is required"
+				}
+			},
+			"zipCode": {
+				"title": "ZIP code",
+				"placeholder": "e.g., 10001",
+				"validation": {
+					"required": "ZIP code is required"
+				}
+			}
+		}
+	},
+	"buttons": {
+		"myLocation": {
+			"title": "My location"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "OpenWeatherMap settings have been updated",
+			"notEdited": "Failed to update OpenWeatherMap settings"
+		},
+		"locations": {
+			"created": "Location \"{location}\" has been created",
+			"notCreated": "Failed to create location \"{location}\"",
+			"edited": "Location \"{location}\" has been updated",
+			"notEdited": "Failed to update location \"{location}\""
+		},
+		"geolocationNotSupported": "Geolocation is not supported by your browser",
+		"geolocationDenied": "Location access was denied. Please enable location permissions.",
+		"geolocationUnavailable": "Location information is unavailable",
+		"geolocationTimeout": "The request to get your location timed out",
+		"geolocationError": "An error occurred while getting your location"
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your OpenWeatherMap API settings. You need a valid API key to fetch weather data. Select your preferred temperature unit for weather displays.",
+		"orEnterManually": "Or enter location manually"
+	}
+}

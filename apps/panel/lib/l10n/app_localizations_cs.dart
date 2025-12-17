@@ -331,7 +331,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_weather_settings_temperature_location_title => 'Poloha počasí';
 
   @override
-  String get settings_weather_settings_temperature_location_description => 'Poloha počasí je nastavena v administrátorské aplikaci.';
+  String get settings_weather_settings_temperature_location_description => 'Vyberte z dostupných poloh nastavených v administrátorské aplikaci.';
+
+  @override
+  String get settings_weather_settings_temperature_location_single => 'Poloha je nastavena v administrátorské aplikaci.';
 
   @override
   String get settings_maintenance_title => 'Údržba';

@@ -272,7 +272,7 @@
   "fields": {
     "devices": {
       "search": {
-        "placeholder": "Search for device"
+        "placeholder": "Search devices..."
       },
       "plugin": {
         "title": "Device plugin",
@@ -316,7 +316,7 @@
     },
     "channels": {
       "search": {
-        "placeholder": "Search for channel"
+        "placeholder": "Search channels..."
       },
       "plugin": {
         "title": "Channel plugin",
@@ -356,7 +356,7 @@
     },
     "channelsProperties": {
       "search": {
-        "placeholder": "Search for channel property"
+        "placeholder": "Search properties..."
       },
       "channel": {
         "title": "Channel",

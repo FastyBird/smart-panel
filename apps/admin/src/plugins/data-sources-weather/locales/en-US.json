@@ -1,0 +1,44 @@
+{
+	"fields": {
+		"locationId": {
+			"title": "Weather location",
+			"placeholder": "Select a location",
+			"description": "Select a weather location to display. If not set, the primary location from weather settings will be used."
+		},
+		"field": {
+			"title": "Data field",
+			"placeholder": "Select a field",
+			"description": "Weather data field to display.",
+			"validation": {
+				"required": "Please select a data field"
+			}
+		},
+		"dayOffset": {
+			"title": "Day offset",
+			"placeholder": "Days from today",
+			"description": "Number of days from today (0 = today, 1 = tomorrow).",
+			"validation": {
+				"required": "Please enter a day offset",
+				"min": "Day offset must be at least 0",
+				"max": "Day offset must be at most 7"
+			}
+		},
+		"icon": {
+			"title": "Custom icon",
+			"placeholder": "mdi:thermometer",
+			"description": "Override the weather icon with a custom icon name."
+		}
+	},
+	"fieldOptions": {
+		"temperature": "Temperature",
+		"temperature_min": "Min temperature",
+		"temperature_max": "Max temperature",
+		"feels_like": "Feels like",
+		"humidity": "Humidity",
+		"pressure": "Pressure",
+		"weather_icon": "Weather icon",
+		"weather_main": "Weather condition",
+		"weather_description": "Weather description",
+		"wind_speed": "Wind speed"
+	}
+}

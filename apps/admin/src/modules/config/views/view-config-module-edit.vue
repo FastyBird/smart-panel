@@ -137,7 +137,7 @@
 				>
 					<el-button
 						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="isLoading || remoteFormResult !== FormResult.NONE"
+						:disabled="isLoading || remoteFormResult !== FormResult.NONE || !remoteFormChanged"
 						type="primary"
 						@click="onSave"
 					>
@@ -327,7 +327,12 @@ watch(
 			// Don't fetch if module type is empty
 			return;
 		}
-		
+
+		// Reset form state when navigating to different module
+		remoteFormSubmit.value = false;
+		remoteFormResult.value = FormResult.NONE;
+		remoteFormReset.value = false;
+		remoteFormChanged.value = false;
 		loadError.value = false;
 
 		await fetchConfigModule().catch((error: unknown): void => {
@@ -398,6 +403,19 @@ watch(
 	(): boolean => remoteFormChanged.value,
 	(val: boolean): void => {
 		emit('update:remoteFormChanged', val);
+	}
+);
+
+watch(
+	(): FormResult => remoteFormResult.value,
+	(val: FormResult): void => {
+		if (val === FormResult.OK) {
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.CONFIG_MODULES });
+			} else {
+				router.push({ name: RouteNames.CONFIG_MODULES });
+			}
+		}
 	}
 );
 </script>

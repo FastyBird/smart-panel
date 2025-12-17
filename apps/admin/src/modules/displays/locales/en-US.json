@@ -60,7 +60,7 @@
 	"fields": {
 		"search": {
 			"title": "Search",
-			"placeholder": "Search for display"
+			"placeholder": "Search displays..."
 		},
 		"darkMode": {
 			"title": "Dark mode"

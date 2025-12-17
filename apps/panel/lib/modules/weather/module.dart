@@ -3,10 +3,10 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
-import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/weather/constants.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:flutter/foundation.dart';
 
@@ -15,6 +15,7 @@ class WeatherModuleService {
 
   late CurrentWeatherRepository _currentWeatherRepository;
   late ForecastWeatherRepository _forecastWeatherRepository;
+  late LocationsRepository _locationsRepository;
 
   late WeatherService _weatherService;
 
@@ -30,9 +31,13 @@ class WeatherModuleService {
     _forecastWeatherRepository = ForecastWeatherRepository(
       apiClient: apiClient.weatherModule,
     );
+    _locationsRepository = LocationsRepository(
+      apiClient: apiClient.weatherModule,
+    );
 
     locator.registerSingleton(_currentWeatherRepository);
     locator.registerSingleton(_forecastWeatherRepository);
+    locator.registerSingleton(_locationsRepository);
   }
 
   Future<void> initialize() async {
@@ -49,13 +54,16 @@ class WeatherModuleService {
     // Get weather config repository from config module
     final weatherConfigRepo = configModule.getModuleRepository<WeatherConfigModel>('weather-module');
 
-    // Weather config is now managed by config module
-    // No need to create wrapper or register separately
+    // Set up primary location provider so locations repository can use it for auto-selection
+    _locationsRepository.setPrimaryLocationIdProvider(
+      () => weatherConfigRepo.data?.primaryLocationId,
+    );
 
     // Create weather service with config from config module
     _weatherService = WeatherService(
       currentDayRepository: _currentWeatherRepository,
       forecastRepository: _forecastWeatherRepository,
+      locationsRepository: _locationsRepository,
       configurationRepository: weatherConfigRepo,
     );
 
@@ -63,6 +71,9 @@ class WeatherModuleService {
 
     // Fetch configuration (will be done by config module, but ensure it's loaded)
     await weatherConfigRepo.fetchConfiguration();
+
+    // Fetch locations first, then weather data
+    await _initializeLocations();
     await _initializeWeatherData();
 
     await _weatherService.initialize();
@@ -73,16 +84,28 @@ class WeatherModuleService {
       WeatherModuleConstants.weatherInfoEvent,
       _socketEventHandler,
     );
+
+    // Register location change event handlers
+    _socketService.registerEventHandler(
+      WeatherModuleConstants.locationCreatedEvent,
+      _locationCreatedHandler,
+    );
+    _socketService.registerEventHandler(
+      WeatherModuleConstants.locationUpdatedEvent,
+      _locationUpdatedHandler,
+    );
+    _socketService.registerEventHandler(
+      WeatherModuleConstants.locationDeletedEvent,
+      _locationDeletedHandler,
+    );
   }
 
   Future<bool> _updateWeatherConfig(String name, Map<String, dynamic> data) async {
     // Custom update handler for weather config
-    // This handles the update logic that was in WeatherConfigRepository.setWeatherUnit
     try {
       final configModule = locator<ConfigModuleService>();
       final repo = configModule.getModuleRepository<WeatherConfigModel>(name);
-      
-      // Build update data with all current fields
+
       final currentConfig = repo.data;
       if (currentConfig == null) {
         if (kDebugMode) {
@@ -95,10 +118,8 @@ class WeatherModuleService {
 
       final updateDataMap = <String, dynamic>{
         'type': name,
-        'location_type': _convertWeatherLocationTypeToApiString(currentConfig.locationType),
-        'unit': data['unit'] ?? _convertWeatherUnitToApiString(currentConfig.unit),
-        if (currentConfig.openWeatherApiKey != null)
-          'open_weather_api_key': currentConfig.openWeatherApiKey,
+        if (data.containsKey('primary_location_id'))
+          'primary_location_id': data['primary_location_id'],
       };
 
       // Use the repository's raw update method to avoid infinite recursion
@@ -114,21 +135,40 @@ class WeatherModuleService {
     }
   }
 
-  String _convertWeatherLocationTypeToApiString(WeatherLocationType locationType) {
-    return locationType.value;
-  }
-
-  String _convertWeatherUnitToApiString(WeatherUnit unit) {
-    return unit.value;
-  }
-
   bool get isLoading => _isLoading;
+
+  LocationsRepository get locationsRepository => _locationsRepository;
 
   void dispose() {
     _socketService.unregisterEventHandler(
       WeatherModuleConstants.weatherInfoEvent,
       _socketEventHandler,
     );
+    _socketService.unregisterEventHandler(
+      WeatherModuleConstants.locationCreatedEvent,
+      _locationCreatedHandler,
+    );
+    _socketService.unregisterEventHandler(
+      WeatherModuleConstants.locationUpdatedEvent,
+      _locationUpdatedHandler,
+    );
+    _socketService.unregisterEventHandler(
+      WeatherModuleConstants.locationDeletedEvent,
+      _locationDeletedHandler,
+    );
+  }
+
+  Future<void> _initializeLocations() async {
+    try {
+      await _locationsRepository.fetchLocations();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[WEATHER MODULE] Error fetching locations: ${e.toString()}',
+        );
+      }
+      // Locations fetch error is not critical - weather may still work with default
+    }
   }
 
   Future<void> _initializeWeatherData() async {
@@ -141,9 +181,15 @@ class WeatherModuleService {
   }
 
   void _socketEventHandler(String event, Map<String, dynamic> payload) {
+    // Extract location_id from payload if available
+    final locationId = payload['location_id'] as String?;
+
     if (payload.containsKey('current') &&
         payload['current'] is Map<String, dynamic>) {
-      _currentWeatherRepository.insertWeather(payload['current']);
+      _currentWeatherRepository.insertWeather(
+        payload['current'],
+        locationId: locationId,
+      );
     }
 
     if (payload.containsKey('forecast') && payload['forecast'] is List) {
@@ -151,7 +197,43 @@ class WeatherModuleService {
           .map((item) => Map<String, dynamic>.from(item))
           .toList();
 
-      _forecastWeatherRepository.insertForecast(mapped);
+      _forecastWeatherRepository.insertForecast(
+        mapped,
+        locationId: locationId,
+      );
+    }
+  }
+
+  void _locationCreatedHandler(String event, Map<String, dynamic> payload) {
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE] Location created event received: ${payload['id']}',
+      );
+    }
+    // Refresh the locations list to include the new location
+    _locationsRepository.refresh();
+  }
+
+  void _locationUpdatedHandler(String event, Map<String, dynamic> payload) {
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE] Location updated event received: ${payload['id']}',
+      );
+    }
+    // Refresh the locations list to get updated data
+    _locationsRepository.refresh();
+  }
+
+  void _locationDeletedHandler(String event, Map<String, dynamic> payload) {
+    if (kDebugMode) {
+      debugPrint(
+        '[WEATHER MODULE] Location deleted event received: ${payload['id']}',
+      );
+    }
+    // Remove the deleted location from local data and refresh
+    final deletedId = payload['id'] as String?;
+    if (deletedId != null) {
+      _locationsRepository.removeLocation(deletedId);
     }
   }
 }

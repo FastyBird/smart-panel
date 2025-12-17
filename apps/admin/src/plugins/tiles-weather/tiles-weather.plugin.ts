@@ -1,8 +1,15 @@
 import type { App } from 'vue';
+import { markRaw } from 'vue';
 
+import { defaultsDeep } from 'lodash';
+
+import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { DASHBOARD_MODULE_NAME, type ITilePluginsComponents, type ITilePluginsSchemas } from '../../modules/dashboard';
 
+import { WeatherTileAddForm, WeatherTileEditForm } from './components/components';
+import enUS from './locales/en-US.json';
+import { WeatherTileAddFormSchema, WeatherTileEditFormSchema } from './schemas/tiles.schemas';
 import {
 	DayWeatherTileCreateReqSchema,
 	DayWeatherTileSchema,
@@ -13,18 +20,29 @@ import {
 } from './store/tiles.store.schemas';
 import { TILES_WEATHER_PLUGIN_DAY_TYPE, TILES_WEATHER_PLUGIN_FORECAST_TYPE, TILES_WEATHER_PLUGIN_NAME } from './tiles-weather.constants';
 
+// Cast the components to the expected types - the weather tile forms handle both ITile and weather-specific tiles
+const weatherTileAddFormComponent = markRaw(WeatherTileAddForm) as unknown as ITilePluginsComponents['tileAddForm'];
+const weatherTileEditFormComponent = markRaw(WeatherTileEditForm) as unknown as ITilePluginsComponents['tileEditForm'];
+
 export const tilesWeatherPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> = Symbol('FB-Plugin-TilesWeather');
 
 export default {
-	install: (app: App): void => {
+	install: (app: App, options: IPluginOptions): void => {
 		const pluginsManager = injectPluginsManager(app);
+
+		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
+			const currentMessages = options.i18n.global.getLocaleMessage(locale);
+			const mergedMessages = defaultsDeep(currentMessages, { tilesWeatherPlugin: translations });
+
+			options.i18n.global.setLocaleMessage(locale, mergedMessages);
+		}
 
 		pluginsManager.addPlugin(tilesWeatherPluginKey, {
 			type: TILES_WEATHER_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.tiles-weather',
-			name: 'Day Weather Tile',
+			name: 'Weather tiles',
 			description:
-				'Displays current weather conditions and daily details alongside a multi-day forecast. Provides temperature, conditions, and icons in a clear, compact tile layout—perfect for checking today’s weather or planning ahead at a glance.',
+				"Displays current weather conditions and daily details alongside a multi-day forecast. Provides temperature, conditions, and icons in a clear, compact tile layout - perfect for checking today's weather or planning ahead at a glance.",
 			links: {
 				documentation: 'http://www.fastybird.com',
 				devDocumentation: 'http://www.fastybird.com',
@@ -33,21 +51,33 @@ export default {
 			elements: [
 				{
 					type: TILES_WEATHER_PLUGIN_DAY_TYPE,
-					name: 'Day Weather Tile',
+					name: 'Day weather',
 					description:
-						'Displays daily weather information including temperature, conditions, and icons. Perfect for showing today’s forecast in a compact tile.',
+						"Displays daily weather information including temperature, conditions, and icons. Perfect for showing today's forecast in a compact tile.",
+					components: {
+						tileAddForm: weatherTileAddFormComponent,
+						tileEditForm: weatherTileEditFormComponent,
+					},
 					schemas: {
 						tileSchema: DayWeatherTileSchema,
+						tileAddFormSchema: WeatherTileAddFormSchema,
+						tileEditFormSchema: WeatherTileEditFormSchema,
 						tileCreateReqSchema: DayWeatherTileCreateReqSchema,
 						tileUpdateReqSchema: DayWeatherTileUpdateReqSchema,
 					},
 				},
 				{
 					type: TILES_WEATHER_PLUGIN_FORECAST_TYPE,
-					name: 'Forecast Weather Tile',
+					name: 'Forecast weather',
 					description: 'Shows a multi-day weather forecast in a clear and informative tile layout. Ideal for planning ahead at a glance.',
+					components: {
+						tileAddForm: weatherTileAddFormComponent,
+						tileEditForm: weatherTileEditFormComponent,
+					},
 					schemas: {
 						tileSchema: ForecastWeatherTileSchema,
+						tileAddFormSchema: WeatherTileAddFormSchema,
+						tileEditFormSchema: WeatherTileEditFormSchema,
 						tileCreateReqSchema: ForecastWeatherTileCreateReqSchema,
 						tileUpdateReqSchema: ForecastWeatherTileUpdateReqSchema,
 					},

@@ -36,6 +36,7 @@ import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
+import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant/devices-home-assistant.plugin';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/devices-shelly-ng.constants';
@@ -52,6 +53,10 @@ import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
 import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin';
+import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX } from './plugins/weather-openweathermap-onecall/weather-openweathermap-onecall.constants';
+import { WeatherOpenweathermapOnecallPlugin } from './plugins/weather-openweathermap-onecall/weather-openweathermap-onecall.plugin';
+import { WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX } from './plugins/weather-openweathermap/weather-openweathermap.constants';
+import { WeatherOpenweathermapPlugin } from './plugins/weather-openweathermap/weather-openweathermap.plugin';
 
 export interface AppRegisterOptions {
 	moduleExtensions?: Array<{ routePrefix: string; extensionClass: Type<unknown> }>;
@@ -178,6 +183,14 @@ export class AppModule {
 								path: DEVICES_SHELLY_V1_PLUGIN_PREFIX,
 								module: DevicesShellyV1Plugin,
 							},
+							{
+								path: WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX,
+								module: WeatherOpenweathermapPlugin,
+							},
+							{
+								path: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX,
+								module: WeatherOpenweathermapOnecallPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -208,7 +221,10 @@ export class AppModule {
 				TilesTimePlugin,
 				TilesWeatherPlugin,
 				DataSourcesDeviceChannelPlugin,
+				DataSourcesWeatherPlugin,
 				LoggerRotatingFilePlugin,
+				WeatherOpenweathermapPlugin,
+				WeatherOpenweathermapOnecallPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
 					inject: [NestConfigService],

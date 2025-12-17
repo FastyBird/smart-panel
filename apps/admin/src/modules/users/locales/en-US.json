@@ -58,7 +58,7 @@
   },
   "fields": {
     "search": {
-      "placeholder": "Search for user"
+      "placeholder": "Search users..."
     },
     "role": {
       "title": "User role",

@@ -1,0 +1,9 @@
+{
+	"fields": {
+		"locationId": {
+			"title": "Weather location",
+			"placeholder": "Select a location",
+			"description": "Select a weather location to display. If not set, the primary location from weather settings will be used."
+		}
+	}
+}
