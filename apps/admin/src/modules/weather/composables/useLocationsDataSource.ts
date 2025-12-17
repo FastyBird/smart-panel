@@ -51,17 +51,22 @@ export const useLocationsDataSource = (): IUseLocationsDataSource => {
 	const sortDir = ref<'ascending' | 'descending' | null>('ascending');
 
 	const locations = computed<IWeatherLocation[]>((): IWeatherLocation[] => {
+		const filtered = locationsStore.findAll().filter((location) => {
+			if (location.draft) return false;
+			if (filters.value.search && !location.name.toLowerCase().includes(filters.value.search.toLowerCase())) return false;
+			if (filters.value.types.length > 0 && !filters.value.types.includes(location.type)) return false;
+			if (filters.value.primary === 'primary' && location.id !== primaryLocationId.value) return false;
+			if (filters.value.primary === 'secondary' && location.id === primaryLocationId.value) return false;
+			return true;
+		});
+
+		// When sortDir is null (unsorted), return filtered items in natural order
+		if (sortDir.value === null) {
+			return filtered;
+		}
+
 		return orderBy<IWeatherLocation>(
-			locationsStore
-				.findAll()
-				.filter((location) => {
-					if (location.draft) return false;
-					if (filters.value.search && !location.name.toLowerCase().includes(filters.value.search.toLowerCase())) return false;
-					if (filters.value.types.length > 0 && !filters.value.types.includes(location.type)) return false;
-					if (filters.value.primary === 'primary' && location.id !== primaryLocationId.value) return false;
-					if (filters.value.primary === 'secondary' && location.id === primaryLocationId.value) return false;
-					return true;
-				}),
+			filtered,
 			[(location: IWeatherLocation) => location[sortBy.value as keyof IWeatherLocation] ?? ''],
 			[sortDir.value === 'ascending' ? 'asc' : 'desc']
 		);
