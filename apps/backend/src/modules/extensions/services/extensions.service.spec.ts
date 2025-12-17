@@ -32,7 +32,11 @@ describe('ExtensionsService', () => {
 
 	class MockConfigDto {
 		type = 'mock';
-		enabled?: boolean;
+		enabled: boolean | undefined = undefined; // Must have default to exist on instance
+	}
+
+	class MockConfigDtoNoEnabled {
+		type = 'mock';
 	}
 
 	const mockModuleMappings = [{ type: 'devices-module', class: MockConfigModel, configDto: MockConfigDto }] as never;
@@ -58,9 +62,7 @@ describe('ExtensionsService', () => {
 						getMappings: jest.fn().mockReturnValue(mockModuleMappings),
 						getMapping: jest.fn().mockReturnValue({
 							type: 'devices-module',
-							configDto: class {
-								enabled?: boolean;
-							},
+							configDto: MockConfigDto,
 						}),
 					},
 				},
@@ -70,9 +72,7 @@ describe('ExtensionsService', () => {
 						getMappings: jest.fn().mockReturnValue(mockPluginMappings),
 						getMapping: jest.fn().mockReturnValue({
 							type: 'pages-tiles-plugin',
-							configDto: class {
-								enabled?: boolean;
-							},
+							configDto: MockConfigDto,
 						}),
 					},
 				},
@@ -223,7 +223,7 @@ describe('ExtensionsService', () => {
 			// Mock mapping with no enabled property
 			jest.spyOn(modulesMapperService, 'getMapping').mockReturnValue({
 				type: 'devices-module',
-				configDto: class {},
+				configDto: MockConfigDtoNoEnabled,
 			} as never);
 
 			expect(() => service.updateEnabled('devices-module', false)).toThrow(ExtensionNotConfigurableException);
