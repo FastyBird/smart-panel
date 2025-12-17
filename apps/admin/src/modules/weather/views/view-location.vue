@@ -395,6 +395,19 @@ onMounted((): void => {
 	mounted.value = true;
 });
 
+// Refetch data when navigating to a different location (same route, different id)
+watch(
+	() => props.id,
+	async (newId, oldId) => {
+		if (newId !== oldId && mounted.value) {
+			await fetchLocation();
+			await fetchLocationWeather(newId).catch(() => {
+				// Error is handled by hasError state in useLocationWeather
+			});
+		}
+	}
+);
+
 watch(
 	(): string => route.path,
 	(): void => {
