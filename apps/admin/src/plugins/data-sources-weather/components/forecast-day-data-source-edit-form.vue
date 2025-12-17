@@ -45,12 +45,12 @@
 			:closable="false"
 			show-icon
 			type="info"
-			class="mb-4"
 		/>
 
 		<el-form-item
 			:label="t('dataSourcesWeatherPlugin.fields.dayOffset.title')"
 			prop="dayOffset"
+			class="mt-4"
 		>
 			<el-input-number
 				v-model="model.dayOffset"

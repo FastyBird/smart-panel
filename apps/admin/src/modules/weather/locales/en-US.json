@@ -9,7 +9,7 @@
 		"editLocation": "Edit location",
 		"deleteLocation": "Delete location",
 		"discard": "Discard changes",
-		"selectProvider": "Select weather provider",
+		"selectProvider": "Select a weather provider",
 		"unsupportedProvider": "Unsupported provider",
 		"adjustFilters": "Adjust filters"
 	},
@@ -88,7 +88,7 @@
 			},
 			"provider": {
 				"title": "Weather provider",
-				"placeholder": "Select a weather provider"
+				"placeholder": "c"
 			},
 			"name": {
 				"title": "Location name",

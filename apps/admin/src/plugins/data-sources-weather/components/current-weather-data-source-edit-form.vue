@@ -45,12 +45,12 @@
 			:closable="false"
 			show-icon
 			type="info"
-			class="mb-4"
 		/>
 
 		<el-form-item
 			:label="t('dataSourcesWeatherPlugin.fields.field.title')"
 			prop="field"
+			class="mt-4"
 		>
 			<el-select
 				v-model="model.field"
