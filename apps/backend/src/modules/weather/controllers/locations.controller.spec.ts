@@ -127,9 +127,9 @@ describe('LocationsController', () => {
 		});
 
 		it('should throw BadRequestException when type is missing', async () => {
-			await expect(controller.create({ data: { name: 'Test' } as any }, mockResponse, mockRequest)).rejects.toThrow(
-				BadRequestException,
-			);
+			await expect(
+				controller.create({ data: { name: 'Test' } as unknown as CreateLocationDto }, mockResponse, mockRequest),
+			).rejects.toThrow(BadRequestException);
 		});
 
 		it('should throw BadRequestException for unsupported type', async () => {
@@ -138,7 +138,11 @@ describe('LocationsController', () => {
 			});
 
 			await expect(
-				controller.create({ data: { type: 'invalid-type', name: 'Test' } as any }, mockResponse, mockRequest),
+				controller.create(
+					{ data: { type: 'invalid-type', name: 'Test' } as unknown as CreateLocationDto },
+					mockResponse,
+					mockRequest,
+				),
 			).rejects.toThrow(BadRequestException);
 		});
 
@@ -192,7 +196,9 @@ describe('LocationsController', () => {
 			});
 			jest.spyOn(service, 'update').mockRejectedValue(new WeatherException('Update failed'));
 
-			await expect(controller.update(mockLocation.id, { data: updateDto })).rejects.toThrow(UnprocessableEntityException);
+			await expect(controller.update(mockLocation.id, { data: updateDto })).rejects.toThrow(
+				UnprocessableEntityException,
+			);
 		});
 	});
 

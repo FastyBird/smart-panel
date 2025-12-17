@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { WeatherValidationException } from '../weather.exceptions';
 
+import type { IWeatherLocationRes } from './locations.store.types';
 import { transformLocationResponse, transformLocationCreateRequest, transformLocationUpdateRequest } from './locations.transformers';
 
 const mockLocationRes = {
@@ -47,7 +48,7 @@ describe('Weather Locations Transformers', () => {
 				name: '',
 			};
 
-			expect(() => transformLocationResponse(invalidResponse as any)).toThrow(WeatherValidationException);
+			expect(() => transformLocationResponse(invalidResponse as unknown as IWeatherLocationRes)).toThrow(WeatherValidationException);
 		});
 
 		it('should throw validation error for missing required fields', () => {
@@ -55,7 +56,7 @@ describe('Weather Locations Transformers', () => {
 				id: '123e4567-e89b-12d3-a456-426614174000',
 			};
 
-			expect(() => transformLocationResponse(invalidResponse as any)).toThrow(WeatherValidationException);
+			expect(() => transformLocationResponse(invalidResponse as unknown as IWeatherLocationRes)).toThrow(WeatherValidationException);
 		});
 
 		it('should preserve additional passthrough fields', () => {

@@ -5,8 +5,8 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { v4 as uuid } from 'uuid';
 import { DataSource, Repository } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';

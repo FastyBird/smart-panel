@@ -133,7 +133,9 @@ describe('WeatherController', () => {
 		});
 
 		it('should throw NotFoundException when no primary location configured', async () => {
-			jest.spyOn(service, 'getPrimaryWeather').mockRejectedValue(new WeatherNotFoundException('No primary location configured'));
+			jest
+				.spyOn(service, 'getPrimaryWeather')
+				.mockRejectedValue(new WeatherNotFoundException('No primary location configured'));
 
 			await expect(controller.getPrimaryWeather()).rejects.toThrow(NotFoundException);
 		});
@@ -199,7 +201,9 @@ describe('WeatherController', () => {
 		});
 
 		it('should throw HttpException with NOT_IMPLEMENTED when alerts not supported', async () => {
-			jest.spyOn(service, 'getAlerts').mockRejectedValue(new WeatherNotSupportedException('Alerts not supported by provider'));
+			jest
+				.spyOn(service, 'getAlerts')
+				.mockRejectedValue(new WeatherNotSupportedException('Alerts not supported by provider'));
 
 			await expect(controller.getAlerts(mockLocationId)).rejects.toThrow(HttpException);
 

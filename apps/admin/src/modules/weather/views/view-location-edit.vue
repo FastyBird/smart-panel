@@ -49,11 +49,11 @@
 				<component
 					:is="locationEditFormComponent"
 					v-if="hasPluginForm"
-					:location="location"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
 					v-model:remote-form-reset="remoteFormReset"
 					v-model:remote-form-changed="remoteFormChanged"
+					:location="location"
 				/>
 
 				<!-- Fallback for unknown providers -->

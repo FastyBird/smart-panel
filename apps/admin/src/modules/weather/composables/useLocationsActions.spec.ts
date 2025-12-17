@@ -1,5 +1,3 @@
-import { ref } from 'vue';
-
 import { createPinia, setActivePinia } from 'pinia';
 
 import { ElMessageBox } from 'element-plus';

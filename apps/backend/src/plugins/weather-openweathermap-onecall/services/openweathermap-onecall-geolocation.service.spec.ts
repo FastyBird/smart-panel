@@ -1,7 +1,4 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
-*/
-/*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
@@ -91,10 +88,10 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			const result = await service.getCoordinatesByCity('London');
 
 			expect(result).toHaveLength(1);
-			expect(result![0].name).toBe('London');
-			expect(result![0].lat).toBe(51.5074);
-			expect(result![0].lon).toBe(-0.1278);
-			expect(result![0].country).toBe('GB');
+			expect(result[0].name).toBe('London');
+			expect(result[0].lat).toBe(51.5074);
+			expect(result[0].lon).toBe(-0.1278);
+			expect(result[0].country).toBe('GB');
 		});
 
 		it('should return null when API key is missing', async () => {
@@ -148,10 +145,10 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			const result = await service.getCoordinatesByZip('10001,US');
 
 			expect(result).not.toBeNull();
-			expect(result!.name).toBe('New York');
-			expect(result!.lat).toBe(40.7128);
-			expect(result!.lon).toBe(-74.006);
-			expect(result!.country).toBe('US');
+			expect(result.name).toBe('New York');
+			expect(result.lat).toBe(40.7128);
+			expect(result.lon).toBe(-74.006);
+			expect(result.country).toBe('US');
 		});
 
 		it('should return null when API key is missing', async () => {
@@ -194,8 +191,8 @@ describe('OpenWeatherMapOneCallGeolocationService', () => {
 			const result = await service.getCityByCoordinates(51.5074, -0.1278);
 
 			expect(result).toHaveLength(1);
-			expect(result![0].name).toBe('London');
-			expect(result![0].country).toBe('GB');
+			expect(result[0].name).toBe('London');
+			expect(result[0].country).toBe('GB');
 		});
 
 		it('should return null when API key is missing', async () => {
