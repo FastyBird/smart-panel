@@ -140,7 +140,7 @@
 			prop="version"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="120"
+			:width="110"
 		>
 			<template #default="scope">
 				{{ scope.row.version }}

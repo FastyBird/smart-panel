@@ -1,7 +1,4 @@
 {
-  "headings": {
-    "aboutConnectionSettings": "Home Assistant Connection"
-  },
   "fields": {
     "devices": {
       "id": {
@@ -50,6 +47,26 @@
       }
     },
     "channelsProperties": {
+      "id": {
+        "title": "Internal identifier",
+        "placeholder": "Channel property id"
+      },
+      "channel": {
+        "validation": {
+          "required": "Please select channel property channel"
+        }
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel property category",
+        "validation": {
+          "required": "Please select channel property category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel property name"
+      },
       "dataType": {
         "validation": {
           "required": "Please select data type"
@@ -114,6 +131,7 @@
     }
   },
   "headings": {
+    "aboutConnectionSettings": "Home Assistant Connection",
     "device": {
       "deviceSelection": "Device Selection",
       "categorySelection": "Category Selection",

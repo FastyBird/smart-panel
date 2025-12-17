@@ -17,6 +17,7 @@
   },
   "breadcrumbs": {
     "pages": {
+      "configure": "page: {page}",
       "addTile": "add page tile",
       "editTile": "edit page tile",
       "addDataSource": "add page data source",
