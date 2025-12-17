@@ -89,7 +89,7 @@
 				>
 					<el-button
 						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="isLoading || remoteFormResult !== FormResult.NONE"
+						:disabled="isLoading || remoteFormResult !== FormResult.NONE || !remoteFormChanged"
 						type="primary"
 						@click="onSubmit"
 					>
@@ -276,6 +276,27 @@ onBeforeMount(async (): Promise<void> => {
 onMounted((): void => {
 	emit('update:remote-form-changed', remoteFormChanged.value);
 });
+
+watch(
+	(): FormResultType => remoteFormResult.value,
+	(val: FormResultType): void => {
+		if (val === FormResult.OK) {
+			if (isDetailRoute.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.DISPLAY, params: { id: props.id } });
+				} else {
+					router.push({ name: RouteNames.DISPLAY, params: { id: props.id } });
+				}
+			} else {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.DISPLAYS });
+				} else {
+					router.push({ name: RouteNames.DISPLAYS });
+				}
+			}
+		}
+	}
+);
 
 watch(
 	(): boolean => isLoading.value,

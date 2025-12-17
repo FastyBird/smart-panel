@@ -137,7 +137,7 @@
 				>
 					<el-button
 						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="isLoading || remoteFormResult !== FormResult.NONE"
+						:disabled="isLoading || remoteFormResult !== FormResult.NONE || !remoteFormChanged"
 						type="primary"
 						@click="onSave"
 					>

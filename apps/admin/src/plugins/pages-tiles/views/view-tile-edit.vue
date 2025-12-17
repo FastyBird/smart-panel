@@ -104,7 +104,7 @@
 
 				<el-button
 					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult !== FormResult.NONE"
+					:disabled="remoteFormResult !== FormResult.NONE || !remoteFormChanged"
 					type="primary"
 					class="order-2"
 					@click="onSubmit"

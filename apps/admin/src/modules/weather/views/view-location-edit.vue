@@ -132,7 +132,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElAlert, ElButton, ElEmpty, ElIcon, ElMessageBox, ElScrollbar, ElSkeleton } from 'element-plus';
 
@@ -155,6 +155,7 @@ const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
 
+const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
@@ -163,6 +164,13 @@ useMeta({
 });
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+const isDetailRoute = computed<boolean>(
+	(): boolean =>
+		route.matched.find((matched) => {
+			return matched.name === RouteNames.WEATHER_LOCATION;
+		}) !== undefined
+);
 
 const locationId = computed(() => props.id);
 const { location, isLoading } = useLocation({ id: locationId });
@@ -204,10 +212,18 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.WEATHER_LOCATIONS });
+			if (isDetailRoute.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+				} else {
+					router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+				}
 			} else {
-				router.push({ name: RouteNames.WEATHER_LOCATIONS });
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.WEATHER_LOCATIONS });
+				} else {
+					router.push({ name: RouteNames.WEATHER_LOCATIONS });
+				}
 			}
 		})
 		.catch((): void => {
@@ -220,10 +236,18 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isLGDevice.value) {
-		router.replace({ name: RouteNames.WEATHER_LOCATIONS });
+	if (isDetailRoute.value) {
+		if (isLGDevice.value) {
+			router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+		} else {
+			router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+		}
 	} else {
-		router.push({ name: RouteNames.WEATHER_LOCATIONS });
+		if (isLGDevice.value) {
+			router.replace({ name: RouteNames.WEATHER_LOCATIONS });
+		} else {
+			router.push({ name: RouteNames.WEATHER_LOCATIONS });
+		}
 	}
 };
 
@@ -235,10 +259,18 @@ watch(
 	(): FormResultType => remoteFormResult.value,
 	(val: FormResultType): void => {
 		if (val === FormResult.OK) {
-			if (isLGDevice.value) {
-				router.replace({ name: RouteNames.WEATHER_LOCATIONS });
+			if (isDetailRoute.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+				} else {
+					router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+				}
 			} else {
-				router.push({ name: RouteNames.WEATHER_LOCATIONS });
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.WEATHER_LOCATIONS });
+				} else {
+					router.push({ name: RouteNames.WEATHER_LOCATIONS });
+				}
 			}
 		}
 	}
