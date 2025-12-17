@@ -32,7 +32,7 @@ export default {
 		pluginsManager.addPlugin(weatherOpenweathermapOnecallPluginKey, {
 			type: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.weather-openweathermap-onecall',
-			name: 'OpenWeatherMap One Call 3.0',
+			name: 'OpenWeatherMap OneCall 3.0',
 			description: 'Weather data provider using OpenWeatherMap One Call API 3.0',
 			links: {
 				documentation: 'https://openweathermap.org/api/one-call-3',
