@@ -7,9 +7,9 @@ import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { DASHBOARD_MODULE_NAME, type ITilePluginsComponents, type ITilePluginsSchemas } from '../../modules/dashboard';
 
-import { WeatherTileEditForm } from './components/components';
+import { WeatherTileAddForm, WeatherTileEditForm } from './components/components';
 import enUS from './locales/en-US.json';
-import { WeatherTileEditFormSchema } from './schemas/tiles.schemas';
+import { WeatherTileAddFormSchema, WeatherTileEditFormSchema } from './schemas/tiles.schemas';
 import {
 	DayWeatherTileCreateReqSchema,
 	DayWeatherTileSchema,
@@ -20,7 +20,8 @@ import {
 } from './store/tiles.store.schemas';
 import { TILES_WEATHER_PLUGIN_DAY_TYPE, TILES_WEATHER_PLUGIN_FORECAST_TYPE, TILES_WEATHER_PLUGIN_NAME } from './tiles-weather.constants';
 
-// Cast the component to the expected type - the weather tile edit form handles both ITile and weather-specific tiles
+// Cast the components to the expected types - the weather tile forms handle both ITile and weather-specific tiles
+const weatherTileAddFormComponent = markRaw(WeatherTileAddForm) as unknown as ITilePluginsComponents['tileAddForm'];
 const weatherTileEditFormComponent = markRaw(WeatherTileEditForm) as unknown as ITilePluginsComponents['tileEditForm'];
 
 export const tilesWeatherPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> = Symbol('FB-Plugin-TilesWeather');
@@ -54,10 +55,12 @@ export default {
 					description:
 						"Displays daily weather information including temperature, conditions, and icons. Perfect for showing today's forecast in a compact tile.",
 					components: {
+						tileAddForm: weatherTileAddFormComponent,
 						tileEditForm: weatherTileEditFormComponent,
 					},
 					schemas: {
 						tileSchema: DayWeatherTileSchema,
+						tileAddFormSchema: WeatherTileAddFormSchema,
 						tileEditFormSchema: WeatherTileEditFormSchema,
 						tileCreateReqSchema: DayWeatherTileCreateReqSchema,
 						tileUpdateReqSchema: DayWeatherTileUpdateReqSchema,
@@ -68,10 +71,12 @@ export default {
 					name: 'Forecast Weather Tile',
 					description: 'Shows a multi-day weather forecast in a clear and informative tile layout. Ideal for planning ahead at a glance.',
 					components: {
+						tileAddForm: weatherTileAddFormComponent,
 						tileEditForm: weatherTileEditFormComponent,
 					},
 					schemas: {
 						tileSchema: ForecastWeatherTileSchema,
+						tileAddFormSchema: WeatherTileAddFormSchema,
 						tileEditFormSchema: WeatherTileEditFormSchema,
 						tileCreateReqSchema: ForecastWeatherTileCreateReqSchema,
 						tileUpdateReqSchema: ForecastWeatherTileUpdateReqSchema,
