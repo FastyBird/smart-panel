@@ -39,7 +39,9 @@
 		"author": "Author",
 		"type": "Type",
 		"status": "Status",
-		"configuration": "Configuration"
+		"configuration": "Configuration",
+		"description": "Description",
+		"links": "Links"
 	},
 	"fields": {
 		"search": {

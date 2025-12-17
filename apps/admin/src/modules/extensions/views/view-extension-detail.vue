@@ -43,7 +43,7 @@
 		:icon="extensionIcon"
 	/>
 
-	<div class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-auto">
+	<el-scrollbar class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2">
 		<el-skeleton
 			v-if="isLoading && !extension"
 			:rows="10"
@@ -159,7 +159,7 @@
 				class="mb-4"
 			>
 				<template #header>
-					<span class="font-semibold">Description</span>
+					<span class="font-semibold">{{ t('extensionsModule.labels.description') }}</span>
 				</template>
 				<p class="m-0 leading-relaxed">{{ extension.description }}</p>
 			</el-card>
@@ -169,7 +169,7 @@
 				shadow="never"
 			>
 				<template #header>
-					<span class="font-semibold">Links</span>
+					<span class="font-semibold">{{ t('extensionsModule.labels.links') }}</span>
 				</template>
 				<div class="flex flex-wrap gap-4">
 					<el-button
@@ -206,7 +206,7 @@
 				</div>
 			</el-card>
 		</template>
-	</div>
+	</el-scrollbar>
 </template>
 
 <script setup lang="ts">
@@ -215,7 +215,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElIcon, ElResult, ElSkeleton, ElSwitch, ElTag } from 'element-plus';
+import { ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElIcon, ElResult, ElScrollbar, ElSkeleton, ElSwitch, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
