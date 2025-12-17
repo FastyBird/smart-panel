@@ -32,7 +32,8 @@ export const useLocations = (): IUseWeatherLocations => {
 			return false;
 		}
 
-		return semaphore.value.fetching.items;
+		// First load not complete yet, show loading state
+		return true;
 	});
 
 	const loaded = computed<boolean>((): boolean => {
