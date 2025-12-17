@@ -3,7 +3,6 @@
  */
 import { WeatherLocationEntity } from './entities/locations.entity';
 import { LocationAlertsResponseModel, WeatherAlertModel } from './models/alert.model';
-import { GeolocationCityModel, GeolocationZipModel } from './models/geolocation.model';
 import {
 	WeatherHistoryPointModel,
 	WeatherHistoryResponseModel,
@@ -11,12 +10,8 @@ import {
 	WeatherStatisticsResponseModel,
 } from './models/history.model';
 import { LocationResponseModel, LocationsResponseModel } from './models/locations-response.model';
-import { ProvidersResponseModel, WeatherProviderModel } from './models/provider.model';
 import {
 	AllLocationsWeatherResponseModel,
-	GeolocationCityToCoordinatesResponseModel,
-	GeolocationCoordinatesToCityResponseModel,
-	GeolocationZipToCoordinatesResponseModel,
 	LocationCurrentResponseModel,
 	LocationForecastResponseModel,
 	LocationWeatherResponseModel,
@@ -41,12 +36,8 @@ export const WEATHER_SWAGGER_EXTRA_MODELS = [
 	LocationAlertsResponseModel,
 	WeatherHistoryResponseModel,
 	WeatherStatisticsResponseModel,
-	GeolocationCityToCoordinatesResponseModel,
-	GeolocationCoordinatesToCityResponseModel,
-	GeolocationZipToCoordinatesResponseModel,
 	LocationResponseModel,
 	LocationsResponseModel,
-	ProvidersResponseModel,
 	// Data models
 	WindModel,
 	WeatherModel,
@@ -59,8 +50,5 @@ export const WEATHER_SWAGGER_EXTRA_MODELS = [
 	WeatherAlertModel,
 	WeatherHistoryPointModel,
 	WeatherStatisticsModel,
-	GeolocationCityModel,
-	GeolocationZipModel,
-	WeatherProviderModel,
 	WeatherLocationEntity,
 ];

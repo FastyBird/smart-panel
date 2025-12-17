@@ -6,22 +6,24 @@ import { ItemIdSchema } from '../../devices/store/types';
 // STORE STATE
 // ===========
 
-export const WeatherLocationSchema = z.object({
-	id: ItemIdSchema,
-	draft: z.boolean().default(false),
-	type: z.string().trim().nonempty(),
-	name: z.string().trim().nonempty(),
-	order: z.number().int().nonnegative().default(0),
-	createdAt: z
-		.union([z.string().datetime({ offset: true }), z.date()])
-		.transform((date) => (date instanceof Date ? date : new Date(date))),
-	updatedAt: z
-		.union([z.string().datetime({ offset: true }), z.date()])
-		.transform((date) => (date instanceof Date ? date : new Date(date)))
-		.optional()
-		.nullable()
-		.default(null),
-});
+export const WeatherLocationSchema = z
+	.object({
+		id: ItemIdSchema,
+		draft: z.boolean().default(false),
+		type: z.string().trim().nonempty(),
+		name: z.string().trim().nonempty(),
+		order: z.number().int().nonnegative().default(0),
+		createdAt: z
+			.union([z.string().datetime({ offset: true }), z.date()])
+			.transform((date) => (date instanceof Date ? date : new Date(date))),
+		updatedAt: z
+			.union([z.string().datetime({ offset: true }), z.date()])
+			.transform((date) => (date instanceof Date ? date : new Date(date)))
+			.optional()
+			.nullable()
+			.default(null),
+	})
+	.passthrough();
 
 export const WeatherLocationsStateSemaphoreSchema = z.object({
 	fetching: z.object({
@@ -92,25 +94,31 @@ export const WeatherLocationsRemoveActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const WeatherLocationCreateReqSchema = z.object({
-	id: z.string().uuid().optional(),
-	type: z.string().trim().nonempty(),
-	name: z.string().trim().nonempty(),
-});
+export const WeatherLocationCreateReqSchema = z
+	.object({
+		id: z.string().uuid().optional(),
+		type: z.string().trim().nonempty(),
+		name: z.string().trim().nonempty(),
+	})
+	.passthrough();
 
-export const WeatherLocationUpdateReqSchema = z.object({
-	type: z.string().trim().nonempty(),
-	name: z.string().trim().nonempty().optional(),
-});
+export const WeatherLocationUpdateReqSchema = z
+	.object({
+		type: z.string().trim().nonempty(),
+		name: z.string().trim().nonempty().optional(),
+	})
+	.passthrough();
 
-export const WeatherLocationResSchema = z.object({
-	id: z.string().uuid(),
-	type: z.string(),
-	name: z.string().trim().nonempty(),
-	order: z.number().int().nonnegative().default(0),
-	created_at: z.string(),
-	updated_at: z.string().nullable(),
-});
+export const WeatherLocationResSchema = z
+	.object({
+		id: z.string().uuid(),
+		type: z.string(),
+		name: z.string().trim().nonempty(),
+		order: z.number().int().nonnegative().default(0),
+		created_at: z.string(),
+		updated_at: z.string().nullable(),
+	})
+	.passthrough();
 
 // FORMS
 // =====
@@ -124,3 +132,10 @@ export const WeatherLocationAddFormSchema = z.object({
 export const WeatherLocationEditFormSchema = z.object({
 	name: z.string().trim().min(1, 'Name is required'),
 });
+
+// PLUGIN ALIASES
+// ==============
+
+export const LocationSchema = WeatherLocationSchema;
+export const LocationCreateReqSchema = WeatherLocationCreateReqSchema;
+export const LocationUpdateReqSchema = WeatherLocationUpdateReqSchema;

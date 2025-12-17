@@ -1,150 +1,366 @@
 <template>
-	<div class="flex flex-col h-full p-4">
-		<div class="flex justify-between items-center mb-4">
-			<h2 class="text-xl font-semibold">{{ t('weatherModule.headings.locations.list') }}</h2>
-			<el-button
-				type="primary"
-				@click="showAddDialog = true"
-			>
-				<template #icon>
-					<icon icon="mdi:plus" />
-				</template>
-				{{ t('weatherModule.buttons.addLocation.title') }}
-			</el-button>
-		</div>
+	<app-breadcrumbs :items="breadcrumbs" />
 
-		<list-locations
-			:items="locations"
-			:loading="areLoading"
-			@edit="onEdit"
-			@remove="onRemove"
-		/>
+	<app-bar-heading
+		v-if="!isMDDevice && isLocationsListRoute"
+		teleport
+	>
+		<template #icon>
+			<icon
+				icon="mdi:map-marker-multiple"
+				class="w[20px] h[20px]"
+			/>
+		</template>
 
-		<!-- Add Location Dialog -->
-		<el-dialog
-			v-model="showAddDialog"
-			:title="t('weatherModule.headings.locations.add')"
-			width="500px"
-			:close-on-click-modal="!addFormChanged"
-			@close="onAddDialogClose"
-		>
-			<div class="mb-4">
-				<el-form-item :label="t('weatherModule.fields.locations.type.title')">
-					<el-select
-						v-model="selectedType"
-						:placeholder="t('weatherModule.fields.locations.type.placeholder')"
-						class="w-full"
-					>
-						<el-option
-							v-for="type in availableTypes"
-							:key="type"
-							:label="type"
-							:value="type"
-						/>
-					</el-select>
-				</el-form-item>
+		<template #title>
+			{{ t('weatherModule.headings.locations') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('weatherModule.subHeadings.locations') }}
+		</template>
+	</app-bar-heading>
+
+	<app-bar-button
+		v-if="!isMDDevice && isLocationsListRoute"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="router.push('/')"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+
+		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
+	</app-bar-button>
+
+	<app-bar-button
+		v-if="!isMDDevice && isLocationsListRoute"
+		:align="AppBarButtonAlign.RIGHT"
+		teleport
+		small
+		@click="onLocationCreate"
+	>
+		<span class="uppercase">{{ t('weatherModule.buttons.add.title') }}</span>
+	</app-bar-button>
+
+	<view-header
+		:heading="t('weatherModule.headings.locations')"
+		:sub-heading="t('weatherModule.subHeadings.locations')"
+		:icon="'mdi:map-marker-multiple'"
+	>
+		<template #extra>
+			<div class="flex items-center">
+				<el-button
+					type="primary"
+					plain
+					class="px-4! ml-2!"
+					@click="onLocationCreate"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+
+					{{ t('weatherModule.buttons.add.title') }}
+				</el-button>
 			</div>
+		</template>
+	</view-header>
 
-			<location-add-form
-				v-if="selectedType"
-				:id="newLocationId"
-				:type="selectedType"
-				v-model:remote-form-changed="addFormChanged"
-				@cancel="showAddDialog = false"
-				@added="onLocationAdded"
-			/>
-		</el-dialog>
-
-		<!-- Edit Location Dialog -->
-		<el-dialog
-			v-model="showEditDialog"
-			:title="t('weatherModule.headings.locations.edit')"
-			width="500px"
-			:close-on-click-modal="!editFormChanged"
-			@close="onEditDialogClose"
-		>
-			<location-edit-form
-				v-if="editingLocationId"
-				:id="editingLocationId"
-				v-model:remote-form-changed="editFormChanged"
-				@cancel="showEditDialog = false"
-				@updated="onLocationUpdated"
-			/>
-		</el-dialog>
+	<div
+		v-if="isLocationsListRoute || isLGDevice"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden"
+	>
+		<list-locations
+			v-model:filters="filters"
+			v-model:sort-by="sortBy"
+			v-model:sort-dir="sortDir"
+			v-model:paginate-size="paginateSize"
+			v-model:paginate-page="paginatePage"
+			:items="locationsPaginated"
+			:all-items="locations"
+			:total-rows="totalRows"
+			:loading="areLoading"
+			:filters-active="filtersActive"
+			:primary-location-id="primaryLocationId"
+			:weather-by-location="weatherByLocation"
+			:weather-fetch-completed="weatherFetchCompleted"
+			temperature-unit="celsius"
+			@detail="onLocationDetail"
+			@edit="onLocationEdit"
+			@remove="onLocationRemove"
+			@adjust-list="onAdjustList"
+			@reset-filters="onResetFilters"
+		/>
 	</div>
+
+	<router-view
+		v-else
+		:key="props.id"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
+
+	<el-drawer
+		v-if="isLGDevice"
+		v-model="showDrawer"
+		:show-close="false"
+		:size="adjustList ? '300px' : '40%'"
+		:with-header="false"
+		:before-close="onCloseDrawer"
+	>
+		<div class="flex flex-col h-full">
+			<app-bar menu-button-hidden>
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="() => onCloseDrawer()"
+					>
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+
+			<template v-if="showDrawer">
+				<list-locations-adjust
+					v-if="adjustList"
+					v-model:filters="filters"
+					:filters-active="filtersActive"
+					@reset-filters="onResetFilters"
+				/>
+
+				<view-error v-else>
+					<template #icon>
+						<icon icon="mdi:map-marker" />
+					</template>
+					<template #message>
+						{{ t('weatherModule.messages.requestError') }}
+					</template>
+
+					<suspense>
+						<router-view
+							:key="props.id"
+							v-slot="{ Component }"
+						>
+							<component
+								:is="Component"
+								v-model:remote-form-changed="remoteFormChanged"
+							/>
+						</router-view>
+					</suspense>
+				</view-error>
+			</template>
+		</div>
+	</el-drawer>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { v4 as uuid } from 'uuid';
+import { useMeta } from 'vue-meta';
+import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
+
+import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import ListLocations from '../components/list-locations.vue';
-import LocationAddForm from '../components/location-add-form.vue';
-import LocationEditForm from '../components/location-edit-form.vue';
-import { useLocations } from '../composables/useLocations';
+import ListLocationsAdjust from '../components/list-locations-adjust.vue';
 import { useLocationsActions } from '../composables/useLocationsActions';
+import { useLocationsDataSource } from '../composables/useLocationsDataSource';
+import { useLocationsWeather } from '../composables/useLocationsWeather';
 import type { IWeatherLocation } from '../store/locations.store.types';
+import { RouteNames } from '../weather.constants';
+import { WeatherException } from '../weather.exceptions';
+
+import type { IViewLocationsProps } from './view-locations.types';
 
 defineOptions({
 	name: 'ViewLocations',
 });
 
+const props = defineProps<IViewLocationsProps>();
+
+const route = useRoute();
+const router = useRouter();
 const { t } = useI18n();
 
-const { locations, areLoading, fetchLocations } = useLocations();
-const { remove } = useLocationsActions();
-
-// Available location types - in a real implementation this would come from plugins
-const availableTypes = ref<string[]>(['weather-openweathermap']);
-
-// Add dialog state
-const showAddDialog = ref(false);
-const selectedType = ref<string>('');
-const newLocationId = ref<string>(uuid());
-const addFormChanged = ref(false);
-
-// Edit dialog state
-const showEditDialog = ref(false);
-const editingLocationId = ref<IWeatherLocation['id'] | null>(null);
-const editFormChanged = ref(false);
-
-const onEdit = (id: IWeatherLocation['id']): void => {
-	editingLocationId.value = id;
-	showEditDialog.value = true;
-};
-
-const onRemove = async (id: IWeatherLocation['id']): Promise<void> => {
-	await remove(id);
-};
-
-const onLocationAdded = (): void => {
-	showAddDialog.value = false;
-	selectedType.value = '';
-	newLocationId.value = uuid();
-	addFormChanged.value = false;
-};
-
-const onLocationUpdated = (): void => {
-	showEditDialog.value = false;
-	editingLocationId.value = null;
-	editFormChanged.value = false;
-};
-
-const onAddDialogClose = (): void => {
-	selectedType.value = '';
-	newLocationId.value = uuid();
-	addFormChanged.value = false;
-};
-
-const onEditDialogClose = (): void => {
-	editingLocationId.value = null;
-	editFormChanged.value = false;
-};
-
-onMounted(async () => {
-	await fetchLocations();
+useMeta({
+	title: t('weatherModule.meta.locations.list.title'),
 });
+
+const { isMDDevice, isLGDevice } = useBreakpoints();
+
+const {
+	fetchLocations,
+	locations,
+	locationsPaginated,
+	totalRows,
+	filters,
+	filtersActive,
+	sortBy,
+	sortDir,
+	paginateSize,
+	paginatePage,
+	areLoading,
+	resetFilter,
+	primaryLocationId,
+} = useLocationsDataSource();
+const locationActions = useLocationsActions();
+const { weatherByLocation, fetchCompleted: weatherFetchCompleted, fetchLocationsWeather } = useLocationsWeather();
+
+const mounted = ref<boolean>(false);
+
+const showDrawer = ref<boolean>(false);
+const adjustList = ref<boolean>(false);
+
+const remoteFormChanged = ref<boolean>(false);
+
+const isLocationsListRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.WEATHER_LOCATIONS;
+});
+
+const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
+	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
+		return [
+			{
+				label: t('weatherModule.breadcrumbs.locations'),
+				route: router.resolve({ name: RouteNames.WEATHER_LOCATIONS }),
+			},
+		];
+	}
+);
+
+const onCloseDrawer = (done?: () => void): void => {
+	if (adjustList.value) {
+		showDrawer.value = false;
+		adjustList.value = false;
+
+		done?.();
+	} else {
+		if (remoteFormChanged.value) {
+			ElMessageBox.confirm(t('weatherModule.messages.confirmDiscard'), t('weatherModule.headings.discard'), {
+				confirmButtonText: t('weatherModule.buttons.yes.title'),
+				cancelButtonText: t('weatherModule.buttons.no.title'),
+				type: 'warning',
+			})
+				.then((): void => {
+					if (isLGDevice.value) {
+						router.replace({
+							name: RouteNames.WEATHER_LOCATIONS,
+						});
+					} else {
+						router.push({
+							name: RouteNames.WEATHER_LOCATIONS,
+						});
+					}
+
+					done?.();
+				})
+				.catch((): void => {
+					// Just ignore it
+				});
+		} else {
+			if (isLGDevice.value) {
+				router.replace({
+					name: RouteNames.WEATHER_LOCATIONS,
+				});
+			} else {
+				router.push({
+					name: RouteNames.WEATHER_LOCATIONS,
+				});
+			}
+
+			done?.();
+		}
+	}
+};
+
+const onLocationDetail = (id: IWeatherLocation['id']): void => {
+	router.push({
+		name: RouteNames.WEATHER_LOCATION,
+		params: {
+			id,
+		},
+	});
+};
+
+const onLocationEdit = (id: IWeatherLocation['id']): void => {
+	if (isLGDevice.value) {
+		router.replace({
+			name: RouteNames.WEATHER_LOCATION_EDIT,
+			params: {
+				id,
+			},
+		});
+	} else {
+		router.push({
+			name: RouteNames.WEATHER_LOCATION_EDIT,
+			params: {
+				id,
+			},
+		});
+	}
+};
+
+const onLocationCreate = (): void => {
+	if (isLGDevice.value) {
+		router.replace({
+			name: RouteNames.WEATHER_LOCATION_ADD,
+		});
+	} else {
+		router.push({
+			name: RouteNames.WEATHER_LOCATION_ADD,
+		});
+	}
+};
+
+const onLocationRemove = (id: IWeatherLocation['id']): void => {
+	locationActions.remove(id);
+};
+
+const onResetFilters = (): void => {
+	resetFilter();
+};
+
+const onAdjustList = (): void => {
+	showDrawer.value = true;
+	adjustList.value = true;
+};
+
+onBeforeMount((): void => {
+	fetchLocations().catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new WeatherException('Something went wrong', err);
+	});
+
+	fetchLocationsWeather().catch((error: unknown): void => {
+		// Silently fail - weather data is optional for the list
+		console.warn('[WEATHER] Failed to fetch locations weather:', error);
+	});
+
+	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !== undefined;
+});
+
+onMounted((): void => {
+	mounted.value = true;
+});
+
+watch(
+	(): string => route.path,
+	(): void => {
+		showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.WEATHER_LOCATION_ADD || matched.name === RouteNames.WEATHER_LOCATION_EDIT) !== undefined;
+	}
+);
 </script>

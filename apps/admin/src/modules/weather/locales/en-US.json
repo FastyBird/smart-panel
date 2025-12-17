@@ -1,25 +1,34 @@
 {
 	"headings": {
 		"weather": "Weather",
-		"aboutLocationSettings": "Location Settings",
-		"aboutPrimaryLocation": "Primary Location",
-		"locations": {
-			"list": "Weather Locations",
-			"add": "Add Location",
-			"edit": "Edit Location",
-			"deleteLocation": "Delete Location"
-		}
+		"aboutPrimaryLocation": "Primary location",
+		"locations": "Weather locations",
+		"locationDetail": "{location}",
+		"forecast": "Forecast",
+		"addLocation": "Add location",
+		"editLocation": "Edit location",
+		"deleteLocation": "Delete location",
+		"discard": "Discard changes",
+		"selectProvider": "Select weather provider",
+		"unsupportedProvider": "Unsupported provider",
+		"adjustFilters": "Adjust filters"
 	},
 	"subHeadings": {
-		"weather": "Manage weather locations and settings"
+		"locations": "Manage weather data locations",
+		"locationDetail": "Weather information for {location}",
+		"addLocation": "Add a new weather location",
+		"editLocation": "Edit location details",
+		"adjustFilters": "Customize location list filters"
 	},
 	"breadcrumbs": {
-		"weather": "Weather",
-		"locations": "Locations",
-		"addLocation": "Add Location",
-		"editLocation": "Edit Location"
+		"locations": "locations",
+		"locationDetail": "detail",
+		"addLocation": "add location",
+		"editLocation": "edit location"
 	},
 	"messages": {
+		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+		"requestError": "An error occurred while loading data",
 		"config": {
 			"edited": "Weather configuration has been successfully updated",
 			"notEdited": "Failed to update weather configuration"
@@ -31,14 +40,15 @@
 			"notUpdated": "Failed to update location \"{location}\"",
 			"deleted": "Location has been deleted",
 			"notDeleted": "Failed to delete location",
+			"deleteCanceled": "Location \"{location}\" deletion was canceled",
 			"noLocations": "No locations configured. Add a location to get weather data.",
 			"notFound": "Location not found",
 			"confirmDeleteLocation": "Are you sure you want to delete location \"{name}\"?"
 		}
 	},
 	"buttons": {
-		"addLocation": {
-			"title": "Add Location"
+		"add": {
+			"title": "Add"
 		},
 		"save": {
 			"title": "Save"
@@ -46,63 +56,46 @@
 		"cancel": {
 			"title": "Cancel"
 		},
-		"yes": "Yes",
-		"no": "No"
+		"discard": {
+			"title": "Discard"
+		},
+		"resetFilters": {
+			"title": "Reset Filters"
+		},
+		"yes": {
+			"title": "Yes"
+		},
+		"no": {
+			"title": "No"
+		},
+		"reset": {
+			"title": "Reset Filters"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"retry": {
+			"title": "Retry"
+		},
+		"back": {
+			"title": "Back"
+		}
 	},
 	"fields": {
 		"locations": {
+			"search": {
+				"placeholder": "Search locations..."
+			},
+			"provider": {
+				"title": "Weather Provider",
+				"placeholder": "Select a weather provider"
+			},
 			"name": {
 				"title": "Location Name",
-				"description": "A friendly name for this location",
 				"placeholder": "e.g., Home, Office, Beach House",
 				"validation": {
 					"required": "Location name is required"
 				}
-			},
-			"type": {
-				"title": "Provider Type",
-				"placeholder": "Select weather provider"
-			},
-			"citySearch": {
-				"title": "Search City",
-				"placeholder": "Start typing to search for a city...",
-				"description": "Search for a city and we'll auto-fill the coordinates"
-			},
-			"locationType": {
-				"title": "Location Type",
-				"placeholder": "Select how to identify the location",
-				"values": {
-					"latLon": "Latitude/Longitude",
-					"cityName": "City Name"
-				},
-				"validation": {
-					"required": "Location type is required"
-				}
-			},
-			"latitude": {
-				"title": "Latitude",
-				"placeholder": "e.g., 51.5074",
-				"validation": {
-					"required": "Latitude is required"
-				}
-			},
-			"longitude": {
-				"title": "Longitude",
-				"placeholder": "e.g., -0.1278",
-				"validation": {
-					"required": "Longitude is required"
-				}
-			},
-			"cityName": {
-				"title": "City Name",
-				"placeholder": "e.g., London",
-				"validation": {
-					"required": "City name is required"
-				}
-			},
-			"countryCode": {
-				"title": "Country Code",
-				"placeholder": "e.g., GB"
 			}
 		},
 		"config": {
@@ -110,86 +103,82 @@
 				"title": "Primary Location",
 				"description": "The default location shown in weather displays",
 				"placeholder": "Select primary location"
-			},
-			"locationType": {
-				"title": "Location Type",
-				"description": "Type of location data to use for weather",
-				"placeholder": "Select location type",
-				"values": {
-					"latLon": "Latitude/Longitude",
-					"cityName": "City Name",
-					"cityId": "City ID",
-					"zipCode": "ZIP Code"
-				},
-				"validation": {
-					"required": "Location type is required"
-				}
-			},
-			"latitude": {
-				"title": "Latitude",
-				"description": "Latitude coordinate (-90 to 90)",
-				"placeholder": "50.0755",
-				"validation": {
-					"required": "Latitude is required when using latitude/longitude",
-					"range": "Latitude must be between -90 and 90"
-				}
-			},
-			"longitude": {
-				"title": "Longitude",
-				"description": "Longitude coordinate (-180 to 180)",
-				"placeholder": "14.4378",
-				"validation": {
-					"required": "Longitude is required when using latitude/longitude",
-					"range": "Longitude must be between -180 and 180"
-				}
-			},
-			"cityName": {
-				"title": "City Name",
-				"description": "City name with optional country code (e.g., Prague,CZ)",
-				"placeholder": "Prague,CZ",
-				"validation": {
-					"required": "City name is required when using city name"
-				}
-			},
-			"cityId": {
-				"title": "City ID",
-				"description": "OpenWeatherMap city ID",
-				"placeholder": "3067696",
-				"validation": {
-					"required": "City ID is required when using city ID"
-				}
-			},
-			"zipCode": {
-				"title": "ZIP Code",
-				"description": "ZIP code with optional country code (e.g., 10001,US)",
-				"placeholder": "10001,US",
-				"validation": {
-					"required": "ZIP code is required when using ZIP code"
-				}
-			},
-			"unit": {
-				"title": "Temperature Unit",
-				"description": "Temperature unit preference",
-				"placeholder": "Select temperature unit",
-				"values": {
-					"celsius": "Celsius",
-					"fahrenheit": "Fahrenheit"
-				},
-				"validation": {
-					"required": "Temperature unit is required"
-				}
-			},
-			"openWeatherApiKey": {
-				"title": "OpenWeatherMap API Key",
-				"description": "API key for OpenWeatherMap service",
-				"placeholder": "Enter your OpenWeatherMap API key"
 			}
 		}
 	},
 	"texts": {
-		"aboutLocationSettings": "Configure how to identify your location for weather data. Choose from coordinates, city name, OpenWeather city ID, or ZIP code. You can click on the map or use 'My Location' to auto-detect coordinates.",
 		"aboutPrimaryLocation": "Select the primary location to display in weather widgets. Locations can be managed in the Locations section. Weather data will be fetched for all configured locations.",
-		"orEnterManually": "Or enter location manually"
+		"selectProvider": "Choose a weather data provider to add a new location. Different providers may offer different configuration options.",
+		"unsupportedProvider": "The selected provider \"{provider}\" is not currently supported. Please select a different provider.",
+		"weatherError": "Unable to Load Weather",
+		"weatherErrorDescription": "Weather data could not be loaded for this location. Please check your API configuration and try again.",
+		"locationDetail": {
+			"provider": "Provider",
+			"temperature": "Temperature",
+			"feelsLike": "Feels Like",
+			"conditions": "Conditions",
+			"humidity": "Humidity",
+			"wind": "Wind",
+			"pressure": "Pressure"
+		},
+		"misc": {
+			"loadingLocations": "Loading locations...",
+			"noLocations": "No locations configured yet",
+			"noFilteredLocations": "No locations match your filter criteria"
+		}
+	},
+	"filters": {
+		"locations": {
+			"types": {
+				"title": "Weather Provider"
+			},
+			"primary": {
+				"title": "Primary Status",
+				"values": {
+					"all": "All",
+					"primary": "Primary",
+					"secondary": "Secondary"
+				}
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Name"
+			},
+			"weather": {
+				"title": "Weather",
+				"failed": "Failed",
+				"error": "Failed to load weather data. Please check your API configuration."
+			},
+			"type": {
+				"title": "Provider"
+			},
+			"primary": {
+				"title": "Primary",
+				"values": {
+					"yes": "Yes",
+					"no": "No"
+				}
+			}
+		}
+	},
+	"meta": {
+		"locations": {
+			"list": {
+				"title": "Weather Locations"
+			},
+			"detail": {
+				"title": "Weather Location Detail"
+			},
+			"add": {
+				"title": "Add Weather Location"
+			},
+			"edit": {
+				"title": "Edit Weather Location"
+			}
+		}
 	},
 	"conditions": {
 		"thunderstormWithLightRain": "Thunderstorm with light rain",

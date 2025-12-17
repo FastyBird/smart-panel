@@ -204,7 +204,7 @@ export class WeatherController {
 		tags: [WEATHER_MODULE_API_TAG_NAME],
 		summary: 'Get weather alerts for specific location',
 		description:
-			'Retrieve active weather alerts/warnings for a specific location. Note: Requires a weather provider that supports alerts (e.g., OpenWeatherMap One Call API 3.0).',
+			'Retrieve active weather alerts/warnings for a specific location. Note: Not all weather providers support alerts.',
 		operationId: 'get-weather-module-location-alerts',
 	})
 	@ApiParam({

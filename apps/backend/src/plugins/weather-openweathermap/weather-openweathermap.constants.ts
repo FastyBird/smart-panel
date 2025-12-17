@@ -1,10 +1,10 @@
 export const WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX = 'weather-openweathermap';
 
-export const WEATHER_OPENWEATHERMAP_PLUGIN_NAME = 'weather-openweathermap';
+export const WEATHER_OPENWEATHERMAP_PLUGIN_NAME = 'weather-openweathermap-plugin';
 
 export const WEATHER_OPENWEATHERMAP_PLUGIN_TYPE = 'weather-openweathermap';
 
-export const WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_NAME = 'Weather OpenWeatherMap plugin';
+export const WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_NAME = 'OpenWeatherMap';
 
 export const WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_DESCRIPTION =
 	'Weather provider plugin using OpenWeatherMap API for weather data.';

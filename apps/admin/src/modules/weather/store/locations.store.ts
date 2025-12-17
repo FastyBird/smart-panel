@@ -5,6 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { useBackend, useLogger } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
 import { WEATHER_MODULE_PREFIX } from '../weather.constants';
 import { WeatherApiException, WeatherValidationException } from '../weather.exceptions';
 
@@ -143,7 +144,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				}
 
 				try {
-					const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
+					const response = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
 						params: {
 							path: { id: payload.id },
 						},
@@ -199,7 +200,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 				firstLoad.value = false;
 
 				try {
-					const response = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/locations` as never);
+					const response = await backend.client.GET(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations` as never);
 
 					const responseData = (response as { data?: { data: IWeatherLocationRes[] } }).data;
 
@@ -285,8 +286,8 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					...omitBy(parsedPayload.data, isUndefined),
 				});
 
-				const response = await backend.client.POST(`/${WEATHER_MODULE_PREFIX}/locations` as never, {
-					body: createReq,
+				const response = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations` as never, {
+					body: { data: createReq },
 				} as never);
 
 				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
@@ -354,11 +355,11 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					...omitBy(parsedPayload.data, isUndefined),
 				});
 
-				const response = await backend.client.PATCH(`/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
+				const response = await backend.client.PATCH(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
 					params: {
 						path: { id: parsedPayload.id },
 					},
-					body: updateReq,
+					body: { data: updateReq },
 				} as never);
 
 				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
@@ -407,8 +408,8 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 					name: existing.name,
 				});
 
-				const response = await backend.client.POST(`/${WEATHER_MODULE_PREFIX}/locations` as never, {
-					body: createReq,
+				const response = await backend.client.POST(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations` as never, {
+					body: { data: createReq },
 				} as never);
 
 				const responseData = (response as { data?: { data: IWeatherLocationRes } }).data;
@@ -457,7 +458,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 			}
 
 			try {
-				const response = await backend.client.DELETE(`/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
+				const response = await backend.client.DELETE(`/${MODULES_PREFIX}/${WEATHER_MODULE_PREFIX}/locations/{id}` as never, {
 					params: {
 						path: { id: payload.id },
 					},

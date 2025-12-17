@@ -32,7 +32,6 @@ import {
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { CreateLocationDto, ReqCreateLocationDto } from '../dto/create-location.dto';
-import { ReqReorderLocationsDto } from '../dto/reorder-locations.dto';
 import { ReqUpdateLocationDto, UpdateLocationDto } from '../dto/update-location.dto';
 import { WeatherLocationEntity } from '../entities/locations.entity';
 import { LocationResponseModel, LocationsResponseModel } from '../models/locations-response.model';
@@ -120,7 +119,7 @@ export class LocationsController {
 	@ApiCreatedSuccessResponse(
 		LocationResponseModel,
 		'The location was successfully created. The response includes the complete details of the newly created location, such as its unique identifier, name, and timestamps.',
-		'/api/v1/weather-module/locations/123e4567-e89b-12d3-a456-426614174000',
+		'/api/v1/modules/weather/locations/123e4567-e89b-12d3-a456-426614174000',
 	)
 	@ApiBadRequestResponse('Invalid request data or unsupported location type')
 	@ApiUnprocessableEntityResponse('Location could not be created')
@@ -281,44 +280,6 @@ export class LocationsController {
 		} catch (error) {
 			if (error instanceof WeatherException) {
 				throw new UnprocessableEntityException('Location could not be updated. Please try again later');
-			}
-
-			throw error;
-		}
-	}
-
-	@ApiOperation({
-		tags: [WEATHER_MODULE_API_TAG_NAME],
-		summary: 'Reorder weather locations',
-		description:
-			'Updates the display order of multiple weather locations in a single request. Locations will be sorted by their order value (ascending) when retrieved.',
-		operationId: 'reorder-weather-module-locations',
-	})
-	@ApiBody({ type: ReqReorderLocationsDto, description: 'Array of location IDs with their new order values' })
-	@ApiSuccessResponse(
-		LocationsResponseModel,
-		'Locations were successfully reordered. Returns the complete list of locations in their new order.',
-	)
-	@ApiBadRequestResponse('Invalid request data')
-	@ApiUnprocessableEntityResponse('Locations could not be reordered')
-	@ApiInternalServerErrorResponse('Internal server error')
-	@Patch('reorder')
-	async reorder(@Body() reorderDto: ReqReorderLocationsDto): Promise<LocationsResponseModel> {
-		this.logger.debug(`[REORDER] Incoming request to reorder ${reorderDto.data.length} locations`);
-
-		try {
-			const locations = await this.locationsService.reorder(reorderDto.data);
-
-			this.logger.debug(`[REORDER] Successfully reordered locations`);
-
-			const response = new LocationsResponseModel();
-
-			response.data = locations;
-
-			return response;
-		} catch (error) {
-			if (error instanceof WeatherException) {
-				throw new UnprocessableEntityException('Locations could not be reordered. Please try again later');
 			}
 
 			throw error;

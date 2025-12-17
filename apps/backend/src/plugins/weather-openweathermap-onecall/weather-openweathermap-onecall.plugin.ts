@@ -14,12 +14,14 @@ import { LocationsTypeMapperService } from '../../modules/weather/services/locat
 import { WeatherProviderRegistryService } from '../../modules/weather/services/weather-provider-registry.service';
 import { WeatherModule } from '../../modules/weather/weather.module';
 
+import { OpenWeatherMapOneCallGeolocationController } from './controllers/geolocation.controller';
 import { CreateOpenWeatherMapOneCallLocationDto } from './dto/create-location.dto';
 import { UpdateOpenWeatherMapOneCallConfigDto } from './dto/update-config.dto';
 import { UpdateOpenWeatherMapOneCallLocationDto } from './dto/update-location.dto';
 import { OpenWeatherMapOneCallLocationEntity } from './entities/locations-openweathermap-onecall.entity';
 import { OpenWeatherMapOneCallConfigModel } from './models/config.model';
 import { OpenWeatherMapOneCallProvider } from './platforms/openweathermap-onecall.provider';
+import { OpenWeatherMapOneCallGeolocationService } from './services/openweathermap-onecall-geolocation.service';
 import { OpenWeatherMapOneCallHttpService } from './services/openweathermap-onecall-http.service';
 import {
 	WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_API_TAG_DESCRIPTION,
@@ -41,8 +43,9 @@ import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_SWAGGER_EXTRA_MODELS } from './we
 		ConfigModule,
 		SwaggerModule,
 	],
-	providers: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallProvider],
-	exports: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallProvider],
+	controllers: [OpenWeatherMapOneCallGeolocationController],
+	providers: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallGeolocationService, OpenWeatherMapOneCallProvider],
+	exports: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallGeolocationService, OpenWeatherMapOneCallProvider],
 })
 export class WeatherOpenweathermapOnecallPlugin implements OnModuleInit {
 	constructor(

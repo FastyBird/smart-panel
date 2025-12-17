@@ -11,8 +11,10 @@ export enum EventType {
 export enum RouteNames {
 	WEATHER = 'weather_module-module',
 	WEATHER_LOCATIONS = 'weather_module-locations',
+	WEATHER_LOCATION = 'weather_module-location',
 	WEATHER_LOCATION_ADD = 'weather_module-location-add',
 	WEATHER_LOCATION_EDIT = 'weather_module-location-edit',
+	WEATHER_LOCATION_DETAIL_EDIT = 'weather_module-location-detail-edit',
 }
 
 export const FormResult = {

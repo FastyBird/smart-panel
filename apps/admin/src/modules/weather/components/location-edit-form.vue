@@ -18,31 +18,19 @@
 		</el-form-item>
 
 		<slot name="extra-fields" />
-
-		<div class="flex justify-end gap-2 mt-4">
-			<el-button @click="$emit('cancel')">
-				{{ t('weatherModule.buttons.cancel.title') }}
-			</el-button>
-			<el-button
-				type="primary"
-				native-type="submit"
-				:loading="isSubmitting"
-				:disabled="!formChanged"
-			>
-				{{ t('weatherModule.buttons.save.title') }}
-			</el-button>
-		</div>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import type { FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput } from 'element-plus';
+import type { FormInstance, FormRules } from 'element-plus';
 
 import { useLocationEditForm } from '../composables/useLocationEditForm';
 import type { IWeatherLocation } from '../store/locations.store.types';
+import { FormResult, type FormResultType } from '../weather.constants';
 
 defineOptions({
 	name: 'LocationEditForm',
@@ -50,23 +38,33 @@ defineOptions({
 
 interface ILocationEditFormProps {
 	id: IWeatherLocation['id'];
+	remoteFormSubmit?: boolean;
+	remoteFormResult?: FormResultType;
+	remoteFormReset?: boolean;
+	remoteFormChanged?: boolean;
 }
 
-const props = defineProps<ILocationEditFormProps>();
+const props = withDefaults(defineProps<ILocationEditFormProps>(), {
+	remoteFormSubmit: false,
+	remoteFormResult: FormResult.NONE,
+	remoteFormReset: false,
+	remoteFormChanged: false,
+});
 
 const emit = defineEmits<{
-	(e: 'cancel'): void;
-	(e: 'updated'): void;
-	(e: 'update:remoteFormChanged', value: boolean): void;
+	(e: 'update:remoteFormSubmit', submit: boolean): void;
+	(e: 'update:remoteFormResult', result: FormResultType): void;
+	(e: 'update:remoteFormReset', reset: boolean): void;
+	(e: 'update:remoteFormChanged', changed: boolean): void;
 }>();
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit } = useLocationEditForm({
+const { model, formEl: composableFormEl, formChanged, submit } = useLocationEditForm({
 	id: computed(() => props.id),
 });
 
-const isSubmitting = ref(false);
+const formEl = ref<FormInstance | undefined>(composableFormEl.value);
 
 const rules: FormRules = {
 	name: [
@@ -79,18 +77,51 @@ const rules: FormRules = {
 };
 
 const onSubmit = async (): Promise<void> => {
-	isSubmitting.value = true;
+	if (!formEl.value) return;
+
+	emit('update:remoteFormResult', FormResult.WORKING);
+
+	const valid = await formEl.value.validate().catch(() => false);
+	if (!valid) {
+		emit('update:remoteFormResult', FormResult.NONE);
+		return;
+	}
 
 	try {
 		await submit();
-		emit('updated');
+		emit('update:remoteFormResult', FormResult.OK);
 	} catch {
-		// Error handled in composable
-	} finally {
-		isSubmitting.value = false;
+		emit('update:remoteFormResult', FormResult.ERROR);
+
+		setTimeout(() => {
+			emit('update:remoteFormResult', FormResult.NONE);
+		}, 2000);
 	}
 };
 
+// Watch for remote form submit trigger
+watch(
+	() => props.remoteFormSubmit,
+	(val) => {
+		if (val) {
+			emit('update:remoteFormSubmit', false);
+			onSubmit();
+		}
+	}
+);
+
+// Watch for remote form reset trigger
+watch(
+	() => props.remoteFormReset,
+	(val) => {
+		if (val) {
+			emit('update:remoteFormReset', false);
+			formEl.value?.resetFields();
+		}
+	}
+);
+
+// Watch for form changes
 watch(
 	() => formChanged.value,
 	(value) => {

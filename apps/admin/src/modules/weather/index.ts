@@ -6,6 +6,8 @@ export { WeatherModule };
 export * from './components/components';
 export * from './composables/composables';
 export * from './store/stores';
+export * from './schemas/schemas';
 
 export * from './weather.constants';
 export * from './weather.exceptions';
+export * from './weather.types';

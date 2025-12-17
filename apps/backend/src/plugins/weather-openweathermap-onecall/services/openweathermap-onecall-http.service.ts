@@ -1,3 +1,4 @@
+import { validate } from 'class-validator';
 import fetch from 'node-fetch';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -8,89 +9,15 @@ import { SystemConfigModel } from '../../../modules/system/models/config.model';
 import { LanguageType, TemperatureUnitType } from '../../../modules/system/system.constants';
 import { WeatherAlertModel } from '../../../modules/weather/models/alert.model';
 import { CurrentDayModel, ForecastDayModel, LocationModel } from '../../../modules/weather/models/weather.model';
+import {
+	OpenWeatherMapOneCallAlertDto,
+	OpenWeatherMapOneCallCurrentWeatherDto,
+	OpenWeatherMapOneCallDailyWeatherDto,
+	OpenWeatherMapOneCallResponseDto,
+} from '../dto/onecall-response.dto';
 import { OpenWeatherMapOneCallLocationEntity } from '../entities/locations-openweathermap-onecall.entity';
 import { OpenWeatherMapOneCallConfigModel } from '../models/config.model';
 import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME } from '../weather-openweathermap-onecall.constants';
-
-/**
- * One Call API 3.0 response interfaces
- */
-interface OneCallCurrentWeather {
-	dt: number;
-	sunrise: number;
-	sunset: number;
-	temp: number;
-	feels_like: number;
-	pressure: number;
-	humidity: number;
-	clouds: number;
-	wind_speed: number;
-	wind_deg: number;
-	wind_gust?: number;
-	rain?: { '1h': number };
-	snow?: { '1h': number };
-	weather: Array<{
-		id: number;
-		main: string;
-		description: string;
-		icon: string;
-	}>;
-}
-
-interface OneCallDailyWeather {
-	dt: number;
-	sunrise: number;
-	sunset: number;
-	moonrise: number;
-	moonset: number;
-	temp: {
-		day: number;
-		min: number;
-		max: number;
-		night: number;
-		eve: number;
-		morn: number;
-	};
-	feels_like: {
-		day: number;
-		night: number;
-		eve: number;
-		morn: number;
-	};
-	pressure: number;
-	humidity: number;
-	clouds: number;
-	wind_speed: number;
-	wind_deg: number;
-	wind_gust?: number;
-	rain?: number;
-	snow?: number;
-	weather: Array<{
-		id: number;
-		main: string;
-		description: string;
-		icon: string;
-	}>;
-}
-
-interface OneCallAlert {
-	sender_name: string;
-	event: string;
-	start: number;
-	end: number;
-	description: string;
-	tags?: string[];
-}
-
-interface OneCallResponse {
-	lat: number;
-	lon: number;
-	timezone: string;
-	timezone_offset: number;
-	current?: OneCallCurrentWeather;
-	daily?: OneCallDailyWeather[];
-	alerts?: OneCallAlert[];
-}
 
 @Injectable()
 export class OpenWeatherMapOneCallHttpService {
@@ -120,14 +47,20 @@ export class OpenWeatherMapOneCallHttpService {
 
 		try {
 			const response = await fetch(url);
-			const data = (await response.json()) as OneCallResponse | { cod?: number; message?: string };
+			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
 				this.logger.error(`[WEATHER] One Call API request failed: ${JSON.stringify(data)}`);
 				return null;
 			}
 
-			const oneCallData = data as OneCallResponse;
+			const oneCallData = toInstance(OpenWeatherMapOneCallResponseDto, data, { excludeExtraneousValues: false });
+			const errors = await validate(oneCallData);
+
+			if (errors.length) {
+				this.logger.error(`[VALIDATION] One Call API response validation failed error=${JSON.stringify(errors)}`);
+				return null;
+			}
 
 			const current = this.transformCurrentWeather(oneCallData.current);
 			const forecast = this.transformDailyForecast(oneCallData.daily || []);
@@ -161,14 +94,23 @@ export class OpenWeatherMapOneCallHttpService {
 
 		try {
 			const response = await fetch(url);
-			const data = (await response.json()) as OneCallResponse | { cod?: number; message?: string };
+			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
 				this.logger.error(`[WEATHER] One Call API alerts request failed: ${JSON.stringify(data)}`);
 				return null;
 			}
 
-			const oneCallData = data as OneCallResponse;
+			const oneCallData = toInstance(OpenWeatherMapOneCallResponseDto, data, { excludeExtraneousValues: false });
+			const errors = await validate(oneCallData);
+
+			if (errors.length) {
+				this.logger.error(
+					`[VALIDATION] One Call API alerts response validation failed error=${JSON.stringify(errors)}`,
+				);
+				return null;
+			}
+
 			return this.transformAlerts(oneCallData.alerts || []);
 		} catch (error) {
 			const err = error as Error;
@@ -177,7 +119,7 @@ export class OpenWeatherMapOneCallHttpService {
 		}
 	}
 
-	private transformCurrentWeather(current: OneCallCurrentWeather): CurrentDayModel {
+	private transformCurrentWeather(current: OpenWeatherMapOneCallCurrentWeatherDto): CurrentDayModel {
 		return toInstance(CurrentDayModel, {
 			temperature: current.temp,
 			temperatureMin: current.temp, // One Call doesn't have min/max for current, use temp
@@ -205,7 +147,7 @@ export class OpenWeatherMapOneCallHttpService {
 		});
 	}
 
-	private transformDailyForecast(daily: OneCallDailyWeather[]): ForecastDayModel[] {
+	private transformDailyForecast(daily: OpenWeatherMapOneCallDailyWeatherDto[]): ForecastDayModel[] {
 		return daily.map((day) =>
 			toInstance(ForecastDayModel, {
 				temperature: {
@@ -247,7 +189,7 @@ export class OpenWeatherMapOneCallHttpService {
 		);
 	}
 
-	private transformAlerts(alerts: OneCallAlert[]): WeatherAlertModel[] {
+	private transformAlerts(alerts: OpenWeatherMapOneCallAlertDto[]): WeatherAlertModel[] {
 		return alerts.map((alert) =>
 			toInstance(WeatherAlertModel, {
 				senderName: alert.sender_name,

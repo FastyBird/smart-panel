@@ -7,9 +7,9 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { SystemConfigModel } from '../../../modules/system/models/config.model';
 import { LanguageType, TemperatureUnitType } from '../../../modules/system/system.constants';
-import { ForecastDto, ForecastListItemDto } from '../../../modules/weather/dto/forecast.dto';
-import { WeatherDto } from '../../../modules/weather/dto/weather.dto';
 import { CurrentDayModel, ForecastDayModel, LocationModel } from '../../../modules/weather/models/weather.model';
+import { OpenWeatherMapForecastListItemDto, OpenWeatherMapForecastResponseDto } from '../dto/forecast-response.dto';
+import { OpenWeatherMapWeatherResponseDto } from '../dto/weather-response.dto';
 import { OpenWeatherMapLocationEntity } from '../entities/locations-openweathermap.entity';
 import { OpenWeatherMapConfigModel } from '../models/config.model';
 import { OpenWeatherMapLocationType, WEATHER_OPENWEATHERMAP_PLUGIN_NAME } from '../weather-openweathermap.constants';
@@ -47,7 +47,7 @@ export class OpenWeatherMapHttpService {
 				return null;
 			}
 
-			const weather = toInstance(WeatherDto, data, { excludeExtraneousValues: false });
+			const weather = toInstance(OpenWeatherMapWeatherResponseDto, data, { excludeExtraneousValues: false });
 			const errors = await validate(weather);
 
 			if (errors.length) {
@@ -92,7 +92,7 @@ export class OpenWeatherMapHttpService {
 				return null;
 			}
 
-			const forecast = toInstance(ForecastDto, data, { excludeExtraneousValues: false });
+			const forecast = toInstance(OpenWeatherMapForecastResponseDto, data, { excludeExtraneousValues: false });
 			const errors = await validate(forecast);
 
 			if (errors.length) {
@@ -141,7 +141,7 @@ export class OpenWeatherMapHttpService {
 		}
 	}
 
-	private transformWeatherDto(dto: WeatherDto): CurrentDayModel {
+	private transformWeatherDto(dto: OpenWeatherMapWeatherResponseDto): CurrentDayModel {
 		return toInstance(CurrentDayModel, {
 			temperature: dto.main.temp,
 			temperatureMin: dto.main.temp_min,
@@ -169,7 +169,7 @@ export class OpenWeatherMapHttpService {
 		});
 	}
 
-	private transformForecastDto(dto: ForecastDto): ForecastDayModel[] {
+	private transformForecastDto(dto: OpenWeatherMapForecastResponseDto): ForecastDayModel[] {
 		const dailyData: Record<
 			string,
 			{
@@ -181,7 +181,7 @@ export class OpenWeatherMapHttpService {
 					eve: number[];
 					night: number[];
 				};
-				item: ForecastListItemDto;
+				item: OpenWeatherMapForecastListItemDto;
 			}
 		> = {};
 

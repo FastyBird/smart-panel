@@ -1,7 +1,7 @@
 import { ElMessageBox } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager } from '../../../common';
+import { injectStoresManager, useFlashMessage } from '../../../common';
 import { weatherLocationsStoreKey } from '../store/keys';
 import type { IWeatherLocation } from '../store/locations.store.types';
 
@@ -9,6 +9,7 @@ import type { IUseWeatherLocationsActions } from './types';
 
 export const useLocationsActions = (): IUseWeatherLocationsActions => {
 	const { t } = useI18n();
+	const flashMessage = useFlashMessage();
 
 	const storesManager = injectStoresManager();
 
@@ -21,21 +22,31 @@ export const useLocationsActions = (): IUseWeatherLocationsActions => {
 			return;
 		}
 
-		try {
-			await ElMessageBox.confirm(
-				t('weatherModule.messages.confirmDeleteLocation', { name: location.name }),
-				t('weatherModule.headings.deleteLocation'),
-				{
-					confirmButtonText: t('weatherModule.buttons.yes'),
-					cancelButtonText: t('weatherModule.buttons.no'),
-					type: 'warning',
-				}
-			);
+		ElMessageBox.confirm(
+			t('weatherModule.messages.locations.confirmDeleteLocation', { name: location.name }),
+			t('weatherModule.headings.deleteLocation'),
+			{
+				confirmButtonText: t('weatherModule.buttons.yes.title'),
+				cancelButtonText: t('weatherModule.buttons.no.title'),
+				type: 'warning',
+			}
+		)
+			.then(async (): Promise<void> => {
+				try {
+					await locationsStore.remove({ id });
 
-			await locationsStore.remove({ id });
-		} catch {
-			// User cancelled
-		}
+					flashMessage.success(t('weatherModule.messages.locations.deleted'));
+				} catch {
+					flashMessage.error(t('weatherModule.messages.locations.notDeleted'));
+				}
+			})
+			.catch((): void => {
+				flashMessage.info(
+					t('weatherModule.messages.locations.deleteCanceled', {
+						location: location.name,
+					})
+				);
+			});
 	};
 
 	return {

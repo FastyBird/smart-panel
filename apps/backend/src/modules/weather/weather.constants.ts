@@ -13,14 +13,3 @@ export enum EventType {
 	LOCATION_UPDATED = 'WeatherModule.Location.Updated',
 	LOCATION_DELETED = 'WeatherModule.Location.Deleted',
 }
-
-/**
- * @deprecated This enum will be moved to weather-openweathermap plugin.
- * Location types are now provider-specific.
- */
-export enum WeatherLocationType {
-	LAT_LON = 'lat_lon',
-	CITY_NAME = 'city_name',
-	CITY_ID = 'city_id',
-	ZIP_CODE = 'zip_code',
-}

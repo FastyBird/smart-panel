@@ -79,8 +79,6 @@ export type SystemModuleThrottleStatusSchema = components['schemas']['SystemModu
 // Weather Module Schemas
 export type WeatherModuleCurrentDaySchema = components['schemas']['WeatherModuleDataCurrentDay'];
 export type WeatherModuleForecastDaySchema = components['schemas']['WeatherModuleDataForecastDay'];
-export type WeatherModuleGeolocationCitySchema = components['schemas']['WeatherModuleDataGeolocationCity'];
-export type WeatherModuleGeolocationZipSchema = components['schemas']['WeatherModuleDataGeolocationZip'];
 
 // Stats Module Schemas
 export type StatsModuleStatsSchema = components['schemas']['StatsModuleDataStats'];
@@ -247,7 +245,11 @@ export type SystemModuleGetSystemInfoOperation = operations['get-system-module-s
 export type SystemModuleGetSystemThrottleOperation = operations['get-system-module-system-throttle'];
 
 // Weather Module Operations
-export type WeatherModuleGetCurrentOperation = operations['get-weather-module-current'];
+export type WeatherModuleGetPrimaryWeatherOperation = operations['get-weather-module-primary-weather'];
+export type WeatherModuleGetAllWeatherOperation = operations['get-weather-module-all-weather'];
+export type WeatherModuleGetLocationWeatherOperation = operations['get-weather-module-location-weather'];
+export type WeatherModuleGetLocationsOperation = operations['get-weather-module-locations'];
+export type WeatherModuleGetLocationOperation = operations['get-weather-module-location'];
 
 // Stats Module Operations
 export type StatsModuleGetStatsOperation = operations['get-stats-module-stats'];

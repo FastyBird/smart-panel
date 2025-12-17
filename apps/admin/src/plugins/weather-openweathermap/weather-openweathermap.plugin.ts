@@ -5,15 +5,18 @@ import { defaultsDeep } from 'lodash';
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents, type IPluginsSchemas } from '../../modules/config';
+import { WEATHER_MODULE_NAME, type ILocationPluginsComponents, type ILocationPluginsSchemas } from '../../modules/weather';
 
-import { OpenWeatherMapConfigForm } from './components/components';
+import { OpenWeatherMapConfigForm, OpenWeatherMapLocationAddForm, OpenWeatherMapLocationEditForm } from './components/components';
 import enUS from './locales/en-US.json';
-import { OpenWeatherMapConfigEditFormSchema } from './schemas/config.schemas';
+import { OpenWeatherMapConfigEditFormSchema, OpenWeatherMapLocationAddFormSchema, OpenWeatherMapLocationEditFormSchema } from './schemas/schemas';
 import { OpenWeatherMapConfigSchema, OpenWeatherMapConfigUpdateReqSchema } from './store/config.store.schemas';
-import { WEATHER_OPENWEATHERMAP_PLUGIN_NAME } from './weather-openweathermap.constants';
+import { OpenWeatherMapLocationCreateReqSchema, OpenWeatherMapLocationSchema, OpenWeatherMapLocationUpdateReqSchema } from './store/locations.store.schemas';
+import { WEATHER_OPENWEATHERMAP_PLUGIN_NAME, WEATHER_OPENWEATHERMAP_PLUGIN_TYPE } from './weather-openweathermap.constants';
 
-export const weatherOpenweathermapPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> =
-	Symbol('FB-Plugin-WeatherOpenweathermap');
+export const weatherOpenweathermapPluginKey: PluginInjectionKey<
+	IPlugin<IPluginsComponents & ILocationPluginsComponents, IPluginsSchemas & ILocationPluginsSchemas>
+> = Symbol('FB-Plugin-WeatherOpenweathermap');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -30,7 +33,7 @@ export default {
 			type: WEATHER_OPENWEATHERMAP_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.weather-openweathermap',
 			name: 'OpenWeatherMap',
-			description: 'Weather data provider using OpenWeatherMap API',
+			description: 'Weather data provider using OpenWeatherMap API 2.5',
 			links: {
 				documentation: 'https://openweathermap.org/api',
 				devDocumentation: 'https://openweathermap.org/api',
@@ -49,8 +52,23 @@ export default {
 					},
 					modules: [CONFIG_MODULE_NAME],
 				},
+				{
+					type: WEATHER_OPENWEATHERMAP_PLUGIN_TYPE,
+					components: {
+						locationAddForm: OpenWeatherMapLocationAddForm,
+						locationEditForm: OpenWeatherMapLocationEditForm,
+					},
+					schemas: {
+						locationSchema: OpenWeatherMapLocationSchema,
+						locationAddFormSchema: OpenWeatherMapLocationAddFormSchema,
+						locationEditFormSchema: OpenWeatherMapLocationEditFormSchema,
+						locationCreateReqSchema: OpenWeatherMapLocationCreateReqSchema,
+						locationUpdateReqSchema: OpenWeatherMapLocationUpdateReqSchema,
+					},
+					modules: [WEATHER_MODULE_NAME],
+				},
 			],
-			modules: [CONFIG_MODULE_NAME],
+			modules: [CONFIG_MODULE_NAME, WEATHER_MODULE_NAME],
 			isCore: true,
 		});
 	},

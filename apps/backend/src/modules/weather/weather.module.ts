@@ -8,15 +8,12 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 
-import { GeolocationController } from './controllers/geolocation.controller';
 import { HistoryController } from './controllers/history.controller';
 import { LocationsController } from './controllers/locations.controller';
-import { ProvidersController } from './controllers/providers.controller';
 import { WeatherController } from './controllers/weather.controller';
 import { UpdateWeatherConfigDto } from './dto/update-config.dto';
 import { WeatherLocationEntity } from './entities/locations.entity';
 import { WeatherConfigModel } from './models/config.model';
-import { GeolocationService } from './services/geolocation.service';
 import { LocationsTypeMapperService } from './services/locations-type-mapper.service';
 import { LocationsService } from './services/locations.service';
 import { WeatherHistoryService } from './services/weather-history.service';
@@ -36,10 +33,9 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 })
 @Module({
 	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), ConfigModule, SwaggerModule, InfluxDbModule],
-	controllers: [WeatherController, GeolocationController, LocationsController, ProvidersController, HistoryController],
+	controllers: [WeatherController, LocationsController, HistoryController],
 	providers: [
 		WeatherService,
-		GeolocationService,
 		LocationsService,
 		LocationsTypeMapperService,
 		WeatherProviderRegistryService,
@@ -47,7 +43,6 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	],
 	exports: [
 		WeatherService,
-		GeolocationService,
 		LocationsService,
 		LocationsTypeMapperService,
 		WeatherProviderRegistryService,
