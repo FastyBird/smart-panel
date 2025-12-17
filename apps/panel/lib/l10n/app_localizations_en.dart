@@ -331,7 +331,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_weather_settings_temperature_location_title => 'Weather Location';
 
   @override
-  String get settings_weather_settings_temperature_location_description => 'Weather location is configured in the administrator app.';
+  String get settings_weather_settings_temperature_location_description => 'Select from available locations configured in the administrator app.';
+
+  @override
+  String get settings_weather_settings_temperature_location_single => 'Location is configured in the administrator app.';
 
   @override
   String get settings_maintenance_title => 'Maintenance';
