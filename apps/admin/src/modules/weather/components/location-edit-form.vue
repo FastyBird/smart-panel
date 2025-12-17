@@ -29,20 +29,14 @@ import { ElForm, ElFormItem, ElInput } from 'element-plus';
 import type { FormRules } from 'element-plus';
 
 import { useLocationEditForm } from '../composables/useLocationEditForm';
-import type { IWeatherLocation } from '../store/locations.store.types';
-import { FormResult, type FormResultType } from '../weather.constants';
+import { FormResult } from '../weather.constants';
+
+import type { ILocationEditFormProps } from './location-edit-form.types';
+import { locationEditFormEmits } from './location-edit-form.types';
 
 defineOptions({
 	name: 'LocationEditForm',
 });
-
-interface ILocationEditFormProps {
-	id: IWeatherLocation['id'];
-	remoteFormSubmit?: boolean;
-	remoteFormResult?: FormResultType;
-	remoteFormReset?: boolean;
-	remoteFormChanged?: boolean;
-}
 
 const props = withDefaults(defineProps<ILocationEditFormProps>(), {
 	remoteFormSubmit: false,
@@ -51,17 +45,12 @@ const props = withDefaults(defineProps<ILocationEditFormProps>(), {
 	remoteFormChanged: false,
 });
 
-const emit = defineEmits<{
-	(e: 'update:remote-form-submit', submit: boolean): void;
-	(e: 'update:remote-form-result', result: FormResultType): void;
-	(e: 'update:remote-form-reset', reset: boolean): void;
-	(e: 'update:remote-form-changed', changed: boolean): void;
-}>();
+const emit = defineEmits(locationEditFormEmits);
 
 const { t } = useI18n();
 
 const { model, formEl, formChanged, submit } = useLocationEditForm({
-	id: computed(() => props.id),
+	id: computed(() => props.location.id),
 });
 
 const rules: FormRules = {
