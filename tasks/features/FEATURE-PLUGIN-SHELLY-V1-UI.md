@@ -4,7 +4,7 @@ Type: feature
 Scope: admin, panel
 Size: medium
 Parent: FEATURE-PLUGIN-SHELLY-V1
-Status: planned
+Status: done
 Created: 2025-12-09
 
 ## 1. Business goal
@@ -55,34 +55,34 @@ I want the admin app to provide plugin configuration and device management scree
 
 ### Admin App
 
-- [ ] New `devices-shelly-v1` plugin exists in `apps/admin/src/plugins/`
-- [ ] Plugin is registered in the admin app module system
-- [ ] Plugin configuration form allows:
-  - [ ] Enable/disable plugin
-  - [ ] Configure discovery settings
-  - [ ] Set stale timeout and HTTP sync interval
-- [ ] Device list shows all discovered Shelly Gen 1 devices with:
-  - [ ] Device name, model, IP address
-  - [ ] Online/offline status indicator
-  - [ ] Enable/disable toggle
-- [ ] Device detail view shows:
-  - [ ] Device information (model, firmware, MAC, etc.)
-  - [ ] All channels with their properties
-  - [ ] Ability to edit device settings
-- [ ] Localization strings for all UI elements
-- [ ] Store schemas match backend API responses
+- [x] New `devices-shelly-v1` plugin exists in `apps/admin/src/plugins/`
+- [x] Plugin is registered in the admin app module system
+- [x] Plugin configuration form allows:
+  - [x] Enable/disable plugin
+  - [x] Configure discovery settings
+  - [x] Set stale timeout and HTTP sync interval
+- [x] Device list shows all discovered Shelly Gen 1 devices with:
+  - [x] Device name, model, IP address
+  - [x] Online/offline status indicator
+  - [x] Enable/disable toggle
+- [x] Device detail view shows:
+  - [x] Device information (model, firmware, MAC, etc.)
+  - [x] All channels with their properties
+  - [x] Ability to edit device settings
+- [x] Localization strings for all UI elements
+- [x] Store schemas match backend API responses
 
 ### Panel App
 
-- [ ] Shelly Gen 1 devices appear in device lists
-- [ ] All supported channel types render correctly:
-  - [ ] Relay/switch channels (on/off control)
-  - [ ] Dimmer/light channels (brightness slider)
-  - [ ] Temperature sensor channels
-  - [ ] Power/energy sensor channels
-- [ ] Device detail screens show all channels and properties
-- [ ] Commands (toggle, brightness) work correctly from panel UI
-- [ ] Device online/offline status is displayed
+- [x] Shelly Gen 1 devices appear in device lists
+- [x] All supported channel types render correctly:
+  - [x] Relay/switch channels (on/off control)
+  - [x] Dimmer/light channels (brightness slider)
+  - [x] Temperature sensor channels
+  - [x] Power/energy sensor channels
+- [x] Device detail screens show all channels and properties
+- [x] Commands (toggle, brightness) work correctly from panel UI
+- [x] Device online/offline status is displayed
 
 ## 5. Example scenarios
 

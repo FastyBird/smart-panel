@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 Created: 2025-11-14
 
 ## 1. Business goal
@@ -54,19 +54,19 @@ I want the Home Assistant plugin to automatically map **HA entities** to Smart P
 
 ## 4. Acceptance criteria
 
-- [ ] On initial sync, the HA plugin:
-    - [ ] fetches device/entity registry from HA,
-    - [ ] creates Smart Panel Devices for HA devices,
-    - [ ] creates Channels/Properties for the associated entities.
-- [ ] Common entity types are correctly mapped:
-    - [ ] lights,
-    - [ ] switches,
-    - [ ] common sensors (temperature, humidity, power),
-    - [ ] climate devices (basic thermostat fields).
-- [ ] State changes in HA are reflected in Smart Panel property values.
-- [ ] Commands from Smart Panel are sent to HA and change entity state.
-- [ ] Mapping logic is covered by **unit tests** and is resilient to unknown/unsupported entity types.
-- [ ] Existing HA plugin configuration is kept compatible (no breaking changes).
+- [x] On initial sync, the HA plugin:
+    - [x] fetches device/entity registry from HA,
+    - [x] creates Smart Panel Devices for HA devices,
+    - [x] creates Channels/Properties for the associated entities.
+- [x] Common entity types are correctly mapped:
+    - [x] lights,
+    - [x] switches,
+    - [x] common sensors (temperature, humidity, power),
+    - [x] climate devices (basic thermostat fields).
+- [x] State changes in HA are reflected in Smart Panel property values.
+- [x] Commands from Smart Panel are sent to HA and change entity state.
+- [x] Mapping logic is covered by **unit tests** and is resilient to unknown/unsupported entity types.
+- [x] Existing HA plugin configuration is kept compatible (no breaking changes).
 
 ## 5. Example scenarios
 
