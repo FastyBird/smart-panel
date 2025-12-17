@@ -29,7 +29,7 @@ export default {
 		pluginsManager.addPlugin(pagesDeviceDetailPluginKey, {
 			type: PAGES_DEVICE_DETAIL_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.pages-device-detail',
-			name: 'Device Detail Page',
+			name: 'Device detail page',
 			description: 'A dedicated page focused on a single device. Perfect for viewing and controlling all properties of a specific device in detail.',
 			links: {
 				documentation: 'http://www.fastybird.com',
@@ -39,6 +39,7 @@ export default {
 			elements: [
 				{
 					type: PAGES_DEVICE_DETAIL_TYPE,
+					name: 'Device detail',
 					components: {
 						pageAddForm: DeviceDetailPageAddForm,
 						pageEditForm: DeviceDetailPageEditForm,

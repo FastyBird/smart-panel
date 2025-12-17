@@ -51,7 +51,7 @@ export default {
 			elements: [
 				{
 					type: TILES_WEATHER_PLUGIN_DAY_TYPE,
-					name: 'Day weather tile',
+					name: 'Day weather',
 					description:
 						"Displays daily weather information including temperature, conditions, and icons. Perfect for showing today's forecast in a compact tile.",
 					components: {
@@ -68,7 +68,7 @@ export default {
 				},
 				{
 					type: TILES_WEATHER_PLUGIN_FORECAST_TYPE,
-					name: 'Forecast weather tile',
+					name: 'Forecast weather',
 					description: 'Shows a multi-day weather forecast in a clear and informative tile layout. Ideal for planning ahead at a glance.',
 					components: {
 						tileAddForm: weatherTileAddFormComponent,
