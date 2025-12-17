@@ -215,7 +215,7 @@
     "systemLogs": {
       "search": {
         "title": "Search",
-        "placeholder": "Search in application logs"
+        "placeholder": "Search logs..."
       },
       "timestamp": {
         "title": "Timestamp"
@@ -291,7 +291,7 @@
       },
       "tag": {
         "title": "Filter by tag",
-        "placeholder": "Search logs"
+        "placeholder": "Search by tag..."
       }
     }
   },
