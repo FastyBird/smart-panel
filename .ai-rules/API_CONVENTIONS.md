@@ -2,6 +2,8 @@
 
 This document defines strict conventions for NestJS backend controllers, DTOs, models, entities, and Swagger/OpenAPI decorators.
 
+The **backend is the source of truth** for the OpenAPI specification. All Swagger decorators defined here are used to generate `spec/api/v1/openapi.json` via `pnpm run generate:openapi`.
+
 The **Devices module** serves as the current golden reference implementation.
 
 ---

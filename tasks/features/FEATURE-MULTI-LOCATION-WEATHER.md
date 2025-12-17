@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: completed
+Status: done
 
 ## Implementation Progress
 

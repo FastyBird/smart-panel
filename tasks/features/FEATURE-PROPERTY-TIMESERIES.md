@@ -88,7 +88,7 @@ Then return HTTP 400.
 - Start with a simple optional bucket param.
 - Use DTOs for query parameters.
 
-## 8. AI instructions (for Junie)
+## 8. AI instructions
 
 - Read this file fully before coding.
 - Respect global rules in `/.ai-rules/GUIDELINES.md`.

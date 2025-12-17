@@ -103,7 +103,7 @@ And still maps the supported clusters to properties where possible.
 - Begin with a very small set of supported device types (e.g. on/off light) and expand incrementally.
 - Consider splitting this epic into smaller feature tasks once the initial design is clear (e.g. `FEATURE-MATTER-LIGHT`, `FEATURE-MATTER-SENSOR`, etc.).
 
-## 8. AI instructions (for Junie / Claude)
+## 8. AI instructions
 
 - Treat this task as an **epic / high-level design task**.
 - Read this file and `/.ai-rules/GUIDELINES.md` before coding.

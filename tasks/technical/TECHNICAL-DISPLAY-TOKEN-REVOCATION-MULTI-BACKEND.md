@@ -162,7 +162,7 @@ And the panel app re-registers with permit join enabled
 - Socket service already handles disconnection properly
 - Display model clearing is safe (nullable setDisplay method)
 
-## 8. AI instructions (for Junie / AI)
+## 8. AI instructions
 
 - Read this file entirely before making any code changes
 - Review existing socket event handling patterns
