@@ -53,69 +53,6 @@
         }
       }
     },
-    "channels": {
-      "plugin": {
-        "title": "Channel plugin",
-        "placeholder": "Select channel plugin"
-      },
-      "device": {
-        "title": "Device",
-        "placeholder": "Channel device",
-        "description": "About device",
-        "validation": {
-          "required": "Please select channel device"
-        }
-      },
-      "id": {
-        "title": "Internal identifier",
-        "placeholder": "Channel id"
-      },
-      "category": {
-        "title": "Category",
-        "placeholder": "Channel category",
-        "description": "About category",
-        "validation": {
-          "required": "Please select channel category"
-        }
-      },
-      "name": {
-        "title": "Name",
-        "placeholder": "Channel name",
-        "validation": {
-          "required": "Please fill in channel name"
-        }
-      },
-      "description": {
-        "title": "Description",
-        "placeholder": "Channel description"
-      }
-    },
-    "channelsProperties": {
-      "channel": {
-        "title": "Channel",
-        "placeholder": "Channel property channel",
-        "description": "About channel",
-        "validation": {
-          "required": "Please select channel property channel"
-        }
-      },
-      "id": {
-        "title": "Internal identifier",
-        "placeholder": "Channel property id"
-      },
-      "category": {
-        "title": "Category",
-        "placeholder": "Channel property category",
-        "description": "About category",
-        "validation": {
-          "required": "Please select channel property category"
-        }
-      },
-      "name": {
-        "title": "Name",
-        "placeholder": "Channel property name"
-      }
-    },
     "config": {
       "enabled": {
         "title": "Enabled"
@@ -132,15 +69,28 @@
       "websockets": {
         "requestTimeout": {
           "title": "Request timeout",
-          "placeholder": "The time, in seconds, to wait for a response before a request is aborted."
+          "placeholder": "The time, in seconds, to wait for a response before a request is aborted.",
+          "validation": {
+            "required": "Please fill in request timeout",
+            "number": "Request timeout must be a number"
+          }
         },
         "pingInterval": {
           "title": "Ping interval",
-          "placeholder": "The interval, in seconds, at which ping requests should be made to verify that the connection is open. Set to 0 to disable."
+          "placeholder": "The interval, in seconds, at which ping requests should be made to verify that the connection is open. Set to 0 to disable.",
+          "validation": {
+            "required": "Please fill in ping interval",
+            "number": "Ping interval must be a number"
+          }
         },
         "reconnectInterval": {
           "title": "Reconnect interval",
-          "placeholder": "The interval, in seconds, at which a connection attempt should be made after a socket has been closed."
+          "placeholder": "The interval, in seconds, at which a connection attempt should be made after a socket has been closed.",
+          "validation": {
+            "required": "Please fill in reconnect interval",
+            "number": "Reconnect interval must be a number",
+            "array": "Reconnect interval must be an array of numbers"
+          }
         }
       }
     }

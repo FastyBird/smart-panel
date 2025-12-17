@@ -12,7 +12,6 @@
       "category": {
         "title": "Category",
         "placeholder": "Device category",
-        "description": "About category",
         "validation": {
           "required": "Please select device category"
         }
@@ -29,8 +28,7 @@
         "placeholder": "Device description"
       },
       "enabled": {
-        "title": "Enabled",
-        "placeholder": "Enable or disable device"
+        "title": "Enabled"
       },
       "serviceAddress": {
         "title": "Service address",

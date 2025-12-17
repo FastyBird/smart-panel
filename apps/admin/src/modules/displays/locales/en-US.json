@@ -49,8 +49,7 @@
 			},
 			"currentIpAddress": "Current IP",
 			"local": "Local",
-			"status": "Status",
-			"createdAt": "Created"
+			"status": "Status"
 		},
 		"tooltips": {
 			"speakerSupported": "Speaker supported",
@@ -59,11 +58,7 @@
 	},
 	"fields": {
 		"search": {
-			"title": "Search",
 			"placeholder": "Search displays..."
-		},
-		"darkMode": {
-			"title": "Dark mode"
 		},
 		"config": {
 			"deploymentMode": {
@@ -287,30 +282,9 @@
 			"revoked": "Token revoked successfully"
 		}
 	},
-	"form": {
-		"edit": {
-			"title": "Edit Display"
-		},
-		"sections": {
-			"general": "General",
-			"display": "Display Settings",
-			"speaker": "Speaker (Audio Output)",
-			"microphone": "Microphone (Audio Input)"
-		},
-		"placeholders": {
-			"name": "Enter display name"
-		},
-		"units": {
-			"seconds": "seconds"
-		}
-	},
 	"messages": {
 		"notFound": "Display not found",
 		"loadError": "Failed to load displays",
-		"updateSuccess": "Display updated successfully",
-		"updateError": "Failed to update display",
-		"deleteSuccess": "Display deleted successfully",
-		"deleteError": "Failed to delete display",
 		"confirmRemove": "Are you sure you want to remove display \"{name}\"? This action cannot be undone.",
 		"removed": "Display removed successfully",
 		"edited": "Display {display} has been updated",
@@ -326,10 +300,6 @@
 		}
 	},
 	"actions": {
-		"refresh": "Refresh",
-		"edit": "Edit",
-		"delete": "Delete",
-		"viewDetail": "View Detail",
 		"revokeToken": "Revoke Token",
 		"manageTokens": "Manage Tokens"
 	}

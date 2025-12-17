@@ -1,1 +1,28 @@
-{}
+{
+	"headings": {
+		"cards": {
+			"remove": "Remove card"
+		}
+	},
+	"messages": {
+		"cards": {
+			"removed": "Card {card} was successfully removed.",
+			"notFound": "Card {card} was not found.",
+			"notRemoved": "Card {card} couldn't be removed.",
+			"removeCanceled": "Card {card} removal was canceled."
+		}
+	},
+	"texts": {
+		"cards": {
+			"confirmRemove": "Are you sure you want to remove card {card}?"
+		}
+	},
+	"buttons": {
+		"yes": {
+			"title": "Yes"
+		},
+		"no": {
+			"title": "No"
+		}
+	}
+}

@@ -1,12 +1,6 @@
 {
   "meta": {
     "pages": {
-      "configure": {
-        "title": "Configure page: {page}"
-      },
-      "edit": {
-        "title": "Edit page: {page}"
-      },
       "editTile": {
         "title": "Edit page tile"
       },
@@ -23,8 +17,7 @@
   },
   "breadcrumbs": {
     "pages": {
-      "configure": "configure: {page}",
-      "edit": "edit page",
+      "configure": "page: {page}",
       "addTile": "add page tile",
       "editTile": "edit page tile",
       "addDataSource": "add page data source",
@@ -33,8 +26,6 @@
   },
   "headings": {
     "pages": {
-      "configure": "Page: {page}",
-      "edit": "Edit page",
       "addTile": "Add page tile",
       "editTile": "Edit page tile",
       "addDataSource": "Add page data source",
@@ -47,8 +38,6 @@
   },
   "subHeadings": {
     "pages": {
-      "configure": "Manage smart panel page",
-      "edit": "Edit smart panel page",
       "addTile": "Add new smart panel page tile",
       "editTile": "Edit smart panel page tile",
       "addDataSource": "Add new smart panel page data source",
@@ -61,20 +50,26 @@
     },
     "dataSources": {
       "deletedWhileEditing": "This data source was deleted and is no longer available."
+    },
+    "misc": {
+      "requestError": "Something went wrong, please try again later."
     }
   },
   "texts": {
     "misc": {
       "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
       "gridLayoutTip": "You can change how many tiles fit on the page — set Rows and Columns or choose a Tile size."
+    },
+    "tiles": {
+      "loadingTile": "Loading tile..."
+    },
+    "dataSources": {
+      "loadingDataSource": "Loading data source..."
     }
   },
   "buttons": {
     "discard": {
       "title": "Discard"
-    },
-    "cancel": {
-      "title": "Cancel"
     },
     "close": {
       "title": "Close"
@@ -107,18 +102,15 @@
   "fields": {
     "rows": {
       "title": "Rows",
-      "placeholder": "Rows count",
-      "description": "Optional page rows count"
+      "placeholder": "Rows count"
     },
     "cols": {
       "title": "Cols",
-      "placeholder": "Cols count",
-      "description": "Optional page columns count"
+      "placeholder": "Cols count"
     },
     "tileSize": {
       "title": "Tile size",
-      "placeholder": "Tile size",
-      "description": "Optional tile size"
+      "placeholder": "Tile size"
     }
   }
 }

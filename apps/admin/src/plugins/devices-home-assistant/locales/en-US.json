@@ -1,7 +1,4 @@
 {
-  "headings": {
-    "aboutConnectionSettings": "Home Assistant Connection"
-  },
   "fields": {
     "devices": {
       "id": {
@@ -49,60 +46,19 @@
         "title": "Model"
       }
     },
-    "channels": {
-      "plugin": {
-        "title": "Channel plugin",
-        "placeholder": "Select channel plugin"
-      },
-      "device": {
-        "title": "Device",
-        "placeholder": "Channel device",
-        "description": "About device",
-        "validation": {
-          "required": "Please select channel device"
-        }
-      },
-      "id": {
-        "title": "Internal identifier",
-        "placeholder": "Channel id"
-      },
-      "category": {
-        "title": "Category",
-        "placeholder": "Channel category",
-        "description": "About category",
-        "validation": {
-          "required": "Please select channel category"
-        }
-      },
-      "name": {
-        "title": "Name",
-        "placeholder": "Channel name",
-        "validation": {
-          "required": "Please fill in channel name"
-        }
-      },
-      "description": {
-        "title": "Description",
-        "placeholder": "Channel description"
-      }
-    },
     "channelsProperties": {
-      "channel": {
-        "title": "Channel",
-        "placeholder": "Channel property channel",
-        "description": "About channel",
-        "validation": {
-          "required": "Please select channel property channel"
-        }
-      },
       "id": {
         "title": "Internal identifier",
         "placeholder": "Channel property id"
       },
+      "channel": {
+        "validation": {
+          "required": "Please select channel property channel"
+        }
+      },
       "category": {
         "title": "Category",
         "placeholder": "Channel property category",
-        "description": "About category",
         "validation": {
           "required": "Please select channel property category"
         }
@@ -110,6 +66,16 @@
       "name": {
         "title": "Name",
         "placeholder": "Channel property name"
+      },
+      "dataType": {
+        "validation": {
+          "required": "Please select data type"
+        }
+      },
+      "permissions": {
+        "validation": {
+          "required": "Please select permissions"
+        }
       },
       "haEntityId": {
         "title": "Home Assistant device entity",
@@ -165,6 +131,7 @@
     }
   },
   "headings": {
+    "aboutConnectionSettings": "Home Assistant Connection",
     "device": {
       "deviceSelection": "Device Selection",
       "categorySelection": "Category Selection",

@@ -15,7 +15,6 @@
 		"config": {
 			"serviceName": {
 				"title": "Service Name",
-				"description": "mDNS service name to advertise",
 				"placeholder": "FastyBird Smart Panel",
 				"validation": {
 					"required": "Service name is required"
@@ -23,7 +22,6 @@
 			},
 			"serviceType": {
 				"title": "Service Type",
-				"description": "mDNS service type identifier",
 				"placeholder": "fastybird-panel",
 				"validation": {
 					"required": "Service type is required"
