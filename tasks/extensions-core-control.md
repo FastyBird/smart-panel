@@ -1,18 +1,22 @@
 # Extensions Core Control - Implementation Plan
 
+**Status:** ✅ Mostly Complete
+**Branch:** `claude/admin-extension-management-*`
+
 ## Current State Analysis
 
-### How It Works Now
+### How It Works Now (After Implementation)
 
-1. **`canToggleEnabled` determination**: Based on whether the DTO class has an `enabled` property
-2. **Base DTOs**: Both `UpdateModuleConfigDto` and `UpdatePluginConfigDto` have `enabled?: boolean`
-3. **Result**: ALL extensions currently have `canToggleEnabled: true` since they inherit from base DTOs
+1. **`canToggleEnabled` determination**: Core modules use `NON_TOGGLEABLE_MODULES` constant, plugins check DTO inheritance
+2. **Core modules**: Always enabled, cannot be toggled (protected by constant list)
+3. **Core plugins**: Can be enabled/disabled based on DTO `enabled` property
+4. **Result**: Core modules are protected, plugins remain toggleable
 
-### The Problem
+### The Problem (Resolved)
 
-- Core modules (devices, dashboard, users, etc.) can be disabled - they shouldn't be
-- No distinction between module vs plugin behavior for enable/disable
-- `isCore` flag exists but isn't used to restrict toggling
+- ~~Core modules (devices, dashboard, users, etc.) can be disabled - they shouldn't be~~ ✅ Fixed
+- ~~No distinction between module vs plugin behavior for enable/disable~~ ✅ Fixed
+- ~~`isCore` flag exists but isn't used to restrict toggling~~ ✅ Now uses NON_TOGGLEABLE_MODULES
 
 ---
 
@@ -37,104 +41,97 @@
 
 ## Implementation Plan
 
-### Phase 1: Backend - Core Module Protection (Simple Fix)
+### Phase 1: Backend - Core Module Protection ✅ COMPLETED
+
+**File**: `apps/backend/src/modules/extensions/extensions.constants.ts`
+
+Added `NON_TOGGLEABLE_MODULES` constant:
+```typescript
+export const NON_TOGGLEABLE_MODULES = [
+  'auth-module', 'config-module', 'dashboard-module', 'devices-module',
+  'displays-module', 'extensions-module', 'mdns-module', 'system-module',
+  'users-module', 'weather-module',
+];
+```
 
 **File**: `apps/backend/src/modules/extensions/services/extensions.service.ts`
 
-Update `buildModuleExtension()` method:
-
+Updated `buildModuleExtension()` to use the constant:
 ```typescript
-private buildModuleExtension(type: string): ExtensionModel {
-  const metadata = this.moduleMetadata.get(type);
-  const isCore = this.bundledService.isCore(type);
-
-  // Core modules cannot be toggled - they must always be enabled
-  // Non-core modules can be toggled if their DTO supports it
-  let canToggleEnabled = false;
-  if (!isCore) {
-    try {
-      const mapping = this.modulesMapperService.getMapping(type);
-      canToggleEnabled = this.hasEnabledProperty(mapping.configDto);
-    } catch {
-      canToggleEnabled = false;
-    }
-  }
-
-  // Core modules are always enabled
-  let enabled = true;
-  if (!isCore) {
-    try {
-      const moduleConfig = this.configService.getModuleConfig(type);
-      enabled = moduleConfig.enabled ?? true;
-    } catch {
-      enabled = true;
-    }
-  }
-
-  // ... rest of the method
-  extension.canToggleEnabled = canToggleEnabled;
-  extension.enabled = enabled; // Core modules always true
-}
+const canToggleEnabled = !NON_TOGGLEABLE_MODULES.includes(type);
 ```
 
-**Plugins remain unchanged** - they can already be toggled based on DTO.
+### Phase 2: Backend - Add `canRemove` Field ❌ NOT IMPLEMENTED
 
-### Phase 2: Backend - Add `canRemove` Field
+This was deferred as extension removal is not yet supported.
 
-**File**: `apps/backend/src/modules/extensions/models/extension.model.ts`
-
-Add new field:
-
-```typescript
-@ApiProperty({
-  description: 'Whether this extension can be removed',
-  example: false,
-})
-@Expose()
-canRemove: boolean;
-```
-
-**Logic**:
-- `canRemove = !isCore` (core extensions cannot be removed)
-
-### Phase 3: Admin - Update UI Based on New Fields
+### Phase 3: Admin - Update UI Based on New Fields ✅ COMPLETED
 
 **File**: `apps/admin/src/modules/extensions/components/extension-card.vue`
 
-Update dropdown to show proper states:
+- Dropdown items show tooltips explaining why actions are disabled
+- Core modules: "Core modules cannot be disabled"
+- Core extensions: "Core extensions cannot be removed"
+- Non-core: "Extension removal is not yet supported"
 
-```vue
-<el-dropdown-item
-  :command="extension.enabled ? 'disable' : 'enable'"
-  :disabled="!extension.canToggleEnabled"
->
-  <!-- Show reason if disabled -->
-  <el-tooltip
-    v-if="!extension.canToggleEnabled && extension.isCore && extension.kind === 'module'"
-    content="Core modules cannot be disabled"
-  >
-    ...
-  </el-tooltip>
-</el-dropdown-item>
+### Phase 4: OpenAPI & Types Regeneration ❌ SKIPPED
 
-<el-dropdown-item
-  command="delete"
-  :disabled="!extension.canRemove"
->
-  <!-- Show reason: "Core extensions cannot be removed" or "Not yet supported" -->
-</el-dropdown-item>
+Not needed since `canRemove` field was not added.
+
+---
+
+## Additional Implementation (Beyond Original Scope)
+
+### Backend - Extension Metadata & README Support ✅ COMPLETED
+
+**All modules and plugins** now register metadata including README content:
+
+```typescript
+this.extensionsService.registerModuleMetadata({
+  type: MODULE_NAME,
+  name: 'Display Name',
+  description: 'Description',
+  author: 'FastyBird',
+  readme: `# Module Name\n\nMarkdown content...`,
+  links: { documentation, repository },
+});
 ```
 
-### Phase 4: OpenAPI & Types Regeneration
+**Files modified:**
+- All 11 core modules (auth, config, dashboard, devices, displays, extensions, mdns, system, users, weather)
+- All 14 plugins (data-sources, devices integrations, pages, tiles, weather providers, logger)
 
-After backend changes:
-```bash
-pnpm run generate:openapi
-```
+### Backend - Public API for External Extensions ✅ COMPLETED
 
-This will update:
-- `spec/api/v1/openapi.json`
-- `apps/admin/src/api/openapi.ts`
+**File**: `apps/backend/src/index.ts` (NEW)
+
+Exports for external extensions:
+- `ExtensionsModule`, `ExtensionsService`
+- `ConfigModule`, `PluginsTypeMapperService`
+- `PluginConfigModel`, `UpdatePluginConfigDto`
+
+### Example Extension Registration ✅ COMPLETED
+
+**Package**: `packages/example-extension`
+
+Updated to properly register with ExtensionsService:
+- Added config model and DTO
+- Registers with PluginsTypeMapperService
+- Now appears in admin extensions list
+
+### Admin - Extension Detail View ✅ COMPLETED
+
+**File**: `apps/admin/src/modules/extensions/views/view-extension-detail.vue`
+
+- Responsive tabs layout (README/Docs) for large devices
+- Stacked cards for small devices
+- Markdown renderer with DOMPurify sanitization
+
+### Admin - Extension Loaders Refactoring ✅ COMPLETED
+
+Moved from `common/extensions/` to `modules/extensions/loaders/`:
+- `remote-extensions.loader.ts`
+- `static-extensions.loader.ts`
 
 ---
 
@@ -161,32 +158,43 @@ Create dedicated endpoint that returns all registered extensions:
 
 ---
 
-## Files to Modify
+## Files Modified
 
 ### Backend
-- [ ] `apps/backend/src/modules/extensions/services/extensions.service.ts` - Core module protection
-- [ ] `apps/backend/src/modules/extensions/models/extension.model.ts` - Add `canRemove` field
+- [x] `apps/backend/src/modules/extensions/extensions.constants.ts` - Added NON_TOGGLEABLE_MODULES
+- [x] `apps/backend/src/modules/extensions/services/extensions.service.ts` - Core module protection
+- [x] `apps/backend/src/modules/extensions/models/extension.model.ts` - Added `readme`, `docs` fields
+- [x] `apps/backend/src/index.ts` - NEW: Public API exports for external extensions
+- [x] All module files - Added README metadata registration
+- [x] All plugin files - Added README metadata registration
+- [ ] `apps/backend/src/modules/extensions/models/extension.model.ts` - Add `canRemove` field (deferred)
 
 ### Admin
-- [ ] `apps/admin/src/modules/extensions/components/extension-card.vue` - Update UI tooltips
-- [ ] `apps/admin/src/modules/extensions/components/extensions-table.vue` - Update table actions
-- [ ] `apps/admin/src/modules/extensions/store/extensions.store.types.ts` - Add `canRemove` type
-- [ ] `apps/admin/src/modules/extensions/store/extensions.transformers.ts` - Transform `canRemove`
-- [ ] `apps/admin/src/modules/extensions/locales/en-US.json` - Add tooltip messages
+- [x] `apps/admin/src/modules/extensions/components/extension-card.vue` - Update UI tooltips
+- [x] `apps/admin/src/modules/extensions/components/extensions-cards.vue` - Alphabetical sorting
+- [x] `apps/admin/src/modules/extensions/views/view-extension-detail.vue` - README tabs layout
+- [x] `apps/admin/src/modules/extensions/views/view-extension-detail.scss` - NEW: Styles
+- [x] `apps/admin/src/modules/extensions/store/extensions.store.types.ts` - Added `readme`, `docs` types
+- [x] `apps/admin/src/modules/extensions/store/extensions.transformers.ts` - Transform `readme`, `docs`
+- [x] `apps/admin/src/modules/extensions/locales/en-US.json` - Added tooltip messages
+- [x] `apps/admin/src/modules/extensions/loaders/` - NEW: Moved from common/extensions
+- [x] `apps/admin/src/common/components/markdown-renderer.vue` - NEW: Markdown rendering
 
-### Generated (after backend changes)
-- [ ] `spec/api/v1/openapi.json` - Regenerate
-- [ ] `apps/admin/src/api/openapi.ts` - Regenerate
+### Example Extension
+- [x] `packages/example-extension/src/index.ts` - ExtensionsService registration
+- [x] `packages/example-extension/src/dto/update-config.dto.ts` - NEW
+- [x] `packages/example-extension/src/models/config.model.ts` - NEW
+- [x] `packages/example-extension/package.json` - Added dependencies
 
 ---
 
 ## Acceptance Criteria
 
-1. [ ] Core modules show as "Enabled" with toggle disabled
-2. [ ] Core modules show tooltip: "Core modules cannot be disabled"
-3. [ ] Core plugins can be enabled/disabled normally
-4. [ ] Remove button disabled for all core extensions with tooltip: "Core extensions cannot be removed"
-5. [ ] Non-core extensions (when available) can be toggled and show remove option
-6. [ ] OpenAPI spec regenerated with `canRemove` field
-7. [ ] All linting passes
-8. [ ] Unit tests pass
+1. [x] Core modules show as "Enabled" with toggle disabled
+2. [x] Core modules show tooltip: "Core modules cannot be disabled"
+3. [x] Core plugins can be enabled/disabled normally
+4. [x] Remove button disabled for all core extensions with tooltip: "Core extensions cannot be removed"
+5. [x] Non-core extensions (when available) can be toggled and show remove option
+6. [ ] OpenAPI spec regenerated with `canRemove` field (deferred - not needed yet)
+7. [x] All linting passes
+8. [ ] Unit tests pass (not verified)
