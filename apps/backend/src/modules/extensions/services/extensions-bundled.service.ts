@@ -38,11 +38,23 @@ export class ExtensionsBundledService {
 	/**
 	 * Check if an extension is bundled (core) with the application.
 	 *
+	 * If no manifest file exists, all extensions are considered core since they
+	 * are bundled with the application. When third-party extension loading is
+	 * implemented, only those would be non-core.
+	 *
 	 * @param extensionName - The package name of the extension
 	 * @returns true if the extension is bundled, false otherwise
 	 */
 	isCore(extensionName: string): boolean {
-		return this.getBundledSet().has(extensionName);
+		const bundledSet = this.getBundledSet();
+
+		// If no manifest exists (empty set), assume all registered extensions are core
+		// since third-party dynamic loading isn't implemented yet
+		if (bundledSet.size === 0) {
+			return true;
+		}
+
+		return bundledSet.has(extensionName);
 	}
 
 	/**

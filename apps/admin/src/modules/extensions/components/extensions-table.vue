@@ -148,12 +148,20 @@
 			:width="200"
 		>
 			<template #default="scope">
-				<el-text
-					size="small"
-					type="info"
+				<el-tooltip
+					:content="scope.row.type"
+					placement="top"
+					:show-after="500"
 				>
-					{{ scope.row.type }}
-				</el-text>
+					<el-text
+						size="small"
+						type="info"
+						class="block max-w-[180px]"
+						truncated
+					>
+						{{ scope.row.type }}
+					</el-text>
+				</el-tooltip>
 			</template>
 		</el-table-column>
 
@@ -263,7 +271,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAvatar, ElButton, ElResult, ElSwitch, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElResult, ElSwitch, ElTable, ElTableColumn, ElTag, ElText, ElTooltip, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -295,20 +303,8 @@ const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
 const tableHeight = computed<number>(() => props.tableHeight ?? 400);
 
-const sortedItems = computed<IExtension[]>(() => {
-	return [...props.items].sort((a, b) => {
-		// Core extensions first
-		if (a.isCore && !b.isCore) return -1;
-		if (!a.isCore && b.isCore) return 1;
-
-		// Then modules before plugins
-		if (a.kind === ExtensionKind.MODULE && b.kind === ExtensionKind.PLUGIN) return -1;
-		if (a.kind === ExtensionKind.PLUGIN && b.kind === ExtensionKind.MODULE) return 1;
-
-		// Then alphabetically
-		return a.name.localeCompare(b.name);
-	});
-});
+// Items are already sorted by the datasource based on user selection
+const sortedItems = computed<IExtension[]>(() => props.items);
 
 const onSortData = ({
 	prop,
