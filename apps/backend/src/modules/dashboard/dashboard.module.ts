@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -56,10 +56,10 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 	imports: [
 		NestConfigModule,
 		TypeOrmModule.forFeature([PageEntity, TileEntity, DataSourceEntity]),
-		ConfigModule,
-		ExtensionsModule,
+		forwardRef(() => ConfigModule),
+		forwardRef(() => ExtensionsModule),
 		SeedModule,
-		SystemModule,
+		forwardRef(() => SystemModule),
 		StatsModule,
 		SwaggerModule,
 		DisplaysModule,

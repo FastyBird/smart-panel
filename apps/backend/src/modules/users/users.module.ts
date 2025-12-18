@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -30,7 +30,13 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 	description: USERS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([UserEntity]), ConfigModule, ExtensionsModule, SystemModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([UserEntity]),
+		forwardRef(() => ConfigModule),
+		forwardRef(() => ExtensionsModule),
+		forwardRef(() => SystemModule),
+		SwaggerModule,
+	],
 	providers: [
 		UsersService,
 		UserExistsConstraintValidator,

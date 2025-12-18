@@ -1,5 +1,5 @@
 import { CacheModule } from '@nestjs/cache-manager';
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -58,8 +58,8 @@ import { TokensService } from './services/tokens.service';
 		NestConfigModule,
 		TypeOrmModule.forFeature([TokenEntity, AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity]),
 		CacheModule.register(),
-		ConfigModule,
-		ExtensionsModule,
+		forwardRef(() => ConfigModule),
+		forwardRef(() => ExtensionsModule),
 		SwaggerModule,
 		UsersModule,
 	],

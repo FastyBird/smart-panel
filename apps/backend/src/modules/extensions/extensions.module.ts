@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { ConfigModule } from '../config/config.module';
@@ -28,7 +28,7 @@ import { ModuleResetService } from './services/module-reset.service';
 	description: EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [NestConfigModule, ConfigModule, SystemModule],
+	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule)],
 	controllers: [ExtensionsController, DiscoveredExtensionsController],
 	providers: [ExtensionsBundledService, ExtensionsService, ModuleResetService],
 	exports: [ExtensionsBundledService, ExtensionsService],

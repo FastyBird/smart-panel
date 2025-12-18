@@ -1,4 +1,4 @@
-import { Logger, Module, OnModuleInit } from '@nestjs/common';
+import { Logger, Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -90,11 +90,11 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 			ChannelControlEntity,
 			ChannelPropertyEntity,
 		]),
-		ConfigModule,
-		ExtensionsModule,
+		forwardRef(() => ConfigModule),
+		forwardRef(() => ExtensionsModule),
 		InfluxDbModule,
 		SeedModule,
-		SystemModule,
+		forwardRef(() => SystemModule),
 		StatsModule,
 		SwaggerModule,
 		WebsocketModule,

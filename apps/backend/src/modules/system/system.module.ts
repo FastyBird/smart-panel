@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { ConfigModule } from '../config/config.module';
@@ -39,7 +39,14 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [NestConfigModule, PlatformModule, WebsocketModule, InfluxDbModule, StatsModule, ConfigModule],
+	imports: [
+		NestConfigModule,
+		PlatformModule,
+		WebsocketModule,
+		InfluxDbModule,
+		StatsModule,
+		forwardRef(() => ConfigModule),
+	],
 	providers: [
 		SystemService,
 		SystemCommandService,
