@@ -2,7 +2,7 @@
 	<div class="h-full w-full flex flex-col">
 		<el-card
 			shadow="never"
-			class="px-1 py-2 mt-2"
+			class="px-1 py-2 mt-2 shrink-0"
 			body-class="p-0!"
 		>
 			<extensions-filter
@@ -16,19 +16,19 @@
 
 		<div
 			ref="wrapper"
-			class="flex-grow overflow-hidden"
+			class="flex-grow overflow-hidden mt-2"
 		>
 			<el-card
+				v-if="innerViewMode === 'table'"
 				shadow="never"
-				class="mt-2 max-h-full"
+				class="max-h-full"
 				body-class="p-0! max-h-full overflow-hidden flex flex-col"
 			>
 				<extensions-table
-					v-if="innerViewMode === 'table'"
 					v-model:sort-by="sortBy"
 					v-model:sort-dir="sortDir"
 					:items="props.items"
-					:total-rows="props.items.length"
+					:total-rows="props.totalRows"
 					:loading="props.loading"
 					:filters-active="props.filtersActive"
 					:table-height="tableHeight"
@@ -37,16 +37,30 @@
 					@reset-filters="onResetFilters"
 				/>
 
-				<extensions-cards
-					v-else
-					:items="props.items"
-					:loading="props.loading"
-					:filters-active="props.filtersActive"
-					:container-height="tableHeight"
-					@detail="onDetail"
-					@toggle-enabled="onToggleEnabled"
-				/>
+				<div
+					ref="paginator"
+					class="flex justify-center w-full py-4"
+				>
+					<el-pagination
+						v-model:current-page="paginatePage"
+						v-model:page-size="paginateSize"
+						:layout="isMDDevice ? 'total, sizes, prev, pager, next, jumper' : 'total, sizes, prev, pager, next'"
+						:total="props.allItems.length"
+						@size-change="onPaginatePageSize"
+						@current-change="onPaginatePage"
+					/>
+				</div>
 			</el-card>
+
+			<extensions-cards
+				v-else
+				:items="props.allItems"
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				@detail="onDetail"
+				@toggle-enabled="onToggleEnabled"
+				@reset-filters="onResetFilters"
+			/>
 		</div>
 	</div>
 </template>
@@ -54,10 +68,11 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { ElCard } from 'element-plus';
+import { ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
+import { useBreakpoints } from '../../../common';
 import type { IExtensionsFilter } from '../composables/types';
 import type { IExtension } from '../store/extensions.store.types';
 
@@ -79,19 +94,27 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 	(e: 'update:filters', filters: IExtensionsFilter): void;
 	(e: 'update:view-mode', mode: 'table' | 'cards'): void;
+	(e: 'update:paginate-size', size: number): void;
+	(e: 'update:paginate-page', page: number): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'kind' | 'enabled' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
+const { isMDDevice } = useBreakpoints();
+
 let observer: ResizeObserver | null = null;
 
 const wrapper = ref<HTMLElement | null>(null);
+const paginator = ref<HTMLElement | null>(null);
 
 const innerFilters = useVModel(props, 'filters', emit);
 const innerViewMode = useVModel(props, 'viewMode', emit);
 
 const sortBy = ref<'name' | 'type' | 'kind' | 'enabled' | undefined>(props.sortBy);
-const sortDir = ref<'asc' | 'desc' | null>(props.sortDir);
+const sortDir = ref<'asc' | 'desc' | null>(props.sortDir ?? null);
+
+const paginatePage = ref<number>(props.paginatePage);
+const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
 
@@ -107,14 +130,27 @@ const onResetFilters = (): void => {
 	emit('reset-filters');
 };
 
-onMounted((): void => {
+const onPaginatePageSize = (size: number): void => {
+	emit('update:paginate-size', size);
+};
+
+const onPaginatePage = (page: number): void => {
+	emit('update:paginate-page', page);
+};
+
+const updateHeight = (): void => {
 	if (!wrapper.value) {
 		return;
 	}
 
-	const updateHeight = () => {
-		tableHeight.value = wrapper.value!.clientHeight;
-	};
+	const paginatorHeight = innerViewMode.value === 'table' ? (paginator.value?.clientHeight ?? 60) : 0;
+	tableHeight.value = wrapper.value.clientHeight - paginatorHeight;
+};
+
+onMounted((): void => {
+	if (!wrapper.value) {
+		return;
+	}
 
 	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
 		observer = new ResizeObserver(updateHeight);
@@ -145,9 +181,23 @@ watch(
 );
 
 watch(
-	(): 'asc' | 'desc' | null => props.sortDir,
-	(val: 'asc' | 'desc' | null): void => {
-		sortDir.value = val;
+	(): number => props.paginatePage,
+	(val: number): void => {
+		paginatePage.value = val;
+	}
+);
+
+watch(
+	(): number => props.paginateSize,
+	(val: number): void => {
+		paginateSize.value = val;
+	}
+);
+
+watch(
+	(): 'asc' | 'desc' | null | undefined => props.sortDir,
+	(val: 'asc' | 'desc' | null | undefined): void => {
+		sortDir.value = val ?? null;
 	}
 );
 
@@ -155,6 +205,14 @@ watch(
 	(): 'name' | 'type' | 'kind' | 'enabled' | undefined => props.sortBy,
 	(val: 'name' | 'type' | 'kind' | 'enabled' | undefined): void => {
 		sortBy.value = val;
+	}
+);
+
+watch(
+	(): 'table' | 'cards' => innerViewMode.value,
+	(): void => {
+		// Recalculate height after view mode changes and DOM updates
+		setTimeout(updateHeight, 50);
 	}
 );
 </script>

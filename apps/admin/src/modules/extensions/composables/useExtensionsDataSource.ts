@@ -1,11 +1,11 @@
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager, useListQuery } from '../../../common';
-import { ExtensionKind, EXTENSIONS_MODULE_NAME } from '../extensions.constants';
+import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, ExtensionKind, EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
 import { extensionsStoreKey } from '../store/keys';
 
@@ -19,6 +19,11 @@ export const defaultExtensionsFilter: IExtensionsFilter = {
 	isCore: 'all',
 };
 
+export const defaultExtensionsSort: ISortEntry = {
+	by: 'name',
+	dir: 'asc',
+};
+
 export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 	const storesManager = injectStoresManager();
 
@@ -28,12 +33,23 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 
 	const {
 		filters,
+		sort,
+		pagination,
 		reset: resetFilter,
 	} = useListQuery<typeof ExtensionsFilterSchema>({
 		key: `${EXTENSIONS_MODULE_NAME}:extensions:list`,
 		filters: {
 			schema: ExtensionsFilterSchema,
 			defaults: defaultExtensionsFilter,
+		},
+		sort: {
+			defaults: [defaultExtensionsSort],
+		},
+		pagination: {
+			defaults: {
+				page: DEFAULT_PAGE,
+				size: DEFAULT_PAGE_SIZE,
+			},
 		},
 		syncQuery: true,
 		version: 1,
@@ -47,6 +63,16 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 			filters.value.isCore !== defaultExtensionsFilter.isCore
 		);
 	});
+
+	const paginateSize = ref<number>(pagination.value.size || DEFAULT_PAGE_SIZE);
+
+	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
+
+	const sortBy = ref<'name' | 'type' | 'kind' | 'enabled' | undefined>(
+		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'type' | 'kind' | 'enabled') : undefined
+	);
+
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
 
 	const allExtensions = computed<IExtension[]>((): IExtension[] => {
 		return Object.values(extensionsStore.data);
@@ -72,13 +98,23 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 						(filters.value.isCore === 'core' && extension.isCore) ||
 						(filters.value.isCore === 'addon' && !extension.isCore))
 			),
-			[(ext: IExtension) => ext.name],
-			['asc']
+			[
+				(ext: IExtension) =>
+					sortBy.value === 'enabled' ? (ext.enabled ? 1 : 0) : (ext[sortBy.value as keyof IExtension] ?? ''),
+			],
+			[sortDir.value === 'asc' ? 'asc' : 'desc']
 		);
 	});
 
 	const extensions = computed<IExtension[]>((): IExtension[] => {
 		return filteredExtensions.value;
+	});
+
+	const extensionsPaginated = computed<IExtension[]>((): IExtension[] => {
+		const start = (paginatePage.value - 1) * paginateSize.value;
+		const end = start + paginateSize.value;
+
+		return extensions.value.slice(start, end);
 	});
 
 	const modules = computed<IExtension[]>((): IExtension[] => {
@@ -97,14 +133,77 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 		return semaphore.value.fetching.items;
 	});
 
+	const totalRows = computed<number>(() => extensions.value.length);
+
+	watch(
+		(): { page?: number; size?: number } => pagination.value,
+		(val: { page?: number; size?: number }): void => {
+			paginatePage.value = val.page ?? DEFAULT_PAGE;
+			paginateSize.value = val.size ?? DEFAULT_PAGE_SIZE;
+		},
+		{ deep: true }
+	);
+
+	watch(
+		(): number => paginatePage.value,
+		(val: number): void => {
+			pagination.value.page = val;
+		}
+	);
+
+	watch(
+		(): number => paginateSize.value,
+		(val: number): void => {
+			pagination.value.size = val;
+		}
+	);
+
+	watch(
+		(): 'asc' | 'desc' | null => sortDir.value,
+		(val: 'asc' | 'desc' | null): void => {
+			if (typeof sortBy.value === 'undefined' || val === null) {
+				sort.value = [];
+			} else {
+				sort.value = [
+					{
+						by: sortBy.value,
+						dir: val,
+					},
+				];
+			}
+		}
+	);
+
+	watch(
+		(): 'name' | 'type' | 'kind' | 'enabled' | undefined => sortBy.value,
+		(val: 'name' | 'type' | 'kind' | 'enabled' | undefined): void => {
+			if (typeof val === 'undefined') {
+				sort.value = [];
+			} else {
+				sort.value = [
+					{
+						by: val,
+						dir: sortDir.value,
+					},
+				];
+			}
+		}
+	);
+
 	return {
 		extensions,
+		extensionsPaginated,
 		modules,
 		plugins,
+		totalRows,
 		areLoading,
 		fetchExtensions,
 		filters,
 		filtersActive,
+		paginateSize,
+		paginatePage,
+		sortBy,
+		sortDir,
 		resetFilter,
 	};
 };

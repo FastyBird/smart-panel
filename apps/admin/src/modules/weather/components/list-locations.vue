@@ -2,7 +2,7 @@
 	<div class="h-full w-full flex flex-col">
 		<el-card
 			shadow="never"
-			class="px-1 py-2 mt-2"
+			class="px-1 py-2 mt-2 shrink-0"
 			body-class="p-0!"
 		>
 			<locations-filter

@@ -1,7 +1,6 @@
 <template>
-	<div
-		class="extensions-cards"
-		:style="{ maxHeight: containerHeight ? `${containerHeight}px` : undefined }"
+	<el-scrollbar
+		class="h-full"
 	>
 		<el-skeleton
 			v-if="loading && items.length === 0"
@@ -26,14 +25,14 @@
 				@detail="onDetail"
 			/>
 		</div>
-	</div>
+	</el-scrollbar>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElEmpty, ElSkeleton } from 'element-plus';
+import { ElEmpty, ElScrollbar, ElSkeleton } from 'element-plus';
 
 import { ExtensionKind } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
@@ -53,6 +52,7 @@ const props = withDefaults(defineProps<IExtensionsCardsProps>(), {
 const emit = defineEmits<{
 	(e: 'toggle-enabled', type: IExtension['type'], enabled: boolean): void;
 	(e: 'detail', type: IExtension['type']): void;
+	(e: 'reset-filters'): void;
 }>();
 
 const { t } = useI18n();
@@ -88,12 +88,6 @@ const onDetail = (type: IExtension['type']): void => {
 </script>
 
 <style scoped>
-.extensions-cards {
-	padding: 1rem;
-	height: 100%;
-	overflow: auto;
-}
-
 .extensions-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));

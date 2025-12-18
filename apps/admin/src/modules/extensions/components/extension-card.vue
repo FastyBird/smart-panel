@@ -180,9 +180,9 @@ const { t } = useI18n();
 
 const extensionIcon = computed<string>(() => {
 	if (props.extension.kind === ExtensionKind.MODULE) {
-		return 'mdi:cube-outline';
+		return 'mdi:package-variant';
 	}
-	return 'mdi:puzzle';
+	return 'mdi:toy-brick';
 });
 
 const hasLinks = computed<boolean>(() => {

@@ -18,12 +18,18 @@ export interface IUseExtensions {
 
 export interface IUseExtensionsDataSource {
 	extensions: ComputedRef<IExtension[]>;
+	extensionsPaginated: ComputedRef<IExtension[]>;
 	modules: ComputedRef<IExtension[]>;
 	plugins: ComputedRef<IExtension[]>;
+	totalRows: ComputedRef<number>;
 	areLoading: ComputedRef<boolean>;
 	fetchExtensions: () => Promise<void>;
 	filters: Ref<IExtensionsFilter>;
 	filtersActive: ComputedRef<boolean>;
+	paginateSize: Ref<number>;
+	paginatePage: Ref<number>;
+	sortBy: Ref<'name' | 'type' | 'kind' | 'enabled' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }
 

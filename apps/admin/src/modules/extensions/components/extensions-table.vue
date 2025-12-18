@@ -13,6 +13,7 @@
 		class="flex-grow"
 		:max-height="tableHeight"
 		@sort-change="onSortData"
+		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
 	>
 		<template #empty>
@@ -95,13 +96,22 @@
 		</template>
 
 		<el-table-column
+			v-if="isMDDevice"
+			type="selection"
+			:width="30"
+		/>
+
+		<el-table-column
 			:width="60"
 			align="center"
 		>
 			<template #default="scope">
-				<el-icon :size="24">
-					<icon :icon="scope.row.kind === ExtensionKind.MODULE ? 'mdi:cube-outline' : 'mdi:puzzle-outline'" />
-				</el-icon>
+				<el-avatar :size="32">
+					<icon
+						:icon="scope.row.kind === ExtensionKind.MODULE ? 'mdi:package-variant' : 'mdi:toy-brick'"
+						class="w[20px] h[20px]"
+					/>
+				</el-avatar>
 			</template>
 		</el-table-column>
 
@@ -222,7 +232,7 @@
 					:disabled="!scope.row.canToggleEnabled"
 					size="small"
 					@click.stop
-					@change="(val: boolean) => onToggleEnabled(scope.row.type, val)"
+					@change="(val: string | number | boolean) => onToggleEnabled(scope.row.type, val as boolean)"
 				/>
 			</template>
 		</el-table-column>
@@ -253,11 +263,11 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElResult, ElSwitch, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElResult, ElSwitch, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild } from '../../../common';
+import { IconWithChild, useBreakpoints } from '../../../common';
 import { ExtensionKind } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
 
@@ -278,6 +288,8 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const { isMDDevice } = useBreakpoints();
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
@@ -315,5 +327,10 @@ const onRowClick = (row: IExtension): void => {
 
 const onToggleEnabled = (type: IExtension['type'], enabled: boolean): void => {
 	emit('toggle-enabled', type, enabled);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const onSelectionChange = (selection: IExtension[]): void => {
+	// Selection handling - can be extended for bulk operations
 };
 </script>

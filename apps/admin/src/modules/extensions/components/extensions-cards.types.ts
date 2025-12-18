@@ -4,5 +4,4 @@ export interface IExtensionsCardsProps {
 	items: IExtension[];
 	loading?: boolean;
 	filtersActive?: boolean;
-	containerHeight?: number;
 }

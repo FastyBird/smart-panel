@@ -47,7 +47,13 @@
 		<list-extensions
 			v-model:filters="filters"
 			v-model:view-mode="viewMode"
-			:items="extensions"
+			v-model:paginate-size="paginateSize"
+			v-model:paginate-page="paginatePage"
+			v-model:sort-by="sortBy"
+			v-model:sort-dir="sortDir"
+			:items="extensionsPaginated"
+			:all-items="extensions"
+			:total-rows="totalRows"
 			:loading="areLoading"
 			:filters-active="filtersActive"
 			@toggle-enabled="onToggleEnabled"
@@ -125,7 +131,20 @@ useMeta({
 
 const { isMDDevice } = useBreakpoints();
 
-const { extensions, areLoading, fetchExtensions, filters, filtersActive, resetFilter } = useExtensionsDataSource();
+const {
+	extensions,
+	extensionsPaginated,
+	totalRows,
+	areLoading,
+	fetchExtensions,
+	filters,
+	filtersActive,
+	paginateSize,
+	paginatePage,
+	sortBy,
+	sortDir,
+	resetFilter,
+} = useExtensionsDataSource();
 const { toggleEnabled } = useExtensionActions();
 
 const showDrawer = ref<boolean>(false);
