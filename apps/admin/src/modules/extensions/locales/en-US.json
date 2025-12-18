@@ -92,9 +92,12 @@
 		"noFilteredExtensions": "No extensions match your current filters"
 	},
 	"buttons": {
+		"actions": "Actions",
 		"documentation": "Docs",
 		"repository": "Repository",
 		"issues": "Issues",
+		"enable": "Enable",
+		"disable": "Disable",
 		"remove": "Remove",
 		"configure": "Configure",
 		"viewDetails": "View Details",

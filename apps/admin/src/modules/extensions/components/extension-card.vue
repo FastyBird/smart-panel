@@ -3,53 +3,38 @@
 		class="extension-card"
 		:class="{ 'extension-card--disabled': !extension.enabled }"
 		shadow="hover"
+		body-class="py-3!"
+		footer-class="py-2! px-4!"
 	>
 		<template #header>
 			<div class="extension-card__header">
-				<div class="extension-card__title-row">
-					<icon
-						:icon="extensionIcon"
-						class="extension-card__icon"
-					/>
-					<div class="extension-card__title-container">
-						<h3 class="extension-card__title">{{ extension.name }}</h3>
-						<el-tag
-							:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
-							size="small"
-							class="extension-card__kind-tag"
-						>
-							{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
-						</el-tag>
-						<el-tag
-							v-if="extension.isCore"
-							type="warning"
-							size="small"
-							class="extension-card__core-tag"
-						>
-							{{ t('extensionsModule.labels.core') }}
-						</el-tag>
-					</div>
-				</div>
-				<div class="extension-card__actions">
-					<el-switch
-						:model-value="extension.enabled"
-						:disabled="!extension.canToggleEnabled"
-						:active-text="t('extensionsModule.labels.enabled')"
-						:inactive-text="t('extensionsModule.labels.disabled')"
-						@change="onToggleEnabled"
-					/>
-					<el-tooltip
-						:content="extension.isCore ? t('extensionsModule.tooltips.coreCannotBeRemoved') : t('extensionsModule.tooltips.removeNotSupported')"
-						placement="top"
+				<icon
+					:icon="extensionIcon"
+					class="extension-card__icon"
+				/>
+				<div class="extension-card__title-container">
+					<h3 class="extension-card__title">{{ extension.name }}</h3>
+					<el-tag
+						:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
+						size="small"
+						class="extension-card__kind-tag"
 					>
-						<el-button
-							type="danger"
-							size="small"
-							:icon="DeleteIcon"
-							circle
-							disabled
-						/>
-					</el-tooltip>
+						{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
+					</el-tag>
+					<el-tag
+						v-if="extension.isCore"
+						type="warning"
+						size="small"
+						class="extension-card__core-tag"
+					>
+						{{ t('extensionsModule.labels.core') }}
+					</el-tag>
+					<el-tag
+						:type="extension.enabled ? 'success' : 'info'"
+						size="small"
+					>
+						{{ extension.enabled ? t('extensionsModule.labels.enabled') : t('extensionsModule.labels.disabled') }}
+					</el-tag>
 				</div>
 			</div>
 		</template>
@@ -77,31 +62,30 @@
 						icon="mdi:tag"
 						class="extension-card__meta-icon"
 					/>
-					<span>{{ t('extensionsModule.labels.version') }}: {{ extension.version }}</span>
+					<span>{{ extension.version }}</span>
 				</div>
 				<div
 					v-if="extension.author"
-					class="extension-card__meta-item"
+					class="extension-card__author"
 				>
 					<icon
 						icon="mdi:account"
-						class="extension-card__meta-icon"
+						class="extension-card__author-icon"
 					/>
-					<span>{{ t('extensionsModule.labels.author') }}: {{ extension.author }}</span>
+					<span>{{ extension.author }}</span>
 				</div>
 			</div>
+		</div>
 
+		<template #footer>
 			<div class="extension-card__footer">
-				<div
-					v-if="hasLinks"
-					class="extension-card__links"
-				>
+				<div class="extension-card__links">
 					<el-button
 						v-if="extension.links?.documentation"
 						type="primary"
 						size="small"
 						link
-						@click="openLink(extension.links.documentation)"
+						@click.stop="openLink(extension.links.documentation)"
 					>
 						<icon
 							icon="mdi:book-open-page-variant"
@@ -114,7 +98,7 @@
 						type="primary"
 						size="small"
 						link
-						@click="openLink(extension.links.repository)"
+						@click.stop="openLink(extension.links.repository)"
 					>
 						<icon
 							icon="mdi:github"
@@ -127,7 +111,7 @@
 						type="primary"
 						size="small"
 						link
-						@click="openLink(extension.links.bugsTracking)"
+						@click.stop="openLink(extension.links.bugsTracking)"
 					>
 						<icon
 							icon="mdi:bug"
@@ -137,36 +121,56 @@
 					</el-button>
 				</div>
 
-				<div class="extension-card__actions-bottom">
-					<el-button
-						size="small"
-						@click="onDetailClick"
-					>
-						<icon
-							icon="mdi:information-outline"
-							class="mr-1"
-						/>
-						{{ t('extensionsModule.buttons.viewDetails') }}
-					</el-button>
-				</div>
+				<el-dropdown
+					split-button
+					size="small"
+					trigger="click"
+					@click="onDetailClick"
+					@command="onDropdownCommand"
+				>
+					{{ t('extensionsModule.buttons.detail.title') }}
+					<template #dropdown>
+						<el-dropdown-menu>
+							<el-dropdown-item
+								:command="extension.enabled ? 'disable' : 'enable'"
+								:disabled="!extension.canToggleEnabled"
+							>
+								<icon
+									:icon="extension.enabled ? 'mdi:toggle-switch-off' : 'mdi:toggle-switch'"
+									class="mr-2"
+								/>
+								{{ extension.enabled ? t('extensionsModule.buttons.disable') : t('extensionsModule.buttons.enable') }}
+							</el-dropdown-item>
+							<el-dropdown-item
+								command="delete"
+								disabled
+								divided
+							>
+								<icon
+									icon="mdi:delete"
+									class="mr-2"
+								/>
+								{{ t('extensionsModule.buttons.remove') }}
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</template>
+				</el-dropdown>
 			</div>
-		</div>
+		</template>
 	</el-card>
 </template>
 
 <script setup lang="ts">
-import { computed, h } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElSwitch, ElTag, ElTooltip } from 'element-plus';
+import { ElButton, ElCard, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { ExtensionKind } from '../extensions.constants';
 
 import type { IExtensionCardEmits, IExtensionCardProps } from './extension-card.types';
-
-const DeleteIcon = h(Icon, { icon: 'mdi:delete' });
 
 defineOptions({
 	name: 'ExtensionCard',
@@ -185,20 +189,22 @@ const extensionIcon = computed<string>(() => {
 	return 'mdi:toy-brick';
 });
 
-const hasLinks = computed<boolean>(() => {
-	return !!(
-		props.extension.links?.documentation ||
-		props.extension.links?.repository ||
-		props.extension.links?.bugsTracking
-	);
-});
-
-const onToggleEnabled = (value: boolean | string | number): void => {
-	emit('toggle-enabled', props.extension.type, value as boolean);
-};
-
 const onDetailClick = (): void => {
 	emit('detail', props.extension.type);
+};
+
+const onDropdownCommand = (command: string): void => {
+	switch (command) {
+		case 'enable':
+			emit('toggle-enabled', props.extension.type, true);
+			break;
+		case 'disable':
+			emit('toggle-enabled', props.extension.type, false);
+			break;
+		case 'delete':
+			// Not yet supported
+			break;
+	}
 };
 
 const openLink = (url: string): void => {
@@ -217,17 +223,8 @@ const openLink = (url: string): void => {
 
 .extension-card__header {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: 1rem;
-}
-
-.extension-card__title-row {
-	display: flex;
 	align-items: center;
 	gap: 0.75rem;
-	min-width: 0;
-	flex: 1;
 }
 
 .extension-card__icon {
@@ -261,12 +258,17 @@ const openLink = (url: string): void => {
 .extension-card__content {
 	display: flex;
 	flex-direction: column;
-	gap: 0.75rem;
+	justify-content: space-between;
+	height: 5.5rem;
 }
 
 .extension-card__description {
 	margin: 0;
 	color: var(--el-text-color-regular);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
 	line-height: 1.5;
 }
 
@@ -277,36 +279,39 @@ const openLink = (url: string): void => {
 
 .extension-card__meta {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 1rem;
+	justify-content: space-between;
+	align-items: center;
 }
 
 .extension-card__meta-item {
 	display: flex;
 	align-items: center;
 	gap: 0.25rem;
-	font-size: 0.875rem;
+	font-size: 0.8125rem;
 	color: var(--el-text-color-secondary);
 }
 
 .extension-card__meta-icon {
-	font-size: 1rem;
+	font-size: 0.875rem;
 }
 
-.extension-card__actions {
+.extension-card__author {
 	display: flex;
 	align-items: center;
-	gap: 0.75rem;
-	flex-shrink: 0;
+	gap: 0.25rem;
+	font-size: 0.75rem;
+	color: var(--el-text-color-placeholder);
+}
+
+.extension-card__author-icon {
+	font-size: 0.875rem;
 }
 
 .extension-card__footer {
 	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-	margin-top: 0.5rem;
-	padding-top: 0.75rem;
-	border-top: 1px solid var(--el-border-color-lighter);
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.5rem;
 }
 
 .extension-card__links {
@@ -315,9 +320,4 @@ const openLink = (url: string): void => {
 	gap: 0.5rem;
 }
 
-.extension-card__actions-bottom {
-	display: flex;
-	justify-content: flex-end;
-	gap: 0.5rem;
-}
 </style>
