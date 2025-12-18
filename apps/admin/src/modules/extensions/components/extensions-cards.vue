@@ -34,7 +34,6 @@ import { useI18n } from 'vue-i18n';
 
 import { ElEmpty, ElScrollbar, ElSkeleton } from 'element-plus';
 
-import { ExtensionKind } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
 
 import ExtensionCard from './extension-card.vue';
@@ -63,11 +62,7 @@ const sortedItems = computed<IExtension[]>(() => {
 		if (a.isCore && !b.isCore) return -1;
 		if (!a.isCore && b.isCore) return 1;
 
-		// Then modules before plugins
-		if (a.kind === ExtensionKind.MODULE && b.kind === ExtensionKind.PLUGIN) return -1;
-		if (a.kind === ExtensionKind.PLUGIN && b.kind === ExtensionKind.MODULE) return 1;
-
-		// Then alphabetically
+		// Then alphabetically by name
 		return a.name.localeCompare(b.name);
 	});
 });

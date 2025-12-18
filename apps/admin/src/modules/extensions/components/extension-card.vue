@@ -132,38 +132,42 @@
 					{{ t('extensionsModule.buttons.detail.title') }}
 					<template #dropdown>
 						<el-dropdown-menu>
-							<el-tooltip
-								:content="toggleDisabledReason"
-								:disabled="extension.canToggleEnabled"
-								placement="left"
-							>
 								<el-dropdown-item
-									:command="extension.enabled ? 'disable' : 'enable'"
-									:disabled="!extension.canToggleEnabled"
-								>
-									<icon
-										:icon="extension.enabled ? 'mdi:toggle-switch-off' : 'mdi:toggle-switch'"
-										class="mr-2"
-									/>
-									{{ extension.enabled ? t('extensionsModule.buttons.disable') : t('extensionsModule.buttons.enable') }}
-								</el-dropdown-item>
-							</el-tooltip>
-							<el-tooltip
-								:content="removeDisabledReason"
-								placement="left"
+								:command="extension.enabled ? 'disable' : 'enable'"
+								:disabled="!extension.canToggleEnabled"
 							>
-								<el-dropdown-item
-									command="delete"
-									disabled
-									divided
+								<el-tooltip
+									:content="toggleDisabledReason"
+									:disabled="extension.canToggleEnabled"
+									placement="left"
 								>
-									<icon
-										icon="mdi:delete"
-										class="mr-2"
-									/>
-									{{ t('extensionsModule.buttons.remove') }}
-								</el-dropdown-item>
-							</el-tooltip>
+									<span class="flex items-center w-full">
+										<icon
+											:icon="extension.enabled ? 'mdi:toggle-switch-off' : 'mdi:toggle-switch'"
+											class="mr-2"
+										/>
+										{{ extension.enabled ? t('extensionsModule.buttons.disable') : t('extensionsModule.buttons.enable') }}
+									</span>
+								</el-tooltip>
+							</el-dropdown-item>
+							<el-dropdown-item
+								command="delete"
+								disabled
+								divided
+							>
+								<el-tooltip
+									:content="removeDisabledReason"
+									placement="left"
+								>
+									<span class="flex items-center w-full">
+										<icon
+											icon="mdi:delete"
+											class="mr-2"
+										/>
+										{{ t('extensionsModule.buttons.remove') }}
+									</span>
+								</el-tooltip>
+							</el-dropdown-item>
 						</el-dropdown-menu>
 					</template>
 				</el-dropdown>
