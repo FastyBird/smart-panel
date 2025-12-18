@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ExtensionKind } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
 
-import { defaultExtensionsFilter, useExtensionsDataSource } from './useExtensionsDataSource';
+import { defaultExtensionsFilter, defaultExtensionsSort, useExtensionsDataSource } from './useExtensionsDataSource';
 
 const mockExtensions: IExtension[] = [
 	{
@@ -47,6 +47,9 @@ const mockExtensions: IExtension[] = [
 ];
 
 const mockFilters = ref({ ...defaultExtensionsFilter });
+const mockPagination = ref({ page: 1, size: 10 });
+const mockSort = ref([defaultExtensionsSort]);
+const mockViewMode = ref<'table' | 'cards'>('table');
 
 const mockStore = {
 	data: Object.fromEntries(mockExtensions.map((ext) => [ext.type, ext])),
@@ -66,6 +69,9 @@ vi.mock('../../../common', () => ({
 	})),
 	useListQuery: vi.fn(() => ({
 		filters: mockFilters,
+		pagination: mockPagination,
+		sort: mockSort,
+		viewMode: mockViewMode,
 		reset: vi.fn(() => {
 			mockFilters.value = { ...defaultExtensionsFilter };
 		}),
@@ -75,6 +81,9 @@ vi.mock('../../../common', () => ({
 describe('useExtensionsDataSource', () => {
 	beforeEach(() => {
 		mockFilters.value = { ...defaultExtensionsFilter };
+		mockPagination.value = { page: 1, size: 10 };
+		mockSort.value = [defaultExtensionsSort];
+		mockViewMode.value = 'table';
 	});
 
 	describe('basic filtering', () => {

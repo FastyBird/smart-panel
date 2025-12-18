@@ -8,6 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { UpdatePluginConfigDto } from '../../config/dto/config.dto';
 import { ConfigService } from '../../config/services/config.service';
 import { ModulesTypeMapperService } from '../../config/services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
@@ -30,16 +31,17 @@ describe('ExtensionsService', () => {
 		enabled = true;
 	}
 
-	class MockConfigDto {
+	// Extends UpdatePluginConfigDto to support enable/disable
+	class MockConfigDto extends UpdatePluginConfigDto {
 		type = 'mock';
-		enabled: boolean | undefined = undefined; // Must have default to exist on instance
 	}
 
 	class MockConfigDtoNoEnabled {
 		type = 'mock';
 	}
 
-	const mockModuleMappings = [{ type: 'devices-module', class: MockConfigModel, configDto: MockConfigDto }] as never;
+	// Use 'external-module' which is NOT in NON_TOGGLEABLE_MODULES
+	const mockModuleMappings = [{ type: 'external-module', class: MockConfigModel, configDto: MockConfigDto }] as never;
 
 	const mockPluginMappings = [
 		{ type: 'pages-tiles-plugin', class: MockConfigModel, configDto: MockConfigDto },
@@ -63,7 +65,7 @@ describe('ExtensionsService', () => {
 					useValue: {
 						getMappings: jest.fn().mockReturnValue(mockModuleMappings),
 						getMapping: jest.fn().mockReturnValue({
-							type: 'devices-module',
+							type: 'external-module',
 							configDto: MockConfigDto,
 						}),
 					},
@@ -82,7 +84,7 @@ describe('ExtensionsService', () => {
 					provide: ExtensionsBundledService,
 					useValue: {
 						isCore: jest.fn().mockImplementation((name: string) => {
-							return ['devices-module', 'pages-tiles-plugin'].includes(name);
+							return ['external-module', 'pages-tiles-plugin'].includes(name);
 						}),
 					},
 				},
@@ -155,14 +157,14 @@ describe('ExtensionsService', () => {
 			const extensions = service.findAll();
 
 			expect(extensions).toHaveLength(2);
-			expect(extensions.some((e) => e.type === 'devices-module')).toBe(true);
+			expect(extensions.some((e) => e.type === 'external-module')).toBe(true);
 			expect(extensions.some((e) => e.type === 'pages-tiles-plugin')).toBe(true);
 		});
 
 		it('should set correct kind for each extension', () => {
 			const extensions = service.findAll();
 
-			const module = extensions.find((e) => e.type === 'devices-module');
+			const module = extensions.find((e) => e.type === 'external-module');
 			const plugin = extensions.find((e) => e.type === 'pages-tiles-plugin');
 
 			expect(module?.kind).toBe(ExtensionKind.MODULE);
@@ -175,7 +177,7 @@ describe('ExtensionsService', () => {
 			const modules = service.findAllModules();
 
 			expect(modules).toHaveLength(1);
-			expect(modules[0].type).toBe('devices-module');
+			expect(modules[0].type).toBe('external-module');
 			expect(modules[0].kind).toBe(ExtensionKind.MODULE);
 		});
 	});
@@ -192,10 +194,10 @@ describe('ExtensionsService', () => {
 
 	describe('findOne', () => {
 		it('should return a module by type', () => {
-			const extension = service.findOne('devices-module');
+			const extension = service.findOne('external-module');
 
 			expect(extension).toBeDefined();
-			expect(extension.type).toBe('devices-module');
+			expect(extension.type).toBe('external-module');
 			expect(extension.kind).toBe(ExtensionKind.MODULE);
 		});
 
@@ -214,34 +216,40 @@ describe('ExtensionsService', () => {
 
 	describe('updateEnabled', () => {
 		it('should update module enabled status', () => {
-			service.updateEnabled('devices-module', false);
+			service.updateEnabled('external-module', false);
 
-			expect(configService.setModuleConfig).toHaveBeenCalledWith('devices-module', { enabled: false });
+			expect(configService.setModuleConfig).toHaveBeenCalledWith('external-module', {
+				type: 'external-module',
+				enabled: false,
+			});
 		});
 
 		it('should update plugin enabled status', () => {
 			service.updateEnabled('pages-tiles-plugin', false);
 
-			expect(configService.setPluginConfig).toHaveBeenCalledWith('pages-tiles-plugin', { enabled: false });
+			expect(configService.setPluginConfig).toHaveBeenCalledWith('pages-tiles-plugin', {
+				type: 'pages-tiles-plugin',
+				enabled: false,
+			});
 		});
 
-		it('should throw ExtensionNotConfigurableException when extension cannot be toggled', () => {
+		it('should throw ExtensionNotConfigurableException when plugin DTO has no enabled property', () => {
 			// Mock mapping with no enabled property
-			jest.spyOn(modulesMapperService, 'getMapping').mockReturnValue({
-				type: 'devices-module',
+			jest.spyOn(pluginsMapperService, 'getMapping').mockReturnValue({
+				type: 'pages-tiles-plugin',
 				configDto: MockConfigDtoNoEnabled,
 			} as never);
 
-			expect(() => service.updateEnabled('devices-module', false)).toThrow(ExtensionNotConfigurableException);
+			expect(() => service.updateEnabled('pages-tiles-plugin', false)).toThrow(ExtensionNotConfigurableException);
 		});
 	});
 
 	describe('isCore property', () => {
 		it('should set isCore based on bundled service', () => {
-			const extension = service.findOne('devices-module');
+			const extension = service.findOne('external-module');
 
 			expect(extension.isCore).toBe(true);
-			expect(bundledService.isCore).toHaveBeenCalledWith('devices-module');
+			expect(bundledService.isCore).toHaveBeenCalledWith('external-module');
 		});
 
 		it('should set isCore to false for non-bundled extensions', () => {

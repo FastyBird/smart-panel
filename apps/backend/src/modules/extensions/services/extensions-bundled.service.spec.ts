@@ -68,10 +68,12 @@ describe('ExtensionsBundledService', () => {
 			expect(service.isCore('custom-module')).toBe(false);
 		});
 
-		it('should return false when manifest does not exist', () => {
+		it('should return true when manifest does not exist (all extensions assumed core)', () => {
 			(fs.existsSync as jest.Mock).mockReturnValue(false);
 
-			expect(service.isCore('auth-module')).toBe(false);
+			// When no manifest exists, all registered extensions are assumed core
+			// since third-party dynamic loading isn't implemented yet
+			expect(service.isCore('auth-module')).toBe(true);
 		});
 	});
 
@@ -175,21 +177,25 @@ describe('ExtensionsBundledService', () => {
 	});
 
 	describe('error handling', () => {
-		it('should handle JSON parse errors gracefully', () => {
+		it('should handle JSON parse errors gracefully and assume all core', () => {
 			(fs.existsSync as jest.Mock).mockReturnValue(true);
 			(fs.readFileSync as jest.Mock).mockReturnValue('invalid json');
 
-			expect(service.isCore('auth-module')).toBe(false);
+			// When manifest fails to parse, returns null which results in empty bundledSet
+			// Empty bundledSet means all extensions are assumed core
+			expect(service.isCore('auth-module')).toBe(true);
 			expect(Logger.prototype.warn).toHaveBeenCalled();
 		});
 
-		it('should handle file read errors gracefully', () => {
+		it('should handle file read errors gracefully and assume all core', () => {
 			(fs.existsSync as jest.Mock).mockReturnValue(true);
 			(fs.readFileSync as jest.Mock).mockImplementation(() => {
 				throw new Error('File read error');
 			});
 
-			expect(service.isCore('auth-module')).toBe(false);
+			// When manifest fails to load, returns null which results in empty bundledSet
+			// Empty bundledSet means all extensions are assumed core
+			expect(service.isCore('auth-module')).toBe(true);
 			expect(Logger.prototype.warn).toHaveBeenCalled();
 		});
 	});
