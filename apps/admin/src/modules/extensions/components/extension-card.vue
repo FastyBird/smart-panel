@@ -3,6 +3,7 @@
 		class="extension-card"
 		:class="{ 'extension-card--disabled': !extension.enabled }"
 		shadow="hover"
+		header-class="py-2!"
 		body-class="py-3!"
 		footer-class="py-2! px-4!"
 	>
@@ -12,29 +13,29 @@
 					:icon="extensionIcon"
 					class="extension-card__icon"
 				/>
-				<div class="extension-card__title-container">
+				<div class="extension-card__header-content">
 					<h3 class="extension-card__title">{{ extension.name }}</h3>
-					<el-tag
-						:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
-						size="small"
-						class="extension-card__kind-tag"
-					>
-						{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
-					</el-tag>
-					<el-tag
-						v-if="extension.isCore"
-						type="warning"
-						size="small"
-						class="extension-card__core-tag"
-					>
-						{{ t('extensionsModule.labels.core') }}
-					</el-tag>
-					<el-tag
-						:type="extension.enabled ? 'success' : 'info'"
-						size="small"
-					>
-						{{ extension.enabled ? t('extensionsModule.labels.enabled') : t('extensionsModule.labels.disabled') }}
-					</el-tag>
+					<div class="extension-card__tags">
+						<el-tag
+							:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
+							size="small"
+						>
+							{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
+						</el-tag>
+						<el-tag
+							v-if="extension.isCore"
+							type="warning"
+							size="small"
+						>
+							{{ t('extensionsModule.labels.core') }}
+						</el-tag>
+						<el-tag
+							:type="extension.enabled ? 'success' : 'info'"
+							size="small"
+						>
+							{{ extension.enabled ? t('extensionsModule.labels.enabled') : t('extensionsModule.labels.disabled') }}
+						</el-tag>
+					</div>
 				</div>
 			</div>
 		</template>
@@ -248,7 +249,7 @@ const openLink = (url: string): void => {
 
 .extension-card__header {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 0.75rem;
 }
 
@@ -256,14 +257,15 @@ const openLink = (url: string): void => {
 	font-size: 1.5rem;
 	flex-shrink: 0;
 	color: var(--el-color-primary);
+	margin-top: 0.125rem;
 }
 
-.extension-card__title-container {
+.extension-card__header-content {
 	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
+	flex-direction: column;
 	gap: 0.5rem;
 	min-width: 0;
+	flex: 1;
 }
 
 .extension-card__title {
@@ -273,11 +275,13 @@ const openLink = (url: string): void => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: 1.25;
 }
 
-.extension-card__kind-tag,
-.extension-card__core-tag {
-	flex-shrink: 0;
+.extension-card__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.375rem;
 }
 
 .extension-card__content {
