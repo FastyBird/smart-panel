@@ -33,14 +33,13 @@ import {
 } from './common';
 import { provideLogger } from './common';
 import CommonModule from './common/common.module';
-import { installRemoteExtensions, installStaticExtensions } from './common/extensions/extensions';
 import i18n from './locales';
 import { AuthModule } from './modules/auth';
 import { ConfigModule } from './modules/config';
 import { DashboardModule } from './modules/dashboard';
 import { DevicesModule } from './modules/devices';
 import { DisplaysModule } from './modules/displays';
-import { ExtensionsModule } from './modules/extensions';
+import { ExtensionsModule, installRemoteExtensions, installStaticExtensions } from './modules/extensions';
 import { MdnsModule } from './modules/mdns';
 import { StatsModule } from './modules/stats';
 import { SystemModule } from './modules/system';

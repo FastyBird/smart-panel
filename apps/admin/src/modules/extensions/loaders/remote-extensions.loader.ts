@@ -3,11 +3,11 @@ import type { App } from 'vue';
 import type { ConsolaInstance } from 'consola';
 import type { Client } from 'openapi-fetch';
 
-import { MODULES_PREFIX } from '../../app.constants';
-import type { IExtensionOptions } from '../../app.types';
-import { EXTENSIONS_MODULE_PREFIX, ExtensionSurface } from '../../modules/extensions';
-import type { OpenApiPaths } from '../../openapi.constants';
-import { getErrorReason } from '../utils/api-error.utils';
+import { MODULES_PREFIX } from '../../../app.constants';
+import type { IExtensionOptions } from '../../../app.types';
+import type { OpenApiPaths } from '../../../openapi.constants';
+import { getErrorReason } from '../../../common/utils/api-error.utils';
+import { EXTENSIONS_MODULE_PREFIX, ExtensionSurface } from '../extensions.constants';
 
 type PluginInstallFn<TOptions> = (app: App, options?: TOptions) => void;
 

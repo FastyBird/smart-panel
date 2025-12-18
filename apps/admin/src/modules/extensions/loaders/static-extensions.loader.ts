@@ -4,7 +4,7 @@ import type { ConsolaInstance } from 'consola';
 
 import type { AdminExtension } from '@root-config/extensions';
 
-import type { IExtensionOptions } from '../../app.types';
+import type { IExtensionOptions } from '../../../app.types';
 
 export const installStaticExtensions = (
 	app: App,
