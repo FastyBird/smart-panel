@@ -143,12 +143,12 @@ const {
 	paginatePage,
 	sortBy,
 	sortDir,
+	viewMode,
 	resetFilter,
 } = useExtensionsDataSource();
 const { toggleEnabled } = useExtensionActions();
 
 const showDrawer = ref<boolean>(false);
-const viewMode = ref<'table' | 'cards'>('table');
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {

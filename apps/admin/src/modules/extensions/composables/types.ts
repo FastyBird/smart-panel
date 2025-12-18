@@ -16,6 +16,8 @@ export interface IUseExtensions {
 	fetchExtensions: () => Promise<void>;
 }
 
+export type ExtensionsViewMode = 'table' | 'cards';
+
 export interface IUseExtensionsDataSource {
 	extensions: ComputedRef<IExtension[]>;
 	extensionsPaginated: ComputedRef<IExtension[]>;
@@ -30,6 +32,7 @@ export interface IUseExtensionsDataSource {
 	paginatePage: Ref<number>;
 	sortBy: Ref<'name' | 'type' | 'kind' | 'enabled' | undefined>;
 	sortDir: Ref<'asc' | 'desc' | null>;
+	viewMode: Ref<ExtensionsViewMode>;
 	resetFilter: () => void;
 }
 

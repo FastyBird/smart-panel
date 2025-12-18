@@ -1,16 +1,16 @@
-import { computed, ref, watch } from 'vue';
+import { type Ref, computed, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, ExtensionKind, EXTENSIONS_MODULE_NAME } from '../extensions.constants';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_VIEW_MODE, ExtensionKind, EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
 import { extensionsStoreKey } from '../store/keys';
 
 import { ExtensionsFilterSchema } from './schemas';
-import type { IExtensionsFilter, IUseExtensionsDataSource } from './types';
+import type { ExtensionsViewMode, IExtensionsFilter, IUseExtensionsDataSource } from './types';
 
 export const defaultExtensionsFilter: IExtensionsFilter = {
 	search: undefined,
@@ -35,8 +35,9 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 		filters,
 		sort,
 		pagination,
+		viewMode: rawViewMode,
 		reset: resetFilter,
-	} = useListQuery<typeof ExtensionsFilterSchema>({
+	} = useListQuery<typeof ExtensionsFilterSchema, ExtensionsViewMode>({
 		key: `${EXTENSIONS_MODULE_NAME}:extensions:list`,
 		filters: {
 			schema: ExtensionsFilterSchema,
@@ -51,9 +52,21 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 				size: DEFAULT_PAGE_SIZE,
 			},
 		},
+		viewMode: {
+			options: ['table', 'cards'],
+			default: DEFAULT_VIEW_MODE,
+		},
 		syncQuery: true,
 		version: 1,
 	});
+
+	// Ensure viewMode always has a value (fallback to default)
+	const viewMode = computed({
+		get: () => rawViewMode.value ?? DEFAULT_VIEW_MODE,
+		set: (val: ExtensionsViewMode) => {
+			rawViewMode.value = val;
+		},
+	}) as Ref<ExtensionsViewMode>;
 
 	const filtersActive = computed<boolean>((): boolean => {
 		return (
@@ -204,6 +217,7 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 		paginatePage,
 		sortBy,
 		sortDir,
+		viewMode,
 		resetFilter,
 	};
 };

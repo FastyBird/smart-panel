@@ -42,7 +42,7 @@
 			</el-form-item>
 		</el-form>
 
-		<el-button-group class="mt-1 mr-1">
+		<el-button-group class="p-1">
 			<el-button
 				:type="innerViewMode === 'table' ? 'primary' : undefined"
 				plain
@@ -64,7 +64,7 @@
 		<el-button
 			v-if="props.filtersActive"
 			plain
-			class="px-2! mt-1 mr-1"
+			class="px-2! p-1"
 			@click="emit('reset-filters')"
 		>
 			<icon icon="mdi:filter-off" />
@@ -72,7 +72,7 @@
 
 		<el-button
 			plain
-			class="px-2! mt-1 mr-1"
+			class="px-2! p-1"
 			@click="emit('adjust-list')"
 		>
 			<icon icon="mdi:slider" />
