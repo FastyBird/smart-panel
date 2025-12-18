@@ -113,6 +113,7 @@
 	},
 	"tooltips": {
 		"coreCannotBeRemoved": "Core extensions cannot be removed",
+		"coreModuleCannotBeDisabled": "Core modules cannot be disabled",
 		"removeNotSupported": "Extension removal is not yet supported",
 		"cannotToggleEnabled": "This extension cannot be enabled/disabled",
 		"openConfiguration": "Open extension configuration"

@@ -131,27 +131,38 @@
 					{{ t('extensionsModule.buttons.detail.title') }}
 					<template #dropdown>
 						<el-dropdown-menu>
-							<el-dropdown-item
-								:command="extension.enabled ? 'disable' : 'enable'"
-								:disabled="!extension.canToggleEnabled"
+							<el-tooltip
+								:content="toggleDisabledReason"
+								:disabled="extension.canToggleEnabled"
+								placement="left"
 							>
-								<icon
-									:icon="extension.enabled ? 'mdi:toggle-switch-off' : 'mdi:toggle-switch'"
-									class="mr-2"
-								/>
-								{{ extension.enabled ? t('extensionsModule.buttons.disable') : t('extensionsModule.buttons.enable') }}
-							</el-dropdown-item>
-							<el-dropdown-item
-								command="delete"
-								disabled
-								divided
+								<el-dropdown-item
+									:command="extension.enabled ? 'disable' : 'enable'"
+									:disabled="!extension.canToggleEnabled"
+								>
+									<icon
+										:icon="extension.enabled ? 'mdi:toggle-switch-off' : 'mdi:toggle-switch'"
+										class="mr-2"
+									/>
+									{{ extension.enabled ? t('extensionsModule.buttons.disable') : t('extensionsModule.buttons.enable') }}
+								</el-dropdown-item>
+							</el-tooltip>
+							<el-tooltip
+								:content="removeDisabledReason"
+								placement="left"
 							>
-								<icon
-									icon="mdi:delete"
-									class="mr-2"
-								/>
-								{{ t('extensionsModule.buttons.remove') }}
-							</el-dropdown-item>
+								<el-dropdown-item
+									command="delete"
+									disabled
+									divided
+								>
+									<icon
+										icon="mdi:delete"
+										class="mr-2"
+									/>
+									{{ t('extensionsModule.buttons.remove') }}
+								</el-dropdown-item>
+							</el-tooltip>
 						</el-dropdown-menu>
 					</template>
 				</el-dropdown>
@@ -164,7 +175,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTag } from 'element-plus';
+import { ElButton, ElCard, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTag, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -187,6 +198,20 @@ const extensionIcon = computed<string>(() => {
 		return 'mdi:package-variant';
 	}
 	return 'mdi:toy-brick';
+});
+
+const toggleDisabledReason = computed<string>(() => {
+	if (props.extension.isCore && props.extension.kind === ExtensionKind.MODULE) {
+		return t('extensionsModule.tooltips.coreModuleCannotBeDisabled');
+	}
+	return t('extensionsModule.tooltips.cannotToggleEnabled');
+});
+
+const removeDisabledReason = computed<string>(() => {
+	if (props.extension.isCore) {
+		return t('extensionsModule.tooltips.coreCannotBeRemoved');
+	}
+	return t('extensionsModule.tooltips.removeNotSupported');
 });
 
 const onDetailClick = (): void => {
