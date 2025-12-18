@@ -141,10 +141,11 @@ export class ExtensionsService {
 		}
 
 		// Update the config based on extension kind
+		// Note: type is required in the DTO validation
 		if (extension.kind === ExtensionKind.MODULE) {
-			this.configService.setModuleConfig(type, { enabled } as UpdateModuleConfigDto);
+			this.configService.setModuleConfig(type, { type, enabled } as UpdateModuleConfigDto);
 		} else {
-			this.configService.setPluginConfig(type, { enabled } as UpdatePluginConfigDto);
+			this.configService.setPluginConfig(type, { type, enabled } as UpdatePluginConfigDto);
 		}
 
 		// Return updated extension
