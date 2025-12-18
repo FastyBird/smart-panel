@@ -64,6 +64,33 @@
 	"states": {
 		"all": "All"
 	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Name"
+			},
+			"type": {
+				"title": "Type"
+			},
+			"kind": {
+				"title": "Kind"
+			},
+			"version": {
+				"title": "Version"
+			},
+			"core": {
+				"title": "Core"
+			},
+			"enabled": {
+				"title": "Enabled"
+			}
+		}
+	},
+	"texts": {
+		"loadingExtensions": "Loading extensions...",
+		"noExtensions": "No extensions installed",
+		"noFilteredExtensions": "No extensions match your current filters"
+	},
 	"buttons": {
 		"documentation": "Docs",
 		"repository": "Repository",
@@ -71,7 +98,13 @@
 		"remove": "Remove",
 		"configure": "Configure",
 		"viewDetails": "View Details",
+		"detail": {
+			"title": "Detail"
+		},
 		"reset": {
+			"title": "Reset Filters"
+		},
+		"resetFilters": {
 			"title": "Reset Filters"
 		}
 	},

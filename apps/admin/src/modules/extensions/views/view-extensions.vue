@@ -44,25 +44,16 @@
 	/>
 
 	<div class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden">
-		<el-card
-			shadow="never"
-			class="px-1 py-2 mb-2"
-			body-class="p-0!"
-		>
-			<extensions-filter
-				v-model:filters="filters"
-				:filters-active="filtersActive"
-				@reset-filters="onResetFilters"
-				@adjust-list="onAdjustList"
-			/>
-		</el-card>
-
-		<extensions-list
+		<list-extensions
+			v-model:filters="filters"
+			v-model:view-mode="viewMode"
 			:items="extensions"
 			:loading="areLoading"
 			:filters-active="filtersActive"
 			@toggle-enabled="onToggleEnabled"
 			@detail="onExtensionDetail"
+			@adjust-list="onAdjustList"
+			@reset-filters="onResetFilters"
 		/>
 	</div>
 
@@ -106,12 +97,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElCard, ElDrawer, ElIcon } from 'element-plus';
+import { ElDrawer, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { ExtensionsFilter, ExtensionsList, ListExtensionsAdjust } from '../components/components';
+import { ListExtensions, ListExtensionsAdjust } from '../components/components';
 import { useExtensionActions, useExtensionsDataSource } from '../composables/composables';
 import { RouteNames } from '../extensions.constants';
 import { ExtensionsException } from '../extensions.exceptions';
@@ -138,6 +129,7 @@ const { extensions, areLoading, fetchExtensions, filters, filtersActive, resetFi
 const { toggleEnabled } = useExtensionActions();
 
 const showDrawer = ref<boolean>(false);
+const viewMode = ref<'table' | 'cards'>('table');
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {

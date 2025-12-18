@@ -42,6 +42,25 @@
 			</el-form-item>
 		</el-form>
 
+		<el-button-group class="mt-1 mr-1">
+			<el-button
+				:type="innerViewMode === 'table' ? 'primary' : undefined"
+				plain
+				class="px-2!"
+				@click="innerViewMode = 'table'"
+			>
+				<icon icon="mdi:table" />
+			</el-button>
+			<el-button
+				:type="innerViewMode === 'cards' ? 'primary' : undefined"
+				plain
+				class="px-2!"
+				@click="innerViewMode = 'cards'"
+			>
+				<icon icon="mdi:view-grid" />
+			</el-button>
+		</el-button-group>
+
 		<el-button
 			v-if="props.filtersActive"
 			plain
@@ -65,7 +84,19 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElRadioButton, ElRadioGroup, type FormInstance, useNamespace } from 'element-plus';
+import {
+	ElButton,
+	ElButtonGroup,
+	ElDivider,
+	ElForm,
+	ElFormItem,
+	ElIcon,
+	ElInput,
+	ElRadioButton,
+	ElRadioGroup,
+	type FormInstance,
+	useNamespace,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -78,10 +109,13 @@ defineOptions({
 	name: 'ExtensionsFilter',
 });
 
-const props = defineProps<IExtensionsFilterProps>();
+const props = withDefaults(defineProps<IExtensionsFilterProps>(), {
+	viewMode: 'table',
+});
 
 const emit = defineEmits<{
 	(e: 'update:filters', filters: IExtensionsFilter): void;
+	(e: 'update:view-mode', mode: 'table' | 'cards'): void;
 	(e: 'reset-filters'): void;
 	(e: 'adjust-list'): void;
 }>();
@@ -90,6 +124,7 @@ const ns = useNamespace('extensions-filter');
 const { t } = useI18n();
 
 const innerFilters = useVModel(props, 'filters', emit);
+const innerViewMode = useVModel(props, 'viewMode', emit);
 
 const filterFormEl = ref<FormInstance | undefined>(undefined);
 

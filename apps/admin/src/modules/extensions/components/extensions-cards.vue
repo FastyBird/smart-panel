@@ -1,5 +1,8 @@
 <template>
-	<div class="extensions-list">
+	<div
+		class="extensions-cards"
+		:style="{ maxHeight: containerHeight ? `${containerHeight}px` : undefined }"
+	>
 		<el-skeleton
 			v-if="loading && items.length === 0"
 			:rows="5"
@@ -36,18 +39,21 @@ import { ExtensionKind } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';
 
 import ExtensionCard from './extension-card.vue';
-import type { IExtensionsListEmits, IExtensionsListProps } from './extensions-list.types';
+import type { IExtensionsCardsProps } from './extensions-cards.types';
 
 defineOptions({
-	name: 'ExtensionsList',
+	name: 'ExtensionsCards',
 });
 
-const props = withDefaults(defineProps<IExtensionsListProps>(), {
+const props = withDefaults(defineProps<IExtensionsCardsProps>(), {
 	loading: false,
 	filtersActive: false,
 });
 
-const emit = defineEmits<IExtensionsListEmits>();
+const emit = defineEmits<{
+	(e: 'toggle-enabled', type: IExtension['type'], enabled: boolean): void;
+	(e: 'detail', type: IExtension['type']): void;
+}>();
 
 const { t } = useI18n();
 
@@ -82,7 +88,7 @@ const onDetail = (type: IExtension['type']): void => {
 </script>
 
 <style scoped>
-.extensions-list {
+.extensions-cards {
 	padding: 1rem;
 	height: 100%;
 	overflow: auto;
