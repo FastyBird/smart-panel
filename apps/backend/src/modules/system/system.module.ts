@@ -4,6 +4,8 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.mod
 import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '../config/services/config.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
@@ -46,6 +48,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		InfluxDbModule,
 		StatsModule,
 		forwardRef(() => ConfigModule),
+		forwardRef(() => ExtensionsModule),
 	],
 	providers: [
 		SystemService,
@@ -67,6 +70,7 @@ export class SystemModule implements OnModuleInit {
 		private readonly configService: ConfigService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -108,5 +112,17 @@ export class SystemModule implements OnModuleInit {
 		for (const model of SYSTEM_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: SYSTEM_MODULE_NAME,
+			name: 'System',
+			description: 'System management, logs, and platform operations',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }
