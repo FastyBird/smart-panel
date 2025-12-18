@@ -20,8 +20,10 @@ jobs:
     steps:
       - name: "Check commit message for [ci skip]"
         id: "check"
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || '' }}
         run: |
-          if [[ "${{ github.event.head_commit.message || '' }}" == *"[ci skip]"* ]]; then
+          if echo "$COMMIT_MESSAGE" | grep -qF "[ci skip]"; then
             echo "Skipping CI due to [ci skip] in commit message"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
