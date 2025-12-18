@@ -4,7 +4,7 @@ import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../../config/dto/c
 import { ConfigService } from '../../config/services/config.service';
 import { ModulesTypeMapperService } from '../../config/services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
-import { ExtensionKind } from '../extensions.constants';
+import { ExtensionKind, NON_TOGGLEABLE_MODULES } from '../extensions.constants';
 import { ExtensionNotConfigurableException, ExtensionNotFoundException } from '../extensions.exceptions';
 import { ExtensionLinksModel, ExtensionModel } from '../models/extension.model';
 
@@ -171,24 +171,20 @@ export class ExtensionsService {
 		const metadata = this.moduleMetadata.get(type);
 		const isCore = this.bundledService.isCore(type);
 
-		// Check if the DTO supports enabled property
-		let canToggleEnabled = false;
-		try {
-			const mapping = this.modulesMapperService.getMapping(type);
-			canToggleEnabled = this.hasEnabledProperty(mapping.configDto);
-		} catch {
-			// Mapping not found, default to false
-			canToggleEnabled = false;
-		}
+		// Core modules in NON_TOGGLEABLE_MODULES list cannot be disabled
+		// Third-party modules (non-core) are always toggleable
+		const canToggleEnabled = !NON_TOGGLEABLE_MODULES.includes(type);
 
-		// Get enabled status from config
+		// Get enabled status from config (non-toggleable modules are always enabled)
 		let enabled = true;
-		try {
-			const moduleConfig = this.configService.getModuleConfig(type);
-			enabled = moduleConfig.enabled ?? true;
-		} catch {
-			// Module config not found, default to enabled
-			enabled = true;
+		if (canToggleEnabled) {
+			try {
+				const moduleConfig = this.configService.getModuleConfig(type);
+				enabled = moduleConfig.enabled ?? true;
+			} catch {
+				// Module config not found, default to enabled
+				enabled = true;
+			}
 		}
 
 		const extension = new ExtensionModel();
