@@ -19,6 +19,8 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -78,6 +80,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [
 		HomeAssistantHttpService,
@@ -126,6 +129,7 @@ export class DevicesHomeAssistantPlugin {
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -244,6 +248,17 @@ export class DevicesHomeAssistantPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
 			modelClass: UpdateHomeAssistantChannelPropertyDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+			name: 'Home Assistant Devices',
+			description: 'Integration with Home Assistant for device management',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 

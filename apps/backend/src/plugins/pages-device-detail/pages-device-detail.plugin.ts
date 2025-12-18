@@ -10,6 +10,8 @@ import { PageEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { PageRelationsLoaderRegistryService } from '../../modules/dashboard/services/page-relations-loader-registry.service';
 import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -30,6 +32,7 @@ import { PageRelationsLoaderService } from './services/page-relations-loader.ser
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [PageRelationsLoaderService],
 })
@@ -41,6 +44,7 @@ export class PagesDeviceDetailPlugin {
 		private readonly pageRelationsLoaderService: PageRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -82,6 +86,17 @@ export class PagesDeviceDetailPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: PAGES_DEVICE_DETAIL_TYPE,
 			modelClass: UpdateDeviceDetailPageDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: PAGES_DEVICE_DETAIL_PLUGIN_NAME,
+			name: 'Device Detail Page',
+			description: 'Dashboard page for detailed device information and controls',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

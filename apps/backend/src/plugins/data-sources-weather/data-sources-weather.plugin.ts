@@ -9,6 +9,8 @@ import { UpdateDataSourceDto } from '../../modules/dashboard/dto/update-data-sou
 import { DataSourceEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { DataSourceRelationsLoaderRegistryService } from '../../modules/dashboard/services/data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from '../../modules/dashboard/services/data-source-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -34,6 +36,7 @@ import { WeatherDataSourceRelationsLoaderService } from './services/data-source-
 		WeatherModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [WeatherDataSourceRelationsLoaderService],
 })
@@ -45,6 +48,7 @@ export class DataSourcesWeatherPlugin {
 		private readonly dataSourceRelationsLoaderService: WeatherDataSourceRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -129,6 +133,17 @@ export class DataSourcesWeatherPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE,
 			modelClass: UpdateForecastDayDataSourceDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DATA_SOURCES_WEATHER_PLUGIN_NAME,
+			name: 'Weather Data Sources',
+			description: 'Data sources for connecting tiles to weather information',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

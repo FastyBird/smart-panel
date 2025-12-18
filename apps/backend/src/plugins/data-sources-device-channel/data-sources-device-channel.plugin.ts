@@ -10,6 +10,8 @@ import { DataSourceEntity } from '../../modules/dashboard/entities/dashboard.ent
 import { DataSourceRelationsLoaderRegistryService } from '../../modules/dashboard/services/data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from '../../modules/dashboard/services/data-source-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -33,6 +35,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [
 		DeviceExistsConstraintValidator,
@@ -49,6 +52,7 @@ export class DataSourcesDeviceChannelPlugin {
 		private readonly dataSourceRelationsLoaderService: DataSourceRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -94,6 +98,17 @@ export class DataSourcesDeviceChannelPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DATA_SOURCES_DEVICE_TYPE,
 			modelClass: UpdateDeviceChannelDataSourceDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DATA_SOURCES_DEVICE_PLUGIN_NAME,
+			name: 'Device Channel Data Sources',
+			description: 'Data sources for connecting tiles to device channel properties',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -42,6 +44,7 @@ import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_SWAGGER_EXTRA_MODELS } from './we
 		WeatherModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	controllers: [OpenWeatherMapOneCallGeolocationController],
 	providers: [OpenWeatherMapOneCallHttpService, OpenWeatherMapOneCallGeolocationService, OpenWeatherMapOneCallProvider],
@@ -55,6 +58,7 @@ export class WeatherOpenweathermapOnecallPlugin implements OnModuleInit {
 		private readonly openWeatherMapOneCallProvider: OpenWeatherMapOneCallProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -105,6 +109,17 @@ export class WeatherOpenweathermapOnecallPlugin implements OnModuleInit {
 			discriminatorProperty: 'type',
 			discriminatorValue: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_TYPE,
 			modelClass: UpdateOpenWeatherMapOneCallLocationDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
+			name: 'OpenWeatherMap One Call',
+			description: 'Weather data provider using OpenWeatherMap One Call API',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

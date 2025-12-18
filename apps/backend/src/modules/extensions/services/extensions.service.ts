@@ -152,16 +152,27 @@ export class ExtensionsService {
 	}
 
 	/**
-	 * Check if a DTO class has the 'enabled' property
+	 * Check if a DTO class supports the 'enabled' property by checking inheritance
+	 * All plugin config DTOs that extend UpdatePluginConfigDto support enable/disable
 	 */
 	private hasEnabledProperty(dtoClass: new (...args: unknown[]) => unknown): boolean {
-		// Create an instance and check if 'enabled' is defined
-		// We check the prototype and metadata to determine if the property exists
-		const instance = new dtoClass() as object;
-		const hasOnInstance = 'enabled' in instance;
-		const hasOnPrototype = Object.prototype.hasOwnProperty.call(dtoClass.prototype, 'enabled') as boolean;
-
-		return hasOnInstance || hasOnPrototype;
+		// Check if the DTO class extends UpdatePluginConfigDto
+		// UpdatePluginConfigDto has the 'enabled' optional property, so any class
+		// that extends it supports enable/disable functionality
+		try {
+			const instance = new dtoClass();
+			return instance instanceof UpdatePluginConfigDto;
+		} catch {
+			// Constructor might throw, check prototype chain manually
+			let proto = Object.getPrototypeOf(dtoClass.prototype) as object | null;
+			while (proto && proto !== Object.prototype) {
+				if (proto.constructor === UpdatePluginConfigDto) {
+					return true;
+				}
+				proto = Object.getPrototypeOf(proto) as object | null;
+			}
+			return false;
+		}
 	}
 
 	/**

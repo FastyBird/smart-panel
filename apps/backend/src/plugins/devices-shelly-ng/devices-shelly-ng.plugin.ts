@@ -18,6 +18,8 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -64,6 +66,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [
 		ShellyRpcClientService,
@@ -88,6 +91,7 @@ export class DevicesShellyNgPlugin {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -189,6 +193,17 @@ export class DevicesShellyNgPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DEVICES_SHELLY_NG_TYPE,
 			modelClass: UpdateShellyNgChannelPropertyDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_SHELLY_NG_PLUGIN_NAME,
+			name: 'Shelly NG Devices',
+			description: 'Support for Shelly next-generation devices',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 

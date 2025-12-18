@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -35,7 +37,13 @@ import { WEATHER_OPENWEATHERMAP_PLUGIN_SWAGGER_EXTRA_MODELS } from './weather-op
 	description: WEATHER_OPENWEATHERMAP_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([OpenWeatherMapLocationEntity]), WeatherModule, ConfigModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([OpenWeatherMapLocationEntity]),
+		WeatherModule,
+		ConfigModule,
+		SwaggerModule,
+		ExtensionsModule,
+	],
 	providers: [OpenWeatherMapHttpService, OpenWeatherMapProvider],
 	exports: [OpenWeatherMapHttpService, OpenWeatherMapProvider],
 })
@@ -47,6 +55,7 @@ export class WeatherOpenweathermapPlugin implements OnModuleInit {
 		private readonly openWeatherMapProvider: OpenWeatherMapProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -97,6 +106,17 @@ export class WeatherOpenweathermapPlugin implements OnModuleInit {
 			discriminatorProperty: 'type',
 			discriminatorValue: WEATHER_OPENWEATHERMAP_PLUGIN_TYPE,
 			modelClass: UpdateOpenWeatherMapLocationDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: WEATHER_OPENWEATHERMAP_PLUGIN_NAME,
+			name: 'OpenWeatherMap',
+			description: 'Weather data provider using OpenWeatherMap API',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

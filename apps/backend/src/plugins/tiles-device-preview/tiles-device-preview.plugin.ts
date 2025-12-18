@@ -10,6 +10,8 @@ import { TileEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { TileRelationsLoaderRegistryService } from '../../modules/dashboard/services/tile-relations-loader-registry.service';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -30,6 +32,7 @@ import { TILES_DEVICE_PREVIEW_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-device
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [TileRelationsLoaderService],
 })
@@ -41,6 +44,7 @@ export class TilesDevicePreviewPlugin {
 		private readonly tileRelationsLoaderService: TileRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -82,6 +86,17 @@ export class TilesDevicePreviewPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: TILES_DEVICE_PREVIEW_TYPE,
 			modelClass: UpdateDevicePreviewTileDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: TILES_DEVICE_PREVIEW_PLUGIN_NAME,
+			name: 'Device Preview Tiles',
+			description: 'Dashboard tiles for displaying device status preview',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }
