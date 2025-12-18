@@ -42,7 +42,7 @@
 			</el-form-item>
 		</el-form>
 
-		<el-button-group class="p-1">
+		<el-button-group class="mr-3">
 			<el-button
 				:type="innerViewMode === 'table' ? 'primary' : undefined"
 				plain

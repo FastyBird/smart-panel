@@ -41,9 +41,77 @@
 		:heading="extension?.name ?? t('extensionsModule.headings.detail')"
 		:sub-heading="t('extensionsModule.subHeadings.detail')"
 		:icon="extensionIcon"
-	/>
+	>
+		<template
+			v-if="extension"
+			#extra
+		>
+			<div class="flex items-center">
+				<el-button
+					v-if="hasConfiguration"
+					type="primary"
+					plain
+					class="px-4! ml-2!"
+					@click="onOpenConfiguration"
+				>
+					<template #icon>
+						<icon icon="mdi:cog" />
+					</template>
 
-	<el-scrollbar class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2">
+					{{ t('extensionsModule.buttons.configure') }}
+				</el-button>
+				<el-button
+					:type="extension.enabled ? 'danger' : 'success'"
+					plain
+					class="px-4! ml-2!"
+					:disabled="!extension.canToggleEnabled"
+					@click="onToggleEnabled"
+				>
+					<template #icon>
+						<icon :icon="extension.enabled ? 'mdi:power-off' : 'mdi:power'" />
+					</template>
+
+					{{ extension.enabled ? t('extensionsModule.buttons.disable') : t('extensionsModule.buttons.enable') }}
+				</el-button>
+				<el-button
+					v-if="extension.links?.documentation"
+					plain
+					class="px-4! ml-2!"
+					@click="openLink(extension.links.documentation)"
+				>
+					<template #icon>
+						<icon icon="mdi:book-open-page-variant" />
+					</template>
+				</el-button>
+				<el-button
+					v-if="extension.links?.repository"
+					plain
+					class="px-4! ml-2!"
+					@click="openLink(extension.links.repository)"
+				>
+					<template #icon>
+						<icon icon="mdi:github" />
+					</template>
+				</el-button>
+				<el-button
+					v-if="extension.links?.bugsTracking"
+					plain
+					class="px-4! ml-2!"
+					@click="openLink(extension.links.bugsTracking)"
+				>
+					<template #icon>
+						<icon icon="mdi:bug" />
+					</template>
+				</el-button>
+			</div>
+		</template>
+	</view-header>
+
+	<!-- Large devices: flex container with tabs -->
+	<div
+		v-if="isMDDevice"
+		class="flex flex-col flex-1 min-h-0 mx-2 mb-2"
+	>
 		<el-skeleton
 			v-if="isLoading && !extension"
 			:rows="10"
@@ -66,160 +134,323 @@
 		</el-result>
 
 		<template v-else>
+			<!-- Info card -->
 			<el-card
 				shadow="never"
-				class="mb-4"
+				class="mt-2 mb-2 shrink-0"
+				body-class="p-0!"
 			>
-				<template #header>
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<icon
-								:icon="extensionIcon"
-								class="text-2xl text-primary"
-							/>
-							<div>
-								<h2 class="m-0 text-lg font-semibold">{{ extension.name }}</h2>
-								<p class="m-0 text-sm text-gray-500">{{ extension.type }}</p>
-							</div>
-						</div>
-						<div class="flex items-center gap-2">
-							<el-tag
-								:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
-								size="default"
-							>
-								{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
-							</el-tag>
-							<el-tag
-								v-if="extension.isCore"
-								type="warning"
-								size="default"
-							>
-								{{ t('extensionsModule.labels.core') }}
-							</el-tag>
-							<el-tag
-								:type="extension.enabled ? 'success' : 'info'"
-								size="default"
-							>
-								{{ extension.enabled ? t('extensionsModule.labels.enabled') : t('extensionsModule.labels.disabled') }}
-							</el-tag>
-						</div>
-					</div>
-				</template>
-
-				<el-descriptions
-					:column="2"
-					border
-				>
-					<el-descriptions-item :label="t('extensionsModule.labels.type')">
-						{{ extension.type }}
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('extensionsModule.labels.status')">
-						<el-switch
-							:model-value="extension.enabled"
-							:disabled="!extension.canToggleEnabled"
-							:active-text="t('extensionsModule.labels.enabled')"
-							:inactive-text="t('extensionsModule.labels.disabled')"
-							@change="onToggleEnabled"
-						/>
-					</el-descriptions-item>
-					<el-descriptions-item
-						v-if="extension.version"
-						:label="t('extensionsModule.labels.version')"
+				<dl class="grid grid-cols-[auto_1fr_auto_1fr] m-0">
+					<!-- Row 1: Type | Kind -->
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
 					>
-						{{ extension.version }}
-					</el-descriptions-item>
-					<el-descriptions-item
-						v-if="extension.author"
-						:label="t('extensionsModule.labels.author')"
+						{{ t('extensionsModule.labels.type') }}
+					</dt>
+					<dd class="b-b b-b-solid b-r b-r-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-text>{{ extension.type }}</el-text>
+					</dd>
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
 					>
-						{{ extension.author }}
-					</el-descriptions-item>
-					<el-descriptions-item
-						:label="t('extensionsModule.labels.configuration')"
-						:span="2"
-					>
-						<el-button
-							type="primary"
+						{{ t('extensionsModule.labels.kind') }}
+					</dt>
+					<dd class="b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-tag
+							:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
 							size="small"
-							@click="onOpenConfiguration"
 						>
-							<icon
-								icon="mdi:cog"
-								class="mr-1"
-							/>
-							{{ t('extensionsModule.buttons.configure') }}
-						</el-button>
-					</el-descriptions-item>
-				</el-descriptions>
+							{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
+						</el-tag>
+					</dd>
+
+					<!-- Row 2: Source | Status -->
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.source') }}
+					</dt>
+					<dd class="b-b b-b-solid b-r b-r-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-tag
+							:type="extension.isCore ? 'warning' : undefined"
+							size="small"
+						>
+							{{ extension.isCore ? t('extensionsModule.labels.core') : t('extensionsModule.labels.addon') }}
+						</el-tag>
+					</dd>
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.status') }}
+					</dt>
+					<dd class="b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-tag
+							:type="extension.enabled ? 'success' : 'info'"
+							size="small"
+						>
+							{{ extension.enabled ? t('extensionsModule.labels.enabled') : t('extensionsModule.labels.disabled') }}
+						</el-tag>
+					</dd>
+
+					<!-- Row 3: Version | Author -->
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.version') }}
+					</dt>
+					<dd class="b-b b-b-solid b-r b-r-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-text>{{ extension.version ?? '-' }}</el-text>
+					</dd>
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.author') }}
+					</dt>
+					<dd class="b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-text>{{ extension.author ?? '-' }}</el-text>
+					</dd>
+
+					<!-- Row 4: Description (full width) -->
+					<dt
+						v-if="extension.description"
+						class="b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.description') }}
+					</dt>
+					<dd
+						v-if="extension.description"
+						class="col-span-3 m-0 p-2 flex items-center"
+					>
+						<el-text>{{ extension.description }}</el-text>
+					</dd>
+				</dl>
 			</el-card>
 
+			<!-- Tabs for README and Docs -->
 			<el-card
-				v-if="extension.description"
+				v-if="extension.readme || extension.docs"
 				shadow="never"
-				class="mb-4"
+				class="flex-1 min-h-0 flex flex-col"
+				body-class="p-0! flex-1 min-h-0 flex flex-col"
 			>
-				<template #header>
-					<span class="font-semibold">{{ t('extensionsModule.labels.description') }}</span>
-				</template>
-				<p class="m-0 leading-relaxed">{{ extension.description }}</p>
+				<el-tabs
+					v-model="activeTab"
+					:class="['flex-1 min-h-0 flex flex-col', ns.e('tabs')]"
+				>
+					<el-tab-pane
+						v-if="extension.readme"
+						name="readme"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:information-outline" />
+								{{ t('extensionsModule.labels.readme') }}
+							</div>
+						</template>
+
+						<el-scrollbar class="h-full">
+							<div class="p-5">
+								<markdown-renderer :content="extension.readme" />
+							</div>
+						</el-scrollbar>
+					</el-tab-pane>
+					<el-tab-pane
+						v-if="extension.docs"
+						name="docs"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:book-open-page-variant" />
+								{{ t('extensionsModule.labels.documentation') }}
+							</div>
+						</template>
+
+						<el-scrollbar class="h-full">
+							<div class="p-5">
+								<markdown-renderer :content="extension.docs" />
+							</div>
+						</el-scrollbar>
+					</el-tab-pane>
+				</el-tabs>
+			</el-card>
+		</template>
+	</div>
+
+	<!-- Small devices: scrollable container with stacked cards -->
+	<el-scrollbar
+		v-else
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+	>
+		<el-skeleton
+			v-if="isLoading && !extension"
+			:rows="10"
+			animated
+		/>
+
+		<el-result
+			v-else-if="!extension"
+			icon="warning"
+			:title="t('extensionsModule.messages.noExtensions')"
+		>
+			<template #extra>
+				<el-button
+					type="primary"
+					@click="router.push({ name: RouteNames.EXTENSIONS })"
+				>
+					{{ t('extensionsModule.breadcrumbs.extensions.list') }}
+				</el-button>
+			</template>
+		</el-result>
+
+		<template v-else>
+			<!-- Info card -->
+			<el-card
+				shadow="never"
+				class="mt-2 mb-2"
+				body-class="p-0!"
+			>
+				<dl class="grid grid-cols-[auto_1fr_auto_1fr] m-0">
+					<!-- Row 1: Type | Kind -->
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.type') }}
+					</dt>
+					<dd class="b-b b-b-solid b-r b-r-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-text>{{ extension.type }}</el-text>
+					</dd>
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.kind') }}
+					</dt>
+					<dd class="b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-tag
+							:type="extension.kind === ExtensionKind.MODULE ? 'primary' : 'success'"
+							size="small"
+						>
+							{{ extension.kind === ExtensionKind.MODULE ? t('extensionsModule.labels.module') : t('extensionsModule.labels.plugin') }}
+						</el-tag>
+					</dd>
+
+					<!-- Row 2: Source | Status -->
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.source') }}
+					</dt>
+					<dd class="b-b b-b-solid b-r b-r-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-tag
+							:type="extension.isCore ? 'warning' : undefined"
+							size="small"
+						>
+							{{ extension.isCore ? t('extensionsModule.labels.core') : t('extensionsModule.labels.addon') }}
+						</el-tag>
+					</dd>
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.status') }}
+					</dt>
+					<dd class="b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-tag
+							:type="extension.enabled ? 'success' : 'info'"
+							size="small"
+						>
+							{{ extension.enabled ? t('extensionsModule.labels.enabled') : t('extensionsModule.labels.disabled') }}
+						</el-tag>
+					</dd>
+
+					<!-- Row 3: Version | Author -->
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.version') }}
+					</dt>
+					<dd class="b-b b-b-solid b-r b-r-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-text>{{ extension.version ?? '-' }}</el-text>
+					</dd>
+					<dt
+						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.author') }}
+					</dt>
+					<dd class="b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+						<el-text>{{ extension.author ?? '-' }}</el-text>
+					</dd>
+
+					<!-- Row 4: Description (full width) -->
+					<dt
+						v-if="extension.description"
+						class="b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						style="background: var(--el-fill-color-light)"
+					>
+						{{ t('extensionsModule.labels.description') }}
+					</dt>
+					<dd
+						v-if="extension.description"
+						class="col-span-3 m-0 p-2 flex items-center"
+					>
+						<el-text>{{ extension.description }}</el-text>
+					</dd>
+				</dl>
 			</el-card>
 
+			<!-- README card -->
 			<el-card
-				v-if="hasLinks"
+				v-if="extension.readme"
 				shadow="never"
+				class="mb-2"
 			>
 				<template #header>
-					<span class="font-semibold">{{ t('extensionsModule.labels.links') }}</span>
+					<span class="font-semibold">{{ t('extensionsModule.labels.readme') }}</span>
 				</template>
-				<div class="flex flex-wrap gap-4">
-					<el-button
-						v-if="extension.links?.documentation"
-						type="primary"
-						@click="openLink(extension.links.documentation)"
-					>
-						<icon
-							icon="mdi:book-open-page-variant"
-							class="mr-2"
-						/>
-						{{ t('extensionsModule.buttons.documentation') }}
-					</el-button>
-					<el-button
-						v-if="extension.links?.repository"
-						@click="openLink(extension.links.repository)"
-					>
-						<icon
-							icon="mdi:github"
-							class="mr-2"
-						/>
-						{{ t('extensionsModule.buttons.repository') }}
-					</el-button>
-					<el-button
-						v-if="extension.links?.bugsTracking"
-						@click="openLink(extension.links.bugsTracking)"
-					>
-						<icon
-							icon="mdi:bug"
-							class="mr-2"
-						/>
-						{{ t('extensionsModule.buttons.issues') }}
-					</el-button>
-				</div>
+				<markdown-renderer :content="extension.readme" />
+			</el-card>
+
+			<!-- Docs card -->
+			<el-card
+				v-if="extension.docs"
+				shadow="never"
+				class="mb-2"
+			>
+				<template #header>
+					<span class="font-semibold">{{ t('extensionsModule.labels.documentation') }}</span>
+				</template>
+				<markdown-renderer :content="extension.docs" />
 			</el-card>
 		</template>
 	</el-scrollbar>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElIcon, ElResult, ElScrollbar, ElSkeleton, ElSwitch, ElTag } from 'element-plus';
+import { ElButton, ElCard, ElIcon, ElResult, ElScrollbar, ElSkeleton, ElTabPane, ElTabs, ElTag, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, MarkdownRenderer, ViewHeader, useBreakpoints } from '../../../common';
+import { useModules } from '../../config/composables/useModules';
+import { usePlugins } from '../../config/composables/usePlugins';
 import { useExtensionActions } from '../composables/composables';
 import { useExtension } from '../composables/useExtension';
 import { ExtensionKind, RouteNames } from '../extensions.constants';
@@ -235,15 +466,28 @@ const props = defineProps<IViewExtensionDetailProps>();
 
 const router = useRouter();
 const { t } = useI18n();
+const { meta } = useMeta({});
 
-useMeta(() => ({
-	title: extension.value?.name ?? t('extensionsModule.meta.extensions.detail.title'),
-}));
+const ns = useNamespace('view-extension-detail');
 
 const { isMDDevice } = useBreakpoints();
 
 const { extension, isLoading, fetchExtension } = useExtension({ type: props.type });
+
+watch(
+	(): boolean => extension.value !== null,
+	(val: boolean): void => {
+		if (val) {
+			meta.title = t('extensionsModule.meta.extensions.detail.title', { extension: extension.value?.name });
+		}
+	}, { immediate: true }
+);
+
 const { toggleEnabled } = useExtensionActions();
+const { modules: configurableModules } = useModules();
+const { plugins: configurablePlugins } = usePlugins();
+
+const activeTab = ref<string>('readme');
 
 const extensionIcon = computed<string>(() => {
 	if (extension.value?.kind === ExtensionKind.MODULE) {
@@ -252,12 +496,13 @@ const extensionIcon = computed<string>(() => {
 	return 'mdi:puzzle';
 });
 
-const hasLinks = computed<boolean>(() => {
-	return !!(
-		extension.value?.links?.documentation ||
-		extension.value?.links?.repository ||
-		extension.value?.links?.bugsTracking
-	);
+const hasConfiguration = computed<boolean>(() => {
+	if (!extension.value) return false;
+
+	if (extension.value.kind === ExtensionKind.MODULE) {
+		return configurableModules.value.some((m) => m.type === props.type);
+	}
+	return configurablePlugins.value.some((p) => p.type === props.type);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -271,7 +516,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 
 		if (extension.value) {
 			items.push({
-				label: extension.value.name,
+				label: t('extensionsModule.breadcrumbs.extensions.detail', { extension: extension.value.name }),
 				route: router.resolve({ name: RouteNames.EXTENSION_DETAIL, params: { type: props.type } }),
 			});
 		}
@@ -280,16 +525,23 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const onToggleEnabled = async (value: boolean | string | number): Promise<void> => {
-	await toggleEnabled(props.type, value as boolean);
+const onToggleEnabled = async (): Promise<void> => {
+	if (!extension.value) return;
+	await toggleEnabled(props.type, !extension.value.enabled);
 };
 
 const onOpenConfiguration = (): void => {
-	const kind = extension.value?.kind === ExtensionKind.MODULE ? 'module' : 'plugin';
-	router.push({
-		name: 'config_module-extension',
-		params: { type: props.type, kind },
-	});
+	if (extension.value?.kind === ExtensionKind.MODULE) {
+		router.push({
+			name: 'config_module-config_module_edit',
+			params: { module: props.type },
+		});
+	} else {
+		router.push({
+			name: 'config_module-config_plugin_edit',
+			params: { plugin: props.type },
+		});
+	}
 };
 
 const openLink = (url: string): void => {
@@ -304,3 +556,7 @@ onBeforeMount((): void => {
 	});
 });
 </script>
+
+<style lang="scss">
+@use 'view-extension-detail.scss';
+</style>

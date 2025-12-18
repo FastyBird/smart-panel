@@ -34,6 +34,14 @@
 		"url": "https://github.com/FastyBird/smart-panel.git"
 	},
 	"main": "dist/main.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
+		}
+	},
 	"files": [
 		"dist/",
 		"static/",

@@ -119,6 +119,41 @@ export class SystemModule implements OnModuleInit {
 			name: 'System',
 			description: 'System management, logs, and platform operations',
 			author: 'FastyBird',
+			readme: `# System Module
+
+The System module provides core system management functionality for the Smart Panel.
+
+## Features
+
+- **System Information** - View system status, uptime, and resource usage
+- **Logging** - Centralized application logging with configurable levels
+- **System Commands** - Reboot, power off, and factory reset operations
+- **Statistics** - System-wide statistics collection and reporting
+
+## System Commands
+
+### Reboot
+Safely restarts the Smart Panel application and optionally the host system.
+
+### Power Off
+Performs a clean shutdown of the Smart Panel.
+
+### Factory Reset
+Resets all settings and data to initial state:
+- Removes all configured devices
+- Clears dashboard pages and tiles
+- Resets user accounts (except owner)
+- Restores default configuration
+
+## Logging
+
+Supports multiple log levels:
+- **Error** - Critical errors requiring attention
+- **Warning** - Potential issues
+- **Info** - General operational messages
+- **Debug** - Detailed debugging information
+
+Logs are stored in memory and can be viewed through the admin interface.`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -19,6 +19,8 @@ export interface ExtensionMetadata {
 	description?: string;
 	version?: string;
 	author?: string;
+	readme?: string;
+	docs?: string;
 	links?: {
 		documentation?: string;
 		devDocumentation?: string;
@@ -206,6 +208,8 @@ export class ExtensionsService {
 		extension.description = metadata?.description;
 		extension.version = metadata?.version;
 		extension.author = metadata?.author;
+		extension.readme = metadata?.readme;
+		extension.docs = metadata?.docs;
 		extension.enabled = enabled;
 		extension.isCore = isCore;
 		extension.canToggleEnabled = canToggleEnabled;
@@ -257,6 +261,8 @@ export class ExtensionsService {
 		extension.description = metadata?.description;
 		extension.version = metadata?.version;
 		extension.author = metadata?.author;
+		extension.readme = metadata?.readme;
+		extension.docs = metadata?.docs;
 		extension.enabled = enabled;
 		extension.isCore = isCore;
 		extension.canToggleEnabled = canToggleEnabled;

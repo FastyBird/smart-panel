@@ -105,6 +105,45 @@ export class DataSourcesDeviceChannelPlugin {
 			name: 'Device Channel Data Sources',
 			description: 'Data sources for connecting tiles to device channel properties',
 			author: 'FastyBird',
+			readme: `# Device Channel Data Sources Plugin
+
+Data source type for connecting dashboard tiles to device properties.
+
+## Features
+
+- **Property Binding** - Link tiles to specific device properties
+- **Real-time Updates** - Receive live property value changes
+- **Bidirectional** - Support for both reading and writing values
+- **Validation** - Ensures referenced device/channel/property exists
+
+## How It Works
+
+Data sources act as a bridge between:
+- **Tiles** - Visual elements on dashboard pages
+- **Device Properties** - Values from connected devices
+
+When a property value changes, connected tiles update automatically.
+
+## Configuration
+
+Each data source specifies:
+- Target device ID
+- Channel ID within the device
+- Property ID to bind to
+
+## Usage
+
+1. Add a tile that supports data sources
+2. Create a device channel data source
+3. Select device → channel → property
+4. The tile will display the property value
+
+## Supported Property Types
+
+- Boolean (on/off states)
+- Numeric (temperature, humidity, etc.)
+- String (text values)
+- Enum (predefined value lists)`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

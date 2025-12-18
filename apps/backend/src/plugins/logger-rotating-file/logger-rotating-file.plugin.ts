@@ -46,6 +46,44 @@ export class LoggerRotatingFilePlugin {
 			name: 'Rotating File Logger',
 			description: 'File-based logging with automatic log rotation',
 			author: 'FastyBird',
+			readme: `# Rotating File Logger Plugin
+
+File-based logging with automatic rotation and retention management.
+
+## Features
+
+- **File Logging** - Persist logs to disk for later analysis
+- **Automatic Rotation** - Create new log files based on size or time
+- **Retention Policy** - Automatically delete old log files
+- **Configurable Format** - Customize log output format
+
+## How It Works
+
+The plugin writes application logs to files in a configured directory. When logs reach a certain size or age, they are rotated:
+
+1. Current log file is renamed with timestamp
+2. New log file is created
+3. Old rotated files are deleted based on retention settings
+
+## Configuration
+
+- **Enabled** - Toggle file logging on/off
+- **Log Directory** - Where to store log files
+- **Max File Size** - Rotate when file reaches this size
+- **Max Files** - Number of rotated files to keep
+- **Log Level** - Minimum level to log (debug, info, warn, error)
+
+## Log Location
+
+By default, logs are stored in:
+\`\`\`
+./logs/smart-panel.log
+\`\`\`
+
+Rotated files are named:
+\`\`\`
+smart-panel-2024-01-15.log
+\`\`\``,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

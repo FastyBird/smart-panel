@@ -116,6 +116,41 @@ export class WeatherOpenweathermapOnecallPlugin implements OnModuleInit {
 			name: 'OpenWeatherMap One Call',
 			description: 'Weather data provider using OpenWeatherMap One Call API',
 			author: 'FastyBird',
+			readme: `# OpenWeatherMap One Call Weather Provider
+
+Weather data provider using the OpenWeatherMap One Call 3.0 API.
+
+## Features
+
+- **Comprehensive Data** - Current, hourly, and daily forecasts in one call
+- **8-Day Forecast** - Extended daily weather predictions
+- **48-Hour Hourly** - Detailed hourly forecast
+- **Weather Alerts** - Government weather warnings (where available)
+- **Geolocation** - Search locations by city name
+
+## Setup
+
+1. Create an account at [OpenWeatherMap](https://openweathermap.org)
+2. Subscribe to One Call API 3.0 (has free tier with 1000 calls/day)
+3. Enter your API key in plugin configuration
+
+## Data Provided
+
+- Current conditions with "feels like" temperature
+- Hourly forecasts for 48 hours
+- Daily forecasts for 8 days
+- UV index
+- Precipitation probability
+- Weather alerts
+
+## Configuration
+
+- **API Key** - Your OpenWeatherMap API key (required)
+- **Units** - Temperature units (metric/imperial)
+
+## Geolocation
+
+This plugin includes a location search feature to find coordinates by city name, making it easy to set up weather locations.`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

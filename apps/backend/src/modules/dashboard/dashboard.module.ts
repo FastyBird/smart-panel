@@ -149,6 +149,32 @@ export class DashboardModule implements OnModuleInit {
 			name: 'Dashboard',
 			description: 'Dashboard pages and tiles management',
 			author: 'FastyBird',
+			readme: `# Dashboard Module
+
+The Dashboard module provides the visual interface framework for the Smart Panel display.
+
+## Features
+
+- **Pages** - Create multiple dashboard pages that can be swiped through on the display
+- **Tiles** - Add various tiles to pages (device controls, weather, time, etc.)
+- **Data Sources** - Connect tiles to device properties or weather data
+- **Layout Grid** - Flexible grid-based tile positioning
+
+## Tile Types
+
+Tiles are provided by plugins and can display:
+
+- Device property values and controls
+- Weather information
+- Current time and date
+- Custom content
+
+## Data Sources
+
+Data sources connect tiles to live data:
+
+- **Device Channel** - Link to device property values
+- **Weather** - Display weather forecast data`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

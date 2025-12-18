@@ -217,6 +217,30 @@ export class DevicesModule implements OnModuleInit {
 			name: 'Devices',
 			description: 'Central module for device management and interactions',
 			author: 'FastyBird',
+			readme: `# Devices Module
+
+The Devices module is the central component for managing all IoT devices connected to the Smart Panel.
+
+## Features
+
+- **Device Management** - Add, configure, and remove devices
+- **Channel Support** - Each device can have multiple channels (e.g., temperature sensor, relay switch)
+- **Property Tracking** - Monitor and control device properties in real-time
+- **Status Monitoring** - Track device connectivity and online status
+- **Time-series Data** - Store historical property values in InfluxDB
+
+## Supported Device Types
+
+Devices are managed through platform plugins that provide integration with specific device ecosystems:
+
+- Shelly NG devices
+- Shelly Gen1 devices
+- Home Assistant devices
+- Third-party/manual devices
+
+## Architecture
+
+The module uses a flexible type mapping system that allows plugins to register their own device, channel, and property types while maintaining a unified API.`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

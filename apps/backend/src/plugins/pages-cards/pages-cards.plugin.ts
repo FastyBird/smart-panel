@@ -121,6 +121,39 @@ export class PagesCardsPlugin {
 			name: 'Cards Page',
 			description: 'Dashboard page type for displaying information cards',
 			author: 'FastyBird',
+			readme: `# Cards Page Plugin
+
+Dashboard page type for displaying scrollable information cards.
+
+## Features
+
+- **Card Layout** - Vertical scrolling card list
+- **Rich Content** - Cards support text, icons, and actions
+- **Action Buttons** - Configurable tap actions per card
+- **Grouping** - Organize cards into logical groups
+
+## Card Types
+
+Cards can display:
+- Static information
+- Quick action buttons
+- Navigation links
+- Status summaries
+
+## Page Structure
+
+- Header with page title
+- Scrollable card container
+- Cards stack vertically
+- Each card has title, content, and optional actions
+
+## Usage
+
+1. Create a new cards page
+2. Add cards with titles and content
+3. Configure actions for each card
+4. Order cards as needed
+5. View on the panel display`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

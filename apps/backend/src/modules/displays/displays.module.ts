@@ -101,6 +101,38 @@ export class DisplaysModule implements OnModuleInit {
 			name: 'Displays',
 			description: 'Manage connected display panels and their registration',
 			author: 'FastyBird',
+			readme: `# Displays Module
+
+The Displays module manages physical display panels connected to the Smart Panel system.
+
+## Features
+
+- **Display Registration** - Secure pairing of display panels with the backend
+- **Connection Tracking** - Monitor display online/offline status
+- **Multi-Display Support** - Manage multiple display panels from one backend
+- **Status History** - Track connection status over time via InfluxDB
+
+## Registration Flow
+
+1. **Permit Join** - Admin enables registration mode in the admin panel
+2. **Display Request** - The display sends a registration request with its details
+3. **Approval** - Admin approves the display in the pending list
+4. **Token Exchange** - Display receives authentication tokens for API access
+
+## Display Properties
+
+- **Name** - Friendly name for the display
+- **Identifier** - Unique device identifier
+- **Brightness** - Current display brightness level
+- **Dark Mode** - Enable/disable dark theme
+- **Screen Lock** - PIN protection settings
+
+## WebSocket Events
+
+Displays communicate via WebSocket for real-time updates:
+- Configuration changes
+- Dashboard updates
+- Device state changes`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

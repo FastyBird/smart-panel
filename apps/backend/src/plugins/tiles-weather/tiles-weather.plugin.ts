@@ -121,6 +121,35 @@ export class TilesWeatherPlugin {
 			name: 'Weather Tiles',
 			description: 'Dashboard tiles for displaying current weather and forecasts',
 			author: 'FastyBird',
+			readme: `# Weather Tiles Plugin
+
+Dashboard tiles for displaying weather information.
+
+## Features
+
+- **Current Weather** - Display current conditions for a location
+- **Weather Forecast** - Show multi-day weather forecast
+- **Weather Icons** - Visual weather condition indicators
+- **Temperature Display** - Current, min, and max temperatures
+
+## Tile Types
+
+### Day Weather Tile
+Shows current weather conditions:
+- Current temperature
+- Weather condition icon
+- Location name
+- Humidity and wind info
+
+### Forecast Weather Tile
+Displays multi-day forecast:
+- Daily high/low temperatures
+- Weather icons for each day
+- Precipitation probability
+
+## Requirements
+
+Requires the Weather module to be configured with at least one location and a weather provider plugin (e.g., OpenWeatherMap).`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

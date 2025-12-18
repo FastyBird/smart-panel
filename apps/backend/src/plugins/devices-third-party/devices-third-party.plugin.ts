@@ -185,6 +185,37 @@ export class DevicesThirdPartyPlugin {
 			name: 'Third Party Devices',
 			description: 'Support for integrating third-party devices via custom protocols',
 			author: 'FastyBird',
+			readme: `# Third Party Devices Plugin
+
+Plugin for manually adding and managing custom devices.
+
+## Features
+
+- **Manual Device Creation** - Add devices that aren't auto-discovered
+- **Custom Channels** - Define custom channels and properties
+- **API Integration** - Devices can be controlled via the REST API
+- **Flexible Schema** - Support for various property types and formats
+
+## Use Cases
+
+- Devices without native integration plugins
+- Custom hardware projects
+- Testing and development
+- External systems pushing data via API
+
+## Device Structure
+
+Each third-party device can have:
+- Multiple **channels** (e.g., relay, sensor, button)
+- Multiple **properties** per channel (e.g., state, value, unit)
+- Custom property types (boolean, number, string, enum)
+
+## API Control
+
+Third-party device states can be updated via:
+- REST API endpoints
+- WebSocket events
+- Direct database updates (for advanced use)`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

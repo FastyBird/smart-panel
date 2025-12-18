@@ -200,6 +200,35 @@ export class DevicesShellyNgPlugin {
 			name: 'Shelly NG Devices',
 			description: 'Support for Shelly next-generation devices',
 			author: 'FastyBird',
+			readme: `# Shelly NG Devices Plugin
+
+Integration plugin for Shelly next-generation (Gen2+) devices.
+
+## Features
+
+- **Auto-Discovery** - Automatically discovers Shelly NG devices on the local network
+- **Real-time Updates** - WebSocket-based state synchronization
+- **Device Control** - Control relays, lights, and other outputs
+- **Sensor Monitoring** - Read temperature, humidity, power consumption, etc.
+
+## Supported Devices
+
+- Shelly Plus series (Plus 1, Plus 2PM, Plus Plug, etc.)
+- Shelly Pro series (Pro 1, Pro 2, Pro 4PM, etc.)
+- Shelly Mini series
+- Other Gen2+ devices with RPC API
+
+## Communication
+
+Uses Shelly's RPC (Remote Procedure Call) API over:
+- HTTP for device configuration and control
+- WebSocket for real-time state updates
+- mDNS for device discovery
+
+## Configuration
+
+- **Polling Interval** - How often to refresh device states
+- **Discovery** - Enable/disable automatic device discovery`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -2,10 +2,10 @@
 	"meta": {
 		"extensions": {
 			"list": {
-				"title": "Extensions"
+				"title": "List extensions"
 			},
 			"detail": {
-				"title": "Extension Detail"
+				"title": "Extension: {extension}"
 			}
 		}
 	},
@@ -21,8 +21,8 @@
 	},
 	"breadcrumbs": {
 		"extensions": {
-			"list": "Extensions",
-			"detail": "Detail"
+			"list": "extensions",
+			"detail": "extension: {extension}"
 		}
 	},
 	"tabs": {
@@ -40,10 +40,15 @@
 		"version": "Version",
 		"author": "Author",
 		"type": "Type",
+		"kind": "Kind",
+		"source": "Source",
 		"status": "Status",
 		"configuration": "Configuration",
 		"description": "Description",
-		"links": "Links"
+		"details": "Details",
+		"links": "Links",
+		"readme": "About",
+		"documentation": "Documentation"
 	},
 	"fields": {
 		"search": {

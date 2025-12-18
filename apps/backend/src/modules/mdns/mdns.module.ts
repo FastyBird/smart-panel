@@ -49,6 +49,38 @@ export class MdnsModule implements OnModuleInit {
 			name: 'mDNS',
 			description: 'Multicast DNS service advertisement for network discovery',
 			author: 'FastyBird',
+			readme: `# mDNS Module
+
+The mDNS (Multicast DNS) module enables automatic network discovery of the Smart Panel using Bonjour/Avahi protocols.
+
+## Features
+
+- **Service Advertisement** - Broadcasts Smart Panel presence on the local network
+- **Zero Configuration** - Clients can discover the panel without manual IP configuration
+- **Custom Naming** - Configure a custom hostname for the panel
+
+## How It Works
+
+When enabled, the Smart Panel advertises itself on the local network as:
+
+\`\`\`
+_smart-panel._tcp.local
+\`\`\`
+
+This allows:
+- Mobile apps to auto-discover the panel
+- Other services to find the panel's IP address
+- Easy setup without manual network configuration
+
+## Configuration
+
+- **Enabled** - Toggle mDNS advertisement on/off
+- **Hostname** - Custom name for network identification
+
+## Requirements
+
+- The Smart Panel must be on the same network segment as discovering clients
+- mDNS uses UDP port 5353`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

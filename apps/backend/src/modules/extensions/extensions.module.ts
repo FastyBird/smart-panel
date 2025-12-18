@@ -64,6 +64,42 @@ export class ExtensionsModule implements OnModuleInit {
 			name: 'Extensions',
 			description: 'Manage application modules and plugins',
 			author: 'FastyBird',
+			readme: `# Extensions Module
+
+The Extensions module provides a unified interface for discovering and managing all modules and plugins in the Smart Panel application.
+
+## Features
+
+- **Extension Discovery** - Automatically discovers all registered modules and plugins
+- **Metadata Management** - Stores extension information like name, description, author
+- **Enable/Disable** - Toggle plugin functionality on and off
+- **Configuration** - Access extension-specific configuration options
+
+## Extension Types
+
+### Modules
+Core functionality providers that cannot be uninstalled:
+- Devices, Dashboard, Users, Weather, Auth, etc.
+
+### Plugins
+Optional add-ons that extend functionality:
+- Device integrations (Shelly, Home Assistant)
+- Dashboard tiles (time, weather)
+- Data sources for tiles
+- Weather providers
+
+## For Developers
+
+Extensions register their metadata during module initialization using the \`ExtensionsService\`:
+
+\`\`\`typescript
+this.extensionsService.registerModuleMetadata({
+  type: 'my-module',
+  name: 'My Module',
+  description: 'Module description',
+  author: 'Author Name',
+});
+\`\`\``,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

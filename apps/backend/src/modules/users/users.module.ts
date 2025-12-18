@@ -85,6 +85,28 @@ export class UsersModule implements OnModuleInit {
 			name: 'Users',
 			description: 'User accounts and roles management',
 			author: 'FastyBird',
+			readme: `# Users Module
+
+The Users module handles user account management and access control for the Smart Panel.
+
+## Features
+
+- **User Management** - Create, update, and delete user accounts
+- **Role-Based Access** - Support for admin and regular user roles
+- **Profile Management** - Users can update their profile information
+- **Factory Reset** - User data can be cleared during factory reset
+
+## User Roles
+
+- **Owner** - Full system access, can manage all users and settings
+- **Admin** - Can manage devices, displays, and dashboard configuration
+- **User** - Basic access to view and control devices
+
+## Security
+
+- Passwords are securely hashed using bcrypt
+- User sessions are managed through JWT tokens
+- Role-based guards protect sensitive endpoints`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

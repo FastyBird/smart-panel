@@ -78,6 +78,32 @@ export class TilesTimePlugin {
 			name: 'Time Tiles',
 			description: 'Dashboard tiles for displaying time and date',
 			author: 'FastyBird',
+			readme: `# Time Tiles Plugin
+
+Dashboard tiles for displaying current time and date.
+
+## Features
+
+- **Digital Clock** - Display current time in various formats
+- **Date Display** - Show current date with customizable formatting
+- **Timezone Support** - Display time for different timezones
+- **Auto-Update** - Real-time clock updates
+
+## Tile Types
+
+### Time Tile
+Displays the current time with configurable:
+- 12/24 hour format
+- Show/hide seconds
+- Custom time format strings
+
+## Usage
+
+Add a time tile to any dashboard page to display the current time. The tile updates automatically without requiring page refresh.
+
+## Styling
+
+The time display adapts to the tile size and supports both light and dark themes.`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

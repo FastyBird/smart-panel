@@ -255,6 +255,36 @@ export class DevicesHomeAssistantPlugin {
 			name: 'Home Assistant Devices',
 			description: 'Integration with Home Assistant for device management',
 			author: 'FastyBird',
+			readme: `# Home Assistant Devices Plugin
+
+Integration plugin for connecting Smart Panel to Home Assistant.
+
+## Features
+
+- **Device Import** - Import devices from Home Assistant into Smart Panel
+- **Real-time Sync** - WebSocket connection for instant state updates
+- **Bidirectional Control** - Control Home Assistant devices from Smart Panel
+- **Entity Mapping** - Automatic mapping of HA entities to Smart Panel channels
+
+## Supported Entity Types
+
+- **Switches** - On/off controls
+- **Lights** - Brightness, color temperature, RGB
+- **Sensors** - Temperature, humidity, energy, etc.
+- **Binary Sensors** - Motion, door/window, occupancy
+- **Climate** - HVAC controls and thermostats
+
+## Setup
+
+1. Generate a Long-Lived Access Token in Home Assistant
+2. Configure the Home Assistant URL and token in plugin settings
+3. Browse discovered devices and import them to Smart Panel
+
+## Communication
+
+- **WebSocket API** - Real-time event subscription
+- **REST API** - State queries and service calls
+- **Auto-reconnect** - Automatic reconnection on connection loss`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

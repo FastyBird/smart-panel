@@ -93,6 +93,35 @@ export class TilesDevicePreviewPlugin {
 			name: 'Device Preview Tiles',
 			description: 'Dashboard tiles for displaying device status preview',
 			author: 'FastyBird',
+			readme: `# Device Preview Tiles Plugin
+
+Dashboard tiles for displaying device status and quick controls.
+
+## Features
+
+- **Device Status** - Show real-time device status on dashboard
+- **Quick Controls** - Toggle devices directly from the tile
+- **Status Icons** - Visual indicators for device state
+- **Multi-Property Display** - Show multiple device properties
+
+## Tile Types
+
+### Device Preview Tile
+Compact device status display:
+- Device icon and name
+- Primary property value (e.g., on/off state)
+- Quick action button for controllable devices
+- Connection status indicator
+
+## Usage
+
+Add device preview tiles to dashboard pages for at-a-glance monitoring of your most important devices. Tap tiles to toggle state or view details.
+
+## Configuration
+
+- Select the device to display
+- Choose which property to show as primary
+- Enable/disable quick control button`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

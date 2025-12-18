@@ -113,6 +113,42 @@ export class WeatherOpenweathermapPlugin implements OnModuleInit {
 			name: 'OpenWeatherMap',
 			description: 'Weather data provider using OpenWeatherMap API',
 			author: 'FastyBird',
+			readme: `# OpenWeatherMap Weather Provider
+
+Weather data provider using the OpenWeatherMap Current Weather API.
+
+## Features
+
+- **Current Weather** - Real-time weather conditions
+- **Basic Forecast** - Daily weather forecasts
+- **Global Coverage** - Weather data for locations worldwide
+- **Free Tier** - Works with OpenWeatherMap free API plan
+
+## Setup
+
+1. Create a free account at [OpenWeatherMap](https://openweathermap.org)
+2. Generate an API key from your account dashboard
+3. Enter the API key in plugin configuration
+
+## Data Provided
+
+- Current temperature
+- Weather conditions (clear, cloudy, rain, etc.)
+- Humidity and pressure
+- Wind speed and direction
+- Sunrise and sunset times
+
+## Configuration
+
+- **API Key** - Your OpenWeatherMap API key (required)
+- **Units** - Temperature units (metric/imperial)
+- **Update Interval** - How often to refresh data
+
+## API Limits
+
+Free tier allows:
+- 1,000 API calls per day
+- 60 calls per minute`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

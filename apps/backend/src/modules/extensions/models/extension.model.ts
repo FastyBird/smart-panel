@@ -151,4 +151,24 @@ export class ExtensionModel {
 	@Expose()
 	@IsOptional()
 	links?: ExtensionLinksModel;
+
+	@ApiPropertyOptional({
+		description: 'Extension README content (markdown)',
+		type: 'string',
+		example: '# My Extension\n\nThis extension provides...',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	readme?: string;
+
+	@ApiPropertyOptional({
+		description: 'Extension documentation content (markdown)',
+		type: 'string',
+		example: '# Configuration\n\n## Options\n\n...',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	docs?: string;
 }

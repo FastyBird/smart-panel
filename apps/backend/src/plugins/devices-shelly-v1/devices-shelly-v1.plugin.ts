@@ -200,6 +200,39 @@ export class DevicesShellyV1Plugin {
 			name: 'Shelly V1 Devices',
 			description: 'Support for Shelly first-generation devices',
 			author: 'FastyBird',
+			readme: `# Shelly V1 Devices Plugin
+
+Integration plugin for Shelly first-generation (Gen1) devices.
+
+## Features
+
+- **Auto-Discovery** - Discovers Shelly Gen1 devices via mDNS/CoAP
+- **Device Control** - Control relays, dimmers, and roller shutters
+- **Status Monitoring** - Monitor power consumption, temperature, inputs
+- **CoAP Protocol** - Efficient real-time updates via CoAP
+
+## Supported Devices
+
+- Shelly 1 / 1PM
+- Shelly 2 / 2.5
+- Shelly Dimmer / Dimmer 2
+- Shelly EM / 3EM
+- Shelly Plug / Plug S
+- Shelly RGBW2
+- Shelly Bulb / Duo
+- And other Gen1 devices
+
+## Communication
+
+- **CoAP** - Real-time state updates (UDP port 5683)
+- **HTTP API** - Device control and configuration
+- **mDNS** - Device discovery
+
+## Configuration
+
+- Enable/disable automatic device discovery
+- Configure polling intervals
+- Set authentication credentials for protected devices`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

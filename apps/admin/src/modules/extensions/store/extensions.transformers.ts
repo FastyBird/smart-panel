@@ -13,6 +13,8 @@ export const transformExtensionResponse = (response: IExtensionRes): IExtension 
 		description: response.description,
 		version,
 		author: response.author,
+		readme: response.readme,
+		docs: response.docs,
 		enabled: response.enabled,
 		isCore: response.is_core,
 		canToggleEnabled: response.can_toggle_enabled,

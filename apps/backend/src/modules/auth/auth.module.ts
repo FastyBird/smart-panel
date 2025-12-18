@@ -125,6 +125,38 @@ export class AuthModule implements OnModuleInit {
 			name: 'Authentication',
 			description: 'Authentication and token management',
 			author: 'FastyBird',
+			readme: `# Authentication Module
+
+The Authentication module handles user authentication and token management for the Smart Panel.
+
+## Features
+
+- **JWT Authentication** - Secure token-based authentication
+- **Token Management** - Access tokens, refresh tokens, and long-lived tokens
+- **Session Handling** - Automatic token refresh and session management
+- **Password Security** - Secure password hashing and validation
+
+## Token Types
+
+### Access Token
+- Short-lived token for API requests
+- Automatically refreshed using refresh token
+- Default expiration: configurable
+
+### Refresh Token
+- Used to obtain new access tokens
+- Longer lifetime than access tokens
+- Stored securely in the database
+
+### Long-Live Token
+- For automated systems and integrations
+- Does not expire automatically
+- Can be revoked manually
+
+## CLI Commands
+
+- \`register:owner\` - Create the initial owner account
+- \`reset:password\` - Reset a user's password`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',

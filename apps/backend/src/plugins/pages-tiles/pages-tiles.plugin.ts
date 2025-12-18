@@ -98,6 +98,39 @@ export class PagesTilesPlugin {
 			name: 'Tiles Page',
 			description: 'Dashboard page type for displaying tiles with widgets',
 			author: 'FastyBird',
+			readme: `# Tiles Page Plugin
+
+Dashboard page type for displaying a grid of configurable tiles.
+
+## Features
+
+- **Grid Layout** - Arrange tiles in a flexible grid system
+- **Multiple Tile Types** - Support for various tile plugins
+- **Responsive Design** - Adapts to display size
+- **Tile Data Sources** - Connect tiles to live data
+
+## Page Layout
+
+Tiles pages display widgets in a grid:
+- Configurable grid dimensions
+- Tiles can span multiple cells
+- Automatic layout optimization
+
+## Supported Tiles
+
+Works with any registered tile type:
+- Time tiles
+- Weather tiles
+- Device preview tiles
+- Custom tile plugins
+
+## Usage
+
+1. Create a new tiles page
+2. Configure grid size
+3. Add tiles and position them
+4. Connect data sources to tiles
+5. Save and view on the panel display`,
 			links: {
 				documentation: 'https://docs.fastybird.com',
 				repository: 'https://github.com/FastyBird/smart-panel',
