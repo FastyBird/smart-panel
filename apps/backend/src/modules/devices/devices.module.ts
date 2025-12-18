@@ -1,7 +1,11 @@
-import { Logger, Module } from '@nestjs/common';
+import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ConfigModule } from '../config/config.module';
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { SeedModule } from '../seed/seeding.module';
@@ -10,6 +14,7 @@ import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../swagger/swagger.module';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
@@ -34,6 +39,7 @@ import {
 	PropertyInfluxDbSchema,
 } from './devices.constants';
 import { DEVICES_SWAGGER_EXTRA_MODELS } from './devices.openapi';
+import { UpdateDevicesConfigDto } from './dto/update-config.dto';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -41,6 +47,7 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from './entities/devices.entity';
+import { DevicesConfigModel } from './models/config.model';
 import { DevicesStatsProvider } from './providers/devices-stats.provider';
 import { ChannelsTypeMapperService } from './services/channels-type-mapper.service';
 import { ChannelsControlsService } from './services/channels.controls.service';
@@ -83,10 +90,13 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 			ChannelControlEntity,
 			ChannelPropertyEntity,
 		]),
+		ConfigModule,
+		ExtensionsModule,
 		InfluxDbModule,
 		SeedModule,
 		SystemModule,
 		StatsModule,
+		SwaggerModule,
 		WebsocketModule,
 	],
 	providers: [
@@ -144,7 +154,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		DeviceConnectivityService,
 	],
 })
-export class DevicesModule {
+export class DevicesModule implements OnModuleInit {
 	private readonly logger = new Logger(DevicesModule.name);
 
 	constructor(
@@ -158,6 +168,8 @@ export class DevicesModule {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -191,6 +203,25 @@ export class DevicesModule {
 		for (const model of DEVICES_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register module config mapping
+		this.modulesMapperService.registerMapping<DevicesConfigModel, UpdateDevicesConfigDto>({
+			type: DEVICES_MODULE_NAME,
+			class: DevicesConfigModel,
+			configDto: UpdateDevicesConfigDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: DEVICES_MODULE_NAME,
+			name: 'Devices',
+			description: 'Central module for device management and interactions',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 
 	async onApplicationBootstrap() {

@@ -1,14 +1,19 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ConfigModule } from '../config/config.module';
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DisplaysModule } from '../displays/displays.module';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../swagger/swagger.module';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 
@@ -21,7 +26,9 @@ import {
 	DASHBOARD_MODULE_NAME,
 } from './dashboard.constants';
 import { DASHBOARD_SWAGGER_EXTRA_MODELS } from './dashboard.openapi';
+import { UpdateDashboardConfigDto } from './dto/update-config.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from './entities/dashboard.entity';
+import { DashboardConfigModel } from './models/config.model';
 import { DashboardStatsProvider } from './providers/dashboard-stats.provider';
 import { DashboardSeederService } from './services/dashboard-seeder.service';
 import { DataSourceCreateBuilderRegistryService } from './services/data-source-create-builder-registry.service';
@@ -49,9 +56,12 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 	imports: [
 		NestConfigModule,
 		TypeOrmModule.forFeature([PageEntity, TileEntity, DataSourceEntity]),
+		ConfigModule,
+		ExtensionsModule,
 		SeedModule,
 		SystemModule,
 		StatsModule,
+		SwaggerModule,
 		DisplaysModule,
 	],
 	providers: [
@@ -90,7 +100,7 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 		DataSourceCreateBuilderRegistryService,
 	],
 })
-export class DashboardModule {
+export class DashboardModule implements OnModuleInit {
 	constructor(
 		private readonly moduleSeeder: DashboardSeederService,
 		private readonly moduleReset: ModuleResetService,
@@ -99,6 +109,8 @@ export class DashboardModule {
 		private readonly statsRegistryService: StatsRegistryService,
 		private readonly dashboardStatsProvider: DashboardStatsProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -123,5 +135,24 @@ export class DashboardModule {
 		for (const model of DASHBOARD_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register module config mapping
+		this.modulesMapperService.registerMapping<DashboardConfigModel, UpdateDashboardConfigDto>({
+			type: DASHBOARD_MODULE_NAME,
+			class: DashboardConfigModel,
+			configDto: UpdateDashboardConfigDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: DASHBOARD_MODULE_NAME,
+			name: 'Dashboard',
+			description: 'Dashboard pages and tiles management',
+			author: 'FastyBird',
+			links: {
+				documentation: 'https://docs.fastybird.com',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }

@@ -3,6 +3,7 @@ import { CONFIG_MODULE_NAME } from '../config/config.constants';
 import { DASHBOARD_MODULE_NAME } from '../dashboard/dashboard.constants';
 import { DEVICES_MODULE_NAME } from '../devices/devices.constants';
 import { DISPLAYS_MODULE_NAME } from '../displays/displays.constants';
+import { MDNS_MODULE_NAME } from '../mdns/mdns.constants';
 import { SYSTEM_MODULE_NAME } from '../system/system.constants';
 import { USERS_MODULE_NAME } from '../users/users.constants';
 import { WEATHER_MODULE_NAME } from '../weather/weather.constants';
@@ -28,6 +29,7 @@ export const NON_TOGGLEABLE_MODULES: readonly string[] = [
 	DEVICES_MODULE_NAME,
 	DISPLAYS_MODULE_NAME,
 	EXTENSIONS_MODULE_NAME,
+	MDNS_MODULE_NAME,
 	SYSTEM_MODULE_NAME,
 	USERS_MODULE_NAME,
 	WEATHER_MODULE_NAME,
