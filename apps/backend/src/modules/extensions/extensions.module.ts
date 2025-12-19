@@ -3,6 +3,8 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.mod
 
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { StatsRegistryService } from '../stats/services/stats-registry.service';
+import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
@@ -25,6 +27,7 @@ import {
 } from './extensions.constants';
 import { EXTENSIONS_SWAGGER_EXTRA_MODELS } from './extensions.openapi';
 import { ExtensionsConfigModel } from './models/config.model';
+import { ExtensionsStatsProvider } from './providers/extensions-stats.provider';
 import { ExtensionsBundledService } from './services/extensions-bundled.service';
 import { ExtensionsService } from './services/extensions.service';
 import { ModuleResetService } from './services/module-reset.service';
@@ -37,13 +40,14 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 })
 @Global()
 @Module({
-	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule)],
+	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule), StatsModule],
 	controllers: [ExtensionsController, DiscoveredExtensionsController, ServicesController],
 	providers: [
 		ExtensionsBundledService,
 		ExtensionsService,
 		ModuleResetService,
 		PluginServiceManagerService,
+		ExtensionsStatsProvider,
 		// CLI commands
 		ListServicesCommand,
 		StartServiceCommand,
@@ -59,6 +63,8 @@ export class ExtensionsModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly statsRegistryService: StatsRegistryService,
+		private readonly extensionsStatsProvider: ExtensionsStatsProvider,
 	) {}
 
 	onModuleInit() {
@@ -71,6 +77,9 @@ export class ExtensionsModule implements OnModuleInit {
 
 		// Register factory reset handler
 		this.factoryResetRegistry.register(EXTENSIONS_MODULE_NAME, () => this.moduleReset.reset(), 50);
+
+		// Register stats provider for Prometheus metrics
+		this.statsRegistryService.register(EXTENSIONS_MODULE_NAME, this.extensionsStatsProvider);
 
 		// Register Swagger models
 		for (const model of EXTENSIONS_SWAGGER_EXTRA_MODELS) {
