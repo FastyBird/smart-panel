@@ -760,27 +760,21 @@ class _WindowCoveringPainter extends CustomPainter {
     final double coverPercent = (100 - position) / 100.0;
     final double coveredHeight = frameHeight * coverPercent;
 
-    // Draw covering
-    final coverPaint = Paint()
-      ..color = _getCoverColor()
-      ..style = PaintingStyle.fill;
-
     if (coveredHeight > 0) {
-      final coverRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          padding + 2,
-          padding + 2,
-          frameWidth - 4,
-          coveredHeight - 4 > 0 ? coveredHeight - 4 : 0,
-        ),
-        Radius.circular(AppBorderRadius.base - 2),
-      );
-      canvas.drawRRect(coverRect, coverPaint);
-
-      // Draw slats for blinds
-      if (type == WindowCoveringTypeValue.blind ||
-          type == WindowCoveringTypeValue.outdoorBlind) {
-        _drawSlats(canvas, size, padding, coveredHeight);
+      // Draw type-specific covering
+      switch (type) {
+        case WindowCoveringTypeValue.curtain:
+          _drawCurtain(canvas, size, padding, coveredHeight);
+          break;
+        case WindowCoveringTypeValue.blind:
+          _drawBlind(canvas, size, padding, coveredHeight, false);
+          break;
+        case WindowCoveringTypeValue.roller:
+          _drawRoller(canvas, size, padding, coveredHeight);
+          break;
+        case WindowCoveringTypeValue.outdoorBlind:
+          _drawBlind(canvas, size, padding, coveredHeight, true);
+          break;
       }
     }
 
@@ -798,17 +792,81 @@ class _WindowCoveringPainter extends CustomPainter {
     return baseColor.withOpacity(0.7);
   }
 
-  void _drawSlats(
-      Canvas canvas, Size size, double padding, double coveredHeight) {
-    final slatPaint = Paint()
-      ..color = brightness == Brightness.light
-          ? AppBorderColorLight.base.withOpacity(0.5)
-          : AppBorderColorDark.base.withOpacity(0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+  Color _getAccentColor() {
+    return brightness == Brightness.light
+        ? AppBorderColorLight.base.withOpacity(0.5)
+        : AppBorderColorDark.base.withOpacity(0.5);
+  }
 
-    final double slatSpacing = 8.0;
+  void _drawCurtain(
+      Canvas canvas, Size size, double padding, double coveredHeight) {
     final double frameWidth = size.width - 2 * padding;
+    final coverPaint = Paint()
+      ..color = _getCoverColor()
+      ..style = PaintingStyle.fill;
+
+    // Draw main curtain body
+    final coverRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        padding + 2,
+        padding + 2,
+        frameWidth - 4,
+        coveredHeight - 4 > 0 ? coveredHeight - 4 : 0,
+      ),
+      Radius.circular(AppBorderRadius.base - 2),
+    );
+    canvas.drawRRect(coverRect, coverPaint);
+
+    // Draw vertical fold lines for curtain effect
+    final foldPaint = Paint()
+      ..color = _getAccentColor()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final double foldSpacing = 12.0;
+    final double startX = padding + 6;
+    final double endX = padding + frameWidth - 6;
+
+    for (double x = startX; x < endX; x += foldSpacing) {
+      // Draw wavy vertical lines
+      final path = Path();
+      path.moveTo(x, padding + 4);
+
+      for (double y = padding + 4; y < padding + coveredHeight - 4; y += 8) {
+        final double waveOffset = (y ~/ 8) % 2 == 0 ? 2.0 : -2.0;
+        path.lineTo(x + waveOffset, y + 4);
+      }
+
+      canvas.drawPath(path, foldPaint);
+    }
+  }
+
+  void _drawBlind(Canvas canvas, Size size, double padding,
+      double coveredHeight, bool isOutdoor) {
+    final double frameWidth = size.width - 2 * padding;
+    final coverPaint = Paint()
+      ..color = _getCoverColor()
+      ..style = PaintingStyle.fill;
+
+    // Draw main blind body
+    final coverRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        padding + 2,
+        padding + 2,
+        frameWidth - 4,
+        coveredHeight - 4 > 0 ? coveredHeight - 4 : 0,
+      ),
+      Radius.circular(AppBorderRadius.base - 2),
+    );
+    canvas.drawRRect(coverRect, coverPaint);
+
+    // Draw horizontal slats
+    final slatPaint = Paint()
+      ..color = _getAccentColor()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = isOutdoor ? 2.0 : 1.0;
+
+    final double slatSpacing = isOutdoor ? 10.0 : 8.0;
 
     for (double y = padding + slatSpacing;
         y < padding + coveredHeight - 4;
@@ -819,17 +877,140 @@ class _WindowCoveringPainter extends CustomPainter {
         slatPaint,
       );
     }
+
+    // Draw thicker border for outdoor blinds
+    if (isOutdoor) {
+      final borderPaint = Paint()
+        ..color = _getAccentColor()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+
+      canvas.drawRect(
+        Rect.fromLTWH(
+          padding + 3,
+          padding + 3,
+          frameWidth - 6,
+          coveredHeight - 6 > 0 ? coveredHeight - 6 : 0,
+        ),
+        borderPaint,
+      );
+    }
+  }
+
+  void _drawRoller(
+      Canvas canvas, Size size, double padding, double coveredHeight) {
+    final double frameWidth = size.width - 2 * padding;
+    final coverPaint = Paint()
+      ..color = _getCoverColor()
+      ..style = PaintingStyle.fill;
+
+    // Draw roller tube at top
+    final double tubeHeight = 8.0;
+    final tubePaint = Paint()
+      ..color = brightness == Brightness.light
+          ? AppColorsLight.info
+          : AppColorsDark.info
+      ..style = PaintingStyle.fill;
+
+    final tubeRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        padding + 2,
+        padding + 2,
+        frameWidth - 4,
+        tubeHeight,
+      ),
+      Radius.circular(4),
+    );
+    canvas.drawRRect(tubeRect, tubePaint);
+
+    // Draw tube highlight
+    final highlightPaint = Paint()
+      ..color = brightness == Brightness.light
+          ? Colors.white.withOpacity(0.3)
+          : Colors.white.withOpacity(0.2)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawRect(
+      Rect.fromLTWH(
+        padding + 4,
+        padding + 3,
+        frameWidth - 8,
+        3,
+      ),
+      highlightPaint,
+    );
+
+    // Draw fabric hanging from roller
+    if (coveredHeight > tubeHeight) {
+      final fabricRect = Rect.fromLTWH(
+        padding + 2,
+        padding + 2 + tubeHeight,
+        frameWidth - 4,
+        coveredHeight - tubeHeight - 4 > 0 ? coveredHeight - tubeHeight - 4 : 0,
+      );
+      canvas.drawRect(fabricRect, coverPaint);
+
+      // Draw subtle horizontal texture lines
+      final texturePaint = Paint()
+        ..color = _getAccentColor().withOpacity(0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5;
+
+      for (double y = padding + tubeHeight + 12;
+          y < padding + coveredHeight - 4;
+          y += 12) {
+        canvas.drawLine(
+          Offset(padding + 4, y),
+          Offset(padding + frameWidth - 4, y),
+          texturePaint,
+        );
+      }
+    }
+
+    // Draw bottom bar/weight
+    if (coveredHeight > tubeHeight + 4) {
+      final barPaint = Paint()
+        ..color = _getAccentColor()
+        ..style = PaintingStyle.fill;
+
+      canvas.drawRect(
+        Rect.fromLTWH(
+          padding + 4,
+          padding + coveredHeight - 6,
+          frameWidth - 8,
+          4,
+        ),
+        barPaint,
+      );
+    }
   }
 
   void _drawMovingIndicator(
       Canvas canvas, Size size, double padding, double coverPercent) {
-    final indicatorPaint = Paint()
-      ..color = AppColors.info.withOpacity(0.3 + 0.4 * animationValue)
-      ..style = PaintingStyle.fill;
-
     final double frameWidth = size.width - 2 * padding;
-    final double indicatorY =
-        padding + (size.height - 2 * padding) * coverPercent;
+    final double frameHeight = size.height - 2 * padding;
+    final double indicatorY = padding + frameHeight * coverPercent;
+
+    // Pulsing glow effect
+    final glowPaint = Paint()
+      ..color = AppColors.info.withOpacity(0.2 + 0.3 * animationValue)
+      ..style = PaintingStyle.fill
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4);
+
+    canvas.drawRect(
+      Rect.fromLTWH(
+        padding,
+        indicatorY - 6,
+        frameWidth,
+        12,
+      ),
+      glowPaint,
+    );
+
+    // Solid indicator line
+    final indicatorPaint = Paint()
+      ..color = AppColors.info.withOpacity(0.6 + 0.4 * animationValue)
+      ..style = PaintingStyle.fill;
 
     canvas.drawRect(
       Rect.fromLTWH(
@@ -840,11 +1021,15 @@ class _WindowCoveringPainter extends CustomPainter {
       ),
       indicatorPaint,
     );
+
+    // Arrow indicators based on direction could be added here
+    // For now, the pulsing effect indicates movement
   }
 
   @override
   bool shouldRepaint(covariant _WindowCoveringPainter oldDelegate) {
     return oldDelegate.position != position ||
+        oldDelegate.type != type ||
         oldDelegate.isMoving != isMoving ||
         oldDelegate.animationValue != animationValue ||
         oldDelegate.brightness != brightness;
