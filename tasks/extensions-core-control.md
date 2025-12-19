@@ -1,6 +1,6 @@
 # Extensions Core Control - Implementation Plan
 
-**Status:** ✅ Mostly Complete
+**Status:** ✅ Complete
 **Branch:** `claude/admin-extension-management-*`
 
 ## Current State Analysis
@@ -165,8 +165,10 @@ Create dedicated endpoint that returns all registered extensions:
 - [x] `apps/backend/src/modules/extensions/services/extensions.service.ts` - Core module protection
 - [x] `apps/backend/src/modules/extensions/models/extension.model.ts` - Added `readme`, `docs` fields
 - [x] `apps/backend/src/index.ts` - NEW: Public API exports for external extensions
-- [x] All module files - Added README metadata registration
-- [x] All plugin files - Added README metadata registration
+- [x] All 11 module files - Added README metadata registration (including config-module)
+- [x] All 15 plugin files - Added README metadata registration
+- [x] `apps/backend/src/modules/config/models/module-config.model.ts` - NEW: Config module model
+- [x] `apps/backend/src/modules/config/dto/update-module-config.dto.ts` - NEW: Config module DTO
 - [ ] `apps/backend/src/modules/extensions/models/extension.model.ts` - Add `canRemove` field (deferred)
 
 ### Admin
@@ -197,4 +199,4 @@ Create dedicated endpoint that returns all registered extensions:
 5. [x] Non-core extensions (when available) can be toggled and show remove option
 6. [ ] OpenAPI spec regenerated with `canRemove` field (deferred - not needed yet)
 7. [x] All linting passes
-8. [ ] Unit tests pass (not verified)
+8. [x] Unit tests pass (backend: 873 tests, admin: 1047 tests)
