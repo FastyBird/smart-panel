@@ -24,7 +24,7 @@ export class ServicesController {
 	constructor(private readonly pluginServiceManager: PluginServiceManagerService) {}
 
 	@Get()
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-extensions-module-services',
 		summary: 'List all managed services',
@@ -43,7 +43,7 @@ export class ServicesController {
 	}
 
 	@Get(':pluginName/:serviceId')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-extensions-module-service',
 		summary: 'Get service status',
