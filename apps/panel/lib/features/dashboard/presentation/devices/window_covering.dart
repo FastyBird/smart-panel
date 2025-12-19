@@ -361,22 +361,20 @@ class _WindowCoveringStatus extends StatelessWidget {
   }
 
   Color _getStatusColor(BuildContext context, WindowCoveringStatusValue status) {
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+
     switch (status) {
       case WindowCoveringStatusValue.open:
-        return AppColors.success;
+        return isLight ? AppColorsLight.success : AppColorsDark.success;
       case WindowCoveringStatusValue.closed:
-        return Theme.of(context).brightness == Brightness.light
-            ? AppTextColorLight.placeholder
-            : AppTextColorDark.placeholder;
+        return isLight ? AppTextColorLight.placeholder : AppTextColorDark.placeholder;
       case WindowCoveringStatusValue.opening:
       case WindowCoveringStatusValue.closing:
-        return AppColors.info;
+        return isLight ? AppColorsLight.info : AppColorsDark.info;
       case WindowCoveringStatusValue.stopped:
-        return AppColors.warning;
+        return isLight ? AppColorsLight.warning : AppColorsDark.warning;
       case WindowCoveringStatusValue.unknown:
-        return Theme.of(context).brightness == Brightness.light
-            ? AppTextColorLight.placeholder
-            : AppTextColorDark.placeholder;
+        return isLight ? AppTextColorLight.placeholder : AppTextColorDark.placeholder;
     }
   }
 
@@ -492,7 +490,19 @@ class _CommandButtonState extends State<_CommandButton>
 
   @override
   Widget build(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final ThemeData theme = Theme.of(context);
+    final bool isLight = theme.brightness == Brightness.light;
+
+    // Use theme colors
+    final Color primaryColor =
+        isLight ? AppColorsLight.primary : AppColorsDark.primary;
+    final Color warningColor =
+        isLight ? AppColorsLight.warning : AppColorsDark.warning;
+    final Color infoColor = isLight ? AppColorsLight.info : AppColorsDark.info;
+    final Color textColor =
+        isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
+    final Color borderColor =
+        isLight ? AppBorderColorLight.base : AppBorderColorDark.base;
 
     // Button colors based on state
     Color backgroundColor;
@@ -500,28 +510,31 @@ class _CommandButtonState extends State<_CommandButton>
     Color labelColor;
 
     if (widget._isActive) {
-      backgroundColor = AppColors.primary;
-      iconColor = Colors.white;
-      labelColor = Colors.white;
+      backgroundColor = primaryColor;
+      iconColor = AppColors.white;
+      labelColor = AppColors.white;
     } else if (widget._isStopButton) {
       backgroundColor = isLight
-          ? AppColorsLight.warning.withOpacity(0.15)
-          : AppColorsDark.warning.withOpacity(0.2);
-      iconColor = AppColors.warning;
-      labelColor = isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
+          ? AppColorsLight.warningLight9
+          : AppColorsDark.warningLight7;
+      iconColor = warningColor;
+      labelColor = textColor;
     } else {
-      backgroundColor = isLight
-          ? AppColorsLight.info.withOpacity(0.1)
-          : AppColorsDark.info.withOpacity(0.15);
-      iconColor = isLight ? AppColorsLight.info : AppColorsDark.info;
-      labelColor = isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
+      backgroundColor =
+          isLight ? AppColorsLight.infoLight9 : AppColorsDark.infoLight7;
+      iconColor = infoColor;
+      labelColor = textColor;
     }
 
-    // Pressed state darkens the button
-    if (_isPressed) {
-      backgroundColor = backgroundColor.withOpacity(
-        (backgroundColor.opacity + 0.1).clamp(0.0, 1.0),
-      );
+    // Pressed state uses darker variant
+    if (_isPressed && !widget._isActive) {
+      backgroundColor = isLight
+          ? (widget._isStopButton
+              ? AppColorsLight.warningLight7
+              : AppColorsLight.infoLight7)
+          : (widget._isStopButton
+              ? AppColorsDark.warningLight5
+              : AppColorsDark.infoLight5);
     }
 
     return GestureDetector(
@@ -543,17 +556,18 @@ class _CommandButtonState extends State<_CommandButton>
           border: widget._isActive
               ? null
               : Border.all(
-                  color: isLight
-                      ? AppBorderColorLight.base
-                      : AppBorderColorDark.base,
-                  width: 1,
+                  color: borderColor,
+                  width: _screenService.scale(
+                    1,
+                    density: _visualDensityService.density,
+                  ),
                 ),
           boxShadow: widget._isActive
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: primaryColor.withOpacity(0.3),
+                    blurRadius: AppSpacings.pMd,
+                    offset: Offset(0, AppSpacings.pXs),
                   ),
                 ]
               : null,
@@ -569,14 +583,11 @@ class _CommandButtonState extends State<_CommandButton>
               ),
               color: iconColor,
             ),
-            SizedBox(height: AppSpacings.pXs / 2),
+            SizedBox(height: AppSpacings.pXs),
             Text(
               widget._label,
               style: TextStyle(
-                fontSize: _screenService.scale(
-                  10,
-                  density: _visualDensityService.density,
-                ),
+                fontSize: AppFontSize.extraSmall,
                 fontWeight: widget._isActive ? FontWeight.w600 : FontWeight.w500,
                 color: labelColor,
               ),
@@ -1061,11 +1072,15 @@ class _WindowCoveringPainter extends CustomPainter {
     final double frameHeight = size.height - 2 * padding;
     final double indicatorY = padding + frameHeight * coverPercent;
 
+    // Use theme-appropriate info color
+    final Color infoColor =
+        brightness == Brightness.light ? AppColorsLight.info : AppColorsDark.info;
+
     // Pulsing glow effect
     final glowPaint = Paint()
-      ..color = AppColors.info.withOpacity(0.2 + 0.3 * animationValue)
+      ..color = infoColor.withOpacity(0.2 + 0.3 * animationValue)
       ..style = PaintingStyle.fill
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
 
     canvas.drawRect(
       Rect.fromLTWH(
@@ -1079,7 +1094,7 @@ class _WindowCoveringPainter extends CustomPainter {
 
     // Solid indicator line
     final indicatorPaint = Paint()
-      ..color = AppColors.info.withOpacity(0.6 + 0.4 * animationValue)
+      ..color = infoColor.withOpacity(0.6 + 0.4 * animationValue)
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(
@@ -1091,9 +1106,6 @@ class _WindowCoveringPainter extends CustomPainter {
       ),
       indicatorPaint,
     );
-
-    // Arrow indicators based on direction could be added here
-    // For now, the pulsing effect indicates movement
   }
 
   @override
@@ -1236,6 +1248,7 @@ class _WindowCoveringWarnings extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
 
     final List<Widget> warnings = [];
 
@@ -1246,7 +1259,7 @@ class _WindowCoveringWarnings extends StatelessWidget {
         _WarningTile(
           icon: MdiIcons.alert,
           message: localizations.window_covering_obstruction_warning,
-          color: AppColors.warning,
+          color: isLight ? AppColorsLight.warning : AppColorsDark.warning,
         ),
       );
     }
@@ -1259,7 +1272,7 @@ class _WindowCoveringWarnings extends StatelessWidget {
         _WarningTile(
           icon: MdiIcons.alertCircle,
           message: localizations.window_covering_fault_warning,
-          color: AppColors.danger,
+          color: isLight ? AppColorsLight.danger : AppColorsDark.danger,
         ),
       );
     }
