@@ -1126,5 +1126,78 @@
   "space_scene_partial_success": "Scene partially activated",
   "@space_scene_partial_success": {
     "description": "Message when a scene is partially activated (some actions failed)"
+  },
+
+  "window_covering_status_open": "Open",
+  "@window_covering_status_open": {
+    "description": "Status when the window covering is fully open"
+  },
+  "window_covering_status_closed": "Closed",
+  "@window_covering_status_closed": {
+    "description": "Status when the window covering is fully closed"
+  },
+  "window_covering_status_opening": "Opening",
+  "@window_covering_status_opening": {
+    "description": "Status when the window covering is opening"
+  },
+  "window_covering_status_closing": "Closing",
+  "@window_covering_status_closing": {
+    "description": "Status when the window covering is closing"
+  },
+  "window_covering_status_stopped": "Stopped",
+  "@window_covering_status_stopped": {
+    "description": "Status when the window covering is stopped mid-way"
+  },
+  "window_covering_type_curtain": "Curtain",
+  "@window_covering_type_curtain": {
+    "description": "Type label for curtain window covering"
+  },
+  "window_covering_type_blind": "Blind",
+  "@window_covering_type_blind": {
+    "description": "Type label for blind window covering"
+  },
+  "window_covering_type_roller": "Roller",
+  "@window_covering_type_roller": {
+    "description": "Type label for roller window covering"
+  },
+  "window_covering_type_outdoor_blind": "Outdoor Blind",
+  "@window_covering_type_outdoor_blind": {
+    "description": "Type label for outdoor blind window covering"
+  },
+  "window_covering_command_open": "Open",
+  "@window_covering_command_open": {
+    "description": "Button label to open the window covering"
+  },
+  "window_covering_command_close": "Close",
+  "@window_covering_command_close": {
+    "description": "Button label to close the window covering"
+  },
+  "window_covering_command_stop": "Stop",
+  "@window_covering_command_stop": {
+    "description": "Button label to stop the window covering"
+  },
+  "window_covering_position_label": "Position",
+  "@window_covering_position_label": {
+    "description": "Label for position control"
+  },
+  "window_covering_position_description": "Current position",
+  "@window_covering_position_description": {
+    "description": "Description for the current position value"
+  },
+  "window_covering_tilt_label": "Tilt",
+  "@window_covering_tilt_label": {
+    "description": "Label for tilt control"
+  },
+  "window_covering_tilt_description": "Adjust slat angle",
+  "@window_covering_tilt_description": {
+    "description": "Description for the tilt control"
+  },
+  "window_covering_obstruction_warning": "Obstruction detected",
+  "@window_covering_obstruction_warning": {
+    "description": "Warning message when obstruction is detected"
+  },
+  "window_covering_fault_warning": "Fault detected",
+  "@window_covering_fault_warning": {
+    "description": "Warning message when a fault is detected"
   }
 }

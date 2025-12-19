@@ -276,5 +276,24 @@
   "house_modes_confirm_away_description": "Opravdu chcete nastavit dům do režimu Pryč? To může ovlivnit pravidla automatizace a nastavení zabezpečení.",
   "space_scenes_title": "Rychlé scény",
   "space_scene_triggered": "Scéna aktivována",
-  "space_scene_partial_success": "Scéna částečně aktivována"
+  "space_scene_partial_success": "Scéna částečně aktivována",
+
+  "window_covering_status_open": "Otevřeno",
+  "window_covering_status_closed": "Zavřeno",
+  "window_covering_status_opening": "Otevírání",
+  "window_covering_status_closing": "Zavírání",
+  "window_covering_status_stopped": "Zastaveno",
+  "window_covering_type_curtain": "Záclona",
+  "window_covering_type_blind": "Žaluzie",
+  "window_covering_type_roller": "Roleta",
+  "window_covering_type_outdoor_blind": "Venkovní žaluzie",
+  "window_covering_command_open": "Otevřít",
+  "window_covering_command_close": "Zavřít",
+  "window_covering_command_stop": "Zastavit",
+  "window_covering_position_label": "Pozice",
+  "window_covering_position_description": "Aktuální pozice",
+  "window_covering_tilt_label": "Náklon",
+  "window_covering_tilt_description": "Úprava úhlu lamel",
+  "window_covering_obstruction_warning": "Zjištěna překážka",
+  "window_covering_fault_warning": "Zjištěna závada"
 }
