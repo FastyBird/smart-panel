@@ -287,6 +287,64 @@ jobs:
           npm-registry-url: "https://npm.pkg.github.com"
           npm-registry: "npm.pkg.github.com"
 
+  publish-main-package:
+    needs: [ "tag", "sync-versions", "changelog", "publish-backend", "publish-admin" ]
+    name: "Publish Main Smart Panel Package"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: "Build Package"
+        working-directory: "build"
+        run: |
+          npm install
+          npm run build
+
+      - name: "Publish To NPM"
+        working-directory: "build"
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+      - name: "Extract Published Version"
+        id: "extract-version"
+        working-directory: "build"
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: "Setup GitHub NPM Registry"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: "Publish To GitHub NPM"
+        working-directory: "build"
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-flutter:
     needs: [ "tag", "sync-versions", "changelog" ]
     name: "Build Flutter Display App"
@@ -314,7 +372,7 @@ jobs:
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
-  
+
       - name: "Setup Flutter"
         uses: "./.github/actions/setup-flutter-project"
         with:
@@ -339,7 +397,7 @@ jobs:
             SHASUMS256.txt
 
   attach-artifacts:
-    needs: ["tag", "publish-backend", "publish-admin", "build-flutter"]
+    needs: ["tag", "publish-backend", "publish-admin", "publish-main-package", "build-flutter"]
     name: "Attach Artifacts ${{ needs.tag.outputs.version }}"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -361,10 +419,15 @@ jobs:
         with:
           name: "flutter-assets"
 
+      - name: "Prepare Installation Script"
+        run: |
+          chmod +x scripts/install.sh
+          cp scripts/install.sh install.sh
+
       - name: "Attach Flutter Assets"
         uses: "AButler/upload-release-assets@v3.0"
         with:
-          files: "smart-panel-display-${{ needs.tag.outputs.version }}.tar.gz;SHASUMS256.txt"
+          files: "smart-panel-display-${{ needs.tag.outputs.version }}.tar.gz;SHASUMS256.txt;install.sh"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.tag.outputs.version }}
 
