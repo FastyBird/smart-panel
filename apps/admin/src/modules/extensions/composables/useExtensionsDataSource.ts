@@ -190,7 +190,7 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 	watch(
 		(): 'name' | 'type' | 'kind' | 'enabled' | undefined => sortBy.value,
 		(val: 'name' | 'type' | 'kind' | 'enabled' | undefined): void => {
-			if (typeof val === 'undefined') {
+			if (typeof val === 'undefined' || sortDir.value === null) {
 				sort.value = [];
 			} else {
 				sort.value = [
