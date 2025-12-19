@@ -10,7 +10,7 @@
 import { computed } from 'vue';
 
 import DOMPurify, { type Config } from 'dompurify';
-import { marked } from 'marked';
+import { Marked } from 'marked';
 
 import type { IMarkdownRendererProps } from './markdown-renderer.types';
 
@@ -19,6 +19,10 @@ defineOptions({
 });
 
 const props = defineProps<IMarkdownRendererProps>();
+
+// Create a dedicated DOMPurify instance for this component
+// This avoids polluting global state and issues with HMR adding duplicate hooks
+const purify = DOMPurify(window);
 
 // Configure DOMPurify to allow safe tags only
 const purifyConfig: Config = {
@@ -54,16 +58,18 @@ const purifyConfig: Config = {
 	ALLOW_DATA_ATTR: false,
 };
 
-// Add hook to set target and rel on anchor tags (handles duplicates properly)
-DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+// Add hook to set target and rel on anchor tags
+// Using our dedicated instance, this won't affect other DOMPurify usage in the app
+purify.addHook('afterSanitizeAttributes', (node) => {
 	if (node.tagName === 'A') {
 		node.setAttribute('target', '_blank');
 		node.setAttribute('rel', 'noopener noreferrer');
 	}
 });
 
-// Configure marked options
-marked.setOptions({
+// Create a dedicated Marked instance with our options
+// This avoids modifying global marked state
+const markedInstance = new Marked({
 	gfm: true,
 	breaks: true,
 });
@@ -73,11 +79,11 @@ const sanitizedHtml = computed<string>(() => {
 		return '';
 	}
 
-	// Parse markdown to HTML
-	const rawHtml = marked.parse(props.content) as string;
+	// Parse markdown to HTML using our instance
+	const rawHtml = markedInstance.parse(props.content) as string;
 
 	// Sanitize HTML to prevent XSS (hook adds target/rel to links)
-	return DOMPurify.sanitize(rawHtml, purifyConfig) as string;
+	return purify.sanitize(rawHtml, purifyConfig) as string;
 });
 </script>
 
