@@ -52,8 +52,15 @@ const purifyConfig: Config = {
 	],
 	ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel'],
 	ALLOW_DATA_ATTR: false,
-	ADD_ATTR: ['target', 'rel'],
 };
+
+// Add hook to set target and rel on anchor tags (handles duplicates properly)
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+	if (node.tagName === 'A') {
+		node.setAttribute('target', '_blank');
+		node.setAttribute('rel', 'noopener noreferrer');
+	}
+});
 
 // Configure marked options
 marked.setOptions({
@@ -69,11 +76,8 @@ const sanitizedHtml = computed<string>(() => {
 	// Parse markdown to HTML
 	const rawHtml = marked.parse(props.content) as string;
 
-	// Sanitize HTML to prevent XSS
-	const cleanHtml = DOMPurify.sanitize(rawHtml, purifyConfig) as string;
-
-	// Add target="_blank" and rel="noopener noreferrer" to all links
-	return cleanHtml.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
+	// Sanitize HTML to prevent XSS (hook adds target/rel to links)
+	return DOMPurify.sanitize(rawHtml, purifyConfig) as string;
 });
 </script>
 
