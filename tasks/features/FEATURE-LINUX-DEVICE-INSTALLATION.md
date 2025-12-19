@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -60,79 +60,79 @@ I want to install Smart Panel using a simple npm command or installation script,
 
 ### 4.1 Distribution Package
 
-- [ ] Create `@fastybird/smart-panel` npm package in `build/` directory
-- [ ] Package is public (`private: false`) and publishable to npm
-- [ ] Package includes `@fastybird/smart-panel-backend` and `@fastybird/smart-panel-admin` as dependencies
-- [ ] Package exports `smart-panel` CLI command for running the server
-- [ ] Package exports `smart-panel-service` CLI command for service management
-- [ ] Package includes systemd service template
-- [ ] Package version syncs with other packages during release
+- [x] Create `@fastybird/smart-panel` npm package in `build/` directory
+- [x] Package is public (`private: false`) and publishable to npm
+- [x] Package includes `@fastybird/smart-panel-backend` and `@fastybird/smart-panel-admin` as dependencies
+- [x] Package exports `smart-panel` CLI command for running the server
+- [x] Package exports `smart-panel-service` CLI command for service management
+- [x] Package includes systemd service template
+- [x] Package version syncs with other packages during release
 
 ### 4.2 Service Management CLI (`smart-panel-service`)
 
-- [ ] `smart-panel-service install` - Install as systemd service
+- [x] `smart-panel-service install` - Install as systemd service
   - Creates system user `smart-panel`
   - Creates data directory `/var/lib/smart-panel/`
   - Installs systemd unit file
   - Runs database migrations
   - Enables service to start on boot
   - Starts the service
-- [ ] `smart-panel-service uninstall` - Remove systemd service
+- [x] `smart-panel-service uninstall` - Remove systemd service
   - Stops the service
   - Disables the service
   - Removes systemd unit file
   - Optionally removes data directory (with confirmation)
-- [ ] `smart-panel-service start` - Start the service
-- [ ] `smart-panel-service stop` - Stop the service
-- [ ] `smart-panel-service restart` - Restart the service
-- [ ] `smart-panel-service status` - Show service status and health info
-- [ ] `smart-panel-service logs [-f]` - Show/tail service logs
-- [ ] `smart-panel-service update` - Update to latest version
-- [ ] All commands require root/sudo for system operations
-- [ ] Graceful error handling with helpful messages
+- [x] `smart-panel-service start` - Start the service
+- [x] `smart-panel-service stop` - Stop the service
+- [x] `smart-panel-service restart` - Restart the service
+- [x] `smart-panel-service status` - Show service status and health info
+- [x] `smart-panel-service logs [-f]` - Show/tail service logs
+- [x] `smart-panel-service update` - Update to latest version
+- [x] All commands require root/sudo for system operations
+- [x] Graceful error handling with helpful messages
 
 ### 4.3 Systemd Integration
 
-- [ ] Create systemd service unit template (`smart-panel.service`)
-- [ ] Service runs as dedicated `smart-panel` user (not root)
-- [ ] Service auto-restarts on failure with 5-second delay
-- [ ] Service starts after network is online
-- [ ] Environment variables loaded from `/etc/smart-panel/environment`
-- [ ] Working directory set to `/var/lib/smart-panel/`
-- [ ] Logs to systemd journal (accessible via `journalctl`)
+- [x] Create systemd service unit template (`smart-panel.service`)
+- [x] Service runs as dedicated `smart-panel` user (not root)
+- [x] Service auto-restarts on failure with 5-second delay
+- [x] Service starts after network is online
+- [x] Environment variables loaded from `/etc/smart-panel/environment`
+- [x] Working directory set to `/var/lib/smart-panel/`
+- [x] Logs to systemd journal (accessible via `journalctl`)
 
 ### 4.4 Directory Structure
 
-- [ ] Application data: `/var/lib/smart-panel/`
-- [ ] Database: `/var/lib/smart-panel/data/database.sqlite`
-- [ ] Configuration: `/etc/smart-panel/`
-- [ ] Environment file: `/etc/smart-panel/environment`
-- [ ] Logs: systemd journal (default) or `/var/log/smart-panel/`
+- [x] Application data: `/var/lib/smart-panel/`
+- [x] Database: `/var/lib/smart-panel/data/database.sqlite`
+- [x] Configuration: `/etc/smart-panel/`
+- [x] Environment file: `/etc/smart-panel/environment`
+- [x] Logs: systemd journal (default) or `/var/log/smart-panel/`
 
 ### 4.5 GitHub Actions Updates
 
-- [ ] Update `release.yml` to build ARM tarballs (32-bit and 64-bit)
-- [ ] Update `release.yml` to publish `@fastybird/smart-panel` package
-- [ ] Update `beta-release.yml` to publish `@fastybird/smart-panel` package with beta tag
-- [ ] Update `alpha-release.yml` to publish `@fastybird/smart-panel` package with alpha tag
-- [ ] Attach installation script to GitHub releases
-- [ ] Update version sync script to include main package
+- [ ] Update `release.yml` to build ARM tarballs (32-bit and 64-bit) *(deferred - beta builds have this)*
+- [x] Update `release.yml` to publish `@fastybird/smart-panel` package
+- [x] Update `beta-release.yml` to publish `@fastybird/smart-panel` package with beta tag
+- [x] Update `alpha-release.yml` to publish `@fastybird/smart-panel` package with alpha tag
+- [x] Attach installation script to GitHub releases
+- [x] Update version sync script to include main package
 
 ### 4.6 Installation Methods
 
-- [ ] NPM global install: `sudo npm install -g @fastybird/smart-panel`
-- [ ] One-liner script: `curl -fsSL https://get.smart-panel.fastybird.com | sudo bash`
-- [ ] Manual tarball extraction with instructions
-- [ ] Installation script detects architecture (armv7, arm64, x64)
-- [ ] Installation script installs Node.js if not present
+- [x] NPM global install: `sudo npm install -g @fastybird/smart-panel`
+- [x] One-liner script: `curl -fsSL https://get.smart-panel.fastybird.com | sudo bash`
+- [ ] Manual tarball extraction with instructions *(deferred - documentation)*
+- [x] Installation script detects architecture (armv7, arm64, x64)
+- [x] Installation script installs Node.js if not present
 
 ### 4.7 First-Time Setup
 
-- [ ] `smart-panel-service install` prompts for admin user creation
-- [ ] Or redirect to web UI for first-time setup wizard
-- [ ] Generate secure JWT secret on first install
-- [ ] Initialize database with migrations
-- [ ] Seed default configuration data
+- [ ] `smart-panel-service install` prompts for admin user creation *(future enhancement)*
+- [x] Or redirect to web UI for first-time setup wizard *(existing onboarding flow)*
+- [ ] Generate secure JWT secret on first install *(future enhancement)*
+- [x] Initialize database with migrations
+- [ ] Seed default configuration data *(future enhancement)*
 
 ### 4.8 Documentation
 

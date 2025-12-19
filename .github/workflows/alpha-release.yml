@@ -213,6 +213,64 @@ jobs:
           npm-registry-url: "https://npm.pkg.github.com"
           npm-registry: "npm.pkg.github.com"
 
+  publish-main-package:
+    needs: ["sync-versions", "publish-backend", "publish-admin"]
+    name: "Publish Pre Release Alpha Main Package"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: "Build Package"
+        working-directory: "build"
+        run: |
+          npm install
+          npm run build
+
+      - name: "Publish To NPM"
+        working-directory: "build"
+        run: npm publish --access public --tag alpha
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+      - name: "Extract Published Version"
+        id: "extract-version"
+        working-directory: "build"
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: "Setup GitHub NPM Registry"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          registry-url: "https://npm.pkg.github.com"
+
+      - name: "Publish To GitHub NPM"
+        working-directory: "build"
+        run: npm publish --access public --tag alpha
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-display:
     needs: "sync-versions"
     name: "Build Flutter Display App"
