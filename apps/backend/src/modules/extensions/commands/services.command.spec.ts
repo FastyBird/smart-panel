@@ -11,7 +11,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ServiceStatusExtended } from '../services/managed-plugin-service.interface';
 import { PluginServiceManagerService } from '../services/plugin-service-manager.service';
 
-import { ListServicesCommand, RestartServiceCommand, StartServiceCommand, StopServiceCommand } from './services.command';
+import {
+	ListServicesCommand,
+	RestartServiceCommand,
+	StartServiceCommand,
+	StopServiceCommand,
+} from './services.command';
 
 describe('Services Commands', () => {
 	let pluginServiceManager: jest.Mocked<PluginServiceManagerService>;
@@ -30,7 +35,7 @@ describe('Services Commands', () => {
 		...overrides,
 	});
 
-	beforeEach(async () => {
+	beforeEach(() => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
 		jest.spyOn(console, 'log').mockImplementation(() => undefined);

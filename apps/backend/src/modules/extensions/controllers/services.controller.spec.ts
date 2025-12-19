@@ -62,7 +62,12 @@ describe('ServicesController', () => {
 		it('should return all service statuses', async () => {
 			const mockStatuses = [
 				createMockServiceStatus({ pluginName: 'devices-shelly-v1', serviceId: 'main' }),
-				createMockServiceStatus({ pluginName: 'devices-shelly-ng', serviceId: 'main', state: 'stopped', enabled: false }),
+				createMockServiceStatus({
+					pluginName: 'devices-shelly-ng',
+					serviceId: 'main',
+					state: 'stopped',
+					enabled: false,
+				}),
 			];
 			pluginServiceManager.getStatus.mockResolvedValue(mockStatuses);
 
