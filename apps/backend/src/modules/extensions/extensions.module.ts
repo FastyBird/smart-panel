@@ -8,8 +8,15 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 
+import {
+	ListServicesCommand,
+	RestartServiceCommand,
+	StartServiceCommand,
+	StopServiceCommand,
+} from './commands/services.command';
 import { DiscoveredExtensionsController } from './controllers/discovered-extensions.controller';
 import { ExtensionsController } from './controllers/extensions.controller';
+import { ServicesController } from './controllers/services.controller';
 import { UpdateExtensionsConfigDto } from './dto/update-config.dto';
 import {
 	EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
@@ -31,8 +38,18 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 @Global()
 @Module({
 	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule)],
-	controllers: [ExtensionsController, DiscoveredExtensionsController],
-	providers: [ExtensionsBundledService, ExtensionsService, ModuleResetService, PluginServiceManagerService],
+	controllers: [ExtensionsController, DiscoveredExtensionsController, ServicesController],
+	providers: [
+		ExtensionsBundledService,
+		ExtensionsService,
+		ModuleResetService,
+		PluginServiceManagerService,
+		// CLI commands
+		ListServicesCommand,
+		StartServiceCommand,
+		StopServiceCommand,
+		RestartServiceCommand,
+	],
 	exports: [ExtensionsBundledService, ExtensionsService, PluginServiceManagerService],
 })
 export class ExtensionsModule implements OnModuleInit {

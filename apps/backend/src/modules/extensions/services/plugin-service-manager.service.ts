@@ -4,14 +4,14 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
-import { ConfigService } from '../../config/services/config.service';
 import { PluginConfigModel } from '../../config/models/config.model';
+import { ConfigService } from '../../config/services/config.service';
 
 import {
 	IManagedPluginService,
 	ServiceRegistration,
-	ServiceState,
-	ServiceStatus,
+	ServiceRuntimeInfo,
+	ServiceStatusExtended,
 } from './managed-plugin-service.interface';
 
 /**
@@ -40,6 +40,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	private readonly logger = new Logger(PluginServiceManagerService.name);
 
 	private readonly services: Map<string, ServiceRegistration> = new Map();
+	private readonly runtimeInfo: Map<string, ServiceRuntimeInfo> = new Map();
 	private readonly isCliMode: boolean;
 
 	private startupComplete = false;
@@ -77,6 +78,11 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			priority,
 		});
 
+		// Initialize runtime info
+		this.runtimeInfo.set(key, {
+			startCount: 0,
+		});
+
 		this.logger.log(`[REGISTER] Registered service: ${key} (priority: ${priority})`);
 
 		// If startup already completed and this plugin is enabled, start the service immediately
@@ -84,7 +90,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			const config = this.getPluginConfig(service.pluginName);
 
 			if (config?.enabled) {
-				void this.startService(this.services.get(key)!);
+				void this.startService(this.services.get(key));
 			}
 		}
 	}
@@ -106,6 +112,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		}
 
 		this.services.delete(key);
+		this.runtimeInfo.delete(key);
 
 		this.logger.log(`[UNREGISTER] Unregistered service: ${key}`);
 	}
@@ -168,20 +175,21 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.logger.debug('[CONFIG] Configuration updated, syncing service states');
 
-		for (const [_key, registration] of this.services) {
+		for (const registration of this.services.values()) {
 			await this.syncServiceState(registration);
 		}
 	}
 
 	/**
-	 * Get the status of all managed services.
+	 * Get the status of all managed services with runtime information.
 	 */
-	async getStatus(): Promise<ServiceStatus[]> {
-		const statuses: ServiceStatus[] = [];
+	async getStatus(): Promise<ServiceStatusExtended[]> {
+		const statuses: ServiceStatusExtended[] = [];
 
-		for (const [_key, registration] of this.services) {
+		for (const [key, registration] of this.services) {
 			const config = this.getPluginConfig(registration.pluginName);
 			const state = registration.service.getState();
+			const runtime = this.runtimeInfo.get(key);
 
 			let healthy: boolean | undefined;
 
@@ -193,12 +201,24 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				}
 			}
 
+			// Calculate uptime if service is started
+			let uptimeMs: number | undefined;
+
+			if (state === 'started' && runtime?.lastStartedAt) {
+				uptimeMs = Date.now() - runtime.lastStartedAt.getTime();
+			}
+
 			statuses.push({
 				pluginName: registration.pluginName,
 				serviceId: registration.serviceId,
 				state,
 				enabled: config?.enabled ?? false,
 				healthy,
+				lastStartedAt: runtime?.lastStartedAt?.toISOString(),
+				lastStoppedAt: runtime?.lastStoppedAt?.toISOString(),
+				lastError: runtime?.lastError,
+				startCount: runtime?.startCount ?? 0,
+				uptimeMs,
 			});
 		}
 
@@ -206,9 +226,9 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	}
 
 	/**
-	 * Get status of a specific service.
+	 * Get status of a specific service with runtime information.
 	 */
-	getServiceStatus(pluginName: string, serviceId: string): ServiceStatus | null {
+	getServiceStatus(pluginName: string, serviceId: string): ServiceStatusExtended | null {
 		const key = this.getServiceKey(pluginName, serviceId);
 		const registration = this.services.get(key);
 
@@ -217,17 +237,32 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		}
 
 		const config = this.getPluginConfig(pluginName);
+		const runtime = this.runtimeInfo.get(key);
+		const state = registration.service.getState();
+
+		// Calculate uptime if service is started
+		let uptimeMs: number | undefined;
+
+		if (state === 'started' && runtime?.lastStartedAt) {
+			uptimeMs = Date.now() - runtime.lastStartedAt.getTime();
+		}
 
 		return {
 			pluginName,
 			serviceId,
-			state: registration.service.getState(),
+			state,
 			enabled: config?.enabled ?? false,
+			lastStartedAt: runtime?.lastStartedAt?.toISOString(),
+			lastStoppedAt: runtime?.lastStoppedAt?.toISOString(),
+			lastError: runtime?.lastError,
+			startCount: runtime?.startCount ?? 0,
+			uptimeMs,
 		};
 	}
 
 	/**
 	 * Manually restart a specific service.
+	 * Requires the plugin to be enabled.
 	 */
 	async restartService(pluginName: string, serviceId: string): Promise<boolean> {
 		const key = this.getServiceKey(pluginName, serviceId);
@@ -251,6 +286,60 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		await this.startService(registration);
 
 		return true;
+	}
+
+	/**
+	 * Manually start a specific service.
+	 * This allows starting a service regardless of plugin enabled state.
+	 */
+	async startServiceManually(pluginName: string, serviceId: string): Promise<boolean> {
+		const key = this.getServiceKey(pluginName, serviceId);
+		const registration = this.services.get(key);
+
+		if (!registration) {
+			this.logger.warn(`[START_MANUAL] Service not found: ${key}`);
+
+			return false;
+		}
+
+		const currentState = registration.service.getState();
+
+		if (currentState === 'started' || currentState === 'starting') {
+			this.logger.warn(`[START_MANUAL] Service ${key} is already ${currentState}`);
+
+			return false;
+		}
+
+		await this.startService(registration);
+
+		return registration.service.getState() === 'started';
+	}
+
+	/**
+	 * Manually stop a specific service.
+	 * This allows stopping a service regardless of plugin enabled state.
+	 */
+	async stopServiceManually(pluginName: string, serviceId: string): Promise<boolean> {
+		const key = this.getServiceKey(pluginName, serviceId);
+		const registration = this.services.get(key);
+
+		if (!registration) {
+			this.logger.warn(`[STOP_MANUAL] Service not found: ${key}`);
+
+			return false;
+		}
+
+		const currentState = registration.service.getState();
+
+		if (currentState === 'stopped' || currentState === 'stopping') {
+			this.logger.warn(`[STOP_MANUAL] Service ${key} is already ${currentState}`);
+
+			return false;
+		}
+
+		await this.stopService(registration);
+
+		return registration.service.getState() === 'stopped';
 	}
 
 	/**
@@ -279,9 +368,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const config = this.getPluginConfig(registration.pluginName);
 
 		if (!config?.enabled) {
-			this.logger.debug(
-				`[START] Plugin ${registration.pluginName} is disabled, skipping ${registration.serviceId}`,
-			);
+			this.logger.debug(`[START] Plugin ${registration.pluginName} is disabled, skipping ${registration.serviceId}`);
 
 			return;
 		}
@@ -304,9 +391,25 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		try {
 			await registration.service.start();
 
+			// Update runtime info on successful start
+			const runtime = this.runtimeInfo.get(key);
+
+			if (runtime) {
+				runtime.lastStartedAt = new Date();
+				runtime.startCount += 1;
+				runtime.lastError = undefined;
+			}
+
 			this.logger.log(`[START] Service started successfully: ${key}`);
 		} catch (error) {
 			const err = error as Error;
+
+			// Track the error
+			const runtime = this.runtimeInfo.get(key);
+
+			if (runtime) {
+				runtime.lastError = err.message;
+			}
 
 			this.logger.error(`[START] Failed to start service ${key}: ${err.message}`, err.stack);
 		}
@@ -327,9 +430,23 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		try {
 			await registration.service.stop();
 
+			// Update runtime info on successful stop
+			const runtime = this.runtimeInfo.get(key);
+
+			if (runtime) {
+				runtime.lastStoppedAt = new Date();
+			}
+
 			this.logger.log(`[STOP] Service stopped successfully: ${key}`);
 		} catch (error) {
 			const err = error as Error;
+
+			// Track the error
+			const runtime = this.runtimeInfo.get(key);
+
+			if (runtime) {
+				runtime.lastError = err.message;
+			}
 
 			this.logger.error(`[STOP] Failed to stop service ${key}: ${err.message}`, err.stack);
 		}

@@ -6,15 +6,15 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import {
-	IManagedPluginService,
-	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import {
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import {
 	DESCRIPTORS,
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
@@ -180,9 +180,11 @@ export class ShellyV1Service implements IManagedPluginService {
 	 * Handle configuration changes without full restart.
 	 * Called by PluginServiceManagerService when config updates occur.
 	 */
-	async onConfigChanged(): Promise<void> {
+	onConfigChanged(): Promise<void> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
+
+		return Promise.resolve();
 	}
 
 	/**

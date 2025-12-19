@@ -6,11 +6,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ILogger } from '../../../modules/system/logger/logger';
 import {
 	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { ILogger } from '../../../modules/system/logger/logger';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 import { LoggerRotatingFileException } from '../logger-rotating-file.exceptions';
 import { RotatingFileConfigModel } from '../models/config.model';
@@ -69,9 +69,9 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 	 * Stop the service gracefully.
 	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
 	 */
-	async stop(): Promise<void> {
+	stop(): Promise<void> {
 		if (this.state === 'stopped' || this.state === 'stopping') {
-			return;
+			return Promise.resolve();
 		}
 
 		this.state = 'stopping';
@@ -83,6 +83,8 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 		this.dir = undefined;
 
 		this.state = 'stopped';
+
+		return Promise.resolve();
 	}
 
 	/**
@@ -96,9 +98,11 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 	 * Handle configuration changes without full restart.
 	 * Called by PluginServiceManagerService when config updates occur.
 	 */
-	async onConfigChanged(): Promise<void> {
+	onConfigChanged(): Promise<void> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
+
+		return Promise.resolve();
 	}
 
 	async append(obj: unknown): Promise<void> {

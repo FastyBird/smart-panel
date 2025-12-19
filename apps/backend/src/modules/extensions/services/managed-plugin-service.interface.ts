@@ -111,3 +111,24 @@ export interface ServiceStatus {
 	enabled: boolean;
 	healthy?: boolean;
 }
+
+/**
+ * Runtime information tracked for each managed service.
+ */
+export interface ServiceRuntimeInfo {
+	lastStartedAt?: Date;
+	lastStoppedAt?: Date;
+	lastError?: string;
+	startCount: number;
+}
+
+/**
+ * Extended status of a managed service including runtime information.
+ */
+export interface ServiceStatusExtended extends ServiceStatus {
+	lastStartedAt?: string; // ISO 8601
+	lastStoppedAt?: string; // ISO 8601
+	lastError?: string;
+	startCount: number;
+	uptimeMs?: number;
+}

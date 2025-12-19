@@ -101,8 +101,6 @@ const pluginConfigEnabled = {
 	websockets: { requestTimeout: 10, pingInterval: 60, reconnectInterval: [5, 10, 30] },
 };
 
-const pluginConfigDisabled = { ...pluginConfigEnabled, enabled: false };
-
 const mockConfigService = (cfg = pluginConfigEnabled) => ({
 	getPluginConfig: jest.fn().mockImplementation((name: string) => {
 		if (name === DEVICES_SHELLY_NG_PLUGIN_NAME) return cfg;
@@ -322,9 +320,6 @@ describe('ShellyNgService', () => {
 
 		const svc = mod.get(ShellyNgService);
 		await svc.start();
-
-		// Config was fetched during start
-		const callCount = configSvc.getPluginConfig.mock.calls.length;
 
 		// Call onConfigChanged to clear cache
 		await svc.onConfigChanged();

@@ -83,16 +83,16 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	 * Start the service.
 	 * Called by PluginServiceManagerService when the plugin is enabled.
 	 */
-	async start(): Promise<void> {
+	start(): Promise<void> {
 		if (this.state === 'started' || this.state === 'starting') {
-			return;
+			return Promise.resolve();
 		}
 
 		if (this.apiKey === null) {
 			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Missing API key for Home Assistant WS service');
 			this.state = 'error';
 
-			return;
+			return Promise.resolve();
 		}
 
 		this.state = 'starting';
@@ -102,15 +102,17 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		this.connect();
 
 		this.state = 'started';
+
+		return Promise.resolve();
 	}
 
 	/**
 	 * Stop the service gracefully.
 	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
 	 */
-	async stop(): Promise<void> {
+	stop(): Promise<void> {
 		if (this.state === 'stopped' || this.state === 'stopping') {
-			return;
+			return Promise.resolve();
 		}
 
 		this.state = 'stopping';
@@ -125,6 +127,8 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		this.disconnect();
 
 		this.state = 'stopped';
+
+		return Promise.resolve();
 	}
 
 	/**
@@ -138,9 +142,11 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	 * Handle configuration changes without full restart.
 	 * Called by PluginServiceManagerService when config updates occur.
 	 */
-	async onConfigChanged(): Promise<void> {
+	onConfigChanged(): Promise<void> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
+
+		return Promise.resolve();
 	}
 
 	private connect() {

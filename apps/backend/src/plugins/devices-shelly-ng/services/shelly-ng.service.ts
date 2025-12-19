@@ -102,9 +102,11 @@ export class ShellyNgService implements IManagedPluginService {
 	 * Handle configuration changes without full restart.
 	 * Called by PluginServiceManagerService when config updates occur.
 	 */
-	async onConfigChanged(): Promise<void> {
+	onConfigChanged(): Promise<void> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
+
+		return Promise.resolve();
 	}
 
 	/**
