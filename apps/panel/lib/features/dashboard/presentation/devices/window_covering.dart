@@ -427,94 +427,164 @@ class _WindowCoveringCommandButtons extends StatelessWidget {
 
     return Row(
       children: [
-        _CommandButton(
-          icon: MdiIcons.arrowUp,
-          label: localizations.window_covering_command_open,
-          onPressed: () => _onCommand(WindowCoveringCommandValue.open),
-          isActive: _device.isWindowCoveringOpening,
+        Expanded(
+          child: _CommandButton(
+            icon: MdiIcons.chevronUp,
+            label: localizations.window_covering_command_open,
+            onPressed: () => _onCommand(WindowCoveringCommandValue.open),
+            isActive: _device.isWindowCoveringOpening,
+          ),
         ),
         SizedBox(width: AppSpacings.pSm),
-        _CommandButton(
-          icon: MdiIcons.pause,
-          label: localizations.window_covering_command_stop,
-          onPressed: () => _onCommand(WindowCoveringCommandValue.stop),
-          isActive: _device.isWindowCoveringStopped,
+        Expanded(
+          child: _CommandButton(
+            icon: MdiIcons.stop,
+            label: localizations.window_covering_command_stop,
+            onPressed: () => _onCommand(WindowCoveringCommandValue.stop),
+            isActive: _device.isWindowCoveringStopped,
+            isStopButton: true,
+          ),
         ),
         SizedBox(width: AppSpacings.pSm),
-        _CommandButton(
-          icon: MdiIcons.arrowDown,
-          label: localizations.window_covering_command_close,
-          onPressed: () => _onCommand(WindowCoveringCommandValue.close),
-          isActive: _device.isWindowCoveringClosing,
+        Expanded(
+          child: _CommandButton(
+            icon: MdiIcons.chevronDown,
+            label: localizations.window_covering_command_close,
+            onPressed: () => _onCommand(WindowCoveringCommandValue.close),
+            isActive: _device.isWindowCoveringClosing,
+          ),
         ),
       ],
     );
   }
 }
 
-class _CommandButton extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
+class _CommandButton extends StatefulWidget {
   final IconData _icon;
   final String _label;
   final VoidCallback _onPressed;
   final bool _isActive;
+  final bool _isStopButton;
 
-  _CommandButton({
+  const _CommandButton({
     required IconData icon,
     required String label,
     required VoidCallback onPressed,
     bool isActive = false,
+    bool isStopButton = false,
   })  : _icon = icon,
         _label = label,
         _onPressed = onPressed,
-        _isActive = isActive;
+        _isActive = isActive,
+        _isStopButton = isStopButton;
+
+  @override
+  State<_CommandButton> createState() => _CommandButtonState();
+}
+
+class _CommandButtonState extends State<_CommandButton>
+    with SingleTickerProviderStateMixin {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: _screenService.scale(
-        70,
-        density: _visualDensityService.density,
-      ),
-      height: _screenService.scale(
-        50,
-        density: _visualDensityService.density,
-      ),
-      child: Theme(
-        data: ThemeData(
-          filledButtonTheme: Theme.of(context).brightness == Brightness.light
-              ? (_isActive
-                  ? AppFilledButtonsLightThemes.primary
-                  : AppFilledButtonsLightThemes.info)
-              : (_isActive
-                  ? AppFilledButtonsDarkThemes.primary
-                  : AppFilledButtonsDarkThemes.info),
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+
+    // Button colors based on state
+    Color backgroundColor;
+    Color iconColor;
+    Color labelColor;
+
+    if (widget._isActive) {
+      backgroundColor = AppColors.primary;
+      iconColor = Colors.white;
+      labelColor = Colors.white;
+    } else if (widget._isStopButton) {
+      backgroundColor = isLight
+          ? AppColorsLight.warning.withOpacity(0.15)
+          : AppColorsDark.warning.withOpacity(0.2);
+      iconColor = AppColors.warning;
+      labelColor = isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
+    } else {
+      backgroundColor = isLight
+          ? AppColorsLight.info.withOpacity(0.1)
+          : AppColorsDark.info.withOpacity(0.15);
+      iconColor = isLight ? AppColorsLight.info : AppColorsDark.info;
+      labelColor = isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
+    }
+
+    // Pressed state darkens the button
+    if (_isPressed) {
+      backgroundColor = backgroundColor.withOpacity(
+        (backgroundColor.opacity + 0.1).clamp(0.0, 1.0),
+      );
+    }
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget._onPressed();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        height: _screenService.scale(
+          70,
+          density: _visualDensityService.density,
         ),
-        child: FilledButton(
-          onPressed: _onPressed,
-          style: ButtonStyle(
-            padding: WidgetStateProperty.all(EdgeInsets.zero),
-            shape: WidgetStateProperty.all(
-              RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          border: widget._isActive
+              ? null
+              : Border.all(
+                  color: isLight
+                      ? AppBorderColorLight.base
+                      : AppBorderColorDark.base,
+                  width: 1,
+                ),
+          boxShadow: widget._isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              widget._icon,
+              size: _screenService.scale(
+                32,
+                density: _visualDensityService.density,
               ),
+              color: iconColor,
             ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _icon,
-                size: _screenService.scale(
-                  24,
+            SizedBox(height: AppSpacings.pXs / 2),
+            Text(
+              widget._label,
+              style: TextStyle(
+                fontSize: _screenService.scale(
+                  10,
                   density: _visualDensityService.density,
                 ),
+                fontWeight: widget._isActive ? FontWeight.w600 : FontWeight.w500,
+                color: labelColor,
               ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
