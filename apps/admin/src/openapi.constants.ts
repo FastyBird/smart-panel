@@ -69,8 +69,6 @@ export type DisplaysModuleRegistrationSchema = components['schemas']['DisplaysMo
 export type DisplaysModuleLongLiveTokenSchema = components['schemas']['AuthModuleDataLongLiveToken'];
 
 // System Module Schemas
-export type SystemModuleExtensionAdminSchema = components['schemas']['SystemModuleDataExtensionAdmin'];
-export type SystemModuleExtensionBackendSchema = components['schemas']['SystemModuleDataExtensionBackend'];
 export type SystemModuleCreateLogEntrySchema = components['schemas']['SystemModuleCreateLogEntry'];
 export type SystemModuleLogEntrySchema = components['schemas']['SystemModuleDataLogEntry'];
 export type SystemModuleSystemInfoSchema = components['schemas']['SystemModuleDataSystemInfo'];
@@ -237,12 +235,15 @@ export type ConfigModuleUpdateConfigModuleOperation = operations['update-config-
 export type ConfigModuleGetConfigOperation = operations['get-config-module-config'];
 
 // System Module Operations
-export type SystemModuleGetExtensionOperation = operations['get-system-module-extension'];
-export type SystemModuleGetExtensionsOperation = operations['get-system-module-extensions'];
 export type SystemModuleGetLogsOperation = operations['get-system-module-logs'];
 export type SystemModuleCreateLogsOperation = operations['create-system-module-logs'];
 export type SystemModuleGetSystemInfoOperation = operations['get-system-module-system-info'];
 export type SystemModuleGetSystemThrottleOperation = operations['get-system-module-system-throttle'];
+
+// Extensions Module Operations
+export type ExtensionsModuleGetExtensionOperation = operations['get-extensions-module-extension'];
+export type ExtensionsModuleGetExtensionsOperation = operations['get-extensions-module-extensions'];
+export type ExtensionsModuleUpdateExtensionOperation = operations['update-extensions-module-extension'];
 
 // Weather Module Operations
 export type WeatherModuleGetPrimaryWeatherOperation = operations['get-weather-module-primary-weather'];
@@ -306,21 +307,9 @@ export { DevicesModuleDataDeviceConnectionStatusStatus as DevicesModuleDeviceCon
 
 // System Module Enums
 // ===================
-export { SystemModuleDataExtensionBaseSource as SystemModuleExtensionSource } from './openapi';
-
-export { SystemModuleDataExtensionBaseSurface as SystemModuleExtensionSurface } from './openapi';
-
-export { SystemModuleDataExtensionBaseKind as SystemModuleExtensionKind } from './openapi';
-
 export { SystemModuleCreateLogEntrySource as SystemModuleLogEntrySource } from './openapi';
 
 export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './openapi';
-
-export { PathsModulesSystemExtensionsGetParametersQuerySurface as SystemModuleQuerySurface } from './openapi';
-
-export { SystemModuleDataExtensionAdminType } from './openapi';
-
-export { SystemModuleDataExtensionBackendType } from './openapi';
 
 // Weather Config Location Types
 // Weather location type enums removed - weather config is now accessed via weather-module

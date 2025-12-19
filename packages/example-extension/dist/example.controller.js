@@ -8,6 +8,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 import { Controller, Get } from '@nestjs/common';
+import { ApiExcludeController } from '@nestjs/swagger';
 let ExampleController = class ExampleController {
     getStatus() {
         return {
@@ -24,6 +25,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ExampleController.prototype, "getStatus", null);
 ExampleController = __decorate([
+    ApiExcludeController(),
     Controller()
 ], ExampleController);
 export { ExampleController };

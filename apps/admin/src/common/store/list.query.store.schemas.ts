@@ -17,6 +17,7 @@ export const ListQueryDataSchema = z.object({
 	filters: ListQueryFilterDataSchema.optional(),
 	sort: z.array(SortEntrySchema).default([]).optional(),
 	pagination: PaginationEntrySchema.optional(),
+	viewMode: z.string().optional(),
 });
 
 export const ListQueryEntrySchema = z.object({
@@ -46,6 +47,7 @@ export const ListQuerySetActionPayloadSchema = z.object({
 		filters: ListQueryFilterDataSchema.optional(),
 		sort: z.array(SortEntrySchema).default([]).optional(),
 		pagination: PaginationEntrySchema.optional(),
+		viewMode: z.string().optional(),
 	}),
 	version: z.number().default(1),
 });
@@ -56,6 +58,7 @@ export const ListQueryPatchActionPayloadSchema = z.object({
 		filters: ListQueryFilterDataSchema.optional(),
 		sort: z.array(SortEntrySchema).default([]).optional(),
 		pagination: PaginationEntrySchema.optional(),
+		viewMode: z.string().optional(),
 	}),
 	version: z.number().default(1),
 });

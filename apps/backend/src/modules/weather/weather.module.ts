@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
@@ -32,7 +34,13 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	description: WEATHER_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), ConfigModule, SwaggerModule, InfluxDbModule],
+	imports: [
+		TypeOrmModule.forFeature([WeatherLocationEntity]),
+		ConfigModule,
+		SwaggerModule,
+		InfluxDbModule,
+		ExtensionsModule,
+	],
 	controllers: [WeatherController, LocationsController, HistoryController],
 	providers: [
 		WeatherService,
@@ -53,6 +61,7 @@ export class WeatherModule implements OnModuleInit {
 	constructor(
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -65,5 +74,43 @@ export class WeatherModule implements OnModuleInit {
 		for (const model of WEATHER_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: WEATHER_MODULE_NAME,
+			name: 'Weather',
+			description: 'Weather forecasts and geolocation services',
+			author: 'FastyBird',
+			readme: `# Weather Module
+
+The Weather module provides weather forecast data and location management for the Smart Panel display.
+
+## Features
+
+- **Weather Forecasts** - Current conditions and multi-day forecasts
+- **Location Management** - Configure weather locations by coordinates or city name
+- **Provider System** - Pluggable weather data providers
+- **Historical Data** - Store and retrieve past weather data via InfluxDB
+- **Multiple Locations** - Support for multiple weather locations
+
+## Weather Providers
+
+Weather data is fetched through provider plugins:
+
+- **OpenWeatherMap** - Current weather and daily forecasts
+- **OpenWeatherMap One Call** - Detailed hourly and daily forecasts
+
+## Data Available
+
+- Temperature (current, min, max)
+- Weather conditions and descriptions
+- Humidity, pressure, wind speed
+- Sunrise and sunset times
+- Multi-day forecasts`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }

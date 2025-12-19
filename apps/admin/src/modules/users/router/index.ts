@@ -17,7 +17,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Users',
 			icon: 'mdi:users-group',
-			menu: 3000,
+			menu: 2000,
 		},
 		children: [
 			{

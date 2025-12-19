@@ -1,32 +1,32 @@
 <template>
 	<div
 		v-if="isModulesListRoute || isLGDevice"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden"
+		class="grow-1 flex flex-col lt-sm:mx-1 lt-sm:mb-1 sm:mb-2 overflow-hidden"
 	>
 		<el-scrollbar class="grow-1">
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-			<el-card
-				v-for="module in modules"
-				:key="String(module.type)"
-				shadow="never"
-				class="config-module-card"
-				@click="onModuleEdit(module.type)"
-			>
-					<div class="flex flex-col items-center justify-center p-6 text-center">
-						<el-icon
-							:size="48"
-							class="mb-4 text-gray-600"
-						>
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+				<el-card
+					v-for="module in modules"
+					:key="String(module.type)"
+					shadow="hover"
+					class="config-module-card"
+					body-class="p-4!"
+					@click="onModuleEdit(module.type)"
+				>
+					<div class="flex items-start gap-3">
+						<div class="config-module-card__icon">
 							<icon icon="mdi:package-variant" />
-						</el-icon>
-						<div class="text-lg font-semibold mb-2">
-							{{ module.name }}
 						</div>
-						<div
-							v-if="module.description"
-							class="text-sm text-gray-500"
-						>
-							{{ module.description }}
+						<div class="flex-1 min-w-0 config-module-card__content">
+							<h3 class="config-module-card__title">
+								{{ module.name }}
+							</h3>
+							<p class="config-module-card__description">
+								{{ module.description || '&nbsp;' }}
+							</p>
+						</div>
+						<div class="config-module-card__chevron">
+							<icon icon="mdi:chevron-right" />
 						</div>
 					</div>
 				</el-card>
@@ -230,32 +230,68 @@ useMeta({
 </script>
 
 <style scoped lang="scss">
-:deep(.config-module-card) {
-	border: 1px solid var(--el-border-color);
-	border-radius: var(--el-border-radius-base);
-	background-color: var(--el-bg-color);
+.config-module-card {
 	cursor: pointer;
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	box-shadow: none;
+	transition: all 0.2s ease;
 
 	&:hover {
-		border-color: var(--el-text-color-regular);
-		background-color: var(--el-fill-color-light);
-		box-shadow: 0 0 0 1px var(--el-text-color-regular) inset,
-			0 2px 4px 0 rgba(0, 0, 0, 0.12),
-			0 0 6px 0 rgba(0, 0, 0, 0.04);
+		.config-module-card__chevron {
+			opacity: 1;
+			transform: translateX(2px);
+		}
 	}
+}
 
-	&:active {
-		border-color: var(--el-color-primary);
-		background-color: var(--el-fill-color);
-		box-shadow: 0 0 0 1px var(--el-color-primary) inset,
-			0 2px 4px 0 rgba(0, 0, 0, 0.12),
-			0 0 6px 0 rgba(0, 0, 0, 0.04);
-	}
+.config-module-card__icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: var(--el-border-radius-base);
+	background-color: var(--el-color-primary-light-9);
+	color: var(--el-color-primary);
+	font-size: 1.25rem;
+	flex-shrink: 0;
+}
 
-	.el-card__body {
-		padding: var(--el-card-padding);
-	}
+.config-module-card__content {
+	display: flex;
+	flex-direction: column;
+	height: 4.5rem;
+}
+
+.config-module-card__title {
+	margin: 0 0 0.25rem 0;
+	font-size: 0.9375rem;
+	font-weight: 600;
+	line-height: 1.3;
+	color: var(--el-text-color-primary);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.config-module-card__description {
+	margin: 0;
+	font-size: 0.8125rem;
+	line-height: 1.4;
+	color: var(--el-text-color-secondary);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.config-module-card__chevron {
+	display: flex;
+	align-items: center;
+	color: var(--el-text-color-placeholder);
+	font-size: 1.25rem;
+	opacity: 0.5;
+	transition: all 0.2s ease;
+	flex-shrink: 0;
+	align-self: center;
 }
 </style>

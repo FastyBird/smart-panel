@@ -4,6 +4,8 @@ packages:
   - docs
   # Exclude build folder
   - '!build'
+  # Exclude example extension (it's documentation, not part of the build)
+  - '!packages/example-extension'
 onlyBuiltDependencies:
   - '@nestjs/core'
   - '@parcel/watcher'

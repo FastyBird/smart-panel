@@ -1,0 +1,137 @@
+{
+	"meta": {
+		"extensions": {
+			"list": {
+				"title": "List extensions"
+			},
+			"detail": {
+				"title": "Extension: {extension}"
+			}
+		}
+	},
+	"headings": {
+		"list": "Extensions",
+		"detail": "Extension Detail",
+		"adjustFilters": "Adjust Filters"
+	},
+	"subHeadings": {
+		"list": "Manage your application modules and plugins",
+		"detail": "View extension information and configuration",
+		"adjustFilters": "Filter extensions by various criteria"
+	},
+	"breadcrumbs": {
+		"extensions": {
+			"list": "extensions",
+			"detail": "extension: {extension}"
+		}
+	},
+	"tabs": {
+		"all": "All Extensions",
+		"modules": "Modules",
+		"plugins": "Plugins"
+	},
+	"labels": {
+		"module": "Module",
+		"plugin": "Plugin",
+		"core": "Core",
+		"addon": "Add-on",
+		"enabled": "Enabled",
+		"disabled": "Disabled",
+		"version": "Version",
+		"author": "Author",
+		"type": "Type",
+		"kind": "Kind",
+		"source": "Source",
+		"status": "Status",
+		"configuration": "Configuration",
+		"description": "Description",
+		"details": "Details",
+		"links": "Links",
+		"readme": "About",
+		"documentation": "Documentation"
+	},
+	"fields": {
+		"search": {
+			"placeholder": "Search extensions..."
+		}
+	},
+	"filters": {
+		"kind": {
+			"title": "Kind"
+		},
+		"enabled": {
+			"title": "Status"
+		},
+		"type": {
+			"title": "Type"
+		}
+	},
+	"states": {
+		"all": "All"
+	},
+	"table": {
+		"columns": {
+			"name": {
+				"title": "Name"
+			},
+			"type": {
+				"title": "Type"
+			},
+			"kind": {
+				"title": "Kind"
+			},
+			"version": {
+				"title": "Version"
+			},
+			"core": {
+				"title": "Core"
+			},
+			"enabled": {
+				"title": "Enabled"
+			}
+		}
+	},
+	"texts": {
+		"loadingExtensions": "Loading extensions...",
+		"noExtensions": "No extensions installed",
+		"noFilteredExtensions": "No extensions match your current filters"
+	},
+	"buttons": {
+		"actions": "Actions",
+		"documentation": "Docs",
+		"repository": "Repository",
+		"issues": "Issues",
+		"enable": "Enable",
+		"disable": "Disable",
+		"remove": "Remove",
+		"configure": "Configure",
+		"viewDetails": "View Details",
+		"detail": {
+			"title": "Detail"
+		},
+		"reset": {
+			"title": "Reset Filters"
+		},
+		"resetFilters": {
+			"title": "Reset Filters"
+		}
+	},
+	"tooltips": {
+		"coreCannotBeRemoved": "Core extensions cannot be removed",
+		"coreModuleCannotBeDisabled": "Core modules cannot be disabled",
+		"removeNotSupported": "Extension removal is not yet supported",
+		"cannotToggleEnabled": "This extension cannot be enabled/disabled",
+		"openConfiguration": "Open extension configuration"
+	},
+	"messages": {
+		"noExtensions": "No extensions found",
+		"noDescription": "No description available",
+		"extensionEnabled": "Extension has been enabled",
+		"extensionDisabled": "Extension has been disabled",
+		"updateError": "Failed to update extension",
+		"coreExtensionError": "Core extensions cannot be modified",
+		"notConfigurableError": "This extension does not support enable/disable",
+		"loadError": "Failed to load extensions",
+		"noMatchingExtensions": "No extensions match your filters"
+	}
+}

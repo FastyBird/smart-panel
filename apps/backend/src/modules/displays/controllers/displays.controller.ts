@@ -60,6 +60,7 @@ export class DisplaysController {
 
 	@Get('me')
 	@ApiOperation({
+		operationId: 'get-displays-module-display-me',
 		summary: 'Get current display',
 		description: "Retrieves the authenticated display's own data. Only accessible by displays.",
 	})
@@ -87,6 +88,7 @@ export class DisplaysController {
 
 	@Patch('me')
 	@ApiOperation({
+		operationId: 'update-displays-module-display-me',
 		summary: 'Update current display',
 		description: "Updates the authenticated display's own configuration. Only accessible by displays.",
 	})
@@ -115,6 +117,7 @@ export class DisplaysController {
 
 	@Post('me/refresh-token')
 	@ApiOperation({
+		operationId: 'create-displays-module-display-refresh-token',
 		summary: 'Refresh display token',
 		description:
 			'Refreshes the current display token. Returns a new long-lived token and revokes the old one. Only accessible by displays.',
@@ -152,6 +155,7 @@ export class DisplaysController {
 	@Get()
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'get-displays-module-displays',
 		summary: 'List all displays',
 		description: 'Retrieves a list of all registered displays. Requires owner or admin role.',
 	})
@@ -171,6 +175,7 @@ export class DisplaysController {
 	@Get(':id')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'get-displays-module-display',
 		summary: 'Get display by ID',
 		description: 'Retrieves a specific display by its unique identifier. Requires owner or admin role.',
 	})
@@ -192,6 +197,7 @@ export class DisplaysController {
 	@Patch(':id')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'update-displays-module-display',
 		summary: 'Update display',
 		description: 'Updates an existing display configuration. Requires owner or admin role.',
 	})
@@ -217,6 +223,7 @@ export class DisplaysController {
 	@Delete(':id')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'delete-displays-module-display',
 		summary: 'Delete display',
 		description: 'Removes a display from the system. Requires owner or admin role.',
 	})
@@ -235,6 +242,7 @@ export class DisplaysController {
 	@Get(':id/tokens')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'get-displays-module-display-tokens',
 		summary: 'List display tokens',
 		description:
 			'Retrieves all active (non-revoked) tokens for a specific display. Requires owner or admin role. Note: Each display should have at most one active token.',
@@ -264,6 +272,7 @@ export class DisplaysController {
 	@Post(':id/revoke-token')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'create-displays-module-display-revoke-token',
 		summary: 'Revoke display token',
 		description:
 			'Revokes all active tokens for a specific display. The display will need to re-register to get a new token. Requires owner or admin role.',
@@ -290,6 +299,7 @@ export class DisplaysController {
 	@Post('permit-join')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'create-displays-module-permit-join',
 		summary: 'Permit display join',
 		description:
 			'Opens registration endpoint for the configured duration (default: 2 minutes). Requires owner or admin role. Not available in all-in-one mode.',
@@ -324,6 +334,7 @@ export class DisplaysController {
 	@Get('permit-join/status')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'get-displays-module-permit-join-status',
 		summary: 'Get permit join status',
 		description: 'Returns the current permit join status. Requires owner or admin role.',
 	})
@@ -351,6 +362,7 @@ export class DisplaysController {
 	@Delete('permit-join')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
+		operationId: 'delete-displays-module-permit-join',
 		summary: 'Deactivate permit join',
 		description: 'Immediately deactivates permit join. Requires owner or admin role.',
 	})

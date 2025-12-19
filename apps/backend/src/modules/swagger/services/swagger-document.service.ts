@@ -96,12 +96,18 @@ export class SwaggerDocumentService {
 
 		document.tags = tagDefinitions;
 
-		// Exclude example-extension paths (demo/test endpoints) from Swagger UI
+		// Filter paths to only include proper module/plugin prefixed routes
+		// This removes duplicate routes from direct module imports (non-prefixed paths)
 		const originalPaths = document.paths;
 		const filteredPaths: Record<string, unknown> = {};
 		for (const [path, pathItem] of Object.entries(originalPaths || {})) {
 			// Skip example-extension paths
-			if (!path.includes('/example-extension/')) {
+			if (path.includes('/example-extension/')) {
+				continue;
+			}
+			// Only include paths that start with /modules/ or /plugins/
+			// Also keep special paths like /third-party/webhook (transformed later)
+			if (path.startsWith('/modules/') || path.startsWith('/plugins/') || path === '/third-party/webhook') {
 				filteredPaths[path] = pathItem;
 			}
 		}

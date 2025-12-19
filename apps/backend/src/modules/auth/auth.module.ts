@@ -1,5 +1,5 @@
 import { CacheModule } from '@nestjs/cache-manager';
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -7,8 +7,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
+import { ConfigModule } from '../config/config.module';
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { SwaggerModule } from '../swagger/swagger.module';
 import { UsersModule } from '../users/users.module';
 
 import {
@@ -23,9 +28,11 @@ import { ResetPasswordCommand } from './commands/reset-password.command';
 import { AuthController } from './controllers/auth.controller';
 import { TokensController } from './controllers/tokens.controller';
 import { CreateAccessTokenDto, CreateLongLiveTokenDto, CreateRefreshTokenDto } from './dto/create-token.dto';
+import { UpdateAuthConfigDto } from './dto/update-config.dto';
 import { UpdateAccessTokenDto, UpdateLongLiveTokenDto, UpdateRefreshTokenDto } from './dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from './entities/auth.entity';
 import { AuthGuard } from './guards/auth.guard';
+import { AuthConfigModel } from './models/config.model';
 import { AuthService } from './services/auth.service';
 import { CryptoService } from './services/crypto.service';
 import { TokensTypeMapperService } from './services/tokens-type-mapper.service';
@@ -51,6 +58,9 @@ import { TokensService } from './services/tokens.service';
 		NestConfigModule,
 		TypeOrmModule.forFeature([TokenEntity, AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity]),
 		CacheModule.register(),
+		forwardRef(() => ConfigModule),
+		forwardRef(() => ExtensionsModule),
+		SwaggerModule,
 		UsersModule,
 	],
 	providers: [
@@ -68,10 +78,12 @@ import { TokensService } from './services/tokens.service';
 	controllers: [AuthController, TokensController],
 	exports: [AuthService, TokensService, CryptoService, TokensTypeMapperService, JwtModule],
 })
-export class AuthModule {
+export class AuthModule implements OnModuleInit {
 	constructor(
 		private readonly mapper: TokensTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -99,5 +111,56 @@ export class AuthModule {
 		for (const model of AUTH_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register module config mapping
+		this.modulesMapperService.registerMapping<AuthConfigModel, UpdateAuthConfigDto>({
+			type: AUTH_MODULE_NAME,
+			class: AuthConfigModel,
+			configDto: UpdateAuthConfigDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: AUTH_MODULE_NAME,
+			name: 'Authentication',
+			description: 'Authentication and token management',
+			author: 'FastyBird',
+			readme: `# Authentication Module
+
+The Authentication module handles user authentication and token management for the Smart Panel.
+
+## Features
+
+- **JWT Authentication** - Secure token-based authentication
+- **Token Management** - Access tokens, refresh tokens, and long-lived tokens
+- **Session Handling** - Automatic token refresh and session management
+- **Password Security** - Secure password hashing and validation
+
+## Token Types
+
+### Access Token
+- Short-lived token for API requests
+- Automatically refreshed using refresh token
+- Default expiration: configurable
+
+### Refresh Token
+- Used to obtain new access tokens
+- Longer lifetime than access tokens
+- Stored securely in the database
+
+### Long-Live Token
+- For automated systems and integrations
+- Does not expire automatically
+- Can be revoked manually
+
+## CLI Commands
+
+- \`register:owner\` - Create the initial owner account
+- \`reset:password\` - Reset a user's password`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }

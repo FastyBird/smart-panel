@@ -16,7 +16,7 @@ import type { IUseListQuery } from './types';
 
 type AnyShape = z.ZodRawShape;
 
-interface IUseListQueryProps<F extends z.ZodObject<AnyShape> | undefined> {
+interface IUseListQueryProps<F extends z.ZodObject<AnyShape> | undefined, V extends string = string> {
 	key: string;
 	filters?: {
 		schema: NonNullable<F>;
@@ -28,6 +28,10 @@ interface IUseListQueryProps<F extends z.ZodObject<AnyShape> | undefined> {
 	pagination?: {
 		defaults: IPaginationEntry;
 	};
+	viewMode?: {
+		options: V[];
+		default: V;
+	};
 	syncQuery?: boolean;
 	version?: number;
 	debounceMs?: number;
@@ -38,6 +42,7 @@ interface IUseListQueryProps<F extends z.ZodObject<AnyShape> | undefined> {
 type OutputOrEmpty<T> = T extends z.ZodObject<AnyShape> ? z.output<T> : Record<string, never>;
 
 const SORT_Q = 'sort'; // ?sort=field:asc (repeatable)
+const VIEW_Q = 'view'; // ?view=table|cards
 
 const PAG_Q_KEYS = Object.keys(PaginationEntrySchema.shape) as (keyof IPaginationEntry)[]; // ['page','perPage']
 
@@ -146,23 +151,25 @@ const toQueryValue = (v: unknown): string | string[] | undefined => {
 // COMPOSABLE
 /////////////
 
-export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
+export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V extends string = string>({
 	key,
 	filters,
 	sort,
 	pagination,
+	viewMode,
 	syncQuery = true,
 	version = 1,
 	debounceMs = 150,
 	ttlMs = null,
 	includeInQuery = () => true,
-}: IUseListQueryProps<F>): IUseListQuery<OutputOrEmpty<F>> {
+}: IUseListQueryProps<F, V>): IUseListQuery<OutputOrEmpty<F>, V> {
 	type FF = OutputOrEmpty<NonNullable<F>>;
 
 	type StoredShape<FF> = {
 		filters?: FF;
 		sort?: ISortEntry[];
 		pagination?: IPaginationEntry;
+		viewMode?: V;
 	};
 
 	const storesManager = injectStoresManager();
@@ -180,7 +187,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 
 	const filterKeys = filters ? (Object.keys(filters.schema.shape) as string[]) : [];
 
-	const allKeys = new Set<string>([...filterKeys, ...PAG_Q_KEYS, SORT_Q]); // known URL keys we manage
+	const allKeys = new Set<string>([...filterKeys, ...PAG_Q_KEYS, SORT_Q, ...(viewMode ? [VIEW_Q] : [])]); // known URL keys we manage
 
 	const routeHasRelevantKeys = computed<boolean>((): boolean => {
 		return Object.keys(route.query).some((k) => allKeys.has(k));
@@ -227,6 +234,13 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 			out[SORT_Q] = parsedSort;
 		}
 
+		// view mode
+		const viewQ = route.query[VIEW_Q];
+
+		if (viewQ !== undefined && viewMode && viewMode.options.includes(viewQ as V)) {
+			out[VIEW_Q] = viewQ;
+		}
+
 		return out;
 	});
 
@@ -242,6 +256,9 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 
 	const fromQuerySort =
 		syncQuery && sort && route.query[SORT_Q] !== undefined ? (normalizedRouteQuery.value[SORT_Q] as ISortEntry[] | undefined) : undefined;
+
+	const fromQueryViewMode =
+		syncQuery && viewMode && route.query[VIEW_Q] !== undefined ? (normalizedRouteQuery.value[VIEW_Q] as V | undefined) : undefined;
 
 	// Load stored
 	const stored = store.get<StoredShape<FF>>({ key, expectedVersion: version });
@@ -268,12 +285,22 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 	const querySort = sanitizeSort(fromQuerySort ? deepClone(fromQuerySort) : undefined);
 	const initialSort: ISortEntry[] = querySort.length > 0 ? querySort : storedSort && storedSort.length > 0 ? storedSort : deepClone(sortDefaults);
 
+	// View mode defaults and initial
+	const viewModeDefault: V | undefined = viewMode?.default;
+
+	const storedViewMode = isStoredValid && stored?.viewMode && viewMode?.options.includes(stored.viewMode) ? stored.viewMode : undefined;
+
+	const initialViewMode: V | undefined =
+		fromQueryViewMode ?? storedViewMode ?? viewModeDefault;
+
 	// State
 	const filtersRef = ref<FF>(initialFilters) as Ref<FF>;
 
 	const paginationRef = ref<IPaginationEntry>(initialPagination);
 
 	const sortRef = ref<ISortEntry[]>(initialSort);
+
+	const viewModeRef = ref<V | undefined>(initialViewMode) as Ref<V | undefined>;
 
 	// Reset page to default when non-pagination sort-independent filters change
 	if (filters) {
@@ -296,7 +323,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 	}
 
 	// Persist (debounced)
-	let tF: number | undefined, tS: number | undefined, tP: number | undefined;
+	let tF: number | undefined, tS: number | undefined, tP: number | undefined, tV: number | undefined;
 
 	watch(
 		filtersRef,
@@ -337,12 +364,26 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 		{ deep: true }
 	);
 
+	// Persist view mode
+	if (viewMode) {
+		watch(
+			viewModeRef,
+			(val) => {
+				window.clearTimeout(tV);
+
+				tV = window.setTimeout(() => {
+					store.patch({ key, data: { viewMode: val }, version });
+				}, debounceMs);
+			}
+		);
+	}
+
 	// URL sync (debounced)
 	const replaceQuery = (next: LocationQueryRaw) => {
 		router.replace({ query: next }).catch(() => void 0);
 	};
 
-	let qF: number | undefined, qS: number | undefined, qP: number | undefined;
+	let qF: number | undefined, qS: number | undefined, qP: number | undefined, qV: number | undefined;
 
 	// Sync filters (per-key)
 	if (syncQuery && filters) {
@@ -448,6 +489,30 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 		);
 	}
 
+	// Sync view mode (?view=table|cards)
+	if (syncQuery && viewMode) {
+		watch(
+			viewModeRef,
+			(val) => {
+				if (qV) {
+					window.clearTimeout(qV);
+				}
+
+				qV = window.setTimeout(() => {
+					const next: LocationQueryRaw = { ...route.query };
+
+					if (!includeInQuery(VIEW_Q) || !val || val === viewModeDefault) {
+						delete next[VIEW_Q];
+					} else {
+						next[VIEW_Q] = val;
+					}
+
+					replaceQuery(next);
+				}, debounceMs);
+			}
+		);
+	}
+
 	// Hydrate URL once from store if no relevant keys present
 	tryOnMounted(() => {
 		if (!syncQuery || !stored || !isStoredValid || routeHasRelevantKeys.value) {
@@ -502,6 +567,11 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 			}
 		}
 
+		// view mode
+		if (viewMode && stored.viewMode && includeInQuery(VIEW_Q) && stored.viewMode !== viewModeDefault) {
+			next[VIEW_Q] = stored.viewMode;
+		}
+
 		if (Object.keys(next).length) {
 			replaceQuery(next);
 		}
@@ -517,6 +587,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 		filters: filtersRef,
 		sort: sortRef,
 		pagination: paginationRef,
+		viewMode: viewModeRef,
 		reset,
 	};
 }

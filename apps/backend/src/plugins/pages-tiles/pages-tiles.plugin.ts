@@ -10,6 +10,8 @@ import { PageEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { PageCreateBuilderRegistryService } from '../../modules/dashboard/services/page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from '../../modules/dashboard/services/page-relations-loader-registry.service';
 import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -25,7 +27,13 @@ import { TilesPageNestedBuilderService } from './services/page-create-nested-bui
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([TilesPageEntity]), DashboardModule, ConfigModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([TilesPageEntity]),
+		DashboardModule,
+		ConfigModule,
+		ExtensionsModule,
+		SwaggerModule,
+	],
 	providers: [PageRelationsLoaderService, TilesPageNestedBuilderService, TilesPageNestedBuilderService],
 })
 export class PagesTilesPlugin {
@@ -38,6 +46,7 @@ export class PagesTilesPlugin {
 		private readonly tilesPageNestedBuilderService: TilesPageNestedBuilderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -81,6 +90,51 @@ export class PagesTilesPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: PAGES_TILES_TYPE,
 			modelClass: UpdateTilesPageDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerPluginMetadata({
+			type: PAGES_TILES_PLUGIN_NAME,
+			name: 'Tiles Page',
+			description: 'Dashboard page type for displaying tiles with widgets',
+			author: 'FastyBird',
+			readme: `# Tiles Page Plugin
+
+Dashboard page type for displaying a grid of configurable tiles.
+
+## Features
+
+- **Grid Layout** - Arrange tiles in a flexible grid system
+- **Multiple Tile Types** - Support for various tile plugins
+- **Responsive Design** - Adapts to display size
+- **Tile Data Sources** - Connect tiles to live data
+
+## Page Layout
+
+Tiles pages display widgets in a grid:
+- Configurable grid dimensions
+- Tiles can span multiple cells
+- Automatic layout optimization
+
+## Supported Tiles
+
+Works with any registered tile type:
+- Time tiles
+- Weather tiles
+- Device preview tiles
+- Custom tile plugins
+
+## Usage
+
+1. Create a new tiles page
+2. Configure grid size
+3. Add tiles and position them
+4. Connect data sources to tiles
+5. Save and view on the panel display`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

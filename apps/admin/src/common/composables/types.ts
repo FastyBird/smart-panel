@@ -47,10 +47,11 @@ export interface IUseFlashMessage {
 	exception: (errorMessage: string, options?: IFlashMessageOptions) => void;
 }
 
-export interface IUseListQuery<F> {
+export interface IUseListQuery<F, V extends string = string> {
 	filters: Ref<F>;
 	sort: Ref<ISortEntry[]>;
 	pagination: Ref<{ page?: number; size?: number }>;
+	viewMode: Ref<V | undefined>;
 	reset: () => void;
 }
 

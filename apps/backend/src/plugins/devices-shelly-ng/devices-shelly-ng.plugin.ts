@@ -18,6 +18,8 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -64,6 +66,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [
 		ShellyRpcClientService,
@@ -88,6 +91,7 @@ export class DevicesShellyNgPlugin {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -189,6 +193,46 @@ export class DevicesShellyNgPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DEVICES_SHELLY_NG_TYPE,
 			modelClass: UpdateShellyNgChannelPropertyDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_SHELLY_NG_PLUGIN_NAME,
+			name: 'Shelly NG Devices',
+			description: 'Support for Shelly next-generation devices',
+			author: 'FastyBird',
+			readme: `# Shelly NG Devices Plugin
+
+Integration plugin for Shelly next-generation (Gen2+) devices.
+
+## Features
+
+- **Auto-Discovery** - Automatically discovers Shelly NG devices on the local network
+- **Real-time Updates** - WebSocket-based state synchronization
+- **Device Control** - Control relays, lights, and other outputs
+- **Sensor Monitoring** - Read temperature, humidity, power consumption, etc.
+
+## Supported Devices
+
+- Shelly Plus series (Plus 1, Plus 2PM, Plus Plug, etc.)
+- Shelly Pro series (Pro 1, Pro 2, Pro 4PM, etc.)
+- Shelly Mini series
+- Other Gen2+ devices with RPC API
+
+## Communication
+
+Uses Shelly's RPC (Remote Procedure Call) API over:
+- HTTP for device configuration and control
+- WebSocket for real-time state updates
+- mDNS for device discovery
+
+## Configuration
+
+- **Polling Interval** - How often to refresh device states
+- **Discovery** - Enable/disable automatic device discovery`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 

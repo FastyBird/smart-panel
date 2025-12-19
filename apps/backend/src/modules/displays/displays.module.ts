@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
@@ -43,6 +45,7 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		TypeOrmModule.forFeature([DisplayEntity]),
 		AuthModule,
 		ConfigModule,
+		ExtensionsModule,
 		forwardRef(() => SystemModule),
 		InfluxDbModule,
 	],
@@ -67,6 +70,7 @@ export class DisplaysModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly influxDbService: InfluxDbService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -90,5 +94,49 @@ export class DisplaysModule implements OnModuleInit {
 		for (const model of DISPLAYS_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: DISPLAYS_MODULE_NAME,
+			name: 'Displays',
+			description: 'Manage connected display panels and their registration',
+			author: 'FastyBird',
+			readme: `# Displays Module
+
+The Displays module manages physical display panels connected to the Smart Panel system.
+
+## Features
+
+- **Display Registration** - Secure pairing of display panels with the backend
+- **Connection Tracking** - Monitor display online/offline status
+- **Multi-Display Support** - Manage multiple display panels from one backend
+- **Status History** - Track connection status over time via InfluxDB
+
+## Registration Flow
+
+1. **Permit Join** - Admin enables registration mode in the admin panel
+2. **Display Request** - The display sends a registration request with its details
+3. **Approval** - Admin approves the display in the pending list
+4. **Token Exchange** - Display receives authentication tokens for API access
+
+## Display Properties
+
+- **Name** - Friendly name for the display
+- **Identifier** - Unique device identifier
+- **Brightness** - Current display brightness level
+- **Dark Mode** - Enable/disable dark theme
+- **Screen Lock** - PIN protection settings
+
+## WebSocket Events
+
+Displays communicate via WebSocket for real-time updates:
+- Configuration changes
+- Dashboard updates
+- Device state changes`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }

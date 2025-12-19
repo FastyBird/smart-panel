@@ -2,7 +2,6 @@
  * OpenAPI extra models for System module
  */
 import {
-	ExtensionsResponseModel,
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
 	SystemHealthResponseModel,
@@ -13,9 +12,6 @@ import {
 import {
 	CpuLoad1mModel,
 	DiskUsedPctModel,
-	ExtensionAdminModel,
-	ExtensionBackendModel,
-	ExtensionBaseModel,
 	LogEntryAcceptedModel,
 	LogEntryContextModel,
 	LogEntryErrorModel,
@@ -37,7 +33,6 @@ import {
  */
 export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	// Response models
-	ExtensionsResponseModel,
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
 	SystemHealthResponseModel,
@@ -45,9 +40,6 @@ export const SYSTEM_SWAGGER_EXTRA_MODELS = [
 	ThrottleStatusResponseModel,
 	SystemModuleLogIngestResult,
 	// Data models
-	ExtensionBaseModel,
-	ExtensionAdminModel,
-	ExtensionBackendModel,
 	SystemHealthModel,
 	SystemInfoModel,
 	ThrottleStatusModel,

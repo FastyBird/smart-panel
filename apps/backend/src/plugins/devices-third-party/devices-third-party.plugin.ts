@@ -15,6 +15,8 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -49,7 +51,13 @@ import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platfor
 	description: DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule, SwaggerModule],
+	imports: [
+		TypeOrmModule.forFeature([ThirdPartyDeviceEntity]),
+		DevicesModule,
+		ConfigModule,
+		ExtensionsModule,
+		SwaggerModule,
+	],
 	providers: [ThirdPartyDevicePlatform],
 	controllers: [ThirdPartyDemoController],
 })
@@ -63,6 +71,7 @@ export class DevicesThirdPartyPlugin {
 		private readonly thirdPartyDevicePlatform: ThirdPartyDevicePlatform,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -168,6 +177,49 @@ export class DevicesThirdPartyPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DEVICES_THIRD_PARTY_TYPE,
 			modelClass: UpdateThirdPartyChannelPropertyDto,
+		});
+
+		// Register extension metadata
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_THIRD_PARTY_PLUGIN_NAME,
+			name: 'Third Party Devices',
+			description: 'Support for integrating third-party devices via custom protocols',
+			author: 'FastyBird',
+			readme: `# Third Party Devices Plugin
+
+Plugin for manually adding and managing custom devices.
+
+## Features
+
+- **Manual Device Creation** - Add devices that aren't auto-discovered
+- **Custom Channels** - Define custom channels and properties
+- **API Integration** - Devices can be controlled via the REST API
+- **Flexible Schema** - Support for various property types and formats
+
+## Use Cases
+
+- Devices without native integration plugins
+- Custom hardware projects
+- Testing and development
+- External systems pushing data via API
+
+## Device Structure
+
+Each third-party device can have:
+- Multiple **channels** (e.g., relay, sensor, button)
+- Multiple **properties** per channel (e.g., state, value, unit)
+- Custom property types (boolean, number, string, enum)
+
+## API Control
+
+Third-party device states can be updated via:
+- REST API endpoints
+- WebSocket events
+- Direct database updates (for advanced use)`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

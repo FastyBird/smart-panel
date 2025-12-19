@@ -8,6 +8,8 @@ import { CreateTileDto } from '../../modules/dashboard/dto/create-tile.dto';
 import { UpdateTileDto } from '../../modules/dashboard/dto/update-tile.dto';
 import { TileEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -21,7 +23,7 @@ import { TILES_TIME_PLUGIN_NAME, TILES_TIME_TYPE } from './tiles-time.constants'
 import { TILES_TIME_PLUGIN_SWAGGER_EXTRA_MODELS } from './tiles-time.openapi';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([TimeTileEntity]), DashboardModule, ConfigModule, SwaggerModule],
+	imports: [TypeOrmModule.forFeature([TimeTileEntity]), DashboardModule, ConfigModule, ExtensionsModule, SwaggerModule],
 })
 export class TilesTimePlugin {
 	constructor(
@@ -29,6 +31,7 @@ export class TilesTimePlugin {
 		private readonly tilesMapper: TilesTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -68,6 +71,43 @@ export class TilesTimePlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: TILES_TIME_TYPE,
 			modelClass: UpdateTimeTileDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: TILES_TIME_PLUGIN_NAME,
+			name: 'Time Tiles',
+			description: 'Dashboard tiles for displaying time and date',
+			author: 'FastyBird',
+			readme: `# Time Tiles Plugin
+
+Dashboard tiles for displaying current time and date.
+
+## Features
+
+- **Digital Clock** - Display current time in various formats
+- **Date Display** - Show current date with customizable formatting
+- **Timezone Support** - Display time for different timezones
+- **Auto-Update** - Real-time clock updates
+
+## Tile Types
+
+### Time Tile
+Displays the current time with configurable:
+- 12/24 hour format
+- Show/hide seconds
+- Custom time format strings
+
+## Usage
+
+Add a time tile to any dashboard page to display the current time. The tile updates automatically without requiring page refresh.
+
+## Styling
+
+The time display adapts to the tile size and supports both light and dark themes.`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

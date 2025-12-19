@@ -5,38 +5,12 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 import { BaseSuccessResponseModel, SuccessPaginatedMetadataModel } from '../../api/models/api-response.model';
 
 import {
-	ExtensionAdminModel,
-	ExtensionBackendModel,
-	ExtensionBaseModel,
 	LogEntryAcceptedModel,
 	LogEntryModel,
 	SystemHealthModel,
 	SystemInfoModel,
 	ThrottleStatusModel,
 } from './system.model';
-
-/**
- * Response wrapper for array of ExtensionBaseModel
- */
-@ApiSchema({ name: 'SystemModuleResExtensions' })
-export class ExtensionsResponseModel extends BaseSuccessResponseModel<ExtensionBaseModel[]> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: 'array',
-		items: {
-			oneOf: [{ $ref: getSchemaPath(ExtensionAdminModel) }, { $ref: getSchemaPath(ExtensionBackendModel) }],
-			discriminator: {
-				propertyName: 'type',
-				mapping: {
-					admin: getSchemaPath(ExtensionAdminModel),
-					backend: getSchemaPath(ExtensionBackendModel),
-				},
-			},
-		},
-	})
-	@Expose()
-	declare data: ExtensionBaseModel[];
-}
 
 /**
  * Response wrapper for array of LogEntryModel

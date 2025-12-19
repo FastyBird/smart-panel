@@ -18,6 +18,8 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -64,6 +66,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [
 		ShelliesAdapterService,
@@ -88,6 +91,7 @@ export class DevicesShellyV1Plugin {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -189,6 +193,50 @@ export class DevicesShellyV1Plugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DEVICES_SHELLY_V1_TYPE,
 			modelClass: UpdateShellyV1ChannelPropertyDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_SHELLY_V1_PLUGIN_NAME,
+			name: 'Shelly V1 Devices',
+			description: 'Support for Shelly first-generation devices',
+			author: 'FastyBird',
+			readme: `# Shelly V1 Devices Plugin
+
+Integration plugin for Shelly first-generation (Gen1) devices.
+
+## Features
+
+- **Auto-Discovery** - Discovers Shelly Gen1 devices via mDNS/CoAP
+- **Device Control** - Control relays, dimmers, and roller shutters
+- **Status Monitoring** - Monitor power consumption, temperature, inputs
+- **CoAP Protocol** - Efficient real-time updates via CoAP
+
+## Supported Devices
+
+- Shelly 1 / 1PM
+- Shelly 2 / 2.5
+- Shelly Dimmer / Dimmer 2
+- Shelly EM / 3EM
+- Shelly Plug / Plug S
+- Shelly RGBW2
+- Shelly Bulb / Duo
+- And other Gen1 devices
+
+## Communication
+
+- **CoAP** - Real-time state updates (UDP port 5683)
+- **HTTP API** - Device control and configuration
+- **mDNS** - Device discovery
+
+## Configuration
+
+- Enable/disable automatic device discovery
+- Configure polling intervals
+- Set authentication credentials for protected devices`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 

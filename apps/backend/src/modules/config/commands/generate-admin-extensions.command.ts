@@ -5,8 +5,8 @@ import path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 
-import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { getDiscoveredExtensions } from '../../extensions/services/extensions-discovery-cache';
 
 type BundledEntry = {
 	name: string;

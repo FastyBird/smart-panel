@@ -761,7 +761,7 @@ class StartupManagerService {
         debugPrint('  audioInputSupported: $audioInputSupported');
       }
 
-      final response = await _apiClient.displaysModule.register(
+      final response = await _apiClient.displaysModule.createDisplaysModuleRegister(
         userAgent: 'FastyBird Smart Panel/${appVersion.version}',
         body: DisplaysModuleReqRegisterDisplay(data: registrationData),
       );
@@ -901,7 +901,7 @@ class StartupManagerService {
     }
 
     try {
-      final statusResponse = await _apiClient.displaysModule.getRegistrationStatus();
+      final statusResponse = await _apiClient.displaysModule.getDisplaysModuleRegisterStatus();
 
       if (statusResponse.response.statusCode == 200) {
         final isOpen = statusResponse.data.data.open;

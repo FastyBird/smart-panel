@@ -1,0 +1,6 @@
+export { default as ExtensionCard } from './extension-card.vue';
+export { default as ExtensionsCards } from './extensions-cards.vue';
+export { default as ExtensionsFilter } from './extensions-filter.vue';
+export { default as ExtensionsTable } from './extensions-table.vue';
+export { default as ListExtensions } from './list-extensions.vue';
+export { default as ListExtensionsAdjust } from './list-extensions-adjust.vue';

@@ -72,19 +72,4 @@ export enum LogEntrySource {
 	OTHER = 'other',
 }
 
-export enum ExtensionSurfaceType {
-	ADMIN = 'admin',
-	BACKEND = 'backend',
-}
-
-export enum ExtensionKindType {
-	PLUGIN = 'plugin',
-	MODULE = 'module',
-}
-
-export enum ExtensionSourceType {
-	BUNDLED = 'bundled',
-	RUNTIME = 'runtime',
-}
-
 export const DEFAULT_PAGE_SIZE = 10;

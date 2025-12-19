@@ -9,6 +9,8 @@ import { UpdateDataSourceDto } from '../../modules/dashboard/dto/update-data-sou
 import { DataSourceEntity } from '../../modules/dashboard/entities/dashboard.entity';
 import { DataSourceRelationsLoaderRegistryService } from '../../modules/dashboard/services/data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from '../../modules/dashboard/services/data-source-type-mapper.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -34,6 +36,7 @@ import { WeatherDataSourceRelationsLoaderService } from './services/data-source-
 		WeatherModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [WeatherDataSourceRelationsLoaderService],
 })
@@ -45,6 +48,7 @@ export class DataSourcesWeatherPlugin {
 		private readonly dataSourceRelationsLoaderService: WeatherDataSourceRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -129,6 +133,56 @@ export class DataSourcesWeatherPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DATA_SOURCES_WEATHER_FORECAST_DAY_TYPE,
 			modelClass: UpdateForecastDayDataSourceDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DATA_SOURCES_WEATHER_PLUGIN_NAME,
+			name: 'Weather Data Sources',
+			description: 'Data sources for connecting tiles to weather information',
+			author: 'FastyBird',
+			readme: `# Weather Data Sources Plugin
+
+Data source types for connecting dashboard tiles to weather data.
+
+## Features
+
+- **Current Weather** - Bind to current weather conditions
+- **Forecast Data** - Access multi-day weather forecasts
+- **Location Selection** - Choose which weather location to display
+- **Auto-refresh** - Weather data updates automatically
+
+## Data Source Types
+
+### Current Weather Data Source
+Provides:
+- Current temperature
+- Weather conditions
+- Humidity and wind
+- Last update time
+
+### Forecast Day Data Source
+Provides:
+- Daily high/low temperatures
+- Weather conditions per day
+- Day index selection (0 = today, 1 = tomorrow, etc.)
+
+## Requirements
+
+- Weather module must be configured
+- At least one weather location defined
+- A weather provider plugin enabled (e.g., OpenWeatherMap)
+
+## Usage
+
+1. Add a weather tile to a dashboard page
+2. Create a weather data source
+3. Select the location
+4. For forecasts, select the day offset
+5. The tile displays the weather data`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }

@@ -19,6 +19,8 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -78,6 +80,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [
 		HomeAssistantHttpService,
@@ -126,6 +129,7 @@ export class DevicesHomeAssistantPlugin {
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -244,6 +248,47 @@ export class DevicesHomeAssistantPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DEVICES_HOME_ASSISTANT_TYPE,
 			modelClass: UpdateHomeAssistantChannelPropertyDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+			name: 'Home Assistant Devices',
+			description: 'Integration with Home Assistant for device management',
+			author: 'FastyBird',
+			readme: `# Home Assistant Devices Plugin
+
+Integration plugin for connecting Smart Panel to Home Assistant.
+
+## Features
+
+- **Device Import** - Import devices from Home Assistant into Smart Panel
+- **Real-time Sync** - WebSocket connection for instant state updates
+- **Bidirectional Control** - Control Home Assistant devices from Smart Panel
+- **Entity Mapping** - Automatic mapping of HA entities to Smart Panel channels
+
+## Supported Entity Types
+
+- **Switches** - On/off controls
+- **Lights** - Brightness, color temperature, RGB
+- **Sensors** - Temperature, humidity, energy, etc.
+- **Binary Sensors** - Motion, door/window, occupancy
+- **Climate** - HVAC controls and thermostats
+
+## Setup
+
+1. Generate a Long-Lived Access Token in Home Assistant
+2. Configure the Home Assistant URL and token in plugin settings
+3. Browse discovered devices and import them to Smart Panel
+
+## Communication
+
+- **WebSocket API** - Real-time event subscription
+- **REST API** - State queries and service calls
+- **Auto-reconnect** - Automatic reconnection on connection loss`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 

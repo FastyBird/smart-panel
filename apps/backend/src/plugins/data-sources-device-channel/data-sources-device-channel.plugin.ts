@@ -10,6 +10,8 @@ import { DataSourceEntity } from '../../modules/dashboard/entities/dashboard.ent
 import { DataSourceRelationsLoaderRegistryService } from '../../modules/dashboard/services/data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from '../../modules/dashboard/services/data-source-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -33,6 +35,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [
 		DeviceExistsConstraintValidator,
@@ -49,6 +52,7 @@ export class DataSourcesDeviceChannelPlugin {
 		private readonly dataSourceRelationsLoaderService: DataSourceRelationsLoaderService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -94,6 +98,56 @@ export class DataSourcesDeviceChannelPlugin {
 			discriminatorProperty: 'type',
 			discriminatorValue: DATA_SOURCES_DEVICE_TYPE,
 			modelClass: UpdateDeviceChannelDataSourceDto,
+		});
+
+		this.extensionsService.registerPluginMetadata({
+			type: DATA_SOURCES_DEVICE_PLUGIN_NAME,
+			name: 'Device Channel Data Sources',
+			description: 'Data sources for connecting tiles to device channel properties',
+			author: 'FastyBird',
+			readme: `# Device Channel Data Sources Plugin
+
+Data source type for connecting dashboard tiles to device properties.
+
+## Features
+
+- **Property Binding** - Link tiles to specific device properties
+- **Real-time Updates** - Receive live property value changes
+- **Bidirectional** - Support for both reading and writing values
+- **Validation** - Ensures referenced device/channel/property exists
+
+## How It Works
+
+Data sources act as a bridge between:
+- **Tiles** - Visual elements on dashboard pages
+- **Device Properties** - Values from connected devices
+
+When a property value changes, connected tiles update automatically.
+
+## Configuration
+
+Each data source specifies:
+- Target device ID
+- Channel ID within the device
+- Property ID to bind to
+
+## Usage
+
+1. Add a tile that supports data sources
+2. Create a device channel data source
+3. Select device → channel → property
+4. The tile will display the property value
+
+## Supported Property Types
+
+- Boolean (on/off states)
+- Numeric (temperature, humidity, etc.)
+- String (text values)
+- Enum (predefined value lists)`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
 		});
 	}
 }
