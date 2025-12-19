@@ -1,4 +1,4 @@
-import { computed, type ComputedRef } from 'vue';
+import { computed, type ComputedRef, toValue, type MaybeRefOrGetter } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -7,7 +7,7 @@ import type { IExtension } from '../store/extensions.store.types';
 import { extensionsStoreKey } from '../store/keys';
 
 interface IUseExtensionProps {
-	type: IExtension['type'];
+	type: MaybeRefOrGetter<IExtension['type']>;
 }
 
 interface IUseExtension {
@@ -24,7 +24,7 @@ export const useExtension = (props: IUseExtensionProps): IUseExtension => {
 	const { semaphore, firstLoad } = storeToRefs(extensionsStore);
 
 	const extension = computed<IExtension | null>(() => {
-		return extensionsStore.findByType(props.type);
+		return extensionsStore.findByType(toValue(props.type));
 	});
 
 	const isLoading = computed<boolean>(() => {

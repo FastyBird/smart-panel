@@ -472,7 +472,7 @@ const ns = useNamespace('view-extension-detail');
 
 const { isMDDevice } = useBreakpoints();
 
-const { extension, isLoading, fetchExtension } = useExtension({ type: props.type });
+const { extension, isLoading, fetchExtension } = useExtension({ type: () => props.type });
 
 watch(
 	(): boolean => extension.value !== null,
@@ -481,6 +481,17 @@ watch(
 			meta.title = t('extensionsModule.meta.extensions.detail.title', { extension: extension.value?.name });
 		}
 	}, { immediate: true }
+);
+
+// Re-fetch when navigating between extension detail pages (Vue Router reuses component)
+watch(
+	() => props.type,
+	(): void => {
+		fetchExtension().catch((error: unknown): void => {
+			const err = error as Error;
+			throw new ExtensionsException('Something went wrong', err);
+		});
+	}
 );
 
 const { toggleEnabled } = useExtensionActions();
