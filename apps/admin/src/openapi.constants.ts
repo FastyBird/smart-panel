@@ -240,6 +240,11 @@ export type SystemModuleCreateLogsOperation = operations['create-system-module-l
 export type SystemModuleGetSystemInfoOperation = operations['get-system-module-system-info'];
 export type SystemModuleGetSystemThrottleOperation = operations['get-system-module-system-throttle'];
 
+// Extensions Module Operations
+export type ExtensionsModuleGetExtensionOperation = operations['get-extensions-module-extension'];
+export type ExtensionsModuleGetExtensionsOperation = operations['get-extensions-module-extensions'];
+export type ExtensionsModuleUpdateExtensionOperation = operations['update-extensions-module-extension'];
+
 // Weather Module Operations
 export type WeatherModuleGetPrimaryWeatherOperation = operations['get-weather-module-primary-weather'];
 export type WeatherModuleGetAllWeatherOperation = operations['get-weather-module-all-weather'];

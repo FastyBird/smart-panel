@@ -2,7 +2,12 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { useBackend, useLogger } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
+import type {
+	ExtensionsModuleGetExtensionOperation,
+	ExtensionsModuleGetExtensionsOperation,
+	ExtensionsModuleUpdateExtensionOperation,
+} from '../../../openapi.constants';
 import { ExtensionKind } from '../extensions.constants';
 import { ExtensionsApiException, ExtensionsValidationException } from '../extensions.exceptions';
 
@@ -114,7 +119,11 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 						return extension;
 					}
 
-					const errorReason: string | null = error ? 'Failed to fetch extension.' : 'Failed to fetch extension.';
+					let errorReason: string | null = 'Failed to fetch extension.';
+
+					if (error) {
+						errorReason = getErrorReason<ExtensionsModuleGetExtensionOperation>(error, errorReason);
+					}
 
 					throw new ExtensionsApiException(errorReason, response.status);
 				} finally {
@@ -171,7 +180,11 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 						return extensions;
 					}
 
-					const errorReason: string | null = error ? 'Failed to fetch extensions.' : 'Failed to fetch extensions.';
+					let errorReason: string | null = 'Failed to fetch extensions.';
+
+					if (error) {
+						errorReason = getErrorReason<ExtensionsModuleGetExtensionsOperation>(error, errorReason);
+					}
 
 					throw new ExtensionsApiException(errorReason, response?.status);
 				} finally {
@@ -230,7 +243,11 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 				// Updating failed, refresh to get current state
 				await get({ type: payload.type });
 
-				const errorReason: string | null = error ? 'Failed to update extension.' : 'Failed to update extension.';
+				let errorReason: string | null = 'Failed to update extension.';
+
+				if (error) {
+					errorReason = getErrorReason<ExtensionsModuleUpdateExtensionOperation>(error, errorReason);
+				}
 
 				throw new ExtensionsApiException(errorReason, response.status);
 			} finally {
