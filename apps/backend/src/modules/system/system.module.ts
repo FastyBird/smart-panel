@@ -1,9 +1,11 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '../config/services/config.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
@@ -14,14 +16,12 @@ import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
 
-import { ExtensionsController } from './controllers/extensions.controller';
 import { LogsController } from './controllers/logs.controller';
 import { SystemController } from './controllers/system.controller';
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
 import { SystemConfigModel } from './models/config.model';
 import { SystemStatsProvider } from './providers/system-stats.provider';
 import { FactoryResetRegistryService } from './services/factory-reset-registry.service';
-import { PluginServiceManagerService } from './services/plugin-service-manager.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
 import { SystemService } from './services/system.service';
@@ -41,17 +41,24 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 	description: SYSTEM_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [NestConfigModule, PlatformModule, WebsocketModule, InfluxDbModule, StatsModule, ConfigModule],
+	imports: [
+		NestConfigModule,
+		PlatformModule,
+		WebsocketModule,
+		InfluxDbModule,
+		StatsModule,
+		forwardRef(() => ConfigModule),
+		forwardRef(() => ExtensionsModule),
+	],
 	providers: [
 		SystemService,
 		SystemCommandService,
 		FactoryResetRegistryService,
 		SystemLoggerService,
 		SystemStatsProvider,
-		PluginServiceManagerService,
 	],
-	controllers: [SystemController, LogsController, ExtensionsController],
-	exports: [SystemService, FactoryResetRegistryService, SystemLoggerService, PluginServiceManagerService],
+	controllers: [SystemController, LogsController],
+	exports: [SystemService, FactoryResetRegistryService, SystemLoggerService],
 })
 export class SystemModule implements OnModuleInit {
 	constructor(
@@ -63,6 +70,7 @@ export class SystemModule implements OnModuleInit {
 		private readonly configService: ConfigService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit() {
@@ -104,5 +112,52 @@ export class SystemModule implements OnModuleInit {
 		for (const model of SYSTEM_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register extension metadata
+		this.extensionsService.registerModuleMetadata({
+			type: SYSTEM_MODULE_NAME,
+			name: 'System',
+			description: 'System management, logs, and platform operations',
+			author: 'FastyBird',
+			readme: `# System Module
+
+The System module provides core system management functionality for the Smart Panel.
+
+## Features
+
+- **System Information** - View system status, uptime, and resource usage
+- **Logging** - Centralized application logging with configurable levels
+- **System Commands** - Reboot, power off, and factory reset operations
+- **Statistics** - System-wide statistics collection and reporting
+
+## System Commands
+
+### Reboot
+Safely restarts the Smart Panel application and optionally the host system.
+
+### Power Off
+Performs a clean shutdown of the Smart Panel.
+
+### Factory Reset
+Resets all settings and data to initial state:
+- Removes all configured devices
+- Clears dashboard pages and tiles
+- Resets user accounts (except owner)
+- Restores default configuration
+
+## Logging
+
+Supports multiple log levels:
+- **Error** - Critical errors requiring attention
+- **Warning** - Potential issues
+- **Info** - General operational messages
+- **Debug** - Detailed debugging information
+
+Logs are stored in memory and can be viewed through the admin interface.`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }

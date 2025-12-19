@@ -9,7 +9,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	IManagedPluginService,
 	ServiceState,
-} from '../../../modules/system/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';

@@ -9,7 +9,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import {
 	IManagedPluginService,
 	ServiceState,
-} from '../../../modules/system/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
@@ -105,6 +105,15 @@ export class ShellyNgService implements IManagedPluginService {
 	async onConfigChanged(): Promise<void> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
+	}
+
+	/**
+	 * Restart the service by stopping and starting again.
+	 * Used by entity subscribers when device configuration changes.
+	 */
+	async restart(): Promise<void> {
+		await this.stop();
+		await this.start();
 	}
 
 	private withLock<T>(fn: () => Promise<T>): Promise<T> {

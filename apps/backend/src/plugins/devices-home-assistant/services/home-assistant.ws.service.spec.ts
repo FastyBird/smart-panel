@@ -64,7 +64,7 @@ describe('HomeAssistantWsService', () => {
 	it('should resolve send promise when matching response arrives', async () => {
 		jest.useFakeTimers();
 
-		service.connect();
+		await service.start();
 
 		const responseData = JSON.stringify({
 			id: 1,
@@ -84,7 +84,7 @@ describe('HomeAssistantWsService', () => {
 	it('should timeout send after 10s', async () => {
 		jest.useFakeTimers();
 
-		service.connect();
+		await service.start();
 
 		const promise = service.send({ type: 'ping' });
 

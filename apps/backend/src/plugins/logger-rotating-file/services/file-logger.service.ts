@@ -10,7 +10,7 @@ import { ILogger } from '../../../modules/system/logger/logger';
 import {
 	IManagedPluginService,
 	ServiceState,
-} from '../../../modules/system/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 import { LoggerRotatingFileException } from '../logger-rotating-file.exceptions';
 import { RotatingFileConfigModel } from '../models/config.model';

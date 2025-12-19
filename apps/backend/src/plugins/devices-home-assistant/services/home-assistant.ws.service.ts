@@ -8,7 +8,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	IManagedPluginService,
 	ServiceState,
-} from '../../../modules/system/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
