@@ -2,9 +2,8 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend, useLogger } from '../../../common';
-import { ExtensionKind, EXTENSIONS_MODULE_PREFIX } from '../extensions.constants';
+import { ExtensionKind } from '../extensions.constants';
 import { ExtensionsApiException, ExtensionsValidationException } from '../extensions.exceptions';
 
 import { ExtensionSchema, ExtensionsUpdateActionPayloadSchema } from './extensions.store.schemas';
@@ -101,7 +100,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
+					} = await backend.client.GET('/modules/extensions/extensions/{type}', {
 						params: {
 							path: { type: payload.type },
 						},
@@ -147,22 +146,20 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 				semaphore.value.fetching.items = true;
 
 				try {
-					let endpoint: string;
+					let responseData;
+					let error;
+					let response;
 
 					if (payload?.kind === ExtensionKind.MODULE) {
-						endpoint = `/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/modules`;
+						({ data: responseData, error, response } = await backend.client.GET('/modules/extensions/extensions/modules'));
 					} else if (payload?.kind === ExtensionKind.PLUGIN) {
-						endpoint = `/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/plugins`;
+						({ data: responseData, error, response } = await backend.client.GET('/modules/extensions/extensions/plugins'));
 					} else {
-						endpoint = `/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions`;
+						({ data: responseData, error, response } = await backend.client.GET('/modules/extensions/extensions'));
 					}
 
-					const { data: responseData, error, response } = await backend.client.GET(endpoint as `/${string}`);
-
-					if (typeof responseData !== 'undefined') {
-						const extensions = (responseData as { data: IExtensionRes[] }).data.map((ext) =>
-							transformExtensionResponse(ext as unknown as IExtensionRes)
-						);
+					if (responseData?.data) {
+						const extensions = responseData.data.map((ext) => transformExtensionResponse(ext as unknown as IExtensionRes));
 
 						// Update store data
 						for (const extension of extensions) {
@@ -176,7 +173,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 
 					const errorReason: string | null = error ? 'Failed to fetch extensions.' : 'Failed to fetch extensions.';
 
-					throw new ExtensionsApiException(errorReason, response.status);
+					throw new ExtensionsApiException(errorReason, response?.status);
 				} finally {
 					semaphore.value.fetching.items = false;
 				}
@@ -211,7 +208,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.PATCH(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/extensions/{type}`, {
+				} = await backend.client.PATCH('/modules/extensions/extensions/{type}', {
 					params: {
 						path: {
 							type: payload.type,
@@ -259,6 +256,8 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 	}
 );
 
-export const registerExtensionsStore = (pinia: Pinia): Store<string, IExtensionsStoreState, object, IExtensionsStoreActions> => {
+export const registerExtensionsStore = (
+	pinia: Pinia
+): Store<'extensions_module-extensions', IExtensionsStoreState, object, IExtensionsStoreActions> => {
 	return useExtensions(pinia);
 };

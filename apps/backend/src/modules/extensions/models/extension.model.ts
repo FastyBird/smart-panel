@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ExtensionKind } from '../extensions.constants';
 
-@ApiSchema({ name: 'ExtensionsModuleExtensionLinks' })
+@ApiSchema({ name: 'ExtensionsModuleDataExtensionLinks' })
 export class ExtensionLinksModel {
 	@ApiPropertyOptional({
 		description: 'URL to extension documentation',
@@ -58,7 +58,7 @@ export class ExtensionLinksModel {
 	homepage?: string;
 }
 
-@ApiSchema({ name: 'ExtensionsModuleExtension' })
+@ApiSchema({ name: 'ExtensionsModuleDataExtension' })
 export class ExtensionModel {
 	@ApiProperty({
 		description: 'Extension type identifier',

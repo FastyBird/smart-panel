@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ExtensionKind } from '../extensions.constants';
 import type { IExtension } from '../store/extensions.store.types';

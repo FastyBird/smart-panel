@@ -2,9 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { MODULES_PREFIX } from '../../../app.constants';
-import { getErrorReason, useBackend } from '../../../common';
-import { ExtensionSurface, EXTENSIONS_MODULE_PREFIX } from '../extensions.constants';
+import { useBackend } from '../../../common';
 import { ExtensionsApiException } from '../extensions.exceptions';
 
 import type {
@@ -66,27 +64,26 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 				try {
 					const {
 						data: responseData,
-						error,
 						response,
-					} = await backend.client.GET(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered/{name}` as `/${string}`, {
+					} = await backend.client.GET('/modules/extensions/discovered/{name}', {
 						params: {
 							path: { name: payload.name },
 						},
 					});
 
-					if (typeof responseData !== 'undefined') {
+					if (responseData?.data) {
 						const merged: { [name: string]: { admin?: IDiscoveredExtension; backend?: IDiscoveredExtension } } = {};
 
 						merged[payload.name] = {};
 
-						for (const raw of (responseData as { data: IDiscoveredExtensionRes[] }).data) {
-							const transformedExtension = transformDiscoveredExtensionResponse(raw);
+						for (const raw of responseData.data) {
+							const transformedExtension = transformDiscoveredExtensionResponse(raw as unknown as IDiscoveredExtensionRes);
 
 							if (!Object.prototype.hasOwnProperty.call(merged, transformedExtension.name)) {
 								throw new ExtensionsApiException('Received extension name is different');
 							}
 
-							if (transformedExtension.surface === ExtensionSurface.ADMIN) {
+							if (transformedExtension.surface === 'admin') {
 								merged[transformedExtension.name].admin = transformedExtension;
 							} else {
 								merged[transformedExtension.name].backend = transformedExtension;
@@ -98,11 +95,7 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 						return merged[payload.name];
 					}
 
-					let errorReason: string | null = 'Failed to fetch discovered extension.';
-
-					if (error) {
-						errorReason = getErrorReason(error, errorReason);
-					}
+					const errorReason = 'Failed to fetch discovered extension.';
 
 					throw new ExtensionsApiException(errorReason, response.status);
 				} finally {
@@ -132,21 +125,21 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 				semaphore.value.fetching.items = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered` as `/${string}`);
+					const { data: responseData, response } = await backend.client.GET('/modules/extensions/discovered');
 
-					if (typeof responseData !== 'undefined') {
+					if (responseData?.data) {
 						const merged: { [name: string]: { admin?: IDiscoveredExtension; backend?: IDiscoveredExtension } } = {};
 
-						for (const raw of (responseData as { data: IDiscoveredExtensionRes[] }).data) {
-							const transformedExtension = transformDiscoveredExtensionResponse(raw);
+						for (const raw of responseData.data) {
+							const transformedExtension = transformDiscoveredExtensionResponse(raw as unknown as IDiscoveredExtensionRes);
 
 							if (!Object.prototype.hasOwnProperty.call(merged, transformedExtension.name)) {
 								merged[transformedExtension.name] = {};
 							}
 
-							if (transformedExtension.surface === ExtensionSurface.ADMIN) {
+							if (transformedExtension.surface === 'admin') {
 								merged[transformedExtension.name].admin = transformedExtension;
-							} else if (transformedExtension.surface === ExtensionSurface.BACKEND) {
+							} else if (transformedExtension.surface === 'backend') {
 								merged[transformedExtension.name].backend = transformedExtension;
 							}
 						}
@@ -158,11 +151,7 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 						return Object.values(data.value);
 					}
 
-					let errorReason: string | null = 'Failed to fetch discovered extensions.';
-
-					if (error) {
-						errorReason = getErrorReason(error, errorReason);
-					}
+					const errorReason = 'Failed to fetch discovered extensions.';
 
 					throw new ExtensionsApiException(errorReason, response.status);
 				} finally {
@@ -194,6 +183,8 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 	}
 );
 
-export const registerDiscoveredExtensionsStore = (pinia: Pinia): Store<string, IDiscoveredExtensionsStoreState, object, IDiscoveredExtensionsStoreActions> => {
+export const registerDiscoveredExtensionsStore = (
+	pinia: Pinia
+): Store<'extensions_module-discovered', IDiscoveredExtensionsStoreState, object, IDiscoveredExtensionsStoreActions> => {
 	return useDiscoveredExtensions(pinia);
 };

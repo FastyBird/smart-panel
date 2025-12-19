@@ -3,11 +3,9 @@ import type { App } from 'vue';
 import type { ConsolaInstance } from 'consola';
 import type { Client } from 'openapi-fetch';
 
-import { MODULES_PREFIX } from '../../../app.constants';
 import type { IExtensionOptions } from '../../../app.types';
 import type { OpenApiPaths } from '../../../openapi.constants';
-import { getErrorReason } from '../../../common/utils/api-error.utils';
-import { EXTENSIONS_MODULE_PREFIX, ExtensionSurface } from '../extensions.constants';
+import { PathsModulesExtensionsDiscoveredGetParametersQuerySurface } from '../../../openapi';
 
 type PluginInstallFn<TOptions> = (app: App, options?: TOptions) => void;
 
@@ -48,21 +46,20 @@ export const installRemoteExtensions = async (
 ): Promise<void> => {
 	const {
 		data: responseData,
-		error,
 		response,
-	} = await backendClient.GET(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered` as `/${string}`, {
+	} = await backendClient.GET('/modules/extensions/discovered', {
 		params: {
 			query: {
-				surface: ExtensionSurface.ADMIN,
+				surface: PathsModulesExtensionsDiscoveredGetParametersQuerySurface.admin,
 			},
 		},
 	});
 
-	if (responseData && Array.isArray((responseData as { data: unknown[] }).data)) {
-		const entries = (responseData as { data: Array<{ name: string; surface: string; remote_url?: string }> }).data;
+	if (responseData?.data && Array.isArray(responseData.data)) {
+		const entries = responseData.data;
 
 		for (const ext of entries) {
-			if (ext.surface !== ExtensionSurface.ADMIN) {
+			if (ext.surface !== 'admin') {
 				continue;
 			}
 
@@ -102,11 +99,7 @@ export const installRemoteExtensions = async (
 		return;
 	}
 
-	let errorReason: string | null = 'Failed to fetch extensions assets.';
-
-	if (error) {
-		errorReason = getErrorReason(error, errorReason);
-	}
+	const errorReason = 'Failed to fetch extensions assets.';
 
 	logger.error(`${errorReason}${response?.status ? ` (HTTP ${response.status})` : ''}`);
 };

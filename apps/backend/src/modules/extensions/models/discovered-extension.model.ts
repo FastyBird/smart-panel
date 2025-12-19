@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ExtensionKind, ExtensionSource, ExtensionSurface } from '../extensions.constants';
 
-@ApiSchema({ name: 'ExtensionsModuleDiscoveredExtensionBase' })
+@ApiSchema({ name: 'ExtensionsModuleDataDiscoveredExtensionBase' })
 export abstract class DiscoveredExtensionBaseModel {
 	@ApiProperty({ description: 'Extension name', type: 'string', example: 'my-extension' })
 	@Expose()
@@ -50,7 +50,7 @@ export abstract class DiscoveredExtensionBaseModel {
 	source: ExtensionSource;
 }
 
-@ApiSchema({ name: 'ExtensionsModuleDiscoveredExtensionAdmin' })
+@ApiSchema({ name: 'ExtensionsModuleDataDiscoveredExtensionAdmin' })
 export class DiscoveredExtensionAdminModel extends DiscoveredExtensionBaseModel {
 	@ApiProperty({ name: 'remote_url', description: 'Remote URL', type: 'string', format: 'uri' })
 	@Expose({ name: 'remote_url' })
@@ -63,7 +63,7 @@ export class DiscoveredExtensionAdminModel extends DiscoveredExtensionBaseModel 
 	type: string = 'admin';
 }
 
-@ApiSchema({ name: 'ExtensionsModuleDiscoveredExtensionBackend' })
+@ApiSchema({ name: 'ExtensionsModuleDataDiscoveredExtensionBackend' })
 export class DiscoveredExtensionBackendModel extends DiscoveredExtensionBaseModel {
 	@ApiProperty({ name: 'route_prefix', description: 'Route prefix', type: 'string', example: '/api' })
 	@Expose({ name: 'route_prefix' })

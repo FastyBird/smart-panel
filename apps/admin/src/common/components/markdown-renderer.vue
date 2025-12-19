@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config } from 'dompurify';
 import { marked } from 'marked';
 
 import type { IMarkdownRendererProps } from './markdown-renderer.types';
@@ -21,7 +21,7 @@ defineOptions({
 const props = defineProps<IMarkdownRendererProps>();
 
 // Configure DOMPurify to allow safe tags only
-const purifyConfig: DOMPurify.Config = {
+const purifyConfig: Config = {
 	ALLOWED_TAGS: [
 		'h1',
 		'h2',
@@ -70,7 +70,7 @@ const sanitizedHtml = computed<string>(() => {
 	const rawHtml = marked.parse(props.content) as string;
 
 	// Sanitize HTML to prevent XSS
-	const cleanHtml = DOMPurify.sanitize(rawHtml, purifyConfig);
+	const cleanHtml = DOMPurify.sanitize(rawHtml, purifyConfig) as string;
 
 	// Add target="_blank" and rel="noopener noreferrer" to all links
 	return cleanHtml.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
