@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business Goal
 
@@ -68,31 +68,31 @@ I want to have a dedicated device detail page with intuitive controls and visual
 ## 4. Acceptance Criteria
 
 ### Core Functionality
-- [ ] Replace the warning placeholder with a functional device detail page
-- [ ] Display current position percentage prominently
-- [ ] Provide a vertical slider to adjust position (0-100%)
-- [ ] Include Open, Close, Stop command buttons
-- [ ] Show current status (opened, closed, opening, closing, stopped)
-- [ ] Display type-specific icon (curtain/blind/roller/outdoor_blind)
+- [x] Replace the warning placeholder with a functional device detail page
+- [x] Display current position percentage prominently
+- [x] Provide a vertical slider to adjust position (0-100%)
+- [x] Include Open, Close, Stop command buttons
+- [x] Show current status (opened, closed, opening, closing, stopped)
+- [x] Display type-specific icon (curtain/blind/roller/outdoor_blind)
 
 ### Visual Feedback & Animation
-- [ ] Animated window covering visual that updates with position changes
-- [ ] Visual distinction between opening/closing states (animation or indicator)
-- [ ] Smooth slider interaction with immediate visual feedback
-- [ ] Status color coding (e.g., green for open, gray for closed, blue for moving)
+- [x] Animated window covering visual that updates with position changes
+- [x] Visual distinction between opening/closing states (animation or indicator)
+- [x] Smooth slider interaction with immediate visual feedback
+- [x] Status color coding (e.g., green for open, gray for closed, blue for moving)
 
 ### Optional Features (graceful degradation)
-- [ ] Show tilt control slider only when device supports tilt
-- [ ] Show obstruction warning only when obstruction property exists and is true
-- [ ] Show fault indicator only when fault property exists and has non-zero value
-- [ ] Show battery status tile when battery channel is available
-- [ ] Show electrical energy/power tiles when those channels are available
+- [x] Show tilt control slider only when device supports tilt
+- [x] Show obstruction warning only when obstruction property exists and is true
+- [x] Show fault indicator only when fault property exists and has non-zero value
+- [x] Show battery status tile when battery channel is available
+- [x] Show electrical energy/power tiles when those channels are available
 
 ### Localization
-- [ ] Add all required localization strings to `app_en.arb` and `app_cs.arb`
-- [ ] Localize status values (opened, closed, opening, closing, stopped)
-- [ ] Localize type names (curtain, blind, roller, outdoor blind)
-- [ ] Localize button labels and descriptions
+- [x] Add all required localization strings to `app_en.arb` and `app_cs.arb`
+- [x] Localize status values (opened, closed, opening, closing, stopped)
+- [x] Localize type names (curtain, blind, roller, outdoor blind)
+- [x] Localize button labels and descriptions
 
 ## 5. Example Scenarios
 
