@@ -85,7 +85,7 @@ Rotated files are named:
 smart-panel-2024-01-15.log
 \`\`\``,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

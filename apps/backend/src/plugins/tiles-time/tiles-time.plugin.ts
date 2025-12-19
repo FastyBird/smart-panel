@@ -105,7 +105,7 @@ Add a time tile to any dashboard page to display the current time. The tile upda
 
 The time display adapts to the tile size and supports both light and dark themes.`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

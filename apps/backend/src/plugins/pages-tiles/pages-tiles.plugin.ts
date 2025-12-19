@@ -132,7 +132,7 @@ Works with any registered tile type:
 4. Connect data sources to tiles
 5. Save and view on the panel display`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

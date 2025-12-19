@@ -145,7 +145,7 @@ Each data source specifies:
 - String (text values)
 - Enum (predefined value lists)`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

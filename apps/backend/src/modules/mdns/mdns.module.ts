@@ -82,7 +82,7 @@ This allows:
 - The Smart Panel must be on the same network segment as discovering clients
 - mDNS uses UDP port 5353`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

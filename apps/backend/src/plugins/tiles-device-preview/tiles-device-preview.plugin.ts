@@ -123,7 +123,7 @@ Add device preview tiles to dashboard pages for at-a-glance monitoring of your m
 - Choose which property to show as primary
 - Enable/disable quick control button`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

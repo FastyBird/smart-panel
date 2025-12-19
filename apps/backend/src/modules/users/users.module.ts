@@ -108,7 +108,7 @@ The Users module handles user account management and access control for the Smar
 - User sessions are managed through JWT tokens
 - Role-based guards protect sensitive endpoints`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

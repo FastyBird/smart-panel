@@ -126,7 +126,7 @@ Device detail pages can be accessed:
 - From device preview tiles (tap to open)
 - From the pages carousel (swipe to navigate)`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

@@ -155,7 +155,7 @@ Supports multiple log levels:
 
 Logs are stored in memory and can be viewed through the admin interface.`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

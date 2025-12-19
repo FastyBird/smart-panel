@@ -68,7 +68,7 @@ This extension demonstrates:
 - Extension metadata registration
 - Package.json configuration for Smart Panel`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

@@ -155,7 +155,7 @@ Cards can display:
 4. Order cards as needed
 5. View on the panel display`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

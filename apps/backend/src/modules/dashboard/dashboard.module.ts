@@ -176,7 +176,7 @@ Data sources connect tiles to live data:
 - **Device Channel** - Link to device property values
 - **Weather** - Display weather forecast data`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

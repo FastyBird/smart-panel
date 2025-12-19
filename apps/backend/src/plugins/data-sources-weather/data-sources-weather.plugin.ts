@@ -180,7 +180,7 @@ Provides:
 4. For forecasts, select the day offset
 5. The tile displays the weather data`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

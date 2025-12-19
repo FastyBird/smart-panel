@@ -150,7 +150,7 @@ Free tier allows:
 - 1,000 API calls per day
 - 60 calls per minute`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

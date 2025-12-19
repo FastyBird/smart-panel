@@ -108,7 +108,7 @@ Weather data is fetched through provider plugins:
 - Sunrise and sunset times
 - Multi-day forecasts`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

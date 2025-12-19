@@ -94,7 +94,7 @@ The Configuration module provides a unified API for accessing and modifying sett
 
 Settings are stored in a JSON configuration file on the device filesystem.`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

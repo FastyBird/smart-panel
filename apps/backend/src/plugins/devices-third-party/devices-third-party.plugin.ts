@@ -217,7 +217,7 @@ Third-party device states can be updated via:
 - WebSocket events
 - Direct database updates (for advanced use)`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

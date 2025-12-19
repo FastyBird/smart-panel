@@ -242,7 +242,7 @@ Devices are managed through platform plugins that provide integration with speci
 
 The module uses a flexible type mapping system that allows plugins to register their own device, channel, and property types while maintaining a unified API.`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

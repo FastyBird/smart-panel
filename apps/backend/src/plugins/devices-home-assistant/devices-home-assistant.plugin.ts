@@ -286,7 +286,7 @@ Integration plugin for connecting Smart Panel to Home Assistant.
 - **REST API** - State queries and service calls
 - **Auto-reconnect** - Automatic reconnection on connection loss`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

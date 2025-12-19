@@ -134,7 +134,7 @@ Displays communicate via WebSocket for real-time updates:
 - Dashboard updates
 - Device state changes`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

@@ -152,7 +152,7 @@ Weather data provider using the OpenWeatherMap One Call 3.0 API.
 
 This plugin includes a location search feature to find coordinates by city name, making it easy to set up weather locations.`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

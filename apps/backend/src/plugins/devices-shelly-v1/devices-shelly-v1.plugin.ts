@@ -234,7 +234,7 @@ Integration plugin for Shelly first-generation (Gen1) devices.
 - Configure polling intervals
 - Set authentication credentials for protected devices`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

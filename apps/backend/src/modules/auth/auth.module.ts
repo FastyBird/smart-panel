@@ -158,7 +158,7 @@ The Authentication module handles user authentication and token management for t
 - \`register:owner\` - Create the initial owner account
 - \`reset:password\` - Reset a user's password`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

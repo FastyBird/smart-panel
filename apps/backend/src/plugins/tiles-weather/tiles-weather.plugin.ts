@@ -151,7 +151,7 @@ Displays multi-day forecast:
 
 Requires the Weather module to be configured with at least one location and a weather provider plugin (e.g., OpenWeatherMap).`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});

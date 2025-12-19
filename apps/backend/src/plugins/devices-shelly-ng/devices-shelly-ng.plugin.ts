@@ -230,7 +230,7 @@ Uses Shelly's RPC (Remote Procedure Call) API over:
 - **Polling Interval** - How often to refresh device states
 - **Discovery** - Enable/disable automatic device discovery`,
 			links: {
-				documentation: 'https://docs.fastybird.com',
+				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
