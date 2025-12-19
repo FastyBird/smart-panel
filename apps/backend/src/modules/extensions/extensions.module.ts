@@ -1,4 +1,4 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Global, Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { ConfigModule } from '../config/config.module';
@@ -28,6 +28,7 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 	displayName: EXTENSIONS_MODULE_API_TAG_NAME,
 	description: EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
 })
+@Global()
 @Module({
 	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule)],
 	controllers: [ExtensionsController, DiscoveredExtensionsController],
