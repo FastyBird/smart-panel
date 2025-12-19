@@ -27,7 +27,13 @@ import { PluginsTypeMapperService } from './services/plugins-type-mapper.service
 	description: CONFIG_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [NestConfigModule, PlatformModule, forwardRef(() => SystemModule), forwardRef(() => ExtensionsModule), SwaggerModule],
+	imports: [
+		NestConfigModule,
+		PlatformModule,
+		forwardRef(() => SystemModule),
+		forwardRef(() => ExtensionsModule),
+		SwaggerModule,
+	],
 	providers: [ConfigService, PluginsTypeMapperService, ModulesTypeMapperService, GenerateAdminExtensionsCommand],
 	controllers: [ConfigController],
 	exports: [ConfigService, PluginsTypeMapperService, ModulesTypeMapperService],
