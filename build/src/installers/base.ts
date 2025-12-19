@@ -11,6 +11,10 @@ export interface InstallOptions {
 	port: number;
 	/** Skip starting the service after install */
 	noStart: boolean;
+	/** Admin username for initial setup */
+	adminUsername?: string;
+	/** Admin password for initial setup */
+	adminPassword?: string;
 }
 
 export interface UninstallOptions {
@@ -67,6 +71,9 @@ export interface BaseInstaller {
 
 	/** Run database migrations */
 	runMigrations(dataDir: string): Promise<void>;
+
+	/** Create admin user via backend CLI */
+	createAdminUser(dataDir: string, username: string, password: string): Promise<void>;
 
 	/** Check prerequisites */
 	checkPrerequisites(): Promise<string[]>;

@@ -3,6 +3,7 @@
  */
 
 import { execSync, spawn, type SpawnOptions } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -220,4 +221,11 @@ export function getDistroInfo(): { name: string; version: string } | null {
  */
 export function makeExecutable(path: string): void {
 	chmodSync(path, 0o755);
+}
+
+/**
+ * Generate a cryptographically secure random string
+ */
+export function generateSecret(length = 64): string {
+	return randomBytes(length).toString('base64url').slice(0, length);
 }

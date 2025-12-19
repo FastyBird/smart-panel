@@ -52,6 +52,8 @@ program
 	.option('-p, --port <port>', 'HTTP port for the backend', '3000')
 	.option('-u, --user <user>', 'System user for the service', 'smart-panel')
 	.option('-d, --data-dir <path>', 'Data directory path', '/var/lib/smart-panel')
+	.option('--admin-username <username>', 'Create admin user with this username')
+	.option('--admin-password <password>', 'Admin user password (requires --admin-username)')
 	.option('--no-start', 'Do not start the service after installation')
 	.action(async (options) => {
 		console.log();
@@ -92,6 +94,12 @@ program
 			}
 			spinner.succeed('Prerequisites check passed');
 
+			// Validate admin options
+			if (options.adminUsername && !options.adminPassword) {
+				spinner.fail('--admin-password is required when using --admin-username');
+				process.exit(1);
+			}
+
 			// Install
 			spinner.start('Installing Smart Panel service...');
 
@@ -100,9 +108,16 @@ program
 				dataDir: options.dataDir,
 				port: parseInt(options.port, 10),
 				noStart: !options.start,
+				adminUsername: options.adminUsername,
+				adminPassword: options.adminPassword,
 			});
 
 			spinner.succeed('Smart Panel service installed');
+
+			// Show admin user creation status
+			if (options.adminUsername) {
+				logger.success(`Admin user '${options.adminUsername}' created`);
+			}
 
 			// Show success message
 			console.log();
@@ -115,6 +130,14 @@ program
 			} else {
 				logger.info('Service installed but not started. Run:');
 				logger.info(`  ${chalk.cyan('sudo smart-panel-service start')}`);
+			}
+
+			// Show first-time setup hint if admin user wasn't created
+			if (!options.adminUsername) {
+				console.log();
+				logger.info('First-time setup:');
+				console.log(chalk.gray('  Open the admin UI in your browser to create an admin account.'));
+				console.log(chalk.gray('  Or run: sudo smart-panel auth:onboarding <username> <password>'));
 			}
 
 			console.log();

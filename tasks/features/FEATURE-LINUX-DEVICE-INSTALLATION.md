@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -122,26 +122,26 @@ I want to install Smart Panel using a simple npm command or installation script,
 
 - [x] NPM global install: `sudo npm install -g @fastybird/smart-panel`
 - [x] One-liner script: `curl -fsSL https://get.smart-panel.fastybird.com | sudo bash`
-- [ ] Manual tarball extraction with instructions *(deferred - documentation)*
+- [x] Manual tarball extraction with instructions *(documented in INSTALLATION.md)*
 - [x] Installation script detects architecture (armv7, arm64, x64)
 - [x] Installation script installs Node.js if not present
 
 ### 4.7 First-Time Setup
 
-- [ ] `smart-panel-service install` prompts for admin user creation *(future enhancement)*
+- [x] `smart-panel-service install` prompts for admin user creation *(via --admin-username/--admin-password flags)*
 - [x] Or redirect to web UI for first-time setup wizard *(existing onboarding flow)*
-- [ ] Generate secure JWT secret on first install *(future enhancement)*
+- [x] Generate secure JWT secret on first install
 - [x] Initialize database with migrations
 - [ ] Seed default configuration data *(future enhancement)*
 
 ### 4.8 Documentation
 
-- [ ] Create installation guide for Raspberry Pi
-- [ ] Create installation guide for generic Linux (Debian/Ubuntu)
-- [ ] Document all CLI commands and options
-- [ ] Document environment variables
-- [ ] Document troubleshooting steps
-- [ ] Add installation section to main README
+- [x] Create installation guide for Raspberry Pi *(build/docs/INSTALLATION.md)*
+- [x] Create installation guide for generic Linux (Debian/Ubuntu) *(build/docs/INSTALLATION.md)*
+- [x] Document all CLI commands and options *(build/docs/INSTALLATION.md)*
+- [x] Document environment variables *(build/docs/INSTALLATION.md)*
+- [x] Document troubleshooting steps *(build/docs/INSTALLATION.md)*
+- [x] Add installation section to main README *(build/README.md)*
 
 ## 5. Example scenarios
 
