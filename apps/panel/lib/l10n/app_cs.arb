@@ -238,5 +238,61 @@
   "discovery_button_connect": "Připojit",
   "discovery_button_connect_selected": "Připojit k vybrané bráně",
   "discovery_button_rescan": "Znovu vyhledat",
-  "discovery_button_manual": "Ručně"
+  "discovery_button_manual": "Ručně",
+
+  "sensor_section_environmental": "Prostředí",
+  "sensor_section_air_quality": "Kvalita vzduchu",
+  "sensor_section_detection": "Detekce",
+  "sensor_section_electrical": "Elektrické",
+  "sensor_section_device_info": "Informace o zařízení",
+
+  "sensor_temperature": "Teplota",
+  "sensor_humidity": "Vlhkost",
+  "sensor_pressure": "Tlak",
+  "sensor_illuminance": "Osvětlení",
+
+  "sensor_carbon_dioxide": "Oxid uhličitý",
+  "sensor_carbon_monoxide": "Oxid uhelnatý",
+  "sensor_ozone": "Ozón",
+  "sensor_nitrogen_dioxide": "Oxid dusičitý",
+  "sensor_sulphur_dioxide": "Oxid siřičitý",
+  "sensor_volatile_organic_compounds": "VOC",
+  "sensor_air_particulate": "Prachové částice",
+
+  "sensor_motion": "Pohyb",
+  "sensor_occupancy": "Přítomnost",
+  "sensor_contact": "Kontakt",
+  "sensor_leak": "Únik",
+  "sensor_smoke": "Kouř",
+
+  "sensor_power": "Výkon",
+  "sensor_energy": "Energie",
+
+  "sensor_battery": "Baterie",
+  "sensor_device_information": "Info o zařízení",
+
+  "sensor_status_detected": "Detekováno",
+  "sensor_status_not_detected": "Nedetekováno",
+  "sensor_status_open": "Otevřeno",
+  "sensor_status_closed": "Zavřeno",
+  "sensor_battery_low": "Nízká baterie",
+  "sensor_battery_charging": "Nabíjení",
+  "sensor_fault_detected": "Porucha",
+  "sensor_tampered": "Manipulace",
+
+  "sensor_chart_title": "Historická data",
+  "sensor_chart_no_data": "Žádná data nejsou k dispozici",
+  "sensor_chart_loading": "Načítání dat...",
+  "sensor_chart_error": "Nepodařilo se načíst data",
+
+  "sensor_time_range_1h": "1h",
+  "sensor_time_range_6h": "6h",
+  "sensor_time_range_12h": "12h",
+  "sensor_time_range_24h": "24h",
+  "sensor_time_range_7d": "7d",
+
+  "sensor_stats_min": "Min",
+  "sensor_stats_max": "Max",
+  "sensor_stats_avg": "Prům",
+  "sensor_current_value": "Aktuální"
 }

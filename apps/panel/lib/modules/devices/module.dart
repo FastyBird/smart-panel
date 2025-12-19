@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -8,6 +9,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart
 import 'package:fastybird_smart_panel/modules/devices/repositories/device_controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesModuleService {
@@ -20,12 +22,14 @@ class DevicesModuleService {
   late ChannelPropertiesRepository _channelPropertiesRepository;
 
   late DevicesService _devicesService;
+  late PropertyTimeseriesService _propertyTimeseriesService;
 
   bool _isLoading = true;
 
   DevicesModuleService({
     required ApiClient apiClient,
     required SocketService socketService,
+    required Dio dio,
   }) : _socketService = socketService {
     _devicesRepository = DevicesRepository(
       apiClient: apiClient.devicesModule,
@@ -53,6 +57,8 @@ class DevicesModuleService {
       channelControlsRepository: _channelControlsRepository,
     );
 
+    _propertyTimeseriesService = PropertyTimeseriesService(dio: dio);
+
     locator.registerSingleton(_devicesRepository);
     locator.registerSingleton(_deviceControlsRepository);
 
@@ -61,6 +67,7 @@ class DevicesModuleService {
     locator.registerSingleton(_channelPropertiesRepository);
 
     locator.registerSingleton(_devicesService);
+    locator.registerSingleton(_propertyTimeseriesService);
   }
 
   Future<void> initialize() async {

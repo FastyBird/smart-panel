@@ -59,6 +59,7 @@ dependencies:
   dropdown_button2: ^2.3.9
   event_bus: ^2.0.1
   bonsoir: ^5.1.4
+  fl_chart: ^0.69.2
 
 dev_dependencies:
   flutter_test:

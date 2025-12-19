@@ -980,5 +980,199 @@
   "discovery_button_manual": "Manual",
   "@discovery_button_manual": {
     "description": "Manual entry button text"
+  },
+
+  "sensor_section_environmental": "Environmental",
+  "@sensor_section_environmental": {
+    "description": "Section header for environmental sensors (temperature, humidity, etc.)"
+  },
+  "sensor_section_air_quality": "Air Quality",
+  "@sensor_section_air_quality": {
+    "description": "Section header for air quality sensors (CO2, VOC, etc.)"
+  },
+  "sensor_section_detection": "Detection",
+  "@sensor_section_detection": {
+    "description": "Section header for detection sensors (motion, smoke, etc.)"
+  },
+  "sensor_section_electrical": "Electrical",
+  "@sensor_section_electrical": {
+    "description": "Section header for electrical sensors (power, energy)"
+  },
+  "sensor_section_device_info": "Device Info",
+  "@sensor_section_device_info": {
+    "description": "Section header for device information (battery, etc.)"
+  },
+
+  "sensor_temperature": "Temperature",
+  "@sensor_temperature": {
+    "description": "Label for temperature sensor"
+  },
+  "sensor_humidity": "Humidity",
+  "@sensor_humidity": {
+    "description": "Label for humidity sensor"
+  },
+  "sensor_pressure": "Pressure",
+  "@sensor_pressure": {
+    "description": "Label for pressure sensor"
+  },
+  "sensor_illuminance": "Illuminance",
+  "@sensor_illuminance": {
+    "description": "Label for illuminance/light sensor"
+  },
+
+  "sensor_carbon_dioxide": "Carbon Dioxide",
+  "@sensor_carbon_dioxide": {
+    "description": "Label for CO2 sensor"
+  },
+  "sensor_carbon_monoxide": "Carbon Monoxide",
+  "@sensor_carbon_monoxide": {
+    "description": "Label for CO sensor"
+  },
+  "sensor_ozone": "Ozone",
+  "@sensor_ozone": {
+    "description": "Label for ozone sensor"
+  },
+  "sensor_nitrogen_dioxide": "Nitrogen Dioxide",
+  "@sensor_nitrogen_dioxide": {
+    "description": "Label for NO2 sensor"
+  },
+  "sensor_sulphur_dioxide": "Sulphur Dioxide",
+  "@sensor_sulphur_dioxide": {
+    "description": "Label for SO2 sensor"
+  },
+  "sensor_volatile_organic_compounds": "VOC",
+  "@sensor_volatile_organic_compounds": {
+    "description": "Label for volatile organic compounds sensor"
+  },
+  "sensor_air_particulate": "Particulate Matter",
+  "@sensor_air_particulate": {
+    "description": "Label for air particulate (PM2.5/PM10) sensor"
+  },
+
+  "sensor_motion": "Motion",
+  "@sensor_motion": {
+    "description": "Label for motion sensor"
+  },
+  "sensor_occupancy": "Occupancy",
+  "@sensor_occupancy": {
+    "description": "Label for occupancy sensor"
+  },
+  "sensor_contact": "Contact",
+  "@sensor_contact": {
+    "description": "Label for contact/door sensor"
+  },
+  "sensor_leak": "Leak",
+  "@sensor_leak": {
+    "description": "Label for water leak sensor"
+  },
+  "sensor_smoke": "Smoke",
+  "@sensor_smoke": {
+    "description": "Label for smoke detector"
+  },
+
+  "sensor_power": "Power",
+  "@sensor_power": {
+    "description": "Label for power sensor"
+  },
+  "sensor_energy": "Energy",
+  "@sensor_energy": {
+    "description": "Label for energy sensor"
+  },
+
+  "sensor_battery": "Battery",
+  "@sensor_battery": {
+    "description": "Label for battery status"
+  },
+  "sensor_device_information": "Device Info",
+  "@sensor_device_information": {
+    "description": "Label for device information"
+  },
+
+  "sensor_status_detected": "Detected",
+  "@sensor_status_detected": {
+    "description": "Status when sensor detects something"
+  },
+  "sensor_status_not_detected": "Not Detected",
+  "@sensor_status_not_detected": {
+    "description": "Status when sensor detects nothing"
+  },
+  "sensor_status_open": "Open",
+  "@sensor_status_open": {
+    "description": "Status for open contact sensor"
+  },
+  "sensor_status_closed": "Closed",
+  "@sensor_status_closed": {
+    "description": "Status for closed contact sensor"
+  },
+  "sensor_battery_low": "Low Battery",
+  "@sensor_battery_low": {
+    "description": "Low battery warning"
+  },
+  "sensor_battery_charging": "Charging",
+  "@sensor_battery_charging": {
+    "description": "Battery charging status"
+  },
+  "sensor_fault_detected": "Fault",
+  "@sensor_fault_detected": {
+    "description": "Sensor fault indicator"
+  },
+  "sensor_tampered": "Tampered",
+  "@sensor_tampered": {
+    "description": "Sensor tampered indicator"
+  },
+
+  "sensor_chart_title": "Historical Data",
+  "@sensor_chart_title": {
+    "description": "Title for sensor history chart"
+  },
+  "sensor_chart_no_data": "No data available",
+  "@sensor_chart_no_data": {
+    "description": "Message when no historical data is available"
+  },
+  "sensor_chart_loading": "Loading data...",
+  "@sensor_chart_loading": {
+    "description": "Message while loading historical data"
+  },
+  "sensor_chart_error": "Failed to load data",
+  "@sensor_chart_error": {
+    "description": "Error message when historical data fails to load"
+  },
+
+  "sensor_time_range_1h": "1h",
+  "@sensor_time_range_1h": {
+    "description": "1 hour time range label"
+  },
+  "sensor_time_range_6h": "6h",
+  "@sensor_time_range_6h": {
+    "description": "6 hours time range label"
+  },
+  "sensor_time_range_12h": "12h",
+  "@sensor_time_range_12h": {
+    "description": "12 hours time range label"
+  },
+  "sensor_time_range_24h": "24h",
+  "@sensor_time_range_24h": {
+    "description": "24 hours time range label"
+  },
+  "sensor_time_range_7d": "7d",
+  "@sensor_time_range_7d": {
+    "description": "7 days time range label"
+  },
+
+  "sensor_stats_min": "Min",
+  "@sensor_stats_min": {
+    "description": "Minimum value label"
+  },
+  "sensor_stats_max": "Max",
+  "@sensor_stats_max": {
+    "description": "Maximum value label"
+  },
+  "sensor_stats_avg": "Avg",
+  "@sensor_stats_avg": {
+    "description": "Average value label"
+  },
+  "sensor_current_value": "Current",
+  "@sensor_current_value": {
+    "description": "Current value label"
   }
 }

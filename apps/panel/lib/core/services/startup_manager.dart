@@ -544,6 +544,7 @@ class StartupManagerService {
     var devicesModuleService = DevicesModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
+      dio: _apiIoService,
     );
     var dashboardModuleService = DashboardModuleService(
       apiClient: _apiClient,
