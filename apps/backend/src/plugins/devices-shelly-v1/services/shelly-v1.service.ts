@@ -91,6 +91,8 @@ export class ShellyV1Service implements IManagedPluginService {
 					await this.waitUntil('stopped');
 					break;
 				case 'stopped':
+				case 'error':
+					// Both stopped and error states can be started
 					break;
 			}
 
@@ -138,10 +140,12 @@ export class ShellyV1Service implements IManagedPluginService {
 					await this.waitUntil('started', 'stopped');
 					break;
 				case 'started':
+				case 'error':
+					// Both started and error states need cleanup
 					break;
 			}
 
-			if (this.state !== 'started') {
+			if (this.state !== 'started' && this.state !== 'error') {
 				return;
 			}
 

@@ -146,6 +146,12 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	/**
 	 * Called by NestJS when the module is being destroyed.
 	 * Stops all running services in reverse priority order.
+	 *
+	 * Handles all non-stopped states:
+	 * - 'started': Normal stop
+	 * - 'error': Clean up any partially allocated resources
+	 * - 'starting': Wait for completion, then stop
+	 * - 'stopping': Wait for completion
 	 */
 	async onModuleDestroy(): Promise<void> {
 		this.shutdownInProgress = true;
@@ -156,9 +162,32 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const sorted = this.getSortedServices().reverse();
 
 		for (const registration of sorted) {
-			if (registration.service.getState() === 'started') {
-				await this.stopService(registration);
+			const state = registration.service.getState();
+
+			// Skip services that are already stopped
+			if (state === 'stopped') {
+				continue;
 			}
+
+			// Wait for transitional states to complete before stopping
+			if (state === 'starting') {
+				const key = this.getServiceKey(registration.pluginName, registration.serviceId);
+
+				this.logger.debug(`[SHUTDOWN] Waiting for ${key} to finish starting before stopping`);
+
+				await this.waitForState(registration, 'started', 5000);
+			} else if (state === 'stopping') {
+				const key = this.getServiceKey(registration.pluginName, registration.serviceId);
+
+				this.logger.debug(`[SHUTDOWN] Waiting for ${key} to finish stopping`);
+
+				await this.waitForState(registration, 'stopped', 5000);
+
+				continue; // Already stopping, no need to call stopService again
+			}
+
+			// Stop services in 'started' or 'error' states
+			await this.stopService(registration);
 		}
 
 		this.logger.log('[SHUTDOWN] All services stopped');

@@ -74,6 +74,12 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		reject: (error: Error) => void;
 	} | null = null;
 
+	/**
+	 * Flag to track intentional disconnections.
+	 * When true, the 'close' event handler won't schedule a reconnect.
+	 */
+	private intentionalDisconnect = false;
+
 	constructor(
 		private readonly configService: ConfigService,
 		@Inject(forwardRef(() => HomeAssistantHttpService))
@@ -222,6 +228,9 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	private connect() {
 		this.logger.debug('[HOME ASSISTANT][WS SERVICE] Connecting to Home Assistant WebSocket API...');
 
+		// Clear the intentional disconnect flag when starting a new connection
+		this.intentionalDisconnect = false;
+
 		const url = new URL('/api/websocket', this.baseUrl);
 
 		this.ws = new WebSocket(url);
@@ -244,7 +253,9 @@ export class HomeAssistantWsService implements IManagedPluginService {
 				this.connectionResolver.reject(new Error('WebSocket connection closed before authentication completed'));
 			}
 
-			if (this.state === 'started') {
+			// Only schedule reconnect for unexpected disconnections
+			// Skip if this was an intentional disconnect (e.g., from onConfigChanged or stop)
+			if (this.state === 'started' && !this.intentionalDisconnect) {
 				this.logger.warn('[HOME ASSISTANT][WS SERVICE] WebSocket connection closed. Reconnecting...');
 				this.scheduleReconnect();
 			}
@@ -261,6 +272,7 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	}
 
 	private disconnect() {
+		this.intentionalDisconnect = true;
 		this.connectionResolver = null;
 		this.ws?.close();
 		this.ws = null;
