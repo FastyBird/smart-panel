@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import WebSocket from 'ws';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -23,6 +23,8 @@ import {
 	HomeAssistantEntityRegistryModel,
 	HomeAssistantEntityRegistryResultModel,
 } from '../models/home-assistant.model';
+
+import { HomeAssistantHttpService } from './home-assistant.http.service';
 
 export interface WsEventService {
 	get event(): string;
@@ -67,7 +69,11 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		}
 	>();
 
-	constructor(private readonly configService: ConfigService) {}
+	constructor(
+		private readonly configService: ConfigService,
+		@Inject(forwardRef(() => HomeAssistantHttpService))
+		private readonly homeAssistantHttpService: HomeAssistantHttpService,
+	) {}
 
 	registerEventsHandler(event: string, handler: WsEventService) {
 		if (this.eventsHandlers.has(event)) {
@@ -368,6 +374,14 @@ export class HomeAssistantWsService implements IManagedPluginService {
 			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Authenticated with Home Assistant instance.');
 
 			this.subscribeToStates();
+
+			// Load initial states immediately after authentication
+			// This ensures devices have state values without waiting for cron job
+			this.homeAssistantHttpService.loadStates().catch((err: Error) => {
+				this.logger.warn(
+					`[HOME ASSISTANT][WS SERVICE] Failed to load initial states: ${err?.message ?? 'unknown error'}`,
+				);
+			});
 		} else if (msg.type === 'auth_invalid') {
 			this.logger.error(
 				`[HOME ASSISTANT][WS SERVICE] Authentication failed: ${'message' in msg && typeof msg.message === 'string' ? msg.message : 'unknown'}`,

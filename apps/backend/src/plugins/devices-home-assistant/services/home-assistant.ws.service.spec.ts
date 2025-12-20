@@ -7,6 +7,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { DevicesHomeAssistantException } from '../devices-home-assistant.exceptions';
 import { HomeAssistantConfigModel } from '../models/config.model';
 
+import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 
 jest.mock('ws');
@@ -14,6 +15,7 @@ jest.mock('ws');
 describe('HomeAssistantWsService', () => {
 	let service: HomeAssistantWsService;
 	let mockConfigService: Partial<ConfigService>;
+	let mockHttpService: Partial<HomeAssistantHttpService>;
 
 	beforeEach(async () => {
 		mockConfigService = {
@@ -22,6 +24,10 @@ describe('HomeAssistantWsService', () => {
 				apiKey: 'mock-token',
 				hostname: 'localhost:8123',
 			} as HomeAssistantConfigModel),
+		};
+
+		mockHttpService = {
+			loadStates: jest.fn().mockResolvedValue(undefined),
 		};
 
 		(WebSocket as unknown as jest.Mock).mockImplementation(() => {
@@ -34,7 +40,11 @@ describe('HomeAssistantWsService', () => {
 		});
 
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [HomeAssistantWsService, { provide: ConfigService, useValue: mockConfigService }],
+			providers: [
+				HomeAssistantWsService,
+				{ provide: ConfigService, useValue: mockConfigService },
+				{ provide: HomeAssistantHttpService, useValue: mockHttpService },
+			],
 		}).compile();
 
 		service = module.get(HomeAssistantWsService);
