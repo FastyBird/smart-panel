@@ -1,0 +1,31 @@
+[Unit]
+Description=FastyBird Smart Panel
+Documentation=https://smart-panel.fastybird.com
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=smart-panel
+Group=smart-panel
+WorkingDirectory=/var/lib/smart-panel
+EnvironmentFile=-/etc/smart-panel/environment
+ExecStart=/usr/bin/node /usr/lib/node_modules/@fastybird/smart-panel/node_modules/@fastybird/smart-panel-backend/dist/main.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-panel
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/smart-panel
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

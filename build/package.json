@@ -1,45 +1,72 @@
 {
-  "name": "@fastybird/smart-panel-build",
-  "private": true,
-  "type": "module",
-  "version": "1.0.0-dev.1",
-  "description": "Production runtime for the FastyBird Smart Panel backend and admin UI",
-  "keywords": [
-    "fastybird",
-    "smart-panel",
-    "iot",
-    "home-automation",
-    "backend",
-    "admin",
-    "dashboard",
-    "production",
-    "embedded"
-  ],
-  "homepage": "https://smart-panel.fastybird.com",
-  "bugs": "https://github.com/FastyBird/smart-panel/issues",
-  "license": "Apache-2.0",
-  "author": {
-    "name": "FastyBird s.r.o.",
-    "email": "code@fastybird.com",
-    "url": "https://www.fastybird.com/"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/FastyBird/smart-panel.git"
-  },
-  "scripts": {
-    "start": "node ./node_modules/@fastybird/smart-panel-backend/dist/main",
-    "onboard": "node ./node_modules/@fastybird/smart-panel-backend/dist/cli auth:onboarding",
-    "seed": "node ./node_modules/@fastybird/smart-panel-backend/dist/cli seed:run",
-    "migration:run": "node ./node_modules/typeorm/cli.js migration:run -d ./node_modules/@fastybird/smart-panel-backend/dist/dataSource.js",
-    "migration:revert": "node ./node_modules/typeorm/cli.js migration:revert -d ./node_modules/@fastybird/smart-panel-backend/dist/dataSource.js"
-  },
-  "bin": {
-    "smart-panel": "./node_modules/@fastybird/smart-panel-backend/dist/cli.js"
-  },
-  "engines": {
-    "node": ">=20",
-    "npm": ">=10"
-  },
-  "packageManager": "npm@11.4.0"
+	"name": "@fastybird/smart-panel",
+	"version": "1.0.0-dev.1",
+	"description": "FastyBird Smart Panel - IoT Dashboard for Linux devices",
+	"keywords": [
+		"fastybird",
+		"smart-panel",
+		"iot",
+		"home-automation",
+		"raspberry-pi",
+		"smart-home",
+		"dashboard",
+		"backend",
+		"admin",
+		"embedded"
+	],
+	"homepage": "https://smart-panel.fastybird.com",
+	"bugs": "https://github.com/FastyBird/smart-panel/issues",
+	"license": "Apache-2.0",
+	"author": {
+		"name": "FastyBird s.r.o.",
+		"email": "code@fastybird.com",
+		"url": "https://www.fastybird.com/"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/FastyBird/smart-panel.git"
+	},
+	"type": "module",
+	"main": "dist/index.js",
+	"bin": {
+		"smart-panel": "./bin/smart-panel.js",
+		"smart-panel-service": "./bin/smart-panel-service.js"
+	},
+	"files": [
+		"bin/",
+		"dist/",
+		"templates/",
+		"package.json",
+		"README.md",
+		"LICENSE.md"
+	],
+	"scripts": {
+		"build": "tsc",
+		"start": "node ./node_modules/@fastybird/smart-panel-backend/dist/main",
+		"cli": "node ./node_modules/@fastybird/smart-panel-backend/dist/cli",
+		"migration:run": "node ./node_modules/typeorm/cli.js migration:run -d ./node_modules/@fastybird/smart-panel-backend/dist/dataSource.js",
+		"migration:revert": "node ./node_modules/typeorm/cli.js migration:revert -d ./node_modules/@fastybird/smart-panel-backend/dist/dataSource.js"
+	},
+	"dependencies": {
+		"@fastybird/smart-panel-admin": ">=1.0.0-0",
+		"@fastybird/smart-panel-backend": ">=1.0.0-0",
+		"chalk": "^5.4.1",
+		"commander": "^13.1.0",
+		"ora": "^8.2.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.30",
+		"typescript": "^5.8.3"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"os": [
+		"linux"
+	],
+	"cpu": [
+		"arm",
+		"arm64",
+		"x64"
+	]
 }
