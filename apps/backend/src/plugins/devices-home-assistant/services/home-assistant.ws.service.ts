@@ -145,12 +145,22 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	}
 
 	/**
-	 * Handle configuration changes without full restart.
+	 * Handle configuration changes by reconnecting.
 	 * Called by PluginServiceManagerService when config updates occur.
+	 *
+	 * For WebSocket service, config changes (URL, API key) require reconnection.
 	 */
 	onConfigChanged(): Promise<void> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
+
+		// Reconnect to apply new settings (URL, API key, etc.)
+		if (this.state === 'started') {
+			this.logger.log('[HOME ASSISTANT][WS SERVICE] Config changed, reconnecting...');
+
+			this.disconnect();
+			this.connect();
+		}
 
 		return Promise.resolve();
 	}

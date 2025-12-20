@@ -177,14 +177,23 @@ export class ShellyV1Service implements IManagedPluginService {
 	}
 
 	/**
-	 * Handle configuration changes without full restart.
+	 * Handle configuration changes by restarting the service.
 	 * Called by PluginServiceManagerService when config updates occur.
+	 *
+	 * For Shelly V1 service, config changes (mDNS interface, polling settings)
+	 * require a full restart to apply.
 	 */
-	onConfigChanged(): Promise<void> {
+	async onConfigChanged(): Promise<void> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
 
-		return Promise.resolve();
+		// Restart to apply new settings (mDNS interface, polling config, etc.)
+		if (this.state === 'started') {
+			this.logger.log('[SHELLY V1][SERVICE] Config changed, restarting...');
+
+			await this.stop();
+			await this.start();
+		}
 	}
 
 	/**
