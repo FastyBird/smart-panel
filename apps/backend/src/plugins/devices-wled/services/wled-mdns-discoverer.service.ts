@@ -1,4 +1,4 @@
-import Bonjour, { Service, Browser } from 'bonjour-service';
+import Bonjour, { Browser, Service } from 'bonjour-service';
 
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -26,7 +26,7 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 	 * Start mDNS discovery for WLED devices
 	 * @param _networkInterface Reserved for future use (network interface selection)
 	 */
-	async start(_networkInterface?: string): Promise<void> {
+	start(_networkInterface?: string): void {
 		if (this.isRunning) {
 			this.logger.warn('[WLED][MDNS] Discovery is already running');
 			return;

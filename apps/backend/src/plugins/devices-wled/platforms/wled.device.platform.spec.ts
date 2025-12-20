@@ -1,10 +1,20 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method
+*/
+/*
+Reason: The mocking and test setup requires dynamic assignment and
+handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import {
 	DEVICES_WLED_TYPE,
 	WLED_CHANNEL_IDENTIFIERS,
@@ -110,11 +120,7 @@ describe('WledDevicePlatform', () => {
 		it('should delegate to processBatch', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
-			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
-				PropertyCategory.ON,
-				DataTypeType.BOOL,
-			);
+			const property = createMockProperty(WLED_LIGHT_PROPERTY_IDENTIFIERS.ON, PropertyCategory.ON, DataTypeType.BOOL);
 
 			wledAdapter.getDeviceByIdentifier.mockReturnValue({
 				host: '192.168.1.100',
@@ -140,11 +146,7 @@ describe('WledDevicePlatform', () => {
 		it('should return false for disabled device', async () => {
 			const device = createMockDevice('wled-test', false);
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
-			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
-				PropertyCategory.ON,
-				DataTypeType.BOOL,
-			);
+			const property = createMockProperty(WLED_LIGHT_PROPERTY_IDENTIFIERS.ON, PropertyCategory.ON, DataTypeType.BOOL);
 
 			const result = await platform.processBatch([
 				{
@@ -162,11 +164,7 @@ describe('WledDevicePlatform', () => {
 		it('should return false if device not found in adapter', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
-			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
-				PropertyCategory.ON,
-				DataTypeType.BOOL,
-			);
+			const property = createMockProperty(WLED_LIGHT_PROPERTY_IDENTIFIERS.ON, PropertyCategory.ON, DataTypeType.BOOL);
 
 			wledAdapter.getDeviceByIdentifier.mockReturnValue(undefined);
 
@@ -185,11 +183,7 @@ describe('WledDevicePlatform', () => {
 		it('should return false if device not connected', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
-			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
-				PropertyCategory.ON,
-				DataTypeType.BOOL,
-			);
+			const property = createMockProperty(WLED_LIGHT_PROPERTY_IDENTIFIERS.ON, PropertyCategory.ON, DataTypeType.BOOL);
 
 			wledAdapter.getDeviceByIdentifier.mockReturnValue({
 				host: '192.168.1.100',
@@ -213,11 +207,7 @@ describe('WledDevicePlatform', () => {
 		it('should update state property', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
-			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
-				PropertyCategory.ON,
-				DataTypeType.BOOL,
-			);
+			const property = createMockProperty(WLED_LIGHT_PROPERTY_IDENTIFIERS.ON, PropertyCategory.ON, DataTypeType.BOOL);
 
 			wledAdapter.getDeviceByIdentifier.mockReturnValue({
 				host: '192.168.1.100',
@@ -389,11 +379,7 @@ describe('WledDevicePlatform', () => {
 		it('should handle string boolean values', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
-			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
-				PropertyCategory.ON,
-				DataTypeType.BOOL,
-			);
+			const property = createMockProperty(WLED_LIGHT_PROPERTY_IDENTIFIERS.ON, PropertyCategory.ON, DataTypeType.BOOL);
 
 			wledAdapter.getDeviceByIdentifier.mockReturnValue({
 				host: '192.168.1.100',
@@ -403,9 +389,7 @@ describe('WledDevicePlatform', () => {
 			});
 			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
-			await platform.processBatch([
-				{ device, channel, property, value: 'true' },
-			]);
+			await platform.processBatch([{ device, channel, property, value: 'true' }]);
 
 			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',
@@ -416,11 +400,7 @@ describe('WledDevicePlatform', () => {
 		it('should handle numeric boolean values', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel(WLED_CHANNEL_IDENTIFIERS.LIGHT);
-			const property = createMockProperty(
-				WLED_LIGHT_PROPERTY_IDENTIFIERS.ON,
-				PropertyCategory.ON,
-				DataTypeType.BOOL,
-			);
+			const property = createMockProperty(WLED_LIGHT_PROPERTY_IDENTIFIERS.ON, PropertyCategory.ON, DataTypeType.BOOL);
 
 			wledAdapter.getDeviceByIdentifier.mockReturnValue({
 				host: '192.168.1.100',
@@ -430,9 +410,7 @@ describe('WledDevicePlatform', () => {
 			});
 			wledAdapter.updateStateExtended.mockResolvedValue(true);
 
-			await platform.processBatch([
-				{ device, channel, property, value: 1 },
-			]);
+			await platform.processBatch([{ device, channel, property, value: 1 }]);
 
 			expect(wledAdapter.updateStateExtended).toHaveBeenCalledWith(
 				'192.168.1.100',

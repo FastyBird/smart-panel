@@ -4,7 +4,11 @@ import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'cla
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
-import { DEFAULT_COMMAND_DEBOUNCE_MS, DEFAULT_CONNECTION_TIMEOUT_MS, DEVICES_WLED_PLUGIN_NAME } from '../devices-wled.constants';
+import {
+	DEFAULT_COMMAND_DEBOUNCE_MS,
+	DEFAULT_CONNECTION_TIMEOUT_MS,
+	DEVICES_WLED_PLUGIN_NAME,
+} from '../devices-wled.constants';
 
 /**
  * WLED timeouts update DTO

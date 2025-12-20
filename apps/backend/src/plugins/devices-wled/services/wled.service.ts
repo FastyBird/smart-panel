@@ -173,7 +173,7 @@ export class WledService implements IManagedPluginService {
 			await this.connectToDatabaseDevices();
 
 			// Start mDNS discovery if enabled
-			await this.startMdnsDiscovery();
+			this.startMdnsDiscovery();
 
 			// Start state polling
 			this.startPolling();
@@ -313,7 +313,7 @@ export class WledService implements IManagedPluginService {
 	 * Handle device error event
 	 */
 	@OnEvent(WledAdapterEventType.DEVICE_ERROR)
-	async handleDeviceError(event: WledDeviceErrorEvent): Promise<void> {
+	handleDeviceError(event: WledDeviceErrorEvent): void {
 		this.logger.error(`[WLED][SERVICE] Device error: ${event.host}`, {
 			message: event.error.message,
 		});
@@ -388,14 +388,14 @@ export class WledService implements IManagedPluginService {
 	/**
 	 * Start mDNS discovery if enabled
 	 */
-	private async startMdnsDiscovery(): Promise<void> {
+	private startMdnsDiscovery(): void {
 		if (!this.config.mdns.enabled) {
 			this.logger.debug('[WLED][SERVICE] mDNS discovery is disabled');
 			return;
 		}
 
 		try {
-			await this.mdnsDiscoverer.start(this.config.mdns.interface ?? undefined);
+			this.mdnsDiscoverer.start(this.config.mdns.interface ?? undefined);
 			this.logger.log('[WLED][SERVICE] mDNS discovery started');
 		} catch (error) {
 			this.logger.error('[WLED][SERVICE] Failed to start mDNS discovery', {
@@ -441,7 +441,9 @@ export class WledService implements IManagedPluginService {
 	 * Connect to a newly discovered device and map it to the database
 	 */
 	private async connectAndMapDiscoveredDevice(device: WledMdnsDiscoveredDevice): Promise<void> {
-		const identifier = device.mac ? `wled-${device.mac.replace(/:/g, '').toLowerCase()}` : `wled-${device.host.replace(/\./g, '-')}`;
+		const identifier = device.mac
+			? `wled-${device.mac.replace(/:/g, '').toLowerCase()}`
+			: `wled-${device.host.replace(/\./g, '-')}`;
 
 		try {
 			await this.wledAdapter.connect(device.host, identifier, this.config.timeouts.connectionTimeout);
@@ -506,7 +508,7 @@ export class WledService implements IManagedPluginService {
 			await previousLock;
 			return await fn();
 		} finally {
-			releaseLock!();
+			releaseLock();
 		}
 	}
 

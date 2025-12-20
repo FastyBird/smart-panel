@@ -1,6 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access,
-@typescript-eslint/require-await, @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -16,15 +15,14 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
-import { WledConfigModel } from '../models/config.model';
 import {
-	WledAdapterEventType,
 	WledDeviceConnectedEvent,
 	WledDeviceDisconnectedEvent,
 	WledDeviceStateChangedEvent,
 	WledInfo,
 	WledMdnsDiscoveredDevice,
 } from '../interfaces/wled.interface';
+import { WledConfigModel } from '../models/config.model';
 
 import { WledDeviceMapperService } from './device-mapper.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
@@ -209,7 +207,7 @@ describe('WledService', () => {
 				},
 			} as any);
 			deviceMapper.updateDeviceState.mockResolvedValue(undefined);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 
@@ -228,24 +226,22 @@ describe('WledService', () => {
 			devicesService.findAll.mockResolvedValue(mockDevices);
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 
-			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(
-				'device-1',
-				{ state: ConnectionState.UNKNOWN },
-			);
-			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(
-				'device-2',
-				{ state: ConnectionState.UNKNOWN },
-			);
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-1', {
+				state: ConnectionState.UNKNOWN,
+			});
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-2', {
+				state: ConnectionState.UNKNOWN,
+			});
 		});
 
 		it('should not start if already started', async () => {
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 			jest.clearAllMocks();
@@ -260,7 +256,7 @@ describe('WledService', () => {
 			// they don't crash the service
 			wledAdapter.connect.mockRejectedValue(new Error('Connection failed'));
 			wledAdapter.getDevice.mockReturnValue(null);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 
@@ -274,7 +270,7 @@ describe('WledService', () => {
 			// First start the service
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 
@@ -298,7 +294,7 @@ describe('WledService', () => {
 			// Start the service first
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 
@@ -318,10 +314,7 @@ describe('WledService', () => {
 		it('should call pluginServiceManager.restartService', async () => {
 			await service.restart();
 
-			expect(pluginServiceManager.restartService).toHaveBeenCalledWith(
-				DEVICES_WLED_PLUGIN_NAME,
-				'connector',
-			);
+			expect(pluginServiceManager.restartService).toHaveBeenCalledWith(DEVICES_WLED_PLUGIN_NAME, 'connector');
 		});
 	});
 
@@ -341,10 +334,7 @@ describe('WledService', () => {
 
 			await service.handleDeviceConnected(event);
 
-			expect(deviceMapper.setDeviceConnectionState).toHaveBeenCalledWith(
-				'wled-test',
-				ConnectionState.CONNECTED,
-			);
+			expect(deviceMapper.setDeviceConnectionState).toHaveBeenCalledWith('wled-test', ConnectionState.CONNECTED);
 		});
 	});
 
@@ -364,10 +354,7 @@ describe('WledService', () => {
 
 			await service.handleDeviceDisconnected(event);
 
-			expect(deviceMapper.setDeviceConnectionState).toHaveBeenCalledWith(
-				'wled-test',
-				ConnectionState.DISCONNECTED,
-			);
+			expect(deviceMapper.setDeviceConnectionState).toHaveBeenCalledWith('wled-test', ConnectionState.DISCONNECTED);
 		});
 	});
 
@@ -387,10 +374,7 @@ describe('WledService', () => {
 
 			await service.handleDeviceStateChanged(event);
 
-			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith(
-				'wled-test',
-				event.state,
-			);
+			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith('wled-test', event.state);
 		});
 	});
 
@@ -426,11 +410,7 @@ describe('WledService', () => {
 
 			await service.handleMdnsDeviceDiscovered(discoveredDevice);
 
-			expect(wledAdapter.connect).toHaveBeenCalledWith(
-				'192.168.1.200',
-				'wled-ffeeddccbbaa',
-				5000,
-			);
+			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.200', 'wled-ffeeddccbbaa', 5000);
 		});
 
 		it('should not auto-add device when autoAdd is disabled', async () => {
@@ -463,11 +443,7 @@ describe('WledService', () => {
 
 			await service.handleMdnsDeviceDiscovered(discoveredDevice);
 
-			expect(wledAdapter.connect).toHaveBeenCalledWith(
-				'192.168.1.200',
-				'wled-existing',
-				5000,
-			);
+			expect(wledAdapter.connect).toHaveBeenCalledWith('192.168.1.200', 'wled-existing', 5000);
 		});
 
 		it('should not connect if device is already connected', async () => {
@@ -514,7 +490,7 @@ describe('WledService', () => {
 			wledAdapter.refreshState.mockResolvedValue({ on: true, brightness: 128 } as any);
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 			jest.clearAllMocks();
@@ -530,14 +506,12 @@ describe('WledService', () => {
 		});
 
 		it('should not poll disabled devices', async () => {
-			const mockRegisteredDevices = [
-				{ host: '192.168.1.100', identifier: 'wled-1', connected: true, enabled: false },
-			];
+			const mockRegisteredDevices = [{ host: '192.168.1.100', identifier: 'wled-1', connected: true, enabled: false }];
 
 			wledAdapter.getRegisteredDevices.mockReturnValue(mockRegisteredDevices as any[]);
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 			jest.clearAllMocks();
@@ -551,14 +525,12 @@ describe('WledService', () => {
 		});
 
 		it('should not poll disconnected devices', async () => {
-			const mockRegisteredDevices = [
-				{ host: '192.168.1.100', identifier: 'wled-1', connected: false, enabled: true },
-			];
+			const mockRegisteredDevices = [{ host: '192.168.1.100', identifier: 'wled-1', connected: false, enabled: true }];
 
 			wledAdapter.getRegisteredDevices.mockReturnValue(mockRegisteredDevices as any[]);
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
-			mdnsDiscoverer.start.mockResolvedValue(undefined);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
 
 			await service.start();
 			jest.clearAllMocks();

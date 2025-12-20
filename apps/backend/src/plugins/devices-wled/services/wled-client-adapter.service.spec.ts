@@ -1,13 +1,12 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access,
-@typescript-eslint/require-await
+eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { WledAdapterEventType } from '../interfaces/wled.interface';
 
@@ -66,7 +65,11 @@ describe('WledClientAdapterService', () => {
 				grp: 1,
 				spc: 0,
 				of: 0,
-				col: [[255, 0, 0], [0, 0, 0], [0, 0, 0]],
+				col: [
+					[255, 0, 0],
+					[0, 0, 0],
+					[0, 0, 0],
+				],
 				fx: 0,
 				sx: 128,
 				ix: 128,
@@ -177,12 +180,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('disconnect', () => {
 		it('should disconnect a device and emit disconnected event', async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 			jest.clearAllMocks();
@@ -209,12 +207,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('getDevice', () => {
 		it('should return registered device by host', async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 
@@ -233,12 +226,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('getDeviceByIdentifier', () => {
 		it('should return registered device by identifier', async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 
@@ -257,12 +245,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('updateState', () => {
 		it('should send state update and emit state changed event', async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 			jest.clearAllMocks();
@@ -291,12 +274,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('turnOn/turnOff', () => {
 		beforeEach(async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 			jest.clearAllMocks();
@@ -333,12 +311,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('setBrightness', () => {
 		beforeEach(async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 			jest.clearAllMocks();
@@ -374,12 +347,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('setColor', () => {
 		beforeEach(async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 			jest.clearAllMocks();
@@ -420,12 +388,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('setEffect', () => {
 		beforeEach(async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 			jest.clearAllMocks();
@@ -466,12 +429,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('refreshState', () => {
 		beforeEach(async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 			jest.clearAllMocks();
@@ -502,12 +460,7 @@ describe('WledClientAdapterService', () => {
 
 	describe('isConnected', () => {
 		it('should return true for connected device', async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-test');
 
@@ -521,22 +474,12 @@ describe('WledClientAdapterService', () => {
 
 	describe('getRegisteredDevices', () => {
 		it('should return all registered devices', async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-1');
 			jest.clearAllMocks();
 
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.101', 'wled-2');
 
@@ -548,22 +491,12 @@ describe('WledClientAdapterService', () => {
 
 	describe('disconnectAll', () => {
 		it('should disconnect all devices', async () => {
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.100', 'wled-1');
 			jest.clearAllMocks();
 
-			mockFetchMultiple([
-				{ data: mockWledState },
-				{ data: mockWledInfo },
-				{ data: ['Solid'] },
-				{ data: ['Default'] },
-			]);
+			mockFetchMultiple([{ data: mockWledState }, { data: mockWledInfo }, { data: ['Solid'] }, { data: ['Default'] }]);
 
 			await service.connect('192.168.1.101', 'wled-2');
 			jest.clearAllMocks();

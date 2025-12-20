@@ -23,6 +23,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { WledDiscoveryController } from './controllers/wled-discovery.controller';
 import {
 	DEVICES_WLED_API_TAG_DESCRIPTION,
 	DEVICES_WLED_API_TAG_NAME,
@@ -39,7 +40,6 @@ import { WledUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateWledDeviceDto } from './dto/update-device.dto';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from './entities/devices-wled.entity';
 import { WledConfigModel } from './models/config.model';
-import { WledDiscoveryController } from './controllers/wled-discovery.controller';
 import { WledDevicePlatform } from './platforms/wled.device.platform';
 import { WledDeviceMapperService } from './services/device-mapper.service';
 import { WledClientAdapterService } from './services/wled-client-adapter.service';

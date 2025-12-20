@@ -3,12 +3,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import {
 	DEVICES_WLED_TYPE,
-	specBrightnessToWled,
 	WLED_CHANNEL_IDENTIFIERS,
 	WLED_LIGHT_PROPERTY_IDENTIFIERS,
 	WLED_NIGHTLIGHT_PROPERTY_IDENTIFIERS,
 	WLED_SEGMENT_PROPERTY_IDENTIFIERS,
 	WLED_SYNC_PROPERTY_IDENTIFIERS,
+	specBrightnessToWled,
 } from '../devices-wled.constants';
 import { WledCommandException } from '../devices-wled.exceptions';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from '../entities/devices-wled.entity';
@@ -55,7 +55,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 		}
 
 		// Get the WLED device from the adapter
-		const registeredDevice = this.wledAdapter.getDeviceByIdentifier(device.identifier!);
+		const registeredDevice = this.wledAdapter.getDeviceByIdentifier(device.identifier);
 
 		if (!registeredDevice) {
 			this.logger.warn(
@@ -170,9 +170,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
-			this.logger.log(
-				`[WLED][PLATFORM] Sending state update to ${device.identifier}: ${JSON.stringify(stateUpdate)}`,
-			);
+			this.logger.log(`[WLED][PLATFORM] Sending state update to ${device.identifier}: ${JSON.stringify(stateUpdate)}`);
 
 			const success = await this.wledAdapter.updateStateExtended(host, stateUpdate);
 
@@ -183,7 +181,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 			return success;
 		} catch (error) {
 			throw new WledCommandException(
-				device.identifier!,
+				device.identifier,
 				'main light update',
 				error instanceof Error ? error.message : String(error),
 			);
@@ -228,7 +226,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 			return await this.wledAdapter.setNightlight(host, nightlightUpdate);
 		} catch (error) {
 			throw new WledCommandException(
-				device.identifier!,
+				device.identifier,
 				'nightlight update',
 				error instanceof Error ? error.message : String(error),
 			);
@@ -265,7 +263,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 			return await this.wledAdapter.setUdpSync(host, syncUpdate);
 		} catch (error) {
 			throw new WledCommandException(
-				device.identifier!,
+				device.identifier,
 				'sync update',
 				error instanceof Error ? error.message : String(error),
 			);
@@ -352,7 +350,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 			return await this.wledAdapter.updateSegment(host, segmentId, segmentUpdate);
 		} catch (error) {
 			throw new WledCommandException(
-				device.identifier!,
+				device.identifier,
 				`segment ${segmentId} update`,
 				error instanceof Error ? error.message : String(error),
 			);

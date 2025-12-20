@@ -1,6 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access,
-@typescript-eslint/require-await, @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -96,7 +95,11 @@ describe('WledDeviceMapperService', () => {
 				grouping: 1,
 				spacing: 0,
 				offset: 0,
-				colors: [[255, 0, 0], [0, 0, 0], [0, 0, 0]],
+				colors: [
+					[255, 0, 0],
+					[0, 0, 0],
+					[0, 0, 0],
+				],
 				effect: 0,
 				effectSpeed: 128,
 				effectIntensity: 128,
@@ -223,8 +226,12 @@ describe('WledDeviceMapperService', () => {
 			channelsService.findOneBy.mockResolvedValue(null);
 			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', 'device-1'));
 			channelsPropertiesService.findOneBy.mockResolvedValue(null);
-			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'firmware_revision', 'channel-1'));
-			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'firmware_revision', 'channel-1'));
+			channelsPropertiesService.create.mockResolvedValue(
+				createMockProperty('prop-1', 'firmware_revision', 'channel-1'),
+			);
+			channelsPropertiesService.update.mockResolvedValue(
+				createMockProperty('prop-1', 'firmware_revision', 'channel-1'),
+			);
 			deviceConnectivityService.setConnectionState.mockResolvedValue(undefined);
 
 			const result = await service.mapDevice('192.168.1.100', mockDeviceContext);
@@ -237,10 +244,9 @@ describe('WledDeviceMapperService', () => {
 					hostname: '192.168.1.100',
 				}),
 			);
-			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(
-				mockDevice.id,
-				{ state: ConnectionState.CONNECTED },
-			);
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
+				state: ConnectionState.CONNECTED,
+			});
 		});
 
 		it('should update hostname when device exists and hostname changed', async () => {
@@ -252,8 +258,12 @@ describe('WledDeviceMapperService', () => {
 			channelsService.findOneBy.mockResolvedValue(null);
 			channelsService.create.mockResolvedValue(createMockChannel('channel-1', 'device_information', 'device-1'));
 			channelsPropertiesService.findOneBy.mockResolvedValue(null);
-			channelsPropertiesService.create.mockResolvedValue(createMockProperty('prop-1', 'firmware_revision', 'channel-1'));
-			channelsPropertiesService.update.mockResolvedValue(createMockProperty('prop-1', 'firmware_revision', 'channel-1'));
+			channelsPropertiesService.create.mockResolvedValue(
+				createMockProperty('prop-1', 'firmware_revision', 'channel-1'),
+			);
+			channelsPropertiesService.update.mockResolvedValue(
+				createMockProperty('prop-1', 'firmware_revision', 'channel-1'),
+			);
 			deviceConnectivityService.setConnectionState.mockResolvedValue(undefined);
 
 			await service.mapDevice('192.168.1.100', mockDeviceContext);
@@ -275,10 +285,9 @@ describe('WledDeviceMapperService', () => {
 			const result = await service.mapDevice('192.168.1.100', mockDeviceContext);
 
 			expect(result).toBe(mockDevice);
-			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(
-				mockDevice.id,
-				{ state: ConnectionState.UNKNOWN },
-			);
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
+				state: ConnectionState.UNKNOWN,
+			});
 			expect(channelsService.findOneBy).not.toHaveBeenCalled();
 		});
 
@@ -294,7 +303,7 @@ describe('WledDeviceMapperService', () => {
 			channelsPropertiesService.create.mockImplementation((channelId, dto) => {
 				return Promise.resolve(createMockProperty(`prop-${dto.identifier}`, dto.identifier, channelId));
 			});
-			channelsPropertiesService.update.mockImplementation((propId, dto) => {
+			channelsPropertiesService.update.mockImplementation((propId, _dto) => {
 				return Promise.resolve(createMockProperty(propId, 'test', 'channel-1'));
 			});
 			deviceConnectivityService.setConnectionState.mockResolvedValue(undefined);
@@ -401,10 +410,9 @@ describe('WledDeviceMapperService', () => {
 
 			await service.setDeviceConnectionState('wled-test', ConnectionState.CONNECTED);
 
-			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(
-				mockDevice.id,
-				{ state: ConnectionState.CONNECTED },
-			);
+			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(mockDevice.id, {
+				state: ConnectionState.CONNECTED,
+			});
 		});
 
 		it('should do nothing when device does not exist', async () => {

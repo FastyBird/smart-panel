@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { DEFAULT_COMMAND_DEBOUNCE_MS, DEFAULT_CONNECTION_TIMEOUT_MS } from '../devices-wled.constants';
 import { WledConnectionException } from '../devices-wled.exceptions';
@@ -9,10 +9,8 @@ import {
 	RegisteredWledDevice,
 	WledAdapterEventType,
 	WledDeviceContext,
-	WledEffect,
 	WledInfo,
 	WledNightlightUpdate,
-	WledPalette,
 	WledSegment,
 	WledState,
 	WledStateUpdate,
@@ -337,12 +335,10 @@ export class WledClientAdapterService {
 
 		// Debounce the update
 		return new Promise((resolve) => {
-			const timer = setTimeout(async () => {
+			const timer = setTimeout(() => {
 				this.debounceTimers.delete(host);
 
-				const result = await this.executeStateUpdate(host, update);
-
-				resolve(result);
+				void this.executeStateUpdate(host, update).then(resolve);
 			}, debounceMs);
 
 			this.debounceTimers.set(host, timer);
@@ -605,7 +601,19 @@ export class WledClientAdapterService {
 
 			ws.on('message', (data: WebSocket.Data) => {
 				try {
-					const message = JSON.parse(data.toString());
+					let dataStr: string;
+
+					if (Buffer.isBuffer(data)) {
+						dataStr = data.toString('utf-8');
+					} else if (data instanceof ArrayBuffer) {
+						dataStr = Buffer.from(data).toString('utf-8');
+					} else if (Array.isArray(data)) {
+						dataStr = Buffer.concat(data).toString('utf-8');
+					} else {
+						dataStr = data;
+					}
+
+					const message = JSON.parse(dataStr) as { state?: WledApiState };
 
 					// WLED sends state updates through WebSocket
 					if (message.state) {
