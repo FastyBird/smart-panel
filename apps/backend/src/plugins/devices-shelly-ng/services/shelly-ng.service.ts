@@ -7,6 +7,7 @@ import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
+	ConfigChangeResult,
 	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
@@ -106,22 +107,26 @@ export class ShellyNgService implements IManagedPluginService {
 	}
 
 	/**
-	 * Handle configuration changes by restarting the service.
+	 * Handle configuration changes.
 	 * Called by PluginServiceManagerService when config updates occur.
 	 *
 	 * For Shelly NG service, config changes (mDNS interface, WebSocket settings)
-	 * require a full restart to apply.
+	 * require a full restart to apply. Returns restartRequired: true to signal
+	 * the manager to perform the restart, ensuring proper runtime tracking.
 	 */
-	async onConfigChanged(): Promise<void> {
+	onConfigChanged(): Promise<ConfigChangeResult> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
 
-		// Restart to apply new settings (mDNS interface, WebSocket config, etc.)
+		// Signal that restart is required to apply new settings
+		// The manager will handle stop/start to maintain accurate runtime tracking
 		if (this.state === 'started') {
-			this.logger.log('[SHELLY NG][SHELLY SERVICE] Config changed, restarting...');
+			this.logger.log('[SHELLY NG][SHELLY SERVICE] Config changed, restart required');
 
-			await this.restart();
+			return Promise.resolve({ restartRequired: true });
 		}
+
+		return Promise.resolve({ restartRequired: false });
 	}
 
 	/**

@@ -87,8 +87,22 @@ export interface IManagedPluginService {
 	/**
 	 * Optional: Called when plugin configuration changes.
 	 * Allows service to react to config changes without full restart.
+	 *
+	 * Services can return `{ restartRequired: true }` to signal that the manager
+	 * should perform a full restart. This ensures runtime tracking (uptime, restart
+	 * counts) remains accurate. The manager will call stop() then start().
+	 *
+	 * For simple config updates that don't require restart, return void or
+	 * `{ restartRequired: false }`.
 	 */
-	onConfigChanged?(): Promise<void>;
+	onConfigChanged?(): Promise<void | ConfigChangeResult>;
+}
+
+/**
+ * Result of onConfigChanged() to signal if restart is needed.
+ */
+export interface ConfigChangeResult {
+	restartRequired: boolean;
 }
 
 /**

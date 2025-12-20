@@ -8,6 +8,7 @@ import { PluginConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
 
 import {
+	ConfigChangeResult,
 	IManagedPluginService,
 	ServiceRegistration,
 	ServiceRuntimeInfo,
@@ -523,11 +524,19 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			// Try to stop cleanly in case there are resources to clean up
 			await this.stopService(registration);
 		} else if (shouldBeRunning && currentState === 'started' && registration.service.onConfigChanged) {
-			// Notify service of config change without restart
+			// Notify service of config change
 			this.logger.debug(`[SYNC] Notifying ${key} of config change`);
 
 			try {
-				await registration.service.onConfigChanged();
+				const result = await registration.service.onConfigChanged();
+
+				// Check if service signals that restart is required
+				if (this.isConfigChangeResult(result) && result.restartRequired) {
+					this.logger.log(`[SYNC] Service ${key} requires restart after config change`);
+
+					await this.stopService(registration);
+					await this.startService(registration);
+				}
 			} catch (error) {
 				const err = error as Error;
 
@@ -627,5 +636,9 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		} catch {
 			return null;
 		}
+	}
+
+	private isConfigChangeResult(result: void | ConfigChangeResult): result is ConfigChangeResult {
+		return result !== undefined && typeof result === 'object' && 'restartRequired' in result;
 	}
 }
