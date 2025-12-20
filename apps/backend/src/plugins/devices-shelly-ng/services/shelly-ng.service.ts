@@ -121,10 +121,19 @@ export class ShellyNgService implements IManagedPluginService {
 	/**
 	 * Restart the service by stopping and starting again.
 	 * Used by entity subscribers when device configuration changes.
+	 *
+	 * Only restarts if the plugin is enabled, respecting centralized
+	 * enabled state management through PluginServiceManagerService.
 	 */
 	async restart(): Promise<void> {
 		await this.stop();
-		await this.start();
+
+		// Only start if plugin is enabled - respect centralized state management
+		if (this.config.enabled) {
+			await this.start();
+		} else {
+			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Plugin disabled, skipping restart');
+		}
 	}
 
 	private withLock<T>(fn: () => Promise<T>): Promise<T> {
