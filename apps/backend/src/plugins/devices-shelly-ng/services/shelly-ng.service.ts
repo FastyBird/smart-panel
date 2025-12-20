@@ -235,7 +235,7 @@ export class ShellyNgService implements IManagedPluginService {
 
 			this.state = 'started';
 		} catch (e) {
-			this.state = 'stopped';
+			this.state = 'error';
 			this.shellies = undefined;
 			throw e;
 		}

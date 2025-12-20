@@ -117,7 +117,7 @@ export class ShellyV1Service implements IManagedPluginService {
 					stack: error instanceof Error ? error.stack : undefined,
 				});
 
-				this.state = 'stopped';
+				this.state = 'error';
 
 				throw error;
 			}
