@@ -11,6 +11,7 @@ import {
 	IManagedPluginService,
 	ServiceRegistration,
 	ServiceRuntimeInfo,
+	ServiceState,
 	ServiceStatusExtended,
 } from './managed-plugin-service.interface';
 
@@ -455,16 +456,42 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	private async syncServiceState(registration: ServiceRegistration): Promise<void> {
 		const key = this.getServiceKey(registration.pluginName, registration.serviceId);
 		const config = this.getPluginConfig(registration.pluginName);
-		const currentState = registration.service.getState();
+		let currentState = registration.service.getState();
 		const shouldBeRunning = config?.enabled ?? false;
+
+		// Handle transitional states by waiting for them to complete
+		if (currentState === 'starting' || currentState === 'stopping') {
+			this.logger.debug(`[SYNC] Service ${key} is ${currentState}, waiting for transition to complete`);
+
+			const targetState = currentState === 'starting' ? 'started' : 'stopped';
+
+			await this.waitForState(registration, targetState);
+
+			currentState = registration.service.getState();
+		}
 
 		if (shouldBeRunning && currentState === 'stopped') {
 			this.logger.log(`[SYNC] Plugin ${registration.pluginName} enabled, starting ${registration.serviceId}`);
 
 			await this.startService(registration);
+		} else if (shouldBeRunning && currentState === 'error') {
+			// Service is in error state but should be running - attempt restart
+			this.logger.log(
+				`[SYNC] Plugin ${registration.pluginName} enabled but service in error, restarting ${registration.serviceId}`,
+			);
+
+			await this.startService(registration);
 		} else if (!shouldBeRunning && currentState === 'started') {
 			this.logger.log(`[SYNC] Plugin ${registration.pluginName} disabled, stopping ${registration.serviceId}`);
 
+			await this.stopService(registration);
+		} else if (!shouldBeRunning && currentState === 'error') {
+			// Service is in error state and should not be running - ensure it's stopped
+			this.logger.debug(
+				`[SYNC] Plugin ${registration.pluginName} disabled, service ${registration.serviceId} already in error state`,
+			);
+
+			// Try to stop cleanly in case there are resources to clean up
 			await this.stopService(registration);
 		} else if (shouldBeRunning && currentState === 'started' && registration.service.onConfigChanged) {
 			// Notify service of config change without restart
@@ -478,6 +505,43 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				this.logger.error(`[SYNC] Config change handler failed for ${key}: ${err.message}`);
 			}
 		}
+	}
+
+	private waitForState(
+		registration: ServiceRegistration,
+		targetState: ServiceState,
+		timeoutMs: number = 10000,
+	): Promise<void> {
+		return new Promise((resolve) => {
+			const start = Date.now();
+
+			const check = () => {
+				const currentState = registration.service.getState();
+
+				// Success: reached target state
+				if (currentState === targetState) {
+					return resolve();
+				}
+
+				// Also resolve if service ended up in error state (don't wait forever)
+				if (currentState === 'error') {
+					return resolve();
+				}
+
+				// Timeout: resolve anyway to avoid blocking forever
+				if (Date.now() - start > timeoutMs) {
+					this.logger.warn(
+						`[SYNC] Timeout waiting for ${registration.pluginName}:${registration.serviceId} to reach ${targetState}`,
+					);
+
+					return resolve();
+				}
+
+				setTimeout(check, 50);
+			};
+
+			check();
+		});
 	}
 
 	private getSortedServices(): ServiceRegistration[] {
