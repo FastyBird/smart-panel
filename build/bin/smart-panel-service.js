@@ -99,6 +99,10 @@ program
 				spinner.fail('--admin-password is required when using --admin-username');
 				process.exit(1);
 			}
+			if (options.adminPassword && !options.adminUsername) {
+				spinner.fail('--admin-username is required when using --admin-password');
+				process.exit(1);
+			}
 
 			// Install
 			spinner.start('Installing Smart Panel service...');
