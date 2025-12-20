@@ -1,7 +1,8 @@
-import { Logger, Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../common/logger/extension-logger.service';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsModule } from '../extensions/extensions.module';
@@ -155,7 +156,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 	],
 })
 export class DevicesModule implements OnModuleInit {
-	private readonly logger = new Logger(DevicesModule.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesModule');
 
 	constructor(
 		private readonly eventRegistry: CommandEventRegistryService,

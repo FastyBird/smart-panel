@@ -9,14 +9,14 @@ describe('ExtensionLoggerService', () => {
 	});
 
 	describe('message formatting', () => {
-		test('formats message with extension type and component name', () => {
+		test('formats message with component name only (extension type is passed as tag)', () => {
 			const logger = new ExtensionLoggerService();
 			logger.setContext('devices-shelly-ng-plugin', 'ShellyService');
 
 			const formatted = (logger as unknown as { formatMessage: (msg: string) => string }).formatMessage(
 				'Starting service',
 			);
-			expect(formatted).toBe('[devices-shelly-ng-plugin][ShellyService] Starting service');
+			expect(formatted).toBe('[ShellyService] Starting service');
 		});
 
 		test('formats message for home-assistant plugin', () => {
@@ -26,7 +26,7 @@ describe('ExtensionLoggerService', () => {
 			const formatted = (logger as unknown as { formatMessage: (msg: string) => string }).formatMessage(
 				'Connected to server',
 			);
-			expect(formatted).toBe('[devices-home-assistant-plugin][WsService] Connected to server');
+			expect(formatted).toBe('[WsService] Connected to server');
 		});
 
 		test('formats message for pages plugin', () => {
@@ -36,7 +36,7 @@ describe('ExtensionLoggerService', () => {
 			const formatted = (logger as unknown as { formatMessage: (msg: string) => string }).formatMessage(
 				'Loading tiles',
 			);
-			expect(formatted).toBe('[pages-tiles-plugin][TilesService] Loading tiles');
+			expect(formatted).toBe('[TilesService] Loading tiles');
 		});
 
 		test('formats message for logger plugin', () => {
@@ -46,7 +46,7 @@ describe('ExtensionLoggerService', () => {
 			const formatted = (logger as unknown as { formatMessage: (msg: string) => string }).formatMessage(
 				'Rotating log file',
 			);
-			expect(formatted).toBe('[logger-rotating-file-plugin][FileLogger] Rotating log file');
+			expect(formatted).toBe('[FileLogger] Rotating log file');
 		});
 
 		test('formats message for WLED plugin', () => {
@@ -56,7 +56,7 @@ describe('ExtensionLoggerService', () => {
 			const formatted = (logger as unknown as { formatMessage: (msg: string) => string }).formatMessage(
 				'Device connected',
 			);
-			expect(formatted).toBe('[devices-wled-plugin][WledService] Device connected');
+			expect(formatted).toBe('[WledService] Device connected');
 		});
 	});
 
@@ -67,7 +67,7 @@ describe('ExtensionLoggerService', () => {
 
 			// Verify by checking formatted message
 			const formatted = (logger as unknown as { formatMessage: (msg: string) => string }).formatMessage('test');
-			expect(formatted).toBe('[devices-test-plugin][TestService] test');
+			expect(formatted).toBe('[TestService] test');
 		});
 	});
 });

@@ -1,10 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 
 interface BundledManifestEntry {
 	name: string;
@@ -28,7 +30,7 @@ interface BundledManifest {
  */
 @Injectable()
 export class ExtensionsBundledService {
-	private readonly logger = new Logger(ExtensionsBundledService.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ExtensionsBundledService');
 
 	private bundledSet: Set<string> | null = null;
 	private manifest: BundledManifest | null = null;

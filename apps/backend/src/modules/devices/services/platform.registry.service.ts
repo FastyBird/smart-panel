@@ -1,11 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
 
 @Injectable()
 export class PlatformRegistryService {
-	private readonly logger = new Logger(PlatformRegistryService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PlatformRegistryService');
 
 	private readonly platforms: Record<string, IDevicePlatform> = {};
 
@@ -13,14 +15,14 @@ export class PlatformRegistryService {
 		const type = platform.getType();
 
 		if (type in this.platforms) {
-			this.logger.warn(`[PLATFORM REGISTRY] Platform already registered type=${type}`);
+			this.logger.warn(`Platform already registered type=${type}`);
 
 			return false;
 		}
 
 		this.platforms[type] = platform;
 
-		this.logger.log(`[PLATFORM REGISTRY] Registered new platform type=${type}`);
+		this.logger.log(`Registered new platform type=${type}`);
 
 		return true;
 	}
@@ -29,7 +31,7 @@ export class PlatformRegistryService {
 		const platform = this.platforms[device.type];
 
 		if (!platform) {
-			this.logger.warn(`[PLATFORM REGISTRY] No platform found for device type=${device.type}`);
+			this.logger.warn(`No platform found for device type=${device.type}`);
 
 			return null;
 		}

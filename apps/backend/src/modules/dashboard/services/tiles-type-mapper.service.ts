@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
+import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateTileDto } from '../dto/create-tile.dto';
 import { UpdateTileDto } from '../dto/update-tile.dto';
@@ -18,7 +20,7 @@ export interface TileTypeMapping<
 
 @Injectable()
 export class TilesTypeMapperService {
-	private readonly logger = new Logger(TilesTypeMapperService.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'TilesTypeMapperService');
 
 	private readonly mappings = new Map<string, TileTypeMapping<any, any, any>>();
 
@@ -33,7 +35,7 @@ export class TilesTypeMapperService {
 	getMapping<TTile extends TileEntity, TCreateDTO extends CreateTileDto, TUpdateDTO extends UpdateTileDto>(
 		type: string,
 	): TileTypeMapping<TTile, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`[LOOKUP] Attempting to find mapping for tile type: '${type}'`);
+		this.logger.debug(`Attempting to find mapping for tile type: '${type}'`);
 
 		const mapping = this.mappings.get(type);
 

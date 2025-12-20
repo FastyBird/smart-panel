@@ -40,12 +40,12 @@ export class HomeAssistantStatesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<HomeAssistantStatesResponseModel> {
-		this.logger.debug('[HOME ASSISTANT][STATES CONTROLLER] Fetching all Home Assistant entities states');
+		this.logger.debug('Fetching all Home Assistant entities states');
 
 		try {
 			const states = await this.homeAssistantHttpService.getStates();
 
-			this.logger.debug(`[HOME ASSISTANT][STATES CONTROLLER] Retrieved ${states.length} entities states`);
+			this.logger.debug(`Retrieved ${states.length} entities states`);
 
 			const response = new HomeAssistantStatesResponseModel();
 			response.data = states;
@@ -54,20 +54,17 @@ export class HomeAssistantStatesController {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error(
-					'[HOME ASSISTANT][STATES CONTROLLER] Devices Home Assistant plugin is not properly configured',
-					{
-						message: err.message,
-						stack: err.stack,
-					},
-				);
+				this.logger.error('Devices Home Assistant plugin is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
 				throw new NotFoundException('Home Assistant entities states could not be loaded from Home Assistant instance');
 			}
 
-			this.logger.error('[HOME ASSISTANT][STATES CONTROLLER] Loading Home Assistant entities states failed', {
+			this.logger.error('Loading Home Assistant entities states failed', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -90,14 +87,12 @@ export class HomeAssistantStatesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':entityId')
 	async findOne(@Param('entityId') entityId: string): Promise<HomeAssistantStateResponseModel> {
-		this.logger.debug(`[HOME ASSISTANT][STATES CONTROLLER] Fetching Home Assistant entity state id=${entityId}`);
+		this.logger.debug(`Fetching Home Assistant entity state id=${entityId}`);
 
 		try {
 			const state = await this.homeAssistantHttpService.getState(entityId);
 
-			this.logger.debug(
-				`[HOME ASSISTANT][STATES CONTROLLER] Found Home Assistant entity state entityId=${state.entityId}`,
-			);
+			this.logger.debug(`Found Home Assistant entity state entityId=${state.entityId}`);
 
 			const response = new HomeAssistantStateResponseModel();
 			response.data = state;
@@ -106,20 +101,17 @@ export class HomeAssistantStatesController {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error(
-					'[HOME ASSISTANT][STATES CONTROLLER] Devices Home Assistant plugin is not properly configured',
-					{
-						message: err.message,
-						stack: err.stack,
-					},
-				);
+				this.logger.error('Devices Home Assistant plugin is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
 				throw new NotFoundException('Home Assistant entity state could not be loaded from Home Assistant instance');
 			}
 
-			this.logger.error('[HOME ASSISTANT][STATES CONTROLLER] Loading Home Assistant entity state failed', {
+			this.logger.error('Loading Home Assistant entity state failed', {
 				message: err.message,
 				stack: err.stack,
 			});

@@ -48,13 +48,13 @@ export class WledDevicePlatform implements IDevicePlatform {
 		const device = updates[0].device;
 
 		if (!(device instanceof WledDeviceEntity)) {
-			this.logger.error('[WLED][PLATFORM] Failed to update device property, invalid device provided');
+			this.logger.error('Failed to update device property, invalid device provided');
 			return false;
 		}
 
 		// Check if device is enabled
 		if (!device.enabled) {
-			this.logger.debug(`[WLED][PLATFORM] Device ${device.identifier} is disabled, ignoring command`);
+			this.logger.debug(`Device ${device.identifier} is disabled, ignoring command`);
 			return false;
 		}
 
@@ -62,14 +62,12 @@ export class WledDevicePlatform implements IDevicePlatform {
 		const registeredDevice = this.wledAdapter.getDeviceByIdentifier(device.identifier);
 
 		if (!registeredDevice) {
-			this.logger.warn(
-				`[WLED][PLATFORM] WLED device not found in adapter: ${device.identifier}, device may be offline`,
-			);
+			this.logger.warn(`WLED device not found in adapter: ${device.identifier}, device may be offline`);
 			return false;
 		}
 
 		if (!registeredDevice.connected) {
-			this.logger.warn(`[WLED][PLATFORM] WLED device is not connected: ${device.identifier}`);
+			this.logger.warn(`WLED device is not connected: ${device.identifier}`);
 			return false;
 		}
 
@@ -107,7 +105,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error('[WLED][PLATFORM] Error processing property update', {
+				this.logger.error('Error processing property update', {
 					message: err.message,
 					stack: err.stack,
 				});
@@ -120,9 +118,9 @@ export class WledDevicePlatform implements IDevicePlatform {
 		const allSucceeded = results.every((r) => r === true);
 
 		if (!allSucceeded) {
-			this.logger.warn(`[WLED][PLATFORM] Some properties failed to update for device id=${device.id}`);
+			this.logger.warn(`Some properties failed to update for device id=${device.id}`);
 		} else {
-			this.logger.log(`[WLED][PLATFORM] Successfully processed all property updates for device id=${device.id}`);
+			this.logger.log(`Successfully processed all property updates for device id=${device.id}`);
 		}
 
 		return allSucceeded;
@@ -154,7 +152,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 			}
 		}
 
-		this.logger.debug(`[WLED][PLATFORM] Ignoring command for unhandled channel: ${channelId}`);
+		this.logger.debug(`Ignoring command for unhandled channel: ${channelId}`);
 		return false;
 	}
 
@@ -174,16 +172,16 @@ export class WledDevicePlatform implements IDevicePlatform {
 			const stateUpdate = this.buildMainLightStateUpdate(propertyUpdates, currentColors);
 
 			if (Object.keys(stateUpdate).length === 0) {
-				this.logger.debug('[WLED][PLATFORM] No valid properties to update');
+				this.logger.debug('No valid properties to update');
 				return false;
 			}
 
-			this.logger.log(`[WLED][PLATFORM] Sending state update to ${device.identifier}: ${JSON.stringify(stateUpdate)}`);
+			this.logger.log(`Sending state update to ${device.identifier}: ${JSON.stringify(stateUpdate)}`);
 
 			const success = await this.wledAdapter.updateStateExtended(host, stateUpdate);
 
 			if (success) {
-				this.logger.debug(`[WLED][PLATFORM] Successfully updated device ${device.identifier}`);
+				this.logger.debug(`Successfully updated device ${device.identifier}`);
 			}
 
 			return success;
@@ -230,7 +228,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
-			this.logger.log(`[WLED][PLATFORM] Sending nightlight update to ${device.identifier}`);
+			this.logger.log(`Sending nightlight update to ${device.identifier}`);
 			return await this.wledAdapter.setNightlight(host, nightlightUpdate);
 		} catch (error) {
 			throw new WledCommandException(
@@ -267,7 +265,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
-			this.logger.log(`[WLED][PLATFORM] Sending sync update to ${device.identifier}`);
+			this.logger.log(`Sending sync update to ${device.identifier}`);
 			return await this.wledAdapter.setUdpSync(host, syncUpdate);
 		} catch (error) {
 			throw new WledCommandException(
@@ -364,7 +362,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
-			this.logger.log(`[WLED][PLATFORM] Sending segment ${segmentId} update to ${device.identifier}`);
+			this.logger.log(`Sending segment ${segmentId} update to ${device.identifier}`);
 			return await this.wledAdapter.updateSegment(host, segmentId, segmentUpdate);
 		} catch (error) {
 			throw new WledCommandException(
@@ -454,7 +452,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 					break;
 
 				default:
-					this.logger.debug(`[WLED][PLATFORM] Unknown property: ${property.identifier}, ignoring`);
+					this.logger.debug(`Unknown property: ${property.identifier}, ignoring`);
 			}
 		}
 

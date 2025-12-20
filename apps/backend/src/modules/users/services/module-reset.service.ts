@@ -1,15 +1,16 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { UserEntity } from '../entities/users.entity';
-import { EventType } from '../users.constants';
+import { EventType, USERS_MODULE_NAME } from '../users.constants';
 
 @Injectable()
 export class ModuleResetService {
-	private readonly logger = new Logger(ModuleResetService.name);
+	private readonly logger = createExtensionLogger(USERS_MODULE_NAME, 'ModuleResetService');
 
 	constructor(
 		@InjectRepository(UserEntity)
@@ -19,13 +20,13 @@ export class ModuleResetService {
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			this.logger.debug(`[RESET] Resetting all module data`);
+			this.logger.debug(`Resetting all module data`);
 
 			await this.usersRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.USER_RESET, null);
 
-			this.logger.log('[RESET] Module data were successfully reset');
+			this.logger.log('Module data were successfully reset');
 
 			this.eventEmitter.emit(EventType.MODULE_RESET, null);
 
@@ -33,7 +34,7 @@ export class ModuleResetService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[RESET] Failed to reset module data', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to reset module data', { message: err.message, stack: err.stack });
 
 			return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
 		}

@@ -1,9 +1,11 @@
 import { FieldType, IPoint } from 'influx';
 
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { CurrentDayModel } from '../models/weather.model';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 const MEASUREMENT_NAME = 'weather';
 
@@ -36,7 +38,7 @@ export interface IWeatherHistoryQuery {
 
 @Injectable()
 export class WeatherHistoryService implements OnModuleInit {
-	private readonly logger = new Logger(WeatherHistoryService.name);
+	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'WeatherHistoryService');
 
 	constructor(private readonly influxDb: InfluxDbService) {}
 
@@ -66,10 +68,10 @@ export class WeatherHistoryService implements OnModuleInit {
 			// Create continuous query for aggregated data (hourly averages)
 			await this.setupContinuousQueries();
 
-			this.logger.log('[INFLUXDB] Weather history schema registered');
+			this.logger.log('Weather history schema registered');
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn('[INFLUXDB] Failed to register weather schema - InfluxDB may not be available', {
+			this.logger.warn('Failed to register weather schema - InfluxDB may not be available', {
 				message: err.message,
 			});
 		}
@@ -107,10 +109,10 @@ export class WeatherHistoryService implements OnModuleInit {
 
 			await this.influxDb.writePoints([point]);
 
-			this.logger.debug(`[INFLUXDB] Stored weather data for location=${locationId}`);
+			this.logger.debug(`Stored weather data for location=${locationId}`);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn(`[INFLUXDB] Failed to store weather data for location=${locationId}`, {
+			this.logger.warn(`Failed to store weather data for location=${locationId}`, {
 				message: err.message,
 			});
 		}
@@ -179,7 +181,7 @@ export class WeatherHistoryService implements OnModuleInit {
 			}));
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`[INFLUXDB] Failed to query weather history for location=${query.locationId}`, {
+			this.logger.error(`Failed to query weather history for location=${query.locationId}`, {
 				message: err.message,
 			});
 			return [];
@@ -248,7 +250,7 @@ export class WeatherHistoryService implements OnModuleInit {
 			};
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`[INFLUXDB] Failed to get weather statistics for location=${locationId}`, {
+			this.logger.error(`Failed to get weather statistics for location=${locationId}`, {
 				message: err.message,
 			});
 			return null;
@@ -281,10 +283,10 @@ export class WeatherHistoryService implements OnModuleInit {
 				'RESAMPLE EVERY 1m FOR 2h',
 			);
 
-			this.logger.debug('[INFLUXDB] Weather continuous queries set up');
+			this.logger.debug('Weather continuous queries set up');
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn('[INFLUXDB] Failed to set up continuous queries', { message: err.message });
+			this.logger.warn('Failed to set up continuous queries', { message: err.message });
 		}
 	}
 }

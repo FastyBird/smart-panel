@@ -569,7 +569,7 @@ describe('ShellyV1Service', () => {
 	});
 
 	describe('Logging prefixes', () => {
-		it('should use [SHELLY V1][SERVICE] prefix in log messages', async () => {
+		it('should not use hardcoded prefixes in log messages', async () => {
 			const loggerSpy = jest.spyOn(Logger.prototype, 'log');
 			const discoveryEvent: NormalizedDeviceEvent = {
 				id: 'shelly1pm-ABC123',
@@ -582,11 +582,11 @@ describe('ShellyV1Service', () => {
 
 			await service.handleDeviceDiscovered(discoveryEvent);
 
-			expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('[SHELLY V1][SERVICE]'));
+			expect(loggerSpy).toHaveBeenCalledWith(expect.not.stringContaining('[SHELLY V1]'), 'devices-shelly-v1-plugin');
 			loggerSpy.mockRestore();
 		});
 
-		it('should use [SHELLY V1][SERVICE] prefix in error messages with metadata', async () => {
+		it('should not use hardcoded prefixes in error messages', async () => {
 			const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error');
 			const discoveryEvent: NormalizedDeviceEvent = {
 				id: 'shelly1pm-ABC123',
@@ -601,11 +601,12 @@ describe('ShellyV1Service', () => {
 			await service.handleDeviceDiscovered(discoveryEvent);
 
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
-				expect.stringContaining('[SHELLY V1][SERVICE]'),
+				expect.not.stringContaining('[SHELLY V1]'),
 				expect.objectContaining({
 					message: 'Test error',
 					stack: expect.any(String),
 				}),
+				'devices-shelly-v1-plugin',
 			);
 			loggerErrorSpy.mockRestore();
 		});

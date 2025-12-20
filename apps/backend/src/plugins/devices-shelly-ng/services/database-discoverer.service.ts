@@ -1,14 +1,18 @@
 import { DeviceDiscoverer, DeviceIdentifiers } from 'shellies-ds9';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
 @Injectable()
 export class DatabaseDiscovererService extends DeviceDiscoverer {
-	private readonly logger = new Logger(DatabaseDiscovererService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_NG_PLUGIN_NAME,
+		'DatabaseDiscovererService',
+	);
 
 	private readonly emitInterval = 20; // The interval, in milliseconds, to wait between each emitted device.
 

@@ -39,7 +39,10 @@ describe('PlatformRegistryService', () => {
 
 		expect(result).toBe(true);
 		expect(service.list()).toContain('mock-platform');
-		expect(mockLogger).toHaveBeenCalledWith('[PLATFORM REGISTRY] Registered new platform type=mock-platform');
+		expect(mockLogger).toHaveBeenCalledWith(
+			'[PlatformRegistryService] Registered new platform type=mock-platform',
+			'devices-module',
+		);
 	});
 
 	it('should not register a duplicate platform', () => {
@@ -49,7 +52,8 @@ describe('PlatformRegistryService', () => {
 		expect(result).toBe(false);
 		expect(service.list()).toContain('mock-platform');
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
-			'[PLATFORM REGISTRY] Platform already registered type=mock-platform',
+			'[PlatformRegistryService] Platform already registered type=mock-platform',
+			'devices-module',
 		);
 	});
 
@@ -68,7 +72,8 @@ describe('PlatformRegistryService', () => {
 
 		expect(platform).toBeNull();
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
-			'[PLATFORM REGISTRY] No platform found for device type=unknown-platform',
+			'[PlatformRegistryService] No platform found for device type=unknown-platform',
+			'devices-module',
 		);
 	});
 

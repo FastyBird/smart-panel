@@ -4,11 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { DiscoveredAdminExtension } from '@fastybird/smart-panel-extension-sdk';
-import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, Res } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { ApiExcludeEndpoint, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { MODULES_PREFIX } from '../../../app.constants';
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { RawRoute } from '../../api/decorators/raw-route.decorator';
@@ -21,6 +22,7 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import {
 	EXTENSIONS_MODULE_API_TAG_NAME,
+	EXTENSIONS_MODULE_NAME,
 	EXTENSIONS_MODULE_PREFIX,
 	ExtensionSource,
 	ExtensionSurface,
@@ -42,7 +44,7 @@ interface BundledManifest {
 @ApiTags(EXTENSIONS_MODULE_API_TAG_NAME)
 @Controller('discovered')
 export class DiscoveredExtensionsController {
-	private readonly logger = new Logger(DiscoveredExtensionsController.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'DiscoveredExtensionsController');
 
 	constructor(private readonly configService: NestConfigService) {}
 
@@ -130,7 +132,7 @@ export class DiscoveredExtensionsController {
 	@Public()
 	@Get(':name')
 	async findOne(@Param('name') name: string): Promise<DiscoveredExtensionsResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching extension name=${name}`);
+		this.logger.debug(`Fetching extension name=${name}`);
 
 		const { admin, backend } = await getDiscoveredExtensions();
 
@@ -176,7 +178,7 @@ export class DiscoveredExtensionsController {
 			);
 		}
 
-		this.logger.debug(`[LOOKUP] Found extension name=${name}`);
+		this.logger.debug(`Found extension name=${name}`);
 
 		const response = new DiscoveredExtensionsResponseModel();
 		response.data = out;

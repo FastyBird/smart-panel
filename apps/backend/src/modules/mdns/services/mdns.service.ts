@@ -3,9 +3,10 @@ import { readFileSync } from 'fs';
 import { hostname } from 'os';
 import { join } from 'path';
 
-import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 
 import { API_PREFIX } from '../../../app.constants';
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import {
 	MDNS_DEFAULT_PROTOCOL,
@@ -25,7 +26,7 @@ export interface MdnsServiceInfo {
 
 @Injectable()
 export class MdnsService implements OnApplicationShutdown {
-	private readonly logger = new Logger(MdnsService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(MDNS_MODULE_NAME, 'MdnsService');
 	private bonjour: Bonjour | null = null;
 	private service: Service | null = null;
 	private isAdvertising = false;
@@ -40,7 +41,7 @@ export class MdnsService implements OnApplicationShutdown {
 		try {
 			return this.configService.getModuleConfig<MdnsConfigModel>(MDNS_MODULE_NAME);
 		} catch (error) {
-			this.logger.warn('[MDNS] Failed to load mDNS configuration, using defaults', error);
+			this.logger.warn('Failed to load mDNS configuration, using defaults', error);
 
 			// Return default configuration
 			const defaultConfig = new MdnsConfigModel();
@@ -81,7 +82,7 @@ export class MdnsService implements OnApplicationShutdown {
 
 			return pkgJson?.version ?? '0.0.0';
 		} catch {
-			this.logger.warn('[VERSION] Failed to read package.json, using default version');
+			this.logger.warn('Failed to read package.json, using default version');
 
 			return '0.0.0';
 		}
@@ -92,13 +93,13 @@ export class MdnsService implements OnApplicationShutdown {
 	 */
 	advertise(port: number): void {
 		if (this.isAdvertising) {
-			this.logger.warn('[MDNS] Service is already being advertised');
+			this.logger.warn('Service is already being advertised');
 
 			return;
 		}
 
 		try {
-			this.logger.log('[MDNS] Starting mDNS service advertisement');
+			this.logger.log('Starting mDNS service advertisement');
 
 			// Create the Bonjour instance
 			this.bonjour = new Bonjour();
@@ -129,13 +130,13 @@ export class MdnsService implements OnApplicationShutdown {
 			this.isAdvertising = true;
 
 			this.logger.log(
-				`[MDNS] Service advertised successfully: ${serviceName} (_${serviceType}._${MDNS_DEFAULT_PROTOCOL}) on port ${port}`,
+				`Service advertised successfully: ${serviceName} (_${serviceType}._${MDNS_DEFAULT_PROTOCOL}) on port ${port}`,
 			);
-			this.logger.debug(`[MDNS] TXT records: ${JSON.stringify(txtRecord)}`);
+			this.logger.debug(`TXT records: ${JSON.stringify(txtRecord)}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[MDNS] Failed to advertise service: ${err.message}`, err.stack);
+			this.logger.error(`Failed to advertise service: ${err.message}`, err.stack);
 
 			// Don't throw - mDNS failure should not prevent app from starting
 		}
@@ -150,7 +151,7 @@ export class MdnsService implements OnApplicationShutdown {
 		}
 
 		try {
-			this.logger.log('[MDNS] Stopping mDNS service advertisement');
+			this.logger.log('Stopping mDNS service advertisement');
 
 			if (this.bonjour) {
 				// Wait for unpublishAll to complete before destroying the bonjour instance
@@ -161,10 +162,10 @@ export class MdnsService implements OnApplicationShutdown {
 					try {
 						bonjourInstance.unpublishAll((error?: Error) => {
 							if (error) {
-								this.logger.warn(`[MDNS] Error during unpublishAll: ${error.message}`);
+								this.logger.warn(`Error during unpublishAll: ${error.message}`);
 								// Continue with cleanup even if unpublishAll had an error
 							} else {
-								this.logger.debug('[MDNS] All services unpublished');
+								this.logger.debug('All services unpublished');
 							}
 							resolve();
 						});
@@ -183,11 +184,11 @@ export class MdnsService implements OnApplicationShutdown {
 			this.isAdvertising = false;
 			this.advertisedPort = 0;
 
-			this.logger.log('[MDNS] Service advertisement stopped successfully');
+			this.logger.log('Service advertisement stopped successfully');
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[MDNS] Failed to stop service advertisement: ${err.message}`, err.stack);
+			this.logger.error(`Failed to stop service advertisement: ${err.message}`, err.stack);
 		}
 	}
 
@@ -223,7 +224,7 @@ export class MdnsService implements OnApplicationShutdown {
 	 * NestJS lifecycle hook - called when application is shutting down
 	 */
 	async onApplicationShutdown(signal?: string): Promise<void> {
-		this.logger.log(`[MDNS] Application shutdown triggered (signal: ${signal ?? 'unknown'})`);
+		this.logger.log(`Application shutdown triggered (signal: ${signal ?? 'unknown'})`);
 
 		await this.stopAdvertising();
 	}

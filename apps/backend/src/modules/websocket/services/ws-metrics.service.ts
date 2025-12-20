@@ -1,11 +1,13 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { WebsocketGateway } from '../gateway/websocket.gateway';
+import { WEBSOCKET_MODULE_NAME } from '../websocket.constants';
 
 @Injectable()
 export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
-	private readonly logger = new Logger(WsMetricsService.name);
+	private readonly logger = createExtensionLogger(WEBSOCKET_MODULE_NAME, 'WsMetricsService');
 
 	private beat: NodeJS.Timeout | null = null;
 
@@ -31,7 +33,7 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 						timestamp: new Date(),
 					},
 				])
-				.catch((err) => this.logger.error('[WS] heartbeat write failed', err));
+				.catch((err) => this.logger.error('heartbeat write failed', err));
 		}, 10_000).unref();
 
 		// clients gauge every 60s
@@ -44,7 +46,7 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 						timestamp: new Date(),
 					},
 				])
-				.catch((err) => this.logger.error('[WS] clients gauge write failed', err));
+				.catch((err) => this.logger.error('clients gauge write failed', err));
 		}, 60_000).unref();
 	}
 

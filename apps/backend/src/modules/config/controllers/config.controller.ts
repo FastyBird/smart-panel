@@ -1,8 +1,9 @@
 import { validate } from 'class-validator';
 
-import { BadRequestException, Body, Controller, Get, Logger, Param, Patch } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import {
@@ -11,7 +12,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { CONFIG_MODULE_API_TAG_NAME } from '../config.constants';
+import { CONFIG_MODULE_API_TAG_NAME, CONFIG_MODULE_NAME } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 import {
 	ReqUpdateModuleDto,
@@ -36,7 +37,7 @@ import { PluginTypeMapping, PluginsTypeMapperService } from '../services/plugins
 @ApiTags(CONFIG_MODULE_API_TAG_NAME)
 @Controller('config')
 export class ConfigController {
-	private readonly logger = new Logger(ConfigController.name);
+	private readonly logger = createExtensionLogger(CONFIG_MODULE_NAME, 'ConfigController');
 
 	constructor(
 		private readonly service: ConfigService,
@@ -55,11 +56,11 @@ export class ConfigController {
 	@ApiBadRequestResponse('Invalid request')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getAllConfig(): ConfigModuleResAppConfig {
-		this.logger.debug('[LOOKUP ALL] Fetching application configuration');
+		this.logger.debug('Fetching application configuration');
 
 		const config = this.service.getConfig();
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved application configuration`);
+		this.logger.debug(`Retrieved application configuration`);
 
 		const response = new ConfigModuleResAppConfig();
 		response.data = config;
@@ -84,7 +85,7 @@ export class ConfigController {
 	@ApiNotFoundResponse('Configuration section not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getConfigSection(@Param('section') section: keyof AppConfigModel): ConfigModuleResSection {
-		this.logger.debug(`[LOOKUP] Fetching configuration section=${section}`);
+		this.logger.debug(`Fetching configuration section=${section}`);
 
 		// Section-based endpoints are deprecated - use module endpoints instead
 		throw new BadRequestException([
@@ -117,7 +118,7 @@ export class ConfigController {
 		@Param('section') section: keyof AppConfigModel,
 		@Body() _dto: ReqUpdateSectionDto,
 	): ConfigModuleResSection {
-		this.logger.debug(`[UPDATE] Incoming update request for section=${section}`);
+		this.logger.debug(`Incoming update request for section=${section}`);
 
 		// Section-based endpoints are deprecated - use module endpoints instead
 		throw new BadRequestException([
@@ -146,11 +147,11 @@ export class ConfigController {
 	@ApiNotFoundResponse('Plugin configurations not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getPluginsConfig(): ConfigModuleResPlugins {
-		this.logger.debug('[LOOKUP] Fetching configuration for all plugins');
+		this.logger.debug('Fetching configuration for all plugins');
 
 		const config: PluginConfigModel[] = this.service.getPluginsConfig();
 
-		this.logger.debug('[LOOKUP] Found configuration for all plugins');
+		this.logger.debug('Found configuration for all plugins');
 
 		const response = new ConfigModuleResPlugins();
 		response.data = config;
@@ -170,11 +171,11 @@ export class ConfigController {
 	@ApiNotFoundResponse('Plugin configuration not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getPluginConfig(@Param('plugin') plugin: string): ConfigModuleResPluginConfig {
-		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
+		this.logger.debug(`Fetching configuration plugin=${plugin}`);
 
 		const config: PluginConfigModel = this.service.getPluginConfig(plugin);
 
-		this.logger.debug(`[LOOKUP] Found configuration plugin=${plugin}`);
+		this.logger.debug(`Found configuration plugin=${plugin}`);
 
 		const response = new ConfigModuleResPluginConfig();
 		response.data = config;
@@ -201,7 +202,7 @@ export class ConfigController {
 		@Param('plugin') plugin: string,
 		@Body() pluginConfig: { data: object },
 	): Promise<ConfigModuleResPluginConfig> {
-		this.logger.debug(`[UPDATE] Incoming update request for plugin=${plugin}`);
+		this.logger.debug(`Incoming update request for plugin=${plugin}`);
 
 		let mapping: PluginTypeMapping<PluginConfigModel, UpdatePluginConfigDto>;
 
@@ -246,7 +247,7 @@ export class ConfigController {
 
 		const config = this.service.getPluginConfig(plugin);
 
-		this.logger.debug(`[UPDATE] Successfully updated configuration plugin=${plugin}`);
+		this.logger.debug(`Successfully updated configuration plugin=${plugin}`);
 
 		const response = new ConfigModuleResPluginConfig();
 		response.data = config;
@@ -265,11 +266,11 @@ export class ConfigController {
 	@ApiNotFoundResponse('Module configurations not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getModulesConfig(): ConfigModuleResModules {
-		this.logger.debug('[LOOKUP] Fetching configuration for all modules');
+		this.logger.debug('Fetching configuration for all modules');
 
 		const config: ModuleConfigModel[] = this.service.getModulesConfig();
 
-		this.logger.debug('[LOOKUP] Found configuration for all modules');
+		this.logger.debug('Found configuration for all modules');
 
 		const response = new ConfigModuleResModules();
 		response.data = config;
@@ -289,11 +290,11 @@ export class ConfigController {
 	@ApiNotFoundResponse('Module configuration not found')
 	@ApiInternalServerErrorResponse('Internal server error')
 	getModuleConfig(@Param('module') module: string): ConfigModuleResModuleConfig {
-		this.logger.debug(`[LOOKUP] Fetching configuration module=${module}`);
+		this.logger.debug(`Fetching configuration module=${module}`);
 
 		const config: ModuleConfigModel = this.service.getModuleConfig(module);
 
-		this.logger.debug(`[LOOKUP] Found configuration module=${module}`);
+		this.logger.debug(`Found configuration module=${module}`);
 
 		const response = new ConfigModuleResModuleConfig();
 		response.data = config;
@@ -320,7 +321,7 @@ export class ConfigController {
 		@Param('module') module: string,
 		@Body() moduleConfig: { data: object },
 	): Promise<ConfigModuleResModuleConfig> {
-		this.logger.debug(`[UPDATE] Incoming update request for module=${module}`);
+		this.logger.debug(`Incoming update request for module=${module}`);
 
 		let mapping: ModuleTypeMapping<ModuleConfigModel, UpdateModuleConfigDto>;
 
@@ -365,7 +366,7 @@ export class ConfigController {
 
 		const config = this.service.getModuleConfig(module);
 
-		this.logger.debug(`[UPDATE] Successfully updated configuration module=${module}`);
+		this.logger.debug(`Successfully updated configuration module=${module}`);
 
 		const response = new ConfigModuleResModuleConfig();
 		response.data = config;

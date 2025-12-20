@@ -52,7 +52,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		const device = updates[0].device;
 
 		if (!(device instanceof HomeAssistantDeviceEntity)) {
-			this.logger.error('[HOME ASSISTANT][PLATFORM] Failed to update device property, invalid device provided');
+			this.logger.error('Failed to update device property, invalid device provided');
 
 			return false;
 		}
@@ -66,7 +66,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		const setStates = await this.mapperService.mapToHA(device, values);
 
 		if (setStates.length === 0) {
-			this.logger.error('[HOME ASSISTANT][PLATFORM] Failed to update device property, no payload to send');
+			this.logger.error('Failed to update device property, no payload to send');
 
 			return false;
 		}
@@ -100,12 +100,12 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 				});
 
 				if (response === false) {
-					this.logger.error('[HOME ASSISTANT][PLATFORM] Failed to update device property');
+					this.logger.error('Failed to update device property');
 				}
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error('[HOME ASSISTANT][PLATFORM] Error processing property update', {
+				this.logger.error('Error processing property update', {
 					message: err.message,
 					stack: err.stack,
 				});
@@ -121,16 +121,12 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		const failed = Array.from(result.values()).filter((success) => !success);
 
 		if (failed.length > 0) {
-			this.logger.warn(
-				`[HOME ASSISTANT][PLATFORM] Some properties failed to update for device id=${device.id}: ${JSON.stringify(failed)}`,
-			);
+			this.logger.warn(`Some properties failed to update for device id=${device.id}: ${JSON.stringify(failed)}`);
 
 			return false;
 		}
 
-		this.logger.log(
-			`[HOME ASSISTANT][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
-		);
+		this.logger.log(`Successfully processed all property updates for device id=${device.id}`);
 
 		return true;
 	}
@@ -147,7 +143,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[HOME ASSISTANT][PLATFORM] Request payload validation failed error=${JSON.stringify(errors)}`);
+			this.logger.error(`Request payload validation failed error=${JSON.stringify(errors)}`);
 
 			return false;
 		}

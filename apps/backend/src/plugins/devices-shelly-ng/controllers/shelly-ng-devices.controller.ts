@@ -1,9 +1,10 @@
 import { validate } from 'class-validator';
 import { FetchError } from 'node-fetch';
 
-import { Body, Controller, Get, Logger, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
@@ -12,8 +13,11 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
-import { DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME } from '../devices-shelly-ng.constants';
-import { DESCRIPTORS } from '../devices-shelly-ng.constants';
+import {
+	DESCRIPTORS,
+	DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME,
+	DEVICES_SHELLY_NG_PLUGIN_NAME,
+} from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { DevicesShellyNgPluginReqGetInfo } from '../dto/shelly-ng-get-info.dto';
 import {
@@ -26,7 +30,10 @@ import { DeviceManagerService } from '../services/device-manager.service';
 @ApiTags(DEVICES_SHELLY_NG_PLUGIN_API_TAG_NAME)
 @Controller('devices')
 export class ShellyNgDevicesController {
-	private readonly logger = new Logger(ShellyNgDevicesController.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_NG_PLUGIN_NAME,
+		'ShellyNgDevicesController',
+	);
 
 	constructor(private readonly deviceManagerService: DeviceManagerService) {}
 
@@ -79,7 +86,7 @@ export class ShellyNgDevicesController {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[SHELLY NG][DEVICES CONTROLLER] Validation failed: ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new UnprocessableEntityException('Device info model could not be created');
 		}
@@ -106,7 +113,7 @@ export class ShellyNgDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('supported')
 	async getSupported(): Promise<ShellyNgSupportedDevicesResponseModel> {
-		this.logger.debug('[SHELLY NG][DEVICES CONTROLLER] Incoming request to get Shelly NG supported devices list');
+		this.logger.debug('Incoming request to get Shelly NG supported devices list');
 
 		const devices: ShellyNgSupportedDeviceModel[] = [];
 
@@ -123,7 +130,7 @@ export class ShellyNgDevicesController {
 			});
 
 			if (errors.length > 0) {
-				this.logger.error(`[SHELLY NG][DEVICES CONTROLLER] Validation failed: ${JSON.stringify(errors)}`);
+				this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 				continue;
 			}

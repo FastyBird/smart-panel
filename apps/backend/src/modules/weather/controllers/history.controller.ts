@@ -1,6 +1,7 @@
-import { Controller, Get, Logger, NotFoundException, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
@@ -16,12 +17,12 @@ import {
 } from '../models/history.model';
 import { LocationsService } from '../services/locations.service';
 import { WeatherHistoryService } from '../services/weather-history.service';
-import { WEATHER_MODULE_API_TAG_NAME } from '../weather.constants';
+import { WEATHER_MODULE_API_TAG_NAME, WEATHER_MODULE_NAME } from '../weather.constants';
 
 @ApiTags(WEATHER_MODULE_API_TAG_NAME)
 @Controller('weather')
 export class HistoryController {
-	private readonly logger = new Logger(HistoryController.name);
+	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'HistoryController');
 
 	constructor(
 		private readonly historyService: WeatherHistoryService,
@@ -73,7 +74,7 @@ export class HistoryController {
 		@Query('endTime') endTime?: string,
 		@Query('limit') limit?: string,
 	): Promise<WeatherHistoryResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching weather history for location=${locationId}`);
+		this.logger.debug(`Fetching weather history for location=${locationId}`);
 
 		// Verify location exists
 		const location = await this.locationsService.findOne(locationId);
@@ -153,7 +154,7 @@ export class HistoryController {
 		@Query('startTime') startTime?: string,
 		@Query('endTime') endTime?: string,
 	): Promise<WeatherStatisticsResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching weather statistics for location=${locationId}`);
+		this.logger.debug(`Fetching weather statistics for location=${locationId}`);
 
 		// Verify location exists
 		const location = await this.locationsService.findOne(locationId);

@@ -1,14 +1,8 @@
 import { Request } from 'express';
 
-import {
-	CanActivate,
-	ConflictException,
-	ExecutionContext,
-	ForbiddenException,
-	Injectable,
-	Logger,
-} from '@nestjs/common';
+import { CanActivate, ConflictException, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
 import { ConfigService } from '../../config/services/config.service';
@@ -20,7 +14,7 @@ import { extractClientIp, isLocalhost } from '../utils/ip.utils';
 
 @Injectable()
 export class RegistrationGuard implements CanActivate {
-	private readonly logger = new Logger(RegistrationGuard.name);
+	private readonly logger = createExtensionLogger(DISPLAYS_MODULE_NAME, 'RegistrationGuard');
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -36,7 +30,7 @@ export class RegistrationGuard implements CanActivate {
 		try {
 			return this.configService.getModuleConfig<DisplaysConfigModel>(DISPLAYS_MODULE_NAME);
 		} catch (error) {
-			this.logger.warn('[REGISTRATION GUARD] Failed to load displays configuration, using defaults', error);
+			this.logger.warn('Failed to load displays configuration, using defaults', error);
 
 			// Return default configuration
 			const defaultConfig = new DisplaysConfigModel();
@@ -54,7 +48,7 @@ export class RegistrationGuard implements CanActivate {
 		const config = this.getConfig();
 		const mode = config.deploymentMode;
 
-		this.logger.debug(`[REGISTRATION GUARD] Registration attempt from IP=${clientIp}, mode=${mode}`);
+		this.logger.debug(`Registration attempt from IP=${clientIp}, mode=${mode}`);
 
 		// Localhost registrations are always allowed without permit join in all modes
 		// This allows local development and all-in-one deployments
@@ -68,38 +62,34 @@ export class RegistrationGuard implements CanActivate {
 				const hasActiveTokens = displayTokens.some((token) => !token.revoked);
 
 				if (hasActiveTokens) {
-					this.logger.warn(
-						`[REGISTRATION GUARD] Rejected: Display already registered with localhost IP ${clientIp} and has active tokens`,
-					);
+					this.logger.warn(`Rejected: Display already registered with localhost IP ${clientIp} and has active tokens`);
 					throw new ConflictException('Display already registered with localhost IP address');
 				}
 
 				// Display exists but all tokens are revoked - allow re-registration
-				this.logger.debug(
-					`[REGISTRATION GUARD] Allowed: localhost display exists but all tokens are revoked, allowing re-registration`,
-				);
+				this.logger.debug(`Allowed: localhost display exists but all tokens are revoked, allowing re-registration`);
 				return true;
 			}
 
-			this.logger.debug(`[REGISTRATION GUARD] Allowed: localhost registration (no permit join required)`);
+			this.logger.debug(`Allowed: localhost registration (no permit join required)`);
 			return true;
 		}
 
 		// Mode 2: All-in-One - only localhost allowed
 		if (mode === DeploymentMode.ALL_IN_ONE) {
-			this.logger.warn(`[REGISTRATION GUARD] Rejected: IP ${clientIp} is not localhost in all-in-one mode`);
+			this.logger.warn(`Rejected: IP ${clientIp} is not localhost in all-in-one mode`);
 			throw new ForbiddenException('Only localhost registrations are allowed in all-in-one mode');
 		}
 
 		// For non-localhost in STANDALONE or COMBINED modes, require permit join
 		if (!this.permitJoinService.isPermitJoinActive()) {
-			this.logger.warn(`[REGISTRATION GUARD] Rejected: Permit join is not active`);
+			this.logger.warn(`Rejected: Permit join is not active`);
 			throw new ForbiddenException(
 				'Registration is not currently permitted. Please activate permit join in the admin panel.',
 			);
 		}
 
-		this.logger.debug(`[REGISTRATION GUARD] Allowed: permit join is active`);
+		this.logger.debug(`Allowed: permit join is active`);
 		return true;
 	}
 }

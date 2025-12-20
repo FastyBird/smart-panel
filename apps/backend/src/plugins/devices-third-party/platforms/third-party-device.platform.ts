@@ -50,11 +50,11 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 			const response = await this.sendCommand(endpoint, payload, 'PUT');
 
 			if (response === false) {
-				this.logger.error('[THIRD-PARTY][PLATFORM] Failed to update device property');
+				this.logger.error('Failed to update device property');
 
 				return false;
 			} else if (response.status === 204) {
-				this.logger.log('[THIRD-PARTY][PLATFORM] Successfully updated properties');
+				this.logger.log('Successfully updated properties');
 
 				return true;
 			} else if (response.status === 207) {
@@ -72,26 +72,24 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 
 				if (failedProperties.length > 0) {
 					this.logger.warn(
-						`[THIRD-PARTY][PLATFORM] Some properties failed to update for device id=${device.id}: ${JSON.stringify(failedProperties)}`,
+						`Some properties failed to update for device id=${device.id}: ${JSON.stringify(failedProperties)}`,
 					);
 
 					return false;
 				}
 
-				this.logger.log(
-					`[THIRD-PARTY][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
-				);
+				this.logger.log(`Successfully processed all property updates for device id=${device.id}`);
 
 				return true;
 			}
 
-			this.logger.error(`[THIRD-PARTY][PLATFORM] Unexpected response status=${response.status} id=${device.id}`);
+			this.logger.error(`Unexpected response status=${response.status} id=${device.id}`);
 
 			return false;
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[THIRD-PARTY][PLATFORM] Error processing property update', {
+			this.logger.error('Error processing property update', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -117,7 +115,7 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 
 		if (errors.length > 0) {
 			this.logger.error(
-				`[THIRD-PARTY][PLATFORM] ${context === 'request' ? 'Request payload' : 'Response body'} validation failed error=${JSON.stringify(errors)}`,
+				`${context === 'request' ? 'Request payload' : 'Response body'} validation failed error=${JSON.stringify(errors)}`,
 			);
 
 			return false;

@@ -100,7 +100,10 @@ describe('ShelliesAdapterService', () => {
 			expect(mockShelliesLibrary.staleTimeout).toBe(60000); // 60s * 1000
 			expect(mockShelliesLibrary.on).toHaveBeenCalledWith('add', expect.any(Function));
 			expect(mockShelliesLibrary.start).toHaveBeenCalledWith(null);
-			expect(Logger.prototype.log).toHaveBeenCalledWith('[SHELLY V1][ADAPTER] Shellies adapter started successfully');
+			expect(Logger.prototype.log).toHaveBeenCalledWith(
+				'[ShelliesAdapterService] Shellies adapter started successfully',
+				'devices-shelly-v1-plugin',
+			);
 		});
 
 		it('should not start if already started', async () => {
@@ -110,7 +113,10 @@ describe('ShelliesAdapterService', () => {
 
 			await service.start();
 
-			expect(Logger.prototype.warn).toHaveBeenCalledWith('[SHELLY V1][ADAPTER] Shellies adapter already started');
+			expect(Logger.prototype.warn).toHaveBeenCalledWith(
+				'[ShelliesAdapterService] Shellies adapter already started',
+				'devices-shelly-v1-plugin',
+			);
 			expect(mockShelliesLibrary.start).not.toHaveBeenCalled();
 		});
 
@@ -148,7 +154,8 @@ describe('ShelliesAdapterService', () => {
 			service.stop();
 
 			expect(Logger.prototype.debug).toHaveBeenCalledWith(
-				'[SHELLY V1][ADAPTER] Shellies adapter not started, nothing to stop',
+				'[ShelliesAdapterService] Shellies adapter not started, nothing to stop',
+				'devices-shelly-v1-plugin',
 			);
 			expect(mockShelliesLibrary.stop).not.toHaveBeenCalled();
 		});
@@ -266,7 +273,8 @@ describe('ShelliesAdapterService', () => {
 
 			expect(registered?.enabled).toBe(false);
 			expect(Logger.prototype.debug).toHaveBeenCalledWith(
-				'[SHELLY V1][ADAPTER] Updated enabled status for shelly1pm-ABC123: false',
+				'[ShelliesAdapterService] Updated enabled status for shelly1pm-ABC123: false',
+				'devices-shelly-v1-plugin',
 			);
 		});
 
@@ -288,7 +296,8 @@ describe('ShelliesAdapterService', () => {
 
 			expect(device.setAuthCredentials).toHaveBeenCalledWith('admin', 'password123');
 			expect(Logger.prototype.debug).toHaveBeenCalledWith(
-				'[SHELLY V1][ADAPTER] Set auth credentials for shelly1pm-ABC123 (username: admin)',
+				'[ShelliesAdapterService] Set auth credentials for shelly1pm-ABC123 (username: admin)',
+				'devices-shelly-v1-plugin',
 			);
 		});
 
@@ -300,7 +309,8 @@ describe('ShelliesAdapterService', () => {
 			service.setDeviceAuthCredentials('SHSW-PM', 'unknown-device', 'admin', 'password123');
 
 			expect(Logger.prototype.warn).toHaveBeenCalledWith(
-				'[SHELLY V1][ADAPTER] Cannot set auth credentials - device not found: unknown-device',
+				'[ShelliesAdapterService] Cannot set auth credentials - device not found: unknown-device',
+				'devices-shelly-v1-plugin',
 			);
 		});
 
@@ -391,7 +401,8 @@ describe('ShelliesAdapterService', () => {
 
 			expect(service.getRegisteredDevice('shelly1pm-ABC123')).toBeUndefined();
 			expect(Logger.prototype.debug).toHaveBeenCalledWith(
-				expect.stringContaining('Device unregistered: shelly1pm-ABC123'),
+				expect.stringContaining('[ShelliesAdapterService] Device unregistered: shelly1pm-ABC123'),
+				'devices-shelly-v1-plugin',
 			);
 		});
 	});

@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
+import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
@@ -18,7 +20,7 @@ export interface DataSourceTypeMapping<
 
 @Injectable()
 export class DataSourcesTypeMapperService {
-	private readonly logger = new Logger(DataSourcesTypeMapperService.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'DataSourcesTypeMapperService');
 
 	private readonly mappings = new Map<string, DataSourceTypeMapping<any, any, any>>();
 
@@ -37,7 +39,7 @@ export class DataSourcesTypeMapperService {
 		TCreateDTO extends CreateDataSourceDto,
 		TUpdateDTO extends UpdateDataSourceDto,
 	>(type: string): DataSourceTypeMapping<TDataSource, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`[LOOKUP] Attempting to find mapping for data source type: '${type}'`);
+		this.logger.debug(`Attempting to find mapping for data source type: '${type}'`);
 
 		const mapping = this.mappings.get(type);
 

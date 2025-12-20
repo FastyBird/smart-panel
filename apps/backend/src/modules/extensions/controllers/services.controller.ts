@@ -1,6 +1,7 @@
-import { Controller, Get, Logger, NotFoundException, Param, Post } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import {
 	ApiBadRequestResponse,
 	ApiNotFoundResponse,
@@ -8,7 +9,7 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
-import { EXTENSIONS_MODULE_API_TAG_NAME } from '../extensions.constants';
+import { EXTENSIONS_MODULE_API_TAG_NAME, EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 import {
 	ServiceStatusModel,
 	ServiceStatusResponseModel,
@@ -19,7 +20,7 @@ import { PluginServiceManagerService } from '../services/plugin-service-manager.
 @ApiTags(EXTENSIONS_MODULE_API_TAG_NAME)
 @Controller('services')
 export class ServicesController {
-	private readonly logger = new Logger(ServicesController.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ServicesController');
 
 	constructor(private readonly pluginServiceManager: PluginServiceManagerService) {}
 
@@ -32,7 +33,7 @@ export class ServicesController {
 	})
 	@ApiSuccessResponse(ServicesStatusResponseModel, 'Returns a list of service statuses')
 	async findAll(): Promise<ServicesStatusResponseModel> {
-		this.logger.debug('[GET ALL] Fetching all service statuses');
+		this.logger.debug('Fetching all service statuses');
 
 		const statuses = await this.pluginServiceManager.getStatus();
 
@@ -57,7 +58,7 @@ export class ServicesController {
 		@Param('pluginName') pluginName: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		this.logger.debug(`[GET] Fetching service status pluginName=${pluginName} serviceId=${serviceId}`);
+		this.logger.debug(`Fetching service status pluginName=${pluginName} serviceId=${serviceId}`);
 
 		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
@@ -87,7 +88,7 @@ export class ServicesController {
 		@Param('pluginName') pluginName: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		this.logger.debug(`[START] Starting service pluginName=${pluginName} serviceId=${serviceId}`);
+		this.logger.debug(`Starting service pluginName=${pluginName} serviceId=${serviceId}`);
 
 		const success = await this.pluginServiceManager.startServiceManually(pluginName, serviceId);
 
@@ -98,9 +99,7 @@ export class ServicesController {
 		}
 
 		if (!success) {
-			this.logger.debug(
-				`[START] Service ${pluginName}:${serviceId} start returned false, current state: ${status.state}`,
-			);
+			this.logger.debug(`Service ${pluginName}:${serviceId} start returned false, current state: ${status.state}`);
 		}
 
 		const response = new ServiceStatusResponseModel();
@@ -125,7 +124,7 @@ export class ServicesController {
 		@Param('pluginName') pluginName: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		this.logger.debug(`[STOP] Stopping service pluginName=${pluginName} serviceId=${serviceId}`);
+		this.logger.debug(`Stopping service pluginName=${pluginName} serviceId=${serviceId}`);
 
 		const success = await this.pluginServiceManager.stopServiceManually(pluginName, serviceId);
 
@@ -136,9 +135,7 @@ export class ServicesController {
 		}
 
 		if (!success) {
-			this.logger.debug(
-				`[STOP] Service ${pluginName}:${serviceId} stop returned false, current state: ${status.state}`,
-			);
+			this.logger.debug(`Service ${pluginName}:${serviceId} stop returned false, current state: ${status.state}`);
 		}
 
 		const response = new ServiceStatusResponseModel();
@@ -163,7 +160,7 @@ export class ServicesController {
 		@Param('pluginName') pluginName: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		this.logger.debug(`[RESTART] Restarting service pluginName=${pluginName} serviceId=${serviceId}`);
+		this.logger.debug(`Restarting service pluginName=${pluginName} serviceId=${serviceId}`);
 
 		const success = await this.pluginServiceManager.restartService(pluginName, serviceId);
 
@@ -174,9 +171,7 @@ export class ServicesController {
 		}
 
 		if (!success) {
-			this.logger.debug(
-				`[RESTART] Service ${pluginName}:${serviceId} restart returned false, current state: ${status.state}`,
-			);
+			this.logger.debug(`Service ${pluginName}:${serviceId} restart returned false, current state: ${status.state}`);
 		}
 
 		const response = new ServiceStatusResponseModel();

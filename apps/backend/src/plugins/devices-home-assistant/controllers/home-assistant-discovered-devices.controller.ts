@@ -64,14 +64,12 @@ export class HomeAssistantDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<HomeAssistantDiscoveredDevicesResponseModel> {
-		this.logger.debug('[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Fetching all Home Assistant discovered devices');
+		this.logger.debug('Fetching all Home Assistant discovered devices');
 
 		try {
 			const devices = await this.homeAssistantHttpService.getDiscoveredDevices();
 
-			this.logger.debug(
-				`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Retrieved ${devices.length} discovered devices`,
-			);
+			this.logger.debug(`Retrieved ${devices.length} discovered devices`);
 
 			const response = new HomeAssistantDiscoveredDevicesResponseModel();
 			response.data = devices;
@@ -80,13 +78,10 @@ export class HomeAssistantDiscoveredDevicesController {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error(
-					'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Devices Home Assistant plugin is not properly configured',
-					{
-						message: err.message,
-						stack: err.stack,
-					},
-				);
+				this.logger.error('Devices Home Assistant plugin is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
@@ -95,13 +90,10 @@ export class HomeAssistantDiscoveredDevicesController {
 				);
 			}
 
-			this.logger.error(
-				'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Loading Home Assistant discovered devices failed',
-				{
-					message: err.message,
-					stack: err.stack,
-				},
-			);
+			this.logger.error('Loading Home Assistant discovered devices failed', {
+				message: err.message,
+				stack: err.stack,
+			});
 
 			throw error;
 		}
@@ -124,16 +116,12 @@ export class HomeAssistantDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id') id: string): Promise<HomeAssistantDiscoveredDeviceResponseModel> {
-		this.logger.debug(
-			`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Fetching Home Assistant discovered device id=${id}`,
-		);
+		this.logger.debug(`Fetching Home Assistant discovered device id=${id}`);
 
 		try {
 			const device = await this.homeAssistantHttpService.getDiscoveredDevice(id);
 
-			this.logger.debug(
-				`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Found Home Assistant discovered device id=${device.id}`,
-			);
+			this.logger.debug(`Found Home Assistant discovered device id=${device.id}`);
 
 			const response = new HomeAssistantDiscoveredDeviceResponseModel();
 			response.data = device;
@@ -142,13 +130,10 @@ export class HomeAssistantDiscoveredDevicesController {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error(
-					'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Devices Home Assistant plugin is not properly configured',
-					{
-						message: err.message,
-						stack: err.stack,
-					},
-				);
+				this.logger.error('Devices Home Assistant plugin is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
@@ -157,13 +142,10 @@ export class HomeAssistantDiscoveredDevicesController {
 				);
 			}
 
-			this.logger.error(
-				'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Loading Home Assistant discovered device failed',
-				{
-					message: err.message,
-					stack: err.stack,
-				},
-			);
+			this.logger.error('Loading Home Assistant discovered device failed', {
+				message: err.message,
+				stack: err.stack,
+			});
 
 			throw error;
 		}
@@ -189,15 +171,14 @@ export class HomeAssistantDiscoveredDevicesController {
 		@Param('id') id: string,
 		@Body() body?: MappingPreviewRequestDto,
 	): Promise<MappingPreviewResponseModel> {
-		this.logger.debug(`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Previewing mapping for device id=${id}`);
+		this.logger.debug(`Previewing mapping for device id=${id}`);
 
 		try {
 			const request = body ? toInstance(MappingPreviewRequestDto, body) : undefined;
 			const preview = await this.mappingPreviewService.generatePreview(id, request);
 
 			this.logger.debug(
-				`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Generated mapping preview for device id=${id}, ` +
-					`entities=${preview.entities.length}, warnings=${preview.warnings.length}, readyToAdopt=${preview.readyToAdopt}`,
+				`Generated mapping preview for device id=${id}, entities=${preview.entities.length}, warnings=${preview.warnings.length}, readyToAdopt=${preview.readyToAdopt}`,
 			);
 
 			const response = new MappingPreviewResponseModel();
@@ -207,20 +188,17 @@ export class HomeAssistantDiscoveredDevicesController {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error(
-					'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Devices Home Assistant plugin is not properly configured',
-					{
-						message: err.message,
-						stack: err.stack,
-					},
-				);
+				this.logger.error('Devices Home Assistant plugin is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
 				throw new NotFoundException(`Home Assistant device ${id} not found`);
 			}
 
-			this.logger.error('[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Generating mapping preview failed', {
+			this.logger.error('Generating mapping preview failed', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -245,17 +223,13 @@ export class HomeAssistantDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('adopt')
 	async adoptDevice(@Body() body: AdoptDeviceRequestDto): Promise<DeviceResponseModel> {
-		this.logger.debug(
-			`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Adopting device ha_device_id=${body.haDeviceId}`,
-		);
+		this.logger.debug(`Adopting device ha_device_id=${body.haDeviceId}`);
 
 		try {
 			const request = toInstance(AdoptDeviceRequestDto, body);
 			const device = await this.deviceAdoptionService.adoptDevice(request);
 
-			this.logger.debug(
-				`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Adopted device ha_device_id=${body.haDeviceId} as device id=${device.id}`,
-			);
+			this.logger.debug(`Adopted device ha_device_id=${body.haDeviceId} as device id=${device.id}`);
 
 			const response = new DeviceResponseModel();
 			response.data = device;
@@ -264,7 +238,7 @@ export class HomeAssistantDiscoveredDevicesController {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error('[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Device adoption validation failed', {
+				this.logger.error('Device adoption validation failed', {
 					message: err.message,
 					stack: err.stack,
 				});
@@ -273,7 +247,7 @@ export class HomeAssistantDiscoveredDevicesController {
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
 				throw new NotFoundException(err.message);
 			} else if (error instanceof DevicesHomeAssistantException) {
-				this.logger.error('[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Device adoption failed', {
+				this.logger.error('Device adoption failed', {
 					message: err.message,
 					stack: err.stack,
 				});
@@ -281,13 +255,10 @@ export class HomeAssistantDiscoveredDevicesController {
 				throw new UnprocessableEntityException(err.message);
 			}
 
-			this.logger.error(
-				'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Device adoption failed with unexpected error',
-				{
-					message: err.message,
-					stack: err.stack,
-				},
-			);
+			this.logger.error('Device adoption failed with unexpected error', {
+				message: err.message,
+				stack: err.stack,
+			});
 
 			throw error;
 		}

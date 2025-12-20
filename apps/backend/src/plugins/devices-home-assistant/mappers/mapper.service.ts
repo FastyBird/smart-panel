@@ -53,9 +53,7 @@ export class MapperService {
 			const properties = grouped.get(state.entity_id);
 
 			if (!properties) {
-				this.logger.warn(
-					`[HOME ASSISTANT MAPPER] No properties found for received state for domain=${domain} entityId=${state.entity_id}`,
-				);
+				this.logger.warn(`No properties found for received state for domain=${domain} entityId=${state.entity_id}`);
 
 				continue;
 			}
@@ -96,7 +94,7 @@ export class MapperService {
 			const mapper = this.mappers.get(domain);
 
 			if (!mapper) {
-				this.logger.warn(`[HOME ASSISTANT][MAPPER SERVICE] No mapper found for domain=${domain}`);
+				this.logger.warn(`No mapper found for domain=${domain}`);
 
 				continue;
 			}

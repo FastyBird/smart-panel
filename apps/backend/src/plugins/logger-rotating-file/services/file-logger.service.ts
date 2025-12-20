@@ -63,7 +63,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 
 			this.state = 'starting';
 
-			this.logger.log('[ROTATING FILE LOGGER][LOGGER] Starting file logger service');
+			this.logger.log('Starting file logger service');
 
 			try {
 				await this.validateAndPrepareDir();
@@ -73,7 +73,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(`[ROTATING FILE LOGGER][LOGGER] Rotating file logger disabled: ${err?.message ?? err}`);
+				this.logger.error(`Rotating file logger disabled: ${err?.message ?? err}`);
 
 				this.dir = undefined;
 				this.state = 'error';
@@ -109,7 +109,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 
 			this.state = 'stopping';
 
-			this.logger.log('[ROTATING FILE LOGGER][LOGGER] Stopping file logger service');
+			this.logger.log('Stopping file logger service');
 
 			this.unregisterCleanupJob();
 
@@ -139,13 +139,11 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 
 		// Re-apply configuration if service is running
 		if (this.state === 'started') {
-			this.logger.log('[ROTATING FILE LOGGER][LOGGER] Config changed, re-applying settings...');
+			this.logger.log('Config changed, re-applying settings...');
 
 			// Re-validate directory (in case dir changed)
 			await this.validateAndPrepareDir().catch((err: Error) => {
-				this.logger.error(
-					`[ROTATING FILE LOGGER][LOGGER] Failed to re-validate directory after config change: ${err?.message ?? err}`,
-				);
+				this.logger.error(`Failed to re-validate directory after config change: ${err?.message ?? err}`);
 
 				this.dir = undefined;
 				this.state = 'error';
@@ -170,7 +168,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[ROTATING FILE LOGGER][LOGGER] Failed to append log: ${err?.message ?? err}`);
+			this.logger.error(`Failed to append log: ${err?.message ?? err}`);
 		}
 	}
 
@@ -235,7 +233,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 
 			const job = new CronJob(expr, () =>
 				this.cleanup().catch((err: Error) => {
-					this.logger.error(`[ROTATING FILE LOGGER][LOGGER] Cleanup failed: ${err?.message ?? err}`);
+					this.logger.error(`Cleanup failed: ${err?.message ?? err}`);
 				}),
 			);
 
@@ -245,9 +243,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[ROTATING FILE LOGGER][LOGGER] Failed to register cleanup cron "${expr}": ${err?.message ?? err}`,
-			);
+			this.logger.error(`Failed to register cleanup cron "${expr}": ${err?.message ?? err}`);
 		}
 	}
 
@@ -303,7 +299,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 				const full = path.join(this.dir, name);
 
 				await fs.rm(full).catch((err: Error) => {
-					this.logger.warn(`[ROTATING FILE LOGGER][LOGGER] Failed to remove old log "${name}": ${err?.message ?? err}`);
+					this.logger.warn(`Failed to remove old log "${name}": ${err?.message ?? err}`);
 				});
 			}
 		}

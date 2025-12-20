@@ -1,15 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import { NetworkStatsModel, SystemInfoModel, TemperatureInfoModel, ThrottleStatusModel } from '../models/system.model';
-import { EventType } from '../system.constants';
+import { EventType, SYSTEM_MODULE_NAME } from '../system.constants';
 
 @Injectable()
 export class SystemService {
-	private readonly logger = new Logger(SystemService.name);
+	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'SystemService');
 
 	constructor(
 		private readonly platformService: PlatformService,
@@ -47,11 +48,11 @@ export class SystemService {
 
 			this.eventEmitter.emit(EventType.SYSTEM_INFO, systemInfo);
 
-			this.logger.debug('[EVENT] System info broadcasted successfully');
+			this.logger.debug('System info broadcasted successfully');
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[EVENT] Failed to broadcast system info', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to broadcast system info', { message: err.message, stack: err.stack });
 		}
 	}
 }

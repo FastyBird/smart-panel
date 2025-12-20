@@ -6,7 +6,6 @@ import {
 	Get,
 	Headers,
 	HttpCode,
-	Logger,
 	Param,
 	ParseUUIDPipe,
 	Patch,
@@ -16,6 +15,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import { TokensService } from '../../auth/services/tokens.service';
@@ -28,7 +28,7 @@ import {
 } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
-import { DISPLAYS_MODULE_API_TAG_NAME, DeploymentMode, EventType } from '../displays.constants';
+import { DISPLAYS_MODULE_API_TAG_NAME, DISPLAYS_MODULE_NAME, DeploymentMode, EventType } from '../displays.constants';
 import { ReqUpdateDisplayDto } from '../dto/update-display.dto';
 import {
 	DisplayResponseModel,
@@ -48,7 +48,7 @@ import { RegistrationService } from '../services/registration.service';
 @ApiTags(DISPLAYS_MODULE_API_TAG_NAME)
 @Controller('displays')
 export class DisplaysController {
-	private readonly logger = new Logger(DisplaysController.name);
+	private readonly logger = createExtensionLogger(DISPLAYS_MODULE_NAME, 'DisplaysController');
 
 	constructor(
 		private readonly displaysService: DisplaysService,
@@ -71,11 +71,11 @@ export class DisplaysController {
 		const auth = req.auth;
 
 		if (!auth || auth.type !== 'token' || auth.ownerType !== TokenOwnerType.DISPLAY || !auth.ownerId) {
-			this.logger.warn('[GET ME] Attempted access by non-display entity');
+			this.logger.warn('Attempted access by non-display entity');
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}
 
-		this.logger.debug(`[GET ME] Fetching display data for id=${auth.ownerId}`);
+		this.logger.debug(`Fetching display data for id=${auth.ownerId}`);
 
 		const display = await this.displaysService.getOneOrThrow(auth.ownerId);
 
@@ -100,11 +100,11 @@ export class DisplaysController {
 		const auth = req.auth;
 
 		if (!auth || auth.type !== 'token' || auth.ownerType !== TokenOwnerType.DISPLAY || !auth.ownerId) {
-			this.logger.warn('[UPDATE ME] Attempted access by non-display entity');
+			this.logger.warn('Attempted access by non-display entity');
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}
 
-		this.logger.debug(`[UPDATE ME] Updating display with id=${auth.ownerId}`);
+		this.logger.debug(`Updating display with id=${auth.ownerId}`);
 
 		const display = await this.displaysService.update(auth.ownerId, body.data);
 
@@ -131,14 +131,14 @@ export class DisplaysController {
 		const auth = req.auth;
 
 		if (!auth || auth.type !== 'token' || auth.ownerType !== TokenOwnerType.DISPLAY || !auth.ownerId) {
-			this.logger.warn('[REFRESH TOKEN] Attempted access by non-display entity');
+			this.logger.warn('Attempted access by non-display entity');
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}
 
 		// Extract the token from the Authorization header
 		const token = authHeader?.replace('Bearer ', '');
 
-		this.logger.debug(`[REFRESH TOKEN] Refreshing token for display=${auth.ownerId}`);
+		this.logger.debug(`Refreshing token for display=${auth.ownerId}`);
 
 		const result = await this.registrationService.refreshDisplayToken(auth.ownerId, token);
 
@@ -161,7 +161,7 @@ export class DisplaysController {
 	})
 	@ApiSuccessResponse(DisplaysResponseModel, 'Returns a list of displays')
 	async findAll(): Promise<DisplaysResponseModel> {
-		this.logger.debug('[GET ALL] Fetching all displays');
+		this.logger.debug('Fetching all displays');
 
 		const displays = await this.displaysService.findAll();
 
@@ -183,7 +183,7 @@ export class DisplaysController {
 	@ApiSuccessResponse(DisplayResponseModel, 'Returns the display')
 	@ApiNotFoundResponse('Display not found')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayResponseModel> {
-		this.logger.debug(`[GET] Fetching display with id=${id}`);
+		this.logger.debug(`Fetching display with id=${id}`);
 
 		const display = await this.displaysService.getOneOrThrow(id);
 
@@ -209,7 +209,7 @@ export class DisplaysController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqUpdateDisplayDto,
 	): Promise<DisplayResponseModel> {
-		this.logger.debug(`[UPDATE] Updating display with id=${id}`);
+		this.logger.debug(`Updating display with id=${id}`);
 
 		const display = await this.displaysService.update(id, body.data);
 
@@ -232,11 +232,11 @@ export class DisplaysController {
 	@ApiNotFoundResponse('Display not found')
 	@HttpCode(204)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing display with id=${id}`);
+		this.logger.debug(`Removing display with id=${id}`);
 
 		await this.displaysService.remove(id);
 
-		this.logger.debug(`[DELETE] Successfully removed display with id=${id}`);
+		this.logger.debug(`Successfully removed display with id=${id}`);
 	}
 
 	@Get(':id/tokens')
@@ -251,7 +251,7 @@ export class DisplaysController {
 	@ApiSuccessResponse(DisplayTokensResponseModel, 'Returns the list of display tokens')
 	@ApiNotFoundResponse('Display not found')
 	async getTokens(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayTokensResponseModel> {
-		this.logger.debug(`[GET TOKENS] Fetching tokens for display with id=${id}`);
+		this.logger.debug(`Fetching tokens for display with id=${id}`);
 
 		// Verify display exists
 		await this.displaysService.getOneOrThrow(id);
@@ -260,7 +260,7 @@ export class DisplaysController {
 		const allTokens = await this.tokensService.findByOwnerId(id, TokenOwnerType.DISPLAY);
 		const activeTokens = allTokens.filter((token) => !token.revoked);
 
-		this.logger.debug(`[GET TOKENS] Found ${activeTokens.length} active tokens for display with id=${id}`);
+		this.logger.debug(`Found ${activeTokens.length} active tokens for display with id=${id}`);
 
 		const response = new DisplayTokensResponseModel();
 
@@ -282,7 +282,7 @@ export class DisplaysController {
 	@ApiNotFoundResponse('Display not found')
 	@HttpCode(204)
 	async revokeToken(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`[REVOKE TOKEN] Revoking tokens for display with id=${id}`);
+		this.logger.debug(`Revoking tokens for display with id=${id}`);
 
 		// Verify display exists
 		const display = await this.displaysService.getOneOrThrow(id);
@@ -290,7 +290,7 @@ export class DisplaysController {
 		// Revoke all tokens for this display
 		await this.tokensService.revokeByOwnerId(id, TokenOwnerType.DISPLAY);
 
-		this.logger.debug(`[REVOKE TOKEN] Successfully revoked tokens for display with id=${id}`);
+		this.logger.debug(`Successfully revoked tokens for display with id=${id}`);
 
 		// Emit token revoked event for socket notification
 		this.eventEmitter.emit(EventType.DISPLAY_TOKEN_REVOKED, { id: display.id });
@@ -307,7 +307,7 @@ export class DisplaysController {
 	@ApiSuccessResponse(PermitJoinResponseModel, 'Permit join activated successfully')
 	@ApiBadRequestResponse('Permit join is not available in all-in-one deployment mode')
 	permitJoin(): PermitJoinResponseModel {
-		this.logger.debug('[PERMIT JOIN] Activating permit join');
+		this.logger.debug('Activating permit join');
 
 		this.permitJoinService.activatePermitJoin();
 
@@ -318,7 +318,7 @@ export class DisplaysController {
 			throw new Error('Failed to activate permit join');
 		}
 
-		this.logger.debug(`[PERMIT JOIN] Successfully activated, expires at ${expiresAt.toISOString()}`);
+		this.logger.debug(`Successfully activated, expires at ${expiresAt.toISOString()}`);
 
 		const data = new PermitJoinDataModel();
 		data.success = true;
@@ -369,8 +369,8 @@ export class DisplaysController {
 	@ApiNoContentResponse({ description: 'Permit join deactivated successfully' })
 	@HttpCode(204)
 	deactivatePermitJoin(): void {
-		this.logger.debug('[PERMIT JOIN] Deactivating permit join');
+		this.logger.debug('Deactivating permit join');
 		this.permitJoinService.deactivatePermitJoin();
-		this.logger.debug('[PERMIT JOIN] Successfully deactivated');
+		this.logger.debug('Successfully deactivated');
 	}
 }

@@ -1,10 +1,11 @@
 import { instanceToPlain } from 'class-transformer';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
-import { EventType } from '../stats.constants';
+import { createExtensionLogger } from '../../../common/logger';
+import { EventType, STATS_MODULE_NAME } from '../stats.constants';
 
 import { StatsRegistryService } from './stats-registry.service';
 
@@ -12,7 +13,7 @@ type CachedValue<T> = { at: number; data: T };
 
 @Injectable()
 export class StatsAggregatorService {
-	private readonly logger = new Logger(StatsAggregatorService.name);
+	private readonly logger = createExtensionLogger(STATS_MODULE_NAME, 'StatsAggregatorService');
 
 	private cache = new Map<string, CachedValue<unknown>>();
 
@@ -80,11 +81,11 @@ export class StatsAggregatorService {
 
 			this.eventEmitter.emit(EventType.STATS_INFO, instanceToPlain(stats));
 
-			this.logger.debug('[EVENT] Stats info broadcasted successfully');
+			this.logger.debug('Stats info broadcasted successfully');
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[EVENT] Failed to broadcast stats info', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to broadcast stats info', { message: err.message, stack: err.stack });
 		}
 	}
 }

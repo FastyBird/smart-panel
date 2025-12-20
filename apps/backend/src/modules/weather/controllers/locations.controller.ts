@@ -8,7 +8,6 @@ import {
 	Delete,
 	Get,
 	HttpCode,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -20,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -37,13 +37,13 @@ import { WeatherLocationEntity } from '../entities/locations.entity';
 import { LocationResponseModel, LocationsResponseModel } from '../models/locations-response.model';
 import { LocationTypeMapping, LocationsTypeMapperService } from '../services/locations-type-mapper.service';
 import { LocationsService } from '../services/locations.service';
-import { WEATHER_MODULE_API_TAG_NAME, WEATHER_MODULE_PREFIX } from '../weather.constants';
+import { WEATHER_MODULE_API_TAG_NAME, WEATHER_MODULE_NAME, WEATHER_MODULE_PREFIX } from '../weather.constants';
 import { WeatherException } from '../weather.exceptions';
 
 @ApiTags(WEATHER_MODULE_API_TAG_NAME)
 @Controller('locations')
 export class LocationsController {
-	private readonly logger = new Logger(LocationsController.name);
+	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'LocationsController');
 
 	constructor(
 		private readonly locationsService: LocationsService,
@@ -65,11 +65,11 @@ export class LocationsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<LocationsResponseModel> {
-		this.logger.debug('[LOOKUP ALL] Fetching all locations');
+		this.logger.debug('Fetching all locations');
 
 		const locations = await this.locationsService.findAll();
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${locations.length} locations`);
+		this.logger.debug(`Retrieved ${locations.length} locations`);
 
 		const response = new LocationsResponseModel();
 
@@ -95,11 +95,11 @@ export class LocationsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<LocationResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching location id=${id}`);
+		this.logger.debug(`Fetching location id=${id}`);
 
 		const location = await this.getOneOrThrow(id);
 
-		this.logger.debug(`[LOOKUP] Found location id=${location.id}`);
+		this.logger.debug(`Found location id=${location.id}`);
 
 		const response = new LocationResponseModel();
 
@@ -130,13 +130,13 @@ export class LocationsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<LocationResponseModel> {
-		this.logger.debug('[CREATE] Incoming request to create a new location');
+		this.logger.debug('Incoming request to create a new location');
 
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
 		if (!type) {
-			this.logger.error('[VALIDATION] Missing required field: type');
+			this.logger.error('Missing required field: type');
 
 			throw new BadRequestException([
 				JSON.stringify({ field: 'type', reason: 'Location type attribute is required.' }),
@@ -152,7 +152,7 @@ export class LocationsController {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[ERROR] Unsupported location type: ${type}`, { message: err.message, stack: err.stack });
+			this.logger.error(`Unsupported location type: ${type}`, { message: err.message, stack: err.stack });
 
 			if (error instanceof WeatherException) {
 				throw new BadRequestException([
@@ -174,7 +174,7 @@ export class LocationsController {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for location creation error=${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed for location creation error=${JSON.stringify(errors)}`);
 
 			throw ValidationExceptionFactory.createException(errors);
 		}
@@ -182,7 +182,7 @@ export class LocationsController {
 		try {
 			const location = await this.locationsService.create(dtoInstance);
 
-			this.logger.debug(`[CREATE] Successfully created location id=${location.id}`);
+			this.logger.debug(`Successfully created location id=${location.id}`);
 
 			setLocationHeader(req, res, WEATHER_MODULE_PREFIX, 'locations', location.id);
 
@@ -222,7 +222,7 @@ export class LocationsController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<LocationResponseModel> {
-		this.logger.debug(`[UPDATE] Incoming update request for location id=${id}`);
+		this.logger.debug(`Incoming update request for location id=${id}`);
 
 		const location = await this.getOneOrThrow(id);
 
@@ -235,7 +235,7 @@ export class LocationsController {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[ERROR] Unsupported location type for update: ${location.type} id=${id} `, {
+			this.logger.error(`Unsupported location type for update: ${location.type} id=${id} `, {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -260,9 +260,7 @@ export class LocationsController {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(
-				`[VALIDATION FAILED] Validation failed for location modification error=${JSON.stringify(errors)} id=${id} `,
-			);
+			this.logger.error(`Validation failed for location modification error=${JSON.stringify(errors)} id=${id} `);
 
 			throw ValidationExceptionFactory.createException(errors);
 		}
@@ -270,7 +268,7 @@ export class LocationsController {
 		try {
 			const updatedLocation = await this.locationsService.update(location.id, dtoInstance);
 
-			this.logger.debug(`[UPDATE] Successfully updated location id=${updatedLocation.id}`);
+			this.logger.debug(`Successfully updated location id=${updatedLocation.id}`);
 
 			const response = new LocationResponseModel();
 
@@ -301,22 +299,22 @@ export class LocationsController {
 	@Delete(':id')
 	@HttpCode(204)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete location id=${id}`);
+		this.logger.debug(`Incoming request to delete location id=${id}`);
 
 		const location = await this.getOneOrThrow(id);
 
 		await this.locationsService.remove(location.id);
 
-		this.logger.debug(`[DELETE] Successfully deleted location id=${id}`);
+		this.logger.debug(`Successfully deleted location id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<WeatherLocationEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of location id=${id}`);
+		this.logger.debug(`Checking existence of location id=${id}`);
 
 		const location = await this.locationsService.findOne(id);
 
 		if (!location) {
-			this.logger.error(`[ERROR] Location with id=${id} not found`);
+			this.logger.error(`Location with id=${id} not found`);
 
 			throw new NotFoundException('Requested location does not exist');
 		}

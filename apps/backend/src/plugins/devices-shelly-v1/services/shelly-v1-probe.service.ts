@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { DESCRIPTORS, SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { DESCRIPTORS, DEVICES_SHELLY_V1_PLUGIN_NAME, SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1PluginGetInfo } from '../dto/shelly-v1-probe.dto';
 import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import { ShellyV1DeviceInfoModel } from '../models/shelly-v1.model';
@@ -13,7 +14,10 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
  */
 @Injectable()
 export class ShellyV1ProbeService {
-	private readonly logger = new Logger(ShellyV1ProbeService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_V1_PLUGIN_NAME,
+		'ShellyV1ProbeService',
+	);
 
 	constructor(private readonly httpClient: ShellyV1HttpClientService) {}
 
@@ -25,7 +29,7 @@ export class ShellyV1ProbeService {
 		const { hostname, password } = request;
 		const host = hostname;
 
-		this.logger.debug(`[SHELLY V1][PROBE] Probing device at ${host}`);
+		this.logger.debug(`Probing device at ${host}`);
 
 		const response: ShellyV1DeviceInfoModel = {
 			reachable: false,
@@ -45,13 +49,9 @@ export class ShellyV1ProbeService {
 			response.model = shellyInfo.type;
 			response.firmware = shellyInfo.fw;
 
-			this.logger.debug(
-				`[SHELLY V1][PROBE] Device at ${host} is reachable. Type: ${shellyInfo.type}, Auth: ${shellyInfo.auth}`,
-			);
+			this.logger.debug(`Device at ${host} is reachable. Type: ${shellyInfo.type}, Auth: ${shellyInfo.auth}`);
 		} catch (error) {
-			this.logger.warn(
-				`[SHELLY V1][PROBE] Failed to reach device at ${host}: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			this.logger.warn(`Failed to reach device at ${host}: ${error instanceof Error ? error.message : String(error)}`);
 
 			return response; // Device not reachable
 		}
@@ -65,12 +65,12 @@ export class ShellyV1ProbeService {
 					response.authValid = true;
 					response.ip = statusInfo.wifi_sta.ip;
 
-					this.logger.debug(`[SHELLY V1][PROBE] Auth credentials valid for ${host}`);
+					this.logger.debug(`Auth credentials valid for ${host}`);
 				} catch (error) {
 					response.authValid = false;
 
 					this.logger.warn(
-						`[SHELLY V1][PROBE] Auth credentials invalid for ${host}: ${error instanceof Error ? error.message : String(error)}`,
+						`Auth credentials invalid for ${host}: ${error instanceof Error ? error.message : String(error)}`,
 					);
 
 					// Still continue to return basic info from /shelly
@@ -81,7 +81,7 @@ export class ShellyV1ProbeService {
 				// Auth required but no password provided
 				response.authValid = undefined; // Cannot validate
 
-				this.logger.debug(`[SHELLY V1][PROBE] Auth required for ${host} but no password provided`);
+				this.logger.debug(`Auth required for ${host} but no password provided`);
 			}
 		} else {
 			// No auth required, fetch /status and /settings without credentials
@@ -89,10 +89,10 @@ export class ShellyV1ProbeService {
 				statusInfo = await this.httpClient.getDeviceStatus(host);
 				response.ip = statusInfo.wifi_sta.ip;
 
-				this.logger.debug(`[SHELLY V1][PROBE] Status fetched for ${host}`);
+				this.logger.debug(`Status fetched for ${host}`);
 			} catch (error) {
 				this.logger.warn(
-					`[SHELLY V1][PROBE] Failed to fetch status for ${host}: ${error instanceof Error ? error.message : String(error)}`,
+					`Failed to fetch status for ${host}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}
@@ -105,9 +105,9 @@ export class ShellyV1ProbeService {
 				response.deviceType = descriptorMatch.descriptor.name;
 				response.description = `${descriptorMatch.descriptor.name} (${shellyInfo.type})`;
 
-				this.logger.debug(`[SHELLY V1][PROBE] Device ${host} matched to descriptor: ${descriptorMatch.key}`);
+				this.logger.debug(`Device ${host} matched to descriptor: ${descriptorMatch.key}`);
 			} else {
-				this.logger.warn(`[SHELLY V1][PROBE] No descriptor found for device type: ${shellyInfo.type}`);
+				this.logger.warn(`No descriptor found for device type: ${shellyInfo.type}`);
 			}
 		}
 

@@ -102,7 +102,8 @@ describe('ShellyV1DevicePlatform', () => {
 		expect(getDevice).toHaveBeenCalledWith('shelly1pm', 'shelly1pm-ABC123');
 		expect(shellyDevice.setRelay).toHaveBeenCalledWith(0, true);
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
-			`[SHELLY V1][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
+			`[ShellyV1DevicePlatform] Successfully processed all property updates for device id=${device.id}`,
+			'devices-shelly-v1-plugin',
 		);
 	});
 
@@ -116,7 +117,8 @@ describe('ShellyV1DevicePlatform', () => {
 
 		expect(ok).toBe(false);
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
-			'[SHELLY V1][PLATFORM] Failed to update device property, invalid device provided',
+			'[ShellyV1DevicePlatform] Failed to update device property, invalid device provided',
+			'devices-shelly-v1-plugin',
 		);
 	});
 
@@ -128,7 +130,8 @@ describe('ShellyV1DevicePlatform', () => {
 
 		expect(ok).toBe(false);
 		expect(Logger.prototype.debug).toHaveBeenCalledWith(
-			`[SHELLY V1][PLATFORM] Device ${device.identifier} is disabled, ignoring command`,
+			`[ShellyV1DevicePlatform] Device ${device.identifier} is disabled, ignoring command`,
+			'devices-shelly-v1-plugin',
 		);
 	});
 
@@ -142,7 +145,8 @@ describe('ShellyV1DevicePlatform', () => {
 
 		expect(ok).toBe(false);
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
-			`[SHELLY V1][PLATFORM] Shelly device not found in adapter: ${device.identifier}, device may be offline`,
+			`[ShellyV1DevicePlatform] Shelly device not found in adapter: ${device.identifier}, device may be offline`,
+			'devices-shelly-v1-plugin',
 		);
 	});
 
@@ -205,7 +209,8 @@ describe('ShellyV1DevicePlatform', () => {
 
 			expect(ok).toBe(false);
 			expect(Logger.prototype.warn).toHaveBeenCalledWith(
-				`[SHELLY V1][PLATFORM] Device ${device.identifier} does not support setRelay method`,
+				`[ShellyV1DevicePlatform] Device ${device.identifier} does not support setRelay method`,
+				'devices-shelly-v1-plugin',
 			);
 		});
 	});
@@ -362,7 +367,8 @@ describe('ShellyV1DevicePlatform', () => {
 
 			expect(ok).toBe(false);
 			expect(Logger.prototype.warn).toHaveBeenCalledWith(
-				'[SHELLY V1][PLATFORM] Invalid roller command: invalid, must be one of: open, close, stop',
+				'[ShellyV1DevicePlatform] Invalid roller command: invalid, must be one of: open, close, stop',
+				'devices-shelly-v1-plugin',
 			);
 		});
 	});
@@ -381,10 +387,14 @@ describe('ShellyV1DevicePlatform', () => {
 			const ok = await platform.processBatch([{ device, channel, property, value: true }]);
 
 			expect(ok).toBe(false);
-			expect(Logger.prototype.error).toHaveBeenCalledWith('[SHELLY V1][PLATFORM] Error processing property update', {
-				message: expect.stringContaining('Network error'),
-				stack: expect.any(String),
-			});
+			expect(Logger.prototype.error).toHaveBeenCalledWith(
+				'[ShellyV1DevicePlatform] Error processing property update',
+				{
+					message: expect.stringContaining('Network error'),
+					stack: expect.any(String),
+				},
+				'devices-shelly-v1-plugin',
+			);
 		});
 	});
 });

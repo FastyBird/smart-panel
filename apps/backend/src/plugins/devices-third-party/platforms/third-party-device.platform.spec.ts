@@ -67,7 +67,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		]);
 
 		expect(result).toBe(true);
-		expect(loggerLogSpy).toHaveBeenCalledWith('[THIRD-PARTY][PLATFORM] Successfully updated properties');
+		expect(loggerLogSpy).toHaveBeenCalledWith('Successfully updated properties');
 	});
 
 	it('should return true when all updates succeed (207 response)', async () => {
@@ -95,7 +95,7 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(true);
 		expect(loggerLogSpy).toHaveBeenCalledWith(
-			`[THIRD-PARTY][PLATFORM] Successfully processed all property updates for device id=${mockDevice.id}`,
+			`Successfully processed all property updates for device id=${mockDevice.id}`,
 		);
 	});
 
@@ -125,7 +125,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		expect(result).toBe(false);
 		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
-				`[THIRD-PARTY][PLATFORM] Some properties failed to update for device id=${mockDevice.id}: ${JSON.stringify(mockResponseBody.properties)}`,
+				`Some properties failed to update for device id=${mockDevice.id}: ${JSON.stringify(mockResponseBody.properties)}`,
 			),
 		);
 	});
@@ -143,9 +143,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		]);
 
 		expect(result).toBe(false);
-		expect(loggerErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('[THIRD-PARTY][PLATFORM] Unexpected response status=500'),
-		);
+		expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Unexpected response status=500'));
 	});
 
 	it('should return false on network error', async () => {
@@ -162,7 +160,7 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('[THIRD-PARTY][PLATFORM] Error processing property update'),
+			expect.stringContaining('Error processing property update'),
 			expect.any(Object),
 		);
 	});

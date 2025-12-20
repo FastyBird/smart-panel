@@ -2,11 +2,13 @@ import { Command, CommandRunner } from 'nest-commander';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { getDiscoveredExtensions } from '../../extensions/services/extensions-discovery-cache';
+import { CONFIG_MODULE_NAME } from '../config.constants';
 
 type BundledEntry = {
 	name: string;
@@ -22,7 +24,7 @@ type BundledEntry = {
 })
 @Injectable()
 export class GenerateAdminExtensionsCommand extends CommandRunner {
-	private readonly logger = new Logger(GenerateAdminExtensionsCommand.name);
+	private readonly logger = createExtensionLogger(CONFIG_MODULE_NAME, 'GenerateAdminExtensionsCommand');
 
 	private readonly filename = 'extensions.ts';
 

@@ -89,7 +89,7 @@ export class StateChangedEventService implements WsEventService {
 			entityId,
 			setTimeout(() => {
 				void (async () => {
-					this.logger.debug(`[HOME ASSISTANT][STATE CHANGED EVENT] Processing state for ${entityId}`);
+					this.logger.debug(`Processing state for ${entityId}`);
 
 					const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [event.data.new_state]);
 
@@ -137,7 +137,7 @@ export class StateChangedEventService implements WsEventService {
 			]);
 
 			if (!haDevices?.length || !panelDevices?.length || !properties?.length) {
-				this.logger.warn('[HOME ASSISTANT][STATE CHANGED EVENT] Missing data, skipping automatic sync');
+				this.logger.warn('Missing data, skipping automatic sync');
 
 				return false;
 			}

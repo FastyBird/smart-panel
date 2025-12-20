@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { IWeatherProvider } from '../platforms/weather-provider.platform';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 export interface IWeatherProviderInfo {
 	type: string;
@@ -10,7 +12,7 @@ export interface IWeatherProviderInfo {
 
 @Injectable()
 export class WeatherProviderRegistryService {
-	private readonly logger = new Logger(WeatherProviderRegistryService.name);
+	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'WeatherProviderRegistryService');
 
 	private readonly providers: Record<string, IWeatherProvider> = {};
 
@@ -23,16 +25,14 @@ export class WeatherProviderRegistryService {
 		const type = provider.getType();
 
 		if (type in this.providers) {
-			this.logger.warn(`[REGISTER] Weather provider '${type}' is already registered, skipping`);
+			this.logger.warn(`Weather provider '${type}' is already registered, skipping`);
 
 			return false;
 		}
 
 		this.providers[type] = provider;
 
-		this.logger.log(
-			`[REGISTERED] Weather provider '${type}' added. Total providers: ${Object.keys(this.providers).length}`,
-		);
+		this.logger.log(`Weather provider '${type}' added. Total providers: ${Object.keys(this.providers).length}`);
 
 		return true;
 	}
@@ -46,7 +46,7 @@ export class WeatherProviderRegistryService {
 		const provider = this.providers[type] ?? null;
 
 		if (!provider) {
-			this.logger.debug(`[LOOKUP] Weather provider '${type}' not found`);
+			this.logger.debug(`Weather provider '${type}' not found`);
 		}
 
 		return provider;

@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -20,7 +22,7 @@ export interface DeviceTypeMapping<
 
 @Injectable()
 export class DevicesTypeMapperService {
-	private readonly logger = new Logger(DevicesTypeMapperService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesTypeMapperService');
 
 	private readonly mappings = new Map<string, DeviceTypeMapping<any, any, any>>();
 
@@ -35,7 +37,7 @@ export class DevicesTypeMapperService {
 	getMapping<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto, TUpdateDTO extends UpdateDeviceDto>(
 		type: string,
 	): DeviceTypeMapping<TDevice, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`[LOOKUP] Attempting to find mapping for device type: '${type}'`);
+		this.logger.debug(`Attempting to find mapping for device type: '${type}'`);
 
 		const mapping = this.mappings.get(type);
 

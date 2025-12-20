@@ -8,7 +8,6 @@ import {
 	Delete,
 	Get,
 	HttpCode,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -21,6 +20,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -32,7 +32,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import {
 	CreateDataSourceDto,
@@ -52,7 +52,7 @@ import { DataSourcesService } from '../services/data-sources.service';
 @ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
 @Controller('data-source')
 export class DataSourceController {
-	private readonly logger = new Logger(DataSourceController.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'DataSourceController');
 
 	constructor(
 		private readonly dataSourceService: DataSourcesService,
@@ -82,7 +82,7 @@ export class DataSourceController {
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
 	): Promise<DataSourcesResponseModel> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all data sources`);
+		this.logger.debug(`Fetching all data sources`);
 
 		const dataSources = await this.dataSourceService.findAll(
 			parentType && parentId
@@ -93,7 +93,7 @@ export class DataSourceController {
 				: undefined,
 		);
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${dataSources.length} data sources`);
+		this.logger.debug(`Retrieved ${dataSources.length} data sources`);
 
 		const response = new DataSourcesResponseModel();
 		response.data = dataSources;
@@ -114,11 +114,11 @@ export class DataSourceController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DataSourceResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching data source id=${id}`);
+		this.logger.debug(`Fetching data source id=${id}`);
 
 		const dataSource = await this.getOneOrThrow(id);
 
-		this.logger.debug(`[LOOKUP] Found data source id=${dataSource.id}`);
+		this.logger.debug(`Found data source id=${dataSource.id}`);
 
 		const response = new DataSourceResponseModel();
 		response.data = dataSource;
@@ -151,7 +151,7 @@ export class DataSourceController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<DataSourceResponseModel> {
-		this.logger.debug(`[CREATE] Incoming request to create a new data source`);
+		this.logger.debug(`Incoming request to create a new data source`);
 
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
@@ -230,7 +230,7 @@ export class DataSourceController {
 				parentId: parent.id,
 			});
 
-			this.logger.debug(`[CREATE] Successfully created data source id=${dataSource.id}`);
+			this.logger.debug(`Successfully created data source id=${dataSource.id}`);
 
 			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'data-source', dataSource.id);
 
@@ -268,7 +268,7 @@ export class DataSourceController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<DataSourceResponseModel> {
-		this.logger.debug(`[UPDATE] Incoming update request for data source id=${id}`);
+		this.logger.debug(`Incoming update request for data source id=${id}`);
 
 		const dataSource = await this.getOneOrThrow(id);
 
@@ -298,10 +298,10 @@ export class DataSourceController {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[ERROR] Unsupported data source type for update: ${dataSource.type} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`[ERROR] Unsupported data source type for update: ${dataSource.type}`, {
+				message: err.message,
+				stack: err.stack,
+			});
 
 			if (error instanceof DashboardException) {
 				throw new BadRequestException([
@@ -333,7 +333,7 @@ export class DataSourceController {
 		try {
 			const updatedDataSource = await this.dataSourceService.update(dataSource.id, dtoInstance);
 
-			this.logger.debug(`[UPDATE] Successfully updated data source id=${updatedDataSource.id}`);
+			this.logger.debug(`Successfully updated data source id=${updatedDataSource.id}`);
 
 			const response = new DataSourceResponseModel();
 			response.data = updatedDataSource;
@@ -362,17 +362,17 @@ export class DataSourceController {
 	@HttpCode(204)
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete data source id=${id}`);
+		this.logger.debug(`Incoming request to delete data source id=${id}`);
 
 		const dataSource = await this.getOneOrThrow(id);
 
 		await this.dataSourceService.remove(dataSource.id);
 
-		this.logger.debug(`[DELETE] Successfully deleted data source id=${id}`);
+		this.logger.debug(`Successfully deleted data source id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<DataSourceEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of data source id=${id}`);
+		this.logger.debug(`Checking existence of data source id=${id}`);
 
 		const dataSource = await this.dataSourceService.findOne(id);
 

@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
+import { CONFIG_MODULE_NAME } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 import { UpdateModuleConfigDto } from '../dto/config.dto';
 import { ModuleConfigModel } from '../models/config.model';
@@ -12,7 +14,7 @@ export interface ModuleTypeMapping<TModule extends ModuleConfigModel, TConfigDTO
 
 @Injectable()
 export class ModulesTypeMapperService {
-	private readonly logger = new Logger(ModulesTypeMapperService.name);
+	private readonly logger = createExtensionLogger(CONFIG_MODULE_NAME, 'ModulesTypeMapperService');
 
 	private onMappingsReadyCallback: (() => void) | null = null;
 
@@ -47,7 +49,7 @@ export class ModulesTypeMapperService {
 	getMapping<TModule extends ModuleConfigModel, TConfigDTO extends UpdateModuleConfigDto>(
 		type: string,
 	): ModuleTypeMapping<TModule, TConfigDTO> {
-		this.logger.debug(`[LOOKUP] Attempting to find mapping for config type: '${type}'`, { data: 'type' });
+		this.logger.debug(`Attempting to find mapping for config type: '${type}'`, { data: 'type' });
 
 		const mapping = this.mappings.get(type);
 

@@ -1,12 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { DataTypeType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
 @Injectable()
 export class PropertyValueService {
-	private readonly logger = new Logger(PropertyValueService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyValueService');
 
 	private valuesMap: Map<ChannelPropertyEntity['id'], string | boolean | number | null> = new Map();
 
@@ -42,7 +43,7 @@ export class PropertyValueService {
 					break;
 
 				default:
-					this.logger.error(`[PROPERTY] Unsupported data type dataType=${property.dataType} id=${property.id}`);
+					this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
 
 					return;
 			}
@@ -58,12 +59,12 @@ export class PropertyValueService {
 
 			this.valuesMap.set(property.id, value);
 
-			this.logger.debug(`[PROPERTY] Value saved id=${property.id} dataType=${property.dataType} value=${value}`);
+			this.logger.debug(`Value saved id=${property.id} dataType=${property.dataType} value=${value}`);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(
-				`[PROPERTY] Failed to write value to InfluxDB id=${property.id} dataType=${property.dataType} error=${err.message}`,
+				`Failed to write value to InfluxDB id=${property.id} dataType=${property.dataType} error=${err.message}`,
 				err.stack,
 			);
 		}
@@ -73,7 +74,7 @@ export class PropertyValueService {
 		try {
 			if (this.valuesMap.has(property.id)) {
 				this.logger.debug(
-					`[PROPERTY] Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`,
+					`Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`,
 				);
 
 				return this.valuesMap.get(property.id);
@@ -86,7 +87,7 @@ export class PropertyValueService {
         LIMIT 1
       `;
 
-			this.logger.debug(`[PROPERTY] Fetching latest value id=${property.id}`);
+			this.logger.debug(`Fetching latest value id=${property.id}`);
 
 			const result = await this.influxDbService.query<{
 				stringValue?: string;
@@ -95,7 +96,7 @@ export class PropertyValueService {
 			}>(query);
 
 			if (!result.length) {
-				this.logger.debug(`[PROPERTY] No stored value found for id=${property.id}`);
+				this.logger.debug(`No stored value found for id=${property.id}`);
 
 				return null;
 			}
@@ -131,9 +132,7 @@ export class PropertyValueService {
 					parsedValue = null;
 			}
 
-			this.logger.debug(
-				`[PROPERTY] Read latest value id=${property.id} dataType=${property.dataType} value=${parsedValue}`,
-			);
+			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${parsedValue}`);
 
 			this.valuesMap.set(property.id, parsedValue);
 
@@ -141,10 +140,7 @@ export class PropertyValueService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[PROPERTY] Failed to read latest value from InfluxDB id=${property.id} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to read latest value from InfluxDB id=${property.id} error=${err.message}`, err.stack);
 
 			return null;
 		}
@@ -158,12 +154,12 @@ export class PropertyValueService {
 
 			this.valuesMap.delete(property.id);
 
-			this.logger.log(`[PROPERTY] Deleted all stored values for id=${property.id}`);
+			this.logger.log(`Deleted all stored values for id=${property.id}`);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(
-				`[PROPERTY] Failed to delete property data from InfluxDB propertyId=${property.id} error=${err.message}`,
+				`Failed to delete property data from InfluxDB propertyId=${property.id} error=${err.message}`,
 				err.stack,
 			);
 		}

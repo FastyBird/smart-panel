@@ -1,11 +1,12 @@
 import fetch, { RequestInit, Response } from 'node-fetch';
 
-import { Logger } from '@nestjs/common';
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 
 import { IDevicePlatform, IDevicePropertyData } from './device.platform';
 
 export abstract class HttpDevicePlatform implements IDevicePlatform {
-	private readonly innerLogger = new Logger(HttpDevicePlatform.name);
+	private readonly innerLogger = createExtensionLogger(DEVICES_MODULE_NAME, 'HttpDevicePlatform');
 
 	abstract getType(): string;
 
@@ -20,7 +21,7 @@ export abstract class HttpDevicePlatform implements IDevicePlatform {
 		attempts = 3,
 		options: RequestInit = {},
 	): Promise<Response | false> {
-		this.innerLogger.log(`[HTTP PLATFORM] Sending command to ${endpoint}`);
+		this.innerLogger.log(`Sending command to ${endpoint}`);
 
 		try {
 			for (let i = 0; i < attempts; i++) {
@@ -39,7 +40,7 @@ export abstract class HttpDevicePlatform implements IDevicePlatform {
 					clearTimeout(timeout);
 
 					if (response === false) {
-						this.innerLogger.warn(`[HTTP PLATFORM] Retry attempt ${i + 1} failed`);
+						this.innerLogger.warn(`Retry attempt ${i + 1} failed`);
 					} else {
 						if (!response.ok) {
 							return false;
@@ -50,7 +51,7 @@ export abstract class HttpDevicePlatform implements IDevicePlatform {
 					clearTimeout(timeout);
 
 					if (error instanceof Error && error.name === 'AbortError') {
-						this.innerLogger.warn(`[HTTP PLATFORM] Request to ${endpoint} timed out`);
+						this.innerLogger.warn(`Request to ${endpoint} timed out`);
 						continue; // Retry
 					}
 
@@ -60,12 +61,12 @@ export abstract class HttpDevicePlatform implements IDevicePlatform {
 		} catch (error) {
 			const err = error as Error;
 
-			this.innerLogger.error('[HTTP PLATFORM] Error processing command', { message: err.message, stack: err.stack });
+			this.innerLogger.error('Error processing command', { message: err.message, stack: err.stack });
 
 			return false;
 		}
 
-		this.innerLogger.error(`[HTTP PLATFORM] Sending command failed after ${attempts} attempts`);
+		this.innerLogger.error(`Sending command failed after ${attempts} attempts`);
 
 		return false;
 	}
@@ -76,9 +77,7 @@ export abstract class HttpDevicePlatform implements IDevicePlatform {
 		if (!response.ok) {
 			const responseBody = await response.text();
 
-			this.innerLogger.warn(
-				`[HTTP PLATFORM] Failed request to ${endpoint} status=${response.status} response=${responseBody}`,
-			);
+			this.innerLogger.warn(`Failed request to ${endpoint} status=${response.status} response=${responseBody}`);
 
 			// Only retry on 500+ server errors
 			if (response.status < 500) {
@@ -87,7 +86,7 @@ export abstract class HttpDevicePlatform implements IDevicePlatform {
 
 			return false;
 		} else {
-			this.innerLogger.log(`[HTTP PLATFORM] Successfully processed command to ${endpoint}`);
+			this.innerLogger.log(`Successfully processed command to ${endpoint}`);
 
 			return response;
 		}

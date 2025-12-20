@@ -40,9 +40,7 @@ export class DevicesServiceSubscriber {
 		const haDevice = devicesRegistry.find((d) => d.id === device.haDeviceId);
 
 		if (!haDevice) {
-			this.logger.warn(
-				'[HOME ASSISTANT][SERVICE SUBSCRIBER] Home Assistant device was not found in the Home Assistant instance',
-			);
+			this.logger.warn('Home Assistant device was not found in the Home Assistant instance');
 
 			return device;
 		}
@@ -67,9 +65,7 @@ export class DevicesServiceSubscriber {
 		const rawSchema = channelsSchema[ChannelCategory.DEVICE_INFORMATION] as object | undefined;
 
 		if (!rawSchema || typeof rawSchema !== 'object') {
-			this.logger.warn(
-				`[HOME ASSISTANT][SERVICE SUBSCRIBER] Missing or invalid schema for channel category ${ChannelCategory.DEVICE_INFORMATION}`,
-			);
+			this.logger.warn(`Missing or invalid schema for channel category ${ChannelCategory.DEVICE_INFORMATION}`);
 
 			return device;
 		}
@@ -89,7 +85,7 @@ export class DevicesServiceSubscriber {
 
 		if (errors.length) {
 			this.logger.error(
-				`[HOME ASSISTANT][SERVICE SUBSCRIBER] Home Assistant device create hook channel spec validation failed error=${JSON.stringify(errors)}`,
+				`Home Assistant device create hook channel spec validation failed error=${JSON.stringify(errors)}`,
 			);
 
 			return device;

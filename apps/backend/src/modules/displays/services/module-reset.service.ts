@@ -1,16 +1,18 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
+import { DISPLAYS_MODULE_NAME } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
 @Injectable()
 export class DisplaysModuleResetService {
-	private readonly logger = new Logger(DisplaysModuleResetService.name);
+	private readonly logger = createExtensionLogger(DISPLAYS_MODULE_NAME, 'DisplaysModuleResetService');
 
 	constructor(
 		@InjectRepository(DisplayEntity)
@@ -20,7 +22,7 @@ export class DisplaysModuleResetService {
 	) {}
 
 	async reset(): Promise<void> {
-		this.logger.debug('[RESET] Resetting displays module');
+		this.logger.debug('Resetting displays module');
 
 		// First revoke all display tokens
 		const displays = await this.displayRepository.find();
@@ -35,12 +37,12 @@ export class DisplaysModuleResetService {
 		// Clear display status data from InfluxDB
 		try {
 			await this.influxDbService.dropMeasurement('display_status');
-			this.logger.debug('[RESET] Cleared display status data from InfluxDB');
+			this.logger.debug('Cleared display status data from InfluxDB');
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn(`[RESET] Failed to clear display status data from InfluxDB: ${err.message}`, err.stack);
+			this.logger.warn(`Failed to clear display status data from InfluxDB: ${err.message}`, err.stack);
 		}
 
-		this.logger.debug('[RESET] Displays module reset complete');
+		this.logger.debug('Displays module reset complete');
 	}
 }

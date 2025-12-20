@@ -291,8 +291,8 @@
 						</template>
 
 						<extension-logs
-							:extension-type="extension.type"
 							v-model:live="logsLive"
+							:extension-type="extension.type"
 						/>
 					</el-tab-pane>
 				</el-tabs>
@@ -459,8 +459,8 @@
 					<span class="font-semibold">{{ t('extensionsModule.labels.logs') }}</span>
 				</template>
 				<extension-logs
-					:extension-type="extension.type"
 					v-model:live="logsLive"
+					:extension-type="extension.type"
 				/>
 			</el-card>
 		</template>

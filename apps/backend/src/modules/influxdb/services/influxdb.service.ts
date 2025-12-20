@@ -1,10 +1,12 @@
 import { IPingStats, IQueryOptions, IResults, ISchemaOptions, InfluxDB } from 'influx';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { safeNumber, safeToString } from '../../../common/utils/transform.utils';
+import { INFLUXDB_MODULE_NAME } from '../influxdb.constants';
 
 type RetentionPolicyRow = {
 	name: string;
@@ -45,7 +47,7 @@ const isArrayOfContinuousQueries = (v: unknown): boolean => {
 
 @Injectable()
 export class InfluxDbService {
-	private readonly logger = new Logger(InfluxDbService.name);
+	private readonly logger = createExtensionLogger(INFLUXDB_MODULE_NAME, 'InfluxDbService');
 	private connection: InfluxDB | null = null;
 	private readonly schemas: ISchemaOptions[] = [];
 
@@ -53,7 +55,7 @@ export class InfluxDbService {
 		this.initializeConnection().catch((error) => {
 			const err = error as Error;
 
-			this.logger.error('[INFLUXDB] Database can not be initialized', { message: err.message, stack: err.stack });
+			this.logger.error('Database can not be initialized', { message: err.message, stack: err.stack });
 		});
 	}
 
@@ -85,27 +87,27 @@ export class InfluxDbService {
 
 			if (!databases.includes(database)) {
 				await this.connection.createDatabase(database);
-				this.logger.log(`[INFLUXDB] Database '${database}' created.`);
+				this.logger.log(`Database '${database}' created.`);
 			}
 
 			await this.ensureRetentionPolicies(database);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[INFLUXDB] Failed to connect to InfluxDB', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to connect to InfluxDB', { message: err.message, stack: err.stack });
 		}
 	}
 
 	private getConnection(): InfluxDB {
 		if (!this.connection) {
-			throw new Error('[INFLUXDB] InfluxDB connection is not initialized');
+			throw new Error('InfluxDB connection is not initialized');
 		}
 		return this.connection;
 	}
 
 	public disconnect(): void {
 		this.connection = null;
-		this.logger.log('[INFLUXDB] Connection closed.');
+		this.logger.log('Connection closed.');
 	}
 
 	public async alterRetentionPolicy(...args: Parameters<InfluxDB['alterRetentionPolicy']>): Promise<void> {

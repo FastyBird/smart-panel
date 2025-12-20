@@ -1,9 +1,10 @@
 import { instanceToPlain } from 'class-transformer';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
@@ -56,7 +57,10 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
  */
 @Injectable()
 export class ShellyV1Service implements IManagedPluginService {
-	private readonly logger = new Logger(ShellyV1Service.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_V1_PLUGIN_NAME,
+		'ShellyV1Service',
+	);
 
 	readonly pluginName = DEVICES_SHELLY_V1_PLUGIN_NAME;
 	readonly serviceId = 'connector';
@@ -99,7 +103,7 @@ export class ShellyV1Service implements IManagedPluginService {
 
 			this.state = 'starting';
 
-			this.logger.log('[SHELLY V1][SERVICE] Starting Shelly V1 plugin service');
+			this.logger.log('Starting Shelly V1 plugin service');
 
 			try {
 				// Initialize all devices to UNKNOWN connection state
@@ -108,11 +112,11 @@ export class ShellyV1Service implements IManagedPluginService {
 				// Start the shellies adapter for device discovery
 				await this.shelliesAdapter.start();
 
-				this.logger.log('[SHELLY V1][SERVICE] Shelly V1 plugin service started successfully');
+				this.logger.log('Shelly V1 plugin service started successfully');
 
 				this.state = 'started';
 			} catch (error) {
-				this.logger.error('[SHELLY V1][SERVICE] Failed to start Shelly V1 plugin service', {
+				this.logger.error('Failed to start Shelly V1 plugin service', {
 					message: error instanceof Error ? error.message : String(error),
 					stack: error instanceof Error ? error.stack : undefined,
 				});
@@ -152,17 +156,17 @@ export class ShellyV1Service implements IManagedPluginService {
 
 			this.state = 'stopping';
 
-			this.logger.log('[SHELLY V1][SERVICE] Stopping Shelly V1 plugin service');
+			this.logger.log('Stopping Shelly V1 plugin service');
 
 			try {
 				// Stop the shellies adapter
 				this.shelliesAdapter.stop();
 
-				this.logger.log('[SHELLY V1][SERVICE] Shelly V1 plugin service stopped');
+				this.logger.log('Shelly V1 plugin service stopped');
 
 				this.state = 'stopped';
 			} catch (error) {
-				this.logger.error('[SHELLY V1][SERVICE] Failed to stop Shelly V1 plugin service', {
+				this.logger.error('Failed to stop Shelly V1 plugin service', {
 					message: error instanceof Error ? error.message : String(error),
 					stack: error instanceof Error ? error.stack : undefined,
 				});
@@ -196,7 +200,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		// Signal that restart is required to apply new settings
 		// The manager will handle stop/start to maintain accurate runtime tracking
 		if (this.state === 'started') {
-			this.logger.log('[SHELLY V1][SERVICE] Config changed, restart required');
+			this.logger.log('Config changed, restart required');
 
 			return Promise.resolve({ restartRequired: true });
 		}
@@ -209,7 +213,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_DISCOVERED)
 	async handleDeviceDiscovered(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.log(`[SHELLY V1][SERVICE] Device discovered: ${event.id} (${event.type}) at ${event.host}`);
+		this.logger.log(`Device discovered: ${event.id} (${event.type}) at ${event.host}`);
 
 		try {
 			// Check if discovery is enabled
@@ -222,24 +226,20 @@ export class ShellyV1Service implements IManagedPluginService {
 				);
 
 				if (!existingDevice) {
-					this.logger.debug(
-						`[SHELLY V1][SERVICE] Discovery is disabled, ignoring new device: ${event.id} (${event.type})`,
-					);
+					this.logger.debug(`Discovery is disabled, ignoring new device: ${event.id} (${event.type})`);
 
 					return;
 				}
 
-				this.logger.debug(
-					`[SHELLY V1][SERVICE] Discovery is disabled, but device ${event.id} already exists, processing update`,
-				);
+				this.logger.debug(`Discovery is disabled, but device ${event.id} already exists, processing update`);
 			}
 
 			// Map and create the device with its channels and properties
 			const device = await this.deviceMapper.mapDevice(event);
 
-			this.logger.log(`[SHELLY V1][SERVICE] Device mapped successfully: ${device.identifier} (${device.id})`);
+			this.logger.log(`Device mapped successfully: ${device.identifier} (${device.id})`);
 		} catch (error) {
-			this.logger.error(`[SHELLY V1][SERVICE] Failed to map device ${event.id}:`, {
+			this.logger.error(`Failed to map device ${event.id}:`, {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});
@@ -251,16 +251,14 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_CHANGED)
 	async handleDeviceChanged(event: NormalizedDeviceChangeEvent): Promise<void> {
-		this.logger.debug(
-			`[SHELLY V1][SERVICE] Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`,
-		);
+		this.logger.debug(`Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`);
 
 		try {
 			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`[SHELLY V1][SERVICE] Device ${event.id} is disabled, ignoring property change`);
+				this.logger.debug(`Device ${event.id} is disabled, ignoring property change`);
 
 				return;
 			}
@@ -273,7 +271,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			if (!device) {
-				this.logger.debug(`[SHELLY V1][SERVICE] Device not found in database: ${event.id}, skipping property update`);
+				this.logger.debug(`Device not found in database: ${event.id}, skipping property update`);
 
 				return;
 			}
@@ -282,9 +280,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			const binding = await this.findPropertyBinding(device, event.property);
 
 			if (!binding) {
-				this.logger.debug(
-					`[SHELLY V1][SERVICE] No binding found for property: ${event.property} on device ${device.identifier}, skipping`,
-				);
+				this.logger.debug(`No binding found for property: ${event.property} on device ${device.identifier}, skipping`);
 
 				return;
 			}
@@ -332,10 +328,10 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			this.logger.debug(
-				`[SHELLY V1][SERVICE] Updated property ${property.identifier} for channel ${channel.identifier} to ${JSON.stringify(event.newValue)}`,
+				`Updated property ${property.identifier} for channel ${channel.identifier} to ${JSON.stringify(event.newValue)}`,
 			);
 		} catch (error) {
-			this.logger.error(`[SHELLY V1][SERVICE] Failed to update property for device ${event.id}:`, {
+			this.logger.error(`Failed to update property for device ${event.id}:`, {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});
@@ -347,14 +343,14 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_OFFLINE)
 	async handleDeviceOffline(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.debug(`[SHELLY V1][SERVICE] Device went offline: ${event.id}`);
+		this.logger.debug(`Device went offline: ${event.id}`);
 
 		try {
 			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`[SHELLY V1][SERVICE] Device ${event.id} is disabled, ignoring offline event`);
+				this.logger.debug(`Device ${event.id} is disabled, ignoring offline event`);
 
 				return;
 			}
@@ -367,9 +363,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			if (!device) {
-				this.logger.debug(
-					`[SHELLY V1][SERVICE] Device not found in database: ${event.id}, skipping offline state update`,
-				);
+				this.logger.debug(`Device not found in database: ${event.id}, skipping offline state update`);
 
 				return;
 			}
@@ -379,9 +373,9 @@ export class ShellyV1Service implements IManagedPluginService {
 				state: ConnectionState.DISCONNECTED,
 			});
 
-			this.logger.debug(`[SHELLY V1][SERVICE] Device ${device.identifier} marked as offline`);
+			this.logger.debug(`Device ${device.identifier} marked as offline`);
 		} catch (error) {
-			this.logger.error(`[SHELLY V1][SERVICE] Failed to mark device ${event.id} as offline:`, {
+			this.logger.error(`Failed to mark device ${event.id} as offline:`, {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});
@@ -393,14 +387,14 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_ONLINE)
 	async handleDeviceOnline(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.debug(`[SHELLY V1][SERVICE] Device came online: ${event.id}`);
+		this.logger.debug(`Device came online: ${event.id}`);
 
 		try {
 			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`[SHELLY V1][SERVICE] Device ${event.id} is disabled, ignoring online event`);
+				this.logger.debug(`Device ${event.id} is disabled, ignoring online event`);
 
 				return;
 			}
@@ -413,9 +407,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			if (!device) {
-				this.logger.debug(
-					`[SHELLY V1][SERVICE] Device not found in database: ${event.id}, skipping online state update`,
-				);
+				this.logger.debug(`Device not found in database: ${event.id}, skipping online state update`);
 
 				return;
 			}
@@ -425,9 +417,9 @@ export class ShellyV1Service implements IManagedPluginService {
 				state: ConnectionState.CONNECTED,
 			});
 
-			this.logger.debug(`[SHELLY V1][SERVICE] Device ${device.identifier} marked as online`);
+			this.logger.debug(`Device ${device.identifier} marked as online`);
 		} catch (error) {
-			this.logger.error(`[SHELLY V1][SERVICE] Failed to mark device ${event.id} as online:`, {
+			this.logger.error(`Failed to mark device ${event.id} as online:`, {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});
@@ -447,7 +439,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		const descriptor = await this.findDescriptor(device);
 
 		if (!descriptor) {
-			this.logger.warn(`[SHELLY V1][SERVICE] No descriptor found for device: ${device.identifier}`);
+			this.logger.warn(`No descriptor found for device: ${device.identifier}`);
 
 			return null;
 		}
@@ -462,9 +454,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			const shellyDevice = this.shelliesAdapter.getDevice(deviceModel, device.identifier);
 
 			if (!shellyDevice) {
-				this.logger.warn(
-					`[SHELLY V1][SERVICE] Device ${device.identifier} not found in adapter, cannot determine mode`,
-				);
+				this.logger.warn(`Device ${device.identifier} not found in adapter, cannot determine mode`);
 
 				return null;
 			}
@@ -475,9 +465,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			if (modeProfile) {
 				bindings = modeProfile.bindings;
 			} else {
-				this.logger.warn(
-					`[SHELLY V1][SERVICE] No mode profile found for mode value: ${String(modeValue)} on device ${device.identifier}`,
-				);
+				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)} on device ${device.identifier}`);
 
 				return null;
 			}
@@ -490,9 +478,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		const binding = bindings.find((b) => b.shelliesProperty === shelliesProperty);
 
 		if (!binding) {
-			this.logger.debug(
-				`[SHELLY V1][SERVICE] No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`,
-			);
+			this.logger.debug(`No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`);
 
 			return null;
 		}
@@ -515,7 +501,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		);
 
 		if (!deviceInfoChannel) {
-			this.logger.warn(`[SHELLY V1][SERVICE] No device_information channel found for device: ${device.identifier}`);
+			this.logger.warn(`No device_information channel found for device: ${device.identifier}`);
 
 			return null;
 		}
@@ -529,7 +515,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		);
 
 		if (!modelProperty || !modelProperty.value) {
-			this.logger.warn(`[SHELLY V1][SERVICE] No model property found for device: ${device.identifier}`);
+			this.logger.warn(`No model property found for device: ${device.identifier}`);
 
 			return null;
 		}
@@ -556,7 +542,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			}
 		}
 
-		this.logger.warn(`[SHELLY V1][SERVICE] No descriptor found for device model: ${deviceModel}`);
+		this.logger.warn(`No descriptor found for device model: ${deviceModel}`);
 
 		return null;
 	}
@@ -566,7 +552,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.ERROR)
 	handleAdapterError(error: Error): void {
-		this.logger.error('[SHELLY V1][SERVICE] Shellies adapter error', {
+		this.logger.error('Shellies adapter error', {
 			message: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		});
@@ -621,7 +607,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		try {
 			const devices = await this.devicesService.findAll<ShellyV1DeviceEntity>(DEVICES_SHELLY_V1_TYPE);
 
-			this.logger.log(`[SHELLY V1][SERVICE] Initializing connection state for ${devices.length} Shelly V1 devices`);
+			this.logger.log(`Initializing connection state for ${devices.length} Shelly V1 devices`);
 
 			for (const device of devices) {
 				await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -629,7 +615,7 @@ export class ShellyV1Service implements IManagedPluginService {
 				});
 			}
 		} catch (error) {
-			this.logger.error('[SHELLY V1][SERVICE] Failed to initialize device states', {
+			this.logger.error('Failed to initialize device states', {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});
@@ -653,7 +639,7 @@ export class ShellyV1Service implements IManagedPluginService {
 				return;
 			}
 
-			this.logger.debug(`[SHELLY V1][SERVICE] Updating device information for ${registeredDevices.length} devices`);
+			this.logger.debug(`Updating device information for ${registeredDevices.length} devices`);
 
 			for (const registeredDevice of registeredDevices) {
 				// Skip disabled devices
@@ -725,9 +711,7 @@ export class ShellyV1Service implements IManagedPluginService {
 								value: status.wifi_sta.rssi,
 							});
 
-							this.logger.debug(
-								`[SHELLY V1][SERVICE] Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`,
-							);
+							this.logger.debug(`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`);
 						}
 					}
 
@@ -749,17 +733,17 @@ export class ShellyV1Service implements IManagedPluginService {
 								value: info.fw,
 							});
 
-							this.logger.debug(`[SHELLY V1][SERVICE] Updated firmware version for ${registeredDevice.id}: ${info.fw}`);
+							this.logger.debug(`Updated firmware version for ${registeredDevice.id}: ${info.fw}`);
 						}
 					}
 				} catch (error) {
-					this.logger.warn(`[SHELLY V1][SERVICE] Failed to update device information for ${registeredDevice.id}`, {
+					this.logger.warn(`Failed to update device information for ${registeredDevice.id}`, {
 						message: error instanceof Error ? error.message : String(error),
 					});
 				}
 			}
 		} catch (error) {
-			this.logger.error('[SHELLY V1][SERVICE] Failed to update devices information', {
+			this.logger.error('Failed to update devices information', {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});

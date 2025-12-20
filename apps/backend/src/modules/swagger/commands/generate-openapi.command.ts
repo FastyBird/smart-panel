@@ -2,11 +2,13 @@ import { Command, CommandRunner } from 'nest-commander';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { AppInstanceHolder } from '../../../common/services/app-instance-holder.service';
 import { openApiTagRegistry } from '../decorators/api-tag.decorator';
 import { SwaggerDocumentService } from '../services/swagger-document.service';
+import { SWAGGER_MODULE_NAME } from '../swagger.constants';
 
 @Command({
 	name: 'openapi:generate',
@@ -14,7 +16,7 @@ import { SwaggerDocumentService } from '../services/swagger-document.service';
 })
 @Injectable()
 export class GenerateOpenapiCommand extends CommandRunner {
-	private readonly logger = new Logger(GenerateOpenapiCommand.name);
+	private readonly logger = createExtensionLogger(SWAGGER_MODULE_NAME, 'GenerateOpenapiCommand');
 
 	constructor(
 		private readonly swaggerService: SwaggerDocumentService,

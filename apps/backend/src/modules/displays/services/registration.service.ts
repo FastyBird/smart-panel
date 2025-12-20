@@ -3,14 +3,16 @@ import { CreateLongLiveTokenDto } from 'src/modules/auth/dto/create-token.dto';
 import { LongLiveTokenEntity } from 'src/modules/auth/entities/auth.entity';
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
+import { DISPLAYS_MODULE_NAME } from '../displays.constants';
 import { DisplaysValidationException } from '../displays.exceptions';
 import { RegisterDisplayDto } from '../dto/register-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
@@ -29,7 +31,7 @@ export interface TokenRefreshResult {
 
 @Injectable()
 export class RegistrationService {
-	private readonly logger = new Logger(RegistrationService.name);
+	private readonly logger = createExtensionLogger(DISPLAYS_MODULE_NAME, 'RegistrationService');
 
 	constructor(
 		private readonly displaysService: DisplaysService,
@@ -44,7 +46,7 @@ export class RegistrationService {
 		_userAgent: string,
 		clientIp: string,
 	): Promise<RegistrationResult> {
-		this.logger.debug(`[REGISTER] Registering display with MAC=${registerDto.macAddress}, IP=${clientIp}`);
+		this.logger.debug(`Registering display with MAC=${registerDto.macAddress}, IP=${clientIp}`);
 
 		const dtoInstance = await this.validateDto(RegisterDisplayDto, registerDto);
 
@@ -53,7 +55,7 @@ export class RegistrationService {
 
 		if (display) {
 			// Update existing display
-			this.logger.debug(`[REGISTER] Display already exists, updating`);
+			this.logger.debug(`Display already exists, updating`);
 
 			display = await this.displaysService.update(display.id, {
 				version: dtoInstance.version,
@@ -74,7 +76,7 @@ export class RegistrationService {
 			await this.tokensService.revokeByOwnerId(display.id, TokenOwnerType.DISPLAY);
 		} else {
 			// Create new display
-			this.logger.debug(`[REGISTER] Creating new display`);
+			this.logger.debug(`Creating new display`);
 
 			display = await this.displaysService.create({
 				macAddress: dtoInstance.macAddress,
@@ -95,13 +97,13 @@ export class RegistrationService {
 		// Generate long-lived token for the display
 		const accessToken = await this.generateDisplayToken(display);
 
-		this.logger.debug(`[REGISTER] Successfully registered display with id=${display.id}`);
+		this.logger.debug(`Successfully registered display with id=${display.id}`);
 
 		return { display, accessToken };
 	}
 
 	async refreshDisplayToken(displayId: string, currentToken: string): Promise<TokenRefreshResult> {
-		this.logger.debug(`[REFRESH] Refreshing token for display=${displayId}`);
+		this.logger.debug(`Refreshing token for display=${displayId}`);
 
 		// Verify the display exists
 		const display = await this.displaysService.getOneOrThrow(displayId);
@@ -119,12 +121,12 @@ export class RegistrationService {
 		}
 
 		if (!storedToken) {
-			this.logger.warn(`[REFRESH] Token not found for display=${displayId}`);
+			this.logger.warn(`Token not found for display=${displayId}`);
 			throw new UnauthorizedException('Invalid token');
 		}
 
 		if (storedToken.revoked) {
-			this.logger.warn(`[REFRESH] Token is revoked for display=${displayId}`);
+			this.logger.warn(`Token is revoked for display=${displayId}`);
 			throw new UnauthorizedException('Token has been revoked');
 		}
 
@@ -138,13 +140,13 @@ export class RegistrationService {
 		const expiresAt = new Date();
 		expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
-		this.logger.debug(`[REFRESH] Successfully refreshed token for display=${displayId}`);
+		this.logger.debug(`Successfully refreshed token for display=${displayId}`);
 
 		return { accessToken: newToken, expiresAt };
 	}
 
 	private async generateDisplayToken(display: DisplayEntity): Promise<string> {
-		this.logger.debug(`[TOKEN] Generating token for display=${display.id}`);
+		this.logger.debug(`Generating token for display=${display.id}`);
 
 		// Calculate expiration date (1 year from now)
 		const expiresAt = new Date();
@@ -173,7 +175,7 @@ export class RegistrationService {
 			expiresAt: expiresAt,
 		});
 
-		this.logger.debug(`[TOKEN] Successfully generated token for display=${display.id}`);
+		this.logger.debug(`Successfully generated token for display=${display.id}`);
 
 		return token;
 	}
@@ -190,7 +192,7 @@ export class RegistrationService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new DisplaysValidationException('Provided registration data is invalid.');
 		}

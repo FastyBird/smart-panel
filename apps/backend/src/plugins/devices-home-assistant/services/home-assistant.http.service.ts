@@ -54,7 +54,7 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
-			this.logger.debug('[HOME ASSISTANT][HTTP SERVICE] Fetching single Home Assistant discovered device');
+			this.logger.debug('Fetching single Home Assistant discovered device');
 
 			const [device, states] = await Promise.all([this.fetchSingleHaDevice(id), this.fetchListHaStates()]);
 
@@ -75,7 +75,7 @@ export class HomeAssistantHttpService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Failed to fetch Home Assistant discovered device detail', {
+			this.logger.error('Failed to fetch Home Assistant discovered device detail', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -92,7 +92,7 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
-			this.logger.debug('[HOME ASSISTANT][HTTP SERVICE] Fetching all Home Assistant discovered devices list');
+			this.logger.debug('Fetching all Home Assistant discovered devices list');
 
 			const [devices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
 
@@ -115,7 +115,7 @@ export class HomeAssistantHttpService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Failed to fetch Home Assistant discovered devices list', {
+			this.logger.error('Failed to fetch Home Assistant discovered devices list', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -132,7 +132,7 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
-			this.logger.debug('[HOME ASSISTANT][HTTP SERVICE] Fetching all Home Assistant discovered devices list');
+			this.logger.debug('Fetching all Home Assistant discovered devices list');
 
 			const state = await this.fetchSingleHaState(entityId);
 
@@ -142,7 +142,7 @@ export class HomeAssistantHttpService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Failed to get Home Assistant entity state', {
+			this.logger.error('Failed to get Home Assistant entity state', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -159,7 +159,7 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
-			this.logger.debug('[HOME ASSISTANT][HTTP SERVICE] Fetching all Home Assistant entities states list');
+			this.logger.debug('Fetching all Home Assistant entities states list');
 
 			const states = await this.fetchListHaStates();
 
@@ -169,7 +169,7 @@ export class HomeAssistantHttpService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Failed to fetch Home Assistant entities states list', {
+			this.logger.error('Failed to fetch Home Assistant entities states list', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -189,7 +189,7 @@ export class HomeAssistantHttpService {
 		}
 
 		try {
-			this.logger.debug('[HOME ASSISTANT][HTTP SERVICE] Automatic fetch of all Home Assistant entities states list');
+			this.logger.debug('Automatic fetch of all Home Assistant entities states list');
 
 			const [states, haDevices, devices, properties] = await Promise.all([
 				this.fetchListHaStates(),
@@ -202,7 +202,7 @@ export class HomeAssistantHttpService {
 			]);
 
 			if (!states?.length || !haDevices?.length || !devices?.length || !properties?.length) {
-				this.logger.warn('[HOME ASSISTANT][HTTP SERVICE] Missing data, skipping automatic sync');
+				this.logger.warn('Missing data, skipping automatic sync');
 
 				return;
 			}
@@ -277,24 +277,19 @@ export class HomeAssistantHttpService {
 					});
 
 					this.logger.debug(
-						`[HOME ASSISTANT][HTTP SERVICE] Device ${device.name} (${device.id}) marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,
+						`Device ${device.name} (${device.id}) marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,
 					);
 				}
 			}
 
-			this.logger.debug(
-				'[HOME ASSISTANT][HTTP SERVICE] Automatic fetch of all Home Assistant entities states list completed',
-			);
+			this.logger.debug('Automatic fetch of all Home Assistant entities states list completed');
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				'[HOME ASSISTANT][HTTP SERVICE] Failed to automated fetch of Home Assistant entities states list',
-				{
-					message: err.message,
-					stack: err.stack,
-				},
-			);
+			this.logger.error('Failed to automated fetch of Home Assistant entities states list', {
+				message: err.message,
+				stack: err.stack,
+			});
 		}
 	}
 
@@ -331,7 +326,7 @@ export class HomeAssistantHttpService {
 
 	private ensureApiKey(): void {
 		if (this.apiKey === null) {
-			this.logger.warn('[HOME ASSISTANT][HTTP SERVICE] Missing API key for Home Assistant HTTP service');
+			this.logger.warn('Missing API key for Home Assistant HTTP service');
 
 			throw new DevicesHomeAssistantValidationException('Api key is required');
 		}
@@ -391,7 +386,7 @@ export class HomeAssistantHttpService {
 			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
-				this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Home Assistant API template request failed', data);
+				this.logger.error('Home Assistant API template request failed', data);
 
 				return null;
 			}
@@ -405,9 +400,7 @@ export class HomeAssistantHttpService {
 			);
 
 			if (errors.some((e) => e.length > 0)) {
-				this.logger.error(
-					`[HOME ASSISTANT][HTTP SERVICE] Home Assistant device response validation failed error=${JSON.stringify(errors)}`,
-				);
+				this.logger.error(`Home Assistant device response validation failed error=${JSON.stringify(errors)}`);
 
 				return null;
 			}
@@ -420,7 +413,7 @@ export class HomeAssistantHttpService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Failed to fetch devices list', {
+			this.logger.error('Failed to fetch devices list', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -447,7 +440,7 @@ export class HomeAssistantHttpService {
 			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
-				this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Home Assistant API template request failed', data);
+				this.logger.error('Home Assistant API template request failed', data);
 
 				return null;
 			}
@@ -461,9 +454,7 @@ export class HomeAssistantHttpService {
 			);
 
 			if (errors.some((e) => e.length > 0)) {
-				this.logger.error(
-					`[HOME ASSISTANT][HTTP SERVICE] Home Assistant devices response validation failed error=${JSON.stringify(errors)}`,
-				);
+				this.logger.error(`Home Assistant devices response validation failed error=${JSON.stringify(errors)}`);
 
 				return null;
 			}
@@ -472,7 +463,7 @@ export class HomeAssistantHttpService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Failed to fetch devices list', {
+			this.logger.error('Failed to fetch devices list', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -496,7 +487,7 @@ export class HomeAssistantHttpService {
 			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
-				this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Home Assistant state API request failed', data);
+				this.logger.error('Home Assistant state API request failed', data);
 
 				return null;
 			}
@@ -508,9 +499,7 @@ export class HomeAssistantHttpService {
 			const errors = await validate(state);
 
 			if (errors.length) {
-				this.logger.error(
-					`[HOME ASSISTANT][HTTP SERVICE] Home Assistant states response validation failed error=${JSON.stringify(errors)}`,
-				);
+				this.logger.error(`Home Assistant states response validation failed error=${JSON.stringify(errors)}`);
 
 				return null;
 			}
@@ -519,7 +508,7 @@ export class HomeAssistantHttpService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Failed to fetch states list', {
+			this.logger.error('Failed to fetch states list', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -543,7 +532,7 @@ export class HomeAssistantHttpService {
 			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
-				this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Home Assistant states API request failed', data);
+				this.logger.error('Home Assistant states API request failed', data);
 
 				return null;
 			}
@@ -557,9 +546,7 @@ export class HomeAssistantHttpService {
 			);
 
 			if (errors.some((e) => e.length > 0)) {
-				this.logger.error(
-					`[HOME ASSISTANT][HTTP SERVICE] Home Assistant states response validation failed error=${JSON.stringify(errors)}`,
-				);
+				this.logger.error(`Home Assistant states response validation failed error=${JSON.stringify(errors)}`);
 
 				return null;
 			}
@@ -568,7 +555,7 @@ export class HomeAssistantHttpService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][HTTP SERVICE] Failed to fetch states list', {
+			this.logger.error('Failed to fetch states list', {
 				message: err.message,
 				stack: err.stack,
 			});

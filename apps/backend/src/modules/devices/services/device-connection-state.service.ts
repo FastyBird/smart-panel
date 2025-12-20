@@ -1,12 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { ConnectionState, OnlineDeviceState, PropertyCategory } from '../devices.constants';
+import { ConnectionState, DEVICES_MODULE_NAME, OnlineDeviceState, PropertyCategory } from '../devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
 @Injectable()
 export class DeviceConnectionStateService {
-	private readonly logger = new Logger(DeviceConnectionStateService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DeviceConnectionStateService');
 
 	private statusMap: Map<DeviceEntity['id'], { online: boolean; status: ConnectionState }> = new Map();
 	private statusPropertyMap: Map<DeviceEntity['id'], ChannelPropertyEntity['id']> = new Map();
@@ -15,9 +16,7 @@ export class DeviceConnectionStateService {
 
 	async write(device: DeviceEntity, property: ChannelPropertyEntity, status: ConnectionState): Promise<void> {
 		if (property.category !== PropertyCategory.STATUS) {
-			this.logger.error(
-				`[DEVICE] Failed to write device provided property if=${property.id} is not device status property`,
-			);
+			this.logger.error(`Failed to write device provided property if=${property.id} is not device status property`);
 
 			return;
 		}
@@ -46,11 +45,11 @@ export class DeviceConnectionStateService {
 			this.statusMap.set(device.id, { online: isOnline, status });
 			this.statusPropertyMap.set(device.id, property.id);
 
-			this.logger.debug(`[DEVICE] Status saved id=${device.id} status=${status}`);
+			this.logger.debug(`Status saved id=${device.id} status=${status}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[DEVICE] Failed to write status to InfluxDB id=${device.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to write status to InfluxDB id=${device.id} error=${err.message}`, err.stack);
 		}
 	}
 
@@ -58,7 +57,7 @@ export class DeviceConnectionStateService {
 		try {
 			if (this.statusMap.has(device.id)) {
 				this.logger.debug(
-					`[DEVICE] Loaded cached status for device id=${device.id}, status=${this.statusMap.get(device.id)?.status}`,
+					`Loaded cached status for device id=${device.id}, status=${this.statusMap.get(device.id)?.status}`,
 				);
 
 				return this.statusMap.get(device.id);
@@ -71,7 +70,7 @@ export class DeviceConnectionStateService {
         LIMIT 1
       `;
 
-			this.logger.debug(`[DEVICE] Fetching latest status id=${device.id}`);
+			this.logger.debug(`Fetching latest status id=${device.id}`);
 
 			const result = await this.influxDbService.query<{
 				online: boolean;
@@ -82,7 +81,7 @@ export class DeviceConnectionStateService {
 			}>(query);
 
 			if (!result.length) {
-				this.logger.debug(`[DEVICE] No stored status found for id=${device.id}`);
+				this.logger.debug(`No stored status found for id=${device.id}`);
 
 				return {
 					online: false,
@@ -92,7 +91,7 @@ export class DeviceConnectionStateService {
 
 			const latest = result[0];
 
-			this.logger.debug(`[DEVICE] Read latest value id=${device.id} status=${latest.status}`);
+			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`);
 
 			this.statusMap.set(device.id, { online: latest.online, status: latest.status });
 			this.statusPropertyMap.set(device.id, latest.propertyId);
@@ -101,10 +100,7 @@ export class DeviceConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[DEVICE] Failed to read latest status from InfluxDB id=${device.id} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to read latest status from InfluxDB id=${device.id} error=${err.message}`, err.stack);
 
 			return {
 				online: false,
@@ -126,7 +122,7 @@ export class DeviceConnectionStateService {
 		const result = await this.influxDbService.query<{ sum: number }>(query);
 
 		if (!result.length) {
-			this.logger.debug('[DEVICE] No stored statuses found');
+			this.logger.debug('No stored statuses found');
 
 			return 0;
 		}
@@ -147,14 +143,11 @@ export class DeviceConnectionStateService {
 			this.statusMap.delete(device.id);
 			this.statusPropertyMap.delete(device.id);
 
-			this.logger.log(`[DEVICE] Deleted device status for id=${device.id}`);
+			this.logger.log(`Deleted device status for id=${device.id}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[DEVICE] Failed to delete device status from InfluxDB id=${device.id} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to delete device status from InfluxDB id=${device.id} error=${err.message}`, err.stack);
 		}
 	}
 
@@ -171,12 +164,12 @@ export class DeviceConnectionStateService {
 				this.statusPropertyMap.delete(deviceId);
 			}
 
-			this.logger.log(`[DEVICE] Deleted device status for id=${deviceId}`);
+			this.logger.log(`Deleted device status for id=${deviceId}`);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(
-				`[DEVICE] Failed to delete device status from InfluxDB propertyId=${property.id} error=${err.message}`,
+				`Failed to delete device status from InfluxDB propertyId=${property.id} error=${err.message}`,
 				err.stack,
 			);
 		}

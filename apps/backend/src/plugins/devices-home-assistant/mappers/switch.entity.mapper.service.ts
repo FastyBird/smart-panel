@@ -37,12 +37,10 @@ export class SwitchEntityMapperService extends EntityMapper {
 		if (onProp) {
 			mapped.set(onProp.id, state.state.toLowerCase() === 'on');
 		} else {
-			this.logger.warn('[HOME ASSISTANT][SWITCH ENTITY MAPPER] Missing main state property');
+			this.logger.warn('Missing main state property');
 		}
 
-		this.logger.debug(
-			'[HOME ASSISTANT][SWITCH ENTITY MAPPER] Received switch entity state was mapped to system properties',
-		);
+		this.logger.debug('Received switch entity state was mapped to system properties');
 
 		return mapped;
 	}
@@ -71,7 +69,7 @@ export class SwitchEntityMapperService extends EntityMapper {
 		if (!onProp) {
 			return null;
 		} else {
-			this.logger.warn('[HOME ASSISTANT][SWITCH ENTITY MAPPER] Missing main state property');
+			this.logger.warn('Missing main state property');
 		}
 
 		const isOn = values.has(onProp.id) ? values.get(onProp.id) : onProp.value;
@@ -80,9 +78,7 @@ export class SwitchEntityMapperService extends EntityMapper {
 
 		const service = isOn === true ? 'turn_on' : 'turn_off';
 
-		this.logger.debug(
-			'[HOME ASSISTANT][SWITCH ENTITY MAPPER] Received properties were mapped to Home Assistant entity state',
-		);
+		this.logger.debug('Received properties were mapped to Home Assistant entity state');
 
 		return { state, service };
 	}

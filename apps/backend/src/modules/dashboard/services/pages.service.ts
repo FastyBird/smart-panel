@@ -3,13 +3,14 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DisplaysService } from '../../displays/services/displays.service';
-import { EventType } from '../dashboard.constants';
+import { DASHBOARD_MODULE_NAME, EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { CreatePageDto } from '../dto/create-page.dto';
@@ -24,7 +25,7 @@ import { PagesTypeMapperService } from './pages-type-mapper.service';
 
 @Injectable()
 export class PagesService {
-	private readonly logger = new Logger(PagesService.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'PagesService');
 
 	constructor(
 		@InjectRepository(PageEntity)
@@ -44,11 +45,11 @@ export class PagesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug('[LOOKUP ALL] Fetching all pages count');
+		this.logger.debug('Fetching all pages count');
 
 		const pages = await repository.count();
 
-		this.logger.debug(`[LOOKUP ALL] Found that in system is ${pages} pages`);
+		this.logger.debug(`Found that in system is ${pages} pages`);
 
 		return pages;
 	}
@@ -58,13 +59,13 @@ export class PagesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug('[LOOKUP ALL] Fetching all pages');
+		this.logger.debug('Fetching all pages');
 
 		const pages = await repository.find({
 			relations: ['displays'],
 		});
 
-		this.logger.debug(`[LOOKUP ALL] Found ${pages.length} pages`);
+		this.logger.debug(`Found ${pages.length} pages`);
 
 		for (const page of pages) {
 			await this.loadRelations(page);
@@ -78,7 +79,7 @@ export class PagesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug(`[LOOKUP] Fetching page with id=${id}`);
+		this.logger.debug(`Fetching page with id=${id}`);
 
 		const page = (await repository
 			.createQueryBuilder('page')
@@ -87,12 +88,12 @@ export class PagesService {
 			.getOne()) as TPage | null;
 
 		if (!page) {
-			this.logger.debug(`[LOOKUP] Page with id=${id} not found`);
+			this.logger.debug(`Page with id=${id} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched page with id=${id}`);
+		this.logger.debug(`Successfully fetched page with id=${id}`);
 
 		await this.loadRelations(page);
 
@@ -100,12 +101,12 @@ export class PagesService {
 	}
 
 	async create<TPage extends PageEntity, TCreateDTO extends CreatePageDto>(createDto: CreatePageDto): Promise<TPage> {
-		this.logger.debug('[CREATE] Creating new page');
+		this.logger.debug('Creating new page');
 
 		const { type } = createDto;
 
 		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" property in data.');
+			this.logger.error('Validation failed: Missing required "type" property in data.');
 
 			throw new DashboardException('The "type" property is required in the data.');
 		}
@@ -174,7 +175,7 @@ export class PagesService {
 		// Retrieve the saved page with its full relations
 		const savedPage = await this.getOneOrThrow<TPage>(created.id);
 
-		this.logger.debug(`[CREATE] Successfully created page with id=${savedPage.id}`);
+		this.logger.debug(`Successfully created page with id=${savedPage.id}`);
 
 		this.eventEmitter.emit(EventType.PAGE_CREATED, savedPage);
 
@@ -185,7 +186,7 @@ export class PagesService {
 		id: string,
 		updateDto: UpdatePageDto,
 	): Promise<TPage> {
-		this.logger.debug(`[UPDATE] Updating page with id=${id}`);
+		this.logger.debug(`Updating page with id=${id}`);
 
 		const page = await this.getOneOrThrow<TPage>(id);
 
@@ -239,7 +240,7 @@ export class PagesService {
 
 		const updatedPage = await this.getOneOrThrow<TPage>(page.id);
 
-		this.logger.debug(`[UPDATE] Successfully updated page with id=${updatedPage.id}`);
+		this.logger.debug(`Successfully updated page with id=${updatedPage.id}`);
 
 		this.eventEmitter.emit(EventType.PAGE_UPDATED, updatedPage);
 
@@ -247,7 +248,7 @@ export class PagesService {
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing page with id=${id}`);
+		this.logger.debug(`Removing page with id=${id}`);
 
 		const fullPage = await this.getOneOrThrow<PageEntity>(id);
 
@@ -264,7 +265,7 @@ export class PagesService {
 
 			await manager.remove(page);
 
-			this.logger.log(`[DELETE] Successfully removed page with id=${id}`);
+			this.logger.log(`Successfully removed page with id=${id}`);
 
 			this.eventEmitter.emit(EventType.PAGE_DELETED, fullPage);
 		});

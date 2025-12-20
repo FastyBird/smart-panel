@@ -1,8 +1,9 @@
 import { Request } from 'express';
 
-import { Body, Controller, Get, Headers, Logger, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { Public } from '../../auth/guards/auth.guard';
 import {
 	ApiBadRequestResponse,
@@ -11,7 +12,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { ALLOWED_USER_AGENTS, DISPLAYS_MODULE_API_TAG_NAME } from '../displays.constants';
+import { ALLOWED_USER_AGENTS, DISPLAYS_MODULE_API_TAG_NAME, DISPLAYS_MODULE_NAME } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { RegistrationGuard } from '../guards/registration.guard';
@@ -27,7 +28,7 @@ import { extractClientIp, isLocalhost } from '../utils/ip.utils';
 @ApiTags(DISPLAYS_MODULE_API_TAG_NAME)
 @Controller('register')
 export class RegistrationController {
-	private readonly logger = new Logger(RegistrationController.name);
+	private readonly logger = createExtensionLogger(DISPLAYS_MODULE_NAME, 'RegistrationController');
 
 	constructor(
 		private readonly registrationService: RegistrationService,
@@ -52,13 +53,13 @@ export class RegistrationController {
 		@Headers('user-agent') userAgent: string,
 		@Body() body: ReqRegisterDisplayDto,
 	): Promise<DisplayRegistrationResponseModel> {
-		this.logger.debug(`[REGISTER] Display registration request received`);
+		this.logger.debug(`Display registration request received`);
 
 		// Validate user agent
 		const isAllowedUserAgent = ALLOWED_USER_AGENTS.some((allowed) => userAgent?.includes(allowed));
 
 		if (!isAllowedUserAgent) {
-			this.logger.warn(`[REGISTER] Invalid user agent: ${userAgent}`);
+			this.logger.warn(`Invalid user agent: ${userAgent}`);
 
 			throw new DisplaysRegistrationException('Invalid request source');
 		}

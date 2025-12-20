@@ -1,14 +1,16 @@
 import { DataSource, EntitySubscriberInterface, RemoveEvent, UpdateEvent } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { DeviceConnectionStateService } from '../services/device-connection-state.service';
 import { PropertyValueService } from '../services/property-value.service';
 
 @Injectable()
 export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterface<ChannelPropertyEntity> {
-	private readonly logger = new Logger(ChannelPropertyEntitySubscriber.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelPropertyEntitySubscriber');
 
 	constructor(
 		private readonly propertyValueService: PropertyValueService,
@@ -26,20 +28,19 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 		try {
 			entity.value = await this.propertyValueService.readLatest(entity);
 
-			this.logger.debug(`[SUBSCRIBER] Loaded property value from InfluxDB id=${entity.id}, value=${entity.value}`);
+			this.logger.debug(`Loaded property value from InfluxDB id=${entity.id}, value=${entity.value}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[SUBSCRIBER] Failed to load property value from InfluxDB id=${entity.id}, error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to load property value from InfluxDB id=${entity.id}, error=${err.message}`, {
+				stack: err.stack,
+			});
 		}
 	}
 
 	beforeUpdate(event: UpdateEvent<ChannelPropertyEntity>): void {
 		if (event.entity) {
-			this.logger.debug(`[SUBSCRIBER] Updating property id=${event.entity.id}`);
+			this.logger.debug(`Updating property id=${event.entity.id}`);
 
 			event.entity.updatedAt = new Date();
 		}
@@ -47,26 +48,25 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 
 	async afterRemove(event: RemoveEvent<ChannelPropertyEntity>): Promise<void> {
 		if (!event.entity) {
-			this.logger.warn(`[SUBSCRIBER] No entity found in afterRemove event`);
+			this.logger.warn(`No entity found in afterRemove event`);
 			return;
 		}
 
 		const propertyId = event.entity.id;
 
 		try {
-			this.logger.debug(`[SUBSCRIBER] Deleting stored values for id=${propertyId}`);
+			this.logger.debug(`Deleting stored values for id=${propertyId}`);
 
 			await this.propertyValueService.delete(event.entity);
 			await this.deviceStatusService.deleteByProperty(event.entity);
 
-			this.logger.log(`[SUBSCRIBER] Successfully removed all stored values for id=${propertyId}`);
+			this.logger.log(`Successfully removed all stored values for id=${propertyId}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[SUBSCRIBER] Failed to remove property value from InfluxDB id=${propertyId} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to remove property value from InfluxDB id=${propertyId} error=${err.message}`, {
+				stack: err.stack,
+			});
 		}
 	}
 }

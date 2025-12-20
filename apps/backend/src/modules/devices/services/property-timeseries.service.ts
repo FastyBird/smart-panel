@@ -1,9 +1,10 @@
 import { plainToInstance } from 'class-transformer';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { DataTypeType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyTimeseriesModel, TimeseriesPointModel } from '../models/devices.model';
 
@@ -11,7 +12,7 @@ export type BucketDuration = '1m' | '5m' | '15m' | '1h';
 
 @Injectable()
 export class PropertyTimeseriesService {
-	private readonly logger = new Logger(PropertyTimeseriesService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyTimeseriesService');
 
 	constructor(private readonly influxDbService: InfluxDbService) {}
 

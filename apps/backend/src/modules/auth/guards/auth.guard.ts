@@ -7,7 +7,6 @@ import {
 	ExecutionContext,
 	Inject,
 	Injectable,
-	Logger,
 	SetMetadata,
 	UnauthorizedException,
 	applyDecorators,
@@ -15,11 +14,12 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ApiPublic } from '../../swagger/decorators/api-documentation.decorator';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { ACCESS_TOKEN_TYPE, TokenOwnerType } from '../auth.constants';
+import { ACCESS_TOKEN_TYPE, AUTH_MODULE_NAME, TokenOwnerType } from '../auth.constants';
 import { AccessTokenEntity, LongLiveTokenEntity } from '../entities/auth.entity';
 import { TokensService } from '../services/tokens.service';
 import { hashToken } from '../utils/token.utils';
@@ -66,7 +66,7 @@ export const Public = () => applyDecorators(SetMetadata(IS_PUBLIC_KEY, true), Ap
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-	private readonly logger = new Logger(AuthGuard.name);
+	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'AuthGuard');
 
 	constructor(
 		private readonly jwtService: JwtService,
@@ -84,7 +84,7 @@ export class AuthGuard implements CanActivate {
 		]);
 
 		if (isPublic) {
-			this.logger.debug('[AUTH] Route is public, allowing access');
+			this.logger.debug('Route is public, allowing access');
 
 			return true;
 		}
@@ -99,7 +99,7 @@ export class AuthGuard implements CanActivate {
 		}
 
 		// If auth method didn't work, reject the request
-		this.logger.warn('[AUTH] Unauthorized request, missing valid credentials');
+		this.logger.warn('Unauthorized request, missing valid credentials');
 
 		throw new UnauthorizedException('Authentication required');
 	}
@@ -112,7 +112,7 @@ export class AuthGuard implements CanActivate {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.debug('[AUTH] JWT validation failed', { message: err.message, stack: err.stack });
+			this.logger.debug('JWT validation failed', { message: err.message, stack: err.stack });
 
 			throw new UnauthorizedException('Invalid or expired token');
 		}
@@ -148,12 +148,12 @@ export class AuthGuard implements CanActivate {
 		}
 
 		if (!storedAccessToken) {
-			this.logger.warn('[AUTH] Access token not found in database');
+			this.logger.warn('Access token not found in database');
 			throw new UnauthorizedException('Token not found');
 		}
 
 		if (storedAccessToken.revoked || storedAccessToken.refreshToken.revoked) {
-			this.logger.warn('[AUTH] Access token is revoked');
+			this.logger.warn('Access token is revoked');
 			throw new UnauthorizedException('Token revoked');
 		}
 
@@ -163,13 +163,13 @@ export class AuthGuard implements CanActivate {
 			user = await this.usersService.getOneOrThrow(userId);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn('[AUTH] Token valid, but user not found', { message: err.message, stack: err.stack });
+			this.logger.warn('Token valid, but user not found', { message: err.message, stack: err.stack });
 			throw new UnauthorizedException('Invalid user');
 		}
 
 		request.auth = { type: 'user', id: user.id, role: user.role };
 
-		this.logger.debug(`[AUTH] User authentication successful for user=${user.id}`);
+		this.logger.debug(`User authentication successful for user=${user.id}`);
 
 		return true;
 	}
@@ -192,17 +192,17 @@ export class AuthGuard implements CanActivate {
 		}
 
 		if (!storedToken) {
-			this.logger.warn('[AUTH] Display token not found in database');
+			this.logger.warn('Display token not found in database');
 			throw new UnauthorizedException('Token not found');
 		}
 
 		if (storedToken.revoked) {
-			this.logger.warn('[AUTH] Display token is revoked');
+			this.logger.warn('Display token is revoked');
 			throw new UnauthorizedException('Token revoked');
 		}
 
 		if (storedToken.expiresAt && storedToken.expiresAt < new Date()) {
-			this.logger.warn('[AUTH] Display token is expired');
+			this.logger.warn('Display token is expired');
 			throw new UnauthorizedException('Token expired');
 		}
 
@@ -214,7 +214,7 @@ export class AuthGuard implements CanActivate {
 			role: UserRole.USER,
 		};
 
-		this.logger.debug(`[AUTH] Token authentication successful (ownerType=${storedToken.ownerType})`);
+		this.logger.debug(`Token authentication successful (ownerType=${storedToken.ownerType})`);
 
 		return true;
 	}
@@ -232,17 +232,17 @@ export class AuthGuard implements CanActivate {
 		}
 
 		if (!storedLongLiveToken) {
-			this.logger.warn('[AUTH] Long-live token not found');
+			this.logger.warn('Long-live token not found');
 			throw new UnauthorizedException('Unknown token');
 		}
 
 		if (storedLongLiveToken.revoked) {
-			this.logger.warn('[AUTH] Long-live token is revoked');
+			this.logger.warn('Long-live token is revoked');
 			throw new UnauthorizedException('Token revoked');
 		}
 
 		if (storedLongLiveToken.expiresAt && storedLongLiveToken.expiresAt < new Date()) {
-			this.logger.warn('[AUTH] Long-live token is expired');
+			this.logger.warn('Long-live token is expired');
 			throw new UnauthorizedException('Token expired');
 		}
 
@@ -264,7 +264,7 @@ export class AuthGuard implements CanActivate {
 			role: role,
 		};
 
-		this.logger.debug(`[AUTH] Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
+		this.logger.debug(`Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
 
 		return true;
 	}

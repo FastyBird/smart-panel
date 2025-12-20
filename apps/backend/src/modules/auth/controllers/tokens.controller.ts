@@ -9,7 +9,6 @@ import {
 	ForbiddenException,
 	Get,
 	HttpCode,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -20,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -31,7 +31,7 @@ import {
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
+import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_NAME, AUTH_MODULE_PREFIX } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
 import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
@@ -44,7 +44,7 @@ import { TokensService } from '../services/tokens.service';
 @ApiTags(AUTH_MODULE_API_TAG_NAME)
 @Controller('tokens')
 export class TokensController {
-	private readonly logger = new Logger(TokensController.name);
+	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'TokensController');
 
 	constructor(
 		private readonly tokensService: TokensService,
@@ -61,11 +61,11 @@ export class TokensController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<TokensResponseModel> {
-		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
+		this.logger.debug('Fetching all tokens');
 
 		const tokens = await this.tokensService.findAll<TokenEntity>();
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${tokens.length} tokens`);
+		this.logger.debug(`Retrieved ${tokens.length} tokens`);
 		const response = new TokensResponseModel();
 		response.data = tokens;
 
@@ -84,11 +84,11 @@ export class TokensController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TokenResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching token id=${id}`);
+		this.logger.debug(`Fetching token id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
 
-		this.logger.debug(`[LOOKUP] Found token id=${token.id}`);
+		this.logger.debug(`Found token id=${token.id}`);
 
 		const response = new TokenResponseModel();
 		response.data = token;
@@ -119,12 +119,12 @@ export class TokensController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<TokenResponseModel> {
-		this.logger.debug('[CREATE] Incoming request to create a new token');
+		this.logger.debug('Incoming request to create a new token');
 
 		const type: string | undefined = createDto.data.type;
 
 		if (!type) {
-			this.logger.error('[VALIDATION] Missing required field: type');
+			this.logger.error('Missing required field: type');
 
 			throw new BadRequestException('Token property type is required.');
 		}
@@ -136,7 +136,7 @@ export class TokensController {
 		} catch (error: unknown) {
 			const err = error instanceof Error ? error : new Error('Unknown token mapping error');
 
-			this.logger.error(`[ERROR] Unsupported token type: ${type}`, { message: err.message, stack: err.stack });
+			this.logger.error(`Unsupported token type: ${type}`, { message: err.message, stack: err.stack });
 
 			if (error instanceof AuthException) {
 				throw new BadRequestException([JSON.stringify({ field: 'type', reason: `Unsupported token type: ${type}` })]);
@@ -156,14 +156,14 @@ export class TokensController {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for token creation error=${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed for token creation error=${JSON.stringify(errors)}`);
 
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
 		const token = await this.tokensService.create(createDto.data);
 
-		this.logger.debug(`[CREATE] Successfully created token id=${token.id}`);
+		this.logger.debug(`Successfully created token id=${token.id}`);
 
 		setLocationHeader(req, res, AUTH_MODULE_PREFIX, 'auth', token.id);
 
@@ -194,7 +194,7 @@ export class TokensController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateTokenDto,
 	): Promise<TokenResponseModel> {
-		this.logger.debug(`[UPDATE] Incoming update request for token id=${id}`);
+		this.logger.debug(`Incoming update request for token id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
 
@@ -205,7 +205,7 @@ export class TokensController {
 		} catch (error: unknown) {
 			const err = error instanceof Error ? error : new Error('Unknown token mapping error');
 
-			this.logger.error(`[ERROR] Unsupported token type for update: ${token.type}`, {
+			this.logger.error(`Unsupported token type for update: ${token.type}`, {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -230,14 +230,14 @@ export class TokensController {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for token modification error=${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed for token modification error=${JSON.stringify(errors)}`);
 
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
 		const updatedToken = await this.tokensService.update(token.id, updateDto.data);
 
-		this.logger.debug(`[UPDATE] Successfully updated token id=${updatedToken.id}`);
+		this.logger.debug(`Successfully updated token id=${updatedToken.id}`);
 
 		const response = new TokenResponseModel();
 
@@ -263,7 +263,7 @@ export class TokensController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Req() req: AuthenticatedRequest,
 	): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete token id=${id}`);
+		this.logger.debug(`Incoming request to delete token id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
 
@@ -276,16 +276,16 @@ export class TokensController {
 
 		await this.tokensService.remove(token.id);
 
-		this.logger.debug(`[DELETE] Successfully deleted token id=${id}`);
+		this.logger.debug(`Successfully deleted token id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<TokenEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of token id=${id}`);
+		this.logger.debug(`Checking existence of token id=${id}`);
 
 		const token = await this.tokensService.findOne<TokenEntity>(id);
 
 		if (!token) {
-			this.logger.error(`[ERROR] token with id=${id} not found`);
+			this.logger.error(`token with id=${id} not found`);
 
 			throw new NotFoundException('Requested token does not exist');
 		}

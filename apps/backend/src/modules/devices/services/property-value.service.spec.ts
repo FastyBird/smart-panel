@@ -73,7 +73,10 @@ describe('PropertyValueService', () => {
 
 			await service.write(property, 'value');
 
-			expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('[PROPERTY] Unsupported data type'));
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
+				expect.stringContaining('[PropertyValueService] Unsupported data type'),
+				'devices-module',
+			);
 		});
 	});
 

@@ -224,7 +224,10 @@ describe('PropertyCommandService', () => {
 		expect(result.success).toBe(true);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: true }]);
 		expect(loggerLogSpy).toHaveBeenCalledWith(
-			expect.stringContaining(`[COMMAND] Successfully executed batch command for deviceId=${mockDevice.id}`),
+			expect.stringContaining(
+				`[PropertyCommandService] Successfully executed batch command for deviceId=${mockDevice.id}`,
+			),
+			'devices-module',
 		);
 	});
 
@@ -235,7 +238,10 @@ describe('PropertyCommandService', () => {
 
 		expect(result.success).toBe(false);
 		expect(result.results).toBe('Invalid payload');
-		expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('[VALIDATION] Command validation failed'));
+		expect(loggerErrorSpy).toHaveBeenCalledWith(
+			expect.stringContaining('[PropertyCommandService] Command validation failed'),
+			'devices-module',
+		);
 	});
 
 	it('should return an error if device is not found', async () => {
@@ -281,7 +287,8 @@ describe('PropertyCommandService', () => {
 		expect(result.success).toBe(false);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: false, reason: 'Unsupported device type' }]);
 		expect(loggerWarnSpy).toHaveBeenCalledWith(
-			`[COMMAND] No platform registered for device id=${mockDevice.id} type=mock`,
+			`[PropertyCommandService] No platform registered for device id=${mockDevice.id} type=mock`,
+			'devices-module',
 		);
 	});
 
@@ -299,7 +306,8 @@ describe('PropertyCommandService', () => {
 		expect(result.success).toBe(false);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: false, reason: 'Execution failed' }]);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
-			`[COMMAND] Batch command execution failed for deviceId=${mockDevice.id}`,
+			`[PropertyCommandService] Batch command execution failed for deviceId=${mockDevice.id}`,
+			'devices-module',
 		);
 	});
 });

@@ -4,14 +4,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'yaml';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
-import { EventType } from '../config.constants';
+import { CONFIG_MODULE_NAME, EventType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
 import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/config.model';
@@ -21,7 +22,7 @@ import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
 @Injectable()
 export class ConfigService {
-	private readonly logger = new Logger(ConfigService.name);
+	private readonly logger = createExtensionLogger(CONFIG_MODULE_NAME, 'ConfigService');
 	private readonly filename = 'config.yaml';
 	private config: AppConfigModel | null = null;
 	private isSaving = false;
@@ -345,7 +346,7 @@ export class ConfigService {
 	}
 
 	getConfig(): AppConfigModel {
-		this.logger.log('[LOOKUP ALL] Retrieving full configuration');
+		this.logger.log('Retrieving full configuration');
 
 		return this.appConfig;
 	}
@@ -354,7 +355,7 @@ export class ConfigService {
 	 * @deprecated Section-based config access is deprecated. Use getModuleConfig() instead.
 	 */
 	getConfigSection<T extends object>(key: keyof AppConfigModel, type: (new () => T) | (new () => T)[]): T {
-		this.logger.log(`[LOOKUP] Fetching configuration section=${key}`);
+		this.logger.log(`Fetching configuration section=${key}`);
 
 		const configSection = this.appConfig[key];
 
@@ -383,7 +384,7 @@ export class ConfigService {
 				throw new ConfigCorruptedException(`Configuration section '${key}' is corrupted and can not be loaded.`);
 			}
 
-			this.logger.log(`[LOOKUP] Successfully retrieved configuration section=${key}`);
+			this.logger.log(`Successfully retrieved configuration section=${key}`);
 
 			return instance;
 		}
@@ -401,7 +402,7 @@ export class ConfigService {
 		value: TUpdateDto,
 		type: (new () => TUpdateDto) | (new () => TUpdateDto)[],
 	): void {
-		this.logger.log(`[UPDATE] Attempting to update configuration section=${key}`);
+		this.logger.log(`Attempting to update configuration section=${key}`);
 
 		const configSection = this.appConfig[key];
 
@@ -430,7 +431,7 @@ export class ConfigService {
 				throw new ConfigValidationException(`New configuration for section '${key}' is invalid.`);
 			}
 
-			this.logger.log(`[UPDATE] Updating configuration for section=${key}`);
+			this.logger.log(`Updating configuration for section=${key}`);
 
 			const plainAppConfig = instanceToPlain(this.appConfig) as {
 				[key: string]: object;
@@ -472,7 +473,7 @@ export class ConfigService {
 			this.logger.log(`[EVENT] Broadcasting configuration change for section=${key}`);
 			this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
 
-			this.logger.log(`[UPDATE] Configuration update for section=${key} completed successfully`);
+			this.logger.log(`Configuration update for section=${key} completed successfully`);
 
 			return;
 		}
@@ -483,7 +484,7 @@ export class ConfigService {
 	}
 
 	getPluginsConfig<TConfig extends PluginConfigModel>(): TConfig[] {
-		this.logger.debug('[LOOKUP] Fetching configuration for plugins');
+		this.logger.debug('Fetching configuration for plugins');
 
 		const configSection = this.appConfig['plugins'];
 
@@ -517,13 +518,13 @@ export class ConfigService {
 			configs.push(instance);
 		}
 
-		this.logger.log('[LOOKUP] Successfully retrieved configuration for all plugin');
+		this.logger.log('Successfully retrieved configuration for all plugin');
 
 		return configs;
 	}
 
 	getPluginConfig<TConfig extends PluginConfigModel>(plugin: string): TConfig {
-		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
+		this.logger.debug(`Fetching configuration plugin=${plugin}`);
 
 		const configSection = this.appConfig['plugins'];
 
@@ -555,7 +556,7 @@ export class ConfigService {
 			throw new ConfigCorruptedException(`Configuration plugin '${plugin}' is corrupted and can not be loaded.`);
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully retrieved configuration plugin=${plugin}`);
+		this.logger.debug(`Successfully retrieved configuration plugin=${plugin}`);
 
 		return instance;
 	}
@@ -577,7 +578,7 @@ export class ConfigService {
 			throw new ConfigValidationException(`New configuration for plugin '${plugin}' is invalid.`);
 		}
 
-		this.logger.log(`[UPDATE] Updating configuration for plugin=${plugin}`);
+		this.logger.log(`Updating configuration for plugin=${plugin}`);
 
 		const appConfig = this.appConfig;
 
@@ -598,11 +599,11 @@ export class ConfigService {
 		this.logger.log(`[EVENT] Broadcasting configuration change for plugin=${plugin}`);
 		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
 
-		this.logger.log(`[UPDATE] Configuration update for plugin=${plugin} completed successfully`);
+		this.logger.log(`Configuration update for plugin=${plugin} completed successfully`);
 	}
 
 	getModulesConfig<TConfig extends ModuleConfigModel>(): TConfig[] {
-		this.logger.debug('[LOOKUP] Fetching configuration for modules');
+		this.logger.debug('Fetching configuration for modules');
 
 		const configSection = this.appConfig['modules'];
 
@@ -636,13 +637,13 @@ export class ConfigService {
 			configs.push(instance);
 		}
 
-		this.logger.log('[LOOKUP] Successfully retrieved configuration for all modules');
+		this.logger.log('Successfully retrieved configuration for all modules');
 
 		return configs;
 	}
 
 	getModuleConfig<TConfig extends ModuleConfigModel>(module: string): TConfig {
-		this.logger.debug(`[LOOKUP] Fetching configuration module=${module}`);
+		this.logger.debug(`Fetching configuration module=${module}`);
 
 		const configSection = this.appConfig['modules'];
 
@@ -674,7 +675,7 @@ export class ConfigService {
 			throw new ConfigCorruptedException(`Configuration module '${module}' is corrupted and can not be loaded.`);
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully retrieved configuration module=${module}`);
+		this.logger.debug(`Successfully retrieved configuration module=${module}`);
 
 		return instance;
 	}
@@ -696,7 +697,7 @@ export class ConfigService {
 			throw new ConfigValidationException(`New configuration for module '${module}' is invalid.`);
 		}
 
-		this.logger.log(`[UPDATE] Updating configuration for module=${module}`);
+		this.logger.log(`Updating configuration for module=${module}`);
 
 		const appConfig = this.appConfig;
 
@@ -717,7 +718,7 @@ export class ConfigService {
 		this.logger.log(`[EVENT] Broadcasting configuration change for module=${module}`);
 		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
 
-		this.logger.log(`[UPDATE] Configuration update for module=${module} completed successfully`);
+		this.logger.log(`Configuration update for module=${module} completed successfully`);
 	}
 
 	async resetConfig(): Promise<void> {

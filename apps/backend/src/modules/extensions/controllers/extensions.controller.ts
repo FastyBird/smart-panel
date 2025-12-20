@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Logger, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import {
 	ApiBadRequestResponse,
 	ApiNotFoundResponse,
@@ -9,14 +10,14 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqUpdateExtensionDto } from '../dto/update-extension.dto';
-import { EXTENSIONS_MODULE_API_TAG_NAME } from '../extensions.constants';
+import { EXTENSIONS_MODULE_API_TAG_NAME, EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 import { ExtensionResponseModel, ExtensionsResponseModel } from '../models/extensions-response.model';
 import { ExtensionsService } from '../services/extensions.service';
 
 @ApiTags(EXTENSIONS_MODULE_API_TAG_NAME)
 @Controller('extensions')
 export class ExtensionsController {
-	private readonly logger = new Logger(ExtensionsController.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ExtensionsController');
 
 	constructor(private readonly extensionsService: ExtensionsService) {}
 
@@ -29,7 +30,7 @@ export class ExtensionsController {
 	})
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Returns a list of extensions')
 	findAll(): ExtensionsResponseModel {
-		this.logger.debug('[GET ALL] Fetching all extensions');
+		this.logger.debug('Fetching all extensions');
 
 		const extensions = this.extensionsService.findAll();
 
@@ -48,7 +49,7 @@ export class ExtensionsController {
 	})
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Returns a list of modules')
 	findAllModules(): ExtensionsResponseModel {
-		this.logger.debug('[GET MODULES] Fetching all modules');
+		this.logger.debug('Fetching all modules');
 
 		const extensions = this.extensionsService.findAllModules();
 
@@ -67,7 +68,7 @@ export class ExtensionsController {
 	})
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Returns a list of plugins')
 	findAllPlugins(): ExtensionsResponseModel {
-		this.logger.debug('[GET PLUGINS] Fetching all plugins');
+		this.logger.debug('Fetching all plugins');
 
 		const extensions = this.extensionsService.findAllPlugins();
 
@@ -88,7 +89,7 @@ export class ExtensionsController {
 	@ApiSuccessResponse(ExtensionResponseModel, 'Returns the extension')
 	@ApiNotFoundResponse('Extension not found')
 	findOne(@Param('type') type: string): ExtensionResponseModel {
-		this.logger.debug(`[GET] Fetching extension type=${type}`);
+		this.logger.debug(`Fetching extension type=${type}`);
 
 		const extension = this.extensionsService.findOne(type);
 
@@ -111,7 +112,7 @@ export class ExtensionsController {
 	@ApiNotFoundResponse('Extension not found')
 	@ApiBadRequestResponse('Cannot modify core extension')
 	update(@Param('type') type: string, @Body() body: ReqUpdateExtensionDto): ExtensionResponseModel {
-		this.logger.debug(`[UPDATE] Updating extension type=${type}`);
+		this.logger.debug(`Updating extension type=${type}`);
 
 		const extension = this.extensionsService.updateEnabled(type, body.data.enabled);
 

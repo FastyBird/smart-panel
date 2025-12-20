@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { UpdateModuleConfigDto, UpdatePluginConfigDto } from '../../config/dto/config.dto';
 import { ConfigService } from '../../config/services/config.service';
 import { ModulesTypeMapperService } from '../../config/services/modules-type-mapper.service';
 import { PluginsTypeMapperService } from '../../config/services/plugins-type-mapper.service';
-import { ExtensionKind, NON_TOGGLEABLE_MODULES } from '../extensions.constants';
+import { EXTENSIONS_MODULE_NAME, ExtensionKind, NON_TOGGLEABLE_MODULES } from '../extensions.constants';
 import { ExtensionNotConfigurableException, ExtensionNotFoundException } from '../extensions.exceptions';
 import { ExtensionLinksModel, ExtensionModel } from '../models/extension.model';
 
@@ -32,7 +33,7 @@ export interface ExtensionMetadata {
 
 @Injectable()
 export class ExtensionsService {
-	private readonly logger = new Logger(ExtensionsService.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ExtensionsService');
 
 	/**
 	 * Registry for extension metadata
@@ -51,7 +52,7 @@ export class ExtensionsService {
 	 * Register module metadata
 	 */
 	registerModuleMetadata(metadata: ExtensionMetadata): void {
-		this.logger.debug(`[REGISTER] Registering module metadata type=${metadata.type}`);
+		this.logger.debug(`Registering module metadata type=${metadata.type}`);
 		this.moduleMetadata.set(metadata.type, metadata);
 	}
 
@@ -59,7 +60,7 @@ export class ExtensionsService {
 	 * Register plugin metadata
 	 */
 	registerPluginMetadata(metadata: ExtensionMetadata): void {
-		this.logger.debug(`[REGISTER] Registering plugin metadata type=${metadata.type}`);
+		this.logger.debug(`Registering plugin metadata type=${metadata.type}`);
 		this.pluginMetadata.set(metadata.type, metadata);
 	}
 
@@ -67,7 +68,7 @@ export class ExtensionsService {
 	 * Get all extensions (modules and plugins)
 	 */
 	findAll(): ExtensionModel[] {
-		this.logger.debug('[FIND ALL] Fetching all extensions');
+		this.logger.debug('Fetching all extensions');
 
 		const extensions: ExtensionModel[] = [];
 
@@ -90,7 +91,7 @@ export class ExtensionsService {
 	 * Get all modules
 	 */
 	findAllModules(): ExtensionModel[] {
-		this.logger.debug('[FIND ALL MODULES] Fetching all modules');
+		this.logger.debug('Fetching all modules');
 
 		const moduleMappings = this.modulesMapperService.getMappings();
 		return moduleMappings.map((mapping) => this.buildModuleExtension(mapping.type));
@@ -100,7 +101,7 @@ export class ExtensionsService {
 	 * Get all plugins
 	 */
 	findAllPlugins(): ExtensionModel[] {
-		this.logger.debug('[FIND ALL PLUGINS] Fetching all plugins');
+		this.logger.debug('Fetching all plugins');
 
 		const pluginMappings = this.pluginsMapperService.getMappings();
 		return pluginMappings.map((mapping) => this.buildPluginExtension(mapping.type));
@@ -110,7 +111,7 @@ export class ExtensionsService {
 	 * Get a specific extension by type
 	 */
 	findOne(type: string): ExtensionModel {
-		this.logger.debug(`[FIND ONE] Fetching extension type=${type}`);
+		this.logger.debug(`Fetching extension type=${type}`);
 
 		// Check if it's a module
 		const moduleMappings = this.modulesMapperService.getMappings();
@@ -133,7 +134,7 @@ export class ExtensionsService {
 	 * Update extension enabled status
 	 */
 	updateEnabled(type: string, enabled: boolean): ExtensionModel {
-		this.logger.debug(`[UPDATE] Updating extension type=${type} enabled=${enabled}`);
+		this.logger.debug(`Updating extension type=${type} enabled=${enabled}`);
 
 		const extension = this.findOne(type);
 

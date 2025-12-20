@@ -1,12 +1,13 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
 import { DisplaysConfigModel } from '../models/config.model';
 
 @Injectable()
 export class PermitJoinService {
-	private readonly logger = new Logger(PermitJoinService.name);
+	private readonly logger = createExtensionLogger(DISPLAYS_MODULE_NAME, 'PermitJoinService');
 
 	private permitJoinActive: boolean = false;
 	private permitJoinExpiresAt: Date | null = null;
@@ -20,7 +21,7 @@ export class PermitJoinService {
 		try {
 			return this.configService.getModuleConfig<DisplaysConfigModel>(DISPLAYS_MODULE_NAME);
 		} catch (error) {
-			this.logger.warn('[PERMIT JOIN] Failed to load displays configuration, using defaults', error);
+			this.logger.warn('Failed to load displays configuration, using defaults', error);
 
 			// Return default configuration
 			const defaultConfig = new DisplaysConfigModel();
@@ -41,7 +42,7 @@ export class PermitJoinService {
 
 		// Permit join is not available in ALL_IN_ONE mode
 		if (config.deploymentMode === DeploymentMode.ALL_IN_ONE) {
-			this.logger.warn('[PERMIT JOIN] Cannot activate permit join in all-in-one mode');
+			this.logger.warn('Cannot activate permit join in all-in-one mode');
 			throw new BadRequestException('Permit join is not available in all-in-one deployment mode');
 		}
 
@@ -50,9 +51,7 @@ export class PermitJoinService {
 		this.permitJoinActive = true;
 		this.permitJoinExpiresAt = new Date(Date.now() + duration);
 
-		this.logger.debug(
-			`[PERMIT JOIN] Activated for ${duration}ms, expires at ${this.permitJoinExpiresAt.toISOString()}`,
-		);
+		this.logger.debug(`Activated for ${duration}ms, expires at ${this.permitJoinExpiresAt.toISOString()}`);
 	}
 
 	/**
@@ -65,7 +64,7 @@ export class PermitJoinService {
 
 		// Check if expired
 		if (Date.now() >= this.permitJoinExpiresAt.getTime()) {
-			this.logger.debug('[PERMIT JOIN] Expired');
+			this.logger.debug('Expired');
 			this.permitJoinActive = false;
 			this.permitJoinExpiresAt = null;
 			return false;
@@ -78,7 +77,7 @@ export class PermitJoinService {
 	 * Deactivate permit join immediately
 	 */
 	deactivatePermitJoin(): void {
-		this.logger.debug('[PERMIT JOIN] Deactivated');
+		this.logger.debug('Deactivated');
 		this.permitJoinActive = false;
 		this.permitJoinExpiresAt = null;
 	}

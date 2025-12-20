@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
+import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreatePageDto } from '../dto/create-page.dto';
 import { UpdatePageDto } from '../dto/update-page.dto';
@@ -18,7 +20,7 @@ export interface PageTypeMapping<
 
 @Injectable()
 export class PagesTypeMapperService {
-	private readonly logger = new Logger(PagesTypeMapperService.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'PagesTypeMapperService');
 
 	private readonly mappings = new Map<string, PageTypeMapping<any, any, any>>();
 
@@ -33,7 +35,7 @@ export class PagesTypeMapperService {
 	getMapping<TPage extends PageEntity, TCreateDTO extends CreatePageDto, TUpdateDTO extends UpdatePageDto>(
 		type: string,
 	): PageTypeMapping<TPage, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`[LOOKUP] Attempting to find mapping for page type: '${type}'`);
+		this.logger.debug(`Attempting to find mapping for page type: '${type}'`);
 
 		const mapping = this.mappings.get(type);
 

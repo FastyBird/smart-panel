@@ -3,10 +3,12 @@ import inquirer from 'inquirer';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { SEED_MODULE_NAME } from '../seed.constants';
 
 import { SeedRegistryService } from './seed-registry.service';
 
@@ -16,7 +18,7 @@ export interface Seeder {
 
 @Injectable()
 export class SeedTools {
-	private readonly logger = new Logger(SeedTools.name);
+	private readonly logger = createExtensionLogger(SEED_MODULE_NAME, 'SeedTools');
 
 	constructor(private readonly configService: NestConfigService) {}
 
@@ -35,7 +37,7 @@ export class SeedTools {
 
 		try {
 			if (!fs.existsSync(filePath)) {
-				this.logger.warn(`[SEED] File not found: ${filePath}`);
+				this.logger.warn(`File not found: ${filePath}`);
 				return [];
 			}
 
@@ -44,7 +46,7 @@ export class SeedTools {
 			const parsed = JSON.parse(jsonData) as unknown;
 
 			if (!Array.isArray(parsed)) {
-				this.logger.error(`[SEED] Content of the file: ${filePath} is not a valid array`);
+				this.logger.error(`Content of the file: ${filePath} is not a valid array`);
 
 				return;
 			}
@@ -53,7 +55,7 @@ export class SeedTools {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[SEED] Failed to load file: ${filePath}`, { message: err.message, stack: err.stack });
+			this.logger.error(`Failed to load file: ${filePath}`, { message: err.message, stack: err.stack });
 
 			return [];
 		}
@@ -62,7 +64,7 @@ export class SeedTools {
 
 @Injectable()
 export class SeedService {
-	private readonly logger = new Logger(SeedService.name);
+	private readonly logger = createExtensionLogger(SEED_MODULE_NAME, 'SeedService');
 
 	constructor(
 		private readonly dataSource: DataSource,
@@ -71,7 +73,7 @@ export class SeedService {
 
 	async seed() {
 		try {
-			this.logger.log('[SEED] Starting database seeding process...');
+			this.logger.log('Starting database seeding process...');
 
 			const { truncate } = await inquirer.prompt<{ truncate: boolean }>([
 				{
@@ -84,10 +86,10 @@ export class SeedService {
 			]);
 
 			if (truncate) {
-				this.logger.warn('[SEED] Resetting database before seeding...');
+				this.logger.warn('Resetting database before seeding...');
 				await this.resetDatabase();
 			} else {
-				this.logger.log('[SEED] Skipping database reset.');
+				this.logger.log('Skipping database reset.');
 			}
 
 			// Sort seeders by priority (lower first)
@@ -99,20 +101,20 @@ export class SeedService {
 				} catch (error) {
 					const err = error as Error;
 
-					this.logger.error(`[SEED] Failed in ${name}`, { message: err.message, stack: err.stack });
+					this.logger.error(`Failed in ${name}`, { message: err.message, stack: err.stack });
 				}
 			}
 
-			this.logger.log('[SEED] Database seeding completed successfully.');
+			this.logger.log('Database seeding completed successfully.');
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[SEED] Seeding process failed', { message: err.message, stack: err.stack });
+			this.logger.error('Seeding process failed', { message: err.message, stack: err.stack });
 		}
 	}
 
 	private async resetDatabase(): Promise<void> {
-		this.logger.warn('[SEED] Resetting database...');
+		this.logger.warn('Resetting database...');
 		const queryRunner = this.dataSource.createQueryRunner();
 		await queryRunner.connect();
 
@@ -122,17 +124,17 @@ export class SeedService {
 			// Truncate all tables
 			const tables = await queryRunner.getTables();
 			for (const table of tables) {
-				this.logger.debug(`[SEED] Truncating table: ${table.name}`);
+				this.logger.debug(`Truncating table: ${table.name}`);
 				await queryRunner.query(`DELETE FROM "${table.name}";`);
 			}
 
 			await queryRunner.query('PRAGMA foreign_keys = ON;');
 
-			this.logger.warn('[SEED] Database reset complete.');
+			this.logger.warn('Database reset complete.');
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[SEED] Failed to reset database', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to reset database', { message: err.message, stack: err.stack });
 		} finally {
 			await queryRunner.release();
 		}

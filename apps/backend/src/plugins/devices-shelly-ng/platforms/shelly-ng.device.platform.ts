@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
-import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgNotImplementedException } from '../devices-shelly-ng.exceptions';
 import {
 	ShellyNgChannelEntity,
@@ -16,7 +17,10 @@ export type IShellyNgDevicePropertyData = IDevicePropertyData & {
 
 @Injectable()
 export class ShellyNgDevicePlatform implements IDevicePlatform {
-	private readonly logger = new Logger(ShellyNgDevicePlatform.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_NG_PLUGIN_NAME,
+		'ShellyNgDevicePlatform',
+	);
 
 	constructor(private readonly delegatesManagerService: DelegatesManagerService) {}
 
@@ -32,7 +36,7 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 		const device = updates[0].device;
 
 		if (!(device instanceof ShellyNgDeviceEntity)) {
-			this.logger.error('[SHELLY NG][PLATFORM] Failed to update device property, invalid device provided');
+			this.logger.error('Failed to update device property, invalid device provided');
 
 			return false;
 		}
@@ -85,7 +89,7 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 				}
 
 				if (response === false) {
-					this.logger.error('[SHELLY NG][PLATFORM] Failed to update device property');
+					this.logger.error('Failed to update device property');
 				}
 
 				continue;
@@ -93,7 +97,7 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 				if (!(error instanceof DevicesShellyNgNotImplementedException)) {
 					const err = error as Error;
 
-					this.logger.error('[SHELLY NG][PLATFORM] Error processing property update', {
+					this.logger.error('Error processing property update', {
 						message: err.message,
 						stack: err.stack,
 					});
@@ -109,13 +113,13 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 					result.set(property.id, response !== false);
 
 					if (response === false) {
-						this.logger.error('[SHELLY NG][PLATFORM] Failed to update device property');
+						this.logger.error('Failed to update device property');
 					}
 				}
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error('[SHELLY NG][PLATFORM] Error processing property update', {
+				this.logger.error('Error processing property update', {
 					message: err.message,
 					stack: err.stack,
 				});
@@ -127,14 +131,12 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 		const failed = Array.from(result.values()).filter((success) => !success);
 
 		if (failed.length > 0) {
-			this.logger.warn(
-				`[SHELLY NG][PLATFORM] Some properties failed to update for device id=${device.id}: ${JSON.stringify(failed)}`,
-			);
+			this.logger.warn(`Some properties failed to update for device id=${device.id}: ${JSON.stringify(failed)}`);
 
 			return false;
 		}
 
-		this.logger.log(`[SHELLY NG][PLATFORM] Successfully processed all property updates for device id=${device.id}`);
+		this.logger.log(`Successfully processed all property updates for device id=${device.id}`);
 
 		return true;
 	}

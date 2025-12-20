@@ -3,12 +3,13 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType } from '../dashboard.constants';
+import { DASHBOARD_MODULE_NAME, EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { CreateTileDto } from '../dto/create-tile.dto';
@@ -28,7 +29,7 @@ interface Relation {
 
 @Injectable()
 export class TilesService {
-	private readonly logger = new Logger(TilesService.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'TilesService');
 
 	constructor(
 		@InjectRepository(TileEntity)
@@ -49,7 +50,7 @@ export class TilesService {
 
 		if (relation) {
 			this.logger.debug(
-				`[LOOKUP ALL] Fetching all tiles count for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Fetching all tiles count for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			const tiles = await repository
@@ -59,17 +60,17 @@ export class TilesService {
 				.getCount();
 
 			this.logger.debug(
-				`[LOOKUP ALL] Found that in system is ${tiles} tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Found that in system is ${tiles} tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			return tiles;
 		}
 
-		this.logger.debug('[LOOKUP ALL] Fetching all tiles count');
+		this.logger.debug('Fetching all tiles count');
 
 		const tiles = await repository.count();
 
-		this.logger.debug(`[LOOKUP ALL] Found that in system is ${tiles} tiles`);
+		this.logger.debug(`Found that in system is ${tiles} tiles`);
 
 		return tiles;
 	}
@@ -80,9 +81,7 @@ export class TilesService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (relation) {
-			this.logger.debug(
-				`[LOOKUP ALL] Fetching all tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
-			);
+			this.logger.debug(`Fetching all tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`);
 
 			const tiles = await repository
 				.createQueryBuilder('tile')
@@ -91,7 +90,7 @@ export class TilesService {
 				.getMany();
 
 			this.logger.debug(
-				`[LOOKUP ALL] Found ${tiles.length} tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Found ${tiles.length} tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			for (const tile of tiles) {
@@ -101,11 +100,11 @@ export class TilesService {
 			return tiles as TTile[];
 		}
 
-		this.logger.debug('[LOOKUP ALL] Fetching all tiles');
+		this.logger.debug('Fetching all tiles');
 
 		const tiles = await repository.find();
 
-		this.logger.debug(`[LOOKUP ALL] Found ${tiles.length} tiles`);
+		this.logger.debug(`Found ${tiles.length} tiles`);
 
 		for (const tile of tiles) {
 			await this.loadRelations(tile);
@@ -123,7 +122,7 @@ export class TilesService {
 
 		if (relation) {
 			this.logger.debug(
-				`[LOOKUP] Fetching tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Fetching tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			tile = await repository
@@ -135,27 +134,27 @@ export class TilesService {
 
 			if (!tile) {
 				this.logger.debug(
-					`[LOOKUP] Tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
+					`Tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
 				);
 
 				return null;
 			}
 
 			this.logger.debug(
-				`[LOOKUP] Successfully fetched tile with id=${id} parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Successfully fetched tile with id=${id} parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 		} else {
-			this.logger.debug(`[LOOKUP] Fetching tile with id=${id}`);
+			this.logger.debug(`Fetching tile with id=${id}`);
 
 			tile = await repository.createQueryBuilder('tile').where('tile.id = :id', { id }).getOne();
 
 			if (!tile) {
-				this.logger.debug(`[LOOKUP] Tile with id=${id} not found`);
+				this.logger.debug(`Tile with id=${id} not found`);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched tile with id=${id}`);
+			this.logger.debug(`Successfully fetched tile with id=${id}`);
 		}
 
 		await this.loadRelations(tile);
@@ -167,14 +166,12 @@ export class TilesService {
 		createDto: CreateTileDto,
 		relation: Relation,
 	): Promise<TTile> {
-		this.logger.debug(
-			`[CREATE] Creating new tile for parentType=${relation.parentType} and parentId=${relation.parentId}`,
-		);
+		this.logger.debug(`Creating new tile for parentType=${relation.parentType} and parentId=${relation.parentId}`);
 
 		const { type } = createDto;
 
 		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" property in data.');
+			this.logger.error('Validation failed: Missing required "type" property in data.');
 
 			throw new DashboardException('The "type" property is required in the data.');
 		}
@@ -215,7 +212,7 @@ export class TilesService {
 		// Retrieve the saved tile with its full relations
 		const savedTile = await this.getOneOrThrow<TTile>(created.id, relation);
 
-		this.logger.debug(`[CREATE] Successfully created tile with id=${savedTile.id}`);
+		this.logger.debug(`Successfully created tile with id=${savedTile.id}`);
 
 		this.eventEmitter.emit(EventType.TILE_CREATED, savedTile);
 
@@ -226,7 +223,7 @@ export class TilesService {
 		id: string,
 		updateDto: UpdateTileDto,
 	): Promise<TTile> {
-		this.logger.debug(`[UPDATE] Updating data source with id=${id}`);
+		this.logger.debug(`Updating data source with id=${id}`);
 
 		const tile = await this.getOneOrThrow<TTile>(id);
 
@@ -242,7 +239,7 @@ export class TilesService {
 
 		const updatedTile = await this.getOneOrThrow<TTile>(tile.id);
 
-		this.logger.debug(`[UPDATE] Successfully updated tile with id=${updatedTile.id}`);
+		this.logger.debug(`Successfully updated tile with id=${updatedTile.id}`);
 
 		this.eventEmitter.emit(EventType.TILE_UPDATED, updatedTile);
 
@@ -250,7 +247,7 @@ export class TilesService {
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing tile with id=${id}`);
+		this.logger.debug(`Removing tile with id=${id}`);
 
 		const fullTile = await this.getOneOrThrow<TileEntity>(id);
 
@@ -267,7 +264,7 @@ export class TilesService {
 
 			await manager.remove(tile);
 
-			this.logger.log(`[DELETE] Successfully removed tile with id=${id}`);
+			this.logger.log(`Successfully removed tile with id=${id}`);
 
 			this.eventEmitter.emit(EventType.TILE_DELETED, fullTile);
 		});

@@ -3,12 +3,13 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { UserEntity } from '../../users/entities/users.entity';
-import { TokenOwnerType } from '../auth.constants';
+import { AUTH_MODULE_NAME, TokenOwnerType } from '../auth.constants';
 import { AuthException, AuthNotFoundException, AuthValidationException } from '../auth.exceptions';
 import { CreateTokenDto } from '../dto/create-token.dto';
 import { UpdateTokenDto } from '../dto/update-token.dto';
@@ -19,7 +20,7 @@ import { TokensTypeMapperService } from './tokens-type-mapper.service';
 
 @Injectable()
 export class TokensService {
-	private readonly logger = new Logger(TokensService.name);
+	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'TokensService');
 
 	constructor(
 		@InjectRepository(TokenEntity)
@@ -29,7 +30,7 @@ export class TokensService {
 	) {}
 
 	async findAll<TToken extends TokenEntity>(type?: new (...args: any[]) => TToken): Promise<TToken[]> {
-		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
+		this.logger.debug('Fetching all tokens');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
@@ -50,7 +51,7 @@ export class TokensService {
 
 		const tokens = (await queryBuilder.getMany()) as TToken[];
 
-		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} tokens`);
+		this.logger.debug(`Found ${tokens.length} tokens`);
 
 		return tokens;
 	}
@@ -59,7 +60,7 @@ export class TokensService {
 		owner: string,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken[]> {
-		this.logger.debug('[LOOKUP ALL] Fetching all tokens by owner');
+		this.logger.debug('Fetching all tokens by owner');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
@@ -90,13 +91,13 @@ export class TokensService {
 
 		const tokens = (await queryBuilder.getMany()) as TToken[];
 
-		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} tokens`);
+		this.logger.debug(`Found ${tokens.length} tokens`);
 
 		return tokens;
 	}
 
 	async findAllByOwnerType(ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all long-live tokens by owner type=${ownerType}`);
+		this.logger.debug(`Fetching all long-live tokens by owner type=${ownerType}`);
 
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
@@ -104,13 +105,13 @@ export class TokensService {
 			where: { ownerType },
 		});
 
-		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} long-live tokens`);
+		this.logger.debug(`Found ${tokens.length} long-live tokens`);
 
 		return tokens;
 	}
 
 	async findByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
-		this.logger.debug(`[LOOKUP ALL] Fetching long-live tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
+		this.logger.debug(`Fetching long-live tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
 
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
@@ -118,19 +119,19 @@ export class TokensService {
 			where: { tokenOwnerId: ownerId, ownerType },
 		});
 
-		this.logger.debug(`[LOOKUP ALL] Found ${tokens.length} long-live tokens`);
+		this.logger.debug(`Found ${tokens.length} long-live tokens`);
 
 		return tokens;
 	}
 
 	async revokeByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<void> {
-		this.logger.debug(`[REVOKE] Revoking all tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
+		this.logger.debug(`Revoking all tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
 
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
 		await repository.update({ tokenOwnerId: ownerId, ownerType }, { revoked: true });
 
-		this.logger.debug(`[REVOKE] Successfully revoked tokens for ownerId=${ownerId}`);
+		this.logger.debug(`Successfully revoked tokens for ownerId=${ownerId}`);
 	}
 
 	async findOne<TToken extends TokenEntity>(id: string, type?: new (...args: any[]) => TToken): Promise<TToken | null> {
@@ -141,7 +142,7 @@ export class TokensService {
 		token: string,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken | null> {
-		this.logger.debug('[LOOKUP] Finding token by hashed value');
+		this.logger.debug('Finding token by hashed value');
 
 		const hashedToken = hashToken(token);
 		const allTokens = await this.findAll(type);
@@ -156,12 +157,12 @@ export class TokensService {
 	}
 
 	async create<TToken extends TokenEntity, TCreateDTO extends CreateTokenDto>(createDto: TCreateDTO): Promise<TToken> {
-		this.logger.debug('[CREATE] Creating new token');
+		this.logger.debug('Creating new token');
 
 		const { type } = createDto;
 
 		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" property in data.');
+			this.logger.error('Validation failed: Missing required "type" property in data.');
 
 			throw new AuthException('Token property type is required.');
 		}
@@ -208,7 +209,7 @@ export class TokensService {
 		}
 
 		if (existingToken) {
-			this.logger.warn('[CREATE] Token already exists.');
+			this.logger.warn('Token already exists.');
 
 			throw new AuthException('A token with the same hash already exists.');
 		}
@@ -267,7 +268,7 @@ export class TokensService {
 		// Retrieve the saved token with its full relations
 		const savedToken = await this.getOneOrThrow<TToken>(savedResult.id, mapping.class);
 
-		this.logger.debug(`[CREATE] Successfully created token with id=${savedToken.id}`);
+		this.logger.debug(`Successfully created token with id=${savedToken.id}`);
 
 		return savedToken;
 	}
@@ -276,7 +277,7 @@ export class TokensService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TToken> {
-		this.logger.debug(`[UPDATE] Updating token with id=${id}`);
+		this.logger.debug(`Updating token with id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
 
@@ -292,13 +293,13 @@ export class TokensService {
 
 		const updatedToken = await this.getOneOrThrow<TToken>(token.id);
 
-		this.logger.debug(`[UPDATE] Successfully updated token with id=${updatedToken.id}`);
+		this.logger.debug(`Successfully updated token with id=${updatedToken.id}`);
 
 		return updatedToken;
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing token with id=${id}`);
+		this.logger.debug(`Removing token with id=${id}`);
 
 		const token = await this.getOneOrThrow(id);
 
@@ -310,7 +311,7 @@ export class TokensService {
 			}
 		}
 
-		this.logger.log(`[DELETE] Successfully removed token with id=${id}`);
+		this.logger.log(`Successfully removed token with id=${id}`);
 	}
 
 	async getOneOrThrow<TToken extends TokenEntity>(
@@ -320,7 +321,7 @@ export class TokensService {
 		const token = await this.findOne<TToken>(id, type);
 
 		if (!token) {
-			this.logger.error(`[ERROR] Token with id=${id} not found`);
+			this.logger.error(`Token with id=${id} not found`);
 
 			throw new AuthNotFoundException('Requested token does not exist');
 		}
@@ -333,7 +334,7 @@ export class TokensService {
 		value: string | number | boolean,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken | null> {
-		this.logger.debug('[LOOKUP] Fetching token');
+		this.logger.debug('Fetching token');
 
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
@@ -357,12 +358,12 @@ export class TokensService {
 		const token = (await queryBuilder.getOne()) as TToken;
 
 		if (!token) {
-			this.logger.warn('[LOOKUP] Token not found');
+			this.logger.warn('Token not found');
 
 			return null;
 		}
 
-		this.logger.debug('[LOOKUP] Successfully fetched token');
+		this.logger.debug('Successfully fetched token');
 
 		return token;
 	}
@@ -379,7 +380,7 @@ export class TokensService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new AuthValidationException('Provided token data are invalid.');
 		}

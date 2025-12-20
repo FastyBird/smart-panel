@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { setResponseMeta } from '../../../common/utils/http.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
@@ -13,12 +14,12 @@ import { ReqCreateLogEntriesDto } from '../dto/create-log-entry.dto';
 import { LogEntriesResponseModel, LogEntryAcceptedResponseModel } from '../models/system-response.model';
 import { LogEntryAcceptedModel } from '../models/system.model';
 import { SystemLoggerService } from '../services/system-logger.service';
-import { DEFAULT_PAGE_SIZE, LogEntryType, SYSTEM_MODULE_API_TAG_NAME } from '../system.constants';
+import { DEFAULT_PAGE_SIZE, LogEntryType, SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiTags(SYSTEM_MODULE_API_TAG_NAME)
 @Controller('logs')
 export class LogsController {
-	private readonly logger = new Logger(LogsController.name);
+	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'LogsController');
 
 	constructor(private readonly appLogger: SystemLoggerService) {}
 
@@ -141,7 +142,7 @@ export class LogsController {
 			} catch (err) {
 				rejected++;
 
-				this.logger.error('Failed to process log event', err);
+				this.logger.error('Failed to process log event', { error: err });
 			}
 		}
 

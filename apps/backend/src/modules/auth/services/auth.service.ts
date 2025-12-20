@@ -2,14 +2,15 @@ import bcrypt from 'bcrypt';
 import { validate } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { ACCESS_TOKEN_TYPE, TokenType } from '../auth.constants';
+import { ACCESS_TOKEN_TYPE, AUTH_MODULE_NAME, TokenType } from '../auth.constants';
 import {
 	AuthException,
 	AuthNotFoundException,
@@ -30,7 +31,7 @@ import { TokensService } from './tokens.service';
 
 @Injectable()
 export class AuthService {
-	private readonly logger = new Logger(AuthService.name);
+	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'AuthService');
 
 	constructor(
 		private readonly usersService: UsersService,
@@ -39,7 +40,7 @@ export class AuthService {
 	) {}
 
 	generateToken(user: UserEntity, role?: UserRole, options?: JwtSignOptions): string {
-		this.logger.debug(`[TOKEN] Generating token for user=${user.id} role=${role || user.role}`);
+		this.logger.debug(`Generating token for user=${user.id} role=${role || user.role}`);
 
 		const payload = {
 			sub: user.id,
@@ -50,45 +51,45 @@ export class AuthService {
 
 		const token = this.jwtService.sign(payload, options);
 
-		this.logger.debug(`[TOKEN] Successfully generated token for user=${user.id}`);
+		this.logger.debug(`Successfully generated token for user=${user.id}`);
 
 		return token;
 	}
 
 	async checkUsername({ username }: CheckUsernameDto): Promise<CheckModel> {
-		this.logger.debug(`[CHECK] Checking if username=${username} exists`);
+		this.logger.debug(`Checking if username=${username} exists`);
 
 		const user = await this.usersService.findByUsername(username);
 		const isTaken = user !== null;
 
-		this.logger.debug(`[CHECK] Username=${username} taken=${isTaken}`);
+		this.logger.debug(`Username=${username} taken=${isTaken}`);
 
 		return toInstance(CheckModel, { valid: !isTaken });
 	}
 
 	async checkEmail({ email }: CheckEmailDto): Promise<CheckModel> {
-		this.logger.debug(`[CHECK] Checking if email=${email} exists`);
+		this.logger.debug(`Checking if email=${email} exists`);
 
 		const user = await this.usersService.findByEmail(email);
 		const isTaken = user !== null;
 
-		this.logger.debug(`[CHECK] Email=${email} taken=${isTaken}`);
+		this.logger.debug(`Email=${email} taken=${isTaken}`);
 
 		return toInstance(CheckModel, { valid: !isTaken });
 	}
 
 	async getProfile(id: string): Promise<UserEntity> {
-		this.logger.debug(`[PROFILE] Fetching profile for user=${id}`);
+		this.logger.debug(`Fetching profile for user=${id}`);
 
 		const user = await this.usersService.getOneOrThrow(id);
 
-		this.logger.debug(`[PROFILE] Successfully fetched profile for user=${id}`);
+		this.logger.debug(`Successfully fetched profile for user=${id}`);
 
 		return user;
 	}
 
 	async login(loginDto: LoginDto): Promise<LoggedInModel> {
-		this.logger.debug(`[LOGIN] Attempting login for username=${loginDto.username}`);
+		this.logger.debug(`Attempting login for username=${loginDto.username}`);
 
 		const dtoInstance = await this.validateDto<LoginDto>(LoginDto, loginDto);
 
@@ -98,13 +99,13 @@ export class AuthService {
 		const user = (await this.usersService.findByUsername(username)) ?? (await this.usersService.findByEmail(username));
 
 		if (!user) {
-			this.logger.warn(`[LOGIN] Failed login attempt for username=${username} (User not found)`);
+			this.logger.warn(`Failed login attempt for username=${username} (User not found)`);
 
 			throw new AuthNotFoundException('Invalid email or password');
 		}
 
 		if (user.password === null) {
-			this.logger.warn(`[LOGIN] Failed login attempt for username=${username} (User password not set)`);
+			this.logger.warn(`Failed login attempt for username=${username} (User password not set)`);
 
 			throw new AuthNotFoundException('User is not activated');
 		}
@@ -113,14 +114,14 @@ export class AuthService {
 		const match = await bcrypt.compare(password, user.password);
 
 		if (!match) {
-			this.logger.warn(`[LOGIN] Failed login attempt for username=${username} (Invalid password)`);
+			this.logger.warn(`Failed login attempt for username=${username} (Invalid password)`);
 
 			throw new AuthNotFoundException('Invalid email or password');
 		}
 
 		const tokens = await this.createTokenPair(user);
 
-		this.logger.debug(`[LOGIN] Successful login for user=${user.id}`);
+		this.logger.debug(`Successful login for user=${user.id}`);
 
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
@@ -128,7 +129,7 @@ export class AuthService {
 	}
 
 	async register(registerDto: RegisterDto): Promise<UserEntity> {
-		this.logger.debug(`[REGISTER] Registering new user username=${registerDto.username}, email=${registerDto.email}`);
+		this.logger.debug(`Registering new user username=${registerDto.username}, email=${registerDto.email}`);
 
 		const dtoInstance = await this.validateDto<RegisterDto>(RegisterDto, registerDto);
 
@@ -136,7 +137,7 @@ export class AuthService {
 
 		// Ensure only one owner can be registered
 		if (await this.usersService.findOwner()) {
-			this.logger.warn(`[REGISTER] Registration failed - owner already exists`);
+			this.logger.warn('Registration failed - owner already exists');
 
 			throw new AuthException('Owner already registered');
 		}
@@ -149,13 +150,13 @@ export class AuthService {
 		]);
 
 		if (emailExists) {
-			this.logger.warn(`[REGISTER] Registration failed - email=${email} already exists`);
+			this.logger.warn(`Registration failed - email=${email} already exists`);
 
 			throw new AuthException('Email already registered');
 		}
 
 		if (usernameExists) {
-			this.logger.warn(`[REGISTER] Registration failed - username=${username} already exists`);
+			this.logger.warn(`Registration failed - username=${username} already exists`);
 
 			throw new AuthException('Username already registered');
 		}
@@ -166,7 +167,7 @@ export class AuthService {
 			role: dtoInstance.role ?? (ownerExists ? UserRole.USER : UserRole.OWNER),
 		});
 
-		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);
+		this.logger.debug(`Successfully registered user id=${user.id}`);
 
 		return user;
 	}
@@ -179,7 +180,7 @@ export class AuthService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.debug('[AUTH] JWT validation failed', { message: err.message, stack: err.stack });
+			this.logger.debug('JWT validation failed', { message: err.message, stack: err.stack });
 
 			throw new AuthUnauthorizedException('Invalid or expired token');
 		}
@@ -219,7 +220,7 @@ export class AuthService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[REFRESH] Failed to revoke user refresh token', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to revoke user refresh token', { message: err.message, stack: err.stack });
 
 			throw new AuthException('Something went wrong. Token can not be refreshed.');
 		}
@@ -232,7 +233,7 @@ export class AuthService {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error('[REFRESH] Failed to remove user access token', { message: err.message, stack: err.stack });
+				this.logger.error('Failed to remove user access token', { message: err.message, stack: err.stack });
 
 				throw new AuthException('Something went wrong. Token can not be refreshed.');
 			}
@@ -264,7 +265,7 @@ export class AuthService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[REGISTER] Failed to create access token', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to create access token', { message: err.message, stack: err.stack });
 
 			throw new AuthException('Access token can not be saved');
 		}
@@ -284,7 +285,7 @@ export class AuthService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[REGISTER] Failed to create refresh token', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to create refresh token', { message: err.message, stack: err.stack });
 
 			throw new AuthException('Refresh token can not be saved');
 		}
@@ -293,7 +294,7 @@ export class AuthService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		this.logger.debug(`[VALIDATE] Validating DTO for class=${DtoClass.name}`);
+		this.logger.debug(`Validating DTO for class=${DtoClass.name}`);
 
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,
@@ -306,12 +307,12 @@ export class AuthService {
 		});
 
 		if (errors.length) {
-			this.logger.error(`[VALIDATE] Validation failed: ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new AuthValidationException('Provided user data are invalid.');
 		}
 
-		this.logger.debug(`[VALIDATE] DTO validation successful for class=${DtoClass.name}`);
+		this.logger.debug(`DTO validation successful for class=${DtoClass.name}`);
 
 		return dtoInstance;
 	}

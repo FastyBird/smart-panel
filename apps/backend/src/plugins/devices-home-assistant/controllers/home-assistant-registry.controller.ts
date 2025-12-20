@@ -40,12 +40,12 @@ export class HomeAssistantRegistryController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('devices')
 	async findAllDevices(): Promise<HomeAssistantDeviceRegistryResponseModel> {
-		this.logger.debug('[HOME ASSISTANT][REGISTRY CONTROLLER] Fetching all Home Assistant devices from registry');
+		this.logger.debug('Fetching all Home Assistant devices from registry');
 
 		try {
 			const devices = await this.homeAssistantWsService.getDevicesRegistry();
 
-			this.logger.debug(`[HOME ASSISTANT][REGISTRY CONTROLLER] Retrieved ${devices.length} devices from registry`);
+			this.logger.debug(`Retrieved ${devices.length} devices from registry`);
 
 			const response = new HomeAssistantDeviceRegistryResponseModel();
 			response.data = devices;
@@ -54,20 +54,17 @@ export class HomeAssistantRegistryController {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error(
-					'[HOME ASSISTANT][REGISTRY CONTROLLER] Devices Home Assistant plugin is not properly configured',
-					{
-						message: err.message,
-						stack: err.stack,
-					},
-				);
+				this.logger.error('Devices Home Assistant plugin is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
 				throw new NotFoundException('Home Assistant devices registry could not be loaded from Home Assistant instance');
 			}
 
-			this.logger.error('[HOME ASSISTANT][REGISTRY CONTROLLER] Loading Home Assistant devices registry failed', {
+			this.logger.error('Loading Home Assistant devices registry failed', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -91,12 +88,12 @@ export class HomeAssistantRegistryController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('entities')
 	async findAllEntities(): Promise<HomeAssistantEntityRegistryResponseModel> {
-		this.logger.debug('[HOME ASSISTANT][REGISTRY CONTROLLER] Fetching all Home Assistant entities from registry');
+		this.logger.debug('Fetching all Home Assistant entities from registry');
 
 		try {
 			const entities = await this.homeAssistantWsService.getEntitiesRegistry();
 
-			this.logger.debug(`[HOME ASSISTANT][REGISTRY CONTROLLER] Retrieved ${entities.length} entities from registry`);
+			this.logger.debug(`Retrieved ${entities.length} entities from registry`);
 
 			const response = new HomeAssistantEntityRegistryResponseModel();
 			response.data = entities;
@@ -105,13 +102,10 @@ export class HomeAssistantRegistryController {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error(
-					'[HOME ASSISTANT][REGISTRY CONTROLLER] Devices Home Assistant plugin is not properly configured',
-					{
-						message: err.message,
-						stack: err.stack,
-					},
-				);
+				this.logger.error('Devices Home Assistant plugin is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
@@ -120,7 +114,7 @@ export class HomeAssistantRegistryController {
 				);
 			}
 
-			this.logger.error('[HOME ASSISTANT][REGISTRY CONTROLLER] Loading Home Assistant entities registry failed', {
+			this.logger.error('Loading Home Assistant entities registry failed', {
 				message: err.message,
 				stack: err.stack,
 			});

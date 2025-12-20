@@ -1,19 +1,20 @@
 import { validate } from 'class-validator';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
 import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity } from '../entities/devices.entity';
 
 @Injectable()
 export class ChannelsControlsService {
-	private readonly logger = new Logger(ChannelsControlsService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsControlsService');
 
 	constructor(
 		@InjectRepository(ChannelControlEntity)
@@ -23,7 +24,7 @@ export class ChannelsControlsService {
 	) {}
 
 	async findAll(channelId: string): Promise<ChannelControlEntity[]> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all controls for channelId=${channelId}`);
+		this.logger.debug(`Fetching all controls for channelId=${channelId}`);
 
 		const controls = await this.repository
 			.createQueryBuilder('control')
@@ -31,13 +32,13 @@ export class ChannelsControlsService {
 			.where('channel.id = :channelId', { channelId })
 			.getMany();
 
-		this.logger.debug(`[LOOKUP ALL] Found ${controls.length} controls for channelId=${channelId}`);
+		this.logger.debug(`Found ${controls.length} controls for channelId=${channelId}`);
 
 		return controls;
 	}
 
 	async findOne(id: string, channelId: string): Promise<ChannelControlEntity | null> {
-		this.logger.debug(`[LOOKUP] Fetching control with id=${id} for channelId=${channelId}`);
+		this.logger.debug(`Fetching control with id=${id} for channelId=${channelId}`);
 
 		const control = await this.repository
 			.createQueryBuilder('control')
@@ -47,18 +48,18 @@ export class ChannelsControlsService {
 			.getOne();
 
 		if (!control) {
-			this.logger.debug(`[LOOKUP] Control with id=${id} for channelId=${channelId} not found`);
+			this.logger.debug(`Control with id=${id} for channelId=${channelId} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched control with id=${id} for channelId=${channelId}`);
+		this.logger.debug(`Successfully fetched control with id=${id} for channelId=${channelId}`);
 
 		return control;
 	}
 
 	async findOneByName(name: string, channelId: string): Promise<ChannelControlEntity | null> {
-		this.logger.debug(`[LOOKUP] Fetching control with name=${name} for channelId=${channelId}`);
+		this.logger.debug(`Fetching control with name=${name} for channelId=${channelId}`);
 
 		const control = await this.repository
 			.createQueryBuilder('control')
@@ -68,18 +69,18 @@ export class ChannelsControlsService {
 			.getOne();
 
 		if (!control) {
-			this.logger.debug(`[LOOKUP] Control with name=${name} for channelId=${channelId} not found`);
+			this.logger.debug(`Control with name=${name} for channelId=${channelId} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched control with name=${name} for channelId=${channelId}`);
+		this.logger.debug(`Successfully fetched control with name=${name} for channelId=${channelId}`);
 
 		return control;
 	}
 
 	async create(channelId: string, createDto: CreateChannelControlDto): Promise<ChannelControlEntity> {
-		this.logger.debug(`[CREATE] Creating new control for channelId=${channelId}`);
+		this.logger.debug(`Creating new control for channelId=${channelId}`);
 
 		const existingControl = await this.findOneByName(createDto.name, channelId);
 
@@ -99,7 +100,7 @@ export class ChannelsControlsService {
 
 		const savedControl = await this.getOneOrThrow(control.id, channelId);
 
-		this.logger.debug(`[CREATE] Successfully created control with id=${savedControl.id} for channelId=${channelId}`);
+		this.logger.debug(`Successfully created control with id=${savedControl.id} for channelId=${channelId}`);
 
 		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_CREATED, savedControl);
 
@@ -107,7 +108,7 @@ export class ChannelsControlsService {
 	}
 
 	async remove(id: string, channelId: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
-		this.logger.debug(`[DELETE] Removing control with id=${id} for channelId=${channelId}`);
+		this.logger.debug(`Removing control with id=${id} for channelId=${channelId}`);
 
 		const control = await manager.findOneOrFail<ChannelControlEntity>(ChannelControlEntity, {
 			where: { id, channel: { id: channelId } },
@@ -118,7 +119,7 @@ export class ChannelsControlsService {
 
 		await manager.remove(control);
 
-		this.logger.log(`[DELETE] Successfully removed control with id=${id} for channelId=${channelId}`);
+		this.logger.log(`Successfully removed control with id=${id} for channelId=${channelId}`);
 
 		// Emit event with the control entity captured before removal to preserve ID
 		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_DELETED, controlForEvent);
@@ -128,7 +129,7 @@ export class ChannelsControlsService {
 		const control = await this.findOne(id, channelId);
 
 		if (!control) {
-			this.logger.error(`[ERROR] Control with id=${id} for channelId=${channelId} not found`);
+			this.logger.error(`Control with id=${id} for channelId=${channelId} not found`);
 
 			throw new DevicesNotFoundException('Channel control does not exist');
 		}
@@ -148,7 +149,7 @@ export class ChannelsControlsService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new DevicesValidationException('Provided control data are invalid.');
 		}

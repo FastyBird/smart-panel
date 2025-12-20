@@ -1,13 +1,15 @@
 import { DataSource, EntitySubscriberInterface, RemoveEvent } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
+import { DISPLAYS_MODULE_NAME } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 import { DisplayConnectionStateService } from '../services/display-connection-state.service';
 
 @Injectable()
 export class DisplayEntitySubscriber implements EntitySubscriberInterface<DisplayEntity> {
-	private readonly logger = new Logger(DisplayEntitySubscriber.name);
+	private readonly logger = createExtensionLogger(DISPLAYS_MODULE_NAME, 'DisplayEntitySubscriber');
 
 	constructor(
 		private readonly displayStatusService: DisplayConnectionStateService,
@@ -26,36 +28,33 @@ export class DisplayEntitySubscriber implements EntitySubscriberInterface<Displa
 			entity.online = status.online;
 			entity.status = status.status;
 
-			this.logger.debug(`[SUBSCRIBER] Loaded display status from InfluxDB id=${entity.id}, value=${entity.status}`);
+			this.logger.debug(`Loaded display status from InfluxDB id=${entity.id}, value=${entity.status}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[SUBSCRIBER] Failed to load display status from InfluxDB id=${entity.id}, error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to load display status from InfluxDB id=${entity.id}, error=${err.message}`, err.stack);
 		}
 	}
 
 	async afterRemove(event: RemoveEvent<DisplayEntity>): Promise<void> {
 		if (!event.entity) {
-			this.logger.warn(`[SUBSCRIBER] No entity found in afterRemove event`);
+			this.logger.warn(`No entity found in afterRemove event`);
 			return;
 		}
 
 		const displayId = event.entity.id;
 
 		try {
-			this.logger.debug(`[SUBSCRIBER] Deleting stored statuses for id=${displayId}`);
+			this.logger.debug(`Deleting stored statuses for id=${displayId}`);
 
 			await this.displayStatusService.delete(event.entity);
 
-			this.logger.log(`[SUBSCRIBER] Successfully removed all stored statuses for id=${displayId}`);
+			this.logger.log(`Successfully removed all stored statuses for id=${displayId}`);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(
-				`[SUBSCRIBER] Failed to remove display statuses from InfluxDB id=${displayId} error=${err.message}`,
+				`Failed to remove display statuses from InfluxDB id=${displayId} error=${err.message}`,
 				err.stack,
 			);
 		}

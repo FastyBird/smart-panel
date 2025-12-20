@@ -1,8 +1,9 @@
 import { instanceToPlain } from 'class-transformer';
 import { CharacteristicValue, Device, Ethernet, WiFi } from 'shellies-ds9';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
 	clampNumber,
 	coerceBooleanSafe,
@@ -20,7 +21,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { ComponentType, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import {
 	DevicesShellyNgException,
 	DevicesShellyNgNotFoundException,
@@ -49,7 +50,10 @@ type BatchUpdate = {
 
 @Injectable()
 export class DelegatesManagerService {
-	private readonly logger = new Logger(DelegatesManagerService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_NG_PLUGIN_NAME,
+		'DelegatesManagerService',
+	);
 
 	private readonly delegates: Map<Device['id'], ShellyDeviceDelegate> = new Map();
 
@@ -153,7 +157,7 @@ export class DelegatesManagerService {
 
 					if (n === null || Number.isNaN(n)) {
 						this.logger.warn(
-							`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for link quality -> ${safeToString(val)} (property=${linkQuality.id})`,
+							`Dropping invalid numeric update for link quality -> ${safeToString(val)} (property=${linkQuality.id})`,
 						);
 
 						return;
@@ -161,7 +165,7 @@ export class DelegatesManagerService {
 
 					this.handleChange(linkQuality, clampNumber(rssiToQuality(n), 0, 100)).catch((err: Error): void => {
 						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${deviceInformation.identifier} attribute=rssi and property=${linkQuality.id}`,
+							`Failed to set value for component=${deviceInformation.identifier} attribute=rssi and property=${linkQuality.id}`,
 							{
 								message: err.message,
 								stack: err.stack,
@@ -199,7 +203,7 @@ export class DelegatesManagerService {
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(switcherOn, coerceBooleanSafe(val)).catch((err: Error): void => {
 					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${switcherOn.id}`,
+						`Failed to set value for component=${comp.key} attribute=output and property=${switcherOn.id}`,
 						{
 							message: err.message,
 							stack: err.stack,
@@ -351,7 +355,7 @@ export class DelegatesManagerService {
 
 				this.handleChange(coverState, val).catch((err: Error): void => {
 					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=state and property=${coverState.id}`,
+						`Failed to set value for component=${comp.key} attribute=state and property=${coverState.id}`,
 						{
 							message: err.message,
 							stack: err.stack,
@@ -390,7 +394,7 @@ export class DelegatesManagerService {
 
 					if (n === null || Number.isNaN(n)) {
 						this.logger.warn(
-							`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.current_pos -> ${String(val)} (property=${coverPosition.id})`,
+							`Dropping invalid numeric update for ${comp.key}.current_pos -> ${String(val)} (property=${coverPosition.id})`,
 						);
 
 						return;
@@ -457,7 +461,7 @@ export class DelegatesManagerService {
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(lightOn, coerceBooleanSafe(val)).catch((err: Error): void => {
 					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${lightOn.id}`,
+						`Failed to set value for component=${comp.key} attribute=output and property=${lightOn.id}`,
 						{
 							message: err.message,
 							stack: err.stack,
@@ -510,7 +514,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
+								`Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
 							);
 
 							return;
@@ -550,13 +554,10 @@ export class DelegatesManagerService {
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(rgbOn, coerceBooleanSafe(val)).catch((err: Error): void => {
-					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${rgbOn.id}`,
-						{
-							message: err.message,
-							stack: err.stack,
-						},
-					);
+					this.logger.error(`Failed to set value for component=${comp.key} attribute=output and property=${rgbOn.id}`, {
+						message: err.message,
+						stack: err.stack,
+					});
 				});
 			});
 
@@ -604,7 +605,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
+								`Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
 							);
 
 							return;
@@ -676,7 +677,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
+								`Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
 							);
 
 							return;
@@ -695,7 +696,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
+								`Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
 							);
 
 							return;
@@ -714,7 +715,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
+								`Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
 							);
 
 							return;
@@ -756,9 +757,7 @@ export class DelegatesManagerService {
 					colorBlueValue === null ||
 					Number.isNaN(colorBlueValue)
 				) {
-					this.logger.warn(
-						`[SHELLY NG][DELEGATES MANAGER] Dropping invalid batch update for ${comp.key} (channel=${rgb.id})`,
-					);
+					this.logger.warn(`Dropping invalid batch update for ${comp.key} (channel=${rgb.id})`);
 
 					return;
 				}
@@ -800,7 +799,7 @@ export class DelegatesManagerService {
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(rgbwOn, coerceBooleanSafe(val)).catch((err: Error): void => {
 					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${rgbwOn.id}`,
+						`Failed to set value for component=${comp.key} attribute=output and property=${rgbwOn.id}`,
 						{
 							message: err.message,
 							stack: err.stack,
@@ -853,7 +852,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
+								`Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
 							);
 
 							return;
@@ -925,7 +924,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
+								`Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
 							);
 
 							return;
@@ -944,7 +943,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
+								`Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
 							);
 
 							return;
@@ -963,7 +962,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
+								`Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
 							);
 
 							return;
@@ -1002,7 +1001,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.white -> ${String(val)} (property=${white.id})`,
+								`Dropping invalid numeric update for ${comp.key}.white -> ${String(val)} (property=${white.id})`,
 							);
 
 							return;
@@ -1048,9 +1047,7 @@ export class DelegatesManagerService {
 					whiteValue === null ||
 					Number.isNaN(whiteValue)
 				) {
-					this.logger.warn(
-						`[SHELLY NG][DELEGATES MANAGER] Dropping invalid batch update for ${comp.key} (channel=${rgbw.id})`,
-					);
+					this.logger.warn(`Dropping invalid batch update for ${comp.key} (channel=${rgbw.id})`);
 
 					return;
 				}
@@ -1096,13 +1093,10 @@ export class DelegatesManagerService {
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(cctOn, coerceBooleanSafe(val)).catch((err: Error): void => {
-					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${cctOn.id}`,
-						{
-							message: err.message,
-							stack: err.stack,
-						},
-					);
+					this.logger.error(`Failed to set value for component=${comp.key} attribute=output and property=${cctOn.id}`, {
+						message: err.message,
+						stack: err.stack,
+					});
 				});
 			});
 
@@ -1150,7 +1144,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
+								`Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
 							);
 
 							return;
@@ -1189,7 +1183,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.ct -> ${String(val)} (property=${ct.id})`,
+								`Dropping invalid numeric update for ${comp.key}.ct -> ${String(val)} (property=${ct.id})`,
 							);
 
 							return;
@@ -1219,9 +1213,7 @@ export class DelegatesManagerService {
 					ctValue === null ||
 					Number.isNaN(ctValue)
 				) {
-					this.logger.warn(
-						`[SHELLY NG][DELEGATES MANAGER] Dropping invalid batch update for ${comp.key} (channel=${cct.id})`,
-					);
+					this.logger.warn(`Dropping invalid batch update for ${comp.key} (channel=${cct.id})`);
 
 					return;
 				}
@@ -1445,13 +1437,10 @@ export class DelegatesManagerService {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(
-					`[SHELLY NG][DELEGATES MANAGER] Shelly handler error for component=${compKey} attribute=${attr}`,
-					{
-						message: err.message,
-						stack: err.stack,
-					},
-				);
+				this.logger.error(`Shelly handler error for component=${compKey} attribute=${attr}`, {
+					message: err.message,
+					stack: err.stack,
+				});
 			}
 		};
 
@@ -1467,20 +1456,14 @@ export class DelegatesManagerService {
 				})
 				.then((): void => {
 					if (state) {
-						this.logger.debug(
-							`[SHELLY NG][DELEGATES MANAGER] Connection state for device=${delegate.id} changed to connected`,
-							state,
-						);
+						this.logger.debug(`Connection state for device=${delegate.id} changed to connected`);
 					} else {
-						this.logger.debug(
-							`[SHELLY NG][DELEGATES MANAGER] Connection state for device=${delegate.id} changed to disconnected`,
-							state,
-						);
+						this.logger.debug(`Connection state for device=${delegate.id} changed to disconnected`);
 					}
 				})
 				.catch((err: Error) => {
 					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set state=${state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED} for device=${delegate.id}`,
+						`Failed to set state=${state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED} for device=${delegate.id}`,
 						{
 							message: err.message,
 							stack: err.stack,
@@ -1495,7 +1478,7 @@ export class DelegatesManagerService {
 
 		connectionHandler(true);
 
-		this.logger.log(`[SHELLY NG][DELEGATES MANAGER] Attached Shelly device=${delegate.id}`);
+		this.logger.log(`Attached Shelly device=${delegate.id}`);
 
 		return delegate;
 	}
@@ -1550,7 +1533,7 @@ export class DelegatesManagerService {
 
 		this.delegates.delete(deviceId);
 
-		this.logger.log(`[SHELLY NG][DELEGATES MANAGER] Detached Shelly device=${deviceId}`);
+		this.logger.log(`Detached Shelly device=${deviceId}`);
 	}
 
 	async setChannelValue(
@@ -1561,18 +1544,14 @@ export class DelegatesManagerService {
 		const handler = this.setChannelsHandlers.get(`${device.identifier}|${channel.id}`);
 
 		if (!handler) {
-			this.logger.debug(
-				`[SHELLY NG][DELEGATES MANAGER] Trying to write to device=${device.identifier} and channel=${channel.id} multiple properties`,
-			);
+			this.logger.debug(`Trying to write to device=${device.identifier} and channel=${channel.id} multiple properties`);
 
 			return Promise.reject(
 				new DevicesShellyNgNotImplementedException('Multiple property writes are not supported by the component.'),
 			);
 		}
 
-		this.logger.debug(
-			`[SHELLY NG][DELEGATES MANAGER] Writing value to Shelly device=${device.identifier} channel=${channel.id}`,
-		);
+		this.logger.debug(`Writing value to Shelly device=${device.identifier} channel=${channel.id}`);
 
 		return handler(updates.map((row): BatchUpdate => ({ property: row.property, val: row.value })));
 	}
@@ -1586,15 +1565,13 @@ export class DelegatesManagerService {
 
 		if (!handler) {
 			this.logger.warn(
-				`[SHELLY NG][DELEGATES MANAGER] Trying to write to device=${device.identifier} to not writable property=${property.id} value=${value}`,
+				`Trying to write to device=${device.identifier} to not writable property=${property.id} value=${value}`,
 			);
 
 			return Promise.resolve(false);
 		}
 
-		this.logger.debug(
-			`[SHELLY NG][DELEGATES MANAGER] Writing value to Shelly device=${device.identifier} property=${property.id} value=${value}`,
-		);
+		this.logger.debug(`Writing value to Shelly device=${device.identifier} property=${property.id} value=${value}`);
 
 		return handler(value);
 	}
@@ -1604,7 +1581,7 @@ export class DelegatesManagerService {
 		value: string | number | boolean,
 		immediately = true,
 	): Promise<void> {
-		this.logger.debug(`[SHELLY NG][DELEGATES MANAGER] Received component attribute update from Shelly device`);
+		this.logger.debug(`Received component attribute update from Shelly device`);
 
 		if (immediately) {
 			await this.writeValueToProperty(property, value);
@@ -1660,17 +1637,17 @@ export class DelegatesManagerService {
 
 		if (n === null || Number.isNaN(n)) {
 			this.logger.warn(
-				`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${compKey}.${attr} -> ${safeToString(val)} (property=${propertyId})`,
+				`Dropping invalid numeric update for ${compKey}.${attr} -> ${safeToString(val)} (property=${propertyId})`,
 			);
 
 			return;
 		}
 
 		void write(n).catch((err: Error) => {
-			this.logger.error(
-				`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${compKey} attribute=${attr} property=${propertyId}`,
-				{ message: err.message, stack: err.stack },
-			);
+			this.logger.error(`Failed to set value for component=${compKey} attribute=${attr} property=${propertyId}`, {
+				message: err.message,
+				stack: err.stack,
+			});
 		});
 	}
 
@@ -1692,7 +1669,7 @@ export class DelegatesManagerService {
 
 			this.writeValueToProperty(property, value).catch((err: Error) => {
 				this.logger.error(
-					`[SHELLY NG][DELEGATES MANAGER] Failed to process scheduled write of value=${safeToString(value)} to property=${property.id}`,
+					`Failed to process scheduled write of value=${safeToString(value)} to property=${property.id}`,
 					{ message: err.message, stack: err.stack },
 				);
 			});
