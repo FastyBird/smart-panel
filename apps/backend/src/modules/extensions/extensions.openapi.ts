@@ -7,6 +7,11 @@ import {
 import { DiscoveredExtensionsResponseModel } from './models/discovered-extensions-response.model';
 import { ExtensionLinksModel, ExtensionModel } from './models/extension.model';
 import { ExtensionResponseModel, ExtensionsResponseModel } from './models/extensions-response.model';
+import {
+	ServiceStatusModel,
+	ServiceStatusResponseModel,
+	ServicesStatusResponseModel,
+} from './models/service-status.model';
 
 export const EXTENSIONS_SWAGGER_EXTRA_MODELS = [
 	ExtensionModel,
@@ -20,4 +25,8 @@ export const EXTENSIONS_SWAGGER_EXTRA_MODELS = [
 	DiscoveredExtensionAdminModel,
 	DiscoveredExtensionBackendModel,
 	DiscoveredExtensionsResponseModel,
+	// Service status models
+	ServiceStatusModel,
+	ServiceStatusResponseModel,
+	ServicesStatusResponseModel,
 ];

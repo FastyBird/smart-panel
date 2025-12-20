@@ -1,4 +1,4 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Global, Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 
 import { ExtensionsModule } from '../extensions/extensions.module';
@@ -26,6 +26,7 @@ import { PluginsTypeMapperService } from './services/plugins-type-mapper.service
 	displayName: CONFIG_MODULE_API_TAG_NAME,
 	description: CONFIG_MODULE_API_TAG_DESCRIPTION,
 })
+@Global()
 @Module({
 	imports: [
 		NestConfigModule,

@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
-import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -20,6 +17,7 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -61,7 +59,6 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 })
 @Module({
 	imports: [
-		NestConfigModule,
 		TypeOrmModule.forFeature([ShellyV1DeviceEntity, ShellyV1ChannelEntity, ShellyV1ChannelPropertyEntity]),
 		DevicesModule,
 		ConfigModule,
@@ -81,7 +78,6 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 })
 export class DevicesShellyV1Plugin {
 	constructor(
-		private readonly configService: NestConfigService,
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly shellyV1Service: ShellyV1Service,
 		private readonly devicesMapper: DevicesTypeMapperService,
@@ -92,6 +88,7 @@ export class DevicesShellyV1Plugin {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -195,6 +192,7 @@ export class DevicesShellyV1Plugin {
 			modelClass: UpdateShellyV1ChannelPropertyDto,
 		});
 
+		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_SHELLY_V1_PLUGIN_NAME,
 			name: 'Shelly V1 Devices',
@@ -238,17 +236,9 @@ Integration plugin for Shelly first-generation (Gen1) devices.
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
-	}
 
-	async onApplicationBootstrap() {
-		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
-
-		if (!isCli) {
-			await this.shellyV1Service.requestStart();
-		}
-	}
-
-	async onModuleDestroy() {
-		await this.shellyV1Service.stop();
+		// Register service with the centralized plugin service manager
+		// The manager handles startup, shutdown, and config-based enable/disable
+		this.pluginServiceManager.register(this.shellyV1Service);
 	}
 }

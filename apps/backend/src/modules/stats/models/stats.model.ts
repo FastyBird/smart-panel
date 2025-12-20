@@ -92,6 +92,14 @@ export class StatsModel {
 	@Expose({ name: 'devices-module' })
 	'devices-module'?: ModuleStatsModel;
 
+	@ApiPropertyOptional({
+		description: 'Extensions module statistics (plugin services)',
+		type: 'object',
+		additionalProperties: { $ref: getSchemaPath(StatsValueModel) },
+	})
+	@Expose({ name: 'extensions-module' })
+	'extensions-module'?: ModuleStatsModel;
+
 	// Additional properties for other modules
 	// Note: The index signature allows additional module properties
 	// The OpenAPI schema will be generated with additionalProperties pointing to ModuleStatsModel

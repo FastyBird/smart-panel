@@ -1,15 +1,24 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Global, Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { StatsRegistryService } from '../stats/services/stats-registry.service';
+import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 
+import {
+	ListServicesCommand,
+	RestartServiceCommand,
+	StartServiceCommand,
+	StopServiceCommand,
+} from './commands/services.command';
 import { DiscoveredExtensionsController } from './controllers/discovered-extensions.controller';
 import { ExtensionsController } from './controllers/extensions.controller';
+import { ServicesController } from './controllers/services.controller';
 import { UpdateExtensionsConfigDto } from './dto/update-config.dto';
 import {
 	EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
@@ -18,20 +27,34 @@ import {
 } from './extensions.constants';
 import { EXTENSIONS_SWAGGER_EXTRA_MODELS } from './extensions.openapi';
 import { ExtensionsConfigModel } from './models/config.model';
+import { ExtensionsStatsProvider } from './providers/extensions-stats.provider';
 import { ExtensionsBundledService } from './services/extensions-bundled.service';
 import { ExtensionsService } from './services/extensions.service';
 import { ModuleResetService } from './services/module-reset.service';
+import { PluginServiceManagerService } from './services/plugin-service-manager.service';
 
 @ApiTag({
 	tagName: EXTENSIONS_MODULE_NAME,
 	displayName: EXTENSIONS_MODULE_API_TAG_NAME,
 	description: EXTENSIONS_MODULE_API_TAG_DESCRIPTION,
 })
+@Global()
 @Module({
-	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule)],
-	controllers: [ExtensionsController, DiscoveredExtensionsController],
-	providers: [ExtensionsBundledService, ExtensionsService, ModuleResetService],
-	exports: [ExtensionsBundledService, ExtensionsService],
+	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule), StatsModule],
+	controllers: [ExtensionsController, DiscoveredExtensionsController, ServicesController],
+	providers: [
+		ExtensionsBundledService,
+		ExtensionsService,
+		ModuleResetService,
+		PluginServiceManagerService,
+		ExtensionsStatsProvider,
+		// CLI commands
+		ListServicesCommand,
+		StartServiceCommand,
+		StopServiceCommand,
+		RestartServiceCommand,
+	],
+	exports: [ExtensionsBundledService, ExtensionsService, PluginServiceManagerService],
 })
 export class ExtensionsModule implements OnModuleInit {
 	constructor(
@@ -40,6 +63,8 @@ export class ExtensionsModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly statsRegistryService: StatsRegistryService,
+		private readonly extensionsStatsProvider: ExtensionsStatsProvider,
 	) {}
 
 	onModuleInit() {
@@ -52,6 +77,9 @@ export class ExtensionsModule implements OnModuleInit {
 
 		// Register factory reset handler
 		this.factoryResetRegistry.register(EXTENSIONS_MODULE_NAME, () => this.moduleReset.reset(), 50);
+
+		// Register stats provider for Prometheus metrics
+		this.statsRegistryService.register(EXTENSIONS_MODULE_NAME, this.extensionsStatsProvider);
 
 		// Register Swagger models
 		for (const model of EXTENSIONS_SWAGGER_EXTRA_MODELS) {

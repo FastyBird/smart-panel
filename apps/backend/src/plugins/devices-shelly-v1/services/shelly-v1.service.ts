@@ -5,13 +5,17 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import {
+	ConfigChangeResult,
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
 import {
 	DESCRIPTORS,
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
@@ -38,18 +42,28 @@ import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
-type ServiceState = 'stopped' | 'starting' | 'started' | 'stopping';
-
+/**
+ * Shelly V1 device discovery and synchronization service.
+ *
+ * This service is managed by PluginServiceManagerService and implements
+ * the IManagedPluginService interface for centralized lifecycle management.
+ *
+ * The service handles:
+ * - Device discovery via mDNS/CoAP
+ * - Device state synchronization
+ * - Property change handling
+ * - Periodic device information updates
+ */
 @Injectable()
-export class ShellyV1Service {
+export class ShellyV1Service implements IManagedPluginService {
 	private readonly logger = new Logger(ShellyV1Service.name);
+
+	readonly pluginName = DEVICES_SHELLY_V1_PLUGIN_NAME;
+	readonly serviceId = 'connector';
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
 
 	private state: ServiceState = 'stopped';
-	private startTimer: NodeJS.Timeout | null = null;
-
-	private desiredEnabled = false;
 	private startStopLock: Promise<void> = Promise.resolve();
 
 	constructor(
@@ -63,53 +77,12 @@ export class ShellyV1Service {
 		private readonly httpClient: ShellyV1HttpClientService,
 	) {}
 
-	async requestStart(delayMs = 1000): Promise<void> {
-		this.desiredEnabled = this.config.enabled === true;
-
-		if (!this.desiredEnabled) {
-			if (this.startTimer) {
-				clearTimeout(this.startTimer);
-
-				this.startTimer = null;
-			}
-
-			await this.ensureStopped();
-
-			return;
-		}
-
-		if (this.startTimer) {
-			clearTimeout(this.startTimer);
-		}
-
-		this.startTimer = setTimeout(() => {
-			this.startTimer = null;
-
-			void this.ensureStarted();
-		}, delayMs);
-	}
-
-	async stop(): Promise<void> {
-		if (this.startTimer) {
-			clearTimeout(this.startTimer);
-
-			this.startTimer = null;
-		}
-
-		await this.ensureStopped();
-	}
-
-	async restart(): Promise<void> {
-		await this.stop();
-		await this.requestStart();
-	}
-
-	private async ensureStarted(): Promise<void> {
+	/**
+	 * Start the service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 */
+	async start(): Promise<void> {
 		await this.withLock(async () => {
-			if (this.config.enabled !== true) {
-				return;
-			}
-
 			switch (this.state) {
 				case 'started':
 					return;
@@ -119,6 +92,8 @@ export class ShellyV1Service {
 					await this.waitUntil('stopped');
 					break;
 				case 'stopped':
+				case 'error':
+					// Both stopped and error states can be started
 					break;
 			}
 
@@ -142,14 +117,18 @@ export class ShellyV1Service {
 					stack: error instanceof Error ? error.stack : undefined,
 				});
 
-				this.state = 'stopped';
+				this.state = 'error';
 
 				throw error;
 			}
 		});
 	}
 
-	private async ensureStopped(): Promise<void> {
+	/**
+	 * Stop the service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 */
+	async stop(): Promise<void> {
 		await this.withLock(async () => {
 			switch (this.state) {
 				case 'stopped':
@@ -162,10 +141,12 @@ export class ShellyV1Service {
 					await this.waitUntil('started', 'stopped');
 					break;
 				case 'started':
+				case 'error':
+					// Both started and error states need cleanup
 					break;
 			}
 
-			if (this.state !== 'started') {
+			if (this.state !== 'started' && this.state !== 'error') {
 				return;
 			}
 
@@ -191,6 +172,36 @@ export class ShellyV1Service {
 				throw error;
 			}
 		});
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 *
+	 * For Shelly V1 service, config changes (mDNS interface, polling settings)
+	 * require a full restart to apply. Returns restartRequired: true to signal
+	 * the manager to perform the restart, ensuring proper runtime tracking.
+	 */
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		// Clear cached config so next access gets fresh values
+		this.pluginConfig = null;
+
+		// Signal that restart is required to apply new settings
+		// The manager will handle stop/start to maintain accurate runtime tracking
+		if (this.state === 'started') {
+			this.logger.log('[SHELLY V1][SERVICE] Config changed, restart required');
+
+			return Promise.resolve({ restartRequired: true });
+		}
+
+		return Promise.resolve({ restartRequired: false });
 	}
 
 	/**
@@ -559,13 +570,6 @@ export class ShellyV1Service {
 			message: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		});
-	}
-
-	@OnEvent(`${ConfigModuleEventType.CONFIG_UPDATED}.${DEVICES_SHELLY_V1_PLUGIN_NAME}`)
-	async handleConfigUpdated(): Promise<void> {
-		this.logger.log('[SHELLY V1][SERVICE] Config updated, restarting service');
-
-		await this.restart();
 	}
 
 	private get config(): ShellyV1ConfigModel {

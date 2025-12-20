@@ -107,9 +107,9 @@ describe('FileLoggerService', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('initialize', () => {
-		it('initializes when enabled: validates dir and registers cron', async () => {
-			await svc.initialize();
+	describe('start', () => {
+		it('starts when enabled: validates dir and registers cron', async () => {
+			await svc.start();
 
 			expect(fsMock.mkdir).toHaveBeenCalled();
 			expect(fsMock.stat).toHaveBeenCalled();
@@ -122,13 +122,18 @@ describe('FileLoggerService', () => {
 			expect(CronJobMock).toHaveBeenCalledWith(cfgRef.cleanupCron, expect.any(Function));
 		});
 
-		it('disables when config.enabled = false: unregisters cron and clears dir', async () => {
-			cfgRef.enabled = false;
+		it('stops when stop() is called: unregisters cron and clears dir', async () => {
+			// First start the service
+			await svc.start();
 			(scheduler.doesExist as jest.Mock).mockReturnValue(true);
 
-			await svc.initialize();
+			// Then stop it
+			await svc.stop();
 
 			expect(scheduler.deleteCronJob).toHaveBeenCalledWith(cronName);
+
+			// Clear mock calls from start() to test only append behavior
+			(fsMock.appendFile as jest.Mock).mockClear();
 
 			await svc.append({ a: 1 });
 
@@ -138,7 +143,8 @@ describe('FileLoggerService', () => {
 		it('handles invalid dir: logs error and still registers nothing', async () => {
 			(fsMock.stat as jest.Mock).mockResolvedValue({ isDirectory: () => false } as any);
 
-			await svc.initialize();
+			// start() now throws on error to signal failure to PluginServiceManagerService
+			await expect(svc.start()).rejects.toThrow('Path is not a directory');
 
 			expect(Logger.prototype.error).toHaveBeenCalledWith(
 				expect.stringContaining('[ROTATING FILE LOGGER][LOGGER] Rotating file logger disabled'),
@@ -149,7 +155,7 @@ describe('FileLoggerService', () => {
 
 	describe('append', () => {
 		beforeEach(async () => {
-			await svc.initialize();
+			await svc.start();
 		});
 
 		it('writes JSON line into today file when enabled and dir valid', async () => {
@@ -168,8 +174,8 @@ describe('FileLoggerService', () => {
 			jest.useRealTimers();
 		});
 
-		it('does not write when disabled', async () => {
-			cfgRef.enabled = false;
+		it('does not write when service is stopped', async () => {
+			await svc.stop();
 
 			await svc.append({ x: 1 });
 
@@ -189,7 +195,7 @@ describe('FileLoggerService', () => {
 
 	describe('cleanup', () => {
 		beforeEach(async () => {
-			await svc.initialize();
+			await svc.start();
 		});
 
 		it('removes files older than retentionDays; keeps recent and foreign files', async () => {
@@ -227,8 +233,8 @@ describe('FileLoggerService', () => {
 			jest.useRealTimers();
 		});
 
-		it('no-ops when disabled or dir missing', async () => {
-			cfgRef.enabled = false;
+		it('no-ops when service is stopped', async () => {
+			await svc.stop();
 
 			await svc.cleanup();
 
@@ -240,34 +246,35 @@ describe('FileLoggerService', () => {
 		it('re-registers cron when already present', async () => {
 			(scheduler.doesExist as jest.Mock).mockReturnValueOnce(true);
 
-			await svc.initialize();
+			await svc.start();
 
 			expect(scheduler.deleteCronJob).toHaveBeenCalledWith(cronName);
 			expect(scheduler.addCronJob).toHaveBeenCalledTimes(1);
 		});
 
-		it('unregisterCleanupJob is called when disabled after init', async () => {
-			await svc.initialize();
+		it('unregisterCleanupJob is called when service stops after being enabled', async () => {
+			await svc.start();
 
 			(scheduler.doesExist as unknown as jest.Mock).mockReturnValue(true);
 
 			cfgRef.enabled = false;
 
-			await svc['handleConfigurationUpdatedEvent']();
+			await svc.stop();
 
 			expect(scheduler.deleteCronJob).toHaveBeenCalledWith(cronName);
 		});
 	});
 
-	describe('handleConfigurationUpdatedEvent', () => {
-		it('re-reads config and re-initializes', async () => {
-			await svc.initialize();
+	describe('onConfigChanged', () => {
+		it('clears cached plugin config', async () => {
+			await svc.start();
 
-			cfgRef.cleanupCron = '0 0 * * *';
+			// onConfigChanged just clears the cached config
+			// Re-initialization happens through PluginServiceManagerService
+			await svc.onConfigChanged();
 
-			await svc['handleConfigurationUpdatedEvent']();
-
-			expect(CronJobMock).toHaveBeenCalledWith('0 0 * * *', expect.any(Function));
+			// Service should still be in started state
+			expect(svc.getState()).toBe('started');
 		});
 	});
 
@@ -275,7 +282,7 @@ describe('FileLoggerService', () => {
 		it('uses fallback when dir is empty string', async () => {
 			cfgRef.dir = '';
 
-			await svc.initialize();
+			await svc.start();
 
 			expect(fsMock.mkdir).toHaveBeenCalled();
 		});
