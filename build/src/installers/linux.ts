@@ -7,7 +7,7 @@ import { existsSync, unlinkSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { BaseInstaller, InstallOptions, ServiceStatus, UninstallOptions } from './base.js';
+import type { BaseInstaller, InstalledConfig, InstallOptions, ServiceStatus, UninstallOptions } from './base.js';
 import {
 	createDirectory,
 	createSystemUser,
@@ -81,7 +81,7 @@ export class LinuxInstaller implements BaseInstaller {
 		createDirectory('/run/smart-panel', user, 0o755);
 
 		// Generate environment file
-		this.createEnvironmentFile(dataDir, port);
+		this.createEnvironmentFile(dataDir, port, user);
 
 		// Create systemd service file
 		this.createServiceFile(user, dataDir);
@@ -111,6 +111,11 @@ export class LinuxInstaller implements BaseInstaller {
 
 	async uninstall(options: UninstallOptions): Promise<void> {
 		const { keepData } = options;
+
+		// Read installed config before removing environment file
+		const config = this.getInstalledConfig();
+		const serviceUser = config.user || 'smart-panel';
+		const dataDir = config.dataDir || '/var/lib/smart-panel';
 
 		// Stop and disable service
 		try {
@@ -146,8 +151,8 @@ export class LinuxInstaller implements BaseInstaller {
 		}
 
 		// Remove data directory if not keeping
-		if (!keepData && existsSync('/var/lib/smart-panel')) {
-			rmSync('/var/lib/smart-panel', { recursive: true, force: true });
+		if (!keepData && existsSync(dataDir)) {
+			rmSync(dataDir, { recursive: true, force: true });
 		}
 
 		// Remove run directory
@@ -158,9 +163,35 @@ export class LinuxInstaller implements BaseInstaller {
 		}
 
 		// Delete system user
-		if (userExists('smart-panel')) {
-			deleteSystemUser('smart-panel');
+		if (userExists(serviceUser)) {
+			deleteSystemUser(serviceUser);
 		}
+	}
+
+	/**
+	 * Read installation config from environment file
+	 */
+	getInstalledConfig(): InstalledConfig {
+		const envPath = '/etc/smart-panel/environment';
+		const content = readFile(envPath);
+
+		if (!content) {
+			return {};
+		}
+
+		const config: InstalledConfig = {};
+
+		const userMatch = content.match(/^FB_SERVICE_USER=(.+)$/m);
+		if (userMatch?.[1]) {
+			config.user = userMatch[1];
+		}
+
+		const dataDirMatch = content.match(/^FB_DATA_DIR=(.+)$/m);
+		if (dataDirMatch?.[1]) {
+			config.dataDir = dataDirMatch[1];
+		}
+
+		return config;
 	}
 
 	async start(): Promise<void> {
@@ -323,7 +354,7 @@ export class LinuxInstaller implements BaseInstaller {
 		});
 	}
 
-	private createEnvironmentFile(dataDir: string, port: number): void {
+	private createEnvironmentFile(dataDir: string, port: number, user: string): void {
 		const envPath = '/etc/smart-panel/environment';
 		const adminDistPath = getAdminDistPath(this.packageRoot);
 
@@ -354,6 +385,10 @@ FB_CONFIG_PATH=${dataDir}/config
 
 # JWT secret for authentication (auto-generated)
 FB_JWT_SECRET=${jwtSecret}
+
+# Installation settings (used by uninstall/update)
+FB_SERVICE_USER=${user}
+FB_DATA_DIR=${dataDir}
 
 # Uncomment and configure as needed:
 # FB_INFLUXDB_URL=http://localhost:8086

@@ -470,7 +470,9 @@ program
 
 			// Run migrations
 			spinner.start('Running database migrations...');
-			await installer.runMigrations('/var/lib/smart-panel');
+			const config = installer.getInstalledConfig();
+			const dataDir = config.dataDir || '/var/lib/smart-panel';
+			await installer.runMigrations(dataDir);
 			spinner.succeed('Migrations complete');
 
 			// Start service

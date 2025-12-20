@@ -41,6 +41,13 @@ export interface ServiceStatus {
 	message?: string;
 }
 
+export interface InstalledConfig {
+	/** Service user name */
+	user?: string;
+	/** Data directory path */
+	dataDir?: string;
+}
+
 export interface BaseInstaller {
 	/** Platform name */
 	readonly platform: string;
@@ -77,4 +84,7 @@ export interface BaseInstaller {
 
 	/** Check prerequisites */
 	checkPrerequisites(): Promise<string[]>;
+
+	/** Get installed configuration from environment file */
+	getInstalledConfig(): InstalledConfig;
 }
