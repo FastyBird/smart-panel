@@ -430,10 +430,12 @@ program
 
 		const installer = getInstaller();
 		const spinner = ora();
+		let wasRunning = false;
 
 		try {
 			// Check current status
 			const status = await installer.status();
+			wasRunning = status.running;
 
 			if (!status.installed) {
 				logger.error('Smart Panel is not installed. Run: sudo smart-panel-service install');
@@ -507,7 +509,7 @@ program
 			logger.error(error instanceof Error ? error.message : String(error));
 
 			// Try to restart service if it was running before update
-			if (status.running) {
+			if (wasRunning) {
 				try {
 					await installer.start();
 					logger.info('Service restarted');
