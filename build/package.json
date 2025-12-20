@@ -53,8 +53,8 @@
 		"ora": "^8.2.0"
 	},
 	"peerDependencies": {
-		"@fastybird/smart-panel-admin": ">=1.0.0",
-		"@fastybird/smart-panel-backend": ">=1.0.0"
+		"@fastybird/smart-panel-admin": ">=1.0.0-0",
+		"@fastybird/smart-panel-backend": ">=1.0.0-0"
 	},
 	"peerDependenciesMeta": {
 		"@fastybird/smart-panel-admin": {
