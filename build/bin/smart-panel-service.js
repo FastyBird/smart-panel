@@ -176,11 +176,15 @@ program
 		const installer = getInstaller();
 		const spinner = ora();
 
+		// Get installed config to show correct paths in warning
+		const config = installer.getInstalledConfig();
+		const dataDir = config.dataDir || '/var/lib/smart-panel';
+
 		// Confirmation
 		if (!options.force) {
 			logger.warning('This will remove the Smart Panel service.');
 			if (!options.keepData) {
-				logger.warning('All data in /var/lib/smart-panel will be deleted!');
+				logger.warning(`All data in ${dataDir} will be deleted!`);
 			}
 			console.log();
 			logger.info('Use --force to skip this confirmation, or --keep-data to preserve data.');
