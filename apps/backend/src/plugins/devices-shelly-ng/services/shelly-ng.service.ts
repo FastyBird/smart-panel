@@ -31,7 +31,7 @@ export class ShellyNgService implements IManagedPluginService {
 	private readonly logger = new Logger(ShellyNgService.name);
 
 	readonly pluginName = DEVICES_SHELLY_NG_PLUGIN_NAME;
-	readonly serviceId = 'discovery';
+	readonly serviceId = 'connector';
 
 	private shellies?: Shellies;
 

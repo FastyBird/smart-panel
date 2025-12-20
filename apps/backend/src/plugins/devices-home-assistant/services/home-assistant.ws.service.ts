@@ -43,7 +43,7 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	private readonly logger = new Logger(HomeAssistantWsService.name);
 
 	readonly pluginName = DEVICES_HOME_ASSISTANT_PLUGIN_NAME;
-	readonly serviceId = 'websocket';
+	readonly serviceId = 'connector';
 
 	private readonly RESPONSE_TIMEOUT_MS = 10000; // 10 seconds
 

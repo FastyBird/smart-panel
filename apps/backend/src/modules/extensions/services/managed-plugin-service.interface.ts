@@ -12,16 +12,16 @@ export type ServiceState = 'stopped' | 'starting' | 'started' | 'stopping' | 'er
  * @example
  * ```typescript
  * @Injectable()
- * export class ShellyV1DiscoveryService implements IManagedPluginService {
+ * export class ShellyV1Service implements IManagedPluginService {
  *   readonly pluginName = 'devices-shelly-v1';
- *   readonly serviceId = 'discovery';
+ *   readonly serviceId = 'connector';
  *
  *   async start(): Promise<void> {
- *     // Start discovery logic
+ *     // Start connector logic
  *   }
  *
  *   async stop(): Promise<void> {
- *     // Stop discovery logic
+ *     // Stop connector logic
  *   }
  *
  *   getState(): ServiceState {

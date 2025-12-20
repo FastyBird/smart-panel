@@ -59,7 +59,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	private readonly logger = new Logger(ShellyV1Service.name);
 
 	readonly pluginName = DEVICES_SHELLY_V1_PLUGIN_NAME;
-	readonly serviceId = 'discovery';
+	readonly serviceId = 'connector';
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
 
