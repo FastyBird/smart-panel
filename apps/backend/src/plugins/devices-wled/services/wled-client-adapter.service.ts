@@ -120,6 +120,7 @@ export class WledClientAdapterService {
 	private readonly devices = new Map<string, RegisteredWledDevice>();
 	private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
 	private readonly debounceResolvers = new Map<string, Array<(result: boolean) => void>>();
+	private readonly debounceUpdates = new Map<string, WledStateUpdate>();
 	private readonly websockets = new Map<string, WebSocket>();
 	private readonly wsReconnectTimers = new Map<string, NodeJS.Timeout>();
 	private wsReconnectInterval = 5000;
@@ -196,6 +197,7 @@ export class WledClientAdapterService {
 			if (timer) {
 				clearTimeout(timer);
 				this.debounceTimers.delete(host);
+				this.debounceUpdates.delete(host);
 
 				// Resolve any pending debounce promises with false
 				const pendingResolvers = this.debounceResolvers.get(host) ?? [];
@@ -346,22 +348,29 @@ export class WledClientAdapterService {
 			clearTimeout(existingTimer);
 		}
 
-		// Debounce the update - collect all pending resolvers
+		// Debounce the update - collect all pending resolvers and merge updates
 		return new Promise((resolve) => {
 			// Add this caller's resolve to the pending list
 			const resolvers = this.debounceResolvers.get(host) ?? [];
 			resolvers.push(resolve);
 			this.debounceResolvers.set(host, resolvers);
 
+			// Merge this update with any pending updates
+			const existingUpdate = this.debounceUpdates.get(host) ?? {};
+			const mergedUpdate: WledStateUpdate = { ...existingUpdate, ...update };
+			this.debounceUpdates.set(host, mergedUpdate);
+
 			const timer = setTimeout(() => {
 				this.debounceTimers.delete(host);
 
-				// Get all pending resolvers and clear them
+				// Get all pending resolvers and the merged update, then clear them
 				const pendingResolvers = this.debounceResolvers.get(host) ?? [];
+				const finalUpdate = this.debounceUpdates.get(host) ?? update;
 				this.debounceResolvers.delete(host);
+				this.debounceUpdates.delete(host);
 
-				// Execute the update and resolve all pending promises
-				void this.executeStateUpdate(host, update).then((result) => {
+				// Execute the merged update and resolve all pending promises
+				void this.executeStateUpdate(host, finalUpdate).then((result) => {
 					for (const pendingResolve of pendingResolvers) {
 						pendingResolve(result);
 					}
