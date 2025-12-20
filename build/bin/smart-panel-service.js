@@ -498,12 +498,14 @@ program
 			spinner.fail('Update failed');
 			logger.error(error instanceof Error ? error.message : String(error));
 
-			// Try to restart service if it was running
-			try {
-				await installer.start();
-				logger.info('Service restarted');
-			} catch {
-				logger.warning('Failed to restart service. Please start manually.');
+			// Try to restart service if it was running before update
+			if (status.running) {
+				try {
+					await installer.start();
+					logger.info('Service restarted');
+				} catch {
+					logger.warning('Failed to restart service. Please start manually.');
+				}
 			}
 
 			process.exit(1);
