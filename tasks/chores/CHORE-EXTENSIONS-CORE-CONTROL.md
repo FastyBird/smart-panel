@@ -1,7 +1,11 @@
-# Extensions Core Control - Implementation Plan
-
-**Status:** ✅ Complete
-**Branch:** `claude/admin-extension-management-*`
+# Task: Extensions Core Control - Implementation Plan
+ID: CHORE-EXTENSIONS-CORE-CONTROL
+Type: chore
+Scope: backend, admin
+Size: medium
+Parent: (none)
+Status: done
+Branch: `claude/admin-extension-management-*`
 
 ## Current State Analysis
 

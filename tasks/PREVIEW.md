@@ -67,7 +67,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Title | Scope |
 |----|-------|-------|
-| extensions-core-control | Extensions Core Control Implementation | backend, admin |
+| CHORE-EXTENSIONS-CORE-CONTROL | Extensions Core Control Implementation | backend, admin |
 
 ### Planned
 
@@ -98,7 +98,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PROPERTY-TIMESERIES | feature | done |
 | TECHNICAL-BACKEND-OPENAPI-SOURCE | technical | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
-| extensions-core-control | chore | done |
+| CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
 | FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | feature | planned |
@@ -117,7 +117,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-MULTI-LOCATION-WEATHER | feature | done |
 | FEATURE-PLUGIN-SHELLY-V1-UI | feature | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
-| extensions-core-control | chore | done |
+| CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | FEATURE-ADMIN-PLUGIN-SERVICES | feature | planned |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
@@ -163,7 +163,7 @@ tasks/
 ├── _template.md            # Template for new tasks
 ├── bugs/                   # Bug reports
 ├── chores/                 # Maintenance tasks
-│   └── extensions-core-control.md
+│   └── CHORE-EXTENSIONS-CORE-CONTROL.md
 ├── features/               # Feature implementations
 │   ├── FEATURE-ADMIN-PLUGIN-SERVICES.md
 │   ├── FEATURE-APP-UPDATES.md
