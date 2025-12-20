@@ -110,9 +110,9 @@ The extension detail view (`apps/admin/src/modules/extensions/views/view-extensi
 - [x] The logger sets the `tag` field to the extension type (e.g., `devices-shelly-ng-plugin`)
 - [x] Update `devices-shelly-ng` plugin to use the unified logger (reference implementation)
 - [x] Update `devices-home-assistant` plugin to use the unified logger
-- [ ] Update `devices-shelly-v1` plugin to use the unified logger (deferred - follow same pattern)
+- [x] Update `devices-shelly-v1` plugin to use the unified logger
 - [ ] Update `devices-third-party` plugin to use the unified logger (deferred - follow same pattern)
-- [ ] Update `logger-rotating-file` plugin to use the unified logger (deferred - follow same pattern)
+- [x] Update `logger-rotating-file` plugin to use the unified logger (removed hardcoded prefixes)
 - [ ] Update other plugins with logging to use the unified logger (deferred - follow same pattern)
 
 ### Backend - Logs API Enhancement
@@ -137,9 +137,9 @@ The extension detail view (`apps/admin/src/modules/extensions/views/view-extensi
 
 ### Quality
 
-- [ ] All lint checks pass (`pnpm run lint:js`) (skipped - dependencies not installed)
-- [ ] Code is formatted (`pnpm run pretty`) (skipped - dependencies not installed)
-- [ ] OpenAPI spec is regenerated (`pnpm run generate:openapi`) (skipped - dependencies not installed)
+- [x] All lint checks pass (`pnpm run lint:js`)
+- [x] Code is formatted (`pnpm run pretty`)
+- [x] OpenAPI spec is regenerated (`pnpm run generate:openapi`)
 - [x] Unit tests for new ExtensionLoggerService
 - [x] Unit tests for logs filtering logic
 
