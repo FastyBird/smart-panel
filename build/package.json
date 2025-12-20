@@ -48,21 +48,11 @@
 		"migration:revert": "node ./node_modules/typeorm/cli.js migration:revert -d ./node_modules/@fastybird/smart-panel-backend/dist/dataSource.js"
 	},
 	"dependencies": {
+		"@fastybird/smart-panel-admin": ">=1.0.0-0",
+		"@fastybird/smart-panel-backend": ">=1.0.0-0",
 		"chalk": "^5.4.1",
 		"commander": "^13.1.0",
 		"ora": "^8.2.0"
-	},
-	"peerDependencies": {
-		"@fastybird/smart-panel-admin": ">=1.0.0-0",
-		"@fastybird/smart-panel-backend": ">=1.0.0-0"
-	},
-	"peerDependenciesMeta": {
-		"@fastybird/smart-panel-admin": {
-			"optional": false
-		},
-		"@fastybird/smart-panel-backend": {
-			"optional": false
-		}
 	},
 	"devDependencies": {
 		"@types/node": "^22.15.30",
