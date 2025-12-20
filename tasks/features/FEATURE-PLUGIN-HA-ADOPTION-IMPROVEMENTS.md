@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: FEATURE-PLUGIN-HA-AUTO-MAP
-Status: planned
+Status: completed
 Created: 2025-12-19
 
 ## 1. Business goal
