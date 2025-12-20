@@ -6,6 +6,7 @@ import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
+	ConfigChangeResult,
 	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
@@ -169,24 +170,26 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	}
 
 	/**
-	 * Handle configuration changes by reconnecting.
+	 * Handle configuration changes.
 	 * Called by PluginServiceManagerService when config updates occur.
 	 *
-	 * For WebSocket service, config changes (URL, API key) require reconnection.
+	 * For WebSocket service, config changes (URL, API key) require a full restart
+	 * to properly re-authenticate. Returns restartRequired: true to signal the
+	 * manager to perform the restart, ensuring proper error handling if auth fails.
 	 */
-	onConfigChanged(): Promise<void> {
+	onConfigChanged(): Promise<ConfigChangeResult> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
 
-		// Reconnect to apply new settings (URL, API key, etc.)
+		// Signal that restart is required to apply new settings
+		// The manager will handle stop/start to ensure proper authentication flow
 		if (this.state === 'started') {
-			this.logger.log('[HOME ASSISTANT][WS SERVICE] Config changed, reconnecting...');
+			this.logger.log('[HOME ASSISTANT][WS SERVICE] Config changed, restart required');
 
-			this.disconnect();
-			this.connect();
+			return Promise.resolve({ restartRequired: true });
 		}
 
-		return Promise.resolve();
+		return Promise.resolve({ restartRequired: false });
 	}
 
 	/**
