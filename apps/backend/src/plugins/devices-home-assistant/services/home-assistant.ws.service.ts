@@ -273,7 +273,14 @@ export class HomeAssistantWsService implements IManagedPluginService {
 
 	private disconnect() {
 		this.intentionalDisconnect = true;
-		this.connectionResolver = null;
+
+		// Reject any pending connection promise before clearing it
+		// This prevents start() from hanging indefinitely if stop() is called during 'starting' state
+		if (this.connectionResolver) {
+			this.connectionResolver.reject(new Error('Connection aborted - service is being stopped'));
+			this.connectionResolver = null;
+		}
+
 		this.ws?.close();
 		this.ws = null;
 	}
