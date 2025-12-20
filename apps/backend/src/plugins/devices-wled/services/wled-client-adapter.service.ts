@@ -1,9 +1,14 @@
 import WebSocket from 'ws';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { DEFAULT_COMMAND_DEBOUNCE_MS, DEFAULT_CONNECTION_TIMEOUT_MS } from '../devices-wled.constants';
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import {
+	DEFAULT_COMMAND_DEBOUNCE_MS,
+	DEFAULT_CONNECTION_TIMEOUT_MS,
+	DEVICES_WLED_PLUGIN_NAME,
+} from '../devices-wled.constants';
 import { WledConnectionException } from '../devices-wled.exceptions';
 import {
 	RegisteredWledDevice,
@@ -115,7 +120,7 @@ interface WledApiInfo {
  */
 @Injectable()
 export class WledClientAdapterService {
-	private readonly logger = new Logger(WledClientAdapterService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(DEVICES_WLED_PLUGIN_NAME, 'ClientAdapter');
 
 	private readonly devices = new Map<string, RegisteredWledDevice>();
 	private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
@@ -140,7 +145,7 @@ export class WledClientAdapterService {
 	 * Connect to a WLED device and fetch its initial state
 	 */
 	async connect(host: string, identifier: string, timeout: number = DEFAULT_CONNECTION_TIMEOUT_MS): Promise<void> {
-		this.logger.log(`[WLED][ADAPTER] Connecting to WLED device at ${host}`);
+		this.logger.log(`Connecting to WLED device at ${host}`);
 
 		try {
 			// Fetch device context
@@ -158,7 +163,7 @@ export class WledClientAdapterService {
 
 			this.devices.set(host, device);
 
-			this.logger.log(`[WLED][ADAPTER] Successfully connected to WLED device at ${host} (${context.info.name})`);
+			this.logger.log(`Successfully connected to WLED device at ${host} (${context.info.name})`);
 
 			// Emit connected event
 			this.eventEmitter.emit(WledAdapterEventType.DEVICE_CONNECTED, {
@@ -171,7 +176,7 @@ export class WledClientAdapterService {
 				this.connectWebSocket(host);
 			}
 		} catch (error) {
-			this.logger.error(`[WLED][ADAPTER] Failed to connect to WLED device at ${host}`, {
+			this.logger.error(`Failed to connect to WLED device at ${host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
@@ -213,7 +218,7 @@ export class WledClientAdapterService {
 
 			this.devices.delete(host);
 
-			this.logger.log(`[WLED][ADAPTER] Disconnected from WLED device at ${host}`);
+			this.logger.log(`Disconnected from WLED device at ${host}`);
 
 			// Emit disconnected event
 			this.eventEmitter.emit(WledAdapterEventType.DEVICE_DISCONNECTED, {
@@ -278,7 +283,7 @@ export class WledClientAdapterService {
 		const device = this.devices.get(host);
 
 		if (!device) {
-			this.logger.warn(`[WLED][ADAPTER] Cannot refresh state: device ${host} not registered`);
+			this.logger.warn(`Cannot refresh state: device ${host} not registered`);
 
 			return null;
 		}
@@ -303,7 +308,7 @@ export class WledClientAdapterService {
 
 			return state;
 		} catch (error) {
-			this.logger.error(`[WLED][ADAPTER] Failed to refresh state for device ${host}`, {
+			this.logger.error(`Failed to refresh state for device ${host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
@@ -331,7 +336,7 @@ export class WledClientAdapterService {
 		const device = this.devices.get(host);
 
 		if (!device) {
-			this.logger.warn(`[WLED][ADAPTER] Cannot update state: device ${host} not registered`);
+			this.logger.warn(`Cannot update state: device ${host} not registered`);
 
 			return false;
 		}
@@ -388,7 +393,7 @@ export class WledClientAdapterService {
 		try {
 			const apiPayload = this.convertStateUpdateToApi(update);
 
-			this.logger.debug(`[WLED][ADAPTER] Sending state update to ${host}: ${JSON.stringify(apiPayload)}`);
+			this.logger.debug(`Sending state update to ${host}: ${JSON.stringify(apiPayload)}`);
 
 			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
 
@@ -410,7 +415,7 @@ export class WledClientAdapterService {
 
 			return true;
 		} catch (error) {
-			this.logger.error(`[WLED][ADAPTER] Failed to update state for device ${host}`, {
+			this.logger.error(`Failed to update state for device ${host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
@@ -564,14 +569,14 @@ export class WledClientAdapterService {
 		const device = this.devices.get(host);
 
 		if (!device) {
-			this.logger.warn(`[WLED][ADAPTER] Cannot update state: device ${host} not registered`);
+			this.logger.warn(`Cannot update state: device ${host} not registered`);
 			return false;
 		}
 
 		try {
 			const apiPayload = this.convertExtendedStateUpdateToApi(update);
 
-			this.logger.debug(`[WLED][ADAPTER] Sending extended state update to ${host}: ${JSON.stringify(apiPayload)}`);
+			this.logger.debug(`Sending extended state update to ${host}: ${JSON.stringify(apiPayload)}`);
 
 			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
 
@@ -588,7 +593,7 @@ export class WledClientAdapterService {
 
 			return true;
 		} catch (error) {
-			this.logger.error(`[WLED][ADAPTER] Failed to update extended state for device ${host}`, {
+			this.logger.error(`Failed to update extended state for device ${host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
@@ -620,13 +625,13 @@ export class WledClientAdapterService {
 		}
 
 		const wsUrl = `ws://${host}/ws`;
-		this.logger.debug(`[WLED][ADAPTER] Connecting WebSocket to ${wsUrl}`);
+		this.logger.debug(`Connecting WebSocket to ${wsUrl}`);
 
 		try {
 			const ws = new WebSocket(wsUrl);
 
 			ws.on('open', () => {
-				this.logger.log(`[WLED][ADAPTER] WebSocket connected to ${host}`);
+				this.logger.log(`WebSocket connected to ${host}`);
 				this.websockets.set(host, ws);
 
 				const device = this.devices.get(host);
@@ -668,14 +673,14 @@ export class WledClientAdapterService {
 						}
 					}
 				} catch (error) {
-					this.logger.warn(`[WLED][ADAPTER] Failed to parse WebSocket message from ${host}`, {
+					this.logger.warn(`Failed to parse WebSocket message from ${host}`, {
 						message: error instanceof Error ? error.message : String(error),
 					});
 				}
 			});
 
 			ws.on('close', () => {
-				this.logger.debug(`[WLED][ADAPTER] WebSocket disconnected from ${host}`);
+				this.logger.debug(`WebSocket disconnected from ${host}`);
 				this.websockets.delete(host);
 
 				const device = this.devices.get(host);
@@ -690,12 +695,12 @@ export class WledClientAdapterService {
 			});
 
 			ws.on('error', (error: Error) => {
-				this.logger.warn(`[WLED][ADAPTER] WebSocket error for ${host}`, {
+				this.logger.warn(`WebSocket error for ${host}`, {
 					message: error.message,
 				});
 			});
 		} catch (error) {
-			this.logger.error(`[WLED][ADAPTER] Failed to create WebSocket for ${host}`, {
+			this.logger.error(`Failed to create WebSocket for ${host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}

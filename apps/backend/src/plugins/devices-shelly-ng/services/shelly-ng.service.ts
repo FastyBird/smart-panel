@@ -1,7 +1,8 @@
 import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 'shellies-ds9';
 
-import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -28,7 +29,10 @@ import { DeviceManagerService } from './device-manager.service';
  */
 @Injectable()
 export class ShellyNgService implements IManagedPluginService {
-	private readonly logger = new Logger(ShellyNgService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_NG_PLUGIN_NAME,
+		'ShellyService',
+	);
 
 	readonly pluginName = DEVICES_SHELLY_NG_PLUGIN_NAME;
 	readonly serviceId = 'connector';
@@ -128,7 +132,7 @@ export class ShellyNgService implements IManagedPluginService {
 		// Signal that restart is required to apply new settings
 		// The manager will handle stop/start to maintain accurate runtime tracking
 		if (this.state === 'started') {
-			this.logger.log('[SHELLY NG][SHELLY SERVICE] Config changed, restart required');
+			this.logger.log('Config changed, restart required');
 
 			return Promise.resolve({ restartRequired: true });
 		}
@@ -147,7 +151,7 @@ export class ShellyNgService implements IManagedPluginService {
 		const success = await this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
 
 		if (!success) {
-			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Restart skipped (plugin may be disabled)');
+			this.logger.debug('Restart skipped (plugin may be disabled)');
 		}
 	}
 
@@ -159,7 +163,7 @@ export class ShellyNgService implements IManagedPluginService {
 
 	private async doStart(): Promise<void> {
 		if (typeof this.shellies !== 'undefined') {
-			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Shellies already started.');
+			this.logger.debug('Shellies already started');
 
 			this.state = 'started';
 
@@ -168,7 +172,7 @@ export class ShellyNgService implements IManagedPluginService {
 
 		this.state = 'starting';
 
-		this.logger.log('[SHELLY NG][SHELLY SERVICE] Starting Shelly NG plugin service');
+		this.logger.log('Starting Shelly NG plugin service');
 
 		try {
 			const devices = await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE);
@@ -213,7 +217,7 @@ export class ShellyNgService implements IManagedPluginService {
 				this.shellies.registerDiscoverer(discoverer);
 
 				discoverer.on('error', (error: Error): void => {
-					this.logger.error('[SHELLY NG][SHELLY SERVICE] An error occurred in the mDNS device discovery service', {
+					this.logger.error('An error occurred in the mDNS device discovery service', {
 						message: error.message,
 						stack: error.stack,
 					});
@@ -222,11 +226,11 @@ export class ShellyNgService implements IManagedPluginService {
 				try {
 					await discoverer.start();
 
-					this.logger.log('[SHELLY NG][SHELLY SERVICE] mDNS device discovery started');
+					this.logger.log('mDNS device discovery started');
 				} catch (error) {
 					const err = error as Error;
 
-					this.logger.error('[SHELLY NG][SHELLY SERVICE] Failed to start the mDNS device discovery service', {
+					this.logger.error('Failed to start the mDNS device discovery service', {
 						message: err.message,
 						stack: err.stack,
 					});
@@ -290,53 +294,42 @@ export class ShellyNgService implements IManagedPluginService {
 					this.deviceManagerService
 						.createOrUpdate(sysDevice.id)
 						.then((): void => {
-							this.logger.debug(`[SHELLY NG][SHELLY SERVICE] Device=${sysDevice.id} was updated in system`);
+							this.logger.debug(`Device=${sysDevice.id} was updated in system`);
 
 							this.delegatesRegistryService
 								.insert(device)
 								.then((): void => {
-									this.logger.debug(
-										`[SHELLY NG][SHELLY SERVICE] Device=${sysDevice.id} was added to delegates registry`,
-									);
+									this.logger.debug(`Device=${sysDevice.id} was added to delegates registry`);
 								})
 								.catch((err: Error): void => {
-									this.logger.error(
-										`[SHELLY NG][SHELLY SERVICE] Failed to create Shelly device delegate for device=${sysDevice.id}`,
-										{
-											message: err.message,
-											stack: err.stack,
-										},
-									);
+									this.logger.error(`Failed to create Shelly device delegate for device=${sysDevice.id}`, {
+										message: err.message,
+										stack: err.stack,
+									});
 								});
 						})
 						.catch((err: Error): void => {
-							this.logger.error(
-								`[SHELLY NG][SHELLY SERVICE] Failed to re-create Shelly device delegate for device=${device.id}`,
-								{
-									message: err.message,
-									stack: err.stack,
-								},
-							);
+							this.logger.error(`Failed to re-create Shelly device delegate for device=${device.id}`, {
+								message: err.message,
+								stack: err.stack,
+							});
 						});
 				} else {
 					this.delegatesRegistryService
 						.insert(device)
 						.then((): void => {
-							this.logger.debug(`[SHELLY NG][SHELLY SERVICE] New device=${device.id} was added to delegates registry`);
+							this.logger.debug(`New device=${device.id} was added to delegates registry`);
 						})
 						.catch((err: Error): void => {
-							this.logger.error(
-								`[SHELLY NG][SHELLY SERVICE] Failed to create new Shelly device delegate for device=${device.id}`,
-								{
-									message: err.message,
-									stack: err.stack,
-								},
-							);
+							this.logger.error(`Failed to create new Shelly device delegate for device=${device.id}`, {
+								message: err.message,
+								stack: err.stack,
+							});
 						});
 				}
 			})
 			.catch((err: Error): void => {
-				this.logger.error(`[SHELLY NG][SHELLY SERVICE] Failed to find Shelly device in database device=${device.id}`, {
+				this.logger.error(`Failed to find Shelly device in database device=${device.id}`, {
 					message: err.message,
 					stack: err.stack,
 				});
@@ -349,7 +342,7 @@ export class ShellyNgService implements IManagedPluginService {
 	protected handleRemovedDevice = (device: Device): void => {
 		this.delegatesRegistryService.remove(device.id);
 
-		this.logger.debug(`[SHELLY NG][SHELLY SERVICE] Device=${device.id} was removed from delegates registry`);
+		this.logger.debug(`Device=${device.id} was removed from delegates registry`);
 	};
 
 	/**
@@ -358,23 +351,21 @@ export class ShellyNgService implements IManagedPluginService {
 	protected handleExcludedDevice = (deviceId: DeviceId): void => {
 		this.delegatesRegistryService.remove(deviceId);
 
-		this.logger.debug(
-			`[SHELLY NG][SHELLY SERVICE] Device=${deviceId} was set as excluded and removed from delegates registry`,
-		);
+		this.logger.debug(`Device=${deviceId} was set as excluded and removed from delegates registry`);
 	};
 
 	/**
 	 * Handles 'unknown' events from the shellies-ng library
 	 */
 	protected handleUnknownDevice = (deviceId: DeviceId, model: string): void => {
-		this.logger.log(`[SHELLY NG][SHELLY SERVICE] Discovered device=${deviceId} with unknown model=${model}`);
+		this.logger.log(`Discovered device=${deviceId} with unknown model=${model}`);
 	};
 
 	/**
 	 * Handles 'error' events from the shellies-ng library
 	 */
 	protected handleError = (deviceId: DeviceId, error: Error): void => {
-		this.logger.error(`[SHELLY NG][SHELLY SERVICE] An error occurred for device=${deviceId}`, {
+		this.logger.error(`An error occurred for device=${deviceId}`, {
 			message: error.message,
 			stack: error.stack,
 		});

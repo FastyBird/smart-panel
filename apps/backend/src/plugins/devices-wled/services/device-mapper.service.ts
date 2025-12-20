@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -7,6 +8,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
+	DEVICES_WLED_PLUGIN_NAME,
 	DEVICES_WLED_TYPE,
 	ELECTRICAL_POWER_BINDINGS,
 	NIGHTLIGHT_BINDINGS,
@@ -41,7 +43,7 @@ import { WledDeviceContext, WledInfo, WledState } from '../interfaces/wled.inter
  */
 @Injectable()
 export class WledDeviceMapperService {
-	private readonly logger = new Logger(WledDeviceMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(DEVICES_WLED_PLUGIN_NAME, 'DeviceMapper');
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -63,13 +65,13 @@ export class WledDeviceMapperService {
 		const identifier = configIdentifier || this.generateIdentifier(context.info.mac);
 		const name = configName || context.info.name || `WLED ${identifier}`;
 
-		this.logger.debug(`[WLED][MAPPER] Mapping device: ${identifier} (${host})`);
+		this.logger.debug(`Mapping device: ${identifier} (${host})`);
 
 		// Create or update the device entity
 		let device = await this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE);
 
 		if (!device) {
-			this.logger.log(`[WLED][MAPPER] Creating new device: ${identifier} with name: ${name}`);
+			this.logger.log(`Creating new device: ${identifier} with name: ${name}`);
 
 			const createDto: CreateWledDeviceDto = {
 				type: DEVICES_WLED_TYPE,
@@ -84,7 +86,7 @@ export class WledDeviceMapperService {
 		} else {
 			// Device exists - check if enabled
 			if (!device.enabled) {
-				this.logger.debug(`[WLED][MAPPER] Device ${identifier} is disabled, setting to UNKNOWN and skipping updates`);
+				this.logger.debug(`Device ${identifier} is disabled, setting to UNKNOWN and skipping updates`);
 
 				await this.deviceConnectivityService.setConnectionState(device.id, {
 					state: ConnectionState.UNKNOWN,
@@ -93,11 +95,11 @@ export class WledDeviceMapperService {
 				return device;
 			}
 
-			this.logger.debug(`[WLED][MAPPER] Device already exists: ${identifier}, updating hostname if changed`);
+			this.logger.debug(`Device already exists: ${identifier}, updating hostname if changed`);
 
 			// Update hostname if it changed
 			if (device.hostname !== host) {
-				this.logger.log(`[WLED][MAPPER] Updating hostname for device ${identifier}: ${device.hostname} -> ${host}`);
+				this.logger.log(`Updating hostname for device ${identifier}: ${device.hostname} -> ${host}`);
 
 				const updateDto: UpdateWledDeviceDto = {
 					type: DEVICES_WLED_TYPE,
@@ -131,12 +133,12 @@ export class WledDeviceMapperService {
 		const device = await this.devicesService.findOneBy<WledDeviceEntity>('identifier', identifier, DEVICES_WLED_TYPE);
 
 		if (!device) {
-			this.logger.warn(`[WLED][MAPPER] Device not found for state update: ${identifier}`);
+			this.logger.warn(`Device not found for state update: ${identifier}`);
 			return;
 		}
 
 		if (!device.enabled) {
-			this.logger.debug(`[WLED][MAPPER] Device ${identifier} is disabled, skipping state update`);
+			this.logger.debug(`Device ${identifier} is disabled, skipping state update`);
 			return;
 		}
 
@@ -247,7 +249,7 @@ export class WledDeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`[WLED][MAPPER] Creating device_information channel for device ${device.identifier}`);
+			this.logger.debug(`Creating device_information channel for device ${device.identifier}`);
 
 			const createChannelDto: CreateWledChannelDto = {
 				type: DEVICES_WLED_TYPE,
@@ -297,7 +299,7 @@ export class WledDeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`[WLED][MAPPER] Creating light channel for device ${device.identifier}`);
+			this.logger.debug(`Creating light channel for device ${device.identifier}`);
 
 			const createChannelDto: CreateWledChannelDto = {
 				type: DEVICES_WLED_TYPE,
@@ -339,7 +341,7 @@ export class WledDeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`[WLED][MAPPER] Creating nightlight channel for device ${device.identifier}`);
+			this.logger.debug(`Creating nightlight channel for device ${device.identifier}`);
 
 			const createChannelDto: CreateWledChannelDto = {
 				type: DEVICES_WLED_TYPE,
@@ -381,7 +383,7 @@ export class WledDeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`[WLED][MAPPER] Creating sync channel for device ${device.identifier}`);
+			this.logger.debug(`Creating sync channel for device ${device.identifier}`);
 
 			const createChannelDto: CreateWledChannelDto = {
 				type: DEVICES_WLED_TYPE,
@@ -424,7 +426,7 @@ export class WledDeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`[WLED][MAPPER] Creating electrical_power channel for device ${device.identifier}`);
+			this.logger.debug(`Creating electrical_power channel for device ${device.identifier}`);
 
 			const createChannelDto: CreateWledChannelDto = {
 				type: DEVICES_WLED_TYPE,
@@ -462,7 +464,7 @@ export class WledDeviceMapperService {
 			);
 
 			if (!channel) {
-				this.logger.debug(`[WLED][MAPPER] Creating segment ${i} channel for device ${device.identifier}`);
+				this.logger.debug(`Creating segment ${i} channel for device ${device.identifier}`);
 
 				const createChannelDto: CreateWledChannelDto = {
 					type: DEVICES_WLED_TYPE,
@@ -600,9 +602,7 @@ export class WledDeviceMapperService {
 		);
 
 		if (!property) {
-			this.logger.debug(
-				`[WLED][MAPPER] Creating property ${binding.propertyIdentifier} for channel ${channel.identifier}`,
-			);
+			this.logger.debug(`Creating property ${binding.propertyIdentifier} for channel ${channel.identifier}`);
 
 			const format = binding.min !== undefined && binding.max !== undefined ? [binding.min, binding.max] : null;
 

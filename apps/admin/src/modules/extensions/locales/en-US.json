@@ -48,7 +48,9 @@
 		"details": "Details",
 		"links": "Links",
 		"readme": "About",
-		"documentation": "Documentation"
+		"documentation": "Documentation",
+		"logs": "Logs",
+		"live": "Live"
 	},
 	"fields": {
 		"search": {
@@ -94,7 +96,13 @@
 	"texts": {
 		"loadingExtensions": "Loading extensions...",
 		"noExtensions": "No extensions installed",
-		"noFilteredExtensions": "No extensions match your current filters"
+		"noFilteredExtensions": "No extensions match your current filters",
+		"logs": {
+			"noLogs": "No logs available",
+			"noLogsDescription": "This extension has not produced any log entries yet",
+			"noMessage": "No message",
+			"noMoreEntries": "No more log entries"
+		}
 	},
 	"buttons": {
 		"actions": "Actions",
@@ -106,6 +114,8 @@
 		"remove": "Remove",
 		"configure": "Configure",
 		"viewDetails": "View Details",
+		"refresh": "Refresh",
+		"loadMore": "Load More",
 		"detail": {
 			"title": "Detail"
 		},
