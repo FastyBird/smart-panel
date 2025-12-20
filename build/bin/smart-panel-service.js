@@ -21,7 +21,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -456,7 +456,8 @@ program
 			// Update package
 			spinner.start('Updating packages...');
 			try {
-				execSync(`npm update @fastybird/smart-panel${versionArg} -g`, {
+				const packageSpec = `@fastybird/smart-panel${versionArg}`;
+				execFileSync('npm', ['update', packageSpec, '-g'], {
 					stdio: 'inherit',
 				});
 				spinner.succeed('Packages updated');

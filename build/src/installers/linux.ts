@@ -2,8 +2,8 @@
  * Linux installer using systemd for service management
  */
 
-import { execSync } from 'node:child_process';
-import { existsSync, readFileSync, unlinkSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, unlinkSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -217,7 +217,10 @@ export class LinuxInstaller implements BaseInstaller {
 				if (pid && pid > 0) {
 					// Get memory usage
 					try {
-						const memOutput = exec(`ps -o rss= -p ${pid}`, { silent: true });
+						const memOutput = execFileSync('ps', ['-o', 'rss=', '-p', String(pid)], {
+							encoding: 'utf-8',
+							stdio: 'pipe',
+						});
 						memoryMB = Math.round(parseInt(memOutput.trim(), 10) / 1024);
 					} catch {
 						// Ignore
@@ -285,7 +288,7 @@ export class LinuxInstaller implements BaseInstaller {
 			NODE_ENV: 'production',
 		};
 
-		execSync(`node ${typeormCli} migration:run -d ${dataSource}`, {
+		execFileSync('node', [typeormCli, 'migration:run', '-d', dataSource], {
 			cwd: actualModulesPath,
 			env,
 			stdio: 'inherit',
@@ -312,7 +315,7 @@ export class LinuxInstaller implements BaseInstaller {
 			NODE_ENV: 'production',
 		};
 
-		execSync(`node ${backendCli} auth:onboarding "${username}" "${password}"`, {
+		execFileSync('node', [backendCli, 'auth:onboarding', username, password], {
 			cwd: actualModulesPath,
 			env,
 			stdio: 'inherit',

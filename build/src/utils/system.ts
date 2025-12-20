@@ -2,7 +2,7 @@
  * System utilities for user management and permissions
  */
 
-import { execSync, spawn, type SpawnOptions } from 'node:child_process';
+import { execSync, execFileSync, spawn, type SpawnOptions } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -19,7 +19,7 @@ export function isRoot(): boolean {
  */
 export function userExists(username: string): boolean {
 	try {
-		execSync(`id ${username}`, { stdio: 'ignore' });
+		execFileSync('id', [username], { stdio: 'ignore' });
 		return true;
 	} catch {
 		return false;
@@ -35,7 +35,7 @@ export function createSystemUser(username: string, homeDir: string): void {
 	}
 
 	// Create system user with no login shell
-	execSync(`useradd --system --user-group --home-dir ${homeDir} --shell /usr/sbin/nologin ${username}`, {
+	execFileSync('useradd', ['--system', '--user-group', '--home-dir', homeDir, '--shell', '/usr/sbin/nologin', username], {
 		stdio: 'inherit',
 	});
 }
@@ -48,7 +48,7 @@ export function deleteSystemUser(username: string): void {
 		return;
 	}
 
-	execSync(`userdel ${username}`, { stdio: 'inherit' });
+	execFileSync('userdel', [username], { stdio: 'inherit' });
 }
 
 /**
@@ -60,7 +60,7 @@ export function createDirectory(path: string, owner?: string, mode = 0o755): voi
 	}
 
 	if (owner) {
-		execSync(`chown -R ${owner}:${owner} ${path}`, { stdio: 'ignore' });
+		execFileSync('chown', ['-R', `${owner}:${owner}`, path], { stdio: 'ignore' });
 	}
 }
 
@@ -114,7 +114,7 @@ export function readFile(path: string): string | null {
  * Set file ownership
  */
 export function setOwnership(path: string, owner: string): void {
-	execSync(`chown -R ${owner}:${owner} ${path}`, { stdio: 'ignore' });
+	execFileSync('chown', ['-R', `${owner}:${owner}`, path], { stdio: 'ignore' });
 }
 
 /**
@@ -122,7 +122,7 @@ export function setOwnership(path: string, owner: string): void {
  */
 export function commandExists(command: string): boolean {
 	try {
-		execSync(`command -v ${command}`, { stdio: 'ignore' });
+		execFileSync('which', [command], { stdio: 'ignore' });
 		return true;
 	} catch {
 		return false;
