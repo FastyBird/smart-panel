@@ -64,6 +64,8 @@ export class ShellyNgService implements IManagedPluginService {
 					await this.doStart();
 					return;
 				case 'stopped':
+				case 'error':
+					// Both stopped and error states can be started
 					await this.initialize();
 					await this.doStart();
 					return;
@@ -86,6 +88,10 @@ export class ShellyNgService implements IManagedPluginService {
 					await this.waitUntil('started');
 				// fallthrough
 				case 'started':
+					this.doStop();
+					return;
+				case 'error':
+					// Clean up and transition to stopped state
 					this.doStop();
 					return;
 			}

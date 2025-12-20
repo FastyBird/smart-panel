@@ -95,14 +95,35 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 	}
 
 	/**
-	 * Handle configuration changes without full restart.
+	 * Handle configuration changes by re-applying settings.
 	 * Called by PluginServiceManagerService when config updates occur.
+	 *
+	 * Re-validates directory and re-registers cleanup job to apply
+	 * changes to dir and cleanupCron settings immediately.
 	 */
-	onConfigChanged(): Promise<void> {
+	async onConfigChanged(): Promise<void> {
 		// Clear cached config so next access gets fresh values
 		this.pluginConfig = null;
 
-		return Promise.resolve();
+		// Re-apply configuration if service is running
+		if (this.state === 'started') {
+			this.logger.log('[ROTATING FILE LOGGER][LOGGER] Config changed, re-applying settings...');
+
+			// Re-validate directory (in case dir changed)
+			await this.validateAndPrepareDir().catch((err: Error) => {
+				this.logger.error(
+					`[ROTATING FILE LOGGER][LOGGER] Failed to re-validate directory after config change: ${err?.message ?? err}`,
+				);
+
+				this.dir = undefined;
+				this.state = 'error';
+			});
+
+			// Re-register cleanup job with potentially new cron expression
+			if (this.dir) {
+				this.registerCleanupJob();
+			}
+		}
 	}
 
 	async append(obj: unknown): Promise<void> {
