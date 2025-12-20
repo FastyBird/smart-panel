@@ -191,6 +191,7 @@ describe('WledClientAdapterService', () => {
 				WledAdapterEventType.DEVICE_DISCONNECTED,
 				expect.objectContaining({
 					host: '192.168.1.100',
+					identifier: 'wled-test',
 					reason: 'manual disconnect',
 				}),
 			);

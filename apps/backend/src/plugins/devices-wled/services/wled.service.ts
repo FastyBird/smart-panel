@@ -288,11 +288,7 @@ export class WledService implements IManagedPluginService {
 	async handleDeviceDisconnected(event: WledDeviceDisconnectedEvent): Promise<void> {
 		this.logger.log(`[WLED][SERVICE] Device disconnected: ${event.host} (${event.reason || 'unknown reason'})`);
 
-		const device = this.wledAdapter.getDevice(event.host);
-
-		if (device) {
-			await this.deviceMapper.setDeviceConnectionState(device.identifier, ConnectionState.DISCONNECTED);
-		}
+		await this.deviceMapper.setDeviceConnectionState(event.identifier, ConnectionState.DISCONNECTED);
 	}
 
 	/**

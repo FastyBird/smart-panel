@@ -186,6 +186,9 @@ export class WledClientAdapterService {
 		if (device) {
 			device.connected = false;
 
+			// Capture identifier before deletion for the event
+			const { identifier } = device;
+
 			// Clear any pending debounce timers
 			const timer = this.debounceTimers.get(host);
 
@@ -204,6 +207,7 @@ export class WledClientAdapterService {
 			// Emit disconnected event
 			this.eventEmitter.emit(WledAdapterEventType.DEVICE_DISCONNECTED, {
 				host,
+				identifier,
 				reason: 'manual disconnect',
 			});
 		}

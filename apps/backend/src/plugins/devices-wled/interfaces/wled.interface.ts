@@ -164,6 +164,7 @@ export interface WledDeviceConnectedEvent {
  */
 export interface WledDeviceDisconnectedEvent {
 	host: string;
+	identifier: string;
 	reason?: string;
 }
 

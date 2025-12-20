@@ -342,15 +342,9 @@ describe('WledService', () => {
 		it('should set connection state to DISCONNECTED', async () => {
 			const event: WledDeviceDisconnectedEvent = {
 				host: '192.168.1.100',
+				identifier: 'wled-test',
 				reason: 'manual disconnect',
 			};
-
-			wledAdapter.getDevice.mockReturnValue({
-				host: '192.168.1.100',
-				identifier: 'wled-test',
-				connected: false,
-				enabled: true,
-			} as any);
 
 			await service.handleDeviceDisconnected(event);
 
