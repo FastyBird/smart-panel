@@ -41,6 +41,10 @@ export class WledDevicePlatform implements IDevicePlatform {
 	}
 
 	async processBatch(updates: Array<IWledDevicePropertyData>): Promise<boolean> {
+		if (updates.length === 0) {
+			return true;
+		}
+
 		const device = updates[0].device;
 
 		if (!(device instanceof WledDeviceEntity)) {
