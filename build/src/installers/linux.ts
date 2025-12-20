@@ -86,9 +86,6 @@ export class LinuxInstaller implements BaseInstaller {
 		// Create systemd service file
 		this.createServiceFile(user, dataDir);
 
-		// Set ownership
-		setOwnership(dataDir, user);
-
 		// Reload systemd
 		exec('systemctl daemon-reload');
 
@@ -102,6 +99,10 @@ export class LinuxInstaller implements BaseInstaller {
 		if (adminUsername && adminPassword) {
 			await this.createAdminUser(dataDir, adminUsername, adminPassword);
 		}
+
+		// Set ownership after all file-creating operations complete
+		// This ensures database files created by migrations are owned by the service user
+		setOwnership(dataDir, user);
 
 		// Start service if not skipped
 		if (!noStart) {
