@@ -89,7 +89,11 @@ export class ShellyNgService implements IManagedPluginService {
 				case 'stopping':
 					return;
 				case 'starting':
-					await this.waitUntil('started');
+					await this.waitUntil('started', 'stopped', 'error');
+					// If start failed, we're already stopped/error - just return
+					if (this.getState() !== 'started') {
+						return;
+					}
 				// fallthrough
 				case 'started':
 					this.doStop();
@@ -386,22 +390,18 @@ export class ShellyNgService implements IManagedPluginService {
 		}
 	}
 
-	private waitUntil(target: ServiceState, timeoutMs = 10_000): Promise<void> {
-		return new Promise((resolve, reject) => {
-			const start = Date.now();
+	private async waitUntil(...states: ServiceState[]): Promise<void> {
+		const maxWait = 10_000;
+		const interval = 25;
+		let elapsed = 0;
 
-			const check = () => {
-				if (this.state === target) {
-					return resolve();
-				}
+		while (!states.includes(this.state) && elapsed < maxWait) {
+			await new Promise((resolve) => setTimeout(resolve, interval));
+			elapsed += interval;
+		}
 
-				if (Date.now() - start > timeoutMs) {
-					return reject(new Error(`Timeout waiting for state "${target}"`));
-				}
-
-				setTimeout(check, 25);
-			};
-			check();
-		});
+		if (!states.includes(this.state)) {
+			throw new Error(`Timeout waiting for state ${states.join(' or ')}, current state: ${this.state}`);
+		}
 	}
 }
