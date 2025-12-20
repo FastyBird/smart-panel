@@ -1,6 +1,6 @@
 import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 'shellies-ds9';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
@@ -11,6 +11,7 @@ import {
 	IManagedPluginService,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
@@ -46,6 +47,8 @@ export class ShellyNgService implements IManagedPluginService {
 		private readonly deviceManagerService: DeviceManagerService,
 		private readonly devicesService: DevicesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		@Inject(forwardRef(() => PluginServiceManagerService))
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	/**
@@ -130,20 +133,17 @@ export class ShellyNgService implements IManagedPluginService {
 	}
 
 	/**
-	 * Restart the service by stopping and starting again.
+	 * Restart the service through the PluginServiceManagerService.
 	 * Used by entity subscribers when device configuration changes.
 	 *
-	 * Only restarts if the plugin is enabled, respecting centralized
-	 * enabled state management through PluginServiceManagerService.
+	 * Delegates to the manager to ensure runtime tracking (lastStartedAt,
+	 * startCount, etc.) is properly updated.
 	 */
 	async restart(): Promise<void> {
-		await this.stop();
+		const success = await this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
 
-		// Only start if plugin is enabled - respect centralized state management
-		if (this.config.enabled) {
-			await this.start();
-		} else {
-			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Plugin disabled, skipping restart');
+		if (!success) {
+			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Restart skipped (plugin may be disabled)');
 		}
 	}
 
