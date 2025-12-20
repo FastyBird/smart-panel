@@ -163,7 +163,11 @@ export class WledDevicePlatform implements IDevicePlatform {
 		host: string,
 	): Promise<boolean> {
 		try {
-			const stateUpdate = this.buildMainLightStateUpdate(propertyUpdates);
+			// Get current colors from segment 0 to avoid resetting unchanged components
+			const registeredDevice = this.wledAdapter.getDevice(host);
+			const currentColors = registeredDevice?.context?.state?.segments?.[0]?.colors?.[0] ?? [0, 0, 0];
+
+			const stateUpdate = this.buildMainLightStateUpdate(propertyUpdates, currentColors);
 
 			if (Object.keys(stateUpdate).length === 0) {
 				this.logger.debug('[WLED][PLATFORM] No valid properties to update');
@@ -281,6 +285,11 @@ export class WledDevicePlatform implements IDevicePlatform {
 		host: string,
 	): Promise<boolean> {
 		try {
+			// Get current colors from the segment to avoid resetting unchanged components
+			const registeredDevice = this.wledAdapter.getDevice(host);
+			const currentSegmentColors = registeredDevice?.context?.state?.segments?.find((s) => s.id === segmentId)
+				?.colors?.[0] ?? [0, 0, 0];
+
 			const segmentUpdate: Partial<{
 				on: boolean;
 				brightness: number;
@@ -294,7 +303,12 @@ export class WledDevicePlatform implements IDevicePlatform {
 			}> = {};
 
 			let hasColorUpdate = false;
-			const colors: number[] = [0, 0, 0];
+			// Initialize with current colors to avoid resetting unchanged components
+			const colors: number[] = [
+				currentSegmentColors[0] ?? 0,
+				currentSegmentColors[1] ?? 0,
+				currentSegmentColors[2] ?? 0,
+			];
 
 			for (const { property, value } of propertyUpdates) {
 				switch (property.identifier) {
@@ -360,9 +374,11 @@ export class WledDevicePlatform implements IDevicePlatform {
 	/**
 	 * Build WLED state update from main light property updates
 	 * Converts spec-compliant values to WLED format (brightness 0-100% -> 0-255)
+	 * @param currentColors Current RGB values to preserve unchanged components
 	 */
 	private buildMainLightStateUpdate(
 		propertyUpdates: Array<{ property: WledChannelPropertyEntity; value: string | number | boolean }>,
+		currentColors: number[],
 	): WledStateUpdateExtended {
 		const stateUpdate: WledStateUpdateExtended = {};
 		const segmentUpdate: {
@@ -376,7 +392,8 @@ export class WledDevicePlatform implements IDevicePlatform {
 
 		let hasColorUpdate = false;
 		let hasSegmentUpdate = false;
-		const colors: number[] = [0, 0, 0]; // R, G, B
+		// Initialize with current colors to avoid resetting unchanged components
+		const colors: number[] = [currentColors[0] ?? 0, currentColors[1] ?? 0, currentColors[2] ?? 0];
 
 		for (const { property, value } of propertyUpdates) {
 			switch (property.identifier) {

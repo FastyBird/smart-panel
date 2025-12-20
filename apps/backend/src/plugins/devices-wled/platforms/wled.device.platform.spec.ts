@@ -51,6 +51,22 @@ describe('WledDevicePlatform', () => {
 
 	beforeEach(async () => {
 		const mockWledAdapter = {
+			getDevice: jest.fn().mockReturnValue({
+				host: '192.168.1.100',
+				identifier: 'wled-test',
+				connected: true,
+				enabled: true,
+				context: {
+					state: {
+						on: true,
+						brightness: 128,
+						segments: [
+							{ id: 0, colors: [[100, 150, 200]], effect: 0 },
+							{ id: 1, colors: [[50, 75, 100]], effect: 0 },
+						],
+					},
+				},
+			}),
 			getDeviceByIdentifier: jest.fn(),
 			updateState: jest.fn(),
 			updateStateExtended: jest.fn(),
