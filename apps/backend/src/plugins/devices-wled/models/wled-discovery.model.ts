@@ -8,7 +8,7 @@ import { BaseSuccessResponseModel } from '../../../modules/api/models/api-respon
 /**
  * Model representing a discovered WLED device that hasn't been added yet
  */
-@ApiSchema({ name: 'DevicesWledPluginDiscoveredDevice' })
+@ApiSchema({ name: 'DevicesWledPluginDataDiscoveredDevice' })
 export class WledDiscoveredDeviceModel {
 	@ApiProperty({
 		description: 'Device hostname or IP address',
