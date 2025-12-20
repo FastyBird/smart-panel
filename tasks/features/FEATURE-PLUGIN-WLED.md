@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: (none)
-Status: planned
+Status: done (superseded by FEATURE-WLED-PLUGIN)
 Created: 2025-11-14
 
 ## 1. Business goal
