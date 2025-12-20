@@ -890,11 +890,28 @@ export function inferDeviceCategory(
 		const primaryDomains = entityDomains.filter((d) => DOMAIN_ROLES[d] === EntityRole.PRIMARY);
 
 		if (primaryDomains.length > 0) {
-			// Find the device category hint for the first primary domain
+			// Find the device category hint based on mapped channels for primary domains
+			// This ensures we match the actual device_class that was used during mapping
 			for (const domain of primaryDomains) {
-				const rule = HA_ENTITY_MAPPING_RULES.find((r) => r.domain === domain);
-				if (rule && rule.device_category_hint !== DeviceCategory.GENERIC) {
-					return rule.device_category_hint;
+				// First, find rules for this domain that match mapped channel categories
+				const matchingRule = HA_ENTITY_MAPPING_RULES.find(
+					(r) =>
+						r.domain === domain &&
+						mappedChannelCategories.includes(r.channel_category) &&
+						r.device_category_hint !== DeviceCategory.GENERIC,
+				);
+
+				if (matchingRule) {
+					return matchingRule.device_category_hint;
+				}
+
+				// Fallback: if no channel-matched rule found, use first non-generic rule for domain
+				const fallbackRule = HA_ENTITY_MAPPING_RULES.find(
+					(r) => r.domain === domain && r.device_category_hint !== DeviceCategory.GENERIC,
+				);
+
+				if (fallbackRule) {
+					return fallbackRule.device_category_hint;
 				}
 			}
 		}
@@ -914,7 +931,7 @@ export function inferDeviceCategory(
 	let bestCategory: DeviceCategory = DeviceCategory.GENERIC;
 	let bestScore = 0;
 
-	for (const [category, score] of hints.entries()) {
+	for (const [category, score] of Array.from(hints.entries())) {
 		if (score > bestScore) {
 			bestScore = score;
 			bestCategory = category;

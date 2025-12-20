@@ -270,5 +270,38 @@ describe('HaEntityMappingRules', () => {
 			// Should use priority-based scoring fallback
 			expect(category).toBe(DeviceCategory.LIGHTING);
 		});
+
+		it('should return SWITCHER for generic switch with SWITCHER channel', () => {
+			// A generic switch (no device_class) maps to SWITCHER channel
+			// It should NOT incorrectly return OUTLET just because that's the first SWITCH rule
+			const channels = [ChannelCategory.SWITCHER];
+			const domains = [HomeAssistantDomain.SWITCH];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			// SWITCHER channel with SWITCH domain should return SWITCHER (not OUTLET)
+			// because the matching rule for SWITCHER has device_category_hint: SWITCHER
+			expect(category).toBe(DeviceCategory.SWITCHER);
+		});
+
+		it('should match device category based on mapped channels, not first rule for domain', () => {
+			// A door cover should get DOOR (door rule's hint), not WINDOW_COVERING (first cover rule)
+			const channels = [ChannelCategory.DOOR];
+			const domains = [HomeAssistantDomain.COVER];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.DOOR);
+		});
+
+		it('should return TELEVISION for media player with TELEVISION channel', () => {
+			// A TV media player should get TELEVISION, not SPEAKER (first media_player rule)
+			const channels = [ChannelCategory.TELEVISION];
+			const domains = [HomeAssistantDomain.MEDIA_PLAYER];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.TELEVISION);
+		});
 	});
 });
