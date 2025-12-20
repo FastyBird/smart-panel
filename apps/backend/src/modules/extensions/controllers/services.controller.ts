@@ -53,10 +53,13 @@ export class ServicesController {
 	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the plugin' })
 	@ApiSuccessResponse(ServiceStatusResponseModel, 'Returns the service status')
 	@ApiNotFoundResponse('Service not found')
-	findOne(@Param('pluginName') pluginName: string, @Param('serviceId') serviceId: string): ServiceStatusResponseModel {
+	async findOne(
+		@Param('pluginName') pluginName: string,
+		@Param('serviceId') serviceId: string,
+	): Promise<ServiceStatusResponseModel> {
 		this.logger.debug(`[GET] Fetching service status pluginName=${pluginName} serviceId=${serviceId}`);
 
-		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 		if (!status) {
 			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
@@ -88,7 +91,7 @@ export class ServicesController {
 
 		const success = await this.pluginServiceManager.startServiceManually(pluginName, serviceId);
 
-		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 		if (!status) {
 			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
@@ -126,7 +129,7 @@ export class ServicesController {
 
 		const success = await this.pluginServiceManager.stopServiceManually(pluginName, serviceId);
 
-		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 		if (!status) {
 			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
@@ -164,7 +167,7 @@ export class ServicesController {
 
 		const success = await this.pluginServiceManager.restartService(pluginName, serviceId);
 
-		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 		if (!status) {
 			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);

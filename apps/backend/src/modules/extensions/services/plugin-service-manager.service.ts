@@ -259,7 +259,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	/**
 	 * Get status of a specific service with runtime information.
 	 */
-	getServiceStatus(pluginName: string, serviceId: string): ServiceStatusExtended | null {
+	async getServiceStatus(pluginName: string, serviceId: string): Promise<ServiceStatusExtended | null> {
 		const key = this.getServiceKey(pluginName, serviceId);
 		const registration = this.services.get(key);
 
@@ -270,6 +270,17 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const config = this.getPluginConfig(pluginName);
 		const runtime = this.runtimeInfo.get(key);
 		const state = registration.service.getState();
+
+		// Check health if service implements isHealthy and is started
+		let healthy: boolean | undefined;
+
+		if (registration.service.isHealthy && state === 'started') {
+			try {
+				healthy = await registration.service.isHealthy();
+			} catch {
+				healthy = false;
+			}
+		}
 
 		// Calculate uptime if service is started
 		let uptimeMs: number | undefined;
@@ -283,6 +294,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			serviceId,
 			state,
 			enabled: config?.enabled ?? false,
+			healthy,
 			lastStartedAt: runtime?.lastStartedAt?.toISOString(),
 			lastStoppedAt: runtime?.lastStoppedAt?.toISOString(),
 			lastError: runtime?.lastError,

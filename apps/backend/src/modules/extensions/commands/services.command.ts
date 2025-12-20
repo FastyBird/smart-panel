@@ -140,7 +140,7 @@ export class StartServiceCommand extends CommandRunner {
 			console.log(`\x1b[32m✅ Service ${serviceKey} started successfully\x1b[0m\n`);
 			this.logger.log(`[SERVICES] Started service ${serviceKey}`);
 		} else {
-			const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+			const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 			console.log(`\x1b[33m⚠️ Service ${serviceKey} is already ${status?.state}\x1b[0m\n`);
 		}
 	}
@@ -184,7 +184,7 @@ export class StopServiceCommand extends CommandRunner {
 			console.log(`\x1b[32m✅ Service ${serviceKey} stopped successfully\x1b[0m\n`);
 			this.logger.log(`[SERVICES] Stopped service ${serviceKey}`);
 		} else {
-			const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+			const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 			console.log(`\x1b[33m⚠️ Service ${serviceKey} is already ${status?.state}\x1b[0m\n`);
 		}
 	}
@@ -228,7 +228,7 @@ export class RestartServiceCommand extends CommandRunner {
 			console.log(`\x1b[32m✅ Service ${serviceKey} restarted successfully\x1b[0m\n`);
 			this.logger.log(`[SERVICES] Restarted service ${serviceKey}`);
 		} else {
-			const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+			const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 			if (!status?.enabled) {
 				console.error(`\x1b[31m❌ Cannot restart: Plugin ${pluginName} is disabled\x1b[0m\n`);

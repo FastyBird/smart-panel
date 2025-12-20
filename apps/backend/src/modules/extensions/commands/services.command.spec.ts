@@ -125,7 +125,7 @@ describe('Services Commands', () => {
 			const mockStatus = createMockServiceStatus({ state: 'started' });
 			pluginServiceManager.isRegistered.mockReturnValue(true);
 			pluginServiceManager.startServiceManually.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockReturnValue(mockStatus);
+			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
 			await command.run(['devices-shelly-v1', 'main'], {});
 
@@ -188,7 +188,7 @@ describe('Services Commands', () => {
 			const mockStatus = createMockServiceStatus({ state: 'stopped' });
 			pluginServiceManager.isRegistered.mockReturnValue(true);
 			pluginServiceManager.stopServiceManually.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockReturnValue(mockStatus);
+			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
 			await command.run(['devices-shelly-v1', 'main'], {});
 
@@ -232,7 +232,7 @@ describe('Services Commands', () => {
 			const mockStatus = createMockServiceStatus({ state: 'stopped', enabled: false });
 			pluginServiceManager.isRegistered.mockReturnValue(true);
 			pluginServiceManager.restartService.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockReturnValue(mockStatus);
+			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
 			await command.run(['devices-shelly-v1', 'main'], {});
 
