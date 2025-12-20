@@ -69,6 +69,11 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		}
 	>();
 
+	private connectionResolver: {
+		resolve: () => void;
+		reject: (error: Error) => void;
+	} | null = null;
+
 	constructor(
 		private readonly configService: ConfigService,
 		@Inject(forwardRef(() => HomeAssistantHttpService))
@@ -88,28 +93,41 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	/**
 	 * Start the service.
 	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 *
+	 * The service is considered 'started' only after the WebSocket connection
+	 * is established AND authentication succeeds (auth_ok received).
 	 */
-	start(): Promise<void> {
+	async start(): Promise<void> {
 		if (this.state === 'started' || this.state === 'starting') {
-			return Promise.resolve();
+			return;
 		}
 
 		if (this.apiKey === null) {
 			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Missing API key for Home Assistant WS service');
 			this.state = 'error';
 
-			return Promise.resolve();
+			return;
 		}
 
 		this.state = 'starting';
 
 		this.logger.log('[HOME ASSISTANT][WS SERVICE] Starting Home Assistant WebSocket service');
 
-		this.connect();
+		try {
+			await this.connectAndAuthenticate();
 
-		this.state = 'started';
+			this.state = 'started';
 
-		return Promise.resolve();
+			this.logger.log('[HOME ASSISTANT][WS SERVICE] Home Assistant WebSocket service started successfully');
+		} catch (error) {
+			this.logger.error('[HOME ASSISTANT][WS SERVICE] Failed to start WebSocket service', {
+				message: error instanceof Error ? error.message : String(error),
+			});
+
+			this.state = 'error';
+
+			this.disconnect();
+		}
 	}
 
 	/**
@@ -165,6 +183,42 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		return Promise.resolve();
 	}
 
+	/**
+	 * Connect to Home Assistant and wait for successful authentication.
+	 * Returns a Promise that resolves on auth_ok and rejects on error or auth_invalid.
+	 */
+	private connectAndAuthenticate(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			this.connectionResolver = { resolve, reject };
+
+			this.connect();
+
+			// Timeout for initial connection + authentication
+			const timeout = setTimeout(() => {
+				if (this.connectionResolver) {
+					this.connectionResolver.reject(new Error('Connection timeout - failed to authenticate within 30 seconds'));
+					this.connectionResolver = null;
+				}
+			}, 30000);
+
+			// Store timeout reference to clear it on success/failure
+			const originalResolver = this.connectionResolver;
+
+			this.connectionResolver = {
+				resolve: () => {
+					clearTimeout(timeout);
+					originalResolver.resolve();
+					this.connectionResolver = null;
+				},
+				reject: (error: Error) => {
+					clearTimeout(timeout);
+					originalResolver.reject(error);
+					this.connectionResolver = null;
+				},
+			};
+		});
+	}
+
 	private connect() {
 		this.logger.debug('[HOME ASSISTANT][WS SERVICE] Connecting to Home Assistant WebSocket API...');
 
@@ -185,6 +239,11 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		});
 
 		this.ws.on('close', () => {
+			// Reject pending connection promise if still waiting
+			if (this.connectionResolver) {
+				this.connectionResolver.reject(new Error('WebSocket connection closed before authentication completed'));
+			}
+
 			if (this.state === 'started') {
 				this.logger.warn('[HOME ASSISTANT][WS SERVICE] WebSocket connection closed. Reconnecting...');
 				this.scheduleReconnect();
@@ -193,10 +252,16 @@ export class HomeAssistantWsService implements IManagedPluginService {
 
 		this.ws.on('error', (err) => {
 			this.logger.error('[HOME ASSISTANT][WS SERVICE] WebSocket connection error', err);
+
+			// Reject pending connection promise on error
+			if (this.connectionResolver) {
+				this.connectionResolver.reject(err instanceof Error ? err : new Error(String(err)));
+			}
 		});
 	}
 
 	private disconnect() {
+		this.connectionResolver = null;
 		this.ws?.close();
 		this.ws = null;
 	}
@@ -383,6 +448,11 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		} else if (msg.type === 'auth_ok') {
 			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Authenticated with Home Assistant instance.');
 
+			// Resolve the connection promise - service is now fully started
+			if (this.connectionResolver) {
+				this.connectionResolver.resolve();
+			}
+
 			this.subscribeToStates();
 
 			// Load initial states immediately after authentication
@@ -393,9 +463,14 @@ export class HomeAssistantWsService implements IManagedPluginService {
 				);
 			});
 		} else if (msg.type === 'auth_invalid') {
-			this.logger.error(
-				`[HOME ASSISTANT][WS SERVICE] Authentication failed: ${'message' in msg && typeof msg.message === 'string' ? msg.message : 'unknown'}`,
-			);
+			const errorMessage = 'message' in msg && typeof msg.message === 'string' ? msg.message : 'Authentication failed';
+
+			this.logger.error(`[HOME ASSISTANT][WS SERVICE] Authentication failed: ${errorMessage}`);
+
+			// Reject the connection promise - authentication failed
+			if (this.connectionResolver) {
+				this.connectionResolver.reject(new Error(errorMessage));
+			}
 
 			this.disconnect();
 		} else if (msg.type === 'event') {

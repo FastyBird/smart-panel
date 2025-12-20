@@ -88,17 +88,17 @@ export class ServicesController {
 
 		const success = await this.pluginServiceManager.startServiceManually(pluginName, serviceId);
 
-		if (!success) {
-			const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
-			if (!status) {
-				throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
-			}
-
-			// Return current status even if start failed (service might already be started)
+		if (!status) {
+			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
 		}
 
-		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		if (!success) {
+			this.logger.debug(
+				`[START] Service ${pluginName}:${serviceId} start returned false, current state: ${status.state}`,
+			);
+		}
 
 		const response = new ServiceStatusResponseModel();
 		response.data = this.toModel(status);
@@ -126,17 +126,17 @@ export class ServicesController {
 
 		const success = await this.pluginServiceManager.stopServiceManually(pluginName, serviceId);
 
-		if (!success) {
-			const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
-			if (!status) {
-				throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
-			}
-
-			// Return current status even if stop failed (service might already be stopped)
+		if (!status) {
+			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
 		}
 
-		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		if (!success) {
+			this.logger.debug(
+				`[STOP] Service ${pluginName}:${serviceId} stop returned false, current state: ${status.state}`,
+			);
+		}
 
 		const response = new ServiceStatusResponseModel();
 		response.data = this.toModel(status);
@@ -164,17 +164,17 @@ export class ServicesController {
 
 		const success = await this.pluginServiceManager.restartService(pluginName, serviceId);
 
-		if (!success) {
-			const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
-			if (!status) {
-				throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
-			}
-
-			// Return current status even if restart failed
+		if (!status) {
+			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
 		}
 
-		const status = this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		if (!success) {
+			this.logger.debug(
+				`[RESTART] Service ${pluginName}:${serviceId} restart returned false, current state: ${status.state}`,
+			);
+		}
 
 		const response = new ServiceStatusResponseModel();
 		response.data = this.toModel(status);
