@@ -173,7 +173,7 @@ And pagination works correctly with the filter applied
 
 - Follow existing module/service patterns in the codebase
 - Use the existing `SystemLoggerService` infrastructure
-- Preserve backward compatibility - existing log formats should still work
+- Breaking changes are allowed (app is in development mode)
 - Do not modify generated code in `apps/admin/src/api/`
 - Do not introduce new dependencies unless absolutely necessary
 - Tests are expected for new business logic
@@ -326,7 +326,6 @@ Update plugins in this order (from most to least complex):
 
 | Risk | Mitigation |
 |------|------------|
-| Breaking existing log parsing | Keep backward-compatible format, only standardize the prefix |
 | Performance impact of filtering | Filter in memory since ring buffer is capped at 2000 entries |
 | Large number of log entries | Use pagination and limit; ring buffer already caps at 2000 |
 | Inconsistent extension type naming | Use the plugin/module `type` constant as the canonical tag |
