@@ -220,7 +220,7 @@ program
 			console.log();
 
 			if (options.keepData) {
-				logger.info('Data directory preserved at /var/lib/smart-panel');
+				logger.info(`Data directory preserved at ${dataDir}`);
 			}
 
 			logger.success('Uninstall complete!');
