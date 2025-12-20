@@ -1,11 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
-import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import {
+	ConfigChangeResult,
+	IManagedPluginService,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
@@ -17,28 +23,28 @@ import {
 	WledMdnsDiscoveredDevice,
 	WledMdnsEventType,
 } from '../interfaces/wled.interface';
-import { WledConfigModel, WledDeviceHostConfigModel } from '../models/config.model';
+import { WledConfigModel } from '../models/config.model';
 
 import { WledDeviceMapperService } from './device-mapper.service';
 import { WledClientAdapterService } from './wled-client-adapter.service';
 import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
 
-type ServiceState = 'stopped' | 'starting' | 'started' | 'stopping';
-
 /**
  * Main WLED Service
  *
  * Manages the lifecycle of WLED device connections, state synchronization,
- * and event handling.
+ * and event handling. Implements IManagedPluginService for centralized
+ * lifecycle management by PluginServiceManagerService.
  */
 @Injectable()
-export class WledService {
+export class WledService implements IManagedPluginService {
 	private readonly logger = new Logger(WledService.name);
+
+	readonly pluginName = DEVICES_WLED_PLUGIN_NAME;
+	readonly serviceId = 'connector';
 
 	private pluginConfig: WledConfigModel | null = null;
 	private state: ServiceState = 'stopped';
-	private startTimer: NodeJS.Timeout | null = null;
-	private desiredEnabled = false;
 	private startStopLock: Promise<void> = Promise.resolve();
 	private pollingInterval: NodeJS.Timeout | null = null;
 
@@ -48,205 +54,214 @@ export class WledService {
 		private readonly deviceMapper: WledDeviceMapperService,
 		private readonly devicesService: DevicesService,
 		private readonly mdnsDiscoverer: WledMdnsDiscovererService,
+		private readonly deviceConnectivityService: DeviceConnectivityService,
+		@Inject(forwardRef(() => PluginServiceManagerService))
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	/**
-	 * Request service start with optional delay
+	 * Start the service.
+	 * Called by PluginServiceManagerService when the plugin is enabled.
 	 */
-	async requestStart(delayMs = 1000): Promise<void> {
-		this.desiredEnabled = this.config.enabled === true;
-
-		if (!this.desiredEnabled) {
-			if (this.startTimer) {
-				clearTimeout(this.startTimer);
-				this.startTimer = null;
+	async start(): Promise<void> {
+		await this.withLock(async () => {
+			switch (this.state) {
+				case 'started':
+					return;
+				case 'starting':
+					return;
+				case 'stopping':
+					await this.waitUntil('stopped');
+					await this.initialize();
+					await this.doStart();
+					return;
+				case 'stopped':
+				case 'error':
+					await this.initialize();
+					await this.doStart();
+					return;
 			}
-
-			await this.ensureStopped();
-			return;
-		}
-
-		if (this.startTimer) {
-			clearTimeout(this.startTimer);
-		}
-
-		this.startTimer = setTimeout(() => {
-			this.startTimer = null;
-			void this.ensureStarted();
-		}, delayMs);
+		});
 	}
 
 	/**
-	 * Stop the service
+	 * Stop the service gracefully.
+	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
 	 */
 	async stop(): Promise<void> {
-		if (this.startTimer) {
-			clearTimeout(this.startTimer);
-			this.startTimer = null;
+		await this.withLock(async () => {
+			switch (this.state) {
+				case 'stopped':
+					return;
+				case 'stopping':
+					return;
+				case 'starting':
+					await this.waitUntil('started', 'stopped', 'error');
+					if (this.getState() !== 'started') {
+						return;
+					}
+				// fallthrough
+				case 'started':
+					this.doStop();
+					return;
+				case 'error':
+					this.doStop();
+					return;
+			}
+		});
+	}
+
+	/**
+	 * Get the current service state.
+	 */
+	getState(): ServiceState {
+		return this.state;
+	}
+
+	/**
+	 * Handle configuration changes.
+	 * Called by PluginServiceManagerService when config updates occur.
+	 */
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		this.pluginConfig = null;
+
+		if (this.state === 'started') {
+			this.logger.log('[WLED][SERVICE] Config changed, restart required');
+			return Promise.resolve({ restartRequired: true });
 		}
 
-		await this.ensureStopped();
+		return Promise.resolve({ restartRequired: false });
 	}
 
 	/**
-	 * Restart the service
+	 * Restart the service through the PluginServiceManagerService.
 	 */
 	async restart(): Promise<void> {
-		await this.stop();
-		await this.requestStart();
+		const success = await this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
+
+		if (!success) {
+			this.logger.debug('[WLED][SERVICE] Restart skipped (plugin may be disabled)');
+		}
 	}
 
 	/**
-	 * Ensure service is started
+	 * Initialize device states before starting
 	 */
-	private async ensureStarted(): Promise<void> {
-		await this.withLock(async () => {
-			if (this.config.enabled !== true) {
-				return;
-			}
+	private async initialize(): Promise<void> {
+		const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
 
-			switch (this.state) {
-				case 'started':
-					return;
-				case 'starting':
-					return;
-				case 'stopping':
-					await this.waitUntil('stopped');
-					break;
-				case 'stopped':
-					break;
-			}
-
-			this.state = 'starting';
-
-			this.logger.log('[WLED][SERVICE] Starting WLED plugin service');
-
-			try {
-				// Configure WebSocket
-				this.wledAdapter.configureWebSocket(
-					this.config.websocket.enabled,
-					this.config.websocket.reconnectInterval,
-				);
-
-				// Initialize all devices to UNKNOWN connection state
-				await this.initializeDeviceStates();
-
-				// Connect to configured WLED devices
-				await this.connectToConfiguredDevices();
-
-				// Start mDNS discovery if enabled
-				await this.startMdnsDiscovery();
-
-				// Start state polling
-				this.startPolling();
-
-				this.logger.log('[WLED][SERVICE] WLED plugin service started successfully');
-				this.state = 'started';
-			} catch (error) {
-				this.logger.error('[WLED][SERVICE] Failed to start WLED plugin service', {
-					message: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
-				});
-
-				this.state = 'stopped';
-				throw error;
-			}
-		});
+		for (const device of devices) {
+			await this.deviceConnectivityService.setConnectionState(device.id, {
+				state: ConnectionState.UNKNOWN,
+			});
+		}
 	}
 
 	/**
-	 * Ensure service is stopped
+	 * Perform the actual start logic
 	 */
-	private async ensureStopped(): Promise<void> {
-		await this.withLock(async () => {
-			switch (this.state) {
-				case 'stopped':
-					return;
-				case 'stopping':
-					await this.waitUntil('stopped');
-					return;
-				case 'starting':
-					await this.waitUntil('started', 'stopped');
-					break;
-				case 'started':
-					break;
-			}
+	private async doStart(): Promise<void> {
+		this.state = 'starting';
 
-			if (this.state !== 'started') {
-				return;
-			}
+		this.logger.log('[WLED][SERVICE] Starting WLED plugin service');
 
-			this.state = 'stopping';
+		try {
+			// Configure WebSocket
+			this.wledAdapter.configureWebSocket(this.config.websocket.enabled, this.config.websocket.reconnectInterval);
 
-			this.logger.log('[WLED][SERVICE] Stopping WLED plugin service');
+			// Connect to enabled WLED devices from database
+			await this.connectToDatabaseDevices();
 
-			try {
-				// Stop polling
-				this.stopPolling();
+			// Start mDNS discovery if enabled
+			await this.startMdnsDiscovery();
 
-				// Stop mDNS discovery
-				this.mdnsDiscoverer.stop();
+			// Start state polling
+			this.startPolling();
 
-				// Disconnect all devices
-				this.wledAdapter.disconnectAll();
+			this.logger.log('[WLED][SERVICE] WLED plugin service started successfully');
+			this.state = 'started';
+		} catch (error) {
+			this.logger.error('[WLED][SERVICE] Failed to start WLED plugin service', {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 
-				this.logger.log('[WLED][SERVICE] WLED plugin service stopped');
-				this.state = 'stopped';
-			} catch (error) {
-				this.logger.error('[WLED][SERVICE] Failed to stop WLED plugin service', {
-					message: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
-				});
-
-				this.state = 'stopped';
-				throw error;
-			}
-		});
+			this.state = 'error';
+			throw error;
+		}
 	}
 
 	/**
-	 * Connect to all configured WLED devices
+	 * Perform the actual stop logic
 	 */
-	private async connectToConfiguredDevices(): Promise<void> {
-		const deviceConfigs = this.config.devices || [];
+	private doStop(): void {
+		this.state = 'stopping';
 
-		if (deviceConfigs.length === 0) {
-			this.logger.log('[WLED][SERVICE] No WLED devices configured');
+		this.logger.log('[WLED][SERVICE] Stopping WLED plugin service');
+
+		try {
+			// Stop polling
+			this.stopPolling();
+
+			// Stop mDNS discovery
+			this.mdnsDiscoverer.stop();
+
+			// Disconnect all devices
+			this.wledAdapter.disconnectAll();
+
+			this.logger.log('[WLED][SERVICE] WLED plugin service stopped');
+			this.state = 'stopped';
+		} catch (error) {
+			this.logger.error('[WLED][SERVICE] Failed to stop WLED plugin service', {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+
+			this.state = 'stopped';
+		}
+	}
+
+	/**
+	 * Connect to all enabled WLED devices from database
+	 */
+	private async connectToDatabaseDevices(): Promise<void> {
+		const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+		const enabledDevices = devices.filter((d) => d.enabled && d.hostname);
+
+		if (enabledDevices.length === 0) {
+			this.logger.log('[WLED][SERVICE] No enabled WLED devices found in database');
 			return;
 		}
 
-		this.logger.log(`[WLED][SERVICE] Connecting to ${deviceConfigs.length} configured WLED device(s)`);
+		this.logger.log(`[WLED][SERVICE] Connecting to ${enabledDevices.length} enabled WLED device(s)`);
 
-		for (const deviceConfig of deviceConfigs) {
-			await this.connectToDevice(deviceConfig);
+		for (const device of enabledDevices) {
+			await this.connectToDevice(device);
 		}
 	}
 
 	/**
 	 * Connect to a single WLED device
 	 */
-	private async connectToDevice(deviceConfig: WledDeviceHostConfigModel): Promise<void> {
+	private async connectToDevice(device: WledDeviceEntity): Promise<void> {
+		if (!device.hostname || !device.identifier) {
+			this.logger.warn(`[WLED][SERVICE] Device ${device.id} missing hostname or identifier, skipping`);
+			return;
+		}
+
 		try {
-			this.logger.debug(`[WLED][SERVICE] Connecting to WLED device at ${deviceConfig.host}`);
+			this.logger.debug(`[WLED][SERVICE] Connecting to WLED device at ${device.hostname}`);
 
-			// Generate identifier if not provided
-			const identifier = deviceConfig.identifier || `wled-${deviceConfig.host.replace(/\./g, '-')}`;
+			await this.wledAdapter.connect(device.hostname, device.identifier, this.config.timeouts.connectionTimeout);
 
-			await this.wledAdapter.connect(deviceConfig.host, identifier, this.config.timeouts.connectionTimeout);
+			// Get the device context and update state
+			const registeredDevice = this.wledAdapter.getDevice(device.hostname);
 
-			// Get the device context and map it
-			const device = this.wledAdapter.getDevice(deviceConfig.host);
-
-			if (device?.context) {
-				await this.deviceMapper.mapDevice(
-					deviceConfig.host,
-					device.context,
-					deviceConfig.name,
-					deviceConfig.identifier,
-				);
+			if (registeredDevice?.context) {
+				await this.deviceMapper.updateDeviceState(device.identifier, registeredDevice.context.state);
 			}
 		} catch (error) {
-			this.logger.error(`[WLED][SERVICE] Failed to connect to WLED device at ${deviceConfig.host}`, {
+			this.logger.error(`[WLED][SERVICE] Failed to connect to WLED device at ${device.hostname}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -302,16 +317,6 @@ export class WledService {
 		this.logger.error(`[WLED][SERVICE] Device error: ${event.host}`, {
 			message: event.error.message,
 		});
-	}
-
-	/**
-	 * Handle config updated event
-	 */
-	@OnEvent(`${ConfigModuleEventType.CONFIG_UPDATED}.${DEVICES_WLED_PLUGIN_NAME}`)
-	async handleConfigUpdated(): Promise<void> {
-		this.logger.log('[WLED][SERVICE] Config updated, restarting service');
-		this.pluginConfig = null; // Clear cached config
-		await this.restart();
 	}
 
 	/**
@@ -381,26 +386,6 @@ export class WledService {
 	}
 
 	/**
-	 * Initialize all devices to UNKNOWN connection state on service start
-	 */
-	private async initializeDeviceStates(): Promise<void> {
-		try {
-			const devices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
-
-			this.logger.log(`[WLED][SERVICE] Initializing connection state for ${devices.length} WLED devices`);
-
-			for (const device of devices) {
-				await this.deviceMapper.setDeviceConnectionState(device.identifier!, ConnectionState.UNKNOWN);
-			}
-		} catch (error) {
-			this.logger.error('[WLED][SERVICE] Failed to initialize device states', {
-				message: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
-		}
-	}
-
-	/**
 	 * Start mDNS discovery if enabled
 	 */
 	private async startMdnsDiscovery(): Promise<void> {
@@ -433,14 +418,10 @@ export class WledService {
 		if (existingDevice) {
 			this.logger.debug(`[WLED][SERVICE] Device at ${device.host} already exists in database`);
 
-			// If device is not connected, try to connect
-			if (!this.wledAdapter.isConnected(device.host)) {
+			// If device is enabled and not connected, try to connect
+			if (existingDevice.enabled && !this.wledAdapter.isConnected(device.host)) {
 				this.logger.debug(`[WLED][SERVICE] Connecting to existing device at ${device.host}`);
-				await this.connectToDevice({
-					host: device.host,
-					name: existingDevice.name,
-					identifier: existingDevice.identifier,
-				});
+				await this.connectToDevice(existingDevice);
 			}
 			return;
 		}
@@ -448,11 +429,7 @@ export class WledService {
 		// Auto-add device if enabled
 		if (this.config.mdns.autoAdd) {
 			this.logger.log(`[WLED][SERVICE] Auto-adding discovered device: ${device.name} at ${device.host}`);
-			await this.connectToDevice({
-				host: device.host,
-				name: device.name,
-				identifier: device.mac ? `wled-${device.mac.replace(/:/g, '').toLowerCase()}` : undefined,
-			});
+			await this.connectAndMapDiscoveredDevice(device);
 		} else {
 			this.logger.log(
 				`[WLED][SERVICE] Discovered device ${device.name} at ${device.host} - auto-add disabled, add manually`,
@@ -461,10 +438,45 @@ export class WledService {
 	}
 
 	/**
+	 * Connect to a newly discovered device and map it to the database
+	 */
+	private async connectAndMapDiscoveredDevice(device: WledMdnsDiscoveredDevice): Promise<void> {
+		const identifier = device.mac ? `wled-${device.mac.replace(/:/g, '').toLowerCase()}` : `wled-${device.host.replace(/\./g, '-')}`;
+
+		try {
+			await this.wledAdapter.connect(device.host, identifier, this.config.timeouts.connectionTimeout);
+
+			const registeredDevice = this.wledAdapter.getDevice(device.host);
+
+			if (registeredDevice?.context) {
+				await this.deviceMapper.mapDevice(device.host, registeredDevice.context, device.name, identifier);
+			}
+		} catch (error) {
+			this.logger.error(`[WLED][SERVICE] Failed to connect to discovered device at ${device.host}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
 	 * Get discovered devices from mDNS
 	 */
 	getDiscoveredDevices(): WledMdnsDiscoveredDevice[] {
 		return this.mdnsDiscoverer.getDiscoveredDevices();
+	}
+
+	/**
+	 * Get discovered devices that haven't been added to the database yet
+	 */
+	async getUnadedDiscoveredDevices(): Promise<WledMdnsDiscoveredDevice[]> {
+		const discoveredDevices = this.mdnsDiscoverer.getDiscoveredDevices();
+		const databaseDevices = await this.devicesService.findAll<WledDeviceEntity>(DEVICES_WLED_TYPE);
+
+		// Get hostnames of devices already in database
+		const existingHostnames = new Set(databaseDevices.map((d) => d.hostname));
+
+		// Filter out devices that are already in the database
+		return discoveredDevices.filter((device) => !existingHostnames.has(device.host));
 	}
 
 	/**

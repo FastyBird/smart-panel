@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
-import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -18,6 +15,9 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
+import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -39,6 +39,7 @@ import { WledUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateWledDeviceDto } from './dto/update-device.dto';
 import { WledChannelEntity, WledChannelPropertyEntity, WledDeviceEntity } from './entities/devices-wled.entity';
 import { WledConfigModel } from './models/config.model';
+import { WledDiscoveryController } from './controllers/wled-discovery.controller';
 import { WledDevicePlatform } from './platforms/wled.device.platform';
 import { WledDeviceMapperService } from './services/device-mapper.service';
 import { WledClientAdapterService } from './services/wled-client-adapter.service';
@@ -52,11 +53,11 @@ import { WledService } from './services/wled.service';
 })
 @Module({
 	imports: [
-		NestConfigModule,
 		TypeOrmModule.forFeature([WledDeviceEntity, WledChannelEntity, WledChannelPropertyEntity]),
 		DevicesModule,
 		ConfigModule,
 		SwaggerModule,
+		ExtensionsModule,
 	],
 	providers: [
 		WledClientAdapterService,
@@ -65,11 +66,10 @@ import { WledService } from './services/wled.service';
 		WledDevicePlatform,
 		WledService,
 	],
-	controllers: [],
+	controllers: [WledDiscoveryController],
 })
 export class DevicesWledPlugin {
 	constructor(
-		private readonly configService: NestConfigService,
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly wledService: WledService,
 		private readonly devicesMapper: DevicesTypeMapperService,
@@ -79,6 +79,8 @@ export class DevicesWledPlugin {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
+		private readonly extensionsService: ExtensionsService,
+		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -188,17 +190,51 @@ export class DevicesWledPlugin {
 			discriminatorValue: DEVICES_WLED_TYPE,
 			modelClass: UpdateWledChannelPropertyDto,
 		});
-	}
 
-	async onApplicationBootstrap() {
-		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
+		// Register plugin metadata for extension discovery
+		this.extensionsService.registerPluginMetadata({
+			type: DEVICES_WLED_PLUGIN_NAME,
+			name: 'WLED Devices',
+			description: 'Support for WLED addressable LED controllers',
+			author: 'FastyBird',
+			readme: `# WLED Devices Plugin
 
-		if (!isCli) {
-			await this.wledService.requestStart();
-		}
-	}
+Integration plugin for WLED addressable LED controllers.
 
-	async onModuleDestroy() {
-		await this.wledService.stop();
+## Features
+
+- **Auto-Discovery** - Automatically discovers WLED devices via mDNS
+- **Real-time Updates** - WebSocket-based state synchronization
+- **Device Control** - Control brightness, colors, effects, and segments
+- **Presets & Palettes** - Access WLED presets and color palettes
+- **Nightlight Mode** - Configure automatic dimming
+- **UDP Sync** - Enable/disable sync between WLED devices
+
+## Supported Devices
+
+- All WLED-compatible ESP8266/ESP32 controllers
+- Any device running WLED firmware 0.13+
+
+## Communication
+
+Uses WLED's JSON API over:
+- HTTP for device configuration and control
+- WebSocket for real-time state updates
+- mDNS for device discovery
+
+## Configuration
+
+- **Polling Interval** - How often to refresh device states
+- **Discovery** - Enable/disable mDNS auto-discovery
+- **WebSocket** - Enable/disable real-time updates`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
+
+		// Register service with the centralized plugin service manager
+		// The manager handles startup, shutdown, and config-based enable/disable
+		this.pluginServiceManager.register(this.wledService);
 	}
 }

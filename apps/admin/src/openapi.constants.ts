@@ -146,6 +146,19 @@ export type DevicesShellyNgPluginCreateChannelPropertySchema = components['schem
 export type DevicesShellyNgPluginUpdateChannelPropertySchema = components['schemas']['DevicesShellyNgPluginUpdateChannelProperty'];
 export type DevicesShellyNgPluginChannelPropertySchema = components['schemas']['DevicesShellyNgPluginDataChannelProperty'];
 
+// Devices WLED Plugin Schemas
+export type DevicesWledPluginUpdateConfigSchema = components['schemas']['DevicesWledPluginUpdateConfig'];
+export type DevicesWledPluginConfigSchema = components['schemas']['DevicesWledPluginDataConfig'];
+export type DevicesWledPluginCreateDeviceSchema = components['schemas']['DevicesWledPluginCreateDevice'];
+export type DevicesWledPluginUpdateDeviceSchema = components['schemas']['DevicesWledPluginUpdateDevice'];
+export type DevicesWledPluginDeviceSchema = components['schemas']['DevicesWledPluginDataDevice'];
+export type DevicesWledPluginCreateChannelSchema = components['schemas']['DevicesWledPluginCreateChannel'];
+export type DevicesWledPluginUpdateChannelSchema = components['schemas']['DevicesWledPluginUpdateChannel'];
+export type DevicesWledPluginChannelSchema = components['schemas']['DevicesWledPluginDataChannel'];
+export type DevicesWledPluginCreateChannelPropertySchema = components['schemas']['DevicesWledPluginCreateChannelProperty'];
+export type DevicesWledPluginUpdateChannelPropertySchema = components['schemas']['DevicesWledPluginUpdateChannelProperty'];
+export type DevicesWledPluginChannelPropertySchema = components['schemas']['DevicesWledPluginDataChannelProperty'];
+
 // Devices Third Party Plugin Schemas
 export type DevicesThirdPartyPluginCreateDeviceSchema = components['schemas']['DevicesThirdPartyPluginCreateDevice'];
 export type DevicesThirdPartyPluginUpdateDeviceSchema = components['schemas']['DevicesThirdPartyPluginUpdateDevice'];

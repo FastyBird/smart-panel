@@ -4,7 +4,8 @@ enum DeviceType {
   devicesThirdParty('devices-third-party'),
   devicesHomeAssistant('devices-home-assistant'),
   devicesShellyNg('devices-shelly-ng'),
-  devicesShellyV1('devices-shelly-v1');
+  devicesShellyV1('devices-shelly-v1'),
+  devicesWled('devices-wled');
 
   final String value;
 

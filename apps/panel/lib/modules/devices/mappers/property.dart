@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/properties/properti
 import 'package:fastybird_smart_panel/modules/devices/models/properties/shelly_ng_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/shelly_v1_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/third_party_properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/properties/wled_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
@@ -83,6 +84,9 @@ Map<String, ChannelPropertyModel Function(Map<String, dynamic>)>
   },
   DeviceType.devicesShellyV1.value: (data) {
     return ShellyV1ChannelPropertyModel.fromJson(data);
+  },
+  DeviceType.devicesWled.value: (data) {
+    return WledChannelPropertyModel.fromJson(data);
   },
 };
 

@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Plugin Status",
+		"aboutMdns": "mDNS Discovery",
+		"aboutWebsocket": "WebSocket Connection",
+		"aboutPolling": "Device Polling",
+		"aboutTimeouts": "Timeouts Configuration"
+	},
+	"texts": {
+		"aboutPluginStatus": "Enable or disable the WLED plugin. When disabled, no WLED devices will be monitored or controlled.",
+		"aboutMdns": "mDNS discovery allows automatic detection of WLED devices on your network.",
+		"aboutWebsocket": "WebSocket provides real-time updates from your WLED devices for faster state synchronization.",
+		"aboutPolling": "Configure how often the plugin polls devices for state updates when WebSocket is not available.",
+		"aboutTimeouts": "Configure connection and command timeouts for WLED device communication."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enable Plugin"
+			},
+			"mdns": {
+				"enabled": {
+					"title": "Enable mDNS Discovery"
+				},
+				"interface": {
+					"title": "Network Interface",
+					"placeholder": "Leave empty for default"
+				},
+				"autoAdd": {
+					"title": "Auto-Add Discovered Devices"
+				}
+			},
+			"websocket": {
+				"enabled": {
+					"title": "Enable WebSocket"
+				},
+				"reconnectInterval": {
+					"title": "Reconnect Interval (ms)",
+					"validation": {
+						"required": "Reconnect interval is required",
+						"number": "Must be a number >= 1000"
+					}
+				}
+			},
+			"polling": {
+				"interval": {
+					"title": "Polling Interval (ms)",
+					"validation": {
+						"required": "Polling interval is required",
+						"number": "Must be a number >= 1000"
+					}
+				}
+			},
+			"timeouts": {
+				"connectionTimeout": {
+					"title": "Connection Timeout (ms)",
+					"validation": {
+						"required": "Connection timeout is required",
+						"number": "Must be a number >= 1000"
+					}
+				},
+				"commandDebounce": {
+					"title": "Command Debounce (ms)",
+					"validation": {
+						"required": "Command debounce is required",
+						"number": "Must be a number >= 0"
+					}
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "Device ID",
+				"placeholder": "Device ID"
+			},
+			"name": {
+				"title": "Device Name",
+				"placeholder": "Enter device name",
+				"validation": {
+					"required": "Device name is required"
+				}
+			},
+			"category": {
+				"title": "Device Category",
+				"placeholder": "Select category",
+				"validation": {
+					"required": "Device category is required"
+				}
+			},
+			"description": {
+				"title": "Description",
+				"placeholder": "Enter device description (optional)"
+			},
+			"hostname": {
+				"title": "Hostname or IP Address",
+				"placeholder": "e.g., 192.168.1.100 or wled-device.local",
+				"validation": {
+					"required": "Hostname or IP address is required"
+				}
+			},
+			"enabled": {
+				"title": "Enabled"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "WLED plugin configuration has been updated",
+			"notEdited": "Failed to update WLED plugin configuration"
+		},
+		"devices": {
+			"created": "WLED device '{device}' has been created",
+			"notCreated": "Failed to create WLED device '{device}'",
+			"edited": "WLED device '{device}' has been updated",
+			"notEdited": "Failed to update WLED device '{device}'"
+		}
+	}
+}

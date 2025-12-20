@@ -364,7 +364,7 @@ describe('WledDevicePlatform', () => {
 		it('should ignore non-light channel commands', async () => {
 			const device = createMockDevice('wled-test');
 			const channel = createMockChannel('device_information');
-			const property = createMockProperty('firmware_version', PropertyCategory.FIRMWARE_REVISION, DataTypeType.STRING);
+			const property = createMockProperty('firmware_revision', PropertyCategory.FIRMWARE_REVISION, DataTypeType.STRING);
 
 			wledAdapter.getDeviceByIdentifier.mockReturnValue({
 				host: '192.168.1.100',

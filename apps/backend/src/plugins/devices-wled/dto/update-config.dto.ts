@@ -1,44 +1,10 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { DEFAULT_COMMAND_DEBOUNCE_MS, DEFAULT_CONNECTION_TIMEOUT_MS, DEVICES_WLED_PLUGIN_NAME } from '../devices-wled.constants';
-
-/**
- * WLED device host update DTO
- */
-@ApiSchema({ name: 'DevicesWledPluginUpdateConfigDeviceHost' })
-export class WledUpdateDeviceHostDto {
-	@ApiProperty({
-		description: 'WLED device hostname or IP address',
-		example: '192.168.1.100',
-	})
-	@Expose()
-	@IsString({ message: '[{"field":"host","reason":"Host must be a valid string."}]' })
-	host: string;
-
-	@ApiPropertyOptional({
-		description: 'Optional name for the device',
-		example: 'Living Room LEDs',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
-	name?: string | null;
-
-	@ApiPropertyOptional({
-		description: 'Optional device identifier',
-		example: 'wled-aabbcc',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({ message: '[{"field":"identifier","reason":"Identifier must be a valid string."}]' })
-	identifier?: string | null;
-}
 
 /**
  * WLED timeouts update DTO
@@ -169,17 +135,6 @@ export class WledUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
 	type: typeof DEVICES_WLED_PLUGIN_NAME;
-
-	@ApiPropertyOptional({
-		description: 'List of WLED device hosts to connect to',
-		type: [WledUpdateDeviceHostDto],
-	})
-	@Expose()
-	@IsOptional()
-	@IsArray({ message: '[{"field":"devices","reason":"Devices must be an array."}]' })
-	@ValidateNested({ each: true })
-	@Type(() => WledUpdateDeviceHostDto)
-	devices?: WledUpdateDeviceHostDto[];
 
 	@ApiPropertyOptional({
 		description: 'Timeout configuration',

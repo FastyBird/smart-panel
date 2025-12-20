@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -10,40 +10,6 @@ import {
 	DEFAULT_POLLING_INTERVAL_MS,
 	DEVICES_WLED_PLUGIN_NAME,
 } from '../devices-wled.constants';
-
-/**
- * WLED device host configuration
- */
-@ApiSchema({ name: 'DevicesWledPluginDataDeviceHost' })
-export class WledDeviceHostConfigModel {
-	@Expose()
-	@IsString()
-	@ApiProperty({
-		description: 'WLED device hostname or IP address',
-		example: '192.168.1.100',
-	})
-	host: string;
-
-	@Expose()
-	@IsOptional()
-	@IsString()
-	@ApiPropertyOptional({
-		description: 'Optional name for the device',
-		example: 'Living Room LEDs',
-		nullable: true,
-	})
-	name?: string | null;
-
-	@Expose()
-	@IsOptional()
-	@IsString()
-	@ApiPropertyOptional({
-		description: 'Optional device identifier (auto-generated from MAC if not provided)',
-		example: 'wled-aabbcc',
-		nullable: true,
-	})
-	identifier?: string | null;
-}
 
 /**
  * WLED timeouts configuration
@@ -159,16 +125,6 @@ export class WledConfigModel extends PluginConfigModel {
 		example: DEVICES_WLED_PLUGIN_NAME,
 	})
 	type: string = DEVICES_WLED_PLUGIN_NAME;
-
-	@Expose()
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => WledDeviceHostConfigModel)
-	@ApiProperty({
-		description: 'List of WLED device hosts to connect to',
-		type: [WledDeviceHostConfigModel],
-	})
-	devices: WledDeviceHostConfigModel[] = [];
 
 	@Expose()
 	@ValidateNested()
