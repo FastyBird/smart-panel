@@ -254,7 +254,11 @@ export class LinuxInstaller implements BaseInstaller {
 							encoding: 'utf-8',
 							stdio: 'pipe',
 						});
-						memoryMB = Math.round(parseInt(memOutput.trim(), 10) / 1024);
+						const calculatedMemory = Math.round(parseInt(memOutput.trim(), 10) / 1024);
+						// Only assign if valid (not NaN and non-negative)
+						if (!isNaN(calculatedMemory) && calculatedMemory >= 0) {
+							memoryMB = calculatedMemory;
+						}
 					} catch {
 						// Ignore
 					}
@@ -266,7 +270,11 @@ export class LinuxInstaller implements BaseInstaller {
 							{ silent: true }
 						);
 						const startTime = new Date(startTimeOutput.trim());
-						uptime = Math.floor((Date.now() - startTime.getTime()) / 1000);
+						const calculatedUptime = Math.floor((Date.now() - startTime.getTime()) / 1000);
+						// Only assign if valid (not NaN and non-negative)
+						if (!isNaN(calculatedUptime) && calculatedUptime >= 0) {
+							uptime = calculatedUptime;
+						}
 					} catch {
 						// Ignore
 					}
