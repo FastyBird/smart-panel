@@ -60,6 +60,7 @@ export class ShellyNgService implements IManagedPluginService {
 					return;
 				case 'stopping':
 					await this.waitUntil('stopped');
+					await this.initialize();
 					await this.doStart();
 					return;
 				case 'stopped':
