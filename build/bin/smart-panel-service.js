@@ -485,10 +485,12 @@ program
 			await installer.runMigrations(dataDir);
 			spinner.succeed('Migrations complete');
 
-			// Start service
-			spinner.start('Starting service...');
-			await installer.start();
-			spinner.succeed('Service started');
+			// Start service if it was running before update
+			if (wasRunning) {
+				spinner.start('Starting service...');
+				await installer.start();
+				spinner.succeed('Service started');
+			}
 
 			console.log();
 			logger.success('Update complete!');
