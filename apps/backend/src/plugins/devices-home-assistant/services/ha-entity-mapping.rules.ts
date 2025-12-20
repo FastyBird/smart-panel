@@ -64,6 +64,67 @@ export interface HaEntityMappingRule {
 }
 
 /**
+ * Classifies HA domains by their role in multi-entity devices
+ */
+export enum EntityRole {
+	PRIMARY = 'primary', // Main function: light, switch, climate, etc.
+	SECONDARY = 'secondary', // Supporting sensors on multi-entity devices
+	STANDALONE = 'standalone', // Can be primary alone: sensor-only devices
+}
+
+/**
+ * Maps HA domains to their typical role
+ */
+export const DOMAIN_ROLES: Record<HomeAssistantDomain, EntityRole> = {
+	// Primary domains - these define what the device IS
+	[HomeAssistantDomain.LIGHT]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.SWITCH]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.CLIMATE]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.COVER]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.FAN]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.LOCK]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.VALVE]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.VACUUM]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.MEDIA_PLAYER]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.HUMIDIFIER]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.ALARM_CONTROL_PANEL]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.WATER_HEATER]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.CAMERA]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.SIREN]: EntityRole.PRIMARY,
+	[HomeAssistantDomain.LAWN_MOWER]: EntityRole.PRIMARY,
+
+	// Standalone - can be primary if no other domains present
+	[HomeAssistantDomain.SENSOR]: EntityRole.STANDALONE,
+	[HomeAssistantDomain.BINARY_SENSOR]: EntityRole.STANDALONE,
+
+	// Secondary - typically supporting entities
+	[HomeAssistantDomain.BUTTON]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.INPUT_BOOLEAN]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.INPUT_NUMBER]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.INPUT_SELECT]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.INPUT_TEXT]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.REMOTE]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.SCENE]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.SCRIPT]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.AUTOMATION]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.NUMBER]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.SELECT]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.TEXT]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.UPDATE]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.DEVICE_TRACKER]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.PERSON]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.ZONE]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.WEATHER]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.CALENDAR]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.EVENT]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.IMAGE]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.IMAGE_PROCESSING]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.INPUT_BUTTON]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.INPUT_DATETIME]: EntityRole.SECONDARY,
+	[HomeAssistantDomain.TIMER]: EntityRole.SECONDARY,
+};
+
+/**
  * Home Assistant entity to Smart Panel mapping rules
  *
  * These rules define how HA entities are mapped to SP channels and properties.
@@ -79,7 +140,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.LIGHT,
 		device_category_hint: DeviceCategory.LIGHTING,
-		priority: 10,
+		priority: 50,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON },
 			{
@@ -110,7 +171,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: 'outlet',
 		channel_category: ChannelCategory.OUTLET,
 		device_category_hint: DeviceCategory.OUTLET,
-		priority: 20,
+		priority: 60,
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON }],
 	},
 	{
@@ -118,7 +179,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.SWITCHER,
 		device_category_hint: DeviceCategory.SWITCHER,
-		priority: 10,
+		priority: 50,
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON }],
 	},
 
@@ -382,7 +443,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.THERMOSTAT,
 		device_category_hint: DeviceCategory.THERMOSTAT,
-		priority: 10,
+		priority: 50,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.MODE },
 			{ ha_attribute: 'hvac_action', property_category: PropertyCategory.ACTIVE },
@@ -397,7 +458,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: ['blind', 'curtain', 'shade', 'shutter', 'awning'],
 		channel_category: ChannelCategory.WINDOW_COVERING,
 		device_category_hint: DeviceCategory.WINDOW_COVERING,
-		priority: 20,
+		priority: 60,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS },
 			{ ha_attribute: 'current_position', property_category: PropertyCategory.POSITION },
@@ -413,7 +474,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: ['door', 'garage', 'gate'],
 		channel_category: ChannelCategory.DOOR,
 		device_category_hint: DeviceCategory.DOOR,
-		priority: 20,
+		priority: 60,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS },
 			{ ha_attribute: 'current_position', property_category: PropertyCategory.POSITION },
@@ -428,7 +489,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.WINDOW_COVERING,
 		device_category_hint: DeviceCategory.WINDOW_COVERING,
-		priority: 5,
+		priority: 45,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS },
 			{ ha_attribute: 'current_position', property_category: PropertyCategory.POSITION },
@@ -443,7 +504,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.FAN,
 		device_category_hint: DeviceCategory.FAN,
-		priority: 10,
+		priority: 50,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON },
 			{ ha_attribute: 'percentage', property_category: PropertyCategory.SPEED },
@@ -460,7 +521,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.LOCK,
 		device_category_hint: DeviceCategory.LOCK,
-		priority: 10,
+		priority: 50,
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS }],
 	},
 
@@ -472,7 +533,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.VALVE,
 		device_category_hint: DeviceCategory.VALVE,
-		priority: 10,
+		priority: 50,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON },
 			{ ha_attribute: 'current_position', property_category: PropertyCategory.POSITION },
@@ -487,7 +548,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.ROBOT_VACUUM,
 		device_category_hint: DeviceCategory.ROBOT_VACUUM,
-		priority: 10,
+		priority: 50,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS },
 			{ ha_attribute: 'battery_level', property_category: PropertyCategory.PERCENTAGE },
@@ -502,7 +563,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.CAMERA,
 		device_category_hint: DeviceCategory.CAMERA,
-		priority: 10,
+		priority: 50,
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS }],
 	},
 
@@ -514,7 +575,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: 'tv',
 		channel_category: ChannelCategory.TELEVISION,
 		device_category_hint: DeviceCategory.TELEVISION,
-		priority: 20,
+		priority: 60,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON },
 			{ ha_attribute: 'volume_level', property_category: PropertyCategory.VOLUME },
@@ -525,7 +586,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: 'speaker',
 		channel_category: ChannelCategory.SPEAKER,
 		device_category_hint: DeviceCategory.SPEAKER,
-		priority: 20,
+		priority: 60,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ACTIVE },
 			{ ha_attribute: 'volume_level', property_category: PropertyCategory.VOLUME },
@@ -540,7 +601,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: ['humidifier'],
 		channel_category: ChannelCategory.HUMIDITY,
 		device_category_hint: DeviceCategory.AIR_HUMIDIFIER,
-		priority: 20,
+		priority: 60,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON },
 			{ ha_attribute: 'humidity', property_category: PropertyCategory.HUMIDITY },
@@ -551,7 +612,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: ['dehumidifier'],
 		channel_category: ChannelCategory.HUMIDITY,
 		device_category_hint: DeviceCategory.AIR_DEHUMIDIFIER,
-		priority: 20,
+		priority: 60,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON },
 			{ ha_attribute: 'humidity', property_category: PropertyCategory.HUMIDITY },
@@ -566,7 +627,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.ALARM,
 		device_category_hint: DeviceCategory.ALARM,
-		priority: 10,
+		priority: 50,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS },
 			{ ha_attribute: 'changed_by', property_category: PropertyCategory.EVENT },
@@ -581,7 +642,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.ALARM,
 		device_category_hint: DeviceCategory.ALARM,
-		priority: 10,
+		priority: 50,
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON }],
 	},
 
@@ -605,7 +666,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.HEATER,
 		device_category_hint: DeviceCategory.HEATER,
-		priority: 10,
+		priority: 50,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.MODE },
 			{ ha_attribute: 'current_temperature', property_category: PropertyCategory.TEMPERATURE },
@@ -621,7 +682,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		device_class: null,
 		channel_category: ChannelCategory.MEDIA_PLAYBACK,
 		device_category_hint: DeviceCategory.MEDIA,
-		priority: 5,
+		priority: 45,
 		property_bindings: [
 			{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS },
 			{ ha_attribute: 'volume_level', property_category: PropertyCategory.VOLUME },
@@ -817,10 +878,29 @@ export function findMatchingRule(
 }
 
 /**
- * Get all unique device categories that can be suggested based on mapped channels
+ * Get device category based on mapped channels and entity domains
+ * Prioritizes primary domains over sensors when both are present
  */
-export function inferDeviceCategory(mappedChannelCategories: ChannelCategory[]): DeviceCategory {
-	// Count device category hints from the rules that match these channels
+export function inferDeviceCategory(
+	mappedChannelCategories: ChannelCategory[],
+	entityDomains?: HomeAssistantDomain[],
+): DeviceCategory {
+	// If we have domain information, check for primary domains first
+	if (entityDomains && entityDomains.length > 0) {
+		const primaryDomains = entityDomains.filter((d) => DOMAIN_ROLES[d] === EntityRole.PRIMARY);
+
+		if (primaryDomains.length > 0) {
+			// Find the device category hint for the first primary domain
+			for (const domain of primaryDomains) {
+				const rule = HA_ENTITY_MAPPING_RULES.find((r) => r.domain === domain);
+				if (rule && rule.device_category_hint !== DeviceCategory.GENERIC) {
+					return rule.device_category_hint;
+				}
+			}
+		}
+	}
+
+	// Fallback to existing scoring logic for sensor-only devices
 	const hints = new Map<DeviceCategory, number>();
 
 	for (const rule of HA_ENTITY_MAPPING_RULES) {

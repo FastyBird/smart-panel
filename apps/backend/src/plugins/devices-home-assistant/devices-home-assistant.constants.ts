@@ -258,3 +258,20 @@ export enum WaterHeaterEntityAttribute {
 	// Whether away mode is active; typically 'on' or 'off'
 	AWAY_MODE = 'away_mode',
 }
+
+/**
+ * Home Assistant light color modes
+ * @see https://developers.home-assistant.io/docs/core/entity/light/#color-modes
+ */
+export enum LightColorMode {
+	UNKNOWN = 'unknown',
+	ONOFF = 'onoff',
+	BRIGHTNESS = 'brightness',
+	COLOR_TEMP = 'color_temp',
+	HS = 'hs',
+	XY = 'xy',
+	RGB = 'rgb',
+	RGBW = 'rgbw',
+	RGBWW = 'rgbww',
+	WHITE = 'white',
+}

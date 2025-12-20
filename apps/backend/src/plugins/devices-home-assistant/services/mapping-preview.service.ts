@@ -33,6 +33,7 @@ import {
 } from './ha-entity-mapping.rules';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
+import { LightCapabilityAnalyzer } from './light-capability.analyzer';
 
 /**
  * Service for generating mapping previews for Home Assistant devices
@@ -50,6 +51,7 @@ export class MappingPreviewService {
 	constructor(
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly homeAssistantWsService: HomeAssistantWsService,
+		private readonly lightCapabilityAnalyzer: LightCapabilityAnalyzer,
 	) {}
 
 	/**
@@ -121,8 +123,14 @@ export class MappingPreviewService {
 			}
 		}
 
+		// Collect entity domains for category inference
+		const entityDomains = consolidatedPreviews
+			.filter((e) => e.status !== 'skipped' && e.status !== 'unmapped')
+			.map((e) => e.domain as HomeAssistantDomain);
+
 		// Determine suggested device category
-		const suggestedDeviceCategory = options?.deviceCategory ?? inferDeviceCategory(mappedChannelCategories);
+		const suggestedDeviceCategory =
+			options?.deviceCategory ?? inferDeviceCategory(mappedChannelCategories, entityDomains);
 
 		// Check for missing required channels
 		const deviceSpec = devicesSchema[suggestedDeviceCategory as keyof typeof devicesSchema];
@@ -200,6 +208,11 @@ export class MappingPreviewService {
 		const deviceClass = state?.attributes?.device_class as string | null | undefined;
 		const friendlyName = state?.attributes?.friendly_name as string | undefined;
 
+		// Special handling for light entities - use capability analysis
+		if (domain === HomeAssistantDomain.LIGHT && state) {
+			return this.processLightEntity(entityId, state, overrideChannelCategory, friendlyName);
+		}
+
 		// Find matching rule
 		const rule = overrideChannelCategory
 			? this.findRuleForChannel(domain, overrideChannelCategory)
@@ -238,6 +251,83 @@ export class MappingPreviewService {
 			suggestedProperties,
 			unmappedAttributes,
 			missingRequiredProperties: missingRequired,
+		};
+	}
+
+	/**
+	 * Process light entity with capability-based property detection
+	 * This analyzes the supported_color_modes attribute to detect all available properties
+	 * even when the light is OFF and color attributes are null
+	 */
+	private processLightEntity(
+		entityId: string,
+		state: HomeAssistantStateModel,
+		overrideChannelCategory?: ChannelCategory,
+		friendlyName?: string,
+	): EntityMappingPreviewModel {
+		const capabilities = this.lightCapabilityAnalyzer.analyzeCapabilities(state);
+		const availableProperties = this.lightCapabilityAnalyzer.getAvailableProperties(capabilities);
+		const channelCategory = overrideChannelCategory ?? ChannelCategory.LIGHT;
+
+		// Generate property mappings for ALL available properties based on capabilities
+		const suggestedProperties: PropertyMappingPreviewModel[] = [];
+
+		for (const propCategory of availableProperties) {
+			const propertyMetadata = getPropertyMetadata(channelCategory, propCategory);
+			if (!propertyMetadata) continue;
+
+			const haAttribute = this.lightCapabilityAnalyzer.getHaAttributeForProperty(propCategory);
+
+			// Get current value if available
+			let currentValue: unknown = null;
+			if (haAttribute === 'fb.main_state') {
+				currentValue = state.state;
+			} else if (haAttribute === 'hs_color' && Array.isArray(state.attributes?.hs_color)) {
+				const hsColor = state.attributes.hs_color as [number, number];
+				currentValue = propCategory === PropertyCategory.HUE ? hsColor[0] : hsColor[1];
+			} else if (haAttribute === 'rgb_color' && Array.isArray(state.attributes?.rgb_color)) {
+				const rgbColor = state.attributes.rgb_color as [number, number, number];
+				const index =
+					propCategory === PropertyCategory.COLOR_RED ? 0 : propCategory === PropertyCategory.COLOR_GREEN ? 1 : 2;
+				currentValue = rgbColor[index];
+			} else {
+				currentValue = state.attributes?.[haAttribute];
+			}
+
+			// Apply brightness transform
+			if (propCategory === PropertyCategory.BRIGHTNESS && typeof currentValue === 'number') {
+				currentValue = Math.round((currentValue / 255) * 100);
+			}
+
+			suggestedProperties.push({
+				category: propCategory,
+				name: this.propertyNameFromCategory(propCategory),
+				haAttribute,
+				dataType: propertyMetadata.data_type,
+				permissions: propertyMetadata.permissions,
+				unit: propertyMetadata.unit,
+				format: propertyMetadata.format,
+				required: propertyMetadata.required,
+				currentValue: this.normalizeValue(currentValue),
+				haEntityId: entityId,
+			});
+		}
+
+		return {
+			entityId,
+			domain: HomeAssistantDomain.LIGHT as string,
+			deviceClass: null,
+			currentState: state.state,
+			attributes: state.attributes ?? {},
+			status: 'mapped',
+			suggestedChannel: {
+				category: channelCategory,
+				name: friendlyName ?? this.generateChannelName(entityId, channelCategory),
+				confidence: 'high',
+			},
+			suggestedProperties,
+			unmappedAttributes: [],
+			missingRequiredProperties: [],
 		};
 	}
 

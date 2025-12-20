@@ -283,7 +283,7 @@ export class BinarySensorEntityMapperService extends EntityMapper {
 			if (raw.toLowerCase() === 'on' || raw.toLowerCase() === 'true') {
 				return true;
 			} else if (raw.toLowerCase() === 'off' || raw.toLowerCase() === 'false') {
-				return true;
+				return false;
 			}
 		}
 

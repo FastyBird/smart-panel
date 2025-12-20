@@ -75,9 +75,8 @@ export class SwitchEntityMapperService extends EntityMapper {
 		]);
 
 		if (!onProp) {
-			return null;
-		} else {
 			this.logger.warn('Missing main state property');
+			return null;
 		}
 
 		const isOn = values.has(onProp.id) ? values.get(onProp.id) : onProp.value;
