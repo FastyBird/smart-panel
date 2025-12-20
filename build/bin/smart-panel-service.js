@@ -457,7 +457,9 @@ program
 			spinner.start('Updating packages...');
 			try {
 				const packageSpec = `@fastybird/smart-panel${versionArg}`;
-				execFileSync('npm', ['update', packageSpec, '-g'], {
+				// Use 'install' when a specific version/tag is requested, 'update' for latest
+				const npmCommand = versionArg ? 'install' : 'update';
+				execFileSync('npm', [npmCommand, packageSpec, '-g'], {
 					stdio: 'inherit',
 				});
 				spinner.succeed('Packages updated');
