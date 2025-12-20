@@ -34,6 +34,8 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 
 	private state: ServiceState = 'stopped';
 
+	private startStopLock: Promise<void> = Promise.resolve();
+
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly scheduler: SchedulerRegistry,
@@ -44,47 +46,77 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 	 * Called by PluginServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
-		if (this.state === 'started' || this.state === 'starting') {
-			return;
-		}
+		await this.withLock(async () => {
+			switch (this.state) {
+				case 'started':
+					return;
+				case 'starting':
+					return;
+				case 'stopping':
+					await this.waitUntil('stopped');
+					break;
+				case 'stopped':
+				case 'error':
+					// Both stopped and error states can be started
+					break;
+			}
 
-		this.state = 'starting';
+			this.state = 'starting';
 
-		this.logger.log('[ROTATING FILE LOGGER][LOGGER] Starting file logger service');
+			this.logger.log('[ROTATING FILE LOGGER][LOGGER] Starting file logger service');
 
-		await this.validateAndPrepareDir().catch((err: Error) => {
-			this.logger.error(`[ROTATING FILE LOGGER][LOGGER] Rotating file logger disabled: ${err?.message ?? err}`);
+			try {
+				await this.validateAndPrepareDir();
 
-			this.dir = undefined;
-			this.state = 'error';
+				this.registerCleanupJob();
+				this.state = 'started';
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(`[ROTATING FILE LOGGER][LOGGER] Rotating file logger disabled: ${err?.message ?? err}`);
+
+				this.dir = undefined;
+				this.state = 'error';
+
+				throw error;
+			}
 		});
-
-		if (this.dir) {
-			this.registerCleanupJob();
-			this.state = 'started';
-		}
 	}
 
 	/**
 	 * Stop the service gracefully.
 	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
 	 */
-	stop(): Promise<void> {
-		if (this.state === 'stopped' || this.state === 'stopping') {
-			return Promise.resolve();
-		}
+	async stop(): Promise<void> {
+		await this.withLock(async () => {
+			switch (this.state) {
+				case 'stopped':
+					return;
+				case 'stopping':
+					return;
+				case 'starting':
+					await this.waitUntil('started', 'stopped', 'error');
+					// If start failed, we're already stopped/error - just return
+					if (this.getState() !== 'started') {
+						return;
+					}
+				// fallthrough
+				case 'started':
+				case 'error':
+					// Both started and error states need cleanup
+					break;
+			}
 
-		this.state = 'stopping';
+			this.state = 'stopping';
 
-		this.logger.log('[ROTATING FILE LOGGER][LOGGER] Stopping file logger service');
+			this.logger.log('[ROTATING FILE LOGGER][LOGGER] Stopping file logger service');
 
-		this.unregisterCleanupJob();
+			this.unregisterCleanupJob();
 
-		this.dir = undefined;
+			this.dir = undefined;
 
-		this.state = 'stopped';
-
-		return Promise.resolve();
+			this.state = 'stopped';
+		});
 	}
 
 	/**
@@ -274,6 +306,40 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 					this.logger.warn(`[ROTATING FILE LOGGER][LOGGER] Failed to remove old log "${name}": ${err?.message ?? err}`);
 				});
 			}
+		}
+	}
+
+	private async withLock<T>(fn: () => Promise<T>): Promise<T> {
+		const previousLock = this.startStopLock;
+
+		let releaseLock: () => void = () => {};
+
+		this.startStopLock = new Promise((resolve) => {
+			releaseLock = resolve;
+		});
+
+		try {
+			await previousLock;
+
+			return await fn();
+		} finally {
+			releaseLock();
+		}
+	}
+
+	private async waitUntil(...states: ServiceState[]): Promise<void> {
+		const maxWait = 10000;
+		const interval = 100;
+		let elapsed = 0;
+
+		while (!states.includes(this.state) && elapsed < maxWait) {
+			await new Promise((resolve) => setTimeout(resolve, interval));
+
+			elapsed += interval;
+		}
+
+		if (!states.includes(this.state)) {
+			throw new Error(`Timeout waiting for state ${states.join(' or ')}, current state: ${this.state}`);
 		}
 	}
 }

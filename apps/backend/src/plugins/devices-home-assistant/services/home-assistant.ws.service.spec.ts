@@ -94,6 +94,9 @@ describe('HomeAssistantWsService', () => {
 		// Start the service - this initiates connection
 		const startPromise = service.start();
 
+		// Wait for the lock to be acquired and state to transition
+		await new Promise((resolve) => setImmediate(resolve));
+
 		// State should be 'starting' while waiting for auth
 		expect(service.getState()).toBe('starting');
 
@@ -109,11 +112,15 @@ describe('HomeAssistantWsService', () => {
 	it('should set error state on auth_invalid', async () => {
 		const startPromise = service.start();
 
+		// Wait for the lock to be acquired and state to transition
+		await new Promise((resolve) => setImmediate(resolve));
+
 		// Simulate auth flow with invalid credentials
 		await service['handleMessage'](JSON.stringify({ type: 'auth_required' }));
 		await service['handleMessage'](JSON.stringify({ type: 'auth_invalid', message: 'Invalid token' }));
 
-		await startPromise;
+		// start() now throws on error to signal failure to PluginServiceManagerService
+		await expect(startPromise).rejects.toThrow('Invalid token');
 
 		expect(service.getState()).toBe('error');
 	});

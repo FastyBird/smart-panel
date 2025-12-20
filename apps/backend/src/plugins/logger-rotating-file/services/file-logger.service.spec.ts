@@ -143,7 +143,8 @@ describe('FileLoggerService', () => {
 		it('handles invalid dir: logs error and still registers nothing', async () => {
 			(fsMock.stat as jest.Mock).mockResolvedValue({ isDirectory: () => false } as any);
 
-			await svc.start();
+			// start() now throws on error to signal failure to PluginServiceManagerService
+			await expect(svc.start()).rejects.toThrow('Path is not a directory');
 
 			expect(Logger.prototype.error).toHaveBeenCalledWith(
 				expect.stringContaining('[ROTATING FILE LOGGER][LOGGER] Rotating file logger disabled'),

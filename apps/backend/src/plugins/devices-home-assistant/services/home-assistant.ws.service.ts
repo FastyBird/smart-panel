@@ -81,6 +81,8 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	 */
 	private intentionalDisconnect = false;
 
+	private startStopLock: Promise<void> = Promise.resolve();
+
 	constructor(
 		private readonly configService: ConfigService,
 		@Inject(forwardRef(() => HomeAssistantHttpService))
@@ -105,61 +107,89 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	 * is established AND authentication succeeds (auth_ok received).
 	 */
 	async start(): Promise<void> {
-		if (this.state === 'started' || this.state === 'starting') {
-			return;
-		}
+		await this.withLock(async () => {
+			switch (this.state) {
+				case 'started':
+					return;
+				case 'starting':
+					return;
+				case 'stopping':
+					await this.waitUntil('stopped');
+					break;
+				case 'stopped':
+				case 'error':
+					// Both stopped and error states can be started
+					break;
+			}
 
-		if (this.apiKey === null) {
-			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Missing API key for Home Assistant WS service');
-			this.state = 'error';
+			if (this.apiKey === null) {
+				this.logger.warn('[HOME ASSISTANT][WS SERVICE] Missing API key for Home Assistant WS service');
+				this.state = 'error';
 
-			return;
-		}
+				return;
+			}
 
-		this.state = 'starting';
+			this.state = 'starting';
 
-		this.logger.log('[HOME ASSISTANT][WS SERVICE] Starting Home Assistant WebSocket service');
+			this.logger.log('[HOME ASSISTANT][WS SERVICE] Starting Home Assistant WebSocket service');
 
-		try {
-			await this.connectAndAuthenticate();
+			try {
+				await this.connectAndAuthenticate();
 
-			this.state = 'started';
+				this.state = 'started';
 
-			this.logger.log('[HOME ASSISTANT][WS SERVICE] Home Assistant WebSocket service started successfully');
-		} catch (error) {
-			this.logger.error('[HOME ASSISTANT][WS SERVICE] Failed to start WebSocket service', {
-				message: error instanceof Error ? error.message : String(error),
-			});
+				this.logger.log('[HOME ASSISTANT][WS SERVICE] Home Assistant WebSocket service started successfully');
+			} catch (error) {
+				this.logger.error('[HOME ASSISTANT][WS SERVICE] Failed to start WebSocket service', {
+					message: error instanceof Error ? error.message : String(error),
+				});
 
-			this.state = 'error';
+				this.state = 'error';
 
-			this.disconnect();
-		}
+				this.disconnect();
+
+				throw error;
+			}
+		});
 	}
 
 	/**
 	 * Stop the service gracefully.
 	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
 	 */
-	stop(): Promise<void> {
-		if (this.state === 'stopped' || this.state === 'stopping') {
-			return Promise.resolve();
-		}
+	async stop(): Promise<void> {
+		await this.withLock(async () => {
+			switch (this.state) {
+				case 'stopped':
+					return;
+				case 'stopping':
+					return;
+				case 'starting':
+					await this.waitUntil('started', 'stopped', 'error');
+					// If start failed, we're already stopped/error - just return
+					if (this.getState() !== 'started') {
+						return;
+					}
+				// fallthrough
+				case 'started':
+				case 'error':
+					// Both started and error states need cleanup
+					break;
+			}
 
-		this.state = 'stopping';
+			this.state = 'stopping';
 
-		this.logger.log('[HOME ASSISTANT][WS SERVICE] Stopping Home Assistant WebSocket service');
+			this.logger.log('[HOME ASSISTANT][WS SERVICE] Stopping Home Assistant WebSocket service');
 
-		if (this.reconnectTimeout) {
-			clearTimeout(this.reconnectTimeout);
-			this.reconnectTimeout = null;
-		}
+			if (this.reconnectTimeout) {
+				clearTimeout(this.reconnectTimeout);
+				this.reconnectTimeout = null;
+			}
 
-		this.disconnect();
+			this.disconnect();
 
-		this.state = 'stopped';
-
-		return Promise.resolve();
+			this.state = 'stopped';
+		});
 	}
 
 	/**
@@ -523,5 +553,39 @@ export class HomeAssistantWsService implements IManagedPluginService {
 				event_type: 'state_changed',
 			}),
 		);
+	}
+
+	private async withLock<T>(fn: () => Promise<T>): Promise<T> {
+		const previousLock = this.startStopLock;
+
+		let releaseLock: () => void = () => {};
+
+		this.startStopLock = new Promise((resolve) => {
+			releaseLock = resolve;
+		});
+
+		try {
+			await previousLock;
+
+			return await fn();
+		} finally {
+			releaseLock();
+		}
+	}
+
+	private async waitUntil(...states: ServiceState[]): Promise<void> {
+		const maxWait = 10000;
+		const interval = 100;
+		let elapsed = 0;
+
+		while (!states.includes(this.state) && elapsed < maxWait) {
+			await new Promise((resolve) => setTimeout(resolve, interval));
+
+			elapsed += interval;
+		}
+
+		if (!states.includes(this.state)) {
+			throw new Error(`Timeout waiting for state ${states.join(' or ')}, current state: ${this.state}`);
+		}
 	}
 }
