@@ -258,6 +258,16 @@ export type ExtensionsModuleGetExtensionOperation = operations['get-extensions-m
 export type ExtensionsModuleGetExtensionsOperation = operations['get-extensions-module-extensions'];
 export type ExtensionsModuleUpdateExtensionOperation = operations['update-extensions-module-extension'];
 
+// Extensions Module Services Operations
+export type ExtensionsModuleGetServicesOperation = operations['get-extensions-module-services'];
+export type ExtensionsModuleGetServiceOperation = operations['get-extensions-module-service'];
+export type ExtensionsModuleStartServiceOperation = operations['start-extensions-module-service'];
+export type ExtensionsModuleStopServiceOperation = operations['stop-extensions-module-service'];
+export type ExtensionsModuleRestartServiceOperation = operations['restart-extensions-module-service'];
+
+// Extensions Module Services Schemas
+export type ExtensionsModuleServiceStatusSchema = components['schemas']['ExtensionsModuleDataServiceStatus'];
+
 // Weather Module Operations
 export type WeatherModuleGetPrimaryWeatherOperation = operations['get-weather-module-primary-weather'];
 export type WeatherModuleGetAllWeatherOperation = operations['get-weather-module-all-weather'];
@@ -327,3 +337,7 @@ export { SystemModuleCreateLogEntryType as SystemModuleLogEntryType } from './op
 // Weather Config Location Types
 // Weather location type enums removed - weather config is now accessed via weather-module
 // ==============================
+
+// Extensions Module Service State Enum
+// =====================================
+export { ExtensionsModuleDataServiceStatusState as ExtensionsModuleServiceState } from './openapi';
