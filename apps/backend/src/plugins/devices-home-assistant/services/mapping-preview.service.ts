@@ -272,6 +272,8 @@ export class MappingPreviewService {
 		// Generate property mappings for ALL available properties based on capabilities
 		const suggestedProperties: PropertyMappingPreviewModel[] = [];
 
+		const mappedPropertyCategories = new Set<PropertyCategory>();
+
 		for (const propCategory of availableProperties) {
 			const propertyMetadata = getPropertyMetadata(channelCategory, propCategory);
 			if (!propertyMetadata) continue;
@@ -321,6 +323,18 @@ export class MappingPreviewService {
 				currentValue: this.normalizeValue(currentValue),
 				haEntityId: entityId,
 			});
+
+			mappedPropertyCategories.add(propCategory);
+		}
+
+		// Check for missing required properties
+		const requiredProperties = getRequiredProperties(channelCategory);
+		const missingRequired = requiredProperties.filter((prop) => !mappedPropertyCategories.has(prop));
+
+		// Determine mapping status
+		let status: 'mapped' | 'partial' | 'unmapped' = 'mapped';
+		if (missingRequired.length > 0) {
+			status = 'partial';
 		}
 
 		return {
@@ -329,7 +343,7 @@ export class MappingPreviewService {
 			deviceClass: null,
 			currentState: state.state,
 			attributes: state.attributes ?? {},
-			status: 'mapped',
+			status,
 			suggestedChannel: {
 				category: channelCategory,
 				name: friendlyName ?? this.generateChannelName(entityId, channelCategory),
@@ -337,7 +351,7 @@ export class MappingPreviewService {
 			},
 			suggestedProperties,
 			unmappedAttributes: [],
-			missingRequiredProperties: [],
+			missingRequiredProperties: missingRequired,
 		};
 	}
 
