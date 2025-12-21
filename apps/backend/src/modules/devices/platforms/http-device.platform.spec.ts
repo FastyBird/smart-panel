@@ -82,6 +82,7 @@ describe('HttpDevicePlatform', () => {
 			expect(loggerWarnSpy).toHaveBeenCalledTimes(6);
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				`[HttpDevicePlatform] Sending command failed after 3 attempts`,
+				undefined,
 				'devices-module',
 			);
 		});
@@ -109,6 +110,7 @@ describe('HttpDevicePlatform', () => {
 			expect(mockedFetch).toHaveBeenCalledTimes(1);
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining('[HttpDevicePlatform] Error processing command'),
+				undefined,
 				'devices-module',
 			);
 		});

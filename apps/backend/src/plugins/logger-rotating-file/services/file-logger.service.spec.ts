@@ -148,6 +148,7 @@ describe('FileLoggerService', () => {
 
 			expect(Logger.prototype.error).toHaveBeenCalledWith(
 				expect.stringContaining('Rotating file logger disabled'),
+				undefined,
 				expect.anything(),
 			);
 			expect(scheduler.addCronJob).not.toHaveBeenCalled();
@@ -190,6 +191,7 @@ describe('FileLoggerService', () => {
 
 			expect(Logger.prototype.error).toHaveBeenCalledWith(
 				expect.stringContaining('Failed to append log'),
+				undefined,
 				expect.anything(),
 			);
 		});

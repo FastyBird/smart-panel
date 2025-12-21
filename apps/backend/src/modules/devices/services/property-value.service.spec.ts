@@ -75,6 +75,7 @@ describe('PropertyValueService', () => {
 
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining('[PropertyValueService] Unsupported data type'),
+				undefined,
 				'devices-module',
 			);
 		});

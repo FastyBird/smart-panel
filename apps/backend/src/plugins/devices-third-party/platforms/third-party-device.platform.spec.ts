@@ -148,6 +148,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		expect(result).toBe(false);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			`[ThirdPartyDevicePlatform] Unexpected response status=500 id=${mockDevice.id}`,
+			undefined,
 			'devices-third-party-plugin',
 		);
 	});
@@ -167,6 +168,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		expect(result).toBe(false);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('[ThirdPartyDevicePlatform] Error processing property update'),
+			undefined,
 			'devices-third-party-plugin',
 		);
 	});

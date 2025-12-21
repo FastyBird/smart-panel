@@ -118,6 +118,7 @@ describe('ShellyV1DevicePlatform', () => {
 		expect(ok).toBe(false);
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
 			'[ShellyV1DevicePlatform] Failed to update device property, invalid device provided',
+			undefined,
 			'devices-shelly-v1-plugin',
 		);
 	});
@@ -389,6 +390,7 @@ describe('ShellyV1DevicePlatform', () => {
 			expect(ok).toBe(false);
 			expect(Logger.prototype.error).toHaveBeenCalledWith(
 				expect.stringContaining('[ShellyV1DevicePlatform] Error processing property update'),
+				undefined,
 				'devices-shelly-v1-plugin',
 			);
 		});

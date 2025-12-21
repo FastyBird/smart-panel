@@ -602,6 +602,7 @@ describe('ShellyV1Service', () => {
 
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				expect.not.stringContaining('[SHELLY V1]'),
+				undefined,
 				'devices-shelly-v1-plugin',
 			);
 			loggerErrorSpy.mockRestore();

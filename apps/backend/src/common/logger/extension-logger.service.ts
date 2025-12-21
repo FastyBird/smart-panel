@@ -51,10 +51,12 @@ export class ExtensionLoggerService {
 
 	/**
 	 * Log an error message.
+	 * Note: NestJS Logger.error() has signature (message, stack?, context?)
+	 * We pass undefined for stack and extensionType as context.
 	 */
 	error(message: string, context?: string | Error | Record<string, unknown>): void {
 		const formattedMessage = this.formatMessageWithContext(message, context);
-		this.logger.error(formattedMessage, this.extensionType);
+		this.logger.error(formattedMessage, undefined, this.extensionType);
 	}
 
 	/**

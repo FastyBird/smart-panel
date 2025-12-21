@@ -240,6 +240,7 @@ describe('PropertyCommandService', () => {
 		expect(result.results).toBe('Invalid payload');
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('[PropertyCommandService] Command validation failed'),
+			undefined,
 			'devices-module',
 		);
 	});
@@ -307,6 +308,7 @@ describe('PropertyCommandService', () => {
 		expect(result.results).toEqual([{ device: mockDevice.id, success: false, reason: 'Execution failed' }]);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			`[PropertyCommandService] Batch command execution failed for deviceId=${mockDevice.id}`,
+			undefined,
 			'devices-module',
 		);
 	});
