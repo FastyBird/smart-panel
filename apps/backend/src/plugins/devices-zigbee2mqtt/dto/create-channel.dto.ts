@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
-import { IsOptional, IsString, ValidateIf } from 'class-validator';
+import { IsString } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { CreateChannelDto } from '../../../modules/devices/dto/create-channel.dto';
 import { DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
@@ -17,17 +17,4 @@ export class CreateZigbee2mqttChannelDto extends CreateChannelDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel type string."}]' })
 	readonly type: typeof DEVICES_ZIGBEE2MQTT_TYPE;
-
-	@ApiPropertyOptional({
-		description: 'Zigbee2MQTT endpoint identifier',
-		example: 'l1',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString({
-		message: '[{"field":"endpoint","reason":"Endpoint must be a valid string."}]',
-	})
-	@ValidateIf((_, value) => value !== null)
-	endpoint?: string | null;
 }

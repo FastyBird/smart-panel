@@ -414,6 +414,16 @@ export class Z2mMqttClientAdapterService {
 
 			this.logger.log(`Received device registry with ${devices.length} devices`);
 
+			// Debug: Log device definitions for troubleshooting
+			for (const device of devices) {
+				if (device.definition) {
+					this.logger.debug(
+						`Device ${device.friendly_name}: ${device.definition.exposes?.length ?? 0} exposes, ` +
+							`types: ${device.definition.exposes?.map((e) => e.type).join(', ') ?? 'none'}`,
+					);
+				}
+			}
+
 			// Update internal registry
 			for (const device of devices) {
 				// Skip coordinator and unsupported devices
@@ -522,14 +532,24 @@ export class Z2mMqttClientAdapterService {
 			return;
 		}
 
+		// Skip bridge sub-topics that might slip through
+		if (friendlyName.startsWith('bridge/')) {
+			return;
+		}
+
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
+
+			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
 
 			// Update internal registry
 			const device = this.deviceRegistry.get(friendlyName);
 			if (device) {
 				device.currentState = { ...device.currentState, ...state };
 				device.lastSeen = new Date();
+				this.logger.debug(`Updated internal registry for "${friendlyName}"`);
+			} else {
+				this.logger.debug(`Device "${friendlyName}" not in internal registry`);
 			}
 
 			// Emit state changed event
@@ -549,6 +569,8 @@ export class Z2mMqttClientAdapterService {
 	 * Handle device availability message
 	 */
 	private handleDeviceAvailabilityMessage(friendlyName: string, message: string): void {
+		this.logger.debug(`Received availability for "${friendlyName}": ${message}`);
+
 		try {
 			let available: boolean;
 

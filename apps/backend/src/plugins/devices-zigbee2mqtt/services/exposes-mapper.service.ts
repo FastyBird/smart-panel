@@ -18,7 +18,6 @@ import {
 	COMMON_PROPERTY_MAPPINGS,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	Z2M_ACCESS,
-	Z2M_CHANNEL_IDENTIFIERS,
 	Z2M_GENERIC_TYPES,
 	Z2M_SPECIFIC_TYPES,
 	mapZ2mAccessToPermissions,
@@ -52,6 +51,7 @@ export interface MappedProperty {
 	identifier: string;
 	name: string;
 	category: PropertyCategory;
+	channelCategory: ChannelCategory;
 	dataType: DataTypeType;
 	permissions: PermissionType[];
 	z2mProperty: string;
@@ -145,8 +145,9 @@ export class Z2mExposesMapperService {
 	 * Map generic expose to a sensor channel
 	 */
 	private mapGenericExpose(expose: Z2mExpose): MappedChannel[] {
-		// Skip config and diagnostic exposes
-		if (expose.category === 'config' || expose.category === 'diagnostic') {
+		// Skip config exposes (settings like calibration, sensitivity, etc.)
+		// Keep diagnostic exposes (battery, linkquality, etc.) - they're operational data
+		if (expose.category === 'config') {
 			return [];
 		}
 
@@ -155,14 +156,17 @@ export class Z2mExposesMapperService {
 			return [];
 		}
 
-		// Determine channel based on property type
-		const channelInfo = this.determineChannelForProperty(property);
+		// Use the channel category from the property mapping
+		// Each sensor type gets its own channel (temperature, humidity, occupancy, etc.)
+		const channelCategory = property.channelCategory;
+		const channelIdentifier = channelCategory.toString();
+		const channelName = this.formatChannelName(channelIdentifier);
 
 		return [
 			{
-				identifier: channelInfo.identifier,
-				name: channelInfo.name,
-				category: channelInfo.category,
+				identifier: channelIdentifier,
+				name: channelName,
+				category: channelCategory,
 				endpoint: expose.endpoint ?? undefined,
 				properties: [property],
 			},
@@ -178,9 +182,53 @@ export class Z2mExposesMapperService {
 			return null;
 		}
 
-		// Skip if no access or only GET access
+		// Skip config properties - these are settings, not operational data
+		// Note: diagnostic properties (battery, linkquality) are operational data we want to keep
+		if (expose.category === 'config') {
+			this.logger.debug(`Skipping config property: ${propertyName}`);
+			return null;
+		}
+
+		// Skip calibration and settings properties that Z2M doesn't mark as config
+		const skipProperties = [
+			// Calibration settings
+			'temperature_calibration',
+			'humidity_calibration',
+			'illuminance_calibration',
+			'pm25_calibration',
+			// Unit settings
+			'temperature_unit',
+			// Precision settings
+			'temperature_precision',
+			'humidity_precision',
+			// Radar/sensor settings
+			'radar_sensitivity',
+			'minimum_range',
+			'maximum_range',
+			'detection_delay',
+			'fading_time',
+			// Motor/cover settings
+			'reverse_direction',
+			// Diagnostic enum (not useful for display)
+			'self_test',
+			// Valve settings
+			'threshold',
+			'timer',
+			// Light settings
+			'effect',
+			'do_not_disturb',
+			'color_power_on_behavior',
+			// Identification
+			'identify',
+		];
+		if (skipProperties.includes(propertyName)) {
+			this.logger.debug(`Skipping settings property: ${propertyName}`);
+			return null;
+		}
+
+		// Skip if no access at all
 		const access = expose.access ?? Z2M_ACCESS.STATE;
-		if (access === 0 || access === Z2M_ACCESS.GET) {
+		if (access === 0) {
 			return null;
 		}
 
@@ -245,10 +293,24 @@ export class Z2mExposesMapperService {
 		// Determine property category
 		const category = commonMapping?.category ?? this.inferPropertyCategory(propertyName, expose.type);
 
+		// Determine channel category from mapping or infer from property category
+		const channelCategory =
+			commonMapping?.channelCategory ?? this.inferChannelCategoryFromProperty(propertyName, category);
+
+		// Skip if no valid channel category (property doesn't fit any known channel)
+		if (channelCategory === null) {
+			this.logger.debug(`Skipping property with no channel mapping: ${propertyName} (category: ${category})`);
+			return null;
+		}
+
+		// Use spec-compliant identifier from mapping if available, otherwise derive from Z2M property name
+		const identifier = commonMapping?.propertyIdentifier ?? this.mapToSpecIdentifier(propertyName, category);
+
 		return {
-			identifier: this.sanitizeIdentifier(propertyName),
+			identifier,
 			name: this.formatPropertyName(label),
 			category,
+			channelCategory,
 			dataType,
 			permissions,
 			z2mProperty: propertyName,
@@ -261,52 +323,145 @@ export class Z2mExposesMapperService {
 	}
 
 	/**
-	 * Determine which channel a property belongs to
+	 * Map Z2M property name to spec-compliant identifier
 	 */
-	private determineChannelForProperty(property: MappedProperty): {
-		identifier: string;
-		name: string;
-		category: ChannelCategory;
-	} {
-		// Binary sensors
-		if (
-			property.dataType === DataTypeType.BOOL &&
-			[PropertyCategory.DETECTED, PropertyCategory.FAULT].includes(property.category)
-		) {
-			return {
-				identifier: Z2M_CHANNEL_IDENTIFIERS.BINARY_SENSOR,
-				name: 'Binary Sensor',
-				category: ChannelCategory.GENERIC,
-			};
-		}
+	private mapToSpecIdentifier(propertyName: string, category: PropertyCategory): string {
+		// The identifier should match the property category (which matches spec)
+		// This ensures properties use spec-compliant identifiers
+		return category.toString();
+	}
 
-		// Numeric sensors
-		if (
-			[
-				PropertyCategory.TEMPERATURE,
-				PropertyCategory.HUMIDITY,
-				PropertyCategory.MEASURED,
-				PropertyCategory.LEVEL,
-				PropertyCategory.VOLTAGE,
-				PropertyCategory.CURRENT,
-				PropertyCategory.POWER,
-				PropertyCategory.CONSUMPTION,
-				PropertyCategory.LINK_QUALITY,
-			].includes(property.category)
-		) {
-			return {
-				identifier: Z2M_CHANNEL_IDENTIFIERS.SENSOR,
-				name: 'Sensor',
-				category: ChannelCategory.GENERIC,
-			};
-		}
+	/**
+	 * Infer channel category from property name and category
+	 * Returns null if the property should be skipped (not mapped to any channel)
+	 */
+	private inferChannelCategoryFromProperty(propertyName: string, category: PropertyCategory): ChannelCategory | null {
+		const name = propertyName.toLowerCase();
 
-		// Default to generic sensor
-		return {
-			identifier: Z2M_CHANNEL_IDENTIFIERS.SENSOR,
-			name: 'Sensor',
-			category: ChannelCategory.GENERIC,
-		};
+		// Map property categories to channel categories
+		switch (category) {
+			case PropertyCategory.TEMPERATURE:
+				return ChannelCategory.TEMPERATURE;
+			case PropertyCategory.HUMIDITY:
+				return ChannelCategory.HUMIDITY;
+			case PropertyCategory.DETECTED:
+			case PropertyCategory.TAMPERED:
+				// Infer specific sensor type from property name
+				if (name.includes('occupancy') || name.includes('presence') || name.includes('motion')) {
+					return ChannelCategory.OCCUPANCY;
+				}
+				if (name.includes('contact') || name.includes('door') || name.includes('window')) {
+					return ChannelCategory.CONTACT;
+				}
+				if (name.includes('water') || name.includes('leak')) {
+					return ChannelCategory.LEAK;
+				}
+				if (name.includes('smoke')) {
+					return ChannelCategory.SMOKE;
+				}
+				if (name.includes('gas') || name.includes('co2') || name.includes('carbon')) {
+					return ChannelCategory.CARBON_DIOXIDE;
+				}
+				if (name.includes('vibration')) {
+					return ChannelCategory.MOTION;
+				}
+				return ChannelCategory.OCCUPANCY; // Default for detected
+			case PropertyCategory.ON:
+				return ChannelCategory.SWITCHER;
+			case PropertyCategory.BRIGHTNESS:
+			case PropertyCategory.COLOR_TEMPERATURE:
+			case PropertyCategory.HUE:
+			case PropertyCategory.SATURATION:
+				return ChannelCategory.LIGHT;
+			case PropertyCategory.POSITION:
+			case PropertyCategory.TILT:
+				return ChannelCategory.WINDOW_COVERING;
+			case PropertyCategory.LOCKED:
+				return ChannelCategory.LOCK;
+			case PropertyCategory.PERCENTAGE:
+			case PropertyCategory.FAULT:
+			case PropertyCategory.LEVEL:
+				// Check if it's battery related
+				if (name.includes('battery')) {
+					return ChannelCategory.BATTERY;
+				}
+				return ChannelCategory.BATTERY; // Default for percentage/level
+			case PropertyCategory.VOLTAGE:
+			case PropertyCategory.CURRENT:
+			case PropertyCategory.POWER:
+				return ChannelCategory.ELECTRICAL_POWER;
+			case PropertyCategory.CONSUMPTION:
+				return ChannelCategory.ELECTRICAL_ENERGY;
+			case PropertyCategory.MEASURED:
+				// Infer from property name
+				if (name.includes('illuminance') || name.includes('lux') || name.includes('light')) {
+					return ChannelCategory.ILLUMINANCE;
+				}
+				if (name.includes('pressure')) {
+					return ChannelCategory.PRESSURE;
+				}
+				if (name.includes('co2') || name.includes('carbon_dioxide')) {
+					return ChannelCategory.CARBON_DIOXIDE;
+				}
+				if (name.includes('voc') || name.includes('volatile')) {
+					return ChannelCategory.VOLATILE_ORGANIC_COMPOUNDS;
+				}
+				if (name.includes('pm25') || name.includes('pm10') || name.includes('particulate')) {
+					return ChannelCategory.AIR_PARTICULATE;
+				}
+				// Default to temperature for unknown measured values
+				return ChannelCategory.TEMPERATURE;
+			case PropertyCategory.MODE:
+			case PropertyCategory.STATUS:
+				// Infer from property name for modes/status
+				if (
+					name.includes('thermostat') ||
+					name.includes('climate') ||
+					name.includes('heating') ||
+					name.includes('cooling') ||
+					name.includes('system_mode') ||
+					name.includes('running_state')
+				) {
+					return ChannelCategory.THERMOSTAT;
+				}
+				if (name.includes('fan')) {
+					return ChannelCategory.FAN;
+				}
+				if (name.includes('cover') || name.includes('motor') || name.includes('moving')) {
+					return ChannelCategory.WINDOW_COVERING;
+				}
+				if (name.includes('air_quality') || name.includes('pm25') || name.includes('pm10')) {
+					return ChannelCategory.AIR_PARTICULATE;
+				}
+				// Skip unknown mode/status properties - they're likely config settings
+				return null;
+			case PropertyCategory.DISTANCE:
+				return ChannelCategory.OCCUPANCY;
+			case PropertyCategory.SPEED:
+				return ChannelCategory.FAN;
+			case PropertyCategory.EVENT:
+				return ChannelCategory.DOORBELL; // Actions/events go to doorbell channel
+			case PropertyCategory.LINK_QUALITY:
+				return ChannelCategory.DEVICE_INFORMATION;
+			default:
+				// Try to infer from property name as last resort
+				if (name.includes('temperature') || name.includes('temp')) {
+					return ChannelCategory.TEMPERATURE;
+				}
+				if (name.includes('humidity')) {
+					return ChannelCategory.HUMIDITY;
+				}
+				if (name.includes('battery')) {
+					return ChannelCategory.BATTERY;
+				}
+				if (name.includes('illuminance') || name.includes('lux')) {
+					return ChannelCategory.ILLUMINANCE;
+				}
+				if (name.includes('pressure')) {
+					return ChannelCategory.PRESSURE;
+				}
+				return ChannelCategory.DEVICE_INFORMATION;
+		}
 	}
 
 	/**
@@ -402,7 +557,8 @@ export class Z2mExposesMapperService {
 			return PropertyCategory.STATUS;
 		}
 
-		return PropertyCategory.GENERIC;
+		// Default to STATUS for unknown properties (GENERIC is deprecated)
+		return PropertyCategory.STATUS;
 	}
 
 	/**

@@ -159,6 +159,19 @@ export type DevicesWledPluginCreateChannelPropertySchema = components['schemas']
 export type DevicesWledPluginUpdateChannelPropertySchema = components['schemas']['DevicesWledPluginUpdateChannelProperty'];
 export type DevicesWledPluginChannelPropertySchema = components['schemas']['DevicesWledPluginDataChannelProperty'];
 
+// Devices Zigbee2MQTT Plugin Schemas
+export type DevicesZigbee2mqttPluginUpdateConfigSchema = components['schemas']['DevicesZigbee2mqttPluginUpdateConfig'];
+export type DevicesZigbee2mqttPluginConfigSchema = components['schemas']['DevicesZigbee2mqttPluginDataConfig'];
+export type DevicesZigbee2mqttPluginCreateDeviceSchema = components['schemas']['DevicesZigbee2mqttPluginCreateDevice'];
+export type DevicesZigbee2mqttPluginUpdateDeviceSchema = components['schemas']['DevicesZigbee2mqttPluginUpdateDevice'];
+export type DevicesZigbee2mqttPluginDeviceSchema = components['schemas']['DevicesZigbee2mqttPluginDataDevice'];
+export type DevicesZigbee2mqttPluginCreateChannelSchema = components['schemas']['DevicesZigbee2mqttPluginCreateChannel'];
+export type DevicesZigbee2mqttPluginUpdateChannelSchema = components['schemas']['DevicesZigbee2mqttPluginUpdateChannel'];
+export type DevicesZigbee2mqttPluginChannelSchema = components['schemas']['DevicesZigbee2mqttPluginDataChannel'];
+export type DevicesZigbee2mqttPluginCreateChannelPropertySchema = components['schemas']['DevicesZigbee2mqttPluginCreateChannelProperty'];
+export type DevicesZigbee2mqttPluginUpdateChannelPropertySchema = components['schemas']['DevicesZigbee2mqttPluginUpdateChannelProperty'];
+export type DevicesZigbee2mqttPluginChannelPropertySchema = components['schemas']['DevicesZigbee2mqttPluginDataChannelProperty'];
+
 // Devices Third Party Plugin Schemas
 export type DevicesThirdPartyPluginCreateDeviceSchema = components['schemas']['DevicesThirdPartyPluginCreateDevice'];
 export type DevicesThirdPartyPluginUpdateDeviceSchema = components['schemas']['DevicesThirdPartyPluginUpdateDevice'];

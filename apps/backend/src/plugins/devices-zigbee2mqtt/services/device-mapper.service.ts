@@ -7,6 +7,7 @@ import {
 	ConnectionState,
 	DataTypeType,
 	PermissionType,
+	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -23,7 +24,6 @@ import { CreateZigbee2mqttChannelPropertyDto } from '../dto/create-channel-prope
 import { CreateZigbee2mqttChannelDto } from '../dto/create-channel.dto';
 import { CreateZigbee2mqttDeviceDto } from '../dto/create-device.dto';
 import { UpdateZigbee2mqttChannelPropertyDto } from '../dto/update-channel-property.dto';
-import { UpdateZigbee2mqttDeviceDto } from '../dto/update-device.dto';
 import {
 	Zigbee2mqttChannelEntity,
 	Zigbee2mqttChannelPropertyEntity,
@@ -37,6 +37,11 @@ import { MappedChannel, MappedProperty, Z2mExposesMapperService } from './expose
  * Device Mapper Service
  *
  * Maps Zigbee2MQTT devices to Smart Panel entities (devices, channels, properties).
+ *
+ * Identifier mapping:
+ * - Device identifier = friendly_name (for lookup by MQTT topic)
+ * - Channel identifier = channel category or type_endpoint
+ * - Property identifier = z2m property name (for matching MQTT state keys)
  */
 @Injectable()
 export class Z2mDeviceMapperService {
@@ -44,6 +49,9 @@ export class Z2mDeviceMapperService {
 		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 		'DeviceMapper',
 	);
+
+	// Per-device locks to prevent concurrent mapping of the same device
+	private readonly deviceLocks = new Map<string, Promise<Zigbee2mqttDeviceEntity | null>>();
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -62,9 +70,33 @@ export class Z2mDeviceMapperService {
 		z2mDevice: Z2mDevice | Z2mRegisteredDevice,
 		createIfNotExists: boolean = true,
 	): Promise<Zigbee2mqttDeviceEntity | null> {
-		const ieeeAddress = 'ieee_address' in z2mDevice ? z2mDevice.ieee_address : z2mDevice.ieeeAddress;
 		const friendlyName = 'friendly_name' in z2mDevice ? z2mDevice.friendly_name : z2mDevice.friendlyName;
-		const modelId = 'model_id' in z2mDevice ? z2mDevice.model_id : (z2mDevice as Z2mRegisteredDevice).modelId;
+
+		// Use per-device lock to prevent concurrent mapping of the same device
+		const existingLock = this.deviceLocks.get(friendlyName);
+		if (existingLock !== undefined) {
+			this.logger.debug(`Waiting for existing mapping operation for device: ${friendlyName}`);
+			return existingLock;
+		}
+
+		const mappingPromise = this.doMapDevice(z2mDevice, createIfNotExists);
+		this.deviceLocks.set(friendlyName, mappingPromise);
+
+		try {
+			return await mappingPromise;
+		} finally {
+			this.deviceLocks.delete(friendlyName);
+		}
+	}
+
+	/**
+	 * Internal device mapping logic
+	 */
+	private async doMapDevice(
+		z2mDevice: Z2mDevice | Z2mRegisteredDevice,
+		createIfNotExists: boolean,
+	): Promise<Zigbee2mqttDeviceEntity | null> {
+		const friendlyName = 'friendly_name' in z2mDevice ? z2mDevice.friendly_name : z2mDevice.friendlyName;
 		const definition = z2mDevice.definition;
 
 		if (!definition) {
@@ -72,10 +104,10 @@ export class Z2mDeviceMapperService {
 			return null;
 		}
 
-		// Generate identifier from IEEE address
-		const identifier = this.generateIdentifier(ieeeAddress);
+		// Device identifier = friendly_name (used for MQTT topic matching)
+		const identifier = friendlyName;
 
-		this.logger.log(`Mapping device: ${friendlyName} (${identifier})`);
+		this.logger.log(`Mapping device: ${friendlyName}`);
 
 		// Determine device category from exposes
 		const exposeTypes = definition.exposes.map((e) => e.type);
@@ -103,28 +135,9 @@ export class Z2mDeviceMapperService {
 				name: friendlyName,
 				category: deviceCategory,
 				enabled: true,
-				ieeeAddress,
-				friendlyName,
-				modelId: modelId ?? null,
 			};
 
 			device = await this.devicesService.create<Zigbee2mqttDeviceEntity, CreateZigbee2mqttDeviceDto>(createDto);
-		} else {
-			// Update device if friendly name or model changed
-			if (device.friendlyName !== friendlyName || device.modelId !== modelId) {
-				this.logger.debug(`Updating device: ${identifier}`);
-
-				const updateDto: UpdateZigbee2mqttDeviceDto = {
-					type: DEVICES_ZIGBEE2MQTT_TYPE,
-					friendlyName,
-					modelId: modelId ?? null,
-				};
-
-				device = await this.devicesService.update<Zigbee2mqttDeviceEntity, UpdateZigbee2mqttDeviceDto>(
-					device.id,
-					updateDto,
-				);
-			}
 		}
 
 		// Skip channel/property creation if device is disabled
@@ -145,10 +158,16 @@ export class Z2mDeviceMapperService {
 
 	/**
 	 * Update device state from MQTT state message
+	 * Device is found by identifier (which equals friendly_name)
+	 * Properties are matched by identifier (which equals z2m property name)
 	 */
 	async updateDeviceState(friendlyName: string, state: Record<string, unknown>): Promise<void> {
-		// Find device by friendly name
-		const device = await this.findDeviceByFriendlyName(friendlyName);
+		// Find device by identifier (= friendly_name)
+		const device = await this.devicesService.findOneBy<Zigbee2mqttDeviceEntity>(
+			'identifier',
+			friendlyName,
+			DEVICES_ZIGBEE2MQTT_TYPE,
+		);
 
 		if (!device) {
 			this.logger.debug(`Device not found for state update: ${friendlyName}`);
@@ -159,8 +178,12 @@ export class Z2mDeviceMapperService {
 			return;
 		}
 
+		this.logger.debug(`Updating state for ${friendlyName}: ${JSON.stringify(state)}`);
+
 		// Get all channels for this device
 		const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
+
+		this.logger.debug(`Found ${channels.length} channels for device ${friendlyName}`);
 
 		for (const channel of channels) {
 			// Get all properties for this channel
@@ -170,45 +193,60 @@ export class Z2mDeviceMapperService {
 			);
 
 			for (const property of properties) {
-				// Check if state contains this property
-				const z2mProperty = property.z2mProperty;
-				if (z2mProperty && z2mProperty in state) {
-					const value = state[z2mProperty];
+				// Property identifier = z2m property name
+				const z2mProperty = property.identifier;
 
-					// Convert value to appropriate type
-					const convertedValue = this.convertValue(value);
-
-					// Update property value
-					await this.channelsPropertiesService.update<
-						Zigbee2mqttChannelPropertyEntity,
-						UpdateZigbee2mqttChannelPropertyDto
-					>(
-						property.id,
-						toInstance(UpdateZigbee2mqttChannelPropertyDto, {
-							type: DEVICES_ZIGBEE2MQTT_TYPE,
-							value: convertedValue,
-						}),
-					);
+				if (!(z2mProperty in state)) {
+					continue;
 				}
+
+				const value = state[z2mProperty];
+
+				// Convert value to appropriate type
+				const convertedValue = this.convertValue(value);
+
+				this.logger.debug(`Updating property ${property.identifier} = ${JSON.stringify(value)} -> ${convertedValue}`);
+
+				// Update property value
+				await this.channelsPropertiesService.update<
+					Zigbee2mqttChannelPropertyEntity,
+					UpdateZigbee2mqttChannelPropertyDto
+				>(
+					property.id,
+					toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+						type: DEVICES_ZIGBEE2MQTT_TYPE,
+						value: convertedValue,
+					}),
+				);
 			}
 		}
 	}
 
 	/**
 	 * Set device availability state
+	 * Device is found by identifier (which equals friendly_name)
 	 */
 	async setDeviceAvailability(friendlyName: string, available: boolean): Promise<void> {
-		const device = await this.findDeviceByFriendlyName(friendlyName);
+		this.logger.debug(`Setting availability for ${friendlyName}: ${available}`);
+
+		const device = await this.devicesService.findOneBy<Zigbee2mqttDeviceEntity>(
+			'identifier',
+			friendlyName,
+			DEVICES_ZIGBEE2MQTT_TYPE,
+		);
 
 		if (device) {
+			this.logger.debug(`Found device ${device.identifier} for availability update`);
 			await this.deviceConnectivityService.setConnectionState(device.id, {
 				state: available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 			});
+		} else {
+			this.logger.error(`Device not found for availability update: ${friendlyName}`);
 		}
 	}
 
 	/**
-	 * Set device connection state
+	 * Set device connection state by identifier
 	 */
 	async setDeviceConnectionState(identifier: string, state: ConnectionState): Promise<void> {
 		const device = await this.devicesService.findOneBy<Zigbee2mqttDeviceEntity>(
@@ -223,27 +261,10 @@ export class Z2mDeviceMapperService {
 	}
 
 	/**
-	 * Find device by friendly name
-	 */
-	async findDeviceByFriendlyName(friendlyName: string): Promise<Zigbee2mqttDeviceEntity | null> {
-		const devices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
-		return devices.find((d) => d.friendlyName === friendlyName) ?? null;
-	}
-
-	/**
 	 * Get all devices
 	 */
 	async getAllDevices(): Promise<Zigbee2mqttDeviceEntity[]> {
 		return this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
-	}
-
-	/**
-	 * Generate identifier from IEEE address
-	 */
-	private generateIdentifier(ieeeAddress: string): string {
-		// Remove 0x prefix and convert to lowercase
-		const cleanAddress = ieeeAddress.replace('0x', '').toLowerCase();
-		return `z2m-${cleanAddress.slice(-8)}`;
 	}
 
 	/**
@@ -256,8 +277,6 @@ export class Z2mDeviceMapperService {
 		const channelIdentifier = Z2M_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION;
 		const definition = z2mDevice.definition;
 		const ieeeAddress = 'ieee_address' in z2mDevice ? z2mDevice.ieee_address : z2mDevice.ieeeAddress;
-		const powerSource =
-			'power_source' in z2mDevice ? z2mDevice.power_source : (z2mDevice as Z2mRegisteredDevice).powerSource;
 
 		// Find or create channel
 		let channel = await this.channelsService.findOneBy<Zigbee2mqttChannelEntity>(
@@ -282,31 +301,36 @@ export class Z2mDeviceMapperService {
 		}
 
 		// Create/update device info properties
+		// Properties must match the device_information channel spec
 		const infoProperties = [
 			{
 				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.MANUFACTURER,
 				name: 'Manufacturer',
+				category: PropertyCategory.MANUFACTURER,
 				value: definition?.vendor ?? 'Unknown',
 			},
 			{
 				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
 				name: 'Model',
+				category: PropertyCategory.MODEL,
 				value: definition?.model ?? 'Unknown',
 			},
 			{
-				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.IEEE_ADDRESS,
-				name: 'IEEE Address',
+				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
+				name: 'Serial Number',
+				category: PropertyCategory.SERIAL_NUMBER,
 				value: ieeeAddress,
 			},
 			{
-				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.POWER_SOURCE,
-				name: 'Power Source',
-				value: powerSource ?? 'Unknown',
+				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_REVISION,
+				name: 'Firmware Revision',
+				category: PropertyCategory.FIRMWARE_REVISION,
+				value: 'Unknown',
 			},
 		];
 
 		for (const info of infoProperties) {
-			await this.createOrUpdateInfoProperty(channel, info.identifier, info.name, info.value);
+			await this.createOrUpdateInfoProperty(channel, info.identifier, info.name, info.category, info.value);
 		}
 	}
 
@@ -317,6 +341,7 @@ export class Z2mDeviceMapperService {
 		channel: Zigbee2mqttChannelEntity,
 		identifier: string,
 		name: string,
+		category: PropertyCategory,
 		value: string,
 	): Promise<void> {
 		const property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
@@ -331,7 +356,7 @@ export class Z2mDeviceMapperService {
 				type: DEVICES_ZIGBEE2MQTT_TYPE,
 				identifier,
 				name,
-				category: null,
+				category,
 				data_type: DataTypeType.STRING,
 				permissions: [PermissionType.READ_ONLY],
 				value,
@@ -404,7 +429,6 @@ export class Z2mDeviceMapperService {
 				name: mappedChannel.name,
 				category: mappedChannel.category,
 				device: device.id,
-				endpoint: mappedChannel.endpoint ?? null,
 			};
 
 			channel = await this.channelsService.create<Zigbee2mqttChannelEntity, CreateZigbee2mqttChannelDto>(
@@ -420,11 +444,15 @@ export class Z2mDeviceMapperService {
 
 	/**
 	 * Create a single property
+	 * Property identifier = z2mProperty (for matching MQTT state keys)
 	 */
 	private async createProperty(channel: Zigbee2mqttChannelEntity, mappedProperty: MappedProperty): Promise<void> {
+		// Use z2mProperty as identifier for direct MQTT state matching
+		const propertyIdentifier = mappedProperty.z2mProperty;
+
 		const property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
 			'identifier',
-			mappedProperty.identifier,
+			propertyIdentifier,
 			channel.id,
 			DEVICES_ZIGBEE2MQTT_TYPE,
 		);
@@ -441,7 +469,7 @@ export class Z2mDeviceMapperService {
 
 			const createDto: CreateZigbee2mqttChannelPropertyDto = {
 				type: DEVICES_ZIGBEE2MQTT_TYPE,
-				identifier: mappedProperty.identifier,
+				identifier: propertyIdentifier,
 				name: mappedProperty.name,
 				category: mappedProperty.category,
 				data_type: mappedProperty.dataType,
@@ -449,7 +477,6 @@ export class Z2mDeviceMapperService {
 				unit: mappedProperty.unit ?? null,
 				format,
 				step: mappedProperty.step ?? null,
-				z2mProperty: mappedProperty.z2mProperty,
 			};
 
 			await this.channelsPropertiesService.create<

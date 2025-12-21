@@ -110,13 +110,8 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 				continue;
 			}
 
-			// Get the friendly name for publishing
-			const friendlyName = device.friendlyName;
-			if (!friendlyName) {
-				this.logger.error(`Device ${device.identifier} has no friendly name`);
-				results.push(false);
-				continue;
-			}
+			// Device identifier = friendly_name (used for MQTT topic)
+			const friendlyName = device.identifier;
 
 			// Process each channel's updates for this device
 			for (const { channel, props } of channels.values()) {
@@ -148,12 +143,8 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		const payload: Z2mSetPayload = {};
 
 		for (const { property, value } of propertyUpdates) {
-			const z2mProperty = property.z2mProperty;
-
-			if (!z2mProperty) {
-				this.logger.debug(`Property ${property.identifier} has no z2mProperty mapping, skipping`);
-				continue;
-			}
+			// Property identifier = z2m property name
+			const z2mProperty = property.identifier;
 
 			// Convert value to appropriate format
 			const convertedValue = this.convertValue(property, value);
@@ -200,8 +191,8 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			}
 		}
 
-		// Handle special property types
-		const z2mProperty = property.z2mProperty;
+		// Handle special property types (identifier = z2m property name)
+		const z2mProperty = property.identifier;
 
 		if (z2mProperty === 'state') {
 			// Convert boolean to ON/OFF

@@ -329,7 +329,9 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_STATE_CHANGED)
 	async handleDeviceStateChanged(event: Z2mDeviceStateChangedEvent): Promise<void> {
-		this.logger.debug(`Device state changed: ${event.friendlyName}`);
+		this.logger.debug(
+			`Device state changed: ${event.friendlyName}, state keys: ${Object.keys(event.state).join(', ')}`,
+		);
 
 		try {
 			await this.deviceMapper.updateDeviceState(event.friendlyName, event.state);

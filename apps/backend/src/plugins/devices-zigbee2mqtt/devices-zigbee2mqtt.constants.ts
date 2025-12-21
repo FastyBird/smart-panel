@@ -24,16 +24,27 @@ export const DEFAULT_MQTT_CONNECT_TIMEOUT = 30000;
 export const DEFAULT_MQTT_KEEPALIVE = 60;
 
 // Channel identifiers
+// Channel identifiers must match spec/channels.ts
 export const Z2M_CHANNEL_IDENTIFIERS = {
 	DEVICE_INFORMATION: 'device_information',
 	LIGHT: 'light',
-	SWITCH: 'switch',
-	SENSOR: 'sensor',
-	BINARY_SENSOR: 'binary_sensor',
-	CLIMATE: 'climate',
-	COVER: 'cover',
+	SWITCHER: 'switcher',
+	THERMOSTAT: 'thermostat',
+	WINDOW_COVERING: 'window_covering',
 	LOCK: 'lock',
 	FAN: 'fan',
+	// Sensor channels - each sensor type has its own channel
+	TEMPERATURE: 'temperature',
+	HUMIDITY: 'humidity',
+	ILLUMINANCE: 'illuminance',
+	PRESSURE: 'pressure',
+	OCCUPANCY: 'occupancy',
+	CONTACT: 'contact',
+	LEAK: 'leak',
+	SMOKE: 'smoke',
+	BATTERY: 'battery',
+	ELECTRICAL_POWER: 'electrical_power',
+	ELECTRICAL_ENERGY: 'electrical_energy',
 } as const;
 
 // Z2M expose access bits
@@ -67,95 +78,129 @@ export interface Z2mPropertyBinding {
 }
 
 // Common property mappings for standard exposes
+// propertyIdentifier and channelCategory must match the spec in src/spec/channels.ts
 export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding>> = {
-	// Binary states
+	// Binary states - each sensor type has its own channel
 	state: {
+		propertyIdentifier: 'on',
+		channelCategory: ChannelCategory.SWITCHER,
 		category: PropertyCategory.ON,
 		dataType: DataTypeType.BOOL,
 		name: 'State',
 	},
 	occupancy: {
+		propertyIdentifier: 'detected',
+		channelCategory: ChannelCategory.OCCUPANCY,
 		category: PropertyCategory.DETECTED,
 		dataType: DataTypeType.BOOL,
 		name: 'Occupancy',
 	},
 	contact: {
+		propertyIdentifier: 'detected',
+		channelCategory: ChannelCategory.CONTACT,
 		category: PropertyCategory.DETECTED,
 		dataType: DataTypeType.BOOL,
 		name: 'Contact',
 	},
 	water_leak: {
+		propertyIdentifier: 'detected',
+		channelCategory: ChannelCategory.LEAK,
 		category: PropertyCategory.DETECTED,
 		dataType: DataTypeType.BOOL,
 		name: 'Water Leak',
 	},
 	smoke: {
+		propertyIdentifier: 'detected',
+		channelCategory: ChannelCategory.SMOKE,
 		category: PropertyCategory.DETECTED,
 		dataType: DataTypeType.BOOL,
 		name: 'Smoke',
 	},
 	vibration: {
+		propertyIdentifier: 'detected',
+		channelCategory: ChannelCategory.MOTION,
 		category: PropertyCategory.DETECTED,
 		dataType: DataTypeType.BOOL,
 		name: 'Vibration',
 	},
 	tamper: {
-		category: PropertyCategory.DETECTED,
+		propertyIdentifier: 'tampered',
+		channelCategory: ChannelCategory.OCCUPANCY, // tamper is often part of occupancy sensors
+		category: PropertyCategory.TAMPERED,
 		dataType: DataTypeType.BOOL,
 		name: 'Tamper',
 	},
 	battery_low: {
+		propertyIdentifier: 'fault',
+		channelCategory: ChannelCategory.BATTERY,
 		category: PropertyCategory.FAULT,
 		dataType: DataTypeType.BOOL,
 		name: 'Battery Low',
 	},
 
-	// Numeric values
+	// Numeric values - each sensor type has its own channel
 	brightness: {
+		propertyIdentifier: 'brightness',
+		channelCategory: ChannelCategory.LIGHT,
 		category: PropertyCategory.BRIGHTNESS,
 		dataType: DataTypeType.UCHAR,
 		name: 'Brightness',
 		min: 0,
-		max: 254,
+		max: 100,
+		unit: '%',
 	},
 	color_temp: {
+		propertyIdentifier: 'color_temperature',
+		channelCategory: ChannelCategory.LIGHT,
 		category: PropertyCategory.COLOR_TEMPERATURE,
 		dataType: DataTypeType.UINT,
 		name: 'Color Temperature',
 		unit: 'mired',
 	},
 	temperature: {
+		propertyIdentifier: 'temperature',
+		channelCategory: ChannelCategory.TEMPERATURE,
 		category: PropertyCategory.TEMPERATURE,
 		dataType: DataTypeType.FLOAT,
 		name: 'Temperature',
 		unit: '°C',
 	},
 	humidity: {
+		propertyIdentifier: 'humidity',
+		channelCategory: ChannelCategory.HUMIDITY,
 		category: PropertyCategory.HUMIDITY,
 		dataType: DataTypeType.FLOAT,
 		name: 'Humidity',
 		unit: '%',
 	},
 	pressure: {
+		propertyIdentifier: 'measured',
+		channelCategory: ChannelCategory.PRESSURE,
 		category: PropertyCategory.MEASURED,
 		dataType: DataTypeType.FLOAT,
 		name: 'Pressure',
 		unit: 'hPa',
 	},
 	illuminance: {
+		propertyIdentifier: 'measured',
+		channelCategory: ChannelCategory.ILLUMINANCE,
 		category: PropertyCategory.MEASURED,
 		dataType: DataTypeType.UINT,
 		name: 'Illuminance',
 		unit: 'lx',
 	},
 	illuminance_lux: {
+		propertyIdentifier: 'measured',
+		channelCategory: ChannelCategory.ILLUMINANCE,
 		category: PropertyCategory.MEASURED,
 		dataType: DataTypeType.UINT,
 		name: 'Illuminance',
 		unit: 'lx',
 	},
 	battery: {
-		category: PropertyCategory.LEVEL,
+		propertyIdentifier: 'percentage',
+		channelCategory: ChannelCategory.BATTERY,
+		category: PropertyCategory.PERCENTAGE,
 		dataType: DataTypeType.UCHAR,
 		name: 'Battery',
 		unit: '%',
@@ -163,44 +208,59 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 		max: 100,
 	},
 	voltage: {
+		propertyIdentifier: 'voltage',
+		channelCategory: ChannelCategory.ELECTRICAL_POWER,
 		category: PropertyCategory.VOLTAGE,
 		dataType: DataTypeType.FLOAT,
 		name: 'Voltage',
 		unit: 'V',
 	},
 	current: {
+		propertyIdentifier: 'current',
+		channelCategory: ChannelCategory.ELECTRICAL_POWER,
 		category: PropertyCategory.CURRENT,
 		dataType: DataTypeType.FLOAT,
 		name: 'Current',
 		unit: 'A',
 	},
 	power: {
+		propertyIdentifier: 'power',
+		channelCategory: ChannelCategory.ELECTRICAL_POWER,
 		category: PropertyCategory.POWER,
 		dataType: DataTypeType.FLOAT,
 		name: 'Power',
 		unit: 'W',
 	},
 	energy: {
+		propertyIdentifier: 'consumption',
+		channelCategory: ChannelCategory.ELECTRICAL_ENERGY,
 		category: PropertyCategory.CONSUMPTION,
 		dataType: DataTypeType.FLOAT,
 		name: 'Energy',
 		unit: 'kWh',
 	},
 	linkquality: {
+		propertyIdentifier: 'link_quality',
+		channelCategory: ChannelCategory.DEVICE_INFORMATION,
 		category: PropertyCategory.LINK_QUALITY,
 		dataType: DataTypeType.UCHAR,
 		name: 'Link Quality',
 		min: 0,
-		max: 255,
+		max: 100,
+		unit: '%',
 	},
 
 	// Color properties
 	color_hs: {
+		propertyIdentifier: 'hue',
+		channelCategory: ChannelCategory.LIGHT,
 		category: PropertyCategory.HUE,
 		dataType: DataTypeType.STRING,
 		name: 'Color (HS)',
 	},
 	color_xy: {
+		propertyIdentifier: 'hue',
+		channelCategory: ChannelCategory.LIGHT,
 		category: PropertyCategory.HUE,
 		dataType: DataTypeType.STRING,
 		name: 'Color (XY)',
@@ -208,29 +268,39 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 
 	// Climate properties
 	local_temperature: {
+		propertyIdentifier: 'temperature',
+		channelCategory: ChannelCategory.THERMOSTAT,
 		category: PropertyCategory.TEMPERATURE,
 		dataType: DataTypeType.FLOAT,
 		name: 'Local Temperature',
 		unit: '°C',
 	},
 	current_heating_setpoint: {
+		propertyIdentifier: 'temperature',
+		channelCategory: ChannelCategory.THERMOSTAT,
 		category: PropertyCategory.TEMPERATURE,
 		dataType: DataTypeType.FLOAT,
 		name: 'Heating Setpoint',
 		unit: '°C',
 	},
 	occupied_heating_setpoint: {
+		propertyIdentifier: 'temperature',
+		channelCategory: ChannelCategory.THERMOSTAT,
 		category: PropertyCategory.TEMPERATURE,
 		dataType: DataTypeType.FLOAT,
 		name: 'Heating Setpoint',
 		unit: '°C',
 	},
 	system_mode: {
+		propertyIdentifier: 'mode',
+		channelCategory: ChannelCategory.THERMOSTAT,
 		category: PropertyCategory.MODE,
 		dataType: DataTypeType.STRING,
 		name: 'System Mode',
 	},
 	running_state: {
+		propertyIdentifier: 'status',
+		channelCategory: ChannelCategory.THERMOSTAT,
 		category: PropertyCategory.STATUS,
 		dataType: DataTypeType.STRING,
 		name: 'Running State',
@@ -238,6 +308,8 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 
 	// Cover properties
 	position: {
+		propertyIdentifier: 'position',
+		channelCategory: ChannelCategory.WINDOW_COVERING,
 		category: PropertyCategory.POSITION,
 		dataType: DataTypeType.UCHAR,
 		name: 'Position',
@@ -246,6 +318,8 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 		max: 100,
 	},
 	tilt: {
+		propertyIdentifier: 'tilt',
+		channelCategory: ChannelCategory.WINDOW_COVERING,
 		category: PropertyCategory.TILT,
 		dataType: DataTypeType.UCHAR,
 		name: 'Tilt',
@@ -256,27 +330,93 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 
 	// Lock properties
 	lock_state: {
-		category: PropertyCategory.STATUS,
-		dataType: DataTypeType.STRING,
+		propertyIdentifier: 'locked',
+		channelCategory: ChannelCategory.LOCK,
+		category: PropertyCategory.LOCKED,
+		dataType: DataTypeType.BOOL,
 		name: 'Lock State',
 	},
 
 	// Action (buttons/remotes)
 	action: {
+		propertyIdentifier: 'event',
+		channelCategory: ChannelCategory.DOORBELL,
 		category: PropertyCategory.EVENT,
 		dataType: DataTypeType.STRING,
 		name: 'Action',
 	},
+
+	// Presence sensors
+	presence: {
+		propertyIdentifier: 'detected',
+		channelCategory: ChannelCategory.OCCUPANCY,
+		category: PropertyCategory.DETECTED,
+		dataType: DataTypeType.BOOL,
+		name: 'Presence',
+	},
+	target_distance: {
+		propertyIdentifier: 'distance',
+		channelCategory: ChannelCategory.OCCUPANCY,
+		category: PropertyCategory.DISTANCE,
+		dataType: DataTypeType.FLOAT,
+		name: 'Target Distance',
+		unit: 'm',
+	},
+
+	// Fan/Air purifier
+	fan_state: {
+		propertyIdentifier: 'on',
+		channelCategory: ChannelCategory.FAN,
+		category: PropertyCategory.ON,
+		dataType: DataTypeType.BOOL,
+		name: 'Fan State',
+	},
+	fan_mode: {
+		propertyIdentifier: 'mode',
+		channelCategory: ChannelCategory.FAN,
+		category: PropertyCategory.MODE,
+		dataType: DataTypeType.STRING,
+		name: 'Fan Mode',
+	},
+	fan_speed: {
+		propertyIdentifier: 'speed',
+		channelCategory: ChannelCategory.FAN,
+		category: PropertyCategory.SPEED,
+		dataType: DataTypeType.UCHAR,
+		name: 'Fan Speed',
+	},
+	pm25: {
+		propertyIdentifier: 'measured',
+		channelCategory: ChannelCategory.AIR_PARTICULATE,
+		category: PropertyCategory.MEASURED,
+		dataType: DataTypeType.UINT,
+		name: 'PM2.5',
+		unit: 'µg/m³',
+	},
+	air_quality: {
+		propertyIdentifier: 'status',
+		channelCategory: ChannelCategory.AIR_PARTICULATE,
+		category: PropertyCategory.STATUS,
+		dataType: DataTypeType.STRING,
+		name: 'Air Quality',
+	},
+
+	// Cover/motor fault
+	motor_fault: {
+		propertyIdentifier: 'fault',
+		channelCategory: ChannelCategory.WINDOW_COVERING,
+		category: PropertyCategory.FAULT,
+		dataType: DataTypeType.BOOL,
+		name: 'Motor Fault',
+	},
 };
 
-// Device information property identifiers
+// Device information property identifiers (must match spec/channels.ts device_information)
 export const Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS = {
 	MANUFACTURER: 'manufacturer',
 	MODEL: 'model',
 	SERIAL_NUMBER: 'serial_number',
 	FIRMWARE_REVISION: 'firmware_revision',
-	IEEE_ADDRESS: 'ieee_address',
-	POWER_SOURCE: 'power_source',
 } as const;
 
 // Map Z2M device category to Smart Panel device category
@@ -295,18 +435,66 @@ export const mapZ2mCategoryToDeviceCategory = (exposeTypes: string[], propertyNa
 	if (exposeTypes.includes('cover')) {
 		return DeviceCategory.WINDOW_COVERING;
 	}
-	if (exposeTypes.includes('switch')) {
+	if (exposeTypes.includes('fan')) {
+		return DeviceCategory.FAN;
+	}
+
+	// Check property names to determine device type
+	const hasSwitch = exposeTypes.includes('switch') || propertyNames.includes('state');
+	const hasPowerMonitoring =
+		propertyNames.includes('power') || propertyNames.includes('energy') || propertyNames.includes('voltage');
+
+	// Outlet/plug devices typically have switch + power monitoring
+	if (hasSwitch && hasPowerMonitoring) {
+		return DeviceCategory.OUTLET;
+	}
+
+	// Pure switch devices
+	if (hasSwitch) {
 		return DeviceCategory.SWITCHER;
 	}
-	// Check property names for binary sensors (they have type 'binary' but different property names)
-	if (
-		propertyNames.includes('occupancy') ||
-		propertyNames.includes('contact') ||
-		propertyNames.includes('smoke') ||
-		propertyNames.includes('water_leak')
-	) {
+
+	// Binary sensors (occupancy, contact, smoke, leak, etc.)
+	const binarySensorProperties = ['occupancy', 'contact', 'smoke', 'water_leak', 'vibration', 'tamper', 'gas', 'co'];
+	if (binarySensorProperties.some((prop) => propertyNames.includes(prop))) {
 		return DeviceCategory.SENSOR;
 	}
+
+	// Environmental sensors (temperature, humidity, pressure, illuminance, etc.)
+	const environmentalSensorProperties = [
+		'temperature',
+		'humidity',
+		'pressure',
+		'illuminance',
+		'illuminance_lux',
+		'soil_moisture',
+		'co2',
+		'voc',
+		'formaldehyde',
+		'pm25',
+		'pm10',
+	];
+	if (environmentalSensorProperties.some((prop) => propertyNames.includes(prop))) {
+		return DeviceCategory.SENSOR;
+	}
+
+	// Devices with only battery and linkquality are typically sensors
+	const sensorOnlyProperties = ['battery', 'linkquality'];
+	const hasSensorOnlyProperties = propertyNames.some((prop) => sensorOnlyProperties.includes(prop));
+	const hasOtherProperties = propertyNames.some((prop) => !sensorOnlyProperties.includes(prop) && prop !== 'action');
+	if (hasSensorOnlyProperties && !hasOtherProperties) {
+		// Remote controls / buttons with only battery
+		if (propertyNames.includes('action')) {
+			return DeviceCategory.SENSOR; // Remote controls are sensors
+		}
+		return DeviceCategory.SENSOR;
+	}
+
+	// Devices with action property (remotes, buttons)
+	if (propertyNames.includes('action')) {
+		return DeviceCategory.SENSOR;
+	}
+
 	return DeviceCategory.GENERIC;
 };
 
