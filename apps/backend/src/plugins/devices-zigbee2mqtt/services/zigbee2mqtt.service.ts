@@ -1,6 +1,7 @@
-import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -37,7 +38,10 @@ import { Z2mMqttClientAdapterService } from './mqtt-client-adapter.service';
  */
 @Injectable()
 export class Zigbee2mqttService implements IManagedPluginService {
-	private readonly logger = new Logger(Zigbee2mqttService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+		'Zigbee2mqttService',
+	);
 
 	readonly pluginName = DEVICES_ZIGBEE2MQTT_PLUGIN_NAME;
 	readonly serviceId = 'connector';
@@ -121,7 +125,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		this.pluginConfig = null;
 
 		if (this.state === 'started') {
-			this.logger.log('[Z2M][SERVICE] Config changed, restart required');
+			this.logger.log('Config changed, restart required');
 			return Promise.resolve({ restartRequired: true });
 		}
 
@@ -135,7 +139,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		const success = await this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
 
 		if (!success) {
-			this.logger.debug('[Z2M][SERVICE] Restart skipped (plugin may be disabled)');
+			this.logger.debug('Restart skipped (plugin may be disabled)');
 		}
 	}
 
@@ -172,7 +176,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	private async doStart(): Promise<void> {
 		this.state = 'starting';
 
-		this.logger.log('[Z2M][SERVICE] Starting Zigbee2MQTT plugin service');
+		this.logger.log('Starting Zigbee2MQTT plugin service');
 
 		try {
 			// Build MQTT config
@@ -181,10 +185,10 @@ export class Zigbee2mqttService implements IManagedPluginService {
 			// Connect to MQTT broker
 			await this.mqttAdapter.connect(mqttConfig);
 
-			this.logger.log('[Z2M][SERVICE] Zigbee2MQTT plugin service started successfully');
+			this.logger.log('Zigbee2MQTT plugin service started successfully');
 			this.state = 'started';
 		} catch (error) {
-			this.logger.error('[Z2M][SERVICE] Failed to start Zigbee2MQTT plugin service', {
+			this.logger.error('Failed to start Zigbee2MQTT plugin service', {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});
@@ -200,7 +204,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	private async doStop(): Promise<void> {
 		this.state = 'stopping';
 
-		this.logger.log('[Z2M][SERVICE] Stopping Zigbee2MQTT plugin service');
+		this.logger.log('Stopping Zigbee2MQTT plugin service');
 
 		try {
 			// Disconnect from MQTT
@@ -214,10 +218,10 @@ export class Zigbee2mqttService implements IManagedPluginService {
 				});
 			}
 
-			this.logger.log('[Z2M][SERVICE] Zigbee2MQTT plugin service stopped');
+			this.logger.log('Zigbee2MQTT plugin service stopped');
 			this.state = 'stopped';
 		} catch (error) {
-			this.logger.error('[Z2M][SERVICE] Failed to stop Zigbee2MQTT plugin service', {
+			this.logger.error('Failed to stop Zigbee2MQTT plugin service', {
 				message: error instanceof Error ? error.message : String(error),
 			});
 
@@ -259,7 +263,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.BRIDGE_ONLINE)
 	handleBridgeOnline(_event: Z2mBridgeOnlineEvent): void {
-		this.logger.log('[Z2M][SERVICE] Bridge is online');
+		this.logger.log('Bridge is online');
 
 		// Sync devices if configured
 		if (this.config.discovery.syncOnStartup && !this.deviceSyncPending) {
@@ -272,7 +276,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.BRIDGE_OFFLINE)
 	async handleBridgeOffline(_event: Z2mBridgeOfflineEvent): Promise<void> {
-		this.logger.warn('[Z2M][SERVICE] Bridge is offline');
+		this.logger.warn('Bridge is offline');
 
 		// Set all devices to unknown state
 		try {
@@ -283,7 +287,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 				});
 			}
 		} catch (error) {
-			this.logger.error('[Z2M][SERVICE] Failed to update device states on bridge offline', {
+			this.logger.error('Failed to update device states on bridge offline', {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -294,14 +298,14 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICES_RECEIVED)
 	async handleDevicesReceived(event: Z2mDevicesReceivedEvent): Promise<void> {
-		this.logger.log(`[Z2M][SERVICE] Received ${event.devices.length} devices from bridge`);
+		this.logger.log(`Received ${event.devices.length} devices from bridge`);
 
 		const shouldSyncExisting = this.deviceSyncPending;
 		const shouldAddNew = this.config.discovery.autoAdd;
 
 		// Skip if neither auto-add nor sync is needed
 		if (!shouldAddNew && !shouldSyncExisting) {
-			this.logger.debug('[Z2M][SERVICE] Auto-add disabled and no sync pending, skipping device mapping');
+			this.logger.debug('Auto-add disabled and no sync pending, skipping device mapping');
 			return;
 		}
 
@@ -311,7 +315,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 			try {
 				await this.deviceMapper.mapDevice(z2mDevice, shouldAddNew);
 			} catch (error) {
-				this.logger.error(`[Z2M][SERVICE] Failed to map device ${z2mDevice.friendly_name}`, {
+				this.logger.error(`Failed to map device ${z2mDevice.friendly_name}`, {
 					message: error instanceof Error ? error.message : String(error),
 				});
 			}
@@ -325,12 +329,12 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_STATE_CHANGED)
 	async handleDeviceStateChanged(event: Z2mDeviceStateChangedEvent): Promise<void> {
-		this.logger.debug(`[Z2M][SERVICE] Device state changed: ${event.friendlyName}`);
+		this.logger.debug(`Device state changed: ${event.friendlyName}`);
 
 		try {
 			await this.deviceMapper.updateDeviceState(event.friendlyName, event.state);
 		} catch (error) {
-			this.logger.error(`[Z2M][SERVICE] Failed to update device state: ${event.friendlyName}`, {
+			this.logger.error(`Failed to update device state: ${event.friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -341,12 +345,12 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_AVAILABILITY_CHANGED)
 	async handleDeviceAvailabilityChanged(event: Z2mDeviceAvailabilityChangedEvent): Promise<void> {
-		this.logger.debug(`[Z2M][SERVICE] Device availability changed: ${event.friendlyName} -> ${event.available}`);
+		this.logger.debug(`Device availability changed: ${event.friendlyName} -> ${event.available}`);
 
 		try {
 			await this.deviceMapper.setDeviceAvailability(event.friendlyName, event.available);
 		} catch (error) {
-			this.logger.error(`[Z2M][SERVICE] Failed to update device availability: ${event.friendlyName}`, {
+			this.logger.error(`Failed to update device availability: ${event.friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -357,7 +361,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_JOINED)
 	handleDeviceJoined(event: Z2mDeviceJoinedEvent): void {
-		this.logger.log(`[Z2M][SERVICE] Device joined: ${event.friendlyName}`);
+		this.logger.log(`Device joined: ${event.friendlyName}`);
 
 		// Device will be mapped when the full device list is received
 	}
@@ -367,13 +371,13 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_LEFT)
 	async handleDeviceLeft(event: Z2mDeviceLeftEvent): Promise<void> {
-		this.logger.log(`[Z2M][SERVICE] Device left: ${event.friendlyName}`);
+		this.logger.log(`Device left: ${event.friendlyName}`);
 
 		// Mark device as disconnected
 		try {
 			await this.deviceMapper.setDeviceAvailability(event.friendlyName, false);
 		} catch (error) {
-			this.logger.error(`[Z2M][SERVICE] Failed to handle device left: ${event.friendlyName}`, {
+			this.logger.error(`Failed to handle device left: ${event.friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}

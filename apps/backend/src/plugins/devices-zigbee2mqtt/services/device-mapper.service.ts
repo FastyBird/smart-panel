@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
@@ -12,6 +13,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
+	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	DEVICES_ZIGBEE2MQTT_TYPE,
 	Z2M_CHANNEL_IDENTIFIERS,
 	Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS,
@@ -38,7 +40,10 @@ import { MappedChannel, MappedProperty, Z2mExposesMapperService } from './expose
  */
 @Injectable()
 export class Z2mDeviceMapperService {
-	private readonly logger = new Logger(Z2mDeviceMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+		'DeviceMapper',
+	);
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -63,14 +68,14 @@ export class Z2mDeviceMapperService {
 		const definition = z2mDevice.definition;
 
 		if (!definition) {
-			this.logger.debug(`[Z2M][MAPPER] Skipping device without definition: ${friendlyName}`);
+			this.logger.debug(`Skipping device without definition: ${friendlyName}`);
 			return null;
 		}
 
 		// Generate identifier from IEEE address
 		const identifier = this.generateIdentifier(ieeeAddress);
 
-		this.logger.log(`[Z2M][MAPPER] Mapping device: ${friendlyName} (${identifier})`);
+		this.logger.log(`Mapping device: ${friendlyName} (${identifier})`);
 
 		// Determine device category from exposes
 		const exposeTypes = definition.exposes.map((e) => e.type);
@@ -86,11 +91,11 @@ export class Z2mDeviceMapperService {
 
 		if (!device) {
 			if (!createIfNotExists) {
-				this.logger.debug(`[Z2M][MAPPER] Skipping new device (auto-add disabled): ${friendlyName}`);
+				this.logger.debug(`Skipping new device (auto-add disabled): ${friendlyName}`);
 				return null;
 			}
 
-			this.logger.log(`[Z2M][MAPPER] Creating new device: ${identifier}`);
+			this.logger.log(`Creating new device: ${identifier}`);
 
 			const createDto: CreateZigbee2mqttDeviceDto = {
 				type: DEVICES_ZIGBEE2MQTT_TYPE,
@@ -107,7 +112,7 @@ export class Z2mDeviceMapperService {
 		} else {
 			// Update device if friendly name or model changed
 			if (device.friendlyName !== friendlyName || device.modelId !== modelId) {
-				this.logger.debug(`[Z2M][MAPPER] Updating device: ${identifier}`);
+				this.logger.debug(`Updating device: ${identifier}`);
 
 				const updateDto: UpdateZigbee2mqttDeviceDto = {
 					type: DEVICES_ZIGBEE2MQTT_TYPE,
@@ -124,7 +129,7 @@ export class Z2mDeviceMapperService {
 
 		// Skip channel/property creation if device is disabled
 		if (!device.enabled) {
-			this.logger.debug(`[Z2M][MAPPER] Device ${identifier} is disabled, skipping channel creation`);
+			this.logger.debug(`Device ${identifier} is disabled, skipping channel creation`);
 			return device;
 		}
 
@@ -146,7 +151,7 @@ export class Z2mDeviceMapperService {
 		const device = await this.findDeviceByFriendlyName(friendlyName);
 
 		if (!device) {
-			this.logger.debug(`[Z2M][MAPPER] Device not found for state update: ${friendlyName}`);
+			this.logger.debug(`Device not found for state update: ${friendlyName}`);
 			return;
 		}
 

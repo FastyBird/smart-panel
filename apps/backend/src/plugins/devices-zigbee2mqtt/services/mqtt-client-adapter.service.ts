@@ -1,9 +1,14 @@
 import * as mqtt from 'mqtt';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { DEFAULT_MQTT_BASE_TOPIC, Z2M_IGNORED_DEVICE_TYPES } from '../devices-zigbee2mqtt.constants';
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import {
+	DEFAULT_MQTT_BASE_TOPIC,
+	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+	Z2M_IGNORED_DEVICE_TYPES,
+} from '../devices-zigbee2mqtt.constants';
 import {
 	Z2mAdapterEventType,
 	Z2mBridgeEvent,
@@ -23,7 +28,10 @@ import {
  */
 @Injectable()
 export class Z2mMqttClientAdapterService {
-	private readonly logger = new Logger(Z2mMqttClientAdapterService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+		'MqttClientAdapter',
+	);
 
 	private client: mqtt.MqttClient | null = null;
 	private config: Z2mMqttConfig | null = null;
@@ -97,7 +105,7 @@ export class Z2mMqttClientAdapterService {
 
 		const brokerUrl = this.buildBrokerUrl(config);
 
-		this.logger.log(`[Z2M][MQTT] Connecting to MQTT broker: ${brokerUrl}`);
+		this.logger.log(`Connecting to MQTT broker: ${brokerUrl}`);
 
 		return new Promise((resolve, reject) => {
 			try {
@@ -128,7 +136,7 @@ export class Z2mMqttClientAdapterService {
 				this.client = mqtt.connect(brokerUrl, options);
 
 				this.client.on('connect', () => {
-					this.logger.log('[Z2M][MQTT] Connected to MQTT broker');
+					this.logger.log('Connected to MQTT broker');
 					this.connected = true;
 
 					// Subscribe to all necessary topics
@@ -142,7 +150,7 @@ export class Z2mMqttClientAdapterService {
 				});
 
 				this.client.on('error', (error) => {
-					this.logger.error('[Z2M][MQTT] MQTT client error', {
+					this.logger.error('MQTT client error', {
 						message: error.message,
 					});
 
@@ -161,7 +169,7 @@ export class Z2mMqttClientAdapterService {
 					this.connected = false;
 					this.bridgeOnline = false;
 
-					this.logger.log('[Z2M][MQTT] Disconnected from MQTT broker');
+					this.logger.log('Disconnected from MQTT broker');
 
 					if (wasConnected) {
 						this.eventEmitter.emit(Z2mAdapterEventType.ADAPTER_DISCONNECTED, {
@@ -175,14 +183,14 @@ export class Z2mMqttClientAdapterService {
 				});
 
 				this.client.on('offline', () => {
-					this.logger.warn('[Z2M][MQTT] MQTT client is offline');
+					this.logger.warn('MQTT client is offline');
 				});
 
 				this.client.on('message', (topic, payload) => {
 					this.handleMessage(topic, payload);
 				});
 			} catch (error) {
-				this.logger.error('[Z2M][MQTT] Failed to create MQTT client', {
+				this.logger.error('Failed to create MQTT client', {
 					message: error instanceof Error ? error.message : String(error),
 				});
 				reject(error instanceof Error ? error : new Error(String(error)));
@@ -197,7 +205,7 @@ export class Z2mMqttClientAdapterService {
 		this.clearReconnectTimer();
 
 		if (this.client) {
-			this.logger.log('[Z2M][MQTT] Disconnecting from MQTT broker');
+			this.logger.log('Disconnecting from MQTT broker');
 
 			return new Promise((resolve) => {
 				this.client?.end(true, {}, () => {
@@ -216,19 +224,19 @@ export class Z2mMqttClientAdapterService {
 	 */
 	async publishCommand(friendlyName: string, payload: Z2mSetPayload): Promise<boolean> {
 		if (!this.client || !this.connected) {
-			this.logger.warn('[Z2M][MQTT] Cannot publish: not connected to MQTT broker');
+			this.logger.warn('Cannot publish: not connected to MQTT broker');
 			return false;
 		}
 
 		const topic = `${this.baseTopic}/${friendlyName}/set`;
 		const message = JSON.stringify(payload);
 
-		this.logger.debug(`[Z2M][MQTT] Publishing to ${topic}: ${message}`);
+		this.logger.debug(`Publishing to ${topic}: ${message}`);
 
 		return new Promise((resolve) => {
 			this.client?.publish(topic, message, { qos: 1 }, (error) => {
 				if (error) {
-					this.logger.error(`[Z2M][MQTT] Failed to publish to ${topic}`, {
+					this.logger.error(`Failed to publish to ${topic}`, {
 						message: error.message,
 					});
 					resolve(false);
@@ -285,11 +293,11 @@ export class Z2mMqttClientAdapterService {
 		for (const topic of topics) {
 			this.client.subscribe(topic, { qos: 1 }, (error) => {
 				if (error) {
-					this.logger.error(`[Z2M][MQTT] Failed to subscribe to ${topic}`, {
+					this.logger.error(`Failed to subscribe to ${topic}`, {
 						message: error.message,
 					});
 				} else {
-					this.logger.debug(`[Z2M][MQTT] Subscribed to ${topic}`);
+					this.logger.debug(`Subscribed to ${topic}`);
 				}
 			});
 		}
@@ -329,7 +337,7 @@ export class Z2mMqttClientAdapterService {
 				}
 			}
 		} catch (error) {
-			this.logger.warn(`[Z2M][MQTT] Failed to handle message on topic ${topic}`, {
+			this.logger.warn(`Failed to handle message on topic ${topic}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -351,7 +359,7 @@ export class Z2mMqttClientAdapterService {
 				break;
 			case 'groups':
 				// Groups not implemented yet
-				this.logger.debug('[Z2M][MQTT] Received bridge/groups message (not implemented)');
+				this.logger.debug('Received bridge/groups message (not implemented)');
 				break;
 		}
 	}
@@ -366,12 +374,12 @@ export class Z2mMqttClientAdapterService {
 			this.bridgeOnline = state.state === 'online';
 
 			if (this.bridgeOnline && !wasOnline) {
-				this.logger.log('[Z2M][MQTT] Zigbee2MQTT bridge is online');
+				this.logger.log('Zigbee2MQTT bridge is online');
 				this.eventEmitter.emit(Z2mAdapterEventType.BRIDGE_ONLINE, {
 					timestamp: new Date(),
 				});
 			} else if (!this.bridgeOnline && wasOnline) {
-				this.logger.warn('[Z2M][MQTT] Zigbee2MQTT bridge is offline');
+				this.logger.warn('Zigbee2MQTT bridge is offline');
 				this.eventEmitter.emit(Z2mAdapterEventType.BRIDGE_OFFLINE, {
 					timestamp: new Date(),
 				});
@@ -383,12 +391,12 @@ export class Z2mMqttClientAdapterService {
 
 			if (this.bridgeOnline !== wasOnline) {
 				if (this.bridgeOnline) {
-					this.logger.log('[Z2M][MQTT] Zigbee2MQTT bridge is online');
+					this.logger.log('Zigbee2MQTT bridge is online');
 					this.eventEmitter.emit(Z2mAdapterEventType.BRIDGE_ONLINE, {
 						timestamp: new Date(),
 					});
 				} else {
-					this.logger.warn('[Z2M][MQTT] Zigbee2MQTT bridge is offline');
+					this.logger.warn('Zigbee2MQTT bridge is offline');
 					this.eventEmitter.emit(Z2mAdapterEventType.BRIDGE_OFFLINE, {
 						timestamp: new Date(),
 					});
@@ -404,7 +412,7 @@ export class Z2mMqttClientAdapterService {
 		try {
 			const devices = JSON.parse(message) as Z2mDevice[];
 
-			this.logger.log(`[Z2M][MQTT] Received device registry with ${devices.length} devices`);
+			this.logger.log(`Received device registry with ${devices.length} devices`);
 
 			// Update internal registry
 			for (const device of devices) {
@@ -455,7 +463,7 @@ export class Z2mMqttClientAdapterService {
 				timestamp: new Date(),
 			});
 		} catch (error) {
-			this.logger.error('[Z2M][MQTT] Failed to parse bridge/devices message', {
+			this.logger.error('Failed to parse bridge/devices message', {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -471,7 +479,7 @@ export class Z2mMqttClientAdapterService {
 			switch (event.type) {
 				case 'device_joined':
 				case 'device_announce':
-					this.logger.log(`[Z2M][MQTT] Device joined: ${event.data.friendly_name}`);
+					this.logger.log(`Device joined: ${event.data.friendly_name}`);
 					this.eventEmitter.emit(Z2mAdapterEventType.DEVICE_JOINED, {
 						ieeeAddress: event.data.ieee_address,
 						friendlyName: event.data.friendly_name,
@@ -480,7 +488,7 @@ export class Z2mMqttClientAdapterService {
 					break;
 
 				case 'device_leave':
-					this.logger.log(`[Z2M][MQTT] Device left: ${event.data.friendly_name}`);
+					this.logger.log(`Device left: ${event.data.friendly_name}`);
 
 					// Remove from registry
 					if (event.data.friendly_name) {
@@ -495,11 +503,11 @@ export class Z2mMqttClientAdapterService {
 					break;
 
 				case 'device_interview':
-					this.logger.debug(`[Z2M][MQTT] Device interview: ${event.data.friendly_name} - ${event.data.status}`);
+					this.logger.debug(`Device interview: ${event.data.friendly_name} - ${event.data.status}`);
 					break;
 			}
 		} catch (error) {
-			this.logger.warn('[Z2M][MQTT] Failed to parse bridge/event message', {
+			this.logger.warn('Failed to parse bridge/event message', {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -531,7 +539,7 @@ export class Z2mMqttClientAdapterService {
 				timestamp: new Date(),
 			});
 		} catch (error) {
-			this.logger.warn(`[Z2M][MQTT] Failed to parse state for device ${friendlyName}`, {
+			this.logger.warn(`Failed to parse state for device ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -566,7 +574,7 @@ export class Z2mMqttClientAdapterService {
 				timestamp: new Date(),
 			});
 		} catch (error) {
-			this.logger.warn(`[Z2M][MQTT] Failed to parse availability for device ${friendlyName}`, {
+			this.logger.warn(`Failed to parse availability for device ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -581,7 +589,7 @@ export class Z2mMqttClientAdapterService {
 		}
 
 		const interval = this.config.reconnectInterval;
-		this.logger.log(`[Z2M][MQTT] Scheduling reconnection in ${interval}ms`);
+		this.logger.log(`Scheduling reconnection in ${interval}ms`);
 
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null;
@@ -589,7 +597,7 @@ export class Z2mMqttClientAdapterService {
 			if (!this.connected && this.config) {
 				this.connect(this.config).catch((error: unknown) => {
 					const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-					this.logger.error('[Z2M][MQTT] Reconnection failed', {
+					this.logger.error('Reconnection failed', {
 						message: errorMessage,
 					});
 					// Schedule another reconnection

@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { DataTypeType } from '../../../modules/devices/devices.constants';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
-import { DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
+import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import {
 	Zigbee2mqttChannelEntity,
 	Zigbee2mqttChannelPropertyEntity,
@@ -24,7 +25,10 @@ export type IZigbee2mqttDevicePropertyData = IDevicePropertyData & {
  */
 @Injectable()
 export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
-	private readonly logger = new Logger(Zigbee2mqttDevicePlatform.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+		'DevicePlatform',
+	);
 
 	constructor(private readonly mqttAdapter: Z2mMqttClientAdapterService) {}
 
@@ -43,7 +47,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 
 		// Check if MQTT is connected
 		if (!this.mqttAdapter.isConnected()) {
-			this.logger.warn('[Z2M][PLATFORM] MQTT not connected, cannot send command');
+			this.logger.warn('MQTT not connected, cannot send command');
 			return false;
 		}
 
@@ -66,7 +70,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			const device = update.device;
 
 			if (!(device instanceof Zigbee2mqttDeviceEntity)) {
-				this.logger.error('[Z2M][PLATFORM] Invalid device type provided');
+				this.logger.error('Invalid device type provided');
 				continue;
 			}
 
@@ -101,7 +105,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		for (const { device, channels } of byDevice.values()) {
 			// Check if device is enabled
 			if (!device.enabled) {
-				this.logger.debug(`[Z2M][PLATFORM] Device ${device.identifier} is disabled, ignoring command`);
+				this.logger.debug(`Device ${device.identifier} is disabled, ignoring command`);
 				results.push(false);
 				continue;
 			}
@@ -109,7 +113,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			// Get the friendly name for publishing
 			const friendlyName = device.friendlyName;
 			if (!friendlyName) {
-				this.logger.error(`[Z2M][PLATFORM] Device ${device.identifier} has no friendly name`);
+				this.logger.error(`Device ${device.identifier} has no friendly name`);
 				results.push(false);
 				continue;
 			}
@@ -120,7 +124,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 					const success = await this.executeCommand(device, channel, Array.from(props.values()), friendlyName);
 					results.push(success);
 				} catch (error) {
-					this.logger.error('[Z2M][PLATFORM] Error processing command', {
+					this.logger.error('Error processing command', {
 						message: error instanceof Error ? error.message : String(error),
 					});
 					results.push(false);
@@ -147,7 +151,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			const z2mProperty = property.z2mProperty;
 
 			if (!z2mProperty) {
-				this.logger.debug(`[Z2M][PLATFORM] Property ${property.identifier} has no z2mProperty mapping, skipping`);
+				this.logger.debug(`Property ${property.identifier} has no z2mProperty mapping, skipping`);
 				continue;
 			}
 
@@ -157,18 +161,18 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		}
 
 		if (Object.keys(payload).length === 0) {
-			this.logger.debug('[Z2M][PLATFORM] No valid properties to update');
+			this.logger.debug('No valid properties to update');
 			return false;
 		}
 
-		this.logger.log(`[Z2M][PLATFORM] Sending command to ${friendlyName}: ${JSON.stringify(payload)}`);
+		this.logger.log(`Sending command to ${friendlyName}: ${JSON.stringify(payload)}`);
 
 		const success = await this.mqttAdapter.publishCommand(friendlyName, payload);
 
 		if (success) {
-			this.logger.debug(`[Z2M][PLATFORM] Command sent successfully to ${friendlyName}`);
+			this.logger.debug(`Command sent successfully to ${friendlyName}`);
 		} else {
-			this.logger.warn(`[Z2M][PLATFORM] Failed to send command to ${friendlyName}`);
+			this.logger.warn(`Failed to send command to ${friendlyName}`);
 		}
 
 		return success;

@@ -5,8 +5,9 @@ eslint-disable @typescript-eslint/no-unnecessary-type-assertion
 Reason: Type assertions are needed to narrow Z2mExpose union type to
 specific expose types since TypeScript cannot narrow discriminated unions.
 */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -15,6 +16,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import {
 	COMMON_PROPERTY_MAPPINGS,
+	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	Z2M_ACCESS,
 	Z2M_CHANNEL_IDENTIFIERS,
 	Z2M_GENERIC_TYPES,
@@ -67,7 +69,10 @@ export interface MappedProperty {
  */
 @Injectable()
 export class Z2mExposesMapperService {
-	private readonly logger = new Logger(Z2mExposesMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+		'ExposesMapper',
+	);
 
 	/**
 	 * Map Z2M exposes to channels and properties
@@ -99,7 +104,7 @@ export class Z2mExposesMapperService {
 			return this.mapGenericExpose(expose);
 		}
 
-		this.logger.debug(`[Z2M][MAPPER] Unknown expose type: ${type}`);
+		this.logger.debug(`Unknown expose type: ${type}`);
 		return [];
 	}
 
@@ -230,9 +235,7 @@ export class Z2mExposesMapperService {
 				const compositeExpose = expose as Z2mExposeComposite;
 				// For color, we store as JSON string
 				dataType = DataTypeType.STRING;
-				this.logger.debug(
-					`[Z2M][MAPPER] Composite expose ${propertyName} with ${compositeExpose.features?.length ?? 0} features`,
-				);
+				this.logger.debug(`Composite expose ${propertyName} with ${compositeExpose.features?.length ?? 0} features`);
 				break;
 			}
 			default:
