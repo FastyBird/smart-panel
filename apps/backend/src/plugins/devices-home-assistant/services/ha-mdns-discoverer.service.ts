@@ -77,6 +77,25 @@ export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
 			this.logger.error('Failed to start mDNS discovery', {
 				message: error instanceof Error ? error.message : String(error),
 			});
+
+			// Clean up any partially created resources to prevent orphaned instances
+			if (this.browser) {
+				try {
+					this.browser.stop();
+				} catch {
+					// Ignore cleanup errors
+				}
+				this.browser = null;
+			}
+
+			if (this.bonjour) {
+				try {
+					this.bonjour.destroy();
+				} catch {
+					// Ignore cleanup errors
+				}
+				this.bonjour = null;
+			}
 		}
 	}
 
