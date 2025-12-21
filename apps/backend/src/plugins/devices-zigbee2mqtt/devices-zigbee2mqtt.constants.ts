@@ -339,12 +339,23 @@ export const mapZ2mTypeToDataType = (
 			return DataTypeType.BOOL;
 		case 'numeric':
 			if (valueMin !== undefined && valueMax !== undefined) {
-				const range = valueMax - valueMin;
-				if (valueMin >= 0 && valueMax <= 255) {
+				const hasNegative = valueMin < 0;
+
+				// For values that can be negative, use signed types or float
+				if (hasNegative) {
+					// Use FLOAT for negative values to ensure proper representation
+					return DataTypeType.FLOAT;
+				}
+
+				// For non-negative values, use appropriate unsigned types
+				if (valueMax <= 255) {
 					return DataTypeType.UCHAR;
 				}
-				if (range <= 65535) {
+				if (valueMax <= 65535) {
 					return DataTypeType.USHORT;
+				}
+				if (valueMax <= 4294967295) {
+					return DataTypeType.UINT;
 				}
 			}
 			return DataTypeType.FLOAT;
