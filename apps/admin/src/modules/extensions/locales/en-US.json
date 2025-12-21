@@ -28,7 +28,8 @@
 	"tabs": {
 		"all": "All Extensions",
 		"modules": "Modules",
-		"plugins": "Plugins"
+		"plugins": "Plugins",
+		"services": "Services"
 	},
 	"labels": {
 		"module": "Module",
@@ -143,5 +144,60 @@
 		"notConfigurableError": "This extension does not support enable/disable",
 		"loadError": "Failed to load extensions",
 		"noMatchingExtensions": "No extensions match your filters"
+	},
+	"services": {
+		"headings": {
+			"list": "Plugin Services",
+			"subHeading": "Monitor and control plugin services"
+		},
+		"labels": {
+			"pluginName": "Plugin",
+			"serviceId": "Service",
+			"state": "State",
+			"enabled": "Enabled",
+			"disabled": "Disabled",
+			"healthy": "Healthy",
+			"unhealthy": "Unhealthy",
+			"uptime": "Uptime",
+			"startCount": "Starts",
+			"lastStarted": "Last Started",
+			"lastStopped": "Last Stopped",
+			"lastError": "Last Error"
+		},
+		"states": {
+			"stopped": "Stopped",
+			"starting": "Starting",
+			"started": "Running",
+			"stopping": "Stopping",
+			"error": "Error"
+		},
+		"buttons": {
+			"start": "Start",
+			"stop": "Stop",
+			"restart": "Restart",
+			"refresh": "Refresh"
+		},
+		"messages": {
+			"started": "Service has been started",
+			"stopped": "Service has been stopped",
+			"restarted": "Service has been restarted",
+			"startError": "Failed to start service",
+			"stopError": "Failed to stop service",
+			"restartError": "Failed to restart service",
+			"loadError": "Failed to load services",
+			"noServices": "No services available"
+		},
+		"tooltips": {
+			"disabledPlugin": "Plugin is disabled",
+			"transitioning": "Service is transitioning",
+			"startService": "Start this service",
+			"stopService": "Stop this service",
+			"restartService": "Restart this service"
+		},
+		"texts": {
+			"loadingServices": "Loading services...",
+			"noServices": "No managed services found",
+			"pluginDisabled": "Plugin disabled"
+		}
 	}
 }

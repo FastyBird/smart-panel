@@ -6,4 +6,8 @@ export { registerExtensionsStore } from './extensions.store';
 export * from './extensions.store.schemas';
 export * from './extensions.store.types';
 export * from './extensions.transformers';
+export { registerServicesStore } from './services.store';
+export * from './services.store.schemas';
+export * from './services.store.types';
+export * from './services.transformers';
 export * from './keys';

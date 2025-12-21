@@ -5,3 +5,5 @@ export { default as ExtensionsFilter } from './extensions-filter.vue';
 export { default as ExtensionsTable } from './extensions-table.vue';
 export { default as ListExtensions } from './list-extensions.vue';
 export { default as ListExtensionsAdjust } from './list-extensions-adjust.vue';
+export { default as ServiceItem } from './service-item.vue';
+export { default as ServicesList } from './services-list.vue';
