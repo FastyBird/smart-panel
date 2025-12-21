@@ -280,29 +280,32 @@ export const Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS = {
 } as const;
 
 // Map Z2M device category to Smart Panel device category
-export const mapZ2mCategoryToDeviceCategory = (exposes: string[]): DeviceCategory => {
-	if (exposes.includes('light')) {
+// Takes both expose types (e.g., 'binary', 'light', 'switch') and property names (e.g., 'occupancy', 'contact')
+export const mapZ2mCategoryToDeviceCategory = (exposeTypes: string[], propertyNames: string[] = []): DeviceCategory => {
+	// Check expose types first (these are composite types like 'light', 'switch', etc.)
+	if (exposeTypes.includes('light')) {
 		return DeviceCategory.LIGHTING;
 	}
-	if (exposes.includes('climate')) {
+	if (exposeTypes.includes('climate')) {
 		return DeviceCategory.THERMOSTAT;
 	}
-	if (exposes.includes('lock')) {
+	if (exposeTypes.includes('lock')) {
 		return DeviceCategory.LOCK;
 	}
-	if (exposes.includes('cover')) {
+	if (exposeTypes.includes('cover')) {
 		return DeviceCategory.WINDOW_COVERING;
 	}
+	if (exposeTypes.includes('switch')) {
+		return DeviceCategory.SWITCHER;
+	}
+	// Check property names for binary sensors (they have type 'binary' but different property names)
 	if (
-		exposes.includes('occupancy') ||
-		exposes.includes('contact') ||
-		exposes.includes('smoke') ||
-		exposes.includes('water_leak')
+		propertyNames.includes('occupancy') ||
+		propertyNames.includes('contact') ||
+		propertyNames.includes('smoke') ||
+		propertyNames.includes('water_leak')
 	) {
 		return DeviceCategory.SENSOR;
-	}
-	if (exposes.includes('switch') || exposes.includes('state')) {
-		return DeviceCategory.SWITCHER;
 	}
 	return DeviceCategory.GENERIC;
 };

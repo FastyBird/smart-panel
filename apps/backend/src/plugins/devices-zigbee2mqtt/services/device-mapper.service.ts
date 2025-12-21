@@ -74,7 +74,8 @@ export class Z2mDeviceMapperService {
 
 		// Determine device category from exposes
 		const exposeTypes = definition.exposes.map((e) => e.type);
-		const deviceCategory = mapZ2mCategoryToDeviceCategory(exposeTypes);
+		const propertyNames = definition.exposes.map((e) => e.name ?? e.property).filter((n): n is string => !!n);
+		const deviceCategory = mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
 
 		// Create or update device
 		let device = await this.devicesService.findOneBy<Zigbee2mqttDeviceEntity>(
