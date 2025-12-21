@@ -3,11 +3,9 @@ import inquirer from 'inquirer';
 import { validate as uuidValidate } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
@@ -33,12 +31,18 @@ import { DeviceTypeMapping, DevicesTypeMapperService } from './devices-type-mapp
 import { DevicesControlsService } from './devices.controls.service';
 import { DevicesService } from './devices.service';
 
+// Default seed file names
+const DEFAULT_DEVICES_FILE = 'devices.json';
+const DEFAULT_DEVICES_CONTROLS_FILE = 'devices_controls.json';
+const DEFAULT_CHANNELS_FILE = 'channels.json';
+const DEFAULT_CHANNELS_CONTROLS_FILE = 'channels_controls.json';
+const DEFAULT_CHANNELS_PROPERTIES_FILE = 'channels_properties.json';
+
 @Injectable()
 export class DevicesSeederService implements Seeder {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesSeederService');
 
 	constructor(
-		private readonly configService: NestConfigService,
 		private readonly devicesService: DevicesService,
 		private readonly devicesControlsService: DevicesControlsService,
 		private readonly channelsService: ChannelsService,
@@ -71,21 +75,11 @@ export class DevicesSeederService implements Seeder {
 		let seededDevices = 0;
 		let seededChannels = 0;
 
-		const devices = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'FB_SEED_DEVICES_FILE', 'devices.json'),
-		);
-		const devicesControls = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'FB_SEED_DEVICES_CONTROLS_FILE', 'devices_controls.json'),
-		);
-		const channels = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'FB_SEED_CHANNELS_FILE', 'channels.json'),
-		);
-		const channelsControls = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'FB_SEED_CHANNELS_CONTROLS_FILE', 'channels_controls.json'),
-		);
-		const channelsProperties = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'FB_SEED_CHANNELS_PROPERTIES_FILE', 'channels_properties.json'),
-		);
+		const devices = this.seedTools.loadJsonData(DEFAULT_DEVICES_FILE);
+		const devicesControls = this.seedTools.loadJsonData(DEFAULT_DEVICES_CONTROLS_FILE);
+		const channels = this.seedTools.loadJsonData(DEFAULT_CHANNELS_FILE);
+		const channelsControls = this.seedTools.loadJsonData(DEFAULT_CHANNELS_CONTROLS_FILE);
+		const channelsProperties = this.seedTools.loadJsonData(DEFAULT_CHANNELS_PROPERTIES_FILE);
 
 		if (!devices.length) {
 			this.logger.warn('[SEED] No devices found in devices.json');

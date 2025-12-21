@@ -4,10 +4,8 @@ import * as path from 'path';
 import { DataSource } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { getEnvValue } from '../../../common/utils/config.utils';
 import { SEED_MODULE_NAME } from '../seed.constants';
 
 import { SeedRegistryService } from './seed-registry.service';
@@ -16,24 +14,17 @@ export interface Seeder {
 	seed(): Promise<void>;
 }
 
+// Default seed data path
+const DEFAULT_SEED_DATA_PATH = path.resolve(__dirname, '../../../../../../var/data/seed');
+
 @Injectable()
 export class SeedTools {
 	private readonly logger = createExtensionLogger(SEED_MODULE_NAME, 'SeedTools');
 
-	constructor(private readonly configService: NestConfigService) {}
-
-	private getSeedPath(): string {
-		return getEnvValue<string>(
-			this.configService,
-			'FB_SEED_DATA_PATH',
-			path.resolve(__dirname, '../../../../../../var/data/seed'),
-		);
-	}
-
 	loadJsonData(filename: string): Record<string, any>[] {
 		const sanitizedFilename = filename.replace(/^\/+/, '');
 
-		const filePath = path.join(this.getSeedPath(), sanitizedFilename);
+		const filePath = path.join(DEFAULT_SEED_DATA_PATH, sanitizedFilename);
 
 		try {
 			if (!fs.existsSync(filePath)) {
