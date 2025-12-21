@@ -181,7 +181,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		property: Zigbee2mqttChannelPropertyEntity,
 		value: string | number | boolean,
 	): string | number | boolean | Record<string, unknown> {
-		// Check if property has special format (e.g., ON/OFF values for binary)
+		// Check if property has special format (e.g., ON/OFF values for binary, or [min, max] for numeric)
 		const format = property.format;
 
 		if (format && Array.isArray(format) && format.length === 2) {
@@ -189,6 +189,10 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			if (typeof format[0] === 'string' && typeof format[1] === 'string') {
 				const boolValue = this.coerceBoolean(value);
 				return boolValue ? format[0] : format[1];
+			}
+			// Numeric with [min, max] range
+			if (typeof format[0] === 'number' && typeof format[1] === 'number') {
+				return this.coerceNumber(value, format[0], format[1]);
 			}
 		}
 
@@ -202,12 +206,12 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		}
 
 		if (z2mProperty === 'brightness') {
-			// Ensure brightness is within range
+			// Ensure brightness is within default range (device-specific range handled above via format)
 			return this.coerceNumber(value, 0, 254);
 		}
 
 		if (z2mProperty === 'color_temp') {
-			// Color temperature as number
+			// Color temperature with default range (device-specific range handled above via format)
 			return this.coerceNumber(value, 150, 500);
 		}
 
