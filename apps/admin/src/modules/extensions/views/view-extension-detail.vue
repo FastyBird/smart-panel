@@ -454,6 +454,7 @@
 			<el-card
 				shadow="never"
 				class="mb-2"
+				body-class="h-80 flex flex-col overflow-hidden"
 			>
 				<template #header>
 					<span class="font-semibold">{{ t('extensionsModule.labels.logs') }}</span>
