@@ -1,8 +1,9 @@
 import { FastifyReply } from 'fastify';
 
-import { Body, Controller, HttpCode, HttpStatus, Logger, Put, Res } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Put, Res } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
 import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -12,6 +13,7 @@ import {
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import {
 	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
+	DEVICES_THIRD_PARTY_PLUGIN_NAME,
 	ThirdPartyPropertiesUpdateStatus,
 } from '../devices-third-party.constants';
 import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
@@ -21,7 +23,10 @@ import { PropertiesUpdateResultResponseModel } from '../models/demo-control-resp
 @ApiTags(DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME)
 @Controller('demo')
 export class ThirdPartyDemoController {
-	private readonly logger = new Logger(ThirdPartyDemoController.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_THIRD_PARTY_PLUGIN_NAME,
+		'ThirdPartyDemoController',
+	);
 	private queue: { [key: string]: NodeJS.Timeout } = {};
 
 	constructor(private readonly channelsPropertiesService: ChannelsPropertiesService) {}
@@ -79,7 +84,7 @@ export class ThirdPartyDemoController {
 	@Put('webhook')
 	@HttpCode(HttpStatus.NO_CONTENT)
 	async controlDevice(@Body() body: ReqUpdatePropertiesDto, @Res() res: FastifyReply): Promise<void> {
-		this.logger.debug('[THIRD-PARTY][DEMO CONTROLLER] Execute demo property update');
+		this.logger.debug('Execute demo property update');
 
 		const results: PropertyUpdateResultModel[] = [];
 		let hasErrors = false;
@@ -88,9 +93,7 @@ export class ThirdPartyDemoController {
 			const property = await this.channelsPropertiesService.findOne(update.property);
 
 			if (property === null) {
-				this.logger.warn(
-					`[THIRD-PARTY][DEMO CONTROLLER] Property to update was not found in system ${update.property}`,
-				);
+				this.logger.warn(`Property to update was not found in system ${update.property}`);
 
 				results.push({
 					device: update.device,
@@ -116,9 +119,7 @@ export class ThirdPartyDemoController {
 
 			this.queue[property.id] = setTimeout(() => {
 				void (async () => {
-					this.logger.debug(
-						`[THIRD-PARTY][DEMO CONTROLLER] Updating property ${property.id} with value ${update.value}`,
-					);
+					this.logger.debug(`Updating property ${property.id} with value ${update.value}`);
 
 					await this.channelsPropertiesService.update(property.id, {
 						type: property.type,

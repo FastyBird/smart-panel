@@ -1,8 +1,10 @@
 import { Command, CommandRunner } from 'nest-commander';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { UsersService } from '../services/users.service';
+import { USERS_MODULE_NAME } from '../users.constants';
 
 @Command({
 	name: 'users:list',
@@ -10,7 +12,7 @@ import { UsersService } from '../services/users.service';
 })
 @Injectable()
 export class ListUsersCommand extends CommandRunner {
-	private readonly logger = new Logger(ListUsersCommand.name);
+	private readonly logger = createExtensionLogger(USERS_MODULE_NAME, 'ListUsersCommand');
 
 	constructor(private readonly service: UsersService) {
 		super();
@@ -20,7 +22,7 @@ export class ListUsersCommand extends CommandRunner {
 		const users = await this.service.findAll();
 
 		if (users.length === 0) {
-			this.logger.warn(`[USERS] No registered users found.`);
+			this.logger.warn(`No registered users found.`);
 
 			console.log('\x1b[33m⚠️ No registered users found.\x1b[0m');
 
@@ -34,6 +36,6 @@ export class ListUsersCommand extends CommandRunner {
 			console.log(`${'\x1b[35m' + (index + 1) + '.\x1b[0m'} \x1b[1m${user.username}\x1b[0m`);
 		});
 
-		this.logger.debug(`[USERS] Successfully displayed user list.`);
+		this.logger.debug(`Successfully displayed user list.`);
 	}
 }

@@ -8,7 +8,6 @@ import {
 	Delete,
 	Get,
 	HttpCode,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -21,6 +20,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -32,7 +32,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { ReqCreateDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
@@ -57,7 +57,7 @@ import { PropertyTimeseriesService } from '../services/property-timeseries.servi
 @ApiTags(DEVICES_MODULE_API_TAG_NAME)
 @Controller('devices/:deviceId/channels/:channelId/properties')
 export class DevicesChannelsPropertiesController {
-	private readonly logger = new Logger(DevicesChannelsPropertiesController.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesChannelsPropertiesController');
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -88,16 +88,14 @@ export class DevicesChannelsPropertiesController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 	): Promise<ChannelPropertiesResponseModel> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all data sources for deviceId=${deviceId} channelId=${channelId}`);
+		this.logger.debug(`Fetching all data sources for deviceId=${deviceId} channelId=${channelId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 
 		const properties = await this.channelsPropertiesService.findAll(channel.id);
 
-		this.logger.debug(
-			`[LOOKUP ALL] Retrieved ${properties.length} data sources for deviceId=${device.id} channelId=${channel.id}`,
-		);
+		this.logger.debug(`Retrieved ${properties.length} data sources for deviceId=${device.id} channelId=${channel.id}`);
 
 		const response = new ChannelPropertiesResponseModel();
 
@@ -129,14 +127,14 @@ export class DevicesChannelsPropertiesController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<ChannelPropertyResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching device id=${id} for deviceId=${deviceId} channelId=${channelId}`);
+		this.logger.debug(`Fetching device id=${id} for deviceId=${deviceId} channelId=${channelId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 
 		const property = await this.getOneOrThrow(id, channel.id);
 
-		this.logger.debug(`[LOOKUP] Found channel id=${property.id} for deviceId=${device.id} channelId=${channel.id}`);
+		this.logger.debug(`Found channel id=${property.id} for deviceId=${device.id} channelId=${channel.id}`);
 
 		const response = new ChannelPropertyResponseModel();
 
@@ -232,9 +230,7 @@ export class DevicesChannelsPropertiesController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<ChannelPropertyResponseModel> {
-		this.logger.debug(
-			`[CREATE] Incoming request to create a new data source for deviceId=${deviceId} channelId=${channelId}`,
-		);
+		this.logger.debug(`Incoming request to create a new data source for deviceId=${deviceId} channelId=${channelId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
@@ -243,7 +239,7 @@ export class DevicesChannelsPropertiesController {
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
 		if (!type) {
-			this.logger.error(`[VALIDATION] Missing required field: type for deviceId=${device.id} channelId=${channel.id}`);
+			this.logger.error(`Missing required field: type for deviceId=${device.id} channelId=${channel.id}`);
 
 			throw new BadRequestException([
 				JSON.stringify({ field: 'type', reason: 'Channel property type attribute is required.' }),
@@ -297,7 +293,7 @@ export class DevicesChannelsPropertiesController {
 			const property = await this.channelsPropertiesService.create(channel.id, dtoInstance);
 
 			this.logger.debug(
-				`[CREATE] Successfully created data source id=${property.id} for deviceId=${device.id} channelId=${channel.id}`,
+				`Successfully created data source id=${property.id} for deviceId=${device.id} channelId=${channel.id}`,
 			);
 
 			setLocationHeader(
@@ -353,7 +349,7 @@ export class DevicesChannelsPropertiesController {
 		@Body() updateDto: { data: object },
 	): Promise<ChannelPropertyResponseModel> {
 		this.logger.debug(
-			`[UPDATE] Incoming update request for data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
+			`Incoming update request for data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
 		);
 
 		const device = await this.getDeviceOrThrow(deviceId);
@@ -410,7 +406,7 @@ export class DevicesChannelsPropertiesController {
 			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance);
 
 			this.logger.debug(
-				`[UPDATE] Successfully updated channel id=${updatedProperty.id} for deviceId=${device.id} channelId=${channel.id}`,
+				`Successfully updated channel id=${updatedProperty.id} for deviceId=${device.id} channelId=${channel.id}`,
 			);
 
 			const response = new ChannelPropertyResponseModel();
@@ -449,7 +445,7 @@ export class DevicesChannelsPropertiesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<void> {
 		this.logger.debug(
-			`[DELETE] Incoming request to delete data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
+			`Incoming request to delete data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
 		);
 
 		const device = await this.getDeviceOrThrow(deviceId);
@@ -458,13 +454,11 @@ export class DevicesChannelsPropertiesController {
 
 		await this.channelsPropertiesService.remove(property.id);
 
-		this.logger.debug(
-			`[DELETE] Successfully deleted channel id=${id} for deviceId=${device.id} channelId=${channel.id}`,
-		);
+		this.logger.debug(`Successfully deleted channel id=${id} for deviceId=${device.id} channelId=${channel.id}`);
 	}
 
 	private async getOneOrThrow(id: string, channelId: string): Promise<ChannelPropertyEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of data source id=${id} for channelId=${channelId}`);
+		this.logger.debug(`Checking existence of data source id=${id} for channelId=${channelId}`);
 
 		const property = await this.channelsPropertiesService.findOne(id, channelId);
 
@@ -478,7 +472,7 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	private async getChannelOrThrow(deviceId: string, channelId: string): Promise<ChannelEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of channel id=${channelId} for deviceId=${deviceId}`);
+		this.logger.debug(`Checking existence of channel id=${channelId} for deviceId=${deviceId}`);
 
 		const channel = await this.channelsService.findOne(channelId, deviceId);
 
@@ -492,7 +486,7 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	private async getDeviceOrThrow(deviceId: string): Promise<DeviceEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of device id=${deviceId}`);
+		this.logger.debug(`Checking existence of device id=${deviceId}`);
 
 		const device = await this.devicesService.findOne(deviceId);
 

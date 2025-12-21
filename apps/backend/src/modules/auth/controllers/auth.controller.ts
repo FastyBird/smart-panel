@@ -1,16 +1,7 @@
-import {
-	Body,
-	Controller,
-	ForbiddenException,
-	Get,
-	HttpCode,
-	Logger,
-	NotFoundException,
-	Post,
-	Req,
-} from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, HttpCode, NotFoundException, Post, Req } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -20,7 +11,7 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { UsersService } from '../../users/services/users.service';
-import { AUTH_MODULE_API_TAG_NAME } from '../auth.constants';
+import { AUTH_MODULE_API_TAG_NAME, AUTH_MODULE_NAME } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
 import { ReqCheckEmailDto } from '../dto/check-email.dto';
 import { ReqCheckUsernameDto } from '../dto/check-username.dto';
@@ -41,7 +32,7 @@ import { AuthService } from '../services/auth.service';
 @ApiTags(AUTH_MODULE_API_TAG_NAME)
 @Controller('auth')
 export class AuthController {
-	private readonly logger = new Logger(AuthController.name);
+	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'AuthController');
 
 	constructor(
 		private readonly authService: AuthService,
@@ -63,11 +54,11 @@ export class AuthController {
 	@Post('login')
 	async login(@Body() body: ReqLoginDto): Promise<LoginResponseModel> {
 		try {
-			this.logger.debug(`[LOGIN] Attempting login for username=${body.data.username}`);
+			this.logger.debug(`Attempting login for username=${body.data.username}`);
 
 			const data = await this.authService.login(body.data);
 
-			this.logger.debug(`[LOGIN] Successful login for username=${body.data.username}`);
+			this.logger.debug(`Successful login for username=${body.data.username}`);
 
 			const response = new LoginResponseModel();
 			response.data = data;
@@ -100,16 +91,16 @@ export class AuthController {
 		const owner = await this.userService.findOwner();
 
 		if (owner) {
-			this.logger.warn('[REGISTER] Owner already registered');
+			this.logger.warn('Owner already registered');
 
 			throw new ForbiddenException('Application owner already exists');
 		}
 
-		this.logger.debug(`[REGISTER] Registering new user username=${body.data.username}, email=${body.data.email}`);
+		this.logger.debug(`Registering new user username=${body.data.username}, email=${body.data.email}`);
 
 		await this.authService.register(body.data);
 
-		this.logger.debug(`[REGISTER] Successfully registered user username=${body.data.username}`);
+		this.logger.debug(`Successfully registered user username=${body.data.username}`);
 	}
 
 	@ApiOperation({
@@ -129,7 +120,7 @@ export class AuthController {
 		try {
 			const data = await this.authService.refreshAccessToken(body.data.token);
 
-			this.logger.debug('[REFRESH] Successfully refreshed user access token');
+			this.logger.debug('Successfully refreshed user access token');
 
 			const response = new RefreshResponseModel();
 			response.data = data;
@@ -157,11 +148,11 @@ export class AuthController {
 	@Public()
 	@Post('check/username')
 	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckUsernameResponseModel> {
-		this.logger.debug(`[CHECK] Checking availability for username=${body.data.username}`);
+		this.logger.debug(`Checking availability for username=${body.data.username}`);
 
 		const data = await this.authService.checkUsername(body.data);
 
-		this.logger.debug(`[CHECK] Username=${body.data.username} available=${data.valid}`);
+		this.logger.debug(`Username=${body.data.username} available=${data.valid}`);
 
 		const response = new CheckUsernameResponseModel();
 		response.data = data;
@@ -182,11 +173,11 @@ export class AuthController {
 	@Public()
 	@Post('check/email')
 	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckEmailResponseModel> {
-		this.logger.debug(`[CHECK] Checking availability for email=${body.data.email}`);
+		this.logger.debug(`Checking availability for email=${body.data.email}`);
 
 		const data = await this.authService.checkEmail(body.data);
 
-		this.logger.debug(`[CHECK] Email=${body.data.email} available=${data.valid}`);
+		this.logger.debug(`Email=${body.data.email} available=${data.valid}`);
 
 		const response = new CheckEmailResponseModel();
 		response.data = data;
@@ -213,11 +204,11 @@ export class AuthController {
 			throw new ForbiddenException('User not found');
 		}
 
-		this.logger.debug(`[PROFILE] Fetching profile for user=${auth.id}`);
+		this.logger.debug(`Fetching profile for user=${auth.id}`);
 
 		const userData = await this.authService.getProfile(auth.id);
 
-		this.logger.debug(`[PROFILE] Successfully fetched profile for user=${auth.id}`);
+		this.logger.debug(`Successfully fetched profile for user=${auth.id}`);
 
 		const response = new ProfileResponseModel();
 		response.data = userData;

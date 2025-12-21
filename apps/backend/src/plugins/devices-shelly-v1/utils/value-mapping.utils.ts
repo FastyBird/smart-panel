@@ -114,7 +114,7 @@ export function mapValueToCanonical(
 
 	// Unknown raw value - log warning and return null
 	console.warn(
-		`[SHELLY V1][VALUE MAP] Unknown raw value "${rawStr}" for property "${propertyName}". Expected one of: ${Object.keys(valueMap).join(', ')}`,
+		`Unknown raw value "${rawStr}" for property "${propertyName}". Expected one of: ${Object.keys(valueMap).join(', ')}`,
 	);
 
 	return null;
@@ -144,7 +144,7 @@ export function mapValueToRaw(
 
 	// Unknown canonical value - log warning and return null
 	console.warn(
-		`[SHELLY V1][VALUE MAP] Unknown canonical value "${canonicalStr}" for property "${propertyName}". Expected one of: ${Object.keys(reverseValueMap).join(', ')}`,
+		`Unknown canonical value "${canonicalStr}" for property "${propertyName}". Expected one of: ${Object.keys(reverseValueMap).join(', ')}`,
 	);
 
 	return null;
@@ -171,7 +171,7 @@ export function validateEnumValue(
 
 	if (!formatStrs.includes(valueStr)) {
 		console.warn(
-			`[SHELLY V1][ENUM VALIDATION] Value "${valueStr}" is not in allowed format for property "${propertyName}". Allowed: ${formatStrs.join(', ')}`,
+			`Value "${valueStr}" is not in allowed format for property "${propertyName}". Allowed: ${formatStrs.join(', ')}`,
 		);
 
 		return false;

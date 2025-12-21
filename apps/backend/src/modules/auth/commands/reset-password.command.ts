@@ -1,9 +1,11 @@
 import { Command, CommandRunner } from 'nest-commander';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
+import { AUTH_MODULE_NAME } from '../auth.constants';
 
 @Command({
 	name: 'auth:reset',
@@ -12,7 +14,7 @@ import { UserRole } from '../../users/users.constants';
 })
 @Injectable()
 export class ResetPasswordCommand extends CommandRunner {
-	private readonly logger = new Logger(ResetPasswordCommand.name);
+	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'ResetPasswordCommand');
 
 	constructor(private readonly service: UsersService) {
 		super();
@@ -30,7 +32,7 @@ export class ResetPasswordCommand extends CommandRunner {
 		const user = await this.service.findByUsername(username);
 
 		if (user === null || user.role !== UserRole.OWNER) {
-			this.logger.warn(`[AUTH] No owner account found.`);
+			this.logger.warn('No owner account found.');
 
 			console.log('\n\x1b[31m🚨 No owner account found. Cannot reset password.\n');
 
@@ -45,6 +47,6 @@ export class ResetPasswordCommand extends CommandRunner {
 
 		console.log(`\n\x1b[32m✅ Successfully reset password for: \x1b[1m${user.username}\x1b[0m\n`);
 
-		this.logger.log(`[AUTH] Password reset successfully for owner=${user.username}`);
+		this.logger.log(`Password reset successfully for owner=${user.username}`);
 	}
 }

@@ -1,9 +1,11 @@
 import { Command, CommandRunner } from 'nest-commander';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
+import { AUTH_MODULE_NAME } from '../auth.constants';
 
 interface RegisterOwnerOptions {
 	username?: string;
@@ -17,7 +19,7 @@ interface RegisterOwnerOptions {
 })
 @Injectable()
 export class RegisterOwnerCommand extends CommandRunner {
-	private readonly logger = new Logger(RegisterOwnerCommand.name);
+	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'RegisterOwnerCommand');
 
 	constructor(private readonly service: UsersService) {
 		super();
@@ -35,7 +37,7 @@ export class RegisterOwnerCommand extends CommandRunner {
 		const owner = await this.service.findOwner();
 
 		if (owner !== null) {
-			this.logger.warn(`[AUTH] Owner already registered.`);
+			this.logger.warn('Owner already registered.');
 
 			console.log('\n\x1b[31m🚨 Owner account already registered. New owner account can not be created.\n');
 
@@ -52,6 +54,6 @@ export class RegisterOwnerCommand extends CommandRunner {
 
 		console.log(`\n\x1b[32m✅ Successfully created owner account: \x1b[1m${user.username}\x1b[0m\n`);
 
-		this.logger.log(`[AUTH] Successfully created application owner=${user.username}`);
+		this.logger.log(`Successfully created application owner=${user.username}`);
 	}
 }

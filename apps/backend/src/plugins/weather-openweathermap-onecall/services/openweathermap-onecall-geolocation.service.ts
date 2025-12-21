@@ -1,7 +1,8 @@
 import fetch from 'node-fetch';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { OpenWeatherMapOneCallConfigModel } from '../models/config.model';
@@ -27,7 +28,10 @@ interface OpenWeatherMapGeoZip {
 
 @Injectable()
 export class OpenWeatherMapOneCallGeolocationService {
-	private readonly logger = new Logger(OpenWeatherMapOneCallGeolocationService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
+		'OpenWeatherMapOneCallGeolocationService',
+	);
 	private readonly itemsLimit: number = 5;
 	private readonly API_URL = 'https://api.openweathermap.org/geo/1.0';
 

@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { WeatherLocationEntity } from '../../../modules/weather/entities/locations.entity';
 import { WeatherAlertModel } from '../../../modules/weather/models/alert.model';
 import { CurrentDayModel, ForecastDayModel } from '../../../modules/weather/models/weather.model';
@@ -9,12 +10,16 @@ import { OpenWeatherMapOneCallHttpService } from '../services/openweathermap-one
 import {
 	WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_API_TAG_DESCRIPTION,
 	WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_API_TAG_NAME,
+	WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
 	WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_TYPE,
 } from '../weather-openweathermap-onecall.constants';
 
 @Injectable()
 export class OpenWeatherMapOneCallProvider implements IWeatherProvider {
-	private readonly logger = new Logger(OpenWeatherMapOneCallProvider.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
+		'OpenWeatherMapOneCallProvider',
+	);
 
 	constructor(private readonly httpService: OpenWeatherMapOneCallHttpService) {}
 

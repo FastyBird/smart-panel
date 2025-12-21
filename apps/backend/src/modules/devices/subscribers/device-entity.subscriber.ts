@@ -1,13 +1,15 @@
 import { DataSource, EntitySubscriberInterface, RemoveEvent, UpdateEvent } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceConnectionStateService } from '../services/device-connection-state.service';
 
 @Injectable()
 export class DeviceEntitySubscriber implements EntitySubscriberInterface<DeviceEntity> {
-	private readonly logger = new Logger(DeviceEntitySubscriber.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DeviceEntitySubscriber');
 
 	constructor(
 		private readonly deviceStatusService: DeviceConnectionStateService,
@@ -24,16 +26,13 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<DeviceE
 		try {
 			entity.status = await this.deviceStatusService.readLatest(entity);
 
-			this.logger.debug(
-				`[SUBSCRIBER] Loaded device status from InfluxDB id=${entity.id}, value=${entity.status.status}`,
-			);
+			this.logger.debug(`Loaded device status from InfluxDB id=${entity.id}, value=${entity.status.status}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[SUBSCRIBER] Failed to load device status from InfluxDB id=${entity.id}, error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to load device status from InfluxDB id=${entity.id}, error=${err.message}`, {
+				stack: err.stack,
+			});
 		}
 	}
 
@@ -45,25 +44,24 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<DeviceE
 
 	async afterRemove(event: RemoveEvent<DeviceEntity>): Promise<void> {
 		if (!event.entity) {
-			this.logger.warn(`[SUBSCRIBER] No entity found in afterRemove event`);
+			this.logger.warn(`No entity found in afterRemove event`);
 			return;
 		}
 
 		const deviceId = event.entity.id;
 
 		try {
-			this.logger.debug(`[SUBSCRIBER] Deleting stored statuses for id=${deviceId}`);
+			this.logger.debug(`Deleting stored statuses for id=${deviceId}`);
 
 			await this.deviceStatusService.delete(event.entity);
 
-			this.logger.log(`[SUBSCRIBER] Successfully removed all stored statuses for id=${deviceId}`);
+			this.logger.log(`Successfully removed all stored statuses for id=${deviceId}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[SUBSCRIBER] Failed to remove device statuses from InfluxDB id=${deviceId} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to remove device statuses from InfluxDB id=${deviceId} error=${err.message}`, {
+				stack: err.stack,
+			});
 		}
 	}
 }

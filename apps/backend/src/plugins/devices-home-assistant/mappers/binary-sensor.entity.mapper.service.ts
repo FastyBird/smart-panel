@@ -1,7 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { ENTITY_MAIN_STATE_ATTRIBUTE, HomeAssistantDomain } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	ENTITY_MAIN_STATE_ATTRIBUTE,
+	HomeAssistantDomain,
+} from '../devices-home-assistant.constants';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantChannelPropertyEntity } from '../entities/devices-home-assistant.entity';
 
@@ -9,7 +14,10 @@ import { EntityMapper } from './entity.mapper';
 
 @Injectable()
 export class BinarySensorEntityMapperService extends EntityMapper {
-	private readonly logger = new Logger(BinarySensorEntityMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'BinarySensorEntityMapperService',
+	);
 
 	get domain(): HomeAssistantDomain {
 		return HomeAssistantDomain.BINARY_SENSOR;
@@ -279,7 +287,7 @@ export class BinarySensorEntityMapperService extends EntityMapper {
 			}
 		}
 
-		this.logger.warn(`[HOME ASSISTANT][BINARY SENSOR ENTITY MAPPER] Invalid ${context} value: ${raw}`);
+		this.logger.warn(`Invalid ${context} value: ${raw}`);
 
 		return null;
 	}

@@ -1,13 +1,14 @@
 import { instanceToPlain } from 'class-transformer';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as DevicesModuleEventType } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
 import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
@@ -22,7 +23,10 @@ import { WsEventService } from './home-assistant.ws.service';
 
 @Injectable()
 export class StateChangedEventService implements WsEventService {
-	private readonly logger = new Logger(StateChangedEventService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'StateChangedEventService',
+	);
 
 	private isMappingLoading = false;
 
@@ -89,7 +93,7 @@ export class StateChangedEventService implements WsEventService {
 			entityId,
 			setTimeout(() => {
 				void (async () => {
-					this.logger.debug(`[HOME ASSISTANT][STATE CHANGED EVENT] Processing state for ${entityId}`);
+					this.logger.debug(`Processing state for ${entityId}`);
 
 					const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [event.data.new_state]);
 
@@ -137,7 +141,7 @@ export class StateChangedEventService implements WsEventService {
 			]);
 
 			if (!haDevices?.length || !panelDevices?.length || !properties?.length) {
-				this.logger.warn('[HOME ASSISTANT][STATE CHANGED EVENT] Missing data, skipping automatic sync');
+				this.logger.warn('Missing data, skipping automatic sync');
 
 				return false;
 			}

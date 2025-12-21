@@ -4,12 +4,13 @@ import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -21,7 +22,7 @@ import { DevicesControlsService } from './devices.controls.service';
 
 @Injectable()
 export class DevicesService {
-	private readonly logger = new Logger(DevicesService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesService');
 
 	constructor(
 		@InjectRepository(DeviceEntity)
@@ -38,11 +39,11 @@ export class DevicesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug('[LOOKUP ALL] Fetching all devices count');
+		this.logger.debug('Fetching all devices count');
 
 		const devices = await repository.count();
 
-		this.logger.debug(`[LOOKUP ALL] Found that in system is ${devices} devices`);
+		this.logger.debug(`Found that in system is ${devices} devices`);
 
 		return devices;
 	}
@@ -53,7 +54,7 @@ export class DevicesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug('[LOOKUP ALL] Fetching all devices');
+		this.logger.debug('Fetching all devices');
 
 		const devices = (await repository.find({
 			relations: [
@@ -68,7 +69,7 @@ export class DevicesService {
 			],
 		})) as TDevice[];
 
-		this.logger.debug(`[LOOKUP ALL] Found ${devices.length} devices`);
+		this.logger.debug(`Found ${devices.length} devices`);
 
 		return devices;
 	}
@@ -78,7 +79,7 @@ export class DevicesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug(`[LOOKUP] Fetching device with id=${id}`);
+		this.logger.debug(`Fetching device with id=${id}`);
 
 		const device = (await repository
 			.createQueryBuilder('device')
@@ -94,12 +95,12 @@ export class DevicesService {
 			.getOne()) as TDevice | null;
 
 		if (!device) {
-			this.logger.debug(`[LOOKUP] Device with id=${id} not found`);
+			this.logger.debug(`Device with id=${id} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched device with id=${id}`);
+		this.logger.debug(`Successfully fetched device with id=${id}`);
 
 		return device;
 	}
@@ -113,7 +114,7 @@ export class DevicesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug(`[LOOKUP] Fetching device with ${column}=${value}`);
+		this.logger.debug(`Fetching device with ${column}=${value}`);
 
 		const device = (await repository
 			.createQueryBuilder('device')
@@ -129,12 +130,12 @@ export class DevicesService {
 			.getOne()) as TDevice | null;
 
 		if (!device) {
-			this.logger.debug(`[LOOKUP] Device with ${column}=${value} not found`);
+			this.logger.debug(`Device with ${column}=${value} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched device with ${column}=${value}`);
+		this.logger.debug(`Successfully fetched device with ${column}=${value}`);
 
 		return device;
 	}
@@ -142,12 +143,12 @@ export class DevicesService {
 	async create<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto>(
 		createDto: TCreateDTO,
 	): Promise<TDevice> {
-		this.logger.debug('[CREATE] Creating new device');
+		this.logger.debug('Creating new device');
 
 		const { type } = createDto;
 
 		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" attribute in data.');
+			this.logger.error('Validation failed: Missing required "type" attribute in data.');
 
 			throw new DevicesException('Device type attribute is required.');
 		}
@@ -175,7 +176,7 @@ export class DevicesService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for device creation error=${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed for device creation error=${JSON.stringify(errors)}`);
 
 			throw new DevicesValidationException('Provided device data are invalid.');
 		}
@@ -188,7 +189,7 @@ export class DevicesService {
 		const raw = await repository.save(device);
 
 		for (const channelDtoInstance of channels) {
-			this.logger.debug(`[CREATE] Creating new channel for deviceId=${raw.id}`);
+			this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
 
 			await this.channelsService.create({
 				...channelDtoInstance,
@@ -206,7 +207,7 @@ export class DevicesService {
 			savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 		}
 
-		this.logger.debug(`[CREATE] Successfully created device with id=${savedDevice.id}`);
+		this.logger.debug(`Successfully created device with id=${savedDevice.id}`);
 
 		this.eventEmitter.emit(EventType.DEVICE_CREATED, savedDevice);
 
@@ -217,7 +218,7 @@ export class DevicesService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TDevice> {
-		this.logger.debug(`[UPDATE] Updating device with id=${id}`);
+		this.logger.debug(`Updating device with id=${id}`);
 
 		const device = await this.getOneOrThrow(id);
 
@@ -239,7 +240,7 @@ export class DevicesService {
 			updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 		}
 
-		this.logger.debug(`[UPDATE] Successfully updated device with id=${updatedDevice.id}`);
+		this.logger.debug(`Successfully updated device with id=${updatedDevice.id}`);
 
 		this.eventEmitter.emit(EventType.DEVICE_UPDATED, updatedDevice);
 
@@ -247,7 +248,7 @@ export class DevicesService {
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing device with id=${id}`);
+		this.logger.debug(`Removing device with id=${id}`);
 
 		// Get the full device entity before removal to preserve ID for event emission
 		const fullDevice = await this.getOneOrThrow(id);
@@ -269,7 +270,7 @@ export class DevicesService {
 
 			await manager.remove(device);
 
-			this.logger.log(`[DELETE] Successfully removed device with id=${id}`);
+			this.logger.log(`Successfully removed device with id=${id}`);
 
 			// Emit event with the full device entity captured before removal to preserve ID
 			this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
@@ -280,7 +281,7 @@ export class DevicesService {
 		const device = await this.findOne(id);
 
 		if (!id) {
-			this.logger.error(`[ERROR] Device with id=${id} not found`);
+			this.logger.error(`Device with id=${id} not found`);
 
 			throw new DevicesNotFoundException('Device does not exist');
 		}
@@ -300,7 +301,7 @@ export class DevicesService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new DevicesValidationException('Provided device data are invalid.');
 		}

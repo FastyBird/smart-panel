@@ -1,17 +1,17 @@
 import { validate } from 'class-validator';
 
-import { Logger } from '@nestjs/common';
-
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { NetworkStatsDto } from '../dto/network-stats.dto';
 import { StorageDto, SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
 import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { WifiNetworksDto } from '../dto/wifi-networks.dto';
+import { PLATFORM_MODULE_NAME } from '../platform.constants';
 import { PlatformException } from '../platform.exceptions';
 
 export abstract class Platform {
-	protected logger = new Logger(Platform.name);
+	protected logger = createExtensionLogger(PLATFORM_MODULE_NAME, 'Platform');
 
 	abstract getSystemInfo(): Promise<SystemInfoDto>;
 	abstract getThrottleStatus(): Promise<ThrottleStatusDto>;
@@ -36,15 +36,14 @@ export abstract class Platform {
 		const errors = await validate(instance, { whitelist: true });
 
 		if (errors.length > 0) {
-			this.logger.error(
-				`[VALIDATE] Validation failed for DTO: ${dtoClass.name}`,
-				errors.map((error) => error.toString()),
-			);
+			this.logger.error(`Validation failed for DTO: ${dtoClass.name}`, {
+				errors: errors.map((error) => error.toString()),
+			});
 
 			throw new PlatformException('Validation of platform DTO failed. Error was logged.');
 		}
 
-		this.logger.debug(`[VALIDATE] DTO validation passed: ${dtoClass.name}`);
+		this.logger.debug(`DTO validation passed: ${dtoClass.name}`);
 
 		return instance;
 	}

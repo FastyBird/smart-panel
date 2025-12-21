@@ -1,12 +1,13 @@
 import { validate } from 'class-validator';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
-import { DataTypeType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { PropertyCommandDto, PropertyCommandValueDto } from '../dto/property-command.dto';
 import { IDevicePropertyData } from '../platforms/device.platform';
 
@@ -17,7 +18,7 @@ import { PlatformRegistryService } from './platform.registry.service';
 
 @Injectable()
 export class PropertyCommandService {
-	private readonly logger = new Logger(PropertyCommandService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyCommandService');
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -46,7 +47,7 @@ export class PropertyCommandService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION] Command validation failed error=${JSON.stringify(errors)}`);
+			this.logger.error(`Command validation failed error=${JSON.stringify(errors)}`);
 
 			return { success: false, results: 'Invalid payload' };
 		}
@@ -84,7 +85,7 @@ export class PropertyCommandService {
 		const device = await this.devicesService.findOne(deviceId);
 
 		if (!device) {
-			this.logger.warn(`[COMMAND] Device not found id=${deviceId}`);
+			this.logger.warn(`Device not found id=${deviceId}`);
 
 			return { device: deviceId, success: false, reason: 'Device not found' };
 		}
@@ -92,7 +93,7 @@ export class PropertyCommandService {
 		const platform = this.platformRegistryService.get(device);
 
 		if (!platform) {
-			this.logger.warn(`[COMMAND] No platform registered for device id=${device.id} type=${device.type}`);
+			this.logger.warn(`No platform registered for device id=${device.id} type=${device.type}`);
 
 			return { device: deviceId, success: false, reason: 'Unsupported device type' };
 		}
@@ -103,7 +104,7 @@ export class PropertyCommandService {
 			const channel = await this.channelsService.findOne(command.channel, device.id);
 
 			if (!channel) {
-				this.logger.warn(`[COMMAND] Channel not found id=${command.channel} for deviceId=${device.id}`);
+				this.logger.warn(`Channel not found id=${command.channel} for deviceId=${device.id}`);
 
 				return { device: deviceId, success: false, reason: 'Channel not found' };
 			}
@@ -111,34 +112,34 @@ export class PropertyCommandService {
 			const property = await this.channelsPropertiesService.findOne(command.property, channel.id);
 
 			if (!property) {
-				this.logger.warn(`[COMMAND] Property not found id=${command.property} for channelId=${channel.id}`);
+				this.logger.warn(`Property not found id=${command.property} for channelId=${channel.id}`);
 
 				return { device: deviceId, success: false, reason: 'Property not found' };
 			}
 
 			if (!this.validateValueType(property.dataType, command.value)) {
-				this.logger.warn(`[COMMAND] Invalid value type for property id=${property.id} expected=${property.dataType}`);
+				this.logger.warn(`Invalid value type for property id=${property.id} expected=${property.dataType}`);
 
 				return { device: deviceId, success: false, reason: 'Invalid value type' };
 			}
 
-			this.logger.log(`[COMMAND] Adding command for propertyId=${property.id} value=${command.value}`);
+			this.logger.log(`Adding command for propertyId=${property.id} value=${command.value}`);
 
 			propertyUpdates.push({ device, channel, property, value: command.value });
 		}
 
 		// Process the batch of commands in one request
-		this.logger.log(`[COMMAND] Processing batch of ${propertyUpdates.length} commands for deviceId=${device.id}`);
+		this.logger.log(`Processing batch of ${propertyUpdates.length} commands for deviceId=${device.id}`);
 
 		const success = await platform.processBatch(propertyUpdates);
 
 		if (!success) {
-			this.logger.error(`[COMMAND] Batch command execution failed for deviceId=${device.id}`);
+			this.logger.error(`Batch command execution failed for deviceId=${device.id}`);
 
 			return { device: deviceId, success: false, reason: 'Execution failed' };
 		}
 
-		this.logger.log(`[COMMAND] Successfully executed batch command for deviceId=${device.id}`);
+		this.logger.log(`Successfully executed batch command for deviceId=${device.id}`);
 
 		return { device: deviceId, success: true };
 	}

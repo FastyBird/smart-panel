@@ -1,12 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { ConnectionState, OnlineDisplayState } from '../displays.constants';
+import { ConnectionState, DISPLAYS_MODULE_NAME, OnlineDisplayState } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
 @Injectable()
 export class DisplayConnectionStateService {
-	private readonly logger = new Logger(DisplayConnectionStateService.name);
+	private readonly logger = createExtensionLogger(DISPLAYS_MODULE_NAME, 'DisplayConnectionStateService');
 
 	private statusMap: Map<DisplayEntity['id'], { online: boolean; status: ConnectionState }> = new Map();
 
@@ -36,14 +37,11 @@ export class DisplayConnectionStateService {
 
 			this.statusMap.set(display.id, { online: isOnline, status });
 
-			this.logger.debug(`[DISPLAY] Status saved id=${display.id} status=${status}`);
+			this.logger.debug(`Status saved id=${display.id} status=${status}`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[DISPLAY] Failed to write status to InfluxDB id=${display.id} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to write status to InfluxDB id=${display.id} error=${err.message}`, err.stack);
 		}
 	}
 
@@ -51,7 +49,7 @@ export class DisplayConnectionStateService {
 		try {
 			if (this.statusMap.has(display.id)) {
 				this.logger.debug(
-					`[DISPLAY] Loaded cached status for display id=${display.id}, status=${this.statusMap.get(display.id)?.status}`,
+					`Loaded cached status for display id=${display.id}, status=${this.statusMap.get(display.id)?.status}`,
 				);
 
 				return this.statusMap.get(display.id);
@@ -64,7 +62,7 @@ export class DisplayConnectionStateService {
         LIMIT 1
       `;
 
-			this.logger.debug(`[DISPLAY] Fetching latest status id=${display.id}`);
+			this.logger.debug(`Fetching latest status id=${display.id}`);
 
 			const result = await this.influxDbService.query<{
 				online: boolean;
@@ -74,7 +72,7 @@ export class DisplayConnectionStateService {
 			}>(query);
 
 			if (!result.length) {
-				this.logger.debug(`[DISPLAY] No stored status found for id=${display.id}`);
+				this.logger.debug(`No stored status found for id=${display.id}`);
 
 				return {
 					online: false,
@@ -84,7 +82,7 @@ export class DisplayConnectionStateService {
 
 			const latest = result[0];
 
-			this.logger.debug(`[DISPLAY] Read latest value id=${display.id} status=${latest.status}`);
+			this.logger.debug(`Read latest value id=${display.id} status=${latest.status}`);
 
 			this.statusMap.set(display.id, { online: latest.online, status: latest.status });
 
@@ -92,10 +90,7 @@ export class DisplayConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[DISPLAY] Failed to read latest status from InfluxDB id=${display.id} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to read latest status from InfluxDB id=${display.id} error=${err.message}`, err.stack);
 
 			return {
 				online: false,
@@ -112,12 +107,12 @@ export class DisplayConnectionStateService {
 
 			this.statusMap.delete(display.id);
 
-			this.logger.log(`[DISPLAY] Deleted display status for id=${display.id}`);
+			this.logger.log(`Deleted display status for id=${display.id}`);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(
-				`[DISPLAY] Failed to delete display status from InfluxDB id=${display.id} error=${err.message}`,
+				`Failed to delete display status from InfluxDB id=${display.id} error=${err.message}`,
 				err.stack,
 			);
 		}

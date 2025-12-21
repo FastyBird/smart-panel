@@ -233,9 +233,8 @@
 				</dl>
 			</el-card>
 
-			<!-- Tabs for README and Docs -->
+			<!-- Tabs for README, Docs, and Logs -->
 			<el-card
-				v-if="extension.readme || extension.docs"
 				shadow="never"
 				class="flex-1 min-h-0 flex flex-col"
 				body-class="p-0! flex-1 min-h-0 flex flex-col"
@@ -279,6 +278,22 @@
 								<markdown-renderer :content="extension.docs" />
 							</div>
 						</el-scrollbar>
+					</el-tab-pane>
+					<el-tab-pane
+						name="logs"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:console" />
+								{{ t('extensionsModule.labels.logs') }}
+							</div>
+						</template>
+
+						<extension-logs
+							v-model:live="logsLive"
+							:extension-type="extension.type"
+						/>
 					</el-tab-pane>
 				</el-tabs>
 			</el-card>
@@ -434,6 +449,21 @@
 				</template>
 				<markdown-renderer :content="extension.docs" />
 			</el-card>
+
+			<!-- Logs card -->
+			<el-card
+				shadow="never"
+				class="mb-2"
+				body-class="h-80 flex flex-col overflow-hidden"
+			>
+				<template #header>
+					<span class="font-semibold">{{ t('extensionsModule.labels.logs') }}</span>
+				</template>
+				<extension-logs
+					v-model:live="logsLive"
+					:extension-type="extension.type"
+				/>
+			</el-card>
 		</template>
 	</el-scrollbar>
 </template>
@@ -451,6 +481,7 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, MarkdownRenderer, ViewHeader, useBreakpoints } from '../../../common';
 import { useModules } from '../../config/composables/useModules';
 import { usePlugins } from '../../config/composables/usePlugins';
+import { ExtensionLogs } from '../components/components';
 import { useExtensionActions } from '../composables/composables';
 import { useExtension } from '../composables/useExtension';
 import { ExtensionKind, RouteNames } from '../extensions.constants';
@@ -498,7 +529,39 @@ const { toggleEnabled } = useExtensionActions();
 const { modules: configurableModules } = useModules();
 const { plugins: configurablePlugins } = usePlugins();
 
-const activeTab = ref<string>('readme');
+const activeTab = ref<string>('logs');
+const logsLive = ref<boolean>(false);
+
+// Compute the default tab based on available content
+const defaultTab = computed<string>(() => {
+	if (extension.value?.readme) return 'readme';
+	if (extension.value?.docs) return 'docs';
+	return 'logs';
+});
+
+// Reset active tab when extension changes or when current tab becomes unavailable
+watch(
+	() => extension.value?.type,
+	() => {
+		activeTab.value = defaultTab.value;
+	}
+);
+
+watch(
+	defaultTab,
+	(newDefault) => {
+		// If current tab is no longer available, switch to the default
+		const currentTabExists =
+			activeTab.value === 'logs' ||
+			(activeTab.value === 'readme' && extension.value?.readme) ||
+			(activeTab.value === 'docs' && extension.value?.docs);
+
+		if (!currentTabExists) {
+			activeTab.value = newDefault;
+		}
+	},
+	{ immediate: true }
+);
 
 const extensionIcon = computed<string>(() => {
 	if (extension.value?.kind === ExtensionKind.MODULE) {

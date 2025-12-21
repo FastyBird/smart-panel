@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -105,43 +105,43 @@ The extension detail view (`apps/admin/src/modules/extensions/views/view-extensi
 
 ### Backend - Unified Logger
 
-- [ ] Create `ExtensionLoggerService` utility that wraps NestJS Logger with extension context
-- [ ] The logger automatically prefixes messages with `[EXTENSION_TYPE][COMPONENT]` format
-- [ ] The logger sets the `tag` field to the extension type (e.g., `devices-shelly-ng-plugin`)
-- [ ] Update `devices-shelly-ng` plugin to use the unified logger (reference implementation)
-- [ ] Update `devices-home-assistant` plugin to use the unified logger
-- [ ] Update `devices-shelly-v1` plugin to use the unified logger
-- [ ] Update `devices-third-party` plugin to use the unified logger
-- [ ] Update `logger-rotating-file` plugin to use the unified logger
-- [ ] Update other plugins with logging to use the unified logger
+- [x] Create `ExtensionLoggerService` utility that wraps NestJS Logger with extension context
+- [x] The logger automatically prefixes messages with `[EXTENSION_TYPE][COMPONENT]` format
+- [x] The logger sets the `tag` field to the extension type (e.g., `devices-shelly-ng-plugin`)
+- [x] Update `devices-shelly-ng` plugin to use the unified logger (reference implementation)
+- [x] Update `devices-home-assistant` plugin to use the unified logger
+- [x] Update `devices-shelly-v1` plugin to use the unified logger
+- [x] Update `devices-third-party` plugin to use the unified logger
+- [x] Update `logger-rotating-file` plugin to use the unified logger (removed hardcoded prefixes)
+- [x] Update other plugins with logging to use the unified logger (devices-wled, weather-openweathermap, weather-openweathermap-onecall, pages-cards, pages-tiles)
 
 ### Backend - Logs API Enhancement
 
-- [ ] Add `tag` query parameter to `GET /logs` endpoint for filtering by extension
-- [ ] Add `extension` query parameter as alias for `tag` (more intuitive for API consumers)
-- [ ] Update OpenAPI documentation for the new query parameters
-- [ ] Filtering is case-insensitive
-- [ ] Multiple tags can be specified (comma-separated or array)
+- [x] Add `tag` query parameter to `GET /logs` endpoint for filtering by extension
+- [x] Add `extension` query parameter as alias for `tag` (more intuitive for API consumers)
+- [x] Update OpenAPI documentation for the new query parameters
+- [x] Filtering is case-insensitive
+- [x] Multiple tags can be specified (comma-separated or array)
 
 ### Admin - Extension Logs Tab
 
-- [ ] Add "Logs" tab to extension detail view
-- [ ] The tab shows logs filtered by the current extension's type
-- [ ] Reuse existing log display components from system logs view
-- [ ] Include level filter (info, warn, error, debug)
-- [ ] Include time range or "last N entries" option
-- [ ] Show loading state while fetching logs
-- [ ] Handle empty state (no logs for this extension)
-- [ ] Refresh button to fetch latest logs
-- [ ] Auto-refresh toggle (optional, similar to system logs view)
+- [x] Add "Logs" tab to extension detail view
+- [x] The tab shows logs filtered by the current extension's type
+- [x] Reuse existing log display components from system logs view
+- [ ] Include level filter (info, warn, error, debug) (deferred - basic implementation first)
+- [ ] Include time range or "last N entries" option (deferred - basic implementation first)
+- [x] Show loading state while fetching logs
+- [x] Handle empty state (no logs for this extension)
+- [x] Refresh button to fetch latest logs
+- [x] Auto-refresh toggle (optional, similar to system logs view)
 
 ### Quality
 
-- [ ] All lint checks pass (`pnpm run lint:js`)
-- [ ] Code is formatted (`pnpm run pretty`)
-- [ ] OpenAPI spec is regenerated (`pnpm run generate:openapi`)
-- [ ] Unit tests for new ExtensionLoggerService
-- [ ] Unit tests for logs filtering logic
+- [x] All lint checks pass (`pnpm run lint:js`)
+- [x] Code is formatted (`pnpm run pretty`)
+- [x] OpenAPI spec is regenerated (`pnpm run generate:openapi`)
+- [x] Unit tests for new ExtensionLoggerService
+- [x] Unit tests for logs filtering logic
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

@@ -78,7 +78,8 @@ describe('ShellyNgDevicePlatform', () => {
 		// per-property handler by se v tomto scénáři volat neměl
 		expect(delegates.setPropertyValue as jest.Mock).not.toHaveBeenCalled();
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
-			`[SHELLY NG][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
+			`[ShellyNgDevicePlatform] Successfully processed all property updates for device id=${device.id}`,
+			'devices-shelly-ng-plugin',
 		);
 	});
 
@@ -92,7 +93,9 @@ describe('ShellyNgDevicePlatform', () => {
 
 		expect(ok).toBe(false);
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
-			'[SHELLY NG][PLATFORM] Failed to update device property, invalid device provided',
+			'[ShellyNgDevicePlatform] Failed to update device property, invalid device provided',
+			undefined,
+			'devices-shelly-ng-plugin',
 		);
 	});
 
@@ -119,7 +122,8 @@ describe('ShellyNgDevicePlatform', () => {
 		]);
 		expect(delegates.setPropertyValue as jest.Mock).not.toHaveBeenCalled();
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
-			`[SHELLY NG][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
+			`[ShellyNgDevicePlatform] Successfully processed all property updates for device id=${device.id}`,
+			'devices-shelly-ng-plugin',
 		);
 	});
 
@@ -143,9 +147,14 @@ describe('ShellyNgDevicePlatform', () => {
 		// per-property fallback by se v tomto scénáři volat neměl
 		expect(delegates.setPropertyValue as jest.Mock).not.toHaveBeenCalled();
 
-		expect(Logger.prototype.error).toHaveBeenCalledWith('[SHELLY NG][PLATFORM] Failed to update device property');
+		expect(Logger.prototype.error).toHaveBeenCalledWith(
+			'[ShellyNgDevicePlatform] Failed to update device property',
+			undefined,
+			'devices-shelly-ng-plugin',
+		);
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
-			expect.stringContaining(`[SHELLY NG][PLATFORM] Some properties failed to update for device id=${device.id}`),
+			expect.stringContaining(`Some properties failed to update for device id=${device.id}`),
+			'devices-shelly-ng-plugin',
 		);
 	});
 
@@ -173,7 +182,8 @@ describe('ShellyNgDevicePlatform', () => {
 		expect(setPropertyValue).toHaveBeenNthCalledWith(2, device, p2, 20);
 
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
-			`[SHELLY NG][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
+			`[ShellyNgDevicePlatform] Successfully processed all property updates for device id=${device.id}`,
+			'devices-shelly-ng-plugin',
 		);
 	});
 
@@ -199,9 +209,14 @@ describe('ShellyNgDevicePlatform', () => {
 		expect(setPropertyValue).toHaveBeenNthCalledWith(1, device, p1, 1);
 		expect(setPropertyValue).toHaveBeenNthCalledWith(2, device, p2, 2);
 
-		expect(Logger.prototype.error).toHaveBeenCalledWith('[SHELLY NG][PLATFORM] Failed to update device property');
+		expect(Logger.prototype.error).toHaveBeenCalledWith(
+			'[ShellyNgDevicePlatform] Failed to update device property',
+			undefined,
+			'devices-shelly-ng-plugin',
+		);
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
-			expect.stringContaining(`[SHELLY NG][PLATFORM] Some properties failed to update for device id=${device.id}`),
+			expect.stringContaining(`Some properties failed to update for device id=${device.id}`),
+			'devices-shelly-ng-plugin',
 		);
 	});
 
@@ -220,8 +235,9 @@ describe('ShellyNgDevicePlatform', () => {
 
 		expect(ok).toBe(false);
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
-			'[SHELLY NG][PLATFORM] Error processing property update',
-			expect.objectContaining({ message: 'boom' }),
+			expect.stringContaining('[ShellyNgDevicePlatform] Error processing property update'),
+			undefined,
+			'devices-shelly-ng-plugin',
 		);
 	});
 });

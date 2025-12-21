@@ -6,8 +6,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 14 |
-| Planned | 10 |
+| Done | 15 |
+| Planned | 9 |
 | **Total** | **24** |
 
 ---
@@ -29,6 +29,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-SHELLY-V1-UI | Shelly Gen 1 Plugin UI | admin, panel | medium |
 | FEATURE-PROPERTY-TIMESERIES | Property Timeseries Endpoint | backend | medium |
 | FEATURE-PLUGIN-WLED | WLED Plugin (superseded) | backend | medium |
+| FEATURE-UNIFIED-EXTENSION-LOGS | Unified Extension Logs | backend, admin | medium |
 
 ### Planned
 
@@ -42,7 +43,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | Home Assistant Adoption Improvements | backend | large | FEATURE-PLUGIN-HA-AUTO-MAP |
 | FEATURE-PLUGIN-MATTER | Matter Plugin | backend | large | - |
 | FEATURE-PLUGIN-ZIGBEE2MQTT | Zigbee2MQTT Plugin | backend | large | - |
-| FEATURE-UNIFIED-EXTENSION-LOGS | Unified Extension Logs | backend, admin | medium | - |
 
 ---
 
@@ -104,7 +104,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | feature | planned |
 | FEATURE-PLUGIN-MATTER | feature | planned |
 | FEATURE-PLUGIN-ZIGBEE2MQTT | feature | planned |
-| FEATURE-UNIFIED-EXTENSION-LOGS | feature | planned |
+| FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
 
 ### Admin
 
@@ -121,7 +121,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-ADMIN-PLUGIN-SERVICES | feature | planned |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
-| FEATURE-UNIFIED-EXTENSION-LOGS | feature | planned |
+| FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
 
 ### Panel
 
@@ -192,4 +192,4 @@ tasks/
 
 ---
 
-*Last updated: 2024-12-20*
+*Last updated: 2025-12-21*

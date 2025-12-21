@@ -1,8 +1,9 @@
 import { Socket } from 'socket.io';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { AccessTokenEntity, LongLiveTokenEntity } from '../../auth/entities/auth.entity';
@@ -12,11 +13,12 @@ import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
+import { WEBSOCKET_MODULE_NAME } from '../websocket.constants';
 import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 @Injectable()
 export class WsAuthService {
-	private readonly logger = new Logger(WsAuthService.name);
+	private readonly logger = createExtensionLogger(WEBSOCKET_MODULE_NAME, 'WsAuthService');
 
 	constructor(
 		private readonly jwtService: JwtService,
@@ -33,7 +35,7 @@ export class WsAuthService {
 		}
 
 		// If auth method didn't work, reject the request
-		this.logger.warn('[WS AUTH] Unauthorized request, missing valid credentials');
+		this.logger.warn('Unauthorized request, missing valid credentials');
 
 		return false;
 	}
@@ -46,7 +48,7 @@ export class WsAuthService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[WS AUTH] JWT authentication failed', { message: err.message, stack: err.stack });
+			this.logger.error('JWT authentication failed', { message: err.message, stack: err.stack });
 
 			throw new WebsocketNotAllowedException('Invalid or expired token');
 		}
@@ -78,12 +80,12 @@ export class WsAuthService {
 		}
 
 		if (!storedAccessToken) {
-			this.logger.warn('[WS AUTH] Access token not found in database');
+			this.logger.warn('Access token not found in database');
 			throw new WebsocketNotAllowedException('Token not found');
 		}
 
 		if (storedAccessToken.revoked || storedAccessToken.refreshToken.revoked) {
-			this.logger.warn('[WS AUTH] Access token is revoked');
+			this.logger.warn('Access token is revoked');
 			throw new WebsocketNotAllowedException('Token revoked');
 		}
 
@@ -93,13 +95,13 @@ export class WsAuthService {
 			user = await this.usersService.getOneOrThrow(userId);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn('[WS AUTH] Token valid, but user not found', { message: err.message, stack: err.stack });
+			this.logger.warn('Token valid, but user not found', { message: err.message, stack: err.stack });
 			throw new WebsocketNotAllowedException('Invalid user');
 		}
 
 		(client.data as object)['user'] = toInstance(ClientUserDto, { id: user.id, role: user.role, type: 'user' });
 
-		this.logger.debug(`[WS AUTH] User authentication successful for user=${user.id}`);
+		this.logger.debug(`User authentication successful for user=${user.id}`);
 
 		return true;
 	}
@@ -118,17 +120,17 @@ export class WsAuthService {
 		}
 
 		if (!storedToken) {
-			this.logger.warn('[WS AUTH] Display token not found in database');
+			this.logger.warn('Display token not found in database');
 			throw new WebsocketNotAllowedException('Token not found');
 		}
 
 		if (storedToken.revoked) {
-			this.logger.warn('[WS AUTH] Display token is revoked');
+			this.logger.warn('Display token is revoked');
 			throw new WebsocketNotAllowedException('Token revoked');
 		}
 
 		if (storedToken.expiresAt && storedToken.expiresAt < new Date()) {
-			this.logger.warn('[WS AUTH] Display token is expired');
+			this.logger.warn('Display token is expired');
 			throw new WebsocketNotAllowedException('Token expired');
 		}
 
@@ -141,11 +143,11 @@ export class WsAuthService {
 			token_id: storedToken.id,
 		});
 
-		this.logger.debug(`[WS AUTH] Display authentication successful for display=${displayId}`);
+		this.logger.debug(`Display authentication successful for display=${displayId}`);
 
 		return true;
 
-		this.logger.debug(`[WS AUTH] Token authentication successful (ownerType=${storedToken.ownerType})`);
+		this.logger.debug(`Token authentication successful (ownerType=${storedToken.ownerType})`);
 
 		return true;
 	}
@@ -163,17 +165,17 @@ export class WsAuthService {
 		}
 
 		if (!storedLongLiveToken) {
-			this.logger.warn('[WS AUTH] Long-live token not found');
+			this.logger.warn('Long-live token not found');
 			throw new WebsocketNotAllowedException('Unknown token');
 		}
 
 		if (storedLongLiveToken.revoked) {
-			this.logger.warn('[WS AUTH] Long-live token is revoked');
+			this.logger.warn('Long-live token is revoked');
 			throw new WebsocketNotAllowedException('Token revoked');
 		}
 
 		if (storedLongLiveToken.expiresAt && storedLongLiveToken.expiresAt < new Date()) {
-			this.logger.warn('[WS AUTH] Long-live token is expired');
+			this.logger.warn('Long-live token is expired');
 			throw new WebsocketNotAllowedException('Token expired');
 		}
 
@@ -196,9 +198,7 @@ export class WsAuthService {
 			tokenId: storedLongLiveToken.id,
 		});
 
-		this.logger.debug(
-			`[WS AUTH] Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`,
-		);
+		this.logger.debug(`Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
 
 		return true;
 	}

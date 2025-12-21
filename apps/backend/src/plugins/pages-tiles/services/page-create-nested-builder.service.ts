@@ -2,8 +2,9 @@ import { validate } from 'class-validator';
 import { Repository } from 'typeorm';
 import { DataSource as OrmDataSource } from 'typeorm/data-source/DataSource';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
@@ -14,12 +15,15 @@ import { DataSourcesTypeMapperService } from '../../../modules/dashboard/service
 import { TilesTypeMapperService } from '../../../modules/dashboard/services/tiles-type-mapper.service';
 import { CreateTilesPageDto } from '../dto/create-page.dto';
 import { TilesPageEntity } from '../entities/pages-tiles.entity';
-import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
+import { PAGES_TILES_PLUGIN_NAME, PAGES_TILES_TYPE } from '../pages-tiles.constants';
 import { PagesTilesValidationException } from '../pages-tiles.exceptions';
 
 @Injectable()
 export class TilesPageNestedBuilderService implements IPageNestedCreateBuilder {
-	private readonly logger = new Logger(TilesPageNestedBuilderService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		PAGES_TILES_PLUGIN_NAME,
+		'TilesPageNestedBuilderService',
+	);
 
 	constructor(
 		private readonly tilesMapperService: TilesTypeMapperService,

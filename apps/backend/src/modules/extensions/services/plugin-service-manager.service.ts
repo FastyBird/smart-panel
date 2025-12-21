@@ -1,11 +1,13 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
 import { PluginConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
+import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 
 import {
 	ConfigChangeResult,
@@ -39,7 +41,7 @@ import {
  */
 @Injectable()
 export class PluginServiceManagerService implements OnApplicationBootstrap, OnModuleDestroy {
-	private readonly logger = new Logger(PluginServiceManagerService.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'PluginServiceManagerService');
 
 	private readonly services: Map<string, ServiceRegistration> = new Map();
 	private readonly runtimeInfo: Map<string, ServiceRuntimeInfo> = new Map();
@@ -66,7 +68,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const key = this.getServiceKey(service.pluginName, service.serviceId);
 
 		if (this.services.has(key)) {
-			this.logger.warn(`[REGISTER] Service already registered: ${key}`);
+			this.logger.warn(`Service already registered: ${key}`);
 
 			return;
 		}
@@ -85,7 +87,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			startCount: 0,
 		});
 
-		this.logger.log(`[REGISTER] Registered service: ${key} (priority: ${priority})`);
+		this.logger.log(`Registered service: ${key} (priority: ${priority})`);
 
 		// If startup already completed and this plugin is enabled, start the service immediately
 		if (this.startupComplete && !this.isCliMode) {
@@ -108,7 +110,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const key = this.getServiceKey(pluginName, serviceId);
 
 		if (!this.services.has(key)) {
-			this.logger.debug(`[UNREGISTER] Service not found: ${key}`);
+			this.logger.debug(`Service not found: ${key}`);
 
 			return;
 		}
@@ -116,7 +118,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		this.services.delete(key);
 		this.runtimeInfo.delete(key);
 
-		this.logger.log(`[UNREGISTER] Unregistered service: ${key}`);
+		this.logger.log(`Unregistered service: ${key}`);
 	}
 
 	/**
@@ -125,13 +127,13 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	 */
 	async onApplicationBootstrap(): Promise<void> {
 		if (this.isCliMode) {
-			this.logger.log('[BOOTSTRAP] CLI mode detected, skipping service startup');
+			this.logger.log('CLI mode detected, skipping service startup');
 			this.startupComplete = true;
 
 			return;
 		}
 
-		this.logger.log(`[BOOTSTRAP] Starting ${this.services.size} registered services`);
+		this.logger.log(`Starting ${this.services.size} registered services`);
 
 		const sorted = this.getSortedServices();
 
@@ -141,7 +143,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.startupComplete = true;
 
-		this.logger.log('[BOOTSTRAP] All services startup complete');
+		this.logger.log('All services startup complete');
 	}
 
 	/**
@@ -157,7 +159,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	async onModuleDestroy(): Promise<void> {
 		this.shutdownInProgress = true;
 
-		this.logger.log('[SHUTDOWN] Stopping all managed services');
+		this.logger.log('Stopping all managed services');
 
 		// Stop in reverse order (highest priority last started, first stopped)
 		const sorted = this.getSortedServices().reverse();
@@ -174,13 +176,13 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			if (state === 'starting') {
 				const key = this.getServiceKey(registration.pluginName, registration.serviceId);
 
-				this.logger.debug(`[SHUTDOWN] Waiting for ${key} to finish starting before stopping`);
+				this.logger.debug(`Waiting for ${key} to finish starting before stopping`);
 
 				await this.waitForState(registration, 'started', 5000);
 			} else if (state === 'stopping') {
 				const key = this.getServiceKey(registration.pluginName, registration.serviceId);
 
-				this.logger.debug(`[SHUTDOWN] Waiting for ${key} to finish stopping`);
+				this.logger.debug(`Waiting for ${key} to finish stopping`);
 
 				await this.waitForState(registration, 'stopped', 5000);
 
@@ -191,7 +193,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			await this.stopService(registration);
 		}
 
-		this.logger.log('[SHUTDOWN] All services stopped');
+		this.logger.log('All services stopped');
 	}
 
 	/**
@@ -204,7 +206,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			return;
 		}
 
-		this.logger.debug('[CONFIG] Configuration updated, syncing service states');
+		this.logger.debug('Configuration updated, syncing service states');
 
 		for (const registration of this.services.values()) {
 			await this.syncServiceState(registration);
@@ -312,7 +314,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const registration = this.services.get(key);
 
 		if (!registration) {
-			this.logger.warn(`[RESTART] Service not found: ${key}`);
+			this.logger.warn(`Service not found: ${key}`);
 
 			return false;
 		}
@@ -320,7 +322,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const config = this.getPluginConfig(pluginName);
 
 		if (!config?.enabled) {
-			this.logger.warn(`[RESTART] Cannot restart disabled service: ${key}`);
+			this.logger.warn(`Cannot restart disabled service: ${key}`);
 
 			return false;
 		}
@@ -340,7 +342,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const registration = this.services.get(key);
 
 		if (!registration) {
-			this.logger.warn(`[START_MANUAL] Service not found: ${key}`);
+			this.logger.warn(`Service not found: ${key}`);
 
 			return false;
 		}
@@ -348,7 +350,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const currentState = registration.service.getState();
 
 		if (currentState === 'started' || currentState === 'starting') {
-			this.logger.warn(`[START_MANUAL] Service ${key} is already ${currentState}`);
+			this.logger.warn(`Service ${key} is already ${currentState}`);
 
 			return false;
 		}
@@ -367,7 +369,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const registration = this.services.get(key);
 
 		if (!registration) {
-			this.logger.warn(`[STOP_MANUAL] Service not found: ${key}`);
+			this.logger.warn(`Service not found: ${key}`);
 
 			return false;
 		}
@@ -375,7 +377,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const currentState = registration.service.getState();
 
 		if (currentState === 'stopped' || currentState === 'stopping') {
-			this.logger.warn(`[STOP_MANUAL] Service ${key} is already ${currentState}`);
+			this.logger.warn(`Service ${key} is already ${currentState}`);
 
 			return false;
 		}
@@ -411,7 +413,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const config = this.getPluginConfig(registration.pluginName);
 
 		if (!config?.enabled) {
-			this.logger.debug(`[START] Plugin ${registration.pluginName} is disabled, skipping ${registration.serviceId}`);
+			this.logger.debug(`Plugin ${registration.pluginName} is disabled, skipping ${registration.serviceId}`);
 
 			return;
 		}
@@ -424,12 +426,12 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const currentState = registration.service.getState();
 
 		if (currentState === 'started' || currentState === 'starting') {
-			this.logger.debug(`[START] Service ${key} is already ${currentState}`);
+			this.logger.debug(`Service ${key} is already ${currentState}`);
 
 			return;
 		}
 
-		this.logger.log(`[START] Starting service: ${key}`);
+		this.logger.log(`Starting service: ${key}`);
 
 		try {
 			await registration.service.start();
@@ -443,7 +445,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				runtime.lastError = undefined;
 			}
 
-			this.logger.log(`[START] Service started successfully: ${key}`);
+			this.logger.log(`Service started successfully: ${key}`);
 		} catch (error) {
 			const err = error as Error;
 
@@ -454,7 +456,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				runtime.lastError = err.message;
 			}
 
-			this.logger.error(`[START] Failed to start service ${key}: ${err.message}`, err.stack);
+			this.logger.error(`Failed to start service ${key}: ${err.message}`, err.stack);
 		}
 	}
 
@@ -463,12 +465,12 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const currentState = registration.service.getState();
 
 		if (currentState === 'stopped' || currentState === 'stopping') {
-			this.logger.debug(`[STOP] Service ${key} is already ${currentState}`);
+			this.logger.debug(`Service ${key} is already ${currentState}`);
 
 			return;
 		}
 
-		this.logger.log(`[STOP] Stopping service: ${key}`);
+		this.logger.log(`Stopping service: ${key}`);
 
 		try {
 			await registration.service.stop();
@@ -480,7 +482,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				runtime.lastStoppedAt = new Date();
 			}
 
-			this.logger.log(`[STOP] Service stopped successfully: ${key}`);
+			this.logger.log(`Service stopped successfully: ${key}`);
 		} catch (error) {
 			const err = error as Error;
 
@@ -491,7 +493,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				runtime.lastError = err.message;
 			}
 
-			this.logger.error(`[STOP] Failed to stop service ${key}: ${err.message}`, err.stack);
+			this.logger.error(`Failed to stop service ${key}: ${err.message}`, err.stack);
 		}
 	}
 
@@ -503,7 +505,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		// Handle transitional states by waiting for them to complete
 		if (currentState === 'starting' || currentState === 'stopping') {
-			this.logger.debug(`[SYNC] Service ${key} is ${currentState}, waiting for transition to complete`);
+			this.logger.debug(`Service ${key} is ${currentState}, waiting for transition to complete`);
 
 			const targetState = currentState === 'starting' ? 'started' : 'stopped';
 
@@ -513,38 +515,38 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		}
 
 		if (shouldBeRunning && currentState === 'stopped') {
-			this.logger.log(`[SYNC] Plugin ${registration.pluginName} enabled, starting ${registration.serviceId}`);
+			this.logger.log(`Plugin ${registration.pluginName} enabled, starting ${registration.serviceId}`);
 
 			await this.startService(registration);
 		} else if (shouldBeRunning && currentState === 'error') {
 			// Service is in error state but should be running - attempt restart
 			this.logger.log(
-				`[SYNC] Plugin ${registration.pluginName} enabled but service in error, restarting ${registration.serviceId}`,
+				`Plugin ${registration.pluginName} enabled but service in error, restarting ${registration.serviceId}`,
 			);
 
 			await this.startService(registration);
 		} else if (!shouldBeRunning && currentState === 'started') {
-			this.logger.log(`[SYNC] Plugin ${registration.pluginName} disabled, stopping ${registration.serviceId}`);
+			this.logger.log(`Plugin ${registration.pluginName} disabled, stopping ${registration.serviceId}`);
 
 			await this.stopService(registration);
 		} else if (!shouldBeRunning && currentState === 'error') {
 			// Service is in error state and should not be running - ensure it's stopped
 			this.logger.debug(
-				`[SYNC] Plugin ${registration.pluginName} disabled, service ${registration.serviceId} already in error state`,
+				`Plugin ${registration.pluginName} disabled, service ${registration.serviceId} already in error state`,
 			);
 
 			// Try to stop cleanly in case there are resources to clean up
 			await this.stopService(registration);
 		} else if (shouldBeRunning && currentState === 'started' && registration.service.onConfigChanged) {
 			// Notify service of config change
-			this.logger.debug(`[SYNC] Notifying ${key} of config change`);
+			this.logger.debug(`Notifying ${key} of config change`);
 
 			try {
 				const result = await registration.service.onConfigChanged();
 
 				// Check if service signals that restart is required
 				if (this.isConfigChangeResult(result) && result.restartRequired) {
-					this.logger.log(`[SYNC] Service ${key} requires restart after config change`);
+					this.logger.log(`Service ${key} requires restart after config change`);
 
 					await this.stopService(registration);
 					await this.startService(registration);
@@ -552,7 +554,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(`[SYNC] Config change handler failed for ${key}: ${err.message}`);
+				this.logger.error(`Config change handler failed for ${key}: ${err.message}`);
 			}
 		}
 	}
@@ -581,7 +583,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				// Timeout: resolve anyway to avoid blocking forever
 				if (Date.now() - start > timeoutMs) {
 					this.logger.warn(
-						`[SYNC] Timeout waiting for ${registration.pluginName}:${registration.serviceId} to reach ${targetState}`,
+						`Timeout waiting for ${registration.pluginName}:${registration.serviceId} to reach ${targetState}`,
 					);
 
 					return resolve();
@@ -613,7 +615,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			}
 
 			if (visiting.has(key)) {
-				this.logger.warn(`[SORT] Circular dependency detected for ${key}`);
+				this.logger.warn(`Circular dependency detected for ${key}`);
 
 				return;
 			}

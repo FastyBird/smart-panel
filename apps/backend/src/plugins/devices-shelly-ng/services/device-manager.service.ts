@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { pLimit, retry, withTimeout } from '../../../common/utils/http.utils';
 import {
 	ChannelCategory,
@@ -16,6 +17,7 @@ import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
 import {
 	ComponentType,
 	DESCRIPTORS,
+	DEVICES_SHELLY_NG_PLUGIN_NAME,
 	DEVICES_SHELLY_NG_TYPE,
 	DeviceDescriptor,
 	DeviceProfile,
@@ -36,7 +38,10 @@ import { ShellyRpcClientService } from './shelly-rpc-client.service';
 
 @Injectable()
 export class DeviceManagerService {
-	private readonly logger = new Logger(DeviceManagerService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_NG_PLUGIN_NAME,
+		'DeviceManagerService',
+	);
 
 	private readonly strictSchema: boolean = true;
 
@@ -228,7 +233,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for switch=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for switch=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -298,9 +303,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} switch component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} switch component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.COVER) && deviceInfo.profile === String(DeviceProfile.COVER)) {
 				const tasks = ids.map((key) =>
@@ -317,7 +320,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for cover=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for cover=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -376,9 +379,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} cover component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} cover component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.LIGHT)) {
 				const tasks = ids.map((key) =>
@@ -395,7 +396,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for light=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for light=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -454,9 +455,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} light component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} light component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.RGB)) {
 				const tasks = ids.map((key) =>
@@ -473,7 +472,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for rgb=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for rgb=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -546,9 +545,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} rgb component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} rgb component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.RGBW)) {
 				const tasks = ids.map((key) =>
@@ -565,7 +562,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for rgbw=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for rgbw=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -642,9 +639,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} rgbw component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} rgbw component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.CCT)) {
 				const tasks = ids.map((key) =>
@@ -661,7 +656,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for cct=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for cct=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -730,9 +725,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} cct component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} cct component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.INPUT)) {
 				const tasks = ids.map((key) =>
@@ -749,7 +742,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for input=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for input=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -758,11 +751,7 @@ export class DeviceManagerService {
 						});
 
 						// TODO: To be implemented in the future
-						this.logger.debug(
-							`[SHELLY NG][DEVICE MANAGER] Received device input status for input=${key}`,
-							inputConfig,
-							inputStatus,
-						);
+						this.logger.debug(`Received device input status for input=${key}`, { inputConfig, inputStatus });
 					}),
 				);
 
@@ -771,9 +760,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} input component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} input component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.DEVICE_POWER)) {
 				for (const key of ids) {
@@ -786,13 +773,10 @@ export class DeviceManagerService {
 					} catch (error) {
 						const err = error as Error;
 
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load device power status for device=${device.id} and devicePower=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
+						this.logger.error(`Failed to load device power status for device=${device.id} and devicePower=${key}`, {
+							message: err.message,
+							stack: err.stack,
+						});
 
 						continue;
 					}
@@ -831,7 +815,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for humidity=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for humidity=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -858,9 +842,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} humidity component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} humidity component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.TEMPERATURE)) {
 				const tasks = ids.map((key) =>
@@ -877,13 +859,10 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(
-								`[SHELLY NG][DEVICE MANAGER] Failed load for temperature=${key} on device=${device.id}`,
-								{
-									message: err.message,
-									stack: err.stack,
-								},
-							);
+							this.logger.error(`Failed load for temperature=${key} on device=${device.id}`, {
+								message: err.message,
+								stack: err.stack,
+							});
 
 							throw err;
 						});
@@ -907,9 +886,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} temperature component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} temperature component(s) failed for device=${device.id}`);
 				}
 			} else if (type === String(ComponentType.PM1)) {
 				const tasks = ids.map((key) =>
@@ -926,7 +903,7 @@ export class DeviceManagerService {
 								),
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
-							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for pm1=${key} on device=${device.id}`, {
+							this.logger.error(`Failed load for pm1=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
 							});
@@ -953,9 +930,7 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(
-						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} pm1 component(s) failed for device=${device.id}`,
-					);
+					this.logger.warn(`${failed}/${ids.length} pm1 component(s) failed for device=${device.id}`);
 				}
 			}
 		}
@@ -966,9 +941,7 @@ export class DeviceManagerService {
 			if (!channelsIds.includes(channel.id)) {
 				await this.channelsService.remove(channel.id);
 
-				this.logger.debug(
-					`[SHELLY NG][DEVICE MANAGER] Remove channel=${channel.id} because this channel is not specified for current device`,
-				);
+				this.logger.debug(`Remove channel=${channel.id} because this channel is not specified for current device`);
 			}
 		}
 
@@ -996,9 +969,7 @@ export class DeviceManagerService {
 			const channelSpec = channelsSchema[category] as ChannelDefinition | undefined;
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
-				this.logger.warn(
-					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for channel category=${category}. Falling back to minimal channel`,
-				);
+				this.logger.warn(`Missing or invalid schema for channel category=${category}. Falling back to minimal channel`);
 
 				if (this.strictSchema) {
 					throw new DevicesShellyNgException('Failed to load specification for channel category');
@@ -1055,7 +1026,7 @@ export class DeviceManagerService {
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
 				this.logger.warn(
-					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for channel category=${channel.category}. Falling back to minimal channel`,
+					`Missing or invalid schema for channel category=${channel.category}. Falling back to minimal channel`,
 				);
 
 				if (this.strictSchema) {
@@ -1077,7 +1048,7 @@ export class DeviceManagerService {
 
 			if (!propertySpec || typeof propertySpec !== 'object') {
 				this.logger.warn(
-					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for property category=${category}. Falling back to minimal property.`,
+					`Missing or invalid schema for property category=${category}. Falling back to minimal property.`,
 				);
 
 				if (this.strictSchema) {

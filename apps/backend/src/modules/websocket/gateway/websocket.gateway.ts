@@ -2,7 +2,6 @@ import { instanceToPlain } from 'class-transformer';
 import { isArray } from 'class-validator';
 import { Server, Socket } from 'socket.io';
 
-import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
 	ConnectedSocket,
@@ -15,6 +14,7 @@ import {
 	WebSocketServer,
 } from '@nestjs/websockets';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
@@ -24,7 +24,13 @@ import { WsClientDto, WsClientEventType } from '../dto/ws-client.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
 import { extractClientIpFromSocket } from '../utils/ip.utils';
-import { CLIENT_DEFAULT_ROOM, DISPLAY_INTERNAL_ROOM, EXCHANGE_ROOM, WsEventType } from '../websocket.constants';
+import {
+	CLIENT_DEFAULT_ROOM,
+	DISPLAY_INTERNAL_ROOM,
+	EXCHANGE_ROOM,
+	WEBSOCKET_MODULE_NAME,
+	WsEventType,
+} from '../websocket.constants';
 import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 interface ClientData {
@@ -41,7 +47,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 	@WebSocketServer()
 	private readonly server: Server;
-	private readonly logger = new Logger(WebsocketGateway.name);
+	private readonly logger = createExtensionLogger(WEBSOCKET_MODULE_NAME, 'WebsocketGateway');
 
 	constructor(
 		private readonly commandEventRegistry: CommandEventRegistryService,
@@ -70,7 +76,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	}
 
 	afterInit(): void {
-		this.logger.debug('[WS GATEWAY] Websockets gateway started');
+		this.logger.debug('Websockets gateway started');
 	}
 
 	async handleConnection(client: Socket): Promise<void> {
@@ -78,12 +84,12 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			const isAllowed = await this.wsAuthService.validateClient(client);
 
 			if (!isAllowed) {
-				this.logger.warn(`[WS GATEWAY] Unauthorized client is trying to connect: ${client.handshake?.headers.host}`);
+				this.logger.warn(`Unauthorized client is trying to connect: ${client.handshake?.headers.host}`);
 
 				client.disconnect();
 			}
 
-			this.logger.log(`[WS GATEWAY] Client connected: ${client.id}`);
+			this.logger.log(`Client connected: ${client.id}`);
 
 			await client.join(CLIENT_DEFAULT_ROOM);
 
@@ -107,16 +113,14 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.warn(
-				`[WS GATEWAY] Unauthorized client is trying to connect: ${client.handshake?.headers.host}, ${err.message}`,
-			);
+			this.logger.warn(`Unauthorized client is trying to connect: ${client.handshake?.headers.host}, ${err.message}`);
 
 			client.disconnect();
 		}
 	}
 
 	handleDisconnect(client: Socket): void {
-		this.logger.log(`[WS GATEWAY] Client disconnected: ${client.id}`);
+		this.logger.log(`Client disconnected: ${client.id}`);
 
 		const clientData = client.data as ClientData;
 		const clientIp = extractClientIpFromSocket(client);
@@ -145,7 +149,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[WS GATEWAY] Joining exchange room failed`, { message: err.message, stack: err.stack });
+			this.logger.error('Joining exchange room failed', { message: err.message, stack: err.stack });
 
 			return false;
 		}
@@ -158,10 +162,10 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	): Promise<CommandResultDto> {
 		const { event, payload } = message;
 
-		this.logger.log(`[WS GATEWAY] Received command '${event}' from client ${client.id}`);
+		this.logger.log(`Received command '${event}' from client ${client.id}`);
 
 		if (!this.commandEventRegistry.has(event)) {
-			this.logger.warn(`[WS GATEWAY] No subscribers for event: ${event}`);
+			this.logger.warn(`No subscribers for event: ${event}`);
 
 			return toInstance(CommandResultDto, { status: 'error', message: `Event '${event}' is not supported.` });
 		}
@@ -181,7 +185,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 						} catch (error) {
 							const err = error as Error;
 
-							this.logger.error(`[WS GATEWAY] Error in '${name}'`, { message: err.message, stack: err.stack });
+							this.logger.error(`Error in '${name}'`, { message: err.message, stack: err.stack });
 
 							if (error instanceof WebsocketNotAllowedException) {
 								return { handler: name, success: false, reason: error.message };
@@ -201,7 +205,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[WS GATEWAY] Error handling event: ${event}`, { message: err.message, stack: err.stack });
+			this.logger.error(`Error handling event: ${event}`, { message: err.message, stack: err.stack });
 
 			return toInstance(CommandResultDto, { status: 'error', message: `Failed to handle event: ${event}` });
 		}
@@ -213,7 +217,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		}
 
 		if (!this.server) {
-			this.logger.warn('[WS GATEWAY] WebSocket server is not initialized.');
+			this.logger.warn('WebSocket server is not initialized.');
 
 			return;
 		}
@@ -226,7 +230,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			},
 		};
 
-		this.logger.debug(`[WS GATEWAY] Emitting message: ${JSON.stringify(message)}`);
+		this.logger.debug(`Emitting message: ${JSON.stringify(message)}`);
 
 		this.server.emit('event', message);
 	}
@@ -237,7 +241,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		}
 
 		if (!this.server) {
-			this.logger.warn('[WS GATEWAY] WebSocket server is not initialized.');
+			this.logger.warn('WebSocket server is not initialized.');
 
 			return;
 		}
@@ -250,7 +254,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			},
 		};
 
-		this.logger.debug(`[WS GATEWAY] Emitting event bus message: ${JSON.stringify(message)}`);
+		this.logger.debug(`Emitting event bus message: ${JSON.stringify(message)}`);
 
 		this.server.to(DISPLAY_INTERNAL_ROOM).emit('event', message);
 		this.server.to(EXCHANGE_ROOM).emit('event', message);

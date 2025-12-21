@@ -1,8 +1,9 @@
 import { validate } from 'class-validator';
 import fetch from 'node-fetch';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { SystemConfigModel } from '../../../modules/system/models/config.model';
@@ -16,7 +17,10 @@ import { OpenWeatherMapLocationType, WEATHER_OPENWEATHERMAP_PLUGIN_NAME } from '
 
 @Injectable()
 export class OpenWeatherMapHttpService {
-	private readonly logger = new Logger(OpenWeatherMapHttpService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		WEATHER_OPENWEATHERMAP_PLUGIN_NAME,
+		'OpenWeatherMapHttpService',
+	);
 
 	private readonly BASE_URL = 'https://api.openweathermap.org/data/2.5';
 

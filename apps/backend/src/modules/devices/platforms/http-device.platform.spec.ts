@@ -61,8 +61,14 @@ describe('HttpDevicePlatform', () => {
 
 			expect(result).toEqual(mockResponse);
 			expect(mockedFetch).toHaveBeenCalledTimes(1);
-			expect(loggerLogSpy).toHaveBeenCalledWith(`[HTTP PLATFORM] Sending command to ${endpoint}`);
-			expect(loggerLogSpy).toHaveBeenCalledWith(`[HTTP PLATFORM] Successfully processed command to ${endpoint}`);
+			expect(loggerLogSpy).toHaveBeenCalledWith(
+				`[HttpDevicePlatform] Sending command to ${endpoint}`,
+				'devices-module',
+			);
+			expect(loggerLogSpy).toHaveBeenCalledWith(
+				`[HttpDevicePlatform] Successfully processed command to ${endpoint}`,
+				'devices-module',
+			);
 		});
 
 		it('should retry up to the max attempts if request fails', async () => {
@@ -74,7 +80,11 @@ describe('HttpDevicePlatform', () => {
 			expect(result).toEqual(false);
 			expect(mockedFetch).toHaveBeenCalledTimes(3);
 			expect(loggerWarnSpy).toHaveBeenCalledTimes(6);
-			expect(loggerErrorSpy).toHaveBeenCalledWith(`[HTTP PLATFORM] Sending command failed after 3 attempts`);
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
+				`[HttpDevicePlatform] Sending command failed after 3 attempts`,
+				undefined,
+				'devices-module',
+			);
 		});
 
 		it('should not retry if request fails with a non-retriable error (4xx)', async () => {
@@ -86,7 +96,8 @@ describe('HttpDevicePlatform', () => {
 			expect(result).toBe(false);
 			expect(mockedFetch).toHaveBeenCalledTimes(1);
 			expect(loggerWarnSpy).toHaveBeenCalledWith(
-				`[HTTP PLATFORM] Failed request to ${endpoint} status=401 response="Unauthorized"`,
+				`[HttpDevicePlatform] Failed request to ${endpoint} status=401 response="Unauthorized"`,
+				'devices-module',
 			);
 		});
 
@@ -98,8 +109,9 @@ describe('HttpDevicePlatform', () => {
 			expect(result).toBe(false);
 			expect(mockedFetch).toHaveBeenCalledTimes(1);
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
-				expect.stringContaining('[HTTP PLATFORM] Error processing command'),
-				expect.any(Object),
+				expect.stringContaining('[HttpDevicePlatform] Error processing command'),
+				undefined,
+				'devices-module',
 			);
 		});
 	});

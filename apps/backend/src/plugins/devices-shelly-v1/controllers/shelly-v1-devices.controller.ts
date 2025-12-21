@@ -1,8 +1,9 @@
 import { validate } from 'class-validator';
 
-import { Body, Controller, Get, Logger, Post, UnprocessableEntityException } from '@nestjs/common';
+import { Body, Controller, Get, Post, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
@@ -11,8 +12,11 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
-import { DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME } from '../devices-shelly-v1.constants';
-import { DESCRIPTORS } from '../devices-shelly-v1.constants';
+import {
+	DESCRIPTORS,
+	DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME,
+	DEVICES_SHELLY_V1_PLUGIN_NAME,
+} from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
 import { DevicesShellyV1PluginReqGetInfo } from '../dto/shelly-v1-probe.dto';
 import {
@@ -25,7 +29,10 @@ import { ShellyV1ProbeService } from '../services/shelly-v1-probe.service';
 @ApiTags(DEVICES_SHELLY_V1_PLUGIN_API_TAG_NAME)
 @Controller('devices')
 export class ShellyV1DevicesController {
-	private readonly logger = new Logger(ShellyV1DevicesController.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_V1_PLUGIN_NAME,
+		'ShellyV1DevicesController',
+	);
 
 	constructor(private readonly probeService: ShellyV1ProbeService) {}
 
@@ -50,16 +57,14 @@ export class ShellyV1DevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('info')
 	async getInfo(@Body() createDto: DevicesShellyV1PluginReqGetInfo): Promise<ShellyV1DeviceInfoResponseModel> {
-		this.logger.debug(`[SHELLY V1][DEVICES CONTROLLER] Incoming request to probe device at ${createDto.data.hostname}`);
+		this.logger.debug(`Incoming request to probe device at ${createDto.data.hostname}`);
 
 		let probeResult: ShellyV1DeviceInfoModel;
 
 		try {
 			probeResult = await this.probeService.probeDevice(createDto.data);
 		} catch (error) {
-			this.logger.error(
-				`[SHELLY V1][DEVICES CONTROLLER] Probe failed: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			this.logger.error(`Probe failed: ${error instanceof Error ? error.message : String(error)}`);
 
 			if (error instanceof DevicesShellyV1Exception) {
 				// Return a failed probe result instead of throwing
@@ -82,14 +87,12 @@ export class ShellyV1DevicesController {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[SHELLY V1][DEVICES CONTROLLER] Validation failed: ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new UnprocessableEntityException('Device info model could not be created');
 		}
 
-		this.logger.debug(
-			`[SHELLY V1][DEVICES CONTROLLER] Probe completed for ${createDto.data.hostname}. Reachable: ${shellyProbeResult.reachable}`,
-		);
+		this.logger.debug(`Probe completed for ${createDto.data.hostname}. Reachable: ${shellyProbeResult.reachable}`);
 
 		const response = new ShellyV1DeviceInfoResponseModel();
 		response.data = shellyProbeResult;
@@ -113,7 +116,7 @@ export class ShellyV1DevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('supported')
 	async getSupported(): Promise<ShellyV1SupportedDevicesResponseModel> {
-		this.logger.debug('[SHELLY V1][DEVICES CONTROLLER] Incoming request to get Shelly V1 supported devices list');
+		this.logger.debug('Incoming request to get Shelly V1 supported devices list');
 
 		const devices: ShellyV1SupportedDeviceModel[] = [];
 
@@ -130,7 +133,7 @@ export class ShellyV1DevicesController {
 			});
 
 			if (errors.length > 0) {
-				this.logger.error(`[SHELLY V1][DEVICES CONTROLLER] Validation failed: ${JSON.stringify(errors)}`);
+				this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 				continue;
 			}

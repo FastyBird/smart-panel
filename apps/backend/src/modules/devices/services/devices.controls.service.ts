@@ -1,19 +1,20 @@
 import { validate } from 'class-validator';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
 import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity } from '../entities/devices.entity';
 
 @Injectable()
 export class DevicesControlsService {
-	private readonly logger = new Logger(DevicesControlsService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesControlsService');
 
 	constructor(
 		@InjectRepository(DeviceControlEntity)
@@ -23,7 +24,7 @@ export class DevicesControlsService {
 	) {}
 
 	async findAll(deviceId: string): Promise<DeviceControlEntity[]> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all controls for deviceId=${deviceId}`);
+		this.logger.debug(`Fetching all controls for deviceId=${deviceId}`);
 
 		const controls = await this.repository
 			.createQueryBuilder('control')
@@ -31,13 +32,13 @@ export class DevicesControlsService {
 			.where('device.id = :deviceId', { deviceId })
 			.getMany();
 
-		this.logger.debug(`[LOOKUP ALL] Found ${controls.length} controls for deviceId=${deviceId}`);
+		this.logger.debug(`Found ${controls.length} controls for deviceId=${deviceId}`);
 
 		return controls;
 	}
 
 	async findOne(id: string, deviceId: string): Promise<DeviceControlEntity | null> {
-		this.logger.debug(`[LOOKUP] Fetching control with id=${id} for deviceId=${deviceId}`);
+		this.logger.debug(`Fetching control with id=${id} for deviceId=${deviceId}`);
 
 		const control = await this.repository
 			.createQueryBuilder('control')
@@ -47,18 +48,18 @@ export class DevicesControlsService {
 			.getOne();
 
 		if (!control) {
-			this.logger.debug(`[LOOKUP] Control with id=${id} for deviceId=${deviceId} not found`);
+			this.logger.debug(`Control with id=${id} for deviceId=${deviceId} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched control with id=${id} for deviceId=${deviceId}`);
+		this.logger.debug(`Successfully fetched control with id=${id} for deviceId=${deviceId}`);
 
 		return control;
 	}
 
 	async findOneByName(name: string, deviceId: string): Promise<DeviceControlEntity | null> {
-		this.logger.debug(`[LOOKUP] Fetching control with name=${name} for deviceId=${deviceId}`);
+		this.logger.debug(`Fetching control with name=${name} for deviceId=${deviceId}`);
 
 		const control = await this.repository
 			.createQueryBuilder('control')
@@ -68,18 +69,18 @@ export class DevicesControlsService {
 			.getOne();
 
 		if (!control) {
-			this.logger.debug(`[LOOKUP] Control with name=${name} for deviceId=${deviceId} not found`);
+			this.logger.debug(`Control with name=${name} for deviceId=${deviceId} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched control with name=${name} for deviceId=${deviceId}`);
+		this.logger.debug(`Successfully fetched control with name=${name} for deviceId=${deviceId}`);
 
 		return control;
 	}
 
 	async create(deviceId: string, createDeviceControlDto: CreateDeviceControlDto): Promise<DeviceControlEntity> {
-		this.logger.debug(`[CREATE] Creating new control for deviceId=${deviceId}`);
+		this.logger.debug(`Creating new control for deviceId=${deviceId}`);
 
 		const existingControl = await this.findOneByName(createDeviceControlDto.name, deviceId);
 
@@ -99,7 +100,7 @@ export class DevicesControlsService {
 
 		const savedControl = await this.getOneOrThrow(control.id, deviceId);
 
-		this.logger.debug(`[CREATE] Successfully created control with id=${savedControl.id} for deviceId=${deviceId}`);
+		this.logger.debug(`Successfully created control with id=${savedControl.id} for deviceId=${deviceId}`);
 
 		this.eventEmitter.emit(EventType.DEVICE_CONTROL_CREATED, savedControl);
 
@@ -107,7 +108,7 @@ export class DevicesControlsService {
 	}
 
 	async remove(id: string, deviceId: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
-		this.logger.debug(`[DELETE] Removing control with id=${id} for deviceId=${deviceId}`);
+		this.logger.debug(`Removing control with id=${id} for deviceId=${deviceId}`);
 
 		const control = await manager.findOneOrFail<DeviceControlEntity>(DeviceControlEntity, {
 			where: { id, device: { id: deviceId } },
@@ -118,7 +119,7 @@ export class DevicesControlsService {
 
 		await manager.remove(control);
 
-		this.logger.log(`[DELETE] Successfully removed control with id=${id} for deviceId=${deviceId}`);
+		this.logger.log(`Successfully removed control with id=${id} for deviceId=${deviceId}`);
 
 		// Emit event with the control entity captured before removal to preserve ID
 		this.eventEmitter.emit(EventType.DEVICE_CONTROL_DELETED, controlForEvent);
@@ -128,7 +129,7 @@ export class DevicesControlsService {
 		const control = await this.findOne(id, deviceId);
 
 		if (!control) {
-			this.logger.error(`[ERROR] Control with id=${id} for deviceId=${deviceId} not found`);
+			this.logger.error(`Control with id=${id} for deviceId=${deviceId} not found`);
 
 			throw new DevicesNotFoundException('Device control does not exist');
 		}
@@ -148,7 +149,7 @@ export class DevicesControlsService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new DevicesValidationException('Provided control data are invalid.');
 		}

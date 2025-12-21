@@ -6,11 +6,11 @@ import {
 	Controller,
 	Get,
 	InternalServerErrorException,
-	Logger,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { Public } from '../../auth/guards/auth.guard';
 import {
@@ -31,12 +31,12 @@ import {
 } from '../models/system-response.model';
 import { SystemHealthModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
-import { SYSTEM_MODULE_API_TAG_NAME } from '../system.constants';
+import { SYSTEM_MODULE_API_TAG_NAME, SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiTags(SYSTEM_MODULE_API_TAG_NAME)
 @Controller('system')
 export class SystemController {
-	private readonly logger = new Logger(SystemController.name);
+	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'SystemController');
 
 	constructor(private readonly systemService: SystemService) {}
 
@@ -52,7 +52,7 @@ export class SystemController {
 	@Public()
 	@Get('health')
 	getSystemHealth(): SystemHealthResponseModel {
-		this.logger.debug('[LOOKUP] Health check');
+		this.logger.debug('Health check');
 
 		try {
 			const pkgJson = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8')) as
@@ -84,12 +84,12 @@ export class SystemController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('info')
 	async getSystemInfo(): Promise<SystemInfoResponseModel> {
-		this.logger.debug('[LOOKUP] Fetching system info');
+		this.logger.debug('Fetching system info');
 
 		try {
 			const systemInfo = await this.systemService.getSystemInfo();
 
-			this.logger.debug('[LOOKUP] Successfully retrieved system info');
+			this.logger.debug('Successfully retrieved system info');
 
 			const response = new SystemInfoResponseModel();
 			response.data = systemInfo;
@@ -111,12 +111,12 @@ export class SystemController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('throttle')
 	async getThrottleStatus(): Promise<ThrottleStatusResponseModel> {
-		this.logger.debug('[LOOKUP] Fetching throttle status');
+		this.logger.debug('Fetching throttle status');
 
 		try {
 			const throttleStatus = await this.systemService.getThrottleStatus();
 
-			this.logger.debug('[LOOKUP] Successfully retrieved throttle status');
+			this.logger.debug('Successfully retrieved throttle status');
 
 			const response = new ThrottleStatusResponseModel();
 			response.data = throttleStatus;
@@ -129,21 +129,21 @@ export class SystemController {
 
 	private handleError(error: unknown, contextMessage: string): never {
 		if (error instanceof PlatformNotSupportedException) {
-			this.logger.warn(`[ERROR] ${contextMessage}: Platform not supported`, error);
+			this.logger.warn(`${contextMessage}: Platform not supported`, { error });
 			throw new BadRequestException(error.message);
 		}
 
 		if (error instanceof PlatformValidationException) {
-			this.logger.warn(`[ERROR] ${contextMessage}: Validation error`, error);
+			this.logger.warn(`${contextMessage}: Validation error`, { error });
 			throw new UnprocessableEntityException(error.message);
 		}
 
 		if (error instanceof PlatformException) {
-			this.logger.error(`[ERROR] ${contextMessage}: Platform-related error occurred`, error);
+			this.logger.error(`${contextMessage}: Platform-related error occurred`, { error });
 			throw new InternalServerErrorException(error.message);
 		}
 
-		this.logger.error(`[ERROR] ${contextMessage}: Unexpected error occurred`, error);
+		this.logger.error(`${contextMessage}: Unexpected error occurred`, { error });
 		throw new InternalServerErrorException('An unexpected error occurred');
 	}
 }

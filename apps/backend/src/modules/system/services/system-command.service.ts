@@ -1,16 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { PlatformNotSupportedException } from '../../platform/platform.exceptions';
 import { PlatformService } from '../../platform/services/platform.service';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
-import { EventType } from '../system.constants';
+import { EventType, SYSTEM_MODULE_NAME } from '../system.constants';
 
 import { FactoryResetRegistryService } from './factory-reset-registry.service';
 
 @Injectable()
 export class SystemCommandService {
-	private readonly logger = new Logger(SystemCommandService.name);
+	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'SystemCommandService');
 
 	constructor(
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
@@ -120,7 +121,7 @@ export class SystemCommandService {
 				const result = await handler();
 
 				if (!result?.success) {
-					this.logger.error(`[FACTORY RESET] Reset handler "${name}" failed: ${result?.reason}`);
+					this.logger.error(`Reset handler "${name}" failed: ${result?.reason}`);
 
 					return {
 						success: false,
@@ -128,10 +129,10 @@ export class SystemCommandService {
 					};
 				}
 
-				this.logger.debug(`[FACTORY RESET] Handler "${name}" completed successfully`);
+				this.logger.debug(`Handler "${name}" completed successfully`);
 			}
 
-			this.logger.debug('[FACTORY RESET] Factory reset was successful');
+			this.logger.debug('Factory reset was successful');
 
 			await this.platformService.reboot();
 

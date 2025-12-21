@@ -3,10 +3,11 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../config/services/config.service';
 import { CreateLocationDto } from '../dto/create-location.dto';
@@ -20,7 +21,7 @@ import { LocationsTypeMapperService } from './locations-type-mapper.service';
 
 @Injectable()
 export class LocationsService {
-	private readonly logger = new Logger(LocationsService.name);
+	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'LocationsService');
 
 	constructor(
 		@InjectRepository(WeatherLocationEntity)
@@ -36,12 +37,12 @@ export class LocationsService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug('[LOOKUP ALL] Fetching all locations');
+		this.logger.debug('Fetching all locations');
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const locations = (await repository.find({ order: { createdAt: 'ASC' } as any })) as TLocation[];
 
-		this.logger.debug(`[LOOKUP ALL] Found ${locations.length} locations`);
+		this.logger.debug(`Found ${locations.length} locations`);
 
 		return locations;
 	}
@@ -51,18 +52,18 @@ export class LocationsService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug(`[LOOKUP] Fetching location with id=${id}`);
+		this.logger.debug(`Fetching location with id=${id}`);
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const location = (await repository.findOne({ where: { id } as any })) as TLocation | null;
 
 		if (!location) {
-			this.logger.debug(`[LOOKUP] Location with id=${id} not found`);
+			this.logger.debug(`Location with id=${id} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched location with id=${id}`);
+		this.logger.debug(`Successfully fetched location with id=${id}`);
 
 		return location;
 	}
@@ -70,12 +71,12 @@ export class LocationsService {
 	async create<TLocation extends WeatherLocationEntity, TCreateDTO extends CreateLocationDto>(
 		createDto: TCreateDTO,
 	): Promise<TLocation> {
-		this.logger.debug('[CREATE] Creating new location');
+		this.logger.debug('Creating new location');
 
 		const { type } = createDto;
 
 		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" attribute in data.');
+			this.logger.error('Validation failed: Missing required "type" attribute in data.');
 
 			throw new WeatherException('Location type attribute is required.');
 		}
@@ -91,7 +92,7 @@ export class LocationsService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for location creation error=${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed for location creation error=${JSON.stringify(errors)}`);
 
 			throw new WeatherValidationException('Provided location data are invalid.');
 		}
@@ -110,7 +111,7 @@ export class LocationsService {
 			savedLocation = (await this.getOneOrThrow(raw.id)) as TLocation;
 		}
 
-		this.logger.debug(`[CREATE] Successfully created location with id=${savedLocation.id}`);
+		this.logger.debug(`Successfully created location with id=${savedLocation.id}`);
 
 		this.eventEmitter.emit(EventType.LOCATION_CREATED, savedLocation);
 
@@ -121,7 +122,7 @@ export class LocationsService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TLocation> {
-		this.logger.debug(`[UPDATE] Updating location with id=${id}`);
+		this.logger.debug(`Updating location with id=${id}`);
 
 		const location = await this.getOneOrThrow(id);
 
@@ -143,7 +144,7 @@ export class LocationsService {
 			updatedLocation = (await this.getOneOrThrow(location.id)) as TLocation;
 		}
 
-		this.logger.debug(`[UPDATE] Successfully updated location with id=${updatedLocation.id}`);
+		this.logger.debug(`Successfully updated location with id=${updatedLocation.id}`);
 
 		this.eventEmitter.emit(EventType.LOCATION_UPDATED, updatedLocation);
 
@@ -151,7 +152,7 @@ export class LocationsService {
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing location with id=${id}`);
+		this.logger.debug(`Removing location with id=${id}`);
 
 		const location = await this.getOneOrThrow(id);
 
@@ -160,7 +161,7 @@ export class LocationsService {
 			const weatherConfig = this.configService.getModuleConfig<WeatherConfigModel>(WEATHER_MODULE_NAME);
 
 			if (weatherConfig.primaryLocationId === id) {
-				this.logger.error(`[DELETE] Cannot delete primary location id=${id}`);
+				this.logger.error(`Cannot delete primary location id=${id}`);
 
 				throw new WeatherValidationException(
 					'Cannot delete the primary weather location. Please set a different primary location first.',
@@ -172,12 +173,12 @@ export class LocationsService {
 				throw error;
 			}
 
-			this.logger.debug(`[DELETE] Could not check primary location status, proceeding with deletion`);
+			this.logger.debug(`Could not check primary location status, proceeding with deletion`);
 		}
 
 		await this.repository.remove(location);
 
-		this.logger.log(`[DELETE] Successfully removed location with id=${id}`);
+		this.logger.log(`Successfully removed location with id=${id}`);
 
 		this.eventEmitter.emit(EventType.LOCATION_DELETED, { id });
 	}
@@ -186,7 +187,7 @@ export class LocationsService {
 		const location = await this.findOne(id);
 
 		if (!location) {
-			this.logger.error(`[ERROR] Location with id=${id} not found`);
+			this.logger.error(`Location with id=${id} not found`);
 
 			throw new WeatherNotFoundException('Location does not exist');
 		}
@@ -206,7 +207,7 @@ export class LocationsService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new WeatherValidationException('Provided location data are invalid.');
 		}

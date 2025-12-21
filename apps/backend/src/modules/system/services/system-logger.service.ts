@@ -200,8 +200,14 @@ export class SystemLoggerService implements LoggerService {
 		});
 	}
 
-	getLatest(afterId?: string, limit = 50): LogEntryModel[] {
-		const all = this.rb.toArrayNewestFirst();
+	getLatest(afterId?: string, limit = 50, tags?: string[]): LogEntryModel[] {
+		let all = this.rb.toArrayNewestFirst();
+
+		// Filter by tags if provided (case-insensitive)
+		if (tags && tags.length > 0) {
+			const lowerTags = tags.map((t) => t.toLowerCase());
+			all = all.filter((e) => e.tag && lowerTags.includes(e.tag.toLowerCase()));
+		}
 
 		const start = afterId ? all.findIndex((e) => e.id === afterId) : -1;
 		const slice = start >= 0 ? all.slice(start + 1) : all;

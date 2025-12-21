@@ -2,13 +2,15 @@ import { ClassConstructor } from 'class-transformer';
 import inquirer from 'inquirer';
 import { validate as uuidValidate } from 'uuid';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateChannelDto } from '../dto/create-channel.dto';
@@ -33,7 +35,7 @@ import { DevicesService } from './devices.service';
 
 @Injectable()
 export class DevicesSeederService implements Seeder {
-	private readonly logger = new Logger(DevicesSeederService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesSeederService');
 
 	constructor(
 		private readonly configService: NestConfigService,

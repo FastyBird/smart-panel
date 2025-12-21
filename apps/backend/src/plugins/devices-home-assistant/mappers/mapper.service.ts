@@ -1,9 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
-import { DEVICES_HOME_ASSISTANT_TYPE, HomeAssistantDomain } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	DEVICES_HOME_ASSISTANT_TYPE,
+	HomeAssistantDomain,
+} from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import {
@@ -28,7 +33,10 @@ type MappedFromHa = Map<HomeAssistantChannelPropertyEntity['id'], string | numbe
 
 @Injectable()
 export class MapperService {
-	private readonly logger = new Logger(MapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'MapperService',
+	);
 
 	private readonly mappers = new Map<HomeAssistantDomain, IEntityMapper>();
 
@@ -53,9 +61,7 @@ export class MapperService {
 			const properties = grouped.get(state.entity_id);
 
 			if (!properties) {
-				this.logger.warn(
-					`[HOME ASSISTANT MAPPER] No properties found for received state for domain=${domain} entityId=${state.entity_id}`,
-				);
+				this.logger.warn(`No properties found for received state for domain=${domain} entityId=${state.entity_id}`);
 
 				continue;
 			}
@@ -96,7 +102,7 @@ export class MapperService {
 			const mapper = this.mappers.get(domain);
 
 			if (!mapper) {
-				this.logger.warn(`[HOME ASSISTANT][MAPPER SERVICE] No mapper found for domain=${domain}`);
+				this.logger.warn(`No mapper found for domain=${domain}`);
 
 				continue;
 			}

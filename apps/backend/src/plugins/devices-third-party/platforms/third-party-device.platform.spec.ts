@@ -67,7 +67,10 @@ describe('ThirdPartyDevicePlatform', () => {
 		]);
 
 		expect(result).toBe(true);
-		expect(loggerLogSpy).toHaveBeenCalledWith('[THIRD-PARTY][PLATFORM] Successfully updated properties');
+		expect(loggerLogSpy).toHaveBeenCalledWith(
+			'[ThirdPartyDevicePlatform] Successfully updated properties',
+			'devices-third-party-plugin',
+		);
 	});
 
 	it('should return true when all updates succeed (207 response)', async () => {
@@ -95,7 +98,8 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(true);
 		expect(loggerLogSpy).toHaveBeenCalledWith(
-			`[THIRD-PARTY][PLATFORM] Successfully processed all property updates for device id=${mockDevice.id}`,
+			`[ThirdPartyDevicePlatform] Successfully processed all property updates for device id=${mockDevice.id}`,
+			'devices-third-party-plugin',
 		);
 	});
 
@@ -124,9 +128,8 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(loggerWarnSpy).toHaveBeenCalledWith(
-			expect.stringContaining(
-				`[THIRD-PARTY][PLATFORM] Some properties failed to update for device id=${mockDevice.id}: ${JSON.stringify(mockResponseBody.properties)}`,
-			),
+			`[ThirdPartyDevicePlatform] Some properties failed to update for device id=${mockDevice.id}: ${JSON.stringify(mockResponseBody.properties)}`,
+			'devices-third-party-plugin',
 		);
 	});
 
@@ -144,7 +147,9 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('[THIRD-PARTY][PLATFORM] Unexpected response status=500'),
+			`[ThirdPartyDevicePlatform] Unexpected response status=500 id=${mockDevice.id}`,
+			undefined,
+			'devices-third-party-plugin',
 		);
 	});
 
@@ -162,8 +167,9 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('[THIRD-PARTY][PLATFORM] Error processing property update'),
-			expect.any(Object),
+			expect.stringContaining('[ThirdPartyDevicePlatform] Error processing property update'),
+			undefined,
+			'devices-third-party-plugin',
 		);
 	});
 

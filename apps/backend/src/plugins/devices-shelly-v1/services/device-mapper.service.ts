@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
@@ -20,6 +21,7 @@ import {
 } from '../../../modules/devices/utils/schema.utils';
 import {
 	DESCRIPTORS,
+	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
 	PropertyBinding,
 	SHELLY_AUTH_USERNAME,
@@ -49,7 +51,10 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 @Injectable()
 export class DeviceMapperService {
-	private readonly logger = new Logger(DeviceMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_V1_PLUGIN_NAME,
+		'DeviceMapperService',
+	);
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -64,13 +69,13 @@ export class DeviceMapperService {
 	 * Map and create or update a discovered device
 	 */
 	async mapDevice(event: NormalizedDeviceEvent): Promise<ShellyV1DeviceEntity> {
-		this.logger.debug(`[SHELLY V1][MAPPER] Mapping device: ${event.id} (${event.type})`);
+		this.logger.debug(`Mapping device: ${event.id} (${event.type})`);
 
 		// Get the device instance from the adapter
 		const shellyDevice = this.shelliesAdapter.getDevice(event.type, event.id);
 
 		if (!shellyDevice) {
-			this.logger.warn(`[SHELLY V1][MAPPER] Device ${event.id} not found in adapter`);
+			this.logger.warn(`Device ${event.id} not found in adapter`);
 			throw new DevicesShellyV1NotSupportedException(`Device ${event.id} not found in adapter`);
 		}
 
@@ -78,7 +83,7 @@ export class DeviceMapperService {
 		const descriptor = this.findDescriptor(event.type);
 
 		if (!descriptor) {
-			this.logger.warn(`[SHELLY V1][MAPPER] No descriptor found for device type: ${event.type}`);
+			this.logger.warn(`No descriptor found for device type: ${event.type}`);
 			throw new DevicesShellyV1NotSupportedException(`Unsupported device type: ${event.type}`);
 		}
 
@@ -94,9 +99,9 @@ export class DeviceMapperService {
 
 			deviceName = settings.name || event.id;
 
-			this.logger.debug(`[SHELLY V1][MAPPER] Fetched device name: ${deviceName}`);
+			this.logger.debug(`Fetched device name: ${deviceName}`);
 		} catch (error) {
-			this.logger.warn(`[SHELLY V1][MAPPER] Failed to fetch device settings from ${shellyDevice.host}`, {
+			this.logger.warn(`Failed to fetch device settings from ${shellyDevice.host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 			// Continue with the default name (device ID) if settings fetch fails
@@ -110,7 +115,7 @@ export class DeviceMapperService {
 		);
 
 		if (!device) {
-			this.logger.log(`[SHELLY V1][MAPPER] Creating new device: ${event.id} with name: ${deviceName}`);
+			this.logger.log(`Creating new device: ${event.id} with name: ${deviceName}`);
 
 			const createDto: CreateShellyV1DeviceDto = {
 				type: DEVICES_SHELLY_V1_TYPE,
@@ -125,9 +130,7 @@ export class DeviceMapperService {
 		} else {
 			// If a device is disabled, set to UNKNOWN and skip updates
 			if (!device.enabled) {
-				this.logger.debug(
-					`[SHELLY V1][MAPPER] Device ${event.id} is disabled, setting to UNKNOWN and skipping updates`,
-				);
+				this.logger.debug(`Device ${event.id} is disabled, setting to UNKNOWN and skipping updates`);
 
 				// Update registry to mark a device as disabled
 				this.shelliesAdapter.updateDeviceEnabledStatus(event.id, false);
@@ -140,14 +143,14 @@ export class DeviceMapperService {
 				return device;
 			}
 
-			this.logger.debug(`[SHELLY V1][MAPPER] Device already exists: ${event.id}, updating hostname if changed`);
+			this.logger.debug(`Device already exists: ${event.id}, updating hostname if changed`);
 
 			// Update the registry to ensure a device is marked as enabled
 			this.shelliesAdapter.updateDeviceEnabledStatus(event.id, true);
 
 			// Set auth credentials if the password is configured
 			if (device.password) {
-				this.logger.debug(`[SHELLY V1][MAPPER] Fetching username from login settings for device ${event.id}`);
+				this.logger.debug(`Fetching username from login settings for device ${event.id}`);
 
 				try {
 					// Get the real username from the login endpoint
@@ -155,17 +158,12 @@ export class DeviceMapperService {
 					username = loginSettings.username || SHELLY_AUTH_USERNAME;
 					password = device.password;
 
-					this.logger.debug(
-						`[SHELLY V1][MAPPER] Setting auth credentials for device ${event.id} (username: ${username})`,
-					);
+					this.logger.debug(`Setting auth credentials for device ${event.id} (username: ${username})`);
 					this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, username, password);
 				} catch (error) {
-					this.logger.warn(
-						`[SHELLY V1][MAPPER] Failed to fetch login settings from ${shellyDevice.host}, using default username`,
-						{
-							message: error instanceof Error ? error.message : String(error),
-						},
-					);
+					this.logger.warn(`Failed to fetch login settings from ${shellyDevice.host}, using default username`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
 
 					// Fallback to default username if login endpoint fails
 					username = SHELLY_AUTH_USERNAME;
@@ -176,9 +174,7 @@ export class DeviceMapperService {
 
 			// Update hostname if it changed (a device might have a new IP address)
 			if (device.hostname !== event.host) {
-				this.logger.log(
-					`[SHELLY V1][MAPPER] Updating hostname for device ${event.id}: ${device.hostname} -> ${event.host}`,
-				);
+				this.logger.log(`Updating hostname for device ${event.id}: ${device.hostname} -> ${event.host}`);
 
 				const updateDto: UpdateShellyV1DeviceDto = {
 					type: DEVICES_SHELLY_V1_TYPE,
@@ -200,18 +196,16 @@ export class DeviceMapperService {
 			const modeValue = shellyDevice[descriptor.instance.modeProperty];
 
 			this.logger.debug(
-				`[SHELLY V1][MAPPER] Device ${event.id} has mode property: ${descriptor.instance.modeProperty} = ${String(modeValue)}`,
+				`Device ${event.id} has mode property: ${descriptor.instance.modeProperty} = ${String(modeValue)}`,
 			);
 
 			const modeProfile = descriptor.modes.find((mode) => mode.modeValue === modeValue);
 
 			if (modeProfile) {
 				bindings = modeProfile.bindings;
-				this.logger.debug(`[SHELLY V1][MAPPER] Using mode profile: ${String(modeValue)}`);
+				this.logger.debug(`Using mode profile: ${String(modeValue)}`);
 			} else {
-				this.logger.warn(
-					`[SHELLY V1][MAPPER] No mode profile found for mode value: ${String(modeValue)}, device will have no channels`,
-				);
+				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)}, device will have no channels`);
 			}
 		} else if (descriptor.bindings) {
 			// Device has static bindings
@@ -226,7 +220,7 @@ export class DeviceMapperService {
 			state: ConnectionState.CONNECTED,
 		});
 
-		this.logger.log(`[SHELLY V1][MAPPER] Device ${device.identifier} discovery completed and set to CONNECTED`);
+		this.logger.log(`Device ${device.identifier} discovery completed and set to CONNECTED`);
 
 		return device;
 	}
@@ -242,7 +236,7 @@ export class DeviceMapperService {
 	): Promise<void> {
 		const channelIdentifier = SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION;
 
-		this.logger.debug(`[SHELLY V1][MAPPER] Fetching additional device info from ${shellyDevice.host}`);
+		this.logger.debug(`Fetching additional device info from ${shellyDevice.host}`);
 
 		// Fetch additional device information from HTTP API
 		let deviceInfo: ShellyInfoResponse | undefined;
@@ -254,11 +248,9 @@ export class DeviceMapperService {
 				this.httpClient.getDeviceStatus(shellyDevice.host, undefined, username, password),
 			]);
 
-			this.logger.debug(
-				`[SHELLY V1][MAPPER] Fetched device info: fw=${deviceInfo.fw}, rssi=${deviceStatus.wifi_sta?.rssi}`,
-			);
+			this.logger.debug(`Fetched device info: fw=${deviceInfo.fw}, rssi=${deviceStatus.wifi_sta?.rssi}`);
 		} catch (error) {
-			this.logger.warn(`[SHELLY V1][MAPPER] Failed to fetch device info from ${shellyDevice.host}`, {
+			this.logger.warn(`Failed to fetch device info from ${shellyDevice.host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
 			// Continue with discovery even if HTTP requests fail
@@ -275,7 +267,7 @@ export class DeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`[SHELLY V1][MAPPER] Creating device_information channel for device ${device.identifier}`);
+			this.logger.debug(`Creating device_information channel for device ${device.identifier}`);
 
 			const createChannelDto: CreateShellyV1ChannelDto = {
 				type: DEVICES_SHELLY_V1_TYPE,
@@ -405,7 +397,7 @@ export class DeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`[SHELLY V1][MAPPER] Creating channel: ${channelIdentifier} for device ${device.identifier}`);
+			this.logger.debug(`Creating channel: ${channelIdentifier} for device ${device.identifier}`);
 
 			const channelCategory = this.inferChannelCategory(channelIdentifier, bindings);
 			const channelName = this.formatChannelName(channelIdentifier);
@@ -450,21 +442,17 @@ export class DeviceMapperService {
 						} else {
 							// Invalid mapped value, skip setting it
 							this.logger.warn(
-								`[SHELLY V1][MAPPER] Mapped value "${mappedValue}" for ${binding.propertyIdentifier} is not in format, skipping`,
+								`Mapped value "${mappedValue}" for ${binding.propertyIdentifier} is not in format, skipping`,
 							);
 							initialValue = null;
 						}
 					} else {
 						// Unknown raw value, skip setting it
-						this.logger.warn(
-							`[SHELLY V1][MAPPER] Unknown raw value "${String(rawValue)}" for ${binding.propertyIdentifier}, skipping`,
-						);
+						this.logger.warn(`Unknown raw value "${String(rawValue)}" for ${binding.propertyIdentifier}, skipping`);
 						initialValue = null;
 					}
 				} else {
-					this.logger.warn(
-						`[SHELLY V1][MAPPER] Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`,
-					);
+					this.logger.warn(`Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`);
 				}
 			}
 
@@ -476,9 +464,7 @@ export class DeviceMapperService {
 				initialValue !== null
 			) {
 				if (!validateEnumValue(initialValue, binding.format, binding.propertyIdentifier)) {
-					this.logger.warn(
-						`[SHELLY V1][MAPPER] Value "${initialValue}" for ${binding.propertyIdentifier} is not in format, skipping`,
-					);
+					this.logger.warn(`Value "${initialValue}" for ${binding.propertyIdentifier} is not in format, skipping`);
 					initialValue = null;
 				}
 			}
@@ -515,7 +501,7 @@ export class DeviceMapperService {
 		const requiredProperties = getRequiredProperties(channel.category);
 
 		this.logger.debug(
-			`[SHELLY V1][MAPPER] Checking required properties for channel ${channel.identifier} (${channel.category}): ${requiredProperties.join(', ')}`,
+			`Checking required properties for channel ${channel.identifier} (${channel.category}): ${requiredProperties.join(', ')}`,
 		);
 
 		// Get existing property categories from bindings
@@ -538,7 +524,7 @@ export class DeviceMapperService {
 
 			if (!propertyMetadata) {
 				this.logger.warn(
-					`[SHELLY V1][MAPPER] No schema metadata found for required property ${requiredPropertyCategory} in channel ${channel.category}`,
+					`No schema metadata found for required property ${requiredPropertyCategory} in channel ${channel.category}`,
 				);
 				continue;
 			}
@@ -547,7 +533,7 @@ export class DeviceMapperService {
 			const defaultValue = getPropertyDefaultValue(channel.category, requiredPropertyCategory);
 
 			this.logger.debug(
-				`[SHELLY V1][MAPPER] Adding missing required property ${requiredPropertyCategory} to channel ${channel.identifier} with default value: ${defaultValue}`,
+				`Adding missing required property ${requiredPropertyCategory} to channel ${channel.identifier} with default value: ${defaultValue}`,
 			);
 
 			// Create the missing required property with schema metadata and default value
@@ -577,7 +563,7 @@ export class DeviceMapperService {
 		}
 
 		this.logger.debug(
-			`[SHELLY V1][MAPPER] Processing ${syntheticProperties.length} synthetic properties for channel ${channel.identifier}`,
+			`Processing ${syntheticProperties.length} synthetic properties for channel ${channel.identifier}`,
 		);
 
 		// Process each synthetic property
@@ -591,7 +577,7 @@ export class DeviceMapperService {
 
 			if (!sourceProperty) {
 				this.logger.warn(
-					`[SHELLY V1][MAPPER] Source property ${syntheticProp.sourcePropertyCategory} not found for synthetic property ${syntheticProp.propertyCategory} in channel ${channel.identifier}`,
+					`Source property ${syntheticProp.sourcePropertyCategory} not found for synthetic property ${syntheticProp.propertyCategory} in channel ${channel.identifier}`,
 				);
 				continue;
 			}
@@ -611,13 +597,13 @@ export class DeviceMapperService {
 
 			if (!propertyMetadata) {
 				this.logger.warn(
-					`[SHELLY V1][MAPPER] No schema metadata found for synthetic property ${syntheticProp.propertyCategory} in channel ${channel.category}`,
+					`No schema metadata found for synthetic property ${syntheticProp.propertyCategory} in channel ${channel.category}`,
 				);
 				continue;
 			}
 
 			this.logger.debug(
-				`[SHELLY V1][MAPPER] Creating/updating synthetic property ${syntheticProp.propertyCategory} in channel ${channel.identifier} with derived value: ${syntheticValue}`,
+				`Creating/updating synthetic property ${syntheticProp.propertyCategory} in channel ${channel.identifier} with derived value: ${syntheticValue}`,
 			);
 
 			// Create or update the synthetic property
@@ -659,9 +645,7 @@ export class DeviceMapperService {
 		);
 
 		if (!existingProperty) {
-			this.logger.debug(
-				`[SHELLY V1][MAPPER] Creating property: ${propDef.identifier} for channel ${channel.identifier}`,
-			);
+			this.logger.debug(`Creating property: ${propDef.identifier} for channel ${channel.identifier}`);
 
 			const createPropertyDto: CreateShellyV1ChannelPropertyDto = {
 				type: DEVICES_SHELLY_V1_TYPE,
@@ -681,9 +665,7 @@ export class DeviceMapperService {
 			);
 		} else {
 			// Update existing property metadata and value (preserve name and description)
-			this.logger.debug(
-				`[SHELLY V1][MAPPER] Updating property metadata: ${propDef.identifier} for channel ${channel.identifier}`,
-			);
+			this.logger.debug(`Updating property metadata: ${propDef.identifier} for channel ${channel.identifier}`);
 
 			await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
 				existingProperty.id,
@@ -711,9 +693,7 @@ export class DeviceMapperService {
 		// Step 1: Check if any binding has an explicit channelCategory defined
 		for (const binding of bindings) {
 			if (binding.channelCategory !== undefined) {
-				this.logger.debug(
-					`[SHELLY V1][MAPPER] Using explicit channelCategory from binding: ${binding.channelCategory}`,
-				);
+				this.logger.debug(`Using explicit channelCategory from binding: ${binding.channelCategory}`);
 				return binding.channelCategory;
 			}
 		}
@@ -721,9 +701,7 @@ export class DeviceMapperService {
 		// Step 2: Try to find category by channel identifier prefix
 		const prefix = channelIdentifier.split('_')[0];
 		if (SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix]) {
-			this.logger.debug(
-				`[SHELLY V1][MAPPER] Found category by prefix '${prefix}': ${SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix]}`,
-			);
+			this.logger.debug(`Found category by prefix '${prefix}': ${SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix]}`);
 			return SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix];
 		}
 

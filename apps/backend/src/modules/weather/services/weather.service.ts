@@ -2,10 +2,11 @@ import { Cache } from 'cache-manager';
 import { CronJob } from 'cron';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
@@ -22,7 +23,7 @@ import { WeatherProviderRegistryService } from './weather-provider-registry.serv
 
 @Injectable()
 export class WeatherService {
-	private readonly logger = new Logger(WeatherService.name);
+	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'WeatherService');
 	private readonly refreshJob: CronJob;
 
 	private readonly CACHE_TTL = 3600000; // 1-hour cache expiration
@@ -56,7 +57,7 @@ export class WeatherService {
 		const locations = await this.locationsService.findAll();
 
 		if (locations.length === 0) {
-			this.logger.debug('[WEATHER] No locations configured');
+			this.logger.debug('No locations configured');
 			return [];
 		}
 
@@ -70,7 +71,7 @@ export class WeatherService {
 				}
 			} catch (error) {
 				const err = error as Error;
-				this.logger.warn(`[WEATHER] Failed to fetch weather for location=${location.id}`, {
+				this.logger.warn(`Failed to fetch weather for location=${location.id}`, {
 					message: err.message,
 				});
 			}
@@ -219,7 +220,7 @@ export class WeatherService {
 	 */
 	async refreshAllWeather(): Promise<void> {
 		try {
-			this.logger.debug('[WEATHER] Refreshing weather data for all locations...');
+			this.logger.debug('Refreshing weather data for all locations...');
 
 			const weatherList = await this.getAllWeather(true);
 
@@ -227,24 +228,24 @@ export class WeatherService {
 				this.eventEmitter.emit(EventType.WEATHER_INFO, weather);
 			}
 
-			this.logger.debug(`[EVENT] Weather info broadcasted for ${weatherList.length} locations`);
+			this.logger.debug(`Weather info broadcasted for ${weatherList.length} locations`);
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error('[EVENT] Failed to broadcast weather info', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to broadcast weather info', { message: err.message, stack: err.stack });
 		}
 	}
 
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
 	handleConfigurationUpdatedEvent() {
 		// Configuration changes might affect providers, trigger a refresh
-		this.logger.debug('[WEATHER] Config updated, scheduling weather refresh');
+		this.logger.debug('Config updated, scheduling weather refresh');
 	}
 
 	@OnEvent(EventType.LOCATION_CREATED)
 	@OnEvent(EventType.LOCATION_UPDATED)
 	async handleLocationChangedEvent(location: WeatherLocationEntity) {
 		try {
-			this.logger.debug(`[WEATHER] Location changed, refreshing weather for location=${location.id}`);
+			this.logger.debug(`Location changed, refreshing weather for location=${location.id}`);
 
 			// Clear cache for this location
 			await this.clearLocationCache(location.id);
@@ -257,14 +258,14 @@ export class WeatherService {
 			}
 		} catch (error) {
 			const err = error as Error;
-			this.logger.warn(`[WEATHER] Failed to refresh weather after location change`, { message: err.message });
+			this.logger.warn(`Failed to refresh weather after location change`, { message: err.message });
 		}
 	}
 
 	@OnEvent(EventType.LOCATION_DELETED)
 	async handleLocationDeletedEvent(payload: { id: string }) {
 		await this.clearLocationCache(payload.id);
-		this.logger.debug(`[WEATHER] Cleared cache for deleted location=${payload.id}`);
+		this.logger.debug(`Cleared cache for deleted location=${payload.id}`);
 	}
 
 	private async getWeatherForLocation(
@@ -274,7 +275,7 @@ export class WeatherService {
 		const provider = this.providerRegistry.get(location.type);
 
 		if (!provider) {
-			this.logger.warn(`[WEATHER] No provider found for location type=${location.type}`);
+			this.logger.warn(`No provider found for location type=${location.type}`);
 			return null;
 		}
 
@@ -296,7 +297,7 @@ export class WeatherService {
 			return null;
 		} catch (error) {
 			const err = error as Error;
-			this.logger.error(`[WEATHER] Failed to fetch weather for location=${location.id}`, {
+			this.logger.error(`Failed to fetch weather for location=${location.id}`, {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -313,7 +314,7 @@ export class WeatherService {
 		if (!force) {
 			const cached = await this.cacheManager.get<{ current: CurrentDayModel; location: LocationModel }>(cacheKey);
 			if (cached) {
-				this.logger.debug(`[WEATHER] Returning cached current weather for location=${location.id}`);
+				this.logger.debug(`Returning cached current weather for location=${location.id}`);
 				return cached;
 			}
 		}
@@ -321,7 +322,7 @@ export class WeatherService {
 		const provider = this.providerRegistry.get(location.type);
 
 		if (!provider) {
-			this.logger.warn(`[WEATHER] No provider found for location type=${location.type}`);
+			this.logger.warn(`No provider found for location type=${location.type}`);
 			return null;
 		}
 
@@ -340,7 +341,7 @@ export class WeatherService {
 
 			// Store to InfluxDB for historical data (async, don't wait)
 			this.historyService.storeWeatherData(location.id, location.name, current).catch((err) => {
-				this.logger.warn(`[WEATHER] Failed to store historical data for location=${location.id}`, {
+				this.logger.warn(`Failed to store historical data for location=${location.id}`, {
 					message: (err as Error).message,
 				});
 			});
@@ -360,7 +361,7 @@ export class WeatherService {
 		if (!force) {
 			const cached = await this.cacheManager.get<ForecastDayModel[]>(cacheKey);
 			if (cached) {
-				this.logger.debug(`[WEATHER] Returning cached forecast for location=${location.id}`);
+				this.logger.debug(`Returning cached forecast for location=${location.id}`);
 				return cached;
 			}
 		}
@@ -368,7 +369,7 @@ export class WeatherService {
 		const provider = this.providerRegistry.get(location.type);
 
 		if (!provider) {
-			this.logger.warn(`[WEATHER] No provider found for location type=${location.type}`);
+			this.logger.warn(`No provider found for location type=${location.type}`);
 			return null;
 		}
 
@@ -388,7 +389,7 @@ export class WeatherService {
 		if (!force) {
 			const cached = await this.cacheManager.get<WeatherAlertModel[]>(cacheKey);
 			if (cached) {
-				this.logger.debug(`[WEATHER] Returning cached alerts for location=${location.id}`);
+				this.logger.debug(`Returning cached alerts for location=${location.id}`);
 				return cached;
 			}
 		}

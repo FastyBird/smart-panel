@@ -1,15 +1,19 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { CardEntity } from '../entities/pages-cards.entity';
-import { EventType } from '../pages-cards.constants';
+import { EventType, PAGES_CARDS_PLUGIN_NAME } from '../pages-cards.constants';
 
 @Injectable()
 export class PluginResetService {
-	private readonly logger = new Logger(PluginResetService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		PAGES_CARDS_PLUGIN_NAME,
+		'PluginResetService',
+	);
 
 	constructor(
 		@InjectRepository(CardEntity)

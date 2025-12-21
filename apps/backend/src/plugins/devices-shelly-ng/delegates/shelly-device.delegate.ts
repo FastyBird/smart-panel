@@ -15,10 +15,15 @@ import {
 	Temperature,
 } from 'shellies-ds9';
 
-import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { ComponentType, DESCRIPTORS, DeviceProfile } from '../devices-shelly-ng.constants';
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import {
+	ComponentType,
+	DESCRIPTORS,
+	DEVICES_SHELLY_NG_PLUGIN_NAME,
+	DeviceProfile,
+} from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 
 type SupportedComponent =
@@ -35,7 +40,10 @@ type SupportedComponent =
 	| Pm1;
 
 export class ShellyDeviceDelegate extends EventEmitter2 {
-	private readonly logger = new Logger(ShellyDeviceDelegate.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_NG_PLUGIN_NAME,
+		'ShellyDeviceDelegate',
+	);
 
 	public connected: boolean = false;
 
@@ -97,7 +105,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 						if (!(component instanceof componentSpec.cls)) {
 							this.logger.warn(
-								`[SHELLY NG][DEVICE DELEGATE] Component key=${componentKey} for device=${this.shelly.id} is not instance of expected class`,
+								`Component key=${componentKey} for device=${this.shelly.id} is not instance of expected class`,
 							);
 
 							continue;
@@ -191,7 +199,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	private handleConnect = (): void => {
-		this.logger.log(`[SHELLY NG][DEVICE DELEGATE] Device=${this.shelly.id} connected`);
+		this.logger.log(`Device=${this.shelly.id} connected`);
 
 		this.connected = true;
 
@@ -202,13 +210,13 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		const details = reason.length > 0 ? 'reason: ' + reason : 'code: ' + code;
 
 		if (this.connected) {
-			this.logger.warn(`[SHELLY NG][DEVICE DELEGATE] Device=${this.shelly.id} disconnected, ${details}`);
+			this.logger.warn(`Device=${this.shelly.id} disconnected, ${details}`);
 		} else {
-			this.logger.warn(`[SHELLY NG][DEVICE DELEGATE] Connection with device=${this.shelly.id} failed, ${details}`);
+			this.logger.warn(`Connection with device=${this.shelly.id} failed, ${details}`);
 		}
 
 		if (reconnectIn !== null) {
-			let msg = `[SHELLY NG][DEVICE DELEGATE] Reconnecting with device=${this.shelly.id} in `;
+			let msg = `Reconnecting with device=${this.shelly.id} in `;
 
 			if (reconnectIn < 60 * 1000) {
 				msg += Math.floor(reconnectIn / 1000) + ' second(s)';
@@ -227,7 +235,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	};
 
 	private handleRequest = (method: string): void => {
-		this.logger.debug('[SHELLY NG][DEVICE DELEGATE] Received device event:', method);
+		this.logger.debug('Received device event:', method);
 	};
 
 	private handleChange = (compKey: string, char: string, val: CharacteristicValue): void => {

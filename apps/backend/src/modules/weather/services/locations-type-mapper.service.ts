@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { CreateLocationDto } from '../dto/create-location.dto';
 import { UpdateLocationDto } from '../dto/update-location.dto';
 import { WeatherLocationEntity } from '../entities/locations.entity';
+import { WEATHER_MODULE_NAME } from '../weather.constants';
 import { WeatherException } from '../weather.exceptions';
 
 export interface LocationTypeMapping<
@@ -20,7 +22,7 @@ export interface LocationTypeMapping<
 
 @Injectable()
 export class LocationsTypeMapperService {
-	private readonly logger = new Logger(LocationsTypeMapperService.name);
+	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'LocationsTypeMapperService');
 
 	private readonly mappings = new Map<string, LocationTypeMapping<any, any, any>>();
 
@@ -31,7 +33,7 @@ export class LocationsTypeMapperService {
 	>(mapping: LocationTypeMapping<TLocation, TCreateDTO, TUpdateDTO>): void {
 		this.mappings.set(mapping.type, mapping);
 
-		this.logger.log(`[REGISTERED] Location type '${mapping.type}' added. Total mappings: ${this.mappings.size}`);
+		this.logger.log(`Location type '${mapping.type}' added. Total mappings: ${this.mappings.size}`);
 	}
 
 	getMapping<
@@ -39,19 +41,19 @@ export class LocationsTypeMapperService {
 		TCreateDTO extends CreateLocationDto,
 		TUpdateDTO extends UpdateLocationDto,
 	>(type: string): LocationTypeMapping<TLocation, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`[LOOKUP] Attempting to find mapping for location type: '${type}'`);
+		this.logger.debug(`Attempting to find mapping for location type: '${type}'`);
 
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
 			this.logger.error(
-				`[LOOKUP FAILED] Location mapping for '${type}' is not registered. Available types: ${Array.from(this.mappings.keys()).join(', ') || 'None'}`,
+				`Location mapping for '${type}' is not registered. Available types: ${Array.from(this.mappings.keys()).join(', ') || 'None'}`,
 			);
 
 			throw new WeatherException(`Unsupported location type: ${type}`);
 		}
 
-		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for location type: '${type}'`);
+		this.logger.debug(`Found mapping for location type: '${type}'`);
 
 		return mapping as LocationTypeMapping<TLocation, TCreateDTO, TUpdateDTO>;
 	}

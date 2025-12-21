@@ -1,11 +1,12 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { EventType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -16,7 +17,7 @@ import {
 
 @Injectable()
 export class ModuleResetService {
-	private readonly logger = new Logger(ModuleResetService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ModuleResetService');
 
 	constructor(
 		@InjectRepository(DeviceEntity)
@@ -35,7 +36,7 @@ export class ModuleResetService {
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			this.logger.debug(`[RESET] Resetting all module data`);
+			this.logger.debug(`Resetting all module data`);
 
 			await this.channelsPropertiesRepository.deleteAll();
 
@@ -60,7 +61,7 @@ export class ModuleResetService {
 			await this.influxDbService.dropMeasurement('property_value');
 			await this.influxDbService.dropMeasurement('device_state');
 
-			this.logger.log('[RESET] Module data were successfully reset');
+			this.logger.log('Module data were successfully reset');
 
 			this.eventEmitter.emit(EventType.MODULE_RESET, null);
 
@@ -68,7 +69,7 @@ export class ModuleResetService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[RESET] Failed to reset module data', { message: err.message, stack: err.stack });
+			this.logger.error('Failed to reset module data', { message: err.message, stack: err.stack });
 
 			return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
 		}

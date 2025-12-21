@@ -5,7 +5,6 @@ import {
 	Controller,
 	Delete,
 	Get,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -18,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { setLocationHeader } from '../../../modules/api/utils/location-header.utils';
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
@@ -34,13 +34,17 @@ import { ReqCreateCardDto } from '../dto/create-card.dto';
 import { ReqUpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity } from '../entities/pages-cards.entity';
 import { CardResponseModel, CardsResponseModel } from '../models/pages-cards-response.model';
-import { PAGES_CARDS_PLUGIN_API_TAG_NAME, PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.constants';
+import {
+	PAGES_CARDS_PLUGIN_API_TAG_NAME,
+	PAGES_CARDS_PLUGIN_NAME,
+	PAGES_CARDS_PLUGIN_PREFIX,
+} from '../pages-cards.constants';
 import { CardsService } from '../services/cards.service';
 
 @ApiTags(PAGES_CARDS_PLUGIN_API_TAG_NAME)
 @Controller('cards')
 export class CardsController {
-	private readonly logger = new Logger(CardsController.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(PAGES_CARDS_PLUGIN_NAME, 'CardsController');
 
 	constructor(
 		private readonly pagesService: PagesService,

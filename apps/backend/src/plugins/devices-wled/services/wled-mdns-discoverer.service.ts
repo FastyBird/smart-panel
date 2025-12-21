@@ -1,8 +1,10 @@
 import Bonjour, { Browser, Service } from 'bonjour-service';
 
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { DEVICES_WLED_PLUGIN_NAME } from '../devices-wled.constants';
 import { WledMdnsDiscoveredDevice, WledMdnsEventType } from '../interfaces/wled.interface';
 
 /**
@@ -13,7 +15,7 @@ import { WledMdnsDiscoveredDevice, WledMdnsEventType } from '../interfaces/wled.
  */
 @Injectable()
 export class WledMdnsDiscovererService implements OnModuleDestroy {
-	private readonly logger = new Logger(WledMdnsDiscovererService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(DEVICES_WLED_PLUGIN_NAME, 'MdnsDiscoverer');
 
 	private bonjour: Bonjour | null = null;
 	private browser: Browser | null = null;
@@ -28,11 +30,11 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 	 */
 	start(_networkInterface?: string): void {
 		if (this.isRunning) {
-			this.logger.warn('[WLED][MDNS] Discovery is already running');
+			this.logger.warn('Discovery is already running');
 			return;
 		}
 
-		this.logger.log('[WLED][MDNS] Starting mDNS discovery for WLED devices');
+		this.logger.log('Starting mDNS discovery for WLED devices');
 
 		try {
 			// Create Bonjour instance
@@ -47,16 +49,16 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 
 			// Handle browser errors
 			this.browser.on('error', (error: Error) => {
-				this.logger.error('[WLED][MDNS] Browser error', {
+				this.logger.error('Browser error', {
 					message: error.message,
 					stack: error.stack,
 				});
 			});
 
 			this.isRunning = true;
-			this.logger.log('[WLED][MDNS] mDNS discovery started');
+			this.logger.log('mDNS discovery started');
 		} catch (error) {
-			this.logger.error('[WLED][MDNS] Failed to start mDNS discovery', {
+			this.logger.error('Failed to start mDNS discovery', {
 				message: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
@@ -71,7 +73,7 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 			return;
 		}
 
-		this.logger.log('[WLED][MDNS] Stopping mDNS discovery');
+		this.logger.log('Stopping mDNS discovery');
 
 		if (this.browser) {
 			this.browser.stop();
@@ -84,7 +86,7 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 		}
 
 		this.isRunning = false;
-		this.logger.log('[WLED][MDNS] mDNS discovery stopped');
+		this.logger.log('mDNS discovery stopped');
 	}
 
 	/**
@@ -116,7 +118,7 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 		const host = this.getHostFromService(service);
 
 		if (!host) {
-			this.logger.warn('[WLED][MDNS] Discovered service without valid address', {
+			this.logger.warn('Discovered service without valid address', {
 				name: service.name,
 			});
 			return;
@@ -124,7 +126,7 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 
 		// Check if already discovered
 		if (this.discoveredDevices.has(host)) {
-			this.logger.debug(`[WLED][MDNS] Device already discovered: ${host}`);
+			this.logger.debug(`Device already discovered: ${host}`);
 			return;
 		}
 
@@ -140,7 +142,7 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 
 		this.discoveredDevices.set(host, device);
 
-		this.logger.log(`[WLED][MDNS] Discovered WLED device: ${device.name} at ${host}${mac ? ` (MAC: ${mac})` : ''}`);
+		this.logger.log(`Discovered WLED device: ${device.name} at ${host}${mac ? ` (MAC: ${mac})` : ''}`);
 
 		// Emit discovery event
 		this.eventEmitter.emit(WledMdnsEventType.DEVICE_DISCOVERED, device);

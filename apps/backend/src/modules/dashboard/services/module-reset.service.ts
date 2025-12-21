@@ -1,15 +1,16 @@
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { EventType } from '../dashboard.constants';
+import { createExtensionLogger } from '../../../common/logger';
+import { DASHBOARD_MODULE_NAME, EventType } from '../dashboard.constants';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
 
 @Injectable()
 export class ModuleResetService {
-	private readonly logger = new Logger(ModuleResetService.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'ModuleResetService');
 
 	constructor(
 		@InjectRepository(PageEntity)

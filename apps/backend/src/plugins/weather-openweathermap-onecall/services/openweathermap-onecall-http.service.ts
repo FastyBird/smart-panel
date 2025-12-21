@@ -1,8 +1,9 @@
 import { validate } from 'class-validator';
 import fetch from 'node-fetch';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { SystemConfigModel } from '../../../modules/system/models/config.model';
@@ -21,7 +22,10 @@ import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME } from '../weather-openweath
 
 @Injectable()
 export class OpenWeatherMapOneCallHttpService {
-	private readonly logger = new Logger(OpenWeatherMapOneCallHttpService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
+		'OpenWeatherMapOneCallHttpService',
+	);
 
 	private readonly BASE_URL = 'https://api.openweathermap.org/data/3.0/onecall';
 

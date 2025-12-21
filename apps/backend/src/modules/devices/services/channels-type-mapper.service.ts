@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
@@ -20,7 +22,7 @@ export interface ChannelTypeMapping<
 
 @Injectable()
 export class ChannelsTypeMapperService {
-	private readonly logger = new Logger(ChannelsTypeMapperService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsTypeMapperService');
 
 	private readonly mappings = new Map<string, ChannelTypeMapping<any, any, any>>();
 
@@ -37,7 +39,7 @@ export class ChannelsTypeMapperService {
 	getMapping<TChannel extends ChannelEntity, TCreateDTO extends CreateChannelDto, TUpdateDTO extends UpdateChannelDto>(
 		type: string,
 	): ChannelTypeMapping<TChannel, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`[LOOKUP] Attempting to find mapping for channel type: '${type}'`);
+		this.logger.debug(`Attempting to find mapping for channel type: '${type}'`);
 
 		const mapping = this.mappings.get(type);
 

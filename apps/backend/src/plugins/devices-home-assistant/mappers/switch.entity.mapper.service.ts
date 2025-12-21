@@ -1,7 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { ENTITY_MAIN_STATE_ATTRIBUTE, HomeAssistantDomain } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	ENTITY_MAIN_STATE_ATTRIBUTE,
+	HomeAssistantDomain,
+} from '../devices-home-assistant.constants';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantChannelPropertyEntity } from '../entities/devices-home-assistant.entity';
 
@@ -9,7 +14,10 @@ import { EntityMapper } from './entity.mapper';
 
 @Injectable()
 export class SwitchEntityMapperService extends EntityMapper {
-	private readonly logger = new Logger(SwitchEntityMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'SwitchEntityMapperService',
+	);
 
 	get domain(): HomeAssistantDomain {
 		return HomeAssistantDomain.SWITCH;
@@ -37,12 +45,10 @@ export class SwitchEntityMapperService extends EntityMapper {
 		if (onProp) {
 			mapped.set(onProp.id, state.state.toLowerCase() === 'on');
 		} else {
-			this.logger.warn('[HOME ASSISTANT][SWITCH ENTITY MAPPER] Missing main state property');
+			this.logger.warn('Missing main state property');
 		}
 
-		this.logger.debug(
-			'[HOME ASSISTANT][SWITCH ENTITY MAPPER] Received switch entity state was mapped to system properties',
-		);
+		this.logger.debug('Received switch entity state was mapped to system properties');
 
 		return mapped;
 	}
@@ -71,7 +77,7 @@ export class SwitchEntityMapperService extends EntityMapper {
 		if (!onProp) {
 			return null;
 		} else {
-			this.logger.warn('[HOME ASSISTANT][SWITCH ENTITY MAPPER] Missing main state property');
+			this.logger.warn('Missing main state property');
 		}
 
 		const isOn = values.has(onProp.id) ? values.get(onProp.id) : onProp.value;
@@ -80,9 +86,7 @@ export class SwitchEntityMapperService extends EntityMapper {
 
 		const service = isOn === true ? 'turn_on' : 'turn_off';
 
-		this.logger.debug(
-			'[HOME ASSISTANT][SWITCH ENTITY MAPPER] Received properties were mapped to Home Assistant entity state',
-		);
+		this.logger.debug('Received properties were mapped to Home Assistant entity state');
 
 		return { state, service };
 	}

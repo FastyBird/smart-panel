@@ -1,12 +1,14 @@
 import inquirer from 'inquirer';
 import { validate as uuidValidate } from 'uuid';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
+import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { CreatePageDto } from '../dto/create-page.dto';
 import { CreateTileDto } from '../dto/create-tile.dto';
@@ -21,7 +23,7 @@ import { TilesService } from './tiles.service';
 
 @Injectable()
 export class DashboardSeederService implements Seeder {
-	private readonly logger = new Logger(DashboardSeederService.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'DashboardSeederService');
 
 	constructor(
 		private readonly configService: NestConfigService,
@@ -98,7 +100,10 @@ export class DashboardSeederService implements Seeder {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(`[SEED] Failed to create page: ${JSON.stringify(item)} error=${err.message}`, err.stack);
+				this.logger.error(`[SEED] Failed to create page: ${JSON.stringify(item)}`, {
+					message: err.message,
+					stack: err.stack,
+				});
 			}
 		}
 	}
@@ -148,7 +153,10 @@ export class DashboardSeederService implements Seeder {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(`[SEED] Failed to create tile: ${JSON.stringify(item)} error=${err.message}`, err.stack);
+				this.logger.error(`[SEED] Failed to create tile: ${JSON.stringify(item)}`, {
+					message: err.message,
+					stack: err.stack,
+				});
 			}
 		}
 	}
@@ -198,10 +206,10 @@ export class DashboardSeederService implements Seeder {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(
-					`[SEED] Failed to create data source: ${JSON.stringify(item)} error=${err.message}`,
-					err.stack,
-				);
+				this.logger.error(`[SEED] Failed to create data source: ${JSON.stringify(item)}`, {
+					message: err.message,
+					stack: err.stack,
+				});
 			}
 		}
 	}

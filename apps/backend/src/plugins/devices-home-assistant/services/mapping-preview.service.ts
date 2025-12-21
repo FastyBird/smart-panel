@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import {
 	PropertyMetadata,
@@ -7,7 +8,11 @@ import {
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
 import { devicesSchema } from '../../../spec/devices';
-import { ENTITY_MAIN_STATE_ATTRIBUTE, HomeAssistantDomain } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	ENTITY_MAIN_STATE_ATTRIBUTE,
+	HomeAssistantDomain,
+} from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant.exceptions';
 import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 import { HomeAssistantDeviceRegistryResultModel, HomeAssistantStateModel } from '../models/home-assistant.model';
@@ -37,7 +42,10 @@ import { HomeAssistantWsService } from './home-assistant.ws.service';
  */
 @Injectable()
 export class MappingPreviewService {
-	private readonly logger = new Logger(MappingPreviewService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'MappingPreviewService',
+	);
 
 	constructor(
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,

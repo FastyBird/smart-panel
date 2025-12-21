@@ -1,7 +1,9 @@
 import { Command, CommandRunner } from 'nest-commander';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 import { PluginServiceManagerService } from '../services/plugin-service-manager.service';
 
 /**
@@ -57,7 +59,7 @@ function getStateColor(state: string): string {
 })
 @Injectable()
 export class ListServicesCommand extends CommandRunner {
-	private readonly logger = new Logger(ListServicesCommand.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ListServicesCommand');
 
 	constructor(private readonly pluginServiceManager: PluginServiceManagerService) {
 		super();
@@ -98,7 +100,7 @@ export class ListServicesCommand extends CommandRunner {
 
 		console.log('\x1b[36m└─────────────────────────────────────┴───────────┴─────────┴─────────┴────────────┘\x1b[0m');
 
-		this.logger.debug(`[SERVICES] Listed ${statuses.length} services`);
+		this.logger.debug(`Listed ${statuses.length} services`);
 	}
 }
 
@@ -109,7 +111,7 @@ export class ListServicesCommand extends CommandRunner {
 })
 @Injectable()
 export class StartServiceCommand extends CommandRunner {
-	private readonly logger = new Logger(StartServiceCommand.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'StartServiceCommand');
 
 	constructor(private readonly pluginServiceManager: PluginServiceManagerService) {
 		super();
@@ -138,7 +140,7 @@ export class StartServiceCommand extends CommandRunner {
 
 		if (success) {
 			console.log(`\x1b[32m✅ Service ${serviceKey} started successfully\x1b[0m\n`);
-			this.logger.log(`[SERVICES] Started service ${serviceKey}`);
+			this.logger.log(`Started service ${serviceKey}`);
 		} else {
 			const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 			console.log(`\x1b[33m⚠️ Service ${serviceKey} is already ${status?.state}\x1b[0m\n`);
@@ -153,7 +155,7 @@ export class StartServiceCommand extends CommandRunner {
 })
 @Injectable()
 export class StopServiceCommand extends CommandRunner {
-	private readonly logger = new Logger(StopServiceCommand.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'StopServiceCommand');
 
 	constructor(private readonly pluginServiceManager: PluginServiceManagerService) {
 		super();
@@ -182,7 +184,7 @@ export class StopServiceCommand extends CommandRunner {
 
 		if (success) {
 			console.log(`\x1b[32m✅ Service ${serviceKey} stopped successfully\x1b[0m\n`);
-			this.logger.log(`[SERVICES] Stopped service ${serviceKey}`);
+			this.logger.log(`Stopped service ${serviceKey}`);
 		} else {
 			const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 			console.log(`\x1b[33m⚠️ Service ${serviceKey} is already ${status?.state}\x1b[0m\n`);
@@ -197,7 +199,7 @@ export class StopServiceCommand extends CommandRunner {
 })
 @Injectable()
 export class RestartServiceCommand extends CommandRunner {
-	private readonly logger = new Logger(RestartServiceCommand.name);
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'RestartServiceCommand');
 
 	constructor(private readonly pluginServiceManager: PluginServiceManagerService) {
 		super();
@@ -226,7 +228,7 @@ export class RestartServiceCommand extends CommandRunner {
 
 		if (success) {
 			console.log(`\x1b[32m✅ Service ${serviceKey} restarted successfully\x1b[0m\n`);
-			this.logger.log(`[SERVICES] Restarted service ${serviceKey}`);
+			this.logger.log(`Restarted service ${serviceKey}`);
 		} else {
 			const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 

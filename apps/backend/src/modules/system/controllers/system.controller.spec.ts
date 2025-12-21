@@ -111,8 +111,8 @@ describe('SystemController', () => {
 
 			await controller.getSystemInfo();
 
-			expect(loggerSpy).toHaveBeenCalledWith('[LOOKUP] Fetching system info');
-			expect(loggerSpy).toHaveBeenCalledWith('[LOOKUP] Successfully retrieved system info');
+			expect(loggerSpy).toHaveBeenCalledWith('Fetching system info');
+			expect(loggerSpy).toHaveBeenCalledWith('Successfully retrieved system info');
 		});
 	});
 
@@ -141,8 +141,8 @@ describe('SystemController', () => {
 
 			await controller.getThrottleStatus();
 
-			expect(loggerSpy).toHaveBeenCalledWith('[LOOKUP] Fetching throttle status');
-			expect(loggerSpy).toHaveBeenCalledWith('[LOOKUP] Successfully retrieved throttle status');
+			expect(loggerSpy).toHaveBeenCalledWith('Fetching throttle status');
+			expect(loggerSpy).toHaveBeenCalledWith('Successfully retrieved throttle status');
 		});
 	});
 });

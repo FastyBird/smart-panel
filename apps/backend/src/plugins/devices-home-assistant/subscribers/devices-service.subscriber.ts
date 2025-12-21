@@ -1,21 +1,25 @@
 import { validate } from 'class-validator';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { channelsSchema } from '../../../spec/channels';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 
 @Injectable()
 export class DevicesServiceSubscriber {
-	private readonly logger = new Logger(DevicesServiceSubscriber.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'DevicesServiceSubscriber',
+	);
 
 	private readonly CONNECTION_TYPE_MAP: Record<string, 'wired' | 'wifi' | 'zigbee' | 'bluetooth'> = {
 		mac: 'wifi',
@@ -40,9 +44,7 @@ export class DevicesServiceSubscriber {
 		const haDevice = devicesRegistry.find((d) => d.id === device.haDeviceId);
 
 		if (!haDevice) {
-			this.logger.warn(
-				'[HOME ASSISTANT][SERVICE SUBSCRIBER] Home Assistant device was not found in the Home Assistant instance',
-			);
+			this.logger.warn('Home Assistant device was not found in the Home Assistant instance');
 
 			return device;
 		}
@@ -67,9 +69,7 @@ export class DevicesServiceSubscriber {
 		const rawSchema = channelsSchema[ChannelCategory.DEVICE_INFORMATION] as object | undefined;
 
 		if (!rawSchema || typeof rawSchema !== 'object') {
-			this.logger.warn(
-				`[HOME ASSISTANT][SERVICE SUBSCRIBER] Missing or invalid schema for channel category ${ChannelCategory.DEVICE_INFORMATION}`,
-			);
+			this.logger.warn(`Missing or invalid schema for channel category ${ChannelCategory.DEVICE_INFORMATION}`);
 
 			return device;
 		}
@@ -89,7 +89,7 @@ export class DevicesServiceSubscriber {
 
 		if (errors.length) {
 			this.logger.error(
-				`[HOME ASSISTANT][SERVICE SUBSCRIBER] Home Assistant device create hook channel spec validation failed error=${JSON.stringify(errors)}`,
+				`Home Assistant device create hook channel spec validation failed error=${JSON.stringify(errors)}`,
 			);
 
 			return device;

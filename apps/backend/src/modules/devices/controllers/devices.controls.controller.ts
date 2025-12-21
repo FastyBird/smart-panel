@@ -6,7 +6,6 @@ import {
 	Delete,
 	Get,
 	HttpCode,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -17,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
@@ -27,7 +27,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
@@ -38,7 +38,7 @@ import { DevicesService } from '../services/devices.service';
 @ApiTags(DEVICES_MODULE_API_TAG_NAME)
 @Controller('devices/:deviceId/controls')
 export class DevicesControlsController {
-	private readonly logger = new Logger(DevicesControlsController.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesControlsController');
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -64,13 +64,13 @@ export class DevicesControlsController {
 	async findAll(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 	): Promise<DeviceControlsResponseModel> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all controls for deviceId=${deviceId}`);
+		this.logger.debug(`Fetching all controls for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		const controls = await this.devicesControlsService.findAll(device.id);
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${controls.length} controls for deviceId=${device.id}`);
+		this.logger.debug(`Retrieved ${controls.length} controls for deviceId=${device.id}`);
 
 		const response = new DeviceControlsResponseModel();
 
@@ -100,13 +100,13 @@ export class DevicesControlsController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<DeviceControlResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching device id=${id} for deviceId=${deviceId}`);
+		this.logger.debug(`Fetching device id=${id} for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		const control = await this.getOneOrThrow(id, device.id);
 
-		this.logger.debug(`[LOOKUP] Found control id=${control.id} for deviceId=${device.id}`);
+		this.logger.debug(`Found control id=${control.id} for deviceId=${device.id}`);
 
 		const response = new DeviceControlResponseModel();
 
@@ -140,7 +140,7 @@ export class DevicesControlsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<DeviceControlResponseModel> {
-		this.logger.debug(`[CREATE] Incoming request to create a new control for deviceId=${deviceId}`);
+		this.logger.debug(`Incoming request to create a new control for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 
@@ -165,7 +165,7 @@ export class DevicesControlsController {
 		try {
 			const control = await this.devicesControlsService.create(device.id, createDto.data);
 
-			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for deviceId=${device.id}`);
+			this.logger.debug(`Successfully created control id=${control.id} for deviceId=${device.id}`);
 
 			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'devices', device.id, 'controls', control.id);
 
@@ -202,18 +202,18 @@ export class DevicesControlsController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete control id=${id} for deviceId=${deviceId}`);
+		this.logger.debug(`Incoming request to delete control id=${id} for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 		const control = await this.getOneOrThrow(id, device.id);
 
 		await this.devicesControlsService.remove(control.id, device.id);
 
-		this.logger.debug(`[DELETE] Successfully deleted control id=${id} for deviceId=${device.id}`);
+		this.logger.debug(`Successfully deleted control id=${id} for deviceId=${device.id}`);
 	}
 
 	private async getOneOrThrow(id: string, deviceId: string): Promise<DeviceControlEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of control id=${id} for deviceId=${deviceId}`);
+		this.logger.debug(`Checking existence of control id=${id} for deviceId=${deviceId}`);
 
 		const control = await this.devicesControlsService.findOne(id, deviceId);
 
@@ -227,7 +227,7 @@ export class DevicesControlsController {
 	}
 
 	private async getDeviceOrThrow(deviceId: string): Promise<DeviceEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of device id=${deviceId}`);
+		this.logger.debug(`Checking existence of device id=${deviceId}`);
 
 		const device = await this.devicesService.findOne(deviceId);
 

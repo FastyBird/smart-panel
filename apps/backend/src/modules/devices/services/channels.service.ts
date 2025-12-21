@@ -3,12 +3,13 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType } from '../devices.constants';
+import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
@@ -20,7 +21,7 @@ import { ChannelsPropertiesService } from './channels.properties.service';
 
 @Injectable()
 export class ChannelsService {
-	private readonly logger = new Logger(ChannelsService.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsService');
 
 	constructor(
 		@InjectRepository(ChannelEntity)
@@ -39,7 +40,7 @@ export class ChannelsService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (deviceId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all channels count deviceId=${deviceId}`);
+			this.logger.debug(`Fetching all channels count deviceId=${deviceId}`);
 
 			const channels = await repository
 				.createQueryBuilder('channel')
@@ -47,16 +48,16 @@ export class ChannelsService {
 				.where('device.id = :deviceId', { deviceId })
 				.getCount();
 
-			this.logger.debug(`[LOOKUP ALL] Found that in system is ${channels} channels for deviceId=${deviceId}`);
+			this.logger.debug(`Found that in system is ${channels} channels for deviceId=${deviceId}`);
 
 			return channels;
 		}
 
-		this.logger.debug('[LOOKUP ALL] Fetching all channels count');
+		this.logger.debug('Fetching all channels count');
 
 		const channels = await repository.count();
 
-		this.logger.debug(`[LOOKUP ALL] Found that in system is ${channels} channels`);
+		this.logger.debug(`Found that in system is ${channels} channels`);
 
 		return channels;
 	}
@@ -68,7 +69,7 @@ export class ChannelsService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (deviceId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all channels for deviceId=${deviceId}`);
+			this.logger.debug(`Fetching all channels for deviceId=${deviceId}`);
 
 			const channels = (await repository
 				.createQueryBuilder('channel')
@@ -80,18 +81,18 @@ export class ChannelsService {
 				.where('device.id = :deviceId', { deviceId })
 				.getMany()) as TChannel[];
 
-			this.logger.debug(`[LOOKUP ALL] Found ${channels.length} channels for deviceId=${deviceId}`);
+			this.logger.debug(`Found ${channels.length} channels for deviceId=${deviceId}`);
 
 			return channels;
 		}
 
-		this.logger.debug('[LOOKUP ALL] Fetching all channels');
+		this.logger.debug('Fetching all channels');
 
 		const channels = (await repository.find({
 			relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
 		})) as TChannel[];
 
-		this.logger.debug(`[LOOKUP ALL] Found ${channels.length} channels`);
+		this.logger.debug(`Found ${channels.length} channels`);
 
 		return channels;
 	}
@@ -108,7 +109,7 @@ export class ChannelsService {
 		let channel: TChannel | null;
 
 		if (deviceId) {
-			this.logger.debug(`[LOOKUP] Fetching channel with id=${id} for deviceId=${deviceId}`);
+			this.logger.debug(`Fetching channel with id=${id} for deviceId=${deviceId}`);
 
 			channel = (await repository
 				.createQueryBuilder('channel')
@@ -122,12 +123,12 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.debug(`[LOOKUP] Channel with id=${id} for deviceId=${deviceId} not found`);
+				this.logger.debug(`Channel with id=${id} for deviceId=${deviceId} not found`);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched channel with id=${id} for deviceId=${deviceId}`);
+			this.logger.debug(`Successfully fetched channel with id=${id} for deviceId=${deviceId}`);
 		} else {
 			channel = (await repository
 				.createQueryBuilder('channel')
@@ -140,12 +141,12 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.debug(`[LOOKUP] Channel with id=${id} not found`);
+				this.logger.debug(`Channel with id=${id} not found`);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched channel with id=${id}`);
+			this.logger.debug(`Successfully fetched channel with id=${id}`);
 		}
 
 		return channel;
@@ -164,7 +165,7 @@ export class ChannelsService {
 		let channel: TChannel | null;
 
 		if (deviceId) {
-			this.logger.debug(`[LOOKUP] Fetching channel with ${column}=${value} for deviceId=${deviceId}`);
+			this.logger.debug(`Fetching channel with ${column}=${value} for deviceId=${deviceId}`);
 
 			channel = (await repository
 				.createQueryBuilder('channel')
@@ -178,12 +179,12 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.debug(`[LOOKUP] Channel with ${column}=${value} for deviceId=${deviceId} not found`);
+				this.logger.debug(`Channel with ${column}=${value} for deviceId=${deviceId} not found`);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched channel with ${column}=${value} for deviceId=${deviceId}`);
+			this.logger.debug(`Successfully fetched channel with ${column}=${value} for deviceId=${deviceId}`);
 		} else {
 			channel = (await repository
 				.createQueryBuilder('channel')
@@ -196,12 +197,12 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.debug(`[LOOKUP] Channel with ${column}=${value} not found`);
+				this.logger.debug(`Channel with ${column}=${value} not found`);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched channel with ${column}=${value}`);
+			this.logger.debug(`Successfully fetched channel with ${column}=${value}`);
 		}
 
 		return channel;
@@ -210,12 +211,12 @@ export class ChannelsService {
 	async create<TChannel extends ChannelEntity, TCreateDTO extends CreateChannelDto>(
 		createDto: TCreateDTO,
 	): Promise<TChannel> {
-		this.logger.debug(`[CREATE] Creating new channel`);
+		this.logger.debug('Creating new channel');
 
 		const { type } = createDto;
 
 		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" attribute in data.');
+			this.logger.error('Validation failed: Missing required "type" attribute in data.');
 
 			throw new DevicesException('Channel type attribute is required.');
 		}
@@ -233,7 +234,7 @@ export class ChannelsService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for channel creation error=${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed for channel creation error=${JSON.stringify(errors)}`);
 
 			throw new DevicesValidationException('Provided channel data are invalid.');
 		}
@@ -246,7 +247,7 @@ export class ChannelsService {
 		const raw = await repository.save(channel);
 
 		for (const propertyDtoInstance of createDto.properties ?? []) {
-			this.logger.debug(`[CREATE] Creating new property for channelId=${raw.id}`);
+			this.logger.debug(`Creating new property for channelId=${raw.id}`);
 
 			await this.channelsPropertiesService.create(raw.id, propertyDtoInstance);
 		}
@@ -259,7 +260,7 @@ export class ChannelsService {
 			savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 		}
 
-		this.logger.debug(`[CREATE] Successfully created channel with id=${savedChannel.id}`);
+		this.logger.debug(`Successfully created channel with id=${savedChannel.id}`);
 
 		this.eventEmitter.emit(EventType.CHANNEL_CREATED, savedChannel);
 
@@ -270,7 +271,7 @@ export class ChannelsService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TChannel> {
-		this.logger.debug(`[UPDATE] Updating data source with id=${id}`);
+		this.logger.debug(`Updating data source with id=${id}`);
 
 		const channel = await this.getOneOrThrow(id);
 
@@ -292,7 +293,7 @@ export class ChannelsService {
 			updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 		}
 
-		this.logger.debug(`[UPDATE] Successfully updated channel with id=${updatedChannel.id}`);
+		this.logger.debug(`Successfully updated channel with id=${updatedChannel.id}`);
 
 		this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChannel);
 
@@ -300,7 +301,7 @@ export class ChannelsService {
 	}
 
 	async remove(id: string, manager?: EntityManager): Promise<void> {
-		this.logger.debug(`[DELETE] Removing channel with id=${id}`);
+		this.logger.debug(`Removing channel with id=${id}`);
 
 		if (typeof manager !== 'undefined') {
 			const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
@@ -324,7 +325,7 @@ export class ChannelsService {
 
 			await manager.remove(channel);
 
-			this.logger.log(`[DELETE] Successfully removed channel with id=${id}`);
+			this.logger.log(`Successfully removed channel with id=${id}`);
 
 			// Emit event with the channel entity captured before removal to preserve ID
 			this.eventEmitter.emit(EventType.CHANNEL_DELETED, channelForEvent);
@@ -351,7 +352,7 @@ export class ChannelsService {
 
 				await manager.remove(channel);
 
-				this.logger.log(`[DELETE] Successfully removed channel with id=${id}`);
+				this.logger.log(`Successfully removed channel with id=${id}`);
 
 				// Emit event with the full channel entity captured before removal to preserve ID
 				this.eventEmitter.emit(EventType.CHANNEL_DELETED, fullChannel);
@@ -363,7 +364,7 @@ export class ChannelsService {
 		const channel = await this.findOne(id);
 
 		if (!channel) {
-			this.logger.error(`[ERROR] Channel with id=${id} not found`);
+			this.logger.error(`Channel with id=${id} not found`);
 
 			throw new DevicesNotFoundException('Channel does not exist');
 		}
@@ -383,7 +384,7 @@ export class ChannelsService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new DevicesValidationException('Provided channel data are invalid.');
 		}

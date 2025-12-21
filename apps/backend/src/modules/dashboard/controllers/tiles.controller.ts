@@ -8,7 +8,6 @@ import {
 	Delete,
 	Get,
 	HttpCode,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -21,6 +20,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -32,7 +32,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+import { DASHBOARD_MODULE_API_TAG_NAME, DASHBOARD_MODULE_NAME, DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateSingleTileDto, CreateTileDto, ReqCreateTileWithParentDto } from '../dto/create-tile.dto';
 import { ReqUpdateTileWithParentDto, UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
@@ -44,7 +44,7 @@ import { TilesService } from '../services/tiles.service';
 @ApiTags(DASHBOARD_MODULE_API_TAG_NAME)
 @Controller('tiles')
 export class TilesController {
-	private readonly logger = new Logger(TilesController.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'TilesController');
 
 	constructor(
 		private readonly tilesService: TilesService,
@@ -74,7 +74,7 @@ export class TilesController {
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
 	): Promise<TilesResponseModel> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all tiles`);
+		this.logger.debug(`Fetching all tiles`);
 
 		const tiles = await this.tilesService.findAll(
 			parentType && parentId
@@ -85,7 +85,7 @@ export class TilesController {
 				: undefined,
 		);
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${tiles.length} tiles`);
+		this.logger.debug(`Retrieved ${tiles.length} tiles`);
 
 		const response = new TilesResponseModel();
 		response.data = tiles;
@@ -106,11 +106,11 @@ export class TilesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TileResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching tile id=${id}`);
+		this.logger.debug(`Fetching tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
 
-		this.logger.debug(`[LOOKUP] Found tile id=${tile.id}`);
+		this.logger.debug(`Found tile id=${tile.id}`);
 
 		const response = new TileResponseModel();
 		response.data = tile;
@@ -143,7 +143,7 @@ export class TilesController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<TileResponseModel> {
-		this.logger.debug(`[CREATE] Incoming request to create a new tile`);
+		this.logger.debug(`Incoming request to create a new tile`);
 
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
@@ -209,7 +209,7 @@ export class TilesController {
 				parentId: parent.id,
 			});
 
-			this.logger.debug(`[CREATE] Successfully created tile id=${tile.id}`);
+			this.logger.debug(`Successfully created tile id=${tile.id}`);
 
 			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'tiles', tile.id);
 
@@ -247,7 +247,7 @@ export class TilesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<TileResponseModel> {
-		this.logger.debug(`[UPDATE] Incoming update request for tile id=${id}`);
+		this.logger.debug(`Incoming update request for tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
 
@@ -308,7 +308,7 @@ export class TilesController {
 		try {
 			const updatedTile = await this.tilesService.update(tile.id, dtoInstance);
 
-			this.logger.debug(`[UPDATE] Successfully updated tile id=${updatedTile.id}`);
+			this.logger.debug(`Successfully updated tile id=${updatedTile.id}`);
 
 			const response = new TileResponseModel();
 			response.data = updatedTile;
@@ -337,17 +337,17 @@ export class TilesController {
 	@HttpCode(204)
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete tile id=${id}`);
+		this.logger.debug(`Incoming request to delete tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
 
 		await this.tilesService.remove(tile.id);
 
-		this.logger.debug(`[DELETE] Successfully deleted tile id=${id}`);
+		this.logger.debug(`Successfully deleted tile id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<TileEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of tile id=${id}`);
+		this.logger.debug(`Checking existence of tile id=${id}`);
 
 		const tile = await this.tilesService.findOne(id);
 

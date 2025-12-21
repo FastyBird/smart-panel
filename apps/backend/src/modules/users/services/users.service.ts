@@ -4,20 +4,21 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
-import { EventType, UserRole } from '../users.constants';
+import { EventType, USERS_MODULE_NAME, UserRole } from '../users.constants';
 import { UsersNotFoundException, UsersValidationException } from '../users.exceptions';
 
 @Injectable()
 export class UsersService {
-	private readonly logger = new Logger(UsersService.name);
+	private readonly logger = createExtensionLogger(USERS_MODULE_NAME, 'UsersService');
 
 	constructor(
 		@InjectRepository(UserEntity)
@@ -30,11 +31,11 @@ export class UsersService {
 	}
 
 	async findAll(): Promise<UserEntity[]> {
-		this.logger.debug('[LOOKUP ALL] Fetching all users');
+		this.logger.debug('Fetching all users');
 
 		const users = await this.repository.find();
 
-		this.logger.debug(`[LOOKUP ALL] Found ${users.length} users`);
+		this.logger.debug(`Found ${users.length} users`);
 
 		return users;
 	}
@@ -52,17 +53,17 @@ export class UsersService {
 	}
 
 	async findAllByRole(role: UserRole): Promise<UserEntity[]> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all users by given role: ${role}`);
+		this.logger.debug(`Fetching all users by given role: ${role}`);
 
 		const users = await this.repository.createQueryBuilder('user').where('user.role = :role', { role }).getMany();
 
-		this.logger.debug(`[LOOKUP ALL] Found ${users.length} users by given role: ${role}`);
+		this.logger.debug(`Found ${users.length} users by given role: ${role}`);
 
 		return users;
 	}
 
 	async create(createDto: CreateUserDto): Promise<UserEntity> {
-		this.logger.debug('[CREATE] Creating new user');
+		this.logger.debug('Creating new user');
 
 		const dtoInstance = await this.validateDto<CreateUserDto>(CreateUserDto, createDto);
 
@@ -88,7 +89,7 @@ export class UsersService {
 		// Retrieve the saved user with its full relations
 		const savedUser = await this.getOneOrThrow(user.id);
 
-		this.logger.debug(`[CREATE] Successfully created user with id=${savedUser.id}`);
+		this.logger.debug(`Successfully created user with id=${savedUser.id}`);
 
 		this.eventEmitter.emit(EventType.USER_CREATED, savedUser);
 
@@ -96,7 +97,7 @@ export class UsersService {
 	}
 
 	async update(id: string, updateDto: UpdateUserDto): Promise<UserEntity> {
-		this.logger.debug(`[UPDATE] Updating user with id=${id}`);
+		this.logger.debug(`Updating user with id=${id}`);
 
 		const user = await this.getOneOrThrow(id);
 
@@ -123,7 +124,7 @@ export class UsersService {
 
 		const updatedUser = await this.getOneOrThrow(user.id);
 
-		this.logger.debug(`[UPDATE] Successfully updated user with id=${updatedUser.id}`);
+		this.logger.debug(`Successfully updated user with id=${updatedUser.id}`);
 
 		this.eventEmitter.emit(EventType.USER_UPDATED, updatedUser);
 
@@ -131,13 +132,13 @@ export class UsersService {
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing user with id=${id}`);
+		this.logger.debug(`Removing user with id=${id}`);
 
 		const user = await this.getOneOrThrow(id);
 
 		await this.repository.delete(user.id);
 
-		this.logger.log(`[DELETE] Successfully removed user with id=${id}`);
+		this.logger.log(`Successfully removed user with id=${id}`);
 
 		this.eventEmitter.emit(EventType.USER_DELETED, user);
 	}
@@ -146,7 +147,7 @@ export class UsersService {
 		const user = await this.findOne(id);
 
 		if (!user) {
-			this.logger.error(`[ERROR] User with id=${id} not found`);
+			this.logger.error(`User with id=${id} not found`);
 
 			throw new UsersNotFoundException('Requested user does not exist');
 		}
@@ -155,17 +156,17 @@ export class UsersService {
 	}
 
 	private async findByField(field: keyof UserEntity, value: string | number | boolean): Promise<UserEntity | null> {
-		this.logger.debug(`[LOOKUP] Fetching user with ${field}=${value}`);
+		this.logger.debug(`Fetching user with ${field}=${value}`);
 
 		const user = await this.repository.findOne({ where: { [field]: value } });
 
 		if (!user) {
-			this.logger.debug(`[LOOKUP] User with ${field}=${value} not found`);
+			this.logger.debug(`User with ${field}=${value} not found`);
 
 			return null;
 		}
 
-		this.logger.debug(`[LOOKUP] Successfully fetched user with ${field}=${value}`);
+		this.logger.debug(`Successfully fetched user with ${field}=${value}`);
 
 		return user;
 	}
@@ -182,7 +183,7 @@ export class UsersService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`Validation failed: ${JSON.stringify(errors)}`);
 
 			throw new UsersValidationException('Provided user data are invalid.');
 		}

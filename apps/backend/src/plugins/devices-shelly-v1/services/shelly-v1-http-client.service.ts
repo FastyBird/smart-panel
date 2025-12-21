@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
+	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	SHELLY_HTTP_ENDPOINTS,
 	ShellyHttpEndpoint,
 	ShellyHttpEndpointResponseMap,
@@ -19,7 +21,10 @@ import {
  */
 @Injectable()
 export class ShellyV1HttpClientService {
-	private readonly logger = new Logger(ShellyV1HttpClientService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_V1_PLUGIN_NAME,
+		'ShellyV1HttpClientService',
+	);
 
 	private readonly DEFAULT_TIMEOUT = 5000; // 5 seconds
 
@@ -85,7 +90,7 @@ export class ShellyV1HttpClientService {
 		const url = `http://${host}${endpoint}`;
 		const requestTimeout = timeout || this.DEFAULT_TIMEOUT;
 
-		this.logger.debug(`[SHELLY V1][HTTP CLIENT] Fetching ${url}${username ? ' (with authentication)' : ''}`);
+		this.logger.debug(`Fetching ${url}${username ? ' (with authentication)' : ''}`);
 
 		// Build headers
 		const headers: Record<string, string> = {
@@ -116,7 +121,7 @@ export class ShellyV1HttpClientService {
 
 			const data = (await response.json()) as ShellyHttpEndpointResponseMap[E];
 
-			this.logger.debug(`[SHELLY V1][HTTP CLIENT] Response from ${url}: ${JSON.stringify(data).substring(0, 200)}...`);
+			this.logger.debug(`Response from ${url}: ${JSON.stringify(data).substring(0, 200)}...`);
 
 			return data;
 		} catch (error) {

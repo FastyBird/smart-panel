@@ -3,12 +3,13 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { EntityManager, DataSource as OrmDataSource, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType } from '../dashboard.constants';
+import { DASHBOARD_MODULE_NAME, EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
@@ -25,7 +26,7 @@ interface Relation {
 
 @Injectable()
 export class DataSourcesService {
-	private readonly logger = new Logger(DataSourcesService.name);
+	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'DataSourcesService');
 
 	constructor(
 		@InjectRepository(DataSourceEntity)
@@ -44,7 +45,7 @@ export class DataSourcesService {
 
 		if (relation) {
 			this.logger.debug(
-				`[LOOKUP ALL] Fetching all data sources count for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Fetching all data sources count for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			const dataSources = await repository
@@ -54,17 +55,17 @@ export class DataSourcesService {
 				.getCount();
 
 			this.logger.debug(
-				`[LOOKUP ALL] Found that in system is ${dataSources} data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Found that in system is ${dataSources} data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			return dataSources;
 		}
 
-		this.logger.debug('[LOOKUP ALL] Fetching all data sources count');
+		this.logger.debug('Fetching all data sources count');
 
 		const dataSources = await repository.count();
 
-		this.logger.debug(`[LOOKUP ALL] Found that in system is ${dataSources} data sources`);
+		this.logger.debug(`Found that in system is ${dataSources} data sources`);
 
 		return dataSources;
 	}
@@ -76,7 +77,7 @@ export class DataSourcesService {
 
 		if (relation) {
 			this.logger.debug(
-				`[LOOKUP ALL] Fetching all data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Fetching all data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			const dataSources = await repository
@@ -86,7 +87,7 @@ export class DataSourcesService {
 				.getMany();
 
 			this.logger.debug(
-				`[LOOKUP ALL] Found ${dataSources.length} data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Found ${dataSources.length} data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			for (const dataSource of dataSources) {
@@ -96,11 +97,11 @@ export class DataSourcesService {
 			return dataSources as TDataSource[];
 		}
 
-		this.logger.debug('[LOOKUP ALL] Fetching all data sources');
+		this.logger.debug('Fetching all data sources');
 
 		const dataSources = await repository.find();
 
-		this.logger.debug(`[LOOKUP ALL] Found ${dataSources.length} data sources`);
+		this.logger.debug(`Found ${dataSources.length} data sources`);
 
 		for (const dataSource of dataSources) {
 			await this.loadRelations(dataSource);
@@ -122,7 +123,7 @@ export class DataSourcesService {
 
 		if (relation) {
 			this.logger.debug(
-				`[LOOKUP] Fetching data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Fetching data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
 			dataSource = await repository
@@ -134,27 +135,27 @@ export class DataSourcesService {
 
 			if (!dataSource) {
 				this.logger.debug(
-					`[LOOKUP] Data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
+					`Data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
 				);
 
 				return null;
 			}
 
 			this.logger.debug(
-				`[LOOKUP] Successfully fetched data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+				`Successfully fetched data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 		} else {
-			this.logger.debug(`[LOOKUP] Fetching data source with id=${id}`);
+			this.logger.debug(`Fetching data source with id=${id}`);
 
 			dataSource = await repository.createQueryBuilder('dataSource').where('dataSource.id = :id', { id }).getOne();
 
 			if (!dataSource) {
-				this.logger.debug(`[LOOKUP] Data source with id=${id} not found`);
+				this.logger.debug(`Data source with id=${id} not found`);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched data source with id=${id}`);
+			this.logger.debug(`Successfully fetched data source with id=${id}`);
 		}
 
 		await this.loadRelations(dataSource);
@@ -167,13 +168,13 @@ export class DataSourcesService {
 		relation: Relation,
 	): Promise<TDataSource> {
 		this.logger.debug(
-			`[CREATE] Creating new data source for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			`Creating new data source for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 		);
 
 		const { type } = createDto;
 
 		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" property in data.');
+			this.logger.error('Validation failed: Missing required "type" property in data.');
 
 			throw new DashboardException('The "type" property is required in the data.');
 		}
@@ -200,7 +201,7 @@ export class DataSourcesService {
 		// Retrieve the saved dataSource with its full relations
 		const savedDataSource = await this.getOneOrThrow<TDataSource>(dataSource.id, relation);
 
-		this.logger.debug(`[CREATE] Successfully created data source with id=${savedDataSource.id}`);
+		this.logger.debug(`Successfully created data source with id=${savedDataSource.id}`);
 
 		this.eventEmitter.emit(EventType.DATA_SOURCE_CREATED, savedDataSource);
 
@@ -211,7 +212,7 @@ export class DataSourcesService {
 		id: string,
 		updateDto: UpdateDataSourceDto,
 	): Promise<TDataSource> {
-		this.logger.debug(`[UPDATE] Updating data source with id=${id}`);
+		this.logger.debug(`Updating data source with id=${id}`);
 
 		const dataSource = await this.getOneOrThrow<TDataSource>(id);
 
@@ -227,7 +228,7 @@ export class DataSourcesService {
 
 		const updatedDataSource = await this.getOneOrThrow<TDataSource>(id);
 
-		this.logger.debug(`[UPDATE] Successfully updated data source with id=${updatedDataSource.id}`);
+		this.logger.debug(`Successfully updated data source with id=${updatedDataSource.id}`);
 
 		this.eventEmitter.emit(EventType.DATA_SOURCE_UPDATED, updatedDataSource);
 
@@ -235,7 +236,7 @@ export class DataSourcesService {
 	}
 
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
-		this.logger.debug(`[DELETE] Removing data source with id=${id}`);
+		this.logger.debug(`Removing data source with id=${id}`);
 
 		const fullDataSource = await this.getOneOrThrow(id);
 
@@ -245,7 +246,7 @@ export class DataSourcesService {
 
 		await manager.remove(dataSource);
 
-		this.logger.log(`[DELETE] Successfully removed data source with id=${id}`);
+		this.logger.log(`Successfully removed data source with id=${id}`);
 
 		this.eventEmitter.emit(EventType.DATA_SOURCE_DELETED, fullDataSource);
 	}

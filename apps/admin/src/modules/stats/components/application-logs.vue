@@ -126,7 +126,15 @@
 						{{ line.type }}
 					</el-tag>
 
-					<div>{{ line.message }}</div>
+					<div class="truncate">
+						<span
+							v-if="line.tag"
+							class="text-gray-500"
+						>
+							[{{ line.tag }}]
+						</span>
+						<span class="ml-1">{{ line.message }}</span>
+					</div>
 				</div>
 			</div>
 		</div>

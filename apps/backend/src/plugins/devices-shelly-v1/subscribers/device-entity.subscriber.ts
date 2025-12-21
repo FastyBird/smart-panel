@@ -1,16 +1,20 @@
 import { DataSource, EntitySubscriberInterface, UpdateEvent } from 'typeorm';
 import { InsertEvent } from 'typeorm/subscriber/event/InsertEvent';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { DEVICES_SHELLY_V1_PLUGIN_NAME, SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
 import { ShellyV1DeviceEntity } from '../entities/devices-shelly-v1.entity';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 import { ShellyV1HttpClientService } from '../services/shelly-v1-http-client.service';
 
 @Injectable()
 export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV1DeviceEntity> {
-	private readonly logger = new Logger(DeviceEntitySubscriber.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_SHELLY_V1_PLUGIN_NAME,
+		'DeviceEntitySubscriber',
+	);
 
 	constructor(
 		private readonly dataSource: DataSource,
@@ -42,9 +46,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		const device = event.entity;
 
 		if (!device.identifier) {
-			this.logger.warn(
-				`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Device ${device.id} has no identifier, skipping auth setup`,
-			);
+			this.logger.warn(`Device ${device.id} has no identifier, skipping auth setup`);
 			return;
 		}
 
@@ -64,26 +66,20 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 						device.password,
 					);
 
-					this.logger.debug(
-						`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Auth credentials set for device ${device.identifier} (username: ${username})`,
-					);
+					this.logger.debug(`Auth credentials set for device ${device.identifier} (username: ${username})`);
 				} else {
-					this.logger.debug(
-						`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Device ${device.identifier} not yet discovered, credentials will be set on discovery`,
-					);
+					this.logger.debug(`Device ${device.identifier} not yet discovered, credentials will be set on discovery`);
 				}
 			}
 
 			// Set enabled status
 			this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, device.enabled);
 
-			this.logger.debug(
-				`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Device ${device.identifier} was successfully created (enabled: ${device.enabled})`,
-			);
+			this.logger.debug(`Device ${device.identifier} was successfully created (enabled: ${device.enabled})`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Failed to finalize newly created device=${device.id}`, {
+			this.logger.error(`Failed to finalize newly created device=${device.id}`, {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -94,7 +90,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		const device = event.databaseEntity;
 
 		if (!device || !device.identifier) {
-			this.logger.warn('[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Cannot process update - device has no identifier');
+			this.logger.warn('Cannot process update - device has no identifier');
 			return;
 		}
 
@@ -118,9 +114,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 			if (enabledUpdated) {
 				this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, device.enabled);
 
-				this.logger.debug(
-					`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Device ${device.identifier} enabled status updated to: ${device.enabled}`,
-				);
+				this.logger.debug(`Device ${device.identifier} enabled status updated to: ${device.enabled}`);
 			}
 
 			// Handle credentials update
@@ -138,19 +132,15 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 						device.password,
 					);
 
-					this.logger.debug(
-						`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Auth credentials updated for device ${device.identifier} (username: ${username})`,
-					);
+					this.logger.debug(`Auth credentials updated for device ${device.identifier} (username: ${username})`);
 				} else {
-					this.logger.warn(
-						`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Device ${device.identifier} not found in adapter, cannot update credentials`,
-					);
+					this.logger.warn(`Device ${device.identifier} not found in adapter, cannot update credentials`);
 				}
 			}
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Failed to finalize updated device=${device.id}`, {
+			this.logger.error(`Failed to finalize updated device=${device.id}`, {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -168,19 +158,14 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 			// Mark the device as disabled when removed from a database
 			this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, false);
 
-			this.logger.debug(
-				`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Device ${device.identifier} marked as disabled after removal`,
-			);
+			this.logger.debug(`Device ${device.identifier} marked as disabled after removal`);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`[SHELLY V1][DEVICE ENTITY SUBSCRIBER] Failed to handle device removal for ${device.identifier}`,
-				{
-					message: err.message,
-					stack: err.stack,
-				},
-			);
+			this.logger.error(`Failed to handle device removal for ${device.identifier}`, {
+				message: err.message,
+				stack: err.stack,
+			});
 		}
 	}
 }

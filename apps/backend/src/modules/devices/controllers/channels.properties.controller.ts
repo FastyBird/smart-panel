@@ -8,7 +8,6 @@ import {
 	Delete,
 	Get,
 	HttpCode,
-	Logger,
 	NotFoundException,
 	Param,
 	ParseUUIDPipe,
@@ -21,6 +20,7 @@ import {
 } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -32,7 +32,7 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto, ReqCreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
@@ -54,7 +54,7 @@ import { PropertyTimeseriesService } from '../services/property-timeseries.servi
 @ApiTags(DEVICES_MODULE_API_TAG_NAME)
 @Controller('channels/:channelId/properties')
 export class ChannelsPropertiesController {
-	private readonly logger = new Logger(ChannelsPropertiesController.name);
+	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsPropertiesController');
 
 	constructor(
 		private readonly channelsService: ChannelsService,
@@ -82,13 +82,13 @@ export class ChannelsPropertiesController {
 	async findAll(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 	): Promise<ChannelPropertiesResponseModel> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelId=${channelId}`);
+		this.logger.debug(`Fetching all properties for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 
 		const properties = await this.channelsPropertiesService.findAll(channel.id);
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${properties.length} properties for channelId=${channel.id}`);
+		this.logger.debug(`Retrieved ${properties.length} properties for channelId=${channel.id}`);
 
 		const response = new ChannelPropertiesResponseModel();
 
@@ -118,13 +118,13 @@ export class ChannelsPropertiesController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<ChannelPropertyResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching channel id=${id} for channelId=${channelId}`);
+		this.logger.debug(`Fetching channel id=${id} for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 
 		const property = await this.getOneOrThrow(id, channel.id);
 
-		this.logger.debug(`[LOOKUP] Found property id=${property.id} for channelId=${channel.id}`);
+		this.logger.debug(`Found property id=${property.id} for channelId=${channel.id}`);
 
 		const response = new ChannelPropertyResponseModel();
 
@@ -215,7 +215,7 @@ export class ChannelsPropertiesController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<ChannelPropertyResponseModel> {
-		this.logger.debug(`[CREATE] Incoming request to create a new property for channelId=${channelId}`);
+		this.logger.debug(`Incoming request to create a new property for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 
@@ -223,7 +223,7 @@ export class ChannelsPropertiesController {
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
 		if (!type) {
-			this.logger.error(`[VALIDATION] Missing required field: type for channelId=${channel.id}`);
+			this.logger.error(`Missing required field: type for channelId=${channel.id}`);
 
 			throw new BadRequestException([
 				JSON.stringify({ field: 'type', reason: 'Channel property type attribute is required.' }),
@@ -276,7 +276,7 @@ export class ChannelsPropertiesController {
 		try {
 			const property = await this.channelsPropertiesService.create(channel.id, dtoInstance);
 
-			this.logger.debug(`[CREATE] Successfully created property id=${property.id} for channelId=${channel.id}`);
+			this.logger.debug(`Successfully created property id=${property.id} for channelId=${channel.id}`);
 
 			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'channels', channel.id, 'properties', property.id);
 
@@ -318,7 +318,7 @@ export class ChannelsPropertiesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<ChannelPropertyResponseModel> {
-		this.logger.debug(`[UPDATE] Incoming update request for property id=${id} for channelId=${channelId}`);
+		this.logger.debug(`Incoming update request for property id=${id} for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 		const property = await this.getOneOrThrow(id, channel.id);
@@ -372,7 +372,7 @@ export class ChannelsPropertiesController {
 		try {
 			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance);
 
-			this.logger.debug(`[UPDATE] Successfully updated property id=${updatedProperty.id} for channelId=${channel.id}`);
+			this.logger.debug(`Successfully updated property id=${updatedProperty.id} for channelId=${channel.id}`);
 
 			const response = new ChannelPropertyResponseModel();
 
@@ -407,17 +407,17 @@ export class ChannelsPropertiesController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete property id=${id} for channelId=${channelId}`);
+		this.logger.debug(`Incoming request to delete property id=${id} for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 
 		await this.channelsPropertiesService.remove(id);
 
-		this.logger.debug(`[DELETE] Successfully deleted property id=${id} for channelId=${channel.id}`);
+		this.logger.debug(`Successfully deleted property id=${id} for channelId=${channel.id}`);
 	}
 
 	private async getOneOrThrow(id: string, channelId: string): Promise<ChannelPropertyEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of property id=${id} for channelId=${channelId}`);
+		this.logger.debug(`Checking existence of property id=${id} for channelId=${channelId}`);
 
 		const property = await this.channelsPropertiesService.findOne(id, channelId);
 
@@ -431,7 +431,7 @@ export class ChannelsPropertiesController {
 	}
 
 	private async getChannelOrThrow(channelId: string): Promise<ChannelEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of channel id=${channelId}`);
+		this.logger.debug(`Checking existence of channel id=${channelId}`);
 
 		const channel = await this.channelsService.findOne(channelId);
 
