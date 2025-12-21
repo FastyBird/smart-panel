@@ -275,10 +275,16 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		this.logger.warn('[Z2M][SERVICE] Bridge is offline');
 
 		// Set all devices to unknown state
-		const devices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
-		for (const device of devices) {
-			await this.deviceConnectivityService.setConnectionState(device.id, {
-				state: ConnectionState.UNKNOWN,
+		try {
+			const devices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
+			for (const device of devices) {
+				await this.deviceConnectivityService.setConnectionState(device.id, {
+					state: ConnectionState.UNKNOWN,
+				});
+			}
+		} catch (error) {
+			this.logger.error('[Z2M][SERVICE] Failed to update device states on bridge offline', {
+				message: error instanceof Error ? error.message : String(error),
 			});
 		}
 	}
