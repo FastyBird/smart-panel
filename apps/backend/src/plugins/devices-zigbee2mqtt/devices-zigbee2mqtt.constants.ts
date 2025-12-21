@@ -1,11 +1,3 @@
-/*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return
-*/
-/*
-Reason: PropertyCategory, ChannelCategory and other enum values from
-devices.constants are correctly typed but TypeScript's cross-module type
-inference flags them as 'error' typed. The assignments are type-safe.
-*/
 import {
 	ChannelCategory,
 	DataTypeType,

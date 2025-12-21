@@ -1,14 +1,12 @@
-/*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
-*/
-/*
-Reason: TypeORM repository methods and service generics cause cross-module
-type inference issues. The code is type-safe as it uses proper generics.
-*/
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, ConnectionState, DataTypeType, PermissionType } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	PermissionType,
+} from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -56,8 +54,7 @@ export class Z2mDeviceMapperService {
 	async mapDevice(z2mDevice: Z2mDevice | Z2mRegisteredDevice): Promise<Zigbee2mqttDeviceEntity | null> {
 		const ieeeAddress = 'ieee_address' in z2mDevice ? z2mDevice.ieee_address : z2mDevice.ieeeAddress;
 		const friendlyName = 'friendly_name' in z2mDevice ? z2mDevice.friendly_name : z2mDevice.friendlyName;
-		const modelId =
-			'model_id' in z2mDevice ? z2mDevice.model_id : (z2mDevice as Z2mRegisteredDevice).modelId;
+		const modelId = 'model_id' in z2mDevice ? z2mDevice.model_id : (z2mDevice as Z2mRegisteredDevice).modelId;
 		const definition = z2mDevice.definition;
 
 		if (!definition) {
@@ -147,10 +144,7 @@ export class Z2mDeviceMapperService {
 		}
 
 		// Get all channels for this device
-		const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(
-			device.id,
-			DEVICES_ZIGBEE2MQTT_TYPE,
-		);
+		const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
 
 		for (const channel of channels) {
 			// Get all properties for this channel

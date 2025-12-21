@@ -1,10 +1,9 @@
 /*
-eslint-disable @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return
+eslint-disable @typescript-eslint/no-unnecessary-type-assertion
 */
 /*
 Reason: Type assertions are needed to narrow Z2mExpose union type to
-specific expose types. PropertyCategory enum assignments have cross-module
-type inference issues but are correctly typed.
+specific expose types since TypeScript cannot narrow discriminated unions.
 */
 import { Injectable, Logger } from '@nestjs/common';
 
