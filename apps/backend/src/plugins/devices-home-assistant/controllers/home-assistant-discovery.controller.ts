@@ -35,7 +35,7 @@ export class HomeAssistantDiscoveryController {
 	@ApiSuccessResponse(DiscoveredInstancesResponseModel, 'List of discovered Home Assistant instances.')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	async getDiscoveredInstances(): Promise<DiscoveredInstancesResponseModel> {
+	getDiscoveredInstances(): DiscoveredInstancesResponseModel {
 		this.logger.debug('Incoming request to get discovered Home Assistant instances');
 
 		const discoveredInstances = this.discovererService.getDiscoveredInstances();
@@ -65,7 +65,7 @@ export class HomeAssistantDiscoveryController {
 	@ApiSuccessResponse(DiscoveredInstancesResponseModel, 'Discovery refreshed and current list returned.')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('refresh')
-	async refreshDiscovery(): Promise<DiscoveredInstancesResponseModel> {
+	refreshDiscovery(): DiscoveredInstancesResponseModel {
 		this.logger.debug('Incoming request to refresh Home Assistant discovery');
 
 		this.discovererService.refresh();
