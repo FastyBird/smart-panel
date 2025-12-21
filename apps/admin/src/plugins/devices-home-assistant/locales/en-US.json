@@ -182,7 +182,8 @@
     "previous": "Previous",
     "skip": "Skip",
     "use": "Use",
-    "applyChanges": "Apply Changes"
+    "applyChanges": "Apply Changes",
+    "refreshDiscovery": "Refresh discovery"
   },
   "labels": {
     "suggested": "Suggested"
