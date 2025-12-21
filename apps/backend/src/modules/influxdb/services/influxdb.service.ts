@@ -1,12 +1,12 @@
 import { IPingStats, IQueryOptions, IResults, ISchemaOptions, InfluxDB } from 'influx';
 
 import { Injectable } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { getEnvValue } from '../../../common/utils/config.utils';
 import { safeNumber, safeToString } from '../../../common/utils/transform.utils';
-import { INFLUXDB_MODULE_NAME } from '../influxdb.constants';
+import { ConfigService } from '../../config/services/config.service';
+import { INFLUXDB_DEFAULT_DATABASE, INFLUXDB_DEFAULT_HOST, INFLUXDB_MODULE_NAME } from '../influxdb.constants';
+import { InfluxDbConfigModel } from '../models/config.model';
 
 type RetentionPolicyRow = {
 	name: string;
@@ -51,7 +51,7 @@ export class InfluxDbService {
 	private connection: InfluxDB | null = null;
 	private readonly schemas: ISchemaOptions[] = [];
 
-	constructor(private readonly configService: NestConfigService) {
+	constructor(private readonly configService: ConfigService) {
 		this.initializeConnection().catch((error) => {
 			const err = error as Error;
 
@@ -59,21 +59,37 @@ export class InfluxDbService {
 		});
 	}
 
+	/**
+	 * Get InfluxDB configuration from app config
+	 */
+	private getConfig(): InfluxDbConfigModel {
+		try {
+			return this.configService.getModuleConfig<InfluxDbConfigModel>(INFLUXDB_MODULE_NAME);
+		} catch (error) {
+			this.logger.warn('Failed to load InfluxDB configuration, using defaults', error);
+
+			// Return default configuration
+			const defaultConfig = new InfluxDbConfigModel();
+			defaultConfig.type = INFLUXDB_MODULE_NAME;
+			defaultConfig.host = INFLUXDB_DEFAULT_HOST;
+			defaultConfig.database = INFLUXDB_DEFAULT_DATABASE;
+
+			return defaultConfig;
+		}
+	}
+
 	registerSchema(schema: ISchemaOptions): void {
 		this.schemas.push(schema);
 	}
 
 	private async initializeConnection() {
-		const host = getEnvValue<string>(this.configService, 'FB_INFLUXDB_HOST', 'localhost');
-		const database = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
-		const username = getEnvValue<string | undefined>(this.configService, 'FB_INFLUXDB_USER', undefined);
-		const password = getEnvValue<string | undefined>(this.configService, 'FB_INFLUXDB_PASSWORD', undefined);
+		const config = this.getConfig();
 
 		this.connection = new InfluxDB({
-			host,
-			database,
-			username,
-			password,
+			host: config.host,
+			database: config.database,
+			username: config.username,
+			password: config.password,
 			schema: this.schemas,
 		});
 
@@ -82,15 +98,15 @@ export class InfluxDbService {
 
 	private async setupDatabase(): Promise<void> {
 		try {
-			const database = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
+			const config = this.getConfig();
 			const databases = await this.connection.getDatabaseNames();
 
-			if (!databases.includes(database)) {
-				await this.connection.createDatabase(database);
-				this.logger.log(`Database '${database}' created.`);
+			if (!databases.includes(config.database)) {
+				await this.connection.createDatabase(config.database);
+				this.logger.log(`Database '${config.database}' created.`);
 			}
 
-			await this.ensureRetentionPolicies(database);
+			await this.ensureRetentionPolicies(config.database);
 		} catch (error) {
 			const err = error as Error;
 
@@ -118,9 +134,9 @@ export class InfluxDbService {
 		const [name, body, db, resample] = args;
 
 		if (!db) {
-			const cfgDb = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
+			const config = this.getConfig();
 
-			return this.createContinuousQuery(name, body, cfgDb, resample);
+			return this.createContinuousQuery(name, body, config.database, resample);
 		}
 
 		const existing = await this.listContinuousQueriesClean(db);
