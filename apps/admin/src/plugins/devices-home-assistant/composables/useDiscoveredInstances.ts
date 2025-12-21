@@ -92,6 +92,16 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 		}
 	};
 
+	const getAuthHeadersWithoutContentType = (): HeadersInit => {
+		const headers: HeadersInit = {};
+
+		if (sessionStore.tokenPair?.accessToken) {
+			headers['Authorization'] = `Bearer ${sessionStore.tokenPair.accessToken}`;
+		}
+
+		return headers;
+	};
+
 	const refreshInstances = async (): Promise<void> => {
 		if (isLoading.value) {
 			return;
@@ -102,9 +112,10 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 
 		try {
 			// Using fetch directly since the endpoint may not be in generated OpenAPI types yet
+			// Note: Don't send Content-Type for POST with no body to avoid validation errors
 			const response = await fetch(`/api/v1/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery/refresh`, {
 				method: 'POST',
-				headers: getAuthHeaders(),
+				headers: getAuthHeadersWithoutContentType(),
 			});
 			if (response.ok) {
 				const responseData = await response.json();

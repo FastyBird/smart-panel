@@ -140,7 +140,7 @@ const { instances, isLoading: isLoadingInstances, fetchInstances, refreshInstanc
 
 const autocompleteOptions = computed<AutocompleteItem[]>(() => {
 	return instances.value.map((instance) => ({
-		value: instance.port === 8123 ? instance.hostname : `${instance.hostname}:${instance.port}`,
+		value: `${instance.hostname}:${instance.port}`,
 		name: instance.name,
 		version: instance.version,
 	}));
