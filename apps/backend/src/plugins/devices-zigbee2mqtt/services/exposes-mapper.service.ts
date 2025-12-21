@@ -197,13 +197,9 @@ export class Z2mExposesMapperService {
 			case 'binary': {
 				const binaryExpose = expose as Z2mExposeBinary;
 				dataType = DataTypeType.BOOL;
-				// Store value_on/value_off as format if not boolean
-				if (
-					typeof binaryExpose.value_on === 'string' &&
-					typeof binaryExpose.value_off === 'string' &&
-					binaryExpose.value_on !== 'true' &&
-					binaryExpose.value_off !== 'false'
-				) {
+				// Store value_on/value_off as format for string values
+				// This includes 'true'/'false' strings which need to be sent as-is to the device
+				if (typeof binaryExpose.value_on === 'string' && typeof binaryExpose.value_off === 'string') {
 					format = [binaryExpose.value_on, binaryExpose.value_off];
 				}
 				break;
