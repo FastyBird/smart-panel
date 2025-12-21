@@ -198,9 +198,110 @@ describe('HaEntityMappingRules', () => {
 			// When a device has multiple channels, it should pick the best match
 			const category = inferDeviceCategory([ChannelCategory.LIGHT, ChannelCategory.TEMPERATURE]);
 
-			// Light has priority 10, temperature sensor has priority 20
-			// But since the hint for light is LIGHTING, it should be selected based on rules
-			expect([DeviceCategory.LIGHTING, DeviceCategory.SENSOR]).toContain(category);
+			// With primary domain-based inference, LIGHTING should be selected
+			expect(category).toBe(DeviceCategory.LIGHTING);
+		});
+	});
+
+	describe('inferDeviceCategory with domain roles', () => {
+		it('should return LIGHTING for device with light + multiple sensors', () => {
+			const channels = [
+				ChannelCategory.LIGHT,
+				ChannelCategory.ELECTRICAL_POWER,
+				ChannelCategory.TEMPERATURE,
+				ChannelCategory.HUMIDITY,
+			];
+			const domains = [
+				HomeAssistantDomain.LIGHT,
+				HomeAssistantDomain.SENSOR,
+				HomeAssistantDomain.SENSOR,
+				HomeAssistantDomain.SENSOR,
+			];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.LIGHTING);
+		});
+
+		it('should return SENSOR for sensor-only device', () => {
+			const channels = [ChannelCategory.TEMPERATURE, ChannelCategory.HUMIDITY];
+			const domains = [HomeAssistantDomain.SENSOR, HomeAssistantDomain.SENSOR];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.SENSOR);
+		});
+
+		it('should return THERMOSTAT for climate device with sensors', () => {
+			const channels = [ChannelCategory.THERMOSTAT, ChannelCategory.TEMPERATURE];
+			const domains = [HomeAssistantDomain.CLIMATE, HomeAssistantDomain.SENSOR];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.THERMOSTAT);
+		});
+
+		it('should return OUTLET for outlet device with power sensors', () => {
+			// Note: The first SWITCH rule in the rules array is for outlet (higher priority)
+			// so the function finds outlet rule first
+			const channels = [ChannelCategory.OUTLET, ChannelCategory.ELECTRICAL_POWER];
+			const domains = [HomeAssistantDomain.SWITCH, HomeAssistantDomain.SENSOR];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.OUTLET);
+		});
+
+		it('should return FAN for fan device with temperature sensor', () => {
+			const channels = [ChannelCategory.FAN, ChannelCategory.TEMPERATURE];
+			const domains = [HomeAssistantDomain.FAN, HomeAssistantDomain.SENSOR];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.FAN);
+		});
+
+		it('should use fallback scoring when no domains provided', () => {
+			// Test backward compatibility - when domains are not provided
+			const channels = [ChannelCategory.LIGHT, ChannelCategory.TEMPERATURE];
+
+			const category = inferDeviceCategory(channels);
+
+			// Should use priority-based scoring fallback
+			expect(category).toBe(DeviceCategory.LIGHTING);
+		});
+
+		it('should return SWITCHER for generic switch with SWITCHER channel', () => {
+			// A generic switch (no device_class) maps to SWITCHER channel
+			// It should NOT incorrectly return OUTLET just because that's the first SWITCH rule
+			const channels = [ChannelCategory.SWITCHER];
+			const domains = [HomeAssistantDomain.SWITCH];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			// SWITCHER channel with SWITCH domain should return SWITCHER (not OUTLET)
+			// because the matching rule for SWITCHER has device_category_hint: SWITCHER
+			expect(category).toBe(DeviceCategory.SWITCHER);
+		});
+
+		it('should match device category based on mapped channels, not first rule for domain', () => {
+			// A door cover should get DOOR (door rule's hint), not WINDOW_COVERING (first cover rule)
+			const channels = [ChannelCategory.DOOR];
+			const domains = [HomeAssistantDomain.COVER];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.DOOR);
+		});
+
+		it('should return TELEVISION for media player with TELEVISION channel', () => {
+			// A TV media player should get TELEVISION, not SPEAKER (first media_player rule)
+			const channels = [ChannelCategory.TELEVISION];
+			const domains = [HomeAssistantDomain.MEDIA_PLAYER];
+
+			const category = inferDeviceCategory(channels, domains);
+
+			expect(category).toBe(DeviceCategory.TELEVISION);
 		});
 	});
 });

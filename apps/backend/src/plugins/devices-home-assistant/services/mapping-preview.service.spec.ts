@@ -7,6 +7,7 @@ import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
+import { LightCapabilityAnalyzer } from './light-capability.analyzer';
 import { MappingPreviewService } from './mapping-preview.service';
 
 describe('MappingPreviewService', () => {
@@ -83,6 +84,7 @@ describe('MappingPreviewService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MappingPreviewService,
+				LightCapabilityAnalyzer,
 				{ provide: HomeAssistantHttpService, useValue: homeAssistantHttpServiceMock },
 				{ provide: HomeAssistantWsService, useValue: homeAssistantWsServiceMock },
 			],

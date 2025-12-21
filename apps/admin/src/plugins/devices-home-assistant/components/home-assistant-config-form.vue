@@ -42,25 +42,71 @@
 			:label="t('devicesHomeAssistantPlugin.fields.config.hostname.title')"
 			prop="hostname"
 		>
-			<el-input
-				v-model="model.hostname"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.config.hostname.placeholder')"
-				name="hostname"
-			/>
+			<div class="flex gap-2 w-full">
+				<el-autocomplete
+					v-model="model.hostname"
+					:fetch-suggestions="querySearch"
+					:placeholder="t('devicesHomeAssistantPlugin.fields.config.hostname.placeholder')"
+					:loading="isLoadingInstances"
+					class="flex-1"
+					clearable
+					@focus="onHostnameFocus"
+				>
+					<template #default="{ item }">
+						<div class="flex flex-col">
+							<span class="font-medium">{{ item.value }}</span>
+							<span class="text-xs text-gray-500">
+								{{ item.name }}
+								<template v-if="item.version"> (v{{ item.version }})</template>
+							</span>
+						</div>
+					</template>
+				</el-autocomplete>
+				<el-tooltip
+					:content="t('devicesHomeAssistantPlugin.buttons.refreshDiscovery')"
+					placement="top"
+				>
+					<el-button
+						:loading="isLoadingInstances"
+						@click="onRefreshClick"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+						</svg>
+					</el-button>
+				</el-tooltip>
+			</div>
 		</el-form-item>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, onMounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElAutocomplete, ElButton, ElForm, ElFormItem, ElInput, ElSwitch, ElTooltip, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { useDiscoveredInstances } from '../composables/useDiscoveredInstances';
 import type { IHomeAssistantConfigEditForm } from '../schemas/config.types';
 
 import type { IHomeAssistantConfigFormProps } from './home-assistant-config-form.types';
+
+interface AutocompleteItem {
+	value: string;
+	name: string;
+	version?: string | null;
+}
 
 defineOptions({
 	name: 'HomeAssistantConfigForm',
@@ -88,6 +134,37 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 		success: t('devicesHomeAssistantPlugin.messages.config.edited'),
 		error: t('devicesHomeAssistantPlugin.messages.config.notEdited'),
 	},
+});
+
+const { instances, isLoading: isLoadingInstances, fetchInstances, refreshInstances } = useDiscoveredInstances();
+
+const autocompleteOptions = computed<AutocompleteItem[]>(() => {
+	return instances.value.map((instance) => ({
+		value: `${instance.hostname}:${instance.port}`,
+		name: instance.name,
+		version: instance.version,
+	}));
+});
+
+const querySearch = (queryString: string, cb: (results: AutocompleteItem[]) => void): void => {
+	const results = queryString
+		? autocompleteOptions.value.filter((item) => item.value.toLowerCase().includes(queryString.toLowerCase()))
+		: autocompleteOptions.value;
+	cb(results);
+};
+
+const onHostnameFocus = (): void => {
+	if (instances.value.length === 0) {
+		fetchInstances();
+	}
+};
+
+const onRefreshClick = (): void => {
+	refreshInstances();
+};
+
+onMounted(() => {
+	fetchInstances();
 });
 
 const rules = reactive<FormRules<IHomeAssistantConfigEditForm>>({

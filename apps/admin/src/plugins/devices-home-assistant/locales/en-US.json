@@ -52,6 +52,8 @@
         "placeholder": "Channel property id"
       },
       "channel": {
+        "title": "Channel",
+        "placeholder": "Select channel",
         "validation": {
           "required": "Please select channel property channel"
         }
@@ -180,7 +182,8 @@
     "previous": "Previous",
     "skip": "Skip",
     "use": "Use",
-    "applyChanges": "Apply Changes"
+    "applyChanges": "Apply Changes",
+    "refreshDiscovery": "Refresh discovery"
   },
   "labels": {
     "suggested": "Suggested"

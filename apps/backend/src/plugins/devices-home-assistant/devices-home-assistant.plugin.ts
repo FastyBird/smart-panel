@@ -24,6 +24,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { HomeAssistantDiscoveredDevicesController } from './controllers/home-assistant-discovered-devices.controller';
+import { HomeAssistantDiscoveryController } from './controllers/home-assistant-discovery.controller';
 import { HomeAssistantRegistryController } from './controllers/home-assistant-registry.controller';
 import { HomeAssistantStatesController } from './controllers/home-assistant-states.controller';
 import {
@@ -55,8 +56,10 @@ import { UniversalEntityMapperService } from './mappers/universal.entity.mapper.
 import { HomeAssistantConfigModel } from './models/config.model';
 import { HomeAssistantDevicePlatform } from './platforms/home-assistant.device.platform';
 import { DeviceAdoptionService } from './services/device-adoption.service';
+import { HaMdnsDiscovererService } from './services/ha-mdns-discoverer.service';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 import { HomeAssistantWsService } from './services/home-assistant.ws.service';
+import { LightCapabilityAnalyzer } from './services/light-capability.analyzer';
 import { MappingPreviewService } from './services/mapping-preview.service';
 import { StateChangedEventService } from './services/state-changed.event.service';
 import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
@@ -93,9 +96,12 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		DevicesServiceSubscriber,
 		MappingPreviewService,
 		DeviceAdoptionService,
+		LightCapabilityAnalyzer,
+		HaMdnsDiscovererService,
 	],
 	controllers: [
 		HomeAssistantDiscoveredDevicesController,
+		HomeAssistantDiscoveryController,
 		HomeAssistantStatesController,
 		HomeAssistantRegistryController,
 	],

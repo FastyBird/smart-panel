@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: FEATURE-PLUGIN-HA-AUTO-MAP
-Status: planned
+Status: completed
 Created: 2025-12-19
 
 ## 1. Business goal
@@ -44,14 +44,14 @@ I want the adoption process to correctly identify device types and offer all ava
 
 ## 4. Acceptance criteria
 
-- [ ] Light device with sensor entities is correctly categorized as LIGHTING (not SENSOR)
-- [ ] All supported color modes are offered during light adoption (RGB, HS, color_temp, white)
-- [ ] Color properties are correctly mapped based on `supported_color_modes` attribute
-- [ ] Binary sensor mapper correctly returns `false` for off states (bug fix)
-- [ ] Light and switch mappers have correct warning log logic (bug fix)
-- [ ] Primary domain rules have higher priority than sensor rules
-- [ ] Unit tests pass for all modified components
-- [ ] Existing devices continue to work (no breaking changes)
+- [x] Light device with sensor entities is correctly categorized as LIGHTING (not SENSOR)
+- [x] All supported color modes are offered during light adoption (RGB, HS, color_temp, white)
+- [x] Color properties are correctly mapped based on `supported_color_modes` attribute
+- [x] Binary sensor mapper correctly returns `false` for off states (bug fix)
+- [x] Light and switch mappers have correct warning log logic (bug fix)
+- [x] Primary domain rules have higher priority than sensor rules
+- [x] Unit tests pass for all modified components
+- [x] Existing devices continue to work (no breaking changes)
 
 ## 5. Example scenarios
 

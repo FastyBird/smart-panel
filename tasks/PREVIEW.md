@@ -6,8 +6,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 16 |
-| Planned | 8 |
+| Done | 17 |
+| Planned | 7 |
 | **Total** | **24** |
 
 ---
@@ -26,6 +26,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-MODULE-CONFIG | Module Configuration Support | backend, admin | large |
 | FEATURE-MULTI-LOCATION-WEATHER | Multi-Location Weather Support | backend, admin, panel | large |
 | FEATURE-PLUGIN-HA-AUTO-MAP | Automatic Entity Mapping for HA | backend | large |
+| FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | Home Assistant Adoption Improvements | backend | large |
 | FEATURE-PLUGIN-SHELLY-V1 | Shelly Gen 1 Plugin | backend | large |
 | FEATURE-PLUGIN-SHELLY-V1-UI | Shelly Gen 1 Plugin UI | admin, panel | medium |
 | FEATURE-PROPERTY-TIMESERIES | Property Timeseries Endpoint | backend | medium |
@@ -40,7 +41,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-APP-UPDATES | Application Updates Mechanism | backend, admin | large | FEATURE-LINUX-DEVICE-INSTALLATION |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | Linux Installation Enhancements | backend, admin | medium | FEATURE-LINUX-DEVICE-INSTALLATION |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | Sensor Device Detail Page | panel | large | - |
-| FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | Home Assistant Adoption Improvements | backend | large | FEATURE-PLUGIN-HA-AUTO-MAP |
 | FEATURE-PLUGIN-MATTER | Matter Plugin | backend | large | - |
 | FEATURE-PLUGIN-ZIGBEE2MQTT | Zigbee2MQTT Plugin | backend | large | - |
 
@@ -94,6 +94,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-MODULE-CONFIG | feature | done |
 | FEATURE-MULTI-LOCATION-WEATHER | feature | done |
 | FEATURE-PLUGIN-HA-AUTO-MAP | feature | done |
+| FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | feature | done |
 | FEATURE-PLUGIN-SHELLY-V1 | feature | done |
 | FEATURE-PROPERTY-TIMESERIES | feature | done |
 | TECHNICAL-BACKEND-OPENAPI-SOURCE | technical | done |
@@ -101,7 +102,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
-| FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | feature | planned |
 | FEATURE-PLUGIN-MATTER | feature | planned |
 | FEATURE-PLUGIN-ZIGBEE2MQTT | feature | planned |
 | FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
@@ -146,7 +146,7 @@ FEATURE-LINUX-DEVICE-INSTALLATION (done)
 └── FEATURE-LINUX-INSTALL-ENHANCEMENTS (planned)
 
 FEATURE-PLUGIN-HA-AUTO-MAP (done)
-└── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS (planned)
+└── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS (done)
 
 FEATURE-PLUGIN-SHELLY-V1 (done)
 └── FEATURE-PLUGIN-SHELLY-V1-UI (done)

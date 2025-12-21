@@ -33,6 +33,7 @@ import {
 } from './ha-entity-mapping.rules';
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
+import { LightCapabilityAnalyzer } from './light-capability.analyzer';
 
 /**
  * Service for generating mapping previews for Home Assistant devices
@@ -50,6 +51,7 @@ export class MappingPreviewService {
 	constructor(
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly homeAssistantWsService: HomeAssistantWsService,
+		private readonly lightCapabilityAnalyzer: LightCapabilityAnalyzer,
 	) {}
 
 	/**
@@ -121,8 +123,14 @@ export class MappingPreviewService {
 			}
 		}
 
+		// Collect entity domains for category inference
+		const entityDomains = consolidatedPreviews
+			.filter((e) => e.status !== 'skipped' && e.status !== 'unmapped')
+			.map((e) => e.domain as HomeAssistantDomain);
+
 		// Determine suggested device category
-		const suggestedDeviceCategory = options?.deviceCategory ?? inferDeviceCategory(mappedChannelCategories);
+		const suggestedDeviceCategory =
+			options?.deviceCategory ?? inferDeviceCategory(mappedChannelCategories, entityDomains);
 
 		// Check for missing required channels
 		const deviceSpec = devicesSchema[suggestedDeviceCategory as keyof typeof devicesSchema];
@@ -168,7 +176,7 @@ export class MappingPreviewService {
 				.filter((e) => e.status === 'unmapped')
 				.map((e) => `${e.domain}${e.deviceClass ? '.' + e.deviceClass : ''}`)
 				.join(', ');
-			this.logger.warn(
+			this.logger.debug(
 				`[MAPPING PREVIEW] ${unmappedCount} entities could not be mapped. ` +
 					`Consider adding mapping rules for: ${unmappedDomains}`,
 			);
@@ -199,6 +207,11 @@ export class MappingPreviewService {
 		const domain = this.extractDomain(entityId);
 		const deviceClass = state?.attributes?.device_class as string | null | undefined;
 		const friendlyName = state?.attributes?.friendly_name as string | undefined;
+
+		// Special handling for light entities - use capability analysis
+		if (domain === HomeAssistantDomain.LIGHT && state) {
+			return this.processLightEntity(entityId, state, overrideChannelCategory, friendlyName);
+		}
 
 		// Find matching rule
 		const rule = overrideChannelCategory
@@ -237,6 +250,107 @@ export class MappingPreviewService {
 			},
 			suggestedProperties,
 			unmappedAttributes,
+			missingRequiredProperties: missingRequired,
+		};
+	}
+
+	/**
+	 * Process light entity with capability-based property detection
+	 * This analyzes the supported_color_modes attribute to detect all available properties
+	 * even when the light is OFF and color attributes are null
+	 */
+	private processLightEntity(
+		entityId: string,
+		state: HomeAssistantStateModel,
+		overrideChannelCategory?: ChannelCategory,
+		friendlyName?: string,
+	): EntityMappingPreviewModel {
+		const capabilities = this.lightCapabilityAnalyzer.analyzeCapabilities(state);
+		const availableProperties = this.lightCapabilityAnalyzer.getAvailableProperties(capabilities);
+		const channelCategory = overrideChannelCategory ?? ChannelCategory.LIGHT;
+
+		// Generate property mappings for ALL available properties based on capabilities
+		const suggestedProperties: PropertyMappingPreviewModel[] = [];
+
+		const mappedPropertyCategories = new Set<PropertyCategory>();
+
+		for (const propCategory of availableProperties) {
+			const propertyMetadata = getPropertyMetadata(channelCategory, propCategory);
+			if (!propertyMetadata) continue;
+
+			const haAttribute = this.lightCapabilityAnalyzer.getHaAttributeForProperty(propCategory, capabilities);
+
+			// Get current value if available
+			let currentValue: unknown = null;
+			if (haAttribute === 'fb.main_state') {
+				currentValue = state.state;
+			} else if (haAttribute === 'hs_color' && Array.isArray(state.attributes?.hs_color)) {
+				const hsColor = state.attributes.hs_color as [number, number];
+				currentValue = propCategory === PropertyCategory.HUE ? hsColor[0] : hsColor[1];
+			} else if (haAttribute === 'rgb_color' || haAttribute === 'rgbw_color' || haAttribute === 'rgbww_color') {
+				// Get RGB value from the appropriate color attribute
+				const colorArray = state.attributes?.[haAttribute] as number[] | undefined;
+				if (Array.isArray(colorArray)) {
+					if (propCategory === PropertyCategory.COLOR_WHITE) {
+						// White is at index 3 for rgbw_color and rgbww_color
+						currentValue = colorArray[3];
+					} else {
+						const index =
+							propCategory === PropertyCategory.COLOR_RED ? 0 : propCategory === PropertyCategory.COLOR_GREEN ? 1 : 2;
+						currentValue = colorArray[index];
+					}
+				}
+			} else if (haAttribute === 'white') {
+				currentValue = state.attributes?.white;
+			} else {
+				currentValue = state.attributes?.[haAttribute];
+			}
+
+			// Apply brightness transform
+			if (propCategory === PropertyCategory.BRIGHTNESS && typeof currentValue === 'number') {
+				currentValue = Math.round((currentValue / 255) * 100);
+			}
+
+			suggestedProperties.push({
+				category: propCategory,
+				name: this.propertyNameFromCategory(propCategory),
+				haAttribute,
+				dataType: propertyMetadata.data_type,
+				permissions: propertyMetadata.permissions,
+				unit: propertyMetadata.unit,
+				format: propertyMetadata.format,
+				required: propertyMetadata.required,
+				currentValue: this.normalizeValue(currentValue),
+				haEntityId: entityId,
+			});
+
+			mappedPropertyCategories.add(propCategory);
+		}
+
+		// Check for missing required properties
+		const requiredProperties = getRequiredProperties(channelCategory);
+		const missingRequired = requiredProperties.filter((prop) => !mappedPropertyCategories.has(prop));
+
+		// Determine mapping status
+		let status: 'mapped' | 'partial' | 'unmapped' = 'mapped';
+		if (missingRequired.length > 0) {
+			status = 'partial';
+		}
+
+		return {
+			entityId,
+			domain: HomeAssistantDomain.LIGHT as string,
+			deviceClass: null,
+			currentState: state.state,
+			attributes: state.attributes ?? {},
+			status,
+			suggestedChannel: {
+				category: channelCategory,
+				name: friendlyName ?? this.generateChannelName(entityId, channelCategory),
+				confidence: 'high',
+			},
+			suggestedProperties,
+			unmappedAttributes: [],
 			missingRequiredProperties: missingRequired,
 		};
 	}
@@ -436,7 +550,7 @@ export class MappingPreviewService {
 		state: HomeAssistantStateModel | undefined,
 	): EntityMappingPreviewModel {
 		// Log unmapped entity for observability - helps identify gaps in mapping rules
-		this.logger.warn(
+		this.logger.debug(
 			`[MAPPING PREVIEW] Entity could not be automatically mapped: ` +
 				`entity_id="${entityId}", domain="${domain}", device_class="${deviceClass ?? 'none'}"`,
 			{
