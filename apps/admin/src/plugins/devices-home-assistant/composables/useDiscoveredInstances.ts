@@ -61,7 +61,7 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 
 		try {
 			// Using fetch directly since the endpoint may not be in generated OpenAPI types yet
-			const response = await fetch(`/api/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery`);
+			const response = await fetch(`/api/v1/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery`);
 			if (response.ok) {
 				const responseData = await response.json();
 				parseResponse(responseData);
@@ -83,7 +83,7 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 
 		try {
 			// Using fetch directly since the endpoint may not be in generated OpenAPI types yet
-			const response = await fetch(`/api/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery/refresh`, {
+			const response = await fetch(`/api/v1/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery/refresh`, {
 				method: 'POST',
 			});
 			if (response.ok) {
