@@ -28,6 +28,7 @@ import {
 	HomeAssistantDeviceEntity,
 } from './entities/devices-home-assistant.entity';
 import { HomeAssistantConfigModel } from './models/config.model';
+import { DiscoveredInstanceModel, DiscoveredInstancesResponseModel } from './models/discovered-instance.model';
 import {
 	HomeAssistantDeviceRegistryResponseModel,
 	HomeAssistantDiscoveredDeviceResponseModel,
@@ -103,4 +104,7 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HomeAssistantDeviceEntity,
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
+	// Discovery models
+	DiscoveredInstanceModel,
+	DiscoveredInstancesResponseModel,
 ];
