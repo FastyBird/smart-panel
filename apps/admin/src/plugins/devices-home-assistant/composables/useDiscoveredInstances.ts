@@ -84,6 +84,8 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 			if (response.ok) {
 				const responseData = await response.json();
 				parseResponse(responseData);
+			} else {
+				error.value = `Failed to fetch discovered instances (${response.status})`;
 			}
 		} catch (err) {
 			error.value = err instanceof Error ? err.message : 'Failed to fetch discovered instances';
@@ -120,6 +122,8 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 			if (response.ok) {
 				const responseData = await response.json();
 				parseResponse(responseData);
+			} else {
+				error.value = `Failed to refresh discovered instances (${response.status})`;
 			}
 		} catch (err) {
 			error.value = err instanceof Error ? err.message : 'Failed to refresh discovered instances';
