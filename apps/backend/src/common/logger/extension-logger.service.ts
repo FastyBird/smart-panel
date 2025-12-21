@@ -39,8 +39,6 @@ export class ExtensionLoggerService {
 	setContext(extensionType: string, componentName: string): void {
 		this.extensionType = extensionType;
 		this.componentName = componentName;
-		// Use componentName as NestJS context for cleaner display
-		this.logger = new Logger(componentName);
 	}
 
 	/**
