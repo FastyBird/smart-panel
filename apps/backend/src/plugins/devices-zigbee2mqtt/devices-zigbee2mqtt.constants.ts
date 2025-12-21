@@ -372,21 +372,17 @@ export const mapZ2mTypeToDataType = (
 export const mapZ2mAccessToPermissions = (access: number): PermissionType[] => {
 	const permissions: PermissionType[] = [];
 
-	if (access & Z2M_ACCESS.STATE) {
-		permissions.push(PermissionType.READ_ONLY);
-	}
+	const canRead = (access & Z2M_ACCESS.STATE) !== 0 || (access & Z2M_ACCESS.GET) !== 0;
+	const canWrite = (access & Z2M_ACCESS.SET) !== 0;
 
-	if (access & Z2M_ACCESS.SET) {
-		// Replace READ_ONLY with READ_WRITE if we can also write
-		const readOnlyIndex = permissions.indexOf(PermissionType.READ_ONLY);
-		if (readOnlyIndex !== -1) {
-			permissions.splice(readOnlyIndex, 1);
-		}
+	if (canRead && canWrite) {
 		permissions.push(PermissionType.READ_WRITE);
-	}
-
-	// If no permissions determined, default to read-only
-	if (permissions.length === 0) {
+	} else if (canWrite) {
+		permissions.push(PermissionType.WRITE_ONLY);
+	} else if (canRead) {
+		permissions.push(PermissionType.READ_ONLY);
+	} else {
+		// No access bits set, default to read-only
 		permissions.push(PermissionType.READ_ONLY);
 	}
 
