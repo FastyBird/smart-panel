@@ -111,7 +111,7 @@ The extension detail view (`apps/admin/src/modules/extensions/views/view-extensi
 - [x] Update `devices-shelly-ng` plugin to use the unified logger (reference implementation)
 - [x] Update `devices-home-assistant` plugin to use the unified logger
 - [x] Update `devices-shelly-v1` plugin to use the unified logger
-- [ ] Update `devices-third-party` plugin to use the unified logger (deferred - follow same pattern)
+- [x] Update `devices-third-party` plugin to use the unified logger
 - [x] Update `logger-rotating-file` plugin to use the unified logger (removed hardcoded prefixes)
 - [ ] Update other plugins with logging to use the unified logger (deferred - follow same pattern)
 

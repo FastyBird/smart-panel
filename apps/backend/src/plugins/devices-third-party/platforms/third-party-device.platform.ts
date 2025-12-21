@@ -1,11 +1,16 @@
 import { validate } from 'class-validator';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
-import { DEVICES_THIRD_PARTY_TYPE, ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
+import {
+	DEVICES_THIRD_PARTY_PLUGIN_NAME,
+	DEVICES_THIRD_PARTY_TYPE,
+	ThirdPartyPropertiesUpdateStatus,
+} from '../devices-third-party.constants';
 import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
 import {
 	PropertiesUpdateResultModel,
@@ -19,7 +24,10 @@ export type IThirdPartyDevicePropertyData = IDevicePropertyData & {
 
 @Injectable()
 export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDevicePlatform {
-	private readonly logger = new Logger(ThirdPartyDevicePlatform.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_THIRD_PARTY_PLUGIN_NAME,
+		'ThirdPartyDevicePlatform',
+	);
 
 	getType(): string {
 		return DEVICES_THIRD_PARTY_TYPE;

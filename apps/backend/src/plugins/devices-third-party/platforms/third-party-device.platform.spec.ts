@@ -67,7 +67,10 @@ describe('ThirdPartyDevicePlatform', () => {
 		]);
 
 		expect(result).toBe(true);
-		expect(loggerLogSpy).toHaveBeenCalledWith('Successfully updated properties');
+		expect(loggerLogSpy).toHaveBeenCalledWith(
+			'[ThirdPartyDevicePlatform] Successfully updated properties',
+			'devices-third-party-plugin',
+		);
 	});
 
 	it('should return true when all updates succeed (207 response)', async () => {
@@ -95,7 +98,8 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(true);
 		expect(loggerLogSpy).toHaveBeenCalledWith(
-			`Successfully processed all property updates for device id=${mockDevice.id}`,
+			`[ThirdPartyDevicePlatform] Successfully processed all property updates for device id=${mockDevice.id}`,
+			'devices-third-party-plugin',
 		);
 	});
 
@@ -124,9 +128,8 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(loggerWarnSpy).toHaveBeenCalledWith(
-			expect.stringContaining(
-				`Some properties failed to update for device id=${mockDevice.id}: ${JSON.stringify(mockResponseBody.properties)}`,
-			),
+			`[ThirdPartyDevicePlatform] Some properties failed to update for device id=${mockDevice.id}: ${JSON.stringify(mockResponseBody.properties)}`,
+			'devices-third-party-plugin',
 		);
 	});
 
@@ -143,7 +146,10 @@ describe('ThirdPartyDevicePlatform', () => {
 		]);
 
 		expect(result).toBe(false);
-		expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Unexpected response status=500'));
+		expect(loggerErrorSpy).toHaveBeenCalledWith(
+			`[ThirdPartyDevicePlatform] Unexpected response status=500 id=${mockDevice.id}`,
+			'devices-third-party-plugin',
+		);
 	});
 
 	it('should return false on network error', async () => {
@@ -160,8 +166,9 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('Error processing property update'),
+			'[ThirdPartyDevicePlatform] Error processing property update',
 			expect.any(Object),
+			'devices-third-party-plugin',
 		);
 	});
 
