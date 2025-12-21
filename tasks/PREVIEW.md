@@ -6,8 +6,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 15 |
-| Planned | 9 |
+| Done | 16 |
+| Planned | 8 |
 | **Total** | **24** |
 
 ---
@@ -18,6 +18,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Title | Scope | Size |
 |----|-------|-------|------|
+| FEATURE-ADMIN-PLUGIN-SERVICES | Admin Plugin Services Management UI | admin | medium |
 | FEATURE-WLED-PLUGIN | WLED Device Plugin | backend, admin, panel | large |
 | FEATURE-CONFIG-CONSOLIDATION | Configuration Module Consolidation | backend, admin, panel | large |
 | FEATURE-LINUX-DEVICE-INSTALLATION | Linux Device Installation | backend, admin | large |
@@ -36,7 +37,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Title | Scope | Size | Parent |
 |----|-------|-------|------|--------|
 | FEATURE-WINDOW-COVERING-DEVICE-PAGE | Window Covering Device Page | panel | medium | - |
-| FEATURE-ADMIN-PLUGIN-SERVICES | Admin Plugin Services Management UI | admin | medium | - |
 | FEATURE-APP-UPDATES | Application Updates Mechanism | backend, admin | large | FEATURE-LINUX-DEVICE-INSTALLATION |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | Linux Installation Enhancements | backend, admin | medium | FEATURE-LINUX-DEVICE-INSTALLATION |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | Sensor Device Detail Page | panel | large | - |
@@ -110,6 +110,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Type | Status |
 |----|------|--------|
+| FEATURE-ADMIN-PLUGIN-SERVICES | feature | done |
 | FEATURE-WLED-PLUGIN | feature | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-LINUX-DEVICE-INSTALLATION | feature | done |
@@ -118,10 +119,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-SHELLY-V1-UI | feature | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
-| FEATURE-ADMIN-PLUGIN-SERVICES | feature | planned |
+| FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
-| FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
 
 ### Panel
 

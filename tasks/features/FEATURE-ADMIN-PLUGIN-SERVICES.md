@@ -5,7 +5,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -67,20 +67,20 @@ interface ServiceStatus {
 
 ## 4. Acceptance criteria
 
-- [ ] Services list accessible from extensions module (e.g., as a tab or sub-page)
-- [ ] Each service shows: plugin name, service ID, state badge, enabled status, health indicator
-- [ ] Running services show uptime in human-readable format (e.g., "2h 15m")
-- [ ] Services in error state show the last error message
-- [ ] Start button available for stopped/error services
-- [ ] Stop button available for running services
-- [ ] Restart button available for running services
-- [ ] Actions are disabled when service is in transitional state (starting/stopping)
-- [ ] Disabled plugins' services show as disabled (cannot start)
-- [ ] Loading states shown during API calls
-- [ ] Success/error toasts for service actions
-- [ ] OpenAPI types regenerated for services endpoints
-- [ ] All linting passes
-- [ ] Unit tests for new components
+- [x] Services list accessible from extensions module (e.g., as a tab or sub-page)
+- [x] Each service shows: plugin name, service ID, state badge, enabled status, health indicator
+- [x] Running services show uptime in human-readable format (e.g., "2h 15m")
+- [x] Services in error state show the last error message
+- [x] Start button available for stopped/error services
+- [x] Stop button available for running services
+- [x] Restart button available for running services
+- [x] Actions are disabled when service is in transitional state (starting/stopping)
+- [x] Disabled plugins' services show as disabled (cannot start)
+- [x] Loading states shown during API calls
+- [x] Success/error toasts for service actions
+- [x] OpenAPI types regenerated for services endpoints
+- [x] All linting passes
+- [x] Unit tests for new components
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
