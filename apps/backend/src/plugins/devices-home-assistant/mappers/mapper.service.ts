@@ -61,7 +61,7 @@ export class MapperService {
 			const properties = grouped.get(state.entity_id);
 
 			if (!properties) {
-				this.logger.warn(`No properties found for received state for domain=${domain} entityId=${state.entity_id}`);
+				this.logger.debug(`No properties found for received state for domain=${domain} entityId=${state.entity_id}`);
 
 				continue;
 			}

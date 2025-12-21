@@ -176,7 +176,7 @@ export class MappingPreviewService {
 				.filter((e) => e.status === 'unmapped')
 				.map((e) => `${e.domain}${e.deviceClass ? '.' + e.deviceClass : ''}`)
 				.join(', ');
-			this.logger.warn(
+			this.logger.debug(
 				`[MAPPING PREVIEW] ${unmappedCount} entities could not be mapped. ` +
 					`Consider adding mapping rules for: ${unmappedDomains}`,
 			);
@@ -526,7 +526,7 @@ export class MappingPreviewService {
 		state: HomeAssistantStateModel | undefined,
 	): EntityMappingPreviewModel {
 		// Log unmapped entity for observability - helps identify gaps in mapping rules
-		this.logger.warn(
+		this.logger.debug(
 			`[MAPPING PREVIEW] Entity could not be automatically mapped: ` +
 				`entity_id="${entityId}", domain="${domain}", device_class="${deviceClass ?? 'none'}"`,
 			{
