@@ -208,13 +208,15 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 // Lazy load services when tab is selected
-watch(activeTab, (newTab) => {
+watch(activeTab, async (newTab) => {
 	if (newTab === 'services' && !servicesLoaded.value) {
-		servicesLoaded.value = true;
-		fetchServices().catch((error: unknown): void => {
+		try {
+			await fetchServices();
+			servicesLoaded.value = true;
+		} catch (error: unknown) {
 			const err = error as Error;
 			throw new ExtensionsException('Failed to load services', err);
-		});
+		}
 	}
 });
 
