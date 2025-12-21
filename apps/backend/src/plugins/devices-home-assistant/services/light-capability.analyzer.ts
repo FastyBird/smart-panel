@@ -136,19 +136,46 @@ export class LightCapabilityAnalyzer {
 	}
 
 	/**
-	 * Get the HA attribute name for a property category
+	 * Get the HA attribute name for a property category based on light capabilities
 	 */
-	getHaAttributeForProperty(propertyCategory: PropertyCategory): string {
+	getHaAttributeForProperty(propertyCategory: PropertyCategory, capabilities?: LightCapabilities): string {
+		// For color properties, we need to check the light's actual color modes
+		if (
+			propertyCategory === PropertyCategory.COLOR_RED ||
+			propertyCategory === PropertyCategory.COLOR_GREEN ||
+			propertyCategory === PropertyCategory.COLOR_BLUE
+		) {
+			if (capabilities) {
+				// Check color modes in order of specificity
+				if (capabilities.supportedColorModes.includes(LightColorMode.RGBWW)) {
+					return 'rgbww_color';
+				}
+				if (capabilities.supportedColorModes.includes(LightColorMode.RGBW)) {
+					return 'rgbw_color';
+				}
+			}
+			return 'rgb_color';
+		}
+
+		if (propertyCategory === PropertyCategory.COLOR_WHITE) {
+			if (capabilities) {
+				// For RGBW/RGBWW lights, white is in the color array
+				if (capabilities.supportedColorModes.includes(LightColorMode.RGBWW)) {
+					return 'rgbww_color';
+				}
+				if (capabilities.supportedColorModes.includes(LightColorMode.RGBW)) {
+					return 'rgbw_color';
+				}
+			}
+			return 'white';
+		}
+
 		const attributeMap: Partial<Record<PropertyCategory, string>> = {
 			[PropertyCategory.ON]: 'fb.main_state',
 			[PropertyCategory.BRIGHTNESS]: 'brightness',
 			[PropertyCategory.COLOR_TEMPERATURE]: 'color_temp_kelvin',
 			[PropertyCategory.HUE]: 'hs_color',
 			[PropertyCategory.SATURATION]: 'hs_color',
-			[PropertyCategory.COLOR_RED]: 'rgb_color',
-			[PropertyCategory.COLOR_GREEN]: 'rgb_color',
-			[PropertyCategory.COLOR_BLUE]: 'rgb_color',
-			[PropertyCategory.COLOR_WHITE]: 'white',
 		};
 
 		return attributeMap[propertyCategory] ?? 'fb.main_state';

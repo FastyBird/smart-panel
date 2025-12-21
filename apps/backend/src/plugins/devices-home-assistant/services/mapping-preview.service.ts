@@ -276,7 +276,7 @@ export class MappingPreviewService {
 			const propertyMetadata = getPropertyMetadata(channelCategory, propCategory);
 			if (!propertyMetadata) continue;
 
-			const haAttribute = this.lightCapabilityAnalyzer.getHaAttributeForProperty(propCategory);
+			const haAttribute = this.lightCapabilityAnalyzer.getHaAttributeForProperty(propCategory, capabilities);
 
 			// Get current value if available
 			let currentValue: unknown = null;
@@ -285,28 +285,21 @@ export class MappingPreviewService {
 			} else if (haAttribute === 'hs_color' && Array.isArray(state.attributes?.hs_color)) {
 				const hsColor = state.attributes.hs_color as [number, number];
 				currentValue = propCategory === PropertyCategory.HUE ? hsColor[0] : hsColor[1];
-			} else if (haAttribute === 'rgb_color') {
-				// Check for RGB values in order of preference: rgb_color, rgbw_color, rgbww_color
-				const index =
-					propCategory === PropertyCategory.COLOR_RED ? 0 : propCategory === PropertyCategory.COLOR_GREEN ? 1 : 2;
-
-				if (Array.isArray(state.attributes?.rgb_color)) {
-					currentValue = (state.attributes.rgb_color as number[])[index];
-				} else if (Array.isArray(state.attributes?.rgbw_color)) {
-					currentValue = (state.attributes.rgbw_color as number[])[index];
-				} else if (Array.isArray(state.attributes?.rgbww_color)) {
-					currentValue = (state.attributes.rgbww_color as number[])[index];
+			} else if (haAttribute === 'rgb_color' || haAttribute === 'rgbw_color' || haAttribute === 'rgbww_color') {
+				// Get RGB value from the appropriate color attribute
+				const colorArray = state.attributes?.[haAttribute] as number[] | undefined;
+				if (Array.isArray(colorArray)) {
+					if (propCategory === PropertyCategory.COLOR_WHITE) {
+						// White is at index 3 for rgbw_color and rgbww_color
+						currentValue = colorArray[3];
+					} else {
+						const index =
+							propCategory === PropertyCategory.COLOR_RED ? 0 : propCategory === PropertyCategory.COLOR_GREEN ? 1 : 2;
+						currentValue = colorArray[index];
+					}
 				}
 			} else if (haAttribute === 'white') {
-				// Check for white value in order of preference: white attribute, rgbw_color[3], rgbww_color[3]
-				if (state.attributes?.white !== undefined) {
-					currentValue = state.attributes.white;
-				} else if (Array.isArray(state.attributes?.rgbw_color) && state.attributes.rgbw_color.length >= 4) {
-					currentValue = (state.attributes.rgbw_color as number[])[3];
-				} else if (Array.isArray(state.attributes?.rgbww_color) && state.attributes.rgbww_color.length >= 4) {
-					// For RGBWW, index 3 is cold white, index 4 is warm white - use cold white as general white
-					currentValue = (state.attributes.rgbww_color as number[])[3];
-				}
+				currentValue = state.attributes?.white;
 			} else {
 				currentValue = state.attributes?.[haAttribute];
 			}
