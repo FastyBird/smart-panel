@@ -1,6 +1,8 @@
 import { type Ref, ref } from 'vue';
 
+import { injectStoresManager } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
+import { sessionStoreKey } from '../../../modules/auth/store/keys';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 
 export interface IDiscoveredInstance {
@@ -36,6 +38,21 @@ const isLoading = ref(false);
 const error = ref<string | null>(null);
 
 export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
+	const storesManager = injectStoresManager();
+	const sessionStore = storesManager.getStore(sessionStoreKey);
+
+	const getAuthHeaders = (): HeadersInit => {
+		const headers: HeadersInit = {
+			'Content-Type': 'application/json',
+		};
+
+		if (sessionStore.tokenPair?.accessToken) {
+			headers['Authorization'] = `Bearer ${sessionStore.tokenPair.accessToken}`;
+		}
+
+		return headers;
+	};
+
 	const parseResponse = (responseData: unknown): void => {
 		if (responseData && typeof responseData === 'object' && 'data' in responseData) {
 			const dataArray = (responseData as DiscoveryApiResponse).data;
@@ -61,7 +78,9 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 
 		try {
 			// Using fetch directly since the endpoint may not be in generated OpenAPI types yet
-			const response = await fetch(`/api/v1/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery`);
+			const response = await fetch(`/api/v1/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery`, {
+				headers: getAuthHeaders(),
+			});
 			if (response.ok) {
 				const responseData = await response.json();
 				parseResponse(responseData);
@@ -85,6 +104,7 @@ export const useDiscoveredInstances = (): IUseDiscoveredInstances => {
 			// Using fetch directly since the endpoint may not be in generated OpenAPI types yet
 			const response = await fetch(`/api/v1/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovery/refresh`, {
 				method: 'POST',
+				headers: getAuthHeaders(),
 			});
 			if (response.ok) {
 				const responseData = await response.json();
