@@ -21,7 +21,7 @@
 
 		<div v-if="entity.suggestedChannel" class="mb-3">
 			<div class="flex items-center gap-2 mb-2">
-				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel') }}:</span>
+				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel.title') }}:</span>
 				<span>{{ entity.suggestedChannel.name }}</span>
 				<el-tag
 					:type="confidenceType"

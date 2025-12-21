@@ -47,7 +47,7 @@
 
 				<el-form-item
 					v-if="isEntityEnabled(entity.entityId) || hasOverrideWithoutCategory(entity.entityId)"
-					:label="t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel')"
+					:label="t('devicesHomeAssistantPlugin.fields.mapping.suggestedChannel.title')"
 					:prop="`category_${sanitizeEntityIdForForm(entity.entityId)}`"
 					:required="!getEntityChannelCategory(entity.entityId)"
 					:rules="getCategoryValidationRules(entity.entityId)"

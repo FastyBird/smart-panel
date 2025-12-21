@@ -52,6 +52,8 @@
         "placeholder": "Channel property id"
       },
       "channel": {
+        "title": "Channel",
+        "placeholder": "Select channel",
         "validation": {
           "required": "Please select channel property channel"
         }
