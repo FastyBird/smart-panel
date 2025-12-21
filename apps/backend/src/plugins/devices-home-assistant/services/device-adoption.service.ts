@@ -1,7 +1,8 @@
 import { validate } from 'class-validator';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
@@ -9,7 +10,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { channelsSchema } from '../../../spec/channels';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -30,7 +31,10 @@ import { HomeAssistantWsService } from './home-assistant.ws.service';
  */
 @Injectable()
 export class DeviceAdoptionService {
-	private readonly logger = new Logger(DeviceAdoptionService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'DeviceAdoptionService',
+	);
 
 	private readonly CONNECTION_TYPE_MAP: Record<string, 'wired' | 'wifi' | 'zigbee' | 'bluetooth'> = {
 		mac: 'wifi',
@@ -722,7 +726,7 @@ export class DeviceAdoptionService {
 		}
 
 		if (validationErrors.length > 0) {
-			this.logger.error(`[DEVICE ADOPTION] Pre-validation failed:`, validationErrors);
+			this.logger.error(`[DEVICE ADOPTION] Pre-validation failed: ${validationErrors.join(', ')}`);
 
 			// Format errors for user display - group by channel and make more readable
 			const formattedErrors = this.formatValidationErrorsForDisplay(validationErrors);
@@ -909,7 +913,7 @@ export class DeviceAdoptionService {
 		}
 
 		if (validationErrors.length > 0) {
-			this.logger.error(`[DEVICE ADOPTION] Device structure validation failed:`, validationErrors);
+			this.logger.error(`[DEVICE ADOPTION] Device structure validation failed: ${validationErrors.join(', ')}`);
 			throw new DevicesHomeAssistantValidationException(
 				`Device structure validation failed:\n${validationErrors.join('\n')}`,
 			);

@@ -1,13 +1,17 @@
-import { Controller, Get, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { Controller, Get, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import {
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+} from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -21,7 +25,10 @@ import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 @ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME)
 @Controller('registry')
 export class HomeAssistantRegistryController {
-	private readonly logger = new Logger(HomeAssistantRegistryController.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'HomeAssistantRegistryController',
+	);
 
 	constructor(private readonly homeAssistantWsService: HomeAssistantWsService) {}
 

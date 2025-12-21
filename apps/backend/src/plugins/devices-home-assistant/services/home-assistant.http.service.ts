@@ -1,10 +1,11 @@
 import { instanceToPlain } from 'class-transformer';
 import { validate } from 'class-validator';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -38,7 +39,10 @@ const DISCOVERED_DEVICE_TEMPLATE =
 
 @Injectable()
 export class HomeAssistantHttpService {
-	private readonly logger = new Logger(HomeAssistantHttpService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'HomeAssistantHttpService',
+	);
 
 	private pluginConfig: HomeAssistantConfigModel | null = null;
 
@@ -386,7 +390,7 @@ export class HomeAssistantHttpService {
 			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
-				this.logger.error('Home Assistant API template request failed', data);
+				this.logger.error('Home Assistant API template request failed', { response: data });
 
 				return null;
 			}
@@ -440,7 +444,7 @@ export class HomeAssistantHttpService {
 			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
-				this.logger.error('Home Assistant API template request failed', data);
+				this.logger.error('Home Assistant API template request failed', { response: data });
 
 				return null;
 			}
@@ -487,7 +491,7 @@ export class HomeAssistantHttpService {
 			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
-				this.logger.error('Home Assistant state API request failed', data);
+				this.logger.error('Home Assistant state API request failed', { response: data });
 
 				return null;
 			}
@@ -532,7 +536,7 @@ export class HomeAssistantHttpService {
 			const data = (await response.json()) as unknown;
 
 			if (!response.ok || response.status !== 200) {
-				this.logger.error('Home Assistant states API request failed', data);
+				this.logger.error('Home Assistant states API request failed', { response: data });
 
 				return null;
 			}

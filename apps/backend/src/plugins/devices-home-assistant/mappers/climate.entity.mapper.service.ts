@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import {
 	ClimateEntityAttribute,
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 	ENTITY_MAIN_STATE_ATTRIBUTE,
 	HomeAssistantDomain,
 } from '../devices-home-assistant.constants';
@@ -13,7 +15,10 @@ import { EntityMapper } from './entity.mapper';
 
 @Injectable()
 export class ClimateEntityMapperService extends EntityMapper {
-	private readonly logger = new Logger(ClimateEntityMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'ClimateEntityMapperService',
+	);
 
 	get domain(): HomeAssistantDomain {
 		return HomeAssistantDomain.CLIMATE;

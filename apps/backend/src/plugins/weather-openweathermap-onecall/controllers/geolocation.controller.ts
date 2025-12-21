@@ -1,6 +1,7 @@
-import { Controller, Get, Logger, NotFoundException, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
@@ -13,12 +14,18 @@ import {
 	GeolocationZipToCoordinatesResponseModel,
 } from '../models/geolocation.model';
 import { OpenWeatherMapOneCallGeolocationService } from '../services/openweathermap-onecall-geolocation.service';
-import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_API_TAG_NAME } from '../weather-openweathermap-onecall.constants';
+import {
+	WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_API_TAG_NAME,
+	WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
+} from '../weather-openweathermap-onecall.constants';
 
 @ApiTags(WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_API_TAG_NAME)
 @Controller('geolocation')
 export class OpenWeatherMapOneCallGeolocationController {
-	private readonly logger = new Logger(OpenWeatherMapOneCallGeolocationController.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME,
+		'OpenWeatherMapOneCallGeolocationController',
+	);
 
 	constructor(private readonly geolocationService: OpenWeatherMapOneCallGeolocationService) {}
 

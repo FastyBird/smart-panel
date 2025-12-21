@@ -2,9 +2,10 @@ import { CronJob } from 'cron';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	IManagedPluginService,
@@ -23,7 +24,10 @@ import { RotatingFileConfigModel } from '../models/config.model';
  */
 @Injectable()
 export class FileLoggerService implements ILogger, IManagedPluginService {
-	private readonly logger = new Logger(FileLoggerService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		LOGGER_ROTATING_FILE_PLUGIN_NAME,
+		'FileLoggerService',
+	);
 
 	readonly pluginName = LOGGER_ROTATING_FILE_PLUGIN_NAME;
 	readonly serviceId = 'file-logger';

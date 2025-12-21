@@ -1,15 +1,7 @@
-import {
-	Body,
-	Controller,
-	Get,
-	Logger,
-	NotFoundException,
-	Param,
-	Post,
-	UnprocessableEntityException,
-} from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Post, UnprocessableEntityException } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceResponseModel } from '../../../modules/devices/models/devices-response.model';
 import {
@@ -20,7 +12,10 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME,
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+} from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
 	DevicesHomeAssistantNotFoundException,
@@ -39,7 +34,10 @@ import { MappingPreviewService } from '../services/mapping-preview.service';
 @ApiTags(DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME)
 @Controller('discovered-devices')
 export class HomeAssistantDiscoveredDevicesController {
-	private readonly logger = new Logger(HomeAssistantDiscoveredDevicesController.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'HomeAssistantDiscoveredDevicesController',
+	);
 
 	constructor(
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,

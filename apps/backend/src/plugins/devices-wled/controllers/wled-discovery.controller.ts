@@ -1,20 +1,24 @@
-import { Controller, Get, Logger } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
-import { DEVICES_WLED_API_TAG_NAME } from '../devices-wled.constants';
+import { DEVICES_WLED_API_TAG_NAME, DEVICES_WLED_PLUGIN_NAME } from '../devices-wled.constants';
 import { WledDiscoveredDeviceModel, WledDiscoveredDevicesResponseModel } from '../models/wled-discovery.model';
 import { WledService } from '../services/wled.service';
 
 @ApiTags(DEVICES_WLED_API_TAG_NAME)
 @Controller('discovery')
 export class WledDiscoveryController {
-	private readonly logger = new Logger(WledDiscoveryController.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_WLED_PLUGIN_NAME,
+		'WledDiscoveryController',
+	);
 
 	constructor(private readonly wledService: WledService) {}
 

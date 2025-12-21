@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 	ENTITY_MAIN_STATE_ATTRIBUTE,
 	HomeAssistantDomain,
 	LightEntityAttribute,
@@ -13,7 +15,10 @@ import { EntityMapper } from './entity.mapper';
 
 @Injectable()
 export class LightEntityMapperService extends EntityMapper {
-	private readonly logger = new Logger(LightEntityMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'LightEntityMapperService',
+	);
 
 	get domain(): HomeAssistantDomain {
 		return HomeAssistantDomain.LIGHT;

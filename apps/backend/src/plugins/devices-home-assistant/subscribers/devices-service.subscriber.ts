@@ -1,21 +1,25 @@
 import { validate } from 'class-validator';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { channelsSchema } from '../../../spec/channels';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 
 @Injectable()
 export class DevicesServiceSubscriber {
-	private readonly logger = new Logger(DevicesServiceSubscriber.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'DevicesServiceSubscriber',
+	);
 
 	private readonly CONNECTION_TYPE_MAP: Record<string, 'wired' | 'wifi' | 'zigbee' | 'bluetooth'> = {
 		mac: 'wifi',

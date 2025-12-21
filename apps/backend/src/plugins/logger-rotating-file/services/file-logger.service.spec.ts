@@ -146,7 +146,10 @@ describe('FileLoggerService', () => {
 			// start() now throws on error to signal failure to PluginServiceManagerService
 			await expect(svc.start()).rejects.toThrow('Path is not a directory');
 
-			expect(Logger.prototype.error).toHaveBeenCalledWith(expect.stringContaining('Rotating file logger disabled'));
+			expect(Logger.prototype.error).toHaveBeenCalledWith(
+				expect.stringContaining('Rotating file logger disabled'),
+				expect.anything(),
+			);
 			expect(scheduler.addCronJob).not.toHaveBeenCalled();
 		});
 	});
@@ -185,7 +188,10 @@ describe('FileLoggerService', () => {
 
 			await svc.append({ foo: 'bar' });
 
-			expect(Logger.prototype.error).toHaveBeenCalledWith(expect.stringContaining('Failed to append log'));
+			expect(Logger.prototype.error).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to append log'),
+				expect.anything(),
+			);
 		});
 	});
 

@@ -113,7 +113,7 @@ The extension detail view (`apps/admin/src/modules/extensions/views/view-extensi
 - [x] Update `devices-shelly-v1` plugin to use the unified logger
 - [x] Update `devices-third-party` plugin to use the unified logger
 - [x] Update `logger-rotating-file` plugin to use the unified logger (removed hardcoded prefixes)
-- [ ] Update other plugins with logging to use the unified logger (deferred - follow same pattern)
+- [x] Update other plugins with logging to use the unified logger (devices-wled, weather-openweathermap, weather-openweathermap-onecall, pages-cards, pages-tiles)
 
 ### Backend - Logs API Enhancement
 

@@ -3,10 +3,11 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
@@ -17,12 +18,12 @@ import { TilesTypeMapperService } from '../../../modules/dashboard/services/tile
 import { CreateSingleCardDto } from '../dto/create-card.dto';
 import { UpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
-import { EventType } from '../pages-cards.constants';
+import { EventType, PAGES_CARDS_PLUGIN_NAME } from '../pages-cards.constants';
 import { PagesCardsNotFoundException, PagesCardsValidationException } from '../pages-cards.exceptions';
 
 @Injectable()
 export class CardsService {
-	private readonly logger = new Logger(CardsService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(PAGES_CARDS_PLUGIN_NAME, 'CardsService');
 
 	constructor(
 		@InjectRepository(CardEntity)

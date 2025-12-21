@@ -1,7 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DataTypeType } from '../../../modules/devices/devices.constants';
-import { ENTITY_MAIN_STATE_ATTRIBUTE, HomeAssistantDomain } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	ENTITY_MAIN_STATE_ATTRIBUTE,
+	HomeAssistantDomain,
+} from '../devices-home-assistant.constants';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantChannelPropertyEntity } from '../entities/devices-home-assistant.entity';
 
@@ -9,7 +14,10 @@ import { EntityMapper } from './entity.mapper';
 
 @Injectable()
 export class UniversalEntityMapperService extends EntityMapper {
-	private readonly logger = new Logger(UniversalEntityMapperService.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'UniversalEntityMapperService',
+	);
 
 	get domain(): HomeAssistantDomain {
 		return HomeAssistantDomain.SWITCH;

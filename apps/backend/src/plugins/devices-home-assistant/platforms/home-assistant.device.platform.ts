@@ -1,8 +1,9 @@
 import { validate } from 'class-validator';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -24,7 +25,10 @@ export type IHomeAssistantDevicePropertyData = IDevicePropertyData & {
 
 @Injectable()
 export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements IDevicePlatform {
-	private readonly logger = new Logger(HomeAssistantDevicePlatform.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+		'HomeAssistantDevicePlatform',
+	);
 
 	private pluginConfig: HomeAssistantConfigModel | null = null;
 

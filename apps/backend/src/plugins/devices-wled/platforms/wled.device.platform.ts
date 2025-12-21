@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import {
+	DEVICES_WLED_PLUGIN_NAME,
 	DEVICES_WLED_TYPE,
 	WLED_CHANNEL_IDENTIFIERS,
 	WLED_LIGHT_PROPERTY_IDENTIFIERS,
@@ -28,7 +30,10 @@ export type IWledDevicePropertyData = IDevicePropertyData & {
  */
 @Injectable()
 export class WledDevicePlatform implements IDevicePlatform {
-	private readonly logger = new Logger(WledDevicePlatform.name);
+	private readonly logger: ExtensionLoggerService = createExtensionLogger(
+		DEVICES_WLED_PLUGIN_NAME,
+		'WledDevicePlatform',
+	);
 
 	constructor(private readonly wledAdapter: WledClientAdapterService) {}
 
