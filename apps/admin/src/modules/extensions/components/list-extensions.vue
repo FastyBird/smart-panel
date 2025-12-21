@@ -21,8 +21,8 @@
 			<el-card
 				v-if="innerViewMode === 'table'"
 				shadow="never"
-				class="max-h-full"
-				body-class="p-0! max-h-full overflow-hidden flex flex-col"
+				class="h-full"
+				body-class="p-0! h-full overflow-hidden flex flex-col"
 			>
 				<extensions-table
 					v-model:sort-by="sortBy"
@@ -39,7 +39,7 @@
 
 				<div
 					ref="paginator"
-					class="flex justify-center w-full py-4"
+					class="flex justify-center w-full py-4 shrink-0"
 				>
 					<el-pagination
 						v-model:current-page="paginatePage"
@@ -52,15 +52,21 @@
 				</div>
 			</el-card>
 
-			<extensions-cards
+			<el-card
 				v-else
-				:items="props.allItems"
-				:loading="props.loading"
-				:filters-active="props.filtersActive"
-				@detail="onDetail"
-				@toggle-enabled="onToggleEnabled"
-				@reset-filters="onResetFilters"
-			/>
+				shadow="never"
+				class="h-full"
+				body-class="p-2! h-full overflow-hidden"
+			>
+				<extensions-cards
+					:items="props.allItems"
+					:loading="props.loading"
+					:filters-active="props.filtersActive"
+					@detail="onDetail"
+					@toggle-enabled="onToggleEnabled"
+					@reset-filters="onResetFilters"
+				/>
+			</el-card>
 		</div>
 	</div>
 </template>

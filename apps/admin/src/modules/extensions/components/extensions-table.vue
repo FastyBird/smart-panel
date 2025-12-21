@@ -11,7 +11,7 @@
 		table-layout="fixed"
 		row-key="type"
 		class="flex-grow"
-		:max-height="tableHeight"
+		:height="tableHeight"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
