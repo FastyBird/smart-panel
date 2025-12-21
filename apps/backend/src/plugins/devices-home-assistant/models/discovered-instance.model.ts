@@ -1,9 +1,11 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginDiscoveredInstance' })
+import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
+
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDiscoveredInstanceData' })
 export class DiscoveredInstanceModel {
 	@ApiProperty({
 		description: 'Hostname or IP address of the Home Assistant instance',
@@ -56,11 +58,12 @@ export class DiscoveredInstanceModel {
 }
 
 @ApiSchema({ name: 'DevicesHomeAssistantPluginDiscoveredInstancesResponse' })
-export class DiscoveredInstancesResponseModel {
+export class DiscoveredInstancesResponseModel extends BaseSuccessResponseModel<DiscoveredInstanceModel[]> {
 	@ApiProperty({
 		description: 'List of discovered Home Assistant instances',
 		type: [DiscoveredInstanceModel],
 	})
 	@Expose()
+	@Type(() => DiscoveredInstanceModel)
 	data!: DiscoveredInstanceModel[];
 }
