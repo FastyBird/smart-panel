@@ -49,6 +49,8 @@ import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
 import { DEVICES_WLED_PLUGIN_PREFIX } from './plugins/devices-wled/devices-wled.constants';
 import { DevicesWledPlugin } from './plugins/devices-wled/devices-wled.plugin';
+import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.constants';
+import { DevicesZigbee2mqttPlugin } from './plugins/devices-zigbee2mqtt/devices-zigbee2mqtt.plugin';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-rotating-file.plugin';
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
@@ -196,6 +198,10 @@ export class AppModule {
 								module: DevicesWledPlugin,
 							},
 							{
+								path: DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX,
+								module: DevicesZigbee2mqttPlugin,
+							},
+							{
 								path: WEATHER_OPENWEATHERMAP_PLUGIN_PREFIX,
 								module: WeatherOpenweathermapPlugin,
 							},
@@ -228,6 +234,7 @@ export class AppModule {
 				DevicesShellyNgPlugin,
 				DevicesShellyV1Plugin,
 				DevicesWledPlugin,
+				DevicesZigbee2mqttPlugin,
 				PagesCardsPlugin,
 				PagesDeviceDetailPlugin,
 				PagesTilesPlugin,
