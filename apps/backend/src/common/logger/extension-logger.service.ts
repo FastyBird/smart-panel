@@ -47,96 +47,73 @@ export class ExtensionLoggerService {
 	 * Log an informational message.
 	 */
 	log(message: string, context?: string | Error | Record<string, unknown>): void {
-		const formattedMessage = this.formatMessage(message);
-		const ctx = this.normalizeContext(context);
-		if (ctx) {
-			this.logger.log(formattedMessage, ctx, this.extensionType);
-		} else {
-			this.logger.log(formattedMessage, this.extensionType);
-		}
+		const formattedMessage = this.formatMessageWithContext(message, context);
+		this.logger.log(formattedMessage, this.extensionType);
 	}
 
 	/**
 	 * Log an error message.
 	 */
 	error(message: string, context?: string | Error | Record<string, unknown>): void {
-		const formattedMessage = this.formatMessage(message);
-		const ctx = this.normalizeContext(context);
-		if (ctx) {
-			this.logger.error(formattedMessage, ctx, this.extensionType);
-		} else {
-			this.logger.error(formattedMessage, this.extensionType);
-		}
+		const formattedMessage = this.formatMessageWithContext(message, context);
+		this.logger.error(formattedMessage, this.extensionType);
 	}
 
 	/**
 	 * Log a warning message.
 	 */
 	warn(message: string, context?: string | Error | Record<string, unknown>): void {
-		const formattedMessage = this.formatMessage(message);
-		const ctx = this.normalizeContext(context);
-		if (ctx) {
-			this.logger.warn(formattedMessage, ctx, this.extensionType);
-		} else {
-			this.logger.warn(formattedMessage, this.extensionType);
-		}
+		const formattedMessage = this.formatMessageWithContext(message, context);
+		this.logger.warn(formattedMessage, this.extensionType);
 	}
 
 	/**
 	 * Log a debug message.
 	 */
 	debug(message: string, context?: string | Error | Record<string, unknown>): void {
-		const formattedMessage = this.formatMessage(message);
-		const ctx = this.normalizeContext(context);
-		if (ctx) {
-			this.logger.debug?.(formattedMessage, ctx, this.extensionType);
-		} else {
-			this.logger.debug?.(formattedMessage, this.extensionType);
-		}
+		const formattedMessage = this.formatMessageWithContext(message, context);
+		this.logger.debug?.(formattedMessage, this.extensionType);
 	}
 
 	/**
 	 * Log a verbose message.
 	 */
 	verbose(message: string, context?: string | Error | Record<string, unknown>): void {
-		const formattedMessage = this.formatMessage(message);
-		const ctx = this.normalizeContext(context);
-		if (ctx) {
-			this.logger.verbose?.(formattedMessage, ctx, this.extensionType);
-		} else {
-			this.logger.verbose?.(formattedMessage, this.extensionType);
-		}
+		const formattedMessage = this.formatMessageWithContext(message, context);
+		this.logger.verbose?.(formattedMessage, this.extensionType);
 	}
 
 	/**
-	 * Normalize context to a Record<string, unknown> or undefined if empty.
-	 * Handles string (for stack traces), Error objects, and object contexts.
-	 * Returns undefined when no meaningful context is provided.
-	 */
-	private normalizeContext(context?: string | Error | Record<string, unknown>): Record<string, unknown> | undefined {
-		if (!context) {
-			return undefined;
-		}
-		if (typeof context === 'string') {
-			return { stack: context };
-		}
-		if (context instanceof Error) {
-			return { message: context.message, stack: context.stack };
-		}
-		// Return undefined for empty objects
-		if (Object.keys(context).length === 0) {
-			return undefined;
-		}
-		return context;
-	}
-
-	/**
-	 * Format the message with the component prefix.
-	 * Output: [ComponentName] message
+	 * Format the message with the component prefix and optional context data.
+	 * Output: [ComponentName] message {context}
 	 * The extension/module type is passed separately as the tag.
 	 */
-	private formatMessage(message: string): string {
-		return `[${this.componentName}] ${message}`;
+	private formatMessageWithContext(message: string, context?: string | Error | Record<string, unknown>): string {
+		const baseMessage = `[${this.componentName}] ${message}`;
+
+		if (!context) {
+			return baseMessage;
+		}
+
+		if (typeof context === 'string') {
+			return `${baseMessage} ${context}`;
+		}
+
+		if (context instanceof Error) {
+			const errorInfo = context.stack || context.message;
+			return `${baseMessage} ${errorInfo}`;
+		}
+
+		// Skip empty objects
+		if (Object.keys(context).length === 0) {
+			return baseMessage;
+		}
+
+		try {
+			return `${baseMessage} ${JSON.stringify(context)}`;
+		} catch {
+			return baseMessage;
+		}
 	}
 }
 

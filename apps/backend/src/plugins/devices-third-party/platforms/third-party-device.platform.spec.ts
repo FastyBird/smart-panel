@@ -166,8 +166,7 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
-			'[ThirdPartyDevicePlatform] Error processing property update',
-			expect.any(Object),
+			expect.stringContaining('[ThirdPartyDevicePlatform] Error processing property update'),
 			'devices-third-party-plugin',
 		);
 	});

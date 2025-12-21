@@ -134,8 +134,7 @@ describe('SystemService', () => {
 			await service.broadcastSystemInfo();
 
 			expect(loggerSpy).toHaveBeenCalledWith(
-				'[SystemService] Failed to broadcast system info',
-				expect.any(Object),
+				expect.stringContaining('[SystemService] Failed to broadcast system info'),
 				'system-module',
 			);
 		});

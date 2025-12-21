@@ -109,7 +109,6 @@ describe('HttpDevicePlatform', () => {
 			expect(mockedFetch).toHaveBeenCalledTimes(1);
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining('[HttpDevicePlatform] Error processing command'),
-				expect.any(Object),
 				'devices-module',
 			);
 		});

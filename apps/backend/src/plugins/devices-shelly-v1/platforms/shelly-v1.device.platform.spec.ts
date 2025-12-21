@@ -388,11 +388,7 @@ describe('ShellyV1DevicePlatform', () => {
 
 			expect(ok).toBe(false);
 			expect(Logger.prototype.error).toHaveBeenCalledWith(
-				'[ShellyV1DevicePlatform] Error processing property update',
-				{
-					message: expect.stringContaining('Network error'),
-					stack: expect.any(String),
-				},
+				expect.stringContaining('[ShellyV1DevicePlatform] Error processing property update'),
 				'devices-shelly-v1-plugin',
 			);
 		});

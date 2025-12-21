@@ -232,8 +232,7 @@ describe('ShellyNgDevicePlatform', () => {
 
 		expect(ok).toBe(false);
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
-			'[ShellyNgDevicePlatform] Error processing property update',
-			expect.objectContaining({ message: 'boom' }),
+			expect.stringContaining('[ShellyNgDevicePlatform] Error processing property update'),
 			'devices-shelly-ng-plugin',
 		);
 	});

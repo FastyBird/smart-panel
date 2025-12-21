@@ -602,10 +602,6 @@ describe('ShellyV1Service', () => {
 
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				expect.not.stringContaining('[SHELLY V1]'),
-				expect.objectContaining({
-					message: 'Test error',
-					stack: expect.any(String),
-				}),
 				'devices-shelly-v1-plugin',
 			);
 			loggerErrorSpy.mockRestore();
