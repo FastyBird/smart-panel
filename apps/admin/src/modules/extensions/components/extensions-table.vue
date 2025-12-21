@@ -11,7 +11,7 @@
 		table-layout="fixed"
 		row-key="type"
 		class="flex-grow"
-		:height="tableHeight"
+		:max-height="tableHeight"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
@@ -300,8 +300,6 @@ const { t } = useI18n();
 const { isMDDevice } = useBreakpoints();
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
-
-const tableHeight = computed<number>(() => props.tableHeight ?? 400);
 
 // Items are already sorted by the datasource based on user selection
 const sortedItems = computed<IExtension[]>(() => props.items);

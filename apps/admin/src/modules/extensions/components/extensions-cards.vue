@@ -8,14 +8,15 @@
 			animated
 		/>
 
-		<el-empty
+		<el-result
 			v-else-if="items.length === 0"
-			:description="emptyMessage"
+			icon="info"
+			:title="emptyMessage"
 		/>
 
 		<div
 			v-else
-			class="extensions-grid"
+			class="grid grid-cols-[repeat(auto-fill,minmax(350px,1fr))] max-sm:grid-cols-1 gap-3"
 		>
 			<extension-card
 				v-for="extension in sortedItems"
@@ -32,7 +33,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElEmpty, ElScrollbar, ElSkeleton } from 'element-plus';
+import { ElResult, ElScrollbar, ElSkeleton } from 'element-plus';
 
 import type { IExtension } from '../store/extensions.store.types';
 
@@ -81,17 +82,3 @@ const onDetail = (type: IExtension['type']): void => {
 	emit('detail', type);
 };
 </script>
-
-<style scoped>
-.extensions-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-	gap: 1rem;
-}
-
-@media (max-width: 640px) {
-	.extensions-grid {
-		grid-template-columns: 1fr;
-	}
-}
-</style>

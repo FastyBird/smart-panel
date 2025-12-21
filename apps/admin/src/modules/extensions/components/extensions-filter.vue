@@ -1,5 +1,5 @@
 <template>
-	<div class="flex w-full">
+	<div class="flex w-full items-center justify-center">
 		<el-form
 			ref="filterFormEl"
 			:inline="true"

@@ -50,7 +50,7 @@ export default {
 		pluginsManager.addPlugin(devicesWledPluginKey, {
 			type: DEVICES_WLED_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.devices-wled',
-			name: 'WLED Devices',
+			name: 'WLED',
 			description: 'Connect and control your WLED addressable LED controllers from the FastyBird Smart Panel',
 			links: {
 				documentation: 'http://www.fastybird.com',

@@ -43,65 +43,61 @@
 		icon="mdi:puzzle"
 	/>
 
-	<div class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden">
-		<el-tabs
-			v-model="activeTab"
-			class="flex-1 flex flex-col"
+	<el-tabs
+		v-model="activeTab"
+		class="grow-1 overflow-hidden flex-1 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
+	>
+		<el-tab-pane
+			name="extensions"
+			class="h-full overflow-hidden flex flex-col gap-2"
 		>
-			<el-tab-pane
-				name="extensions"
-				class="flex-1 overflow-hidden"
-			>
-				<template #label>
-					<div class="flex items-center gap-2">
-						<icon icon="mdi:puzzle" />
-						{{ t('extensionsModule.tabs.all') }}
-					</div>
-				</template>
-
-				<list-extensions
-					v-model:filters="filters"
-					v-model:view-mode="viewMode"
-					v-model:paginate-size="paginateSize"
-					v-model:paginate-page="paginatePage"
-					v-model:sort-by="sortBy"
-					v-model:sort-dir="sortDir"
-					:items="extensionsPaginated"
-					:all-items="extensions"
-					:total-rows="totalRows"
-					:loading="areLoading"
-					:filters-active="filtersActive"
-					@toggle-enabled="onToggleEnabled"
-					@detail="onExtensionDetail"
-					@adjust-list="onAdjustList"
-					@reset-filters="onResetFilters"
-				/>
-			</el-tab-pane>
-
-			<el-tab-pane
-				name="services"
-				class="flex-1 overflow-hidden"
-			>
-				<template #label>
-					<div class="flex items-center gap-2">
-						<icon icon="mdi:cog-play" />
-						{{ t('extensionsModule.tabs.services') }}
-					</div>
-				</template>
-
-				<div class="h-full overflow-auto p-2">
-					<services-list
-						:services="services"
-						:loading="areServicesLoading"
-						:is-acting="isActingOnService"
-						@start="onStartService"
-						@stop="onStopService"
-						@restart="onRestartService"
-					/>
+			<template #label>
+				<div class="flex items-center c">
+					<icon icon="mdi:puzzle" />
+					{{ t('extensionsModule.tabs.all') }}
 				</div>
-			</el-tab-pane>
-		</el-tabs>
-	</div>
+			</template>
+
+			<list-extensions
+				v-model:filters="filters"
+				v-model:view-mode="viewMode"
+				v-model:paginate-size="paginateSize"
+				v-model:paginate-page="paginatePage"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				:items="extensionsPaginated"
+				:all-items="extensions"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				@toggle-enabled="onToggleEnabled"
+				@detail="onExtensionDetail"
+				@adjust-list="onAdjustList"
+				@reset-filters="onResetFilters"
+			/>
+		</el-tab-pane>
+
+		<el-tab-pane
+			name="services"
+			class="h-full overflow-hidden flex flex-col"
+		>
+			<template #label>
+				<div class="flex items-center gap-2">
+					<icon icon="mdi:cog-play" />
+					{{ t('extensionsModule.tabs.services') }}
+				</div>
+			</template>
+
+			<services-list
+				:services="services"
+				:loading="areServicesLoading"
+				:is-acting="isActingOnService"
+				@start="onStartService"
+				@stop="onStopService"
+				@restart="onRestartService"
+			/>
+		</el-tab-pane>
+	</el-tabs>
 
 	<el-drawer
 		v-model="showDrawer"
