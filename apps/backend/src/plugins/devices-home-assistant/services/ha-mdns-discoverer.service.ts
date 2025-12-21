@@ -124,10 +124,10 @@ export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	/**
-	 * Restart discovery to refresh the list
+	 * Restart discovery to find new instances
+	 * Keeps existing discovered instances - they will be updated if re-discovered
 	 */
 	refresh(): void {
-		this.discoveredInstances.clear();
 		this.stop();
 		this.start();
 	}

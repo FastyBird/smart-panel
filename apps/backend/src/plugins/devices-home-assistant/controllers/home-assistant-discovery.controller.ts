@@ -70,7 +70,7 @@ export class HomeAssistantDiscoveryController {
 
 		this.discovererService.refresh();
 
-		// Return current list (may be empty right after refresh)
+		// Return current list - existing instances are preserved while discovery restarts
 		return this.getDiscoveredInstances();
 	}
 }
