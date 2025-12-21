@@ -41,72 +41,94 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			return true;
 		}
 
-		const device = updates[0].device;
-
-		if (!(device instanceof Zigbee2mqttDeviceEntity)) {
-			this.logger.error('[Z2M][PLATFORM] Invalid device type provided');
-			return false;
-		}
-
-		// Check if device is enabled
-		if (!device.enabled) {
-			this.logger.debug(`[Z2M][PLATFORM] Device ${device.identifier} is disabled, ignoring command`);
-			return false;
-		}
-
 		// Check if MQTT is connected
 		if (!this.mqttAdapter.isConnected()) {
 			this.logger.warn('[Z2M][PLATFORM] MQTT not connected, cannot send command');
 			return false;
 		}
 
-		// Get the friendly name for publishing
-		const friendlyName = device.friendlyName;
-		if (!friendlyName) {
-			this.logger.error(`[Z2M][PLATFORM] Device ${device.identifier} has no friendly name`);
-			return false;
-		}
-
-		// Group updates by channel for batch processing
-		const byChannel = new Map<
+		// Group updates by device first, then by channel
+		const byDevice = new Map<
 			string,
 			{
-				channel: Zigbee2mqttChannelEntity;
-				props: Map<string, { property: Zigbee2mqttChannelPropertyEntity; value: string | number | boolean }>;
+				device: Zigbee2mqttDeviceEntity;
+				channels: Map<
+					string,
+					{
+						channel: Zigbee2mqttChannelEntity;
+						props: Map<string, { property: Zigbee2mqttChannelPropertyEntity; value: string | number | boolean }>;
+					}
+				>;
 			}
 		>();
 
 		for (const update of updates) {
-			const key = update.channel.id;
-			let entry = byChannel.get(key);
+			const device = update.device;
 
-			if (!entry) {
-				entry = {
+			if (!(device instanceof Zigbee2mqttDeviceEntity)) {
+				this.logger.error('[Z2M][PLATFORM] Invalid device type provided');
+				continue;
+			}
+
+			const deviceKey = device.id;
+			let deviceEntry = byDevice.get(deviceKey);
+
+			if (!deviceEntry) {
+				deviceEntry = {
+					device,
+					channels: new Map(),
+				};
+				byDevice.set(deviceKey, deviceEntry);
+			}
+
+			const channelKey = update.channel.id;
+			let channelEntry = deviceEntry.channels.get(channelKey);
+
+			if (!channelEntry) {
+				channelEntry = {
 					channel: update.channel,
 					props: new Map(),
 				};
-				byChannel.set(key, entry);
+				deviceEntry.channels.set(channelKey, channelEntry);
 			}
 
-			entry.props.set(update.property.id, { property: update.property, value: update.value });
+			channelEntry.props.set(update.property.id, { property: update.property, value: update.value });
 		}
 
 		const results: boolean[] = [];
 
-		// Process each channel's updates
-		for (const { channel, props } of byChannel.values()) {
-			try {
-				const success = await this.executeCommand(device, channel, Array.from(props.values()), friendlyName);
-				results.push(success);
-			} catch (error) {
-				this.logger.error('[Z2M][PLATFORM] Error processing command', {
-					message: error instanceof Error ? error.message : String(error),
-				});
+		// Process each device's updates
+		for (const { device, channels } of byDevice.values()) {
+			// Check if device is enabled
+			if (!device.enabled) {
+				this.logger.debug(`[Z2M][PLATFORM] Device ${device.identifier} is disabled, ignoring command`);
 				results.push(false);
+				continue;
+			}
+
+			// Get the friendly name for publishing
+			const friendlyName = device.friendlyName;
+			if (!friendlyName) {
+				this.logger.error(`[Z2M][PLATFORM] Device ${device.identifier} has no friendly name`);
+				results.push(false);
+				continue;
+			}
+
+			// Process each channel's updates for this device
+			for (const { channel, props } of channels.values()) {
+				try {
+					const success = await this.executeCommand(device, channel, Array.from(props.values()), friendlyName);
+					results.push(success);
+				} catch (error) {
+					this.logger.error('[Z2M][PLATFORM] Error processing command', {
+						message: error instanceof Error ? error.message : String(error),
+					});
+					results.push(false);
+				}
 			}
 		}
 
-		return results.every((r) => r === true);
+		return results.length > 0 && results.every((r) => r === true);
 	}
 
 	/**
