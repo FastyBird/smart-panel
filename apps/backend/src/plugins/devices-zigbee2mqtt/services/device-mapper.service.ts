@@ -50,8 +50,13 @@ export class Z2mDeviceMapperService {
 
 	/**
 	 * Map and create or update a device from Z2M registry
+	 * @param z2mDevice The Z2M device to map
+	 * @param createIfNotExists If true, creates new devices; if false, only updates existing devices
 	 */
-	async mapDevice(z2mDevice: Z2mDevice | Z2mRegisteredDevice): Promise<Zigbee2mqttDeviceEntity | null> {
+	async mapDevice(
+		z2mDevice: Z2mDevice | Z2mRegisteredDevice,
+		createIfNotExists: boolean = true,
+	): Promise<Zigbee2mqttDeviceEntity | null> {
 		const ieeeAddress = 'ieee_address' in z2mDevice ? z2mDevice.ieee_address : z2mDevice.ieeeAddress;
 		const friendlyName = 'friendly_name' in z2mDevice ? z2mDevice.friendly_name : z2mDevice.friendlyName;
 		const modelId = 'model_id' in z2mDevice ? z2mDevice.model_id : (z2mDevice as Z2mRegisteredDevice).modelId;
@@ -79,6 +84,11 @@ export class Z2mDeviceMapperService {
 		);
 
 		if (!device) {
+			if (!createIfNotExists) {
+				this.logger.debug(`[Z2M][MAPPER] Skipping new device (auto-add disabled): ${friendlyName}`);
+				return null;
+			}
+
 			this.logger.log(`[Z2M][MAPPER] Creating new device: ${identifier}`);
 
 			const createDto: CreateZigbee2mqttDeviceDto = {

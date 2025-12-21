@@ -290,15 +290,20 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	async handleDevicesReceived(event: Z2mDevicesReceivedEvent): Promise<void> {
 		this.logger.log(`[Z2M][SERVICE] Received ${event.devices.length} devices from bridge`);
 
-		if (!this.config.discovery.autoAdd) {
-			this.logger.debug('[Z2M][SERVICE] Auto-add disabled, skipping device mapping');
+		const shouldSyncExisting = this.deviceSyncPending;
+		const shouldAddNew = this.config.discovery.autoAdd;
+
+		// Skip if neither auto-add nor sync is needed
+		if (!shouldAddNew && !shouldSyncExisting) {
+			this.logger.debug('[Z2M][SERVICE] Auto-add disabled and no sync pending, skipping device mapping');
 			return;
 		}
 
 		// Map each device
+		// createIfNotExists: true if autoAdd is enabled, false if only syncing existing devices
 		for (const z2mDevice of event.devices) {
 			try {
-				await this.deviceMapper.mapDevice(z2mDevice);
+				await this.deviceMapper.mapDevice(z2mDevice, shouldAddNew);
 			} catch (error) {
 				this.logger.error(`[Z2M][SERVICE] Failed to map device ${z2mDevice.friendly_name}`, {
 					message: error instanceof Error ? error.message : String(error),

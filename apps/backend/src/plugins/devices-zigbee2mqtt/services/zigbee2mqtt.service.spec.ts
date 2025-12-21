@@ -327,7 +327,7 @@ describe('Zigbee2mqttService', () => {
 
 			await service.handleDevicesReceived(event);
 
-			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(event.devices[0]);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(event.devices[0], true);
 		});
 
 		it('should not map devices when auto-add is disabled', async () => {
