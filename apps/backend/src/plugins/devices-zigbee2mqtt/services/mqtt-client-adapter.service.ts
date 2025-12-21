@@ -279,8 +279,7 @@ export class Z2mMqttClientAdapterService {
 			`${this.baseTopic}/bridge/devices`,
 			`${this.baseTopic}/bridge/event`,
 			`${this.baseTopic}/bridge/groups`,
-			`${this.baseTopic}/+`, // Device state topics
-			`${this.baseTopic}/+/availability`, // Device availability topics
+			`${this.baseTopic}/#`, // All device topics (state, availability, etc.) - supports friendly names with slashes
 		];
 
 		for (const topic of topics) {
@@ -304,16 +303,30 @@ export class Z2mMqttClientAdapterService {
 
 		try {
 			// Parse topic to determine message type
-			const topicParts = topic.replace(`${this.baseTopic}/`, '').split('/');
+			// Remove baseTopic prefix to get the remaining path
+			const relativePath = topic.replace(`${this.baseTopic}/`, '');
+			const topicParts = relativePath.split('/');
 
 			if (topicParts[0] === 'bridge') {
 				this.handleBridgeMessage(topicParts[1], message);
-			} else if (topicParts.length === 1) {
-				// Device state message: zigbee2mqtt/<friendly_name>
-				this.handleDeviceStateMessage(topicParts[0], message);
-			} else if (topicParts.length === 2 && topicParts[1] === 'availability') {
-				// Device availability: zigbee2mqtt/<friendly_name>/availability
-				this.handleDeviceAvailabilityMessage(topicParts[0], message);
+			} else if (topicParts.length > 0) {
+				// Check if the last part is 'availability'
+				const lastPart = topicParts[topicParts.length - 1];
+
+				if (lastPart === 'availability') {
+					// Device availability: zigbee2mqtt/<friendly_name>/availability
+					// friendly_name can contain slashes, so join all parts except the last
+					const friendlyName = topicParts.slice(0, -1).join('/');
+					if (friendlyName) {
+						this.handleDeviceAvailabilityMessage(friendlyName, message);
+					}
+				} else if (lastPart !== 'set' && lastPart !== 'get') {
+					// Device state message: zigbee2mqtt/<friendly_name>
+					// friendly_name can contain slashes, so join all parts
+					// Skip 'set' and 'get' topics (those are for commands, not state)
+					const friendlyName = relativePath;
+					this.handleDeviceStateMessage(friendlyName, message);
+				}
 			}
 		} catch (error) {
 			this.logger.warn(`[Z2M][MQTT] Failed to handle message on topic ${topic}`, {
