@@ -14,6 +14,8 @@ import {
 	type PropertyMetadata,
 	getAllProperties,
 	getAllowedChannels,
+	getChannelConstraints,
+	getDeviceConstraints,
 	getRequiredProperties,
 	isChannelAllowed,
 } from '../utils/schema.utils';
@@ -39,6 +41,9 @@ export enum ValidationIssueType {
 	INVALID_FORMAT = 'invalid_format',
 	UNKNOWN_CHANNEL = 'unknown_channel',
 	DUPLICATE_CHANNEL = 'duplicate_channel',
+	CONSTRAINT_ONE_OF_VIOLATION = 'constraint_one_of_violation',
+	CONSTRAINT_ONE_OR_MORE_OF_VIOLATION = 'constraint_one_or_more_of_violation',
+	CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION = 'constraint_mutually_exclusive_violation',
 }
 
 /**
@@ -370,6 +375,82 @@ export class DeviceValidationService {
 				}
 			}
 		}
+
+		// Validate device-level channel constraints (oneOf, oneOrMoreOf, mutuallyExclusiveGroups)
+		this.validateDeviceChannelConstraints(device, existingChannelCategories, issues);
+	}
+
+	/**
+	 * Validate device-level channel constraints
+	 */
+	private validateDeviceChannelConstraints(
+		device: DeviceEntity,
+		existingChannelCategories: Map<ChannelCategory, ChannelEntity[]>,
+		issues: ValidationIssue[],
+	): void {
+		const constraints = getDeviceConstraints(device.category);
+
+		if (!constraints) {
+			return;
+		}
+
+		const existingCategories = new Set(existingChannelCategories.keys());
+
+		// Check oneOrMoreOf constraints - at least one channel from each group must be present
+		if (constraints.oneOrMoreOf) {
+			for (const group of constraints.oneOrMoreOf) {
+				const hasAny = group.some((channelCat) => existingCategories.has(channelCat));
+
+				if (!hasAny) {
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_ONE_OR_MORE_OF_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						message: `At least one channel of [${group.join(', ')}] must be present for device category: ${device.category}`,
+						expected: `at least 1 of: ${group.join(', ')}`,
+						actual: 'none present',
+					});
+				}
+			}
+		}
+
+		// Check oneOf constraints - exactly one (or zero) channel from each group can be present
+		if (constraints.oneOf) {
+			for (const group of constraints.oneOf) {
+				const presentCount = group.filter((channelCat) => existingCategories.has(channelCat)).length;
+
+				if (presentCount > 1) {
+					const presentChannels = group.filter((channelCat) => existingCategories.has(channelCat));
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_ONE_OF_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						message: `Only one channel of [${group.join(', ')}] can be present for device category: ${device.category}, found: [${presentChannels.join(', ')}]`,
+						expected: `at most 1 of: ${group.join(', ')}`,
+						actual: `${presentCount} present`,
+					});
+				}
+			}
+		}
+
+		// Check mutuallyExclusiveGroups constraints (e.g., outlet vs switcher)
+		if (constraints.mutuallyExclusiveGroups) {
+			for (const groupPair of constraints.mutuallyExclusiveGroups) {
+				if (groupPair.length < 2) continue;
+
+				const [groupA, groupB] = groupPair;
+				const hasGroupA = groupA.some((channelCat) => existingCategories.has(channelCat));
+				const hasGroupB = groupB.some((channelCat) => existingCategories.has(channelCat));
+
+				if (hasGroupA && hasGroupB) {
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						message: `Channels [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together for device category: ${device.category}`,
+						expected: 'only one group',
+						actual: 'both groups present',
+					});
+				}
+			}
+		}
 	}
 
 	/**
@@ -411,6 +492,86 @@ export class DeviceValidationService {
 					propertyCategory: requiredProperty,
 					message: `Missing required property: ${requiredProperty} in channel: ${channelCategory}`,
 				});
+			}
+		}
+
+		// Validate property constraints (oneOf, oneOrMoreOf, mutuallyExclusiveGroups)
+		this.validatePropertyConstraints(channel, existingPropertyCategories, issues);
+	}
+
+	/**
+	 * Validate property constraints for a channel
+	 */
+	private validatePropertyConstraints(
+		channel: ChannelEntity,
+		existingProperties: Set<PropertyCategory>,
+		issues: ValidationIssue[],
+	): void {
+		const constraints = getChannelConstraints(channel.category);
+
+		if (!constraints) {
+			return;
+		}
+
+		// Check oneOrMoreOf constraints - at least one property from each group must be present
+		if (constraints.oneOrMoreOf) {
+			for (const group of constraints.oneOrMoreOf) {
+				const hasAny = group.some((prop) => existingProperties.has(prop));
+
+				if (!hasAny) {
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_ONE_OR_MORE_OF_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: channel.category,
+						channelId: channel.id,
+						message: `At least one of [${group.join(', ')}] must be present in channel: ${channel.category}`,
+						expected: `at least 1 of: ${group.join(', ')}`,
+						actual: 'none present',
+					});
+				}
+			}
+		}
+
+		// Check oneOf constraints - exactly one (or zero) property from each group can be present
+		if (constraints.oneOf) {
+			for (const group of constraints.oneOf) {
+				const presentCount = group.filter((prop) => existingProperties.has(prop)).length;
+
+				if (presentCount > 1) {
+					const presentProps = group.filter((prop) => existingProperties.has(prop));
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_ONE_OF_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: channel.category,
+						channelId: channel.id,
+						message: `Only one of [${group.join(', ')}] can be present in channel: ${channel.category}, found: [${presentProps.join(', ')}]`,
+						expected: `at most 1 of: ${group.join(', ')}`,
+						actual: `${presentCount} present`,
+					});
+				}
+			}
+		}
+
+		// Check mutuallyExclusiveGroups constraints (e.g., RGB vs HSV)
+		if (constraints.mutuallyExclusiveGroups) {
+			for (const groupPair of constraints.mutuallyExclusiveGroups) {
+				if (groupPair.length < 2) continue;
+
+				const [groupA, groupB] = groupPair;
+				const hasGroupA = groupA.some((prop) => existingProperties.has(prop));
+				const hasGroupB = groupB.some((prop) => existingProperties.has(prop));
+
+				if (hasGroupA && hasGroupB) {
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: channel.category,
+						channelId: channel.id,
+						message: `Properties [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together in channel: ${channel.category}`,
+						expected: 'only one group',
+						actual: 'both groups present',
+					});
+				}
 			}
 		}
 	}
@@ -600,6 +761,82 @@ export class DeviceValidationService {
 				}
 			}
 		}
+
+		// Validate device-level channel constraints (oneOf, oneOrMoreOf, mutuallyExclusiveGroups)
+		this.validateDeviceChannelConstraintsStructure(deviceCategory, existingChannelCategories, issues);
+	}
+
+	/**
+	 * Validate device-level channel constraints for pre-save validation (plain objects)
+	 */
+	private validateDeviceChannelConstraintsStructure(
+		deviceCategory: DeviceCategory,
+		existingChannelCategories: Map<ChannelCategory, ChannelDataInput[]>,
+		issues: ValidationIssue[],
+	): void {
+		const constraints = getDeviceConstraints(deviceCategory);
+
+		if (!constraints) {
+			return;
+		}
+
+		const existingCategories = new Set(existingChannelCategories.keys());
+
+		// Check oneOrMoreOf constraints - at least one channel from each group must be present
+		if (constraints.oneOrMoreOf) {
+			for (const group of constraints.oneOrMoreOf) {
+				const hasAny = group.some((channelCat) => existingCategories.has(channelCat));
+
+				if (!hasAny) {
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_ONE_OR_MORE_OF_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						message: `At least one channel of [${group.join(', ')}] must be present for device category: ${deviceCategory}`,
+						expected: `at least 1 of: ${group.join(', ')}`,
+						actual: 'none present',
+					});
+				}
+			}
+		}
+
+		// Check oneOf constraints - exactly one (or zero) channel from each group can be present
+		if (constraints.oneOf) {
+			for (const group of constraints.oneOf) {
+				const presentCount = group.filter((channelCat) => existingCategories.has(channelCat)).length;
+
+				if (presentCount > 1) {
+					const presentChannels = group.filter((channelCat) => existingCategories.has(channelCat));
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_ONE_OF_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						message: `Only one channel of [${group.join(', ')}] can be present for device category: ${deviceCategory}, found: [${presentChannels.join(', ')}]`,
+						expected: `at most 1 of: ${group.join(', ')}`,
+						actual: `${presentCount} present`,
+					});
+				}
+			}
+		}
+
+		// Check mutuallyExclusiveGroups constraints (e.g., outlet vs switcher)
+		if (constraints.mutuallyExclusiveGroups) {
+			for (const groupPair of constraints.mutuallyExclusiveGroups) {
+				if (groupPair.length < 2) continue;
+
+				const [groupA, groupB] = groupPair;
+				const hasGroupA = groupA.some((channelCat) => existingCategories.has(channelCat));
+				const hasGroupB = groupB.some((channelCat) => existingCategories.has(channelCat));
+
+				if (hasGroupA && hasGroupB) {
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						message: `Channels [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together for device category: ${deviceCategory}`,
+						expected: 'only one group',
+						actual: 'both groups present',
+					});
+				}
+			}
+		}
 	}
 
 	/**
@@ -640,6 +877,83 @@ export class DeviceValidationService {
 					propertyCategory: requiredProperty,
 					message: `Missing required property: ${requiredProperty} in channel: ${channelCategory}`,
 				});
+			}
+		}
+
+		// Validate property constraints (oneOf, oneOrMoreOf, mutuallyExclusiveGroups)
+		this.validatePropertyConstraintsStructure(channelCategory, existingPropertyCategories, issues);
+	}
+
+	/**
+	 * Validate property constraints for pre-save validation (plain objects)
+	 */
+	private validatePropertyConstraintsStructure(
+		channelCategory: ChannelCategory,
+		existingProperties: Set<PropertyCategory>,
+		issues: ValidationIssue[],
+	): void {
+		const constraints = getChannelConstraints(channelCategory);
+
+		if (!constraints) {
+			return;
+		}
+
+		// Check oneOrMoreOf constraints - at least one property from each group must be present
+		if (constraints.oneOrMoreOf) {
+			for (const group of constraints.oneOrMoreOf) {
+				const hasAny = group.some((prop) => existingProperties.has(prop));
+
+				if (!hasAny) {
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_ONE_OR_MORE_OF_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory,
+						message: `At least one of [${group.join(', ')}] must be present in channel: ${channelCategory}`,
+						expected: `at least 1 of: ${group.join(', ')}`,
+						actual: 'none present',
+					});
+				}
+			}
+		}
+
+		// Check oneOf constraints - exactly one (or zero) property from each group can be present
+		if (constraints.oneOf) {
+			for (const group of constraints.oneOf) {
+				const presentCount = group.filter((prop) => existingProperties.has(prop)).length;
+
+				if (presentCount > 1) {
+					const presentProps = group.filter((prop) => existingProperties.has(prop));
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_ONE_OF_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory,
+						message: `Only one of [${group.join(', ')}] can be present in channel: ${channelCategory}, found: [${presentProps.join(', ')}]`,
+						expected: `at most 1 of: ${group.join(', ')}`,
+						actual: `${presentCount} present`,
+					});
+				}
+			}
+		}
+
+		// Check mutuallyExclusiveGroups constraints (e.g., RGB vs HSV)
+		if (constraints.mutuallyExclusiveGroups) {
+			for (const groupPair of constraints.mutuallyExclusiveGroups) {
+				if (groupPair.length < 2) continue;
+
+				const [groupA, groupB] = groupPair;
+				const hasGroupA = groupA.some((prop) => existingProperties.has(prop));
+				const hasGroupB = groupB.some((prop) => existingProperties.has(prop));
+
+				if (hasGroupA && hasGroupB) {
+					issues.push({
+						type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory,
+						message: `Properties [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together in channel: ${channelCategory}`,
+						expected: 'only one group',
+						actual: 'both groups present',
+					});
+				}
 			}
 		}
 	}

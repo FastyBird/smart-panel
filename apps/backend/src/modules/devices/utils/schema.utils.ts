@@ -31,6 +31,71 @@ export interface PropertyMetadata {
 }
 
 /**
+ * Channel constraints defining relationships between properties
+ */
+export interface ChannelConstraints {
+	/** Exactly one property from each group can be present (mutually exclusive) */
+	oneOf?: PropertyCategory[][];
+	/** At least one property from each group must be present */
+	oneOrMoreOf?: PropertyCategory[][];
+	/** Property groups that cannot be mixed (e.g., RGB vs HSV) - array of [groupA[], groupB[]] pairs */
+	mutuallyExclusiveGroups?: PropertyCategory[][][];
+}
+
+/**
+ * Type for channel constraints from schema
+ */
+interface ChannelConstraintsSpec {
+	oneOf?: string[][];
+	oneOrMoreOf?: string[][];
+	mutuallyExclusiveGroups?: string[][][];
+}
+
+/**
+ * Get constraints for a given channel category
+ * @param channelCategory The channel category to query
+ * @returns Channel constraints or null if none defined
+ */
+export function getChannelConstraints(channelCategory: ChannelCategoryType): ChannelConstraints | null {
+	const channelSpec = channelsSchema[channelCategory] as { constraints?: ChannelConstraintsSpec } | undefined;
+
+	if (!channelSpec || typeof channelSpec !== 'object' || !channelSpec.constraints) {
+		return null;
+	}
+
+	const constraints = channelSpec.constraints;
+
+	const result: ChannelConstraints = {};
+
+	if (constraints.oneOf) {
+		result.oneOf = constraints.oneOf.map((group) =>
+			group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
+		);
+	}
+
+	if (constraints.oneOrMoreOf) {
+		result.oneOrMoreOf = constraints.oneOrMoreOf.map((group) =>
+			group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
+		);
+	}
+
+	if (constraints.mutuallyExclusiveGroups) {
+		result.mutuallyExclusiveGroups = constraints.mutuallyExclusiveGroups.map((groupPair) =>
+			groupPair.map((group) =>
+				group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
+			),
+		);
+	}
+
+	// Return null if no constraints were mapped
+	if (!result.oneOf && !result.oneOrMoreOf && !result.mutuallyExclusiveGroups) {
+		return null;
+	}
+
+	return result;
+}
+
+/**
  * Get required properties for a given channel category
  * @param channelCategory The channel category to query
  * @returns Array of required property categories
@@ -346,6 +411,71 @@ function mapDataType(dataType: string): DataTypeType {
 // ============================================================================
 // Device-level schema utilities
 // ============================================================================
+
+/**
+ * Device constraints defining relationships between channels
+ */
+export interface DeviceConstraints {
+	/** Exactly one channel from each group can be present (mutually exclusive) */
+	oneOf?: ChannelCategoryType[][];
+	/** At least one channel from each group must be present */
+	oneOrMoreOf?: ChannelCategoryType[][];
+	/** Channel groups that cannot be mixed (e.g., outlet vs switcher) - array of [groupA[], groupB[]] pairs */
+	mutuallyExclusiveGroups?: ChannelCategoryType[][][];
+}
+
+/**
+ * Type for device constraints from schema
+ */
+interface DeviceConstraintsSpec {
+	oneOf?: string[][];
+	oneOrMoreOf?: string[][];
+	mutuallyExclusiveGroups?: string[][][];
+}
+
+/**
+ * Get constraints for a given device category
+ * @param deviceCategory The device category to query
+ * @returns Device constraints or null if none defined
+ */
+export function getDeviceConstraints(deviceCategory: DeviceCategoryType): DeviceConstraints | null {
+	const deviceSpec = devicesSchema[deviceCategory] as { constraints?: DeviceConstraintsSpec } | undefined;
+
+	if (!deviceSpec || typeof deviceSpec !== 'object' || !deviceSpec.constraints) {
+		return null;
+	}
+
+	const constraints = deviceSpec.constraints;
+
+	const result: DeviceConstraints = {};
+
+	if (constraints.oneOf) {
+		result.oneOf = constraints.oneOf.map((group) =>
+			group.map((c) => mapChannelCategory(c)).filter((c): c is ChannelCategoryType => c !== null),
+		);
+	}
+
+	if (constraints.oneOrMoreOf) {
+		result.oneOrMoreOf = constraints.oneOrMoreOf.map((group) =>
+			group.map((c) => mapChannelCategory(c)).filter((c): c is ChannelCategoryType => c !== null),
+		);
+	}
+
+	if (constraints.mutuallyExclusiveGroups) {
+		result.mutuallyExclusiveGroups = constraints.mutuallyExclusiveGroups.map((groupPair) =>
+			groupPair.map((group) =>
+				group.map((c) => mapChannelCategory(c)).filter((c): c is ChannelCategoryType => c !== null),
+			),
+		);
+	}
+
+	// Return null if no constraints were mapped
+	if (!result.oneOf && !result.oneOrMoreOf && !result.mutuallyExclusiveGroups) {
+		return null;
+	}
+
+	return result;
+}
 
 /**
  * Channel spec from device schema

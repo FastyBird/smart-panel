@@ -53,6 +53,44 @@
           ],
           "additionalProperties": false
         },
+        "constraints": {
+          "description": "Channel constraints defining relationships between channels",
+          "type": "object",
+          "properties": {
+            "oneOf": {
+              "description": "Exactly one channel from each group can be present",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 2
+              }
+            },
+            "oneOrMoreOf": {
+              "description": "At least one channel from each group must be present",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 2
+              }
+            },
+            "mutuallyExclusiveGroups": {
+              "description": "Channel groups that cannot be mixed (e.g., outlet vs switcher)",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "minItems": 1
+                },
+                "minItems": 2
+              }
+            }
+          },
+          "additionalProperties": false
+        },
         "channels": {
           "type": "object",
           "patternProperties": {

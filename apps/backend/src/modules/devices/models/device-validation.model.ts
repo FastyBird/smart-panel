@@ -25,6 +25,9 @@ export enum ValidationIssueType {
 	INVALID_FORMAT = 'invalid_format',
 	UNKNOWN_CHANNEL = 'unknown_channel',
 	DUPLICATE_CHANNEL = 'duplicate_channel',
+	CONSTRAINT_ONE_OF_VIOLATION = 'constraint_one_of_violation',
+	CONSTRAINT_ONE_OR_MORE_OF_VIOLATION = 'constraint_one_or_more_of_violation',
+	CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION = 'constraint_mutually_exclusive_violation',
 }
 
 /**
