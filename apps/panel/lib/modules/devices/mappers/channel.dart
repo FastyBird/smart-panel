@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/channels/shelly_ng_
 import 'package:fastybird_smart_panel/modules/devices/models/channels/shelly_v1_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/third_party_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/wled_channel.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/channels/zigbee2mqtt_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
@@ -69,6 +70,9 @@ Map<String, ChannelModel Function(Map<String, dynamic>)> channelModelMappers = {
   },
   DeviceType.devicesWled.value: (data) {
     return WledChannelModel.fromJson(data);
+  },
+  DeviceType.devicesZigbee2mqtt.value: (data) {
+    return Zigbee2mqttChannelModel.fromJson(data);
   },
 };
 

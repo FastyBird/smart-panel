@@ -5,7 +5,8 @@ enum DeviceType {
   devicesHomeAssistant('devices-home-assistant'),
   devicesShellyNg('devices-shelly-ng'),
   devicesShellyV1('devices-shelly-v1'),
-  devicesWled('devices-wled');
+  devicesWled('devices-wled'),
+  devicesZigbee2mqtt('devices-zigbee2mqtt');
 
   final String value;
 
