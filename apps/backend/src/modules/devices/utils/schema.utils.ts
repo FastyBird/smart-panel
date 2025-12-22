@@ -1,6 +1,7 @@
 import { channelsSchema } from '../../../spec/channels';
+import { devicesSchema } from '../../../spec/devices';
 import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
-import { ChannelCategory as ChannelCategoryType } from '../devices.constants';
+import { ChannelCategory as ChannelCategoryType, DeviceCategory as DeviceCategoryType } from '../devices.constants';
 
 /**
  * Type for property spec from schema
@@ -284,4 +285,223 @@ function mapDataType(dataType: string): DataTypeType {
 	};
 
 	return mapping[dataType] ?? DataTypeType.UNKNOWN;
+}
+
+// ============================================================================
+// Device-level schema utilities
+// ============================================================================
+
+/**
+ * Channel spec from device schema
+ */
+export interface ChannelSpec {
+	category: ChannelCategoryType;
+	required: boolean;
+	multiple: boolean;
+	description: { en: string };
+}
+
+/**
+ * Device spec from schema
+ */
+export interface DeviceSpec {
+	category: DeviceCategoryType;
+	description: { en: string };
+	channels: Record<string, ChannelSpec>;
+}
+
+/**
+ * Get device specification by category
+ * @param deviceCategory The device category to query
+ * @returns Device specification or null if not found
+ */
+export function getDeviceSpec(deviceCategory: DeviceCategoryType): DeviceSpec | null {
+	const deviceSpec = devicesSchema[deviceCategory] as DeviceSpec | undefined;
+
+	if (!deviceSpec || typeof deviceSpec !== 'object') {
+		return null;
+	}
+
+	return deviceSpec;
+}
+
+/**
+ * Get required channels for a device category
+ * @param deviceCategory The device category to query
+ * @returns Array of required channel categories
+ */
+export function getRequiredChannels(deviceCategory: DeviceCategoryType): ChannelCategoryType[] {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return [];
+	}
+
+	const requiredChannels: ChannelCategoryType[] = [];
+
+	for (const [, channelSpec] of Object.entries(deviceSpec.channels)) {
+		if (channelSpec.required === true) {
+			const channelCategory = mapChannelCategory(channelSpec.category);
+
+			if (channelCategory) {
+				requiredChannels.push(channelCategory);
+			}
+		}
+	}
+
+	return requiredChannels;
+}
+
+/**
+ * Get all allowed channels for a device category (required + optional)
+ * @param deviceCategory The device category to query
+ * @returns Array of all allowed channel specs
+ */
+export function getAllowedChannels(deviceCategory: DeviceCategoryType): ChannelSpec[] {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return [];
+	}
+
+	return Object.values(deviceSpec.channels);
+}
+
+/**
+ * Check if a channel category is allowed for a device category
+ * @param deviceCategory The device category
+ * @param channelCategory The channel category to check
+ * @returns true if the channel is allowed for this device
+ */
+export function isChannelAllowed(deviceCategory: DeviceCategoryType, channelCategory: ChannelCategoryType): boolean {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return false;
+	}
+
+	for (const channelSpec of Object.values(deviceSpec.channels)) {
+		if (channelSpec.category === channelCategory) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Check if a channel can have multiple instances
+ * @param deviceCategory The device category
+ * @param channelCategory The channel category to check
+ * @returns true if multiple instances are allowed
+ */
+export function isChannelMultiple(deviceCategory: DeviceCategoryType, channelCategory: ChannelCategoryType): boolean {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return false;
+	}
+
+	for (const channelSpec of Object.values(deviceSpec.channels)) {
+		if (channelSpec.category === channelCategory) {
+			return channelSpec.multiple === true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Check if a channel is required for a device category
+ * @param deviceCategory The device category
+ * @param channelCategory The channel category to check
+ * @returns true if the channel is required
+ */
+export function isChannelRequired(deviceCategory: DeviceCategoryType, channelCategory: ChannelCategoryType): boolean {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return false;
+	}
+
+	for (const channelSpec of Object.values(deviceSpec.channels)) {
+		if (channelSpec.category === channelCategory) {
+			return channelSpec.required === true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Get channel spec for a specific channel category within a device
+ * @param deviceCategory The device category
+ * @param channelCategory The channel category
+ * @returns Channel spec or null if not found
+ */
+export function getChannelSpec(
+	deviceCategory: DeviceCategoryType,
+	channelCategory: ChannelCategoryType,
+): ChannelSpec | null {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return null;
+	}
+
+	for (const channelSpec of Object.values(deviceSpec.channels)) {
+		if (channelSpec.category === channelCategory) {
+			return channelSpec;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Get all property categories for a channel
+ * @param channelCategory The channel category
+ * @returns Array of all property categories with their specs
+ */
+export function getAllProperties(channelCategory: ChannelCategoryType): PropertyMetadata[] {
+	const channelSpec = channelsSchema[channelCategory] as { properties?: Record<string, PropertySpec> } | undefined;
+
+	if (!channelSpec || typeof channelSpec !== 'object' || !channelSpec.properties) {
+		return [];
+	}
+
+	const properties: PropertyMetadata[] = [];
+
+	for (const [propKey, propSpec] of Object.entries(channelSpec.properties)) {
+		const propertyCategory = mapPropertyCategory(propKey);
+
+		if (propertyCategory) {
+			properties.push({
+				category: propertyCategory,
+				required: propSpec.required ?? false,
+				permissions: mapPermissions(propSpec.permissions ?? []),
+				data_type: mapDataType(propSpec.data_type ?? ''),
+				unit: propSpec.unit ?? null,
+				format: propSpec.format ?? null,
+				invalid: propSpec.invalid ?? null,
+				step: propSpec.step ?? null,
+			});
+		}
+	}
+
+	return properties;
+}
+
+/**
+ * Map channel category string from schema to ChannelCategory enum
+ */
+function mapChannelCategory(category: string): ChannelCategoryType | null {
+	// The category values in the schema match the enum values (lowercase with underscores)
+	const validCategories = Object.values(ChannelCategoryType) as string[];
+
+	if (validCategories.includes(category)) {
+		return category as ChannelCategoryType;
+	}
+
+	return null;
 }

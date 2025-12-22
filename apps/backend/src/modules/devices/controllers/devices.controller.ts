@@ -36,7 +36,9 @@ import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
 import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
+import { DeviceValidationResponseModel, DevicesValidationResponseModel } from '../models/device-validation.model';
 import { DeviceResponseModel, DevicesResponseModel } from '../models/devices-response.model';
+import { DeviceValidationService } from '../services/device-validation.service';
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
@@ -48,6 +50,7 @@ export class DevicesController {
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly devicesMapperService: DevicesTypeMapperService,
+		private readonly deviceValidationService: DeviceValidationService,
 	) {}
 
 	@ApiOperation({
@@ -74,6 +77,76 @@ export class DevicesController {
 		const response = new DevicesResponseModel();
 
 		response.data = devices;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Validate all devices against their specifications',
+		description:
+			'Validates all registered devices against their category specifications. Checks for required channels and properties, and reports any missing or incorrectly configured elements.',
+		operationId: 'get-devices-module-devices-validation',
+	})
+	@ApiSuccessResponse(
+		DevicesValidationResponseModel,
+		'Validation results for all devices. Includes a summary of valid/invalid devices and detailed issues for each device.',
+	)
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('validation')
+	async validateAll(): Promise<DevicesValidationResponseModel> {
+		this.logger.debug('Validating all devices');
+
+		const validationResult = await this.deviceValidationService.validateAllDevices();
+
+		this.logger.debug(
+			`Validation complete: ${validationResult.summary.validDevices}/${validationResult.summary.totalDevices} valid`,
+		);
+
+		const response = new DevicesValidationResponseModel();
+
+		response.data = {
+			summary: validationResult.summary,
+			devices: validationResult.devices,
+		};
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Validate a specific device against its specification',
+		description:
+			'Validates a specific device identified by its unique ID against its category specification. Checks for required channels and properties, and reports any missing or incorrectly configured elements.',
+		operationId: 'get-devices-module-device-validation',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiSuccessResponse(
+		DeviceValidationResponseModel,
+		'Validation result for the specified device. Includes whether the device is valid and a list of any issues found.',
+	)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id/validation')
+	async validateOne(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<DeviceValidationResponseModel> {
+		this.logger.debug(`Validating device id=${id}`);
+
+		const validationResult = await this.deviceValidationService.validateDeviceById(id);
+
+		if (!validationResult) {
+			this.logger.error(`[ERROR] Device with id=${id} not found`);
+
+			throw new NotFoundException('Requested device does not exist');
+		}
+
+		this.logger.debug(`Device id=${id} validation: ${validationResult.isValid ? 'valid' : 'invalid'}`);
+
+		const response = new DeviceValidationResponseModel();
+
+		response.data = validationResult;
 
 		return response;
 	}

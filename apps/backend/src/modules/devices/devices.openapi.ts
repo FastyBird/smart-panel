@@ -14,6 +14,14 @@ import {
 	DevicesModuleDeviceCategory,
 } from './models/devices-enums.model';
 import {
+	DeviceValidationResponseModel,
+	DeviceValidationResultModel,
+	DevicesValidationModel,
+	DevicesValidationResponseModel,
+	ValidationIssueModel,
+	ValidationSummaryModel,
+} from './models/device-validation.model';
+import {
 	ChannelControlResponseModel,
 	ChannelControlsResponseModel,
 	ChannelPropertiesResponseModel,
@@ -58,6 +66,14 @@ export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	ChannelControlResponseModel,
 	ChannelControlsResponseModel,
 	PropertyTimeseriesResponseModel,
+	// Validation response models
+	DevicesValidationResponseModel,
+	DeviceValidationResponseModel,
+	// Validation data models
+	DevicesValidationModel,
+	DeviceValidationResultModel,
+	ValidationSummaryModel,
+	ValidationIssueModel,
 	// Data models
 	DeviceChannelSpecModel,
 	DeviceSpecModel,

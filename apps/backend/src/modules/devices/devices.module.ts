@@ -57,6 +57,7 @@ import { ChannelsPropertiesService } from './services/channels.properties.servic
 import { ChannelsService } from './services/channels.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
+import { DeviceValidationService } from './services/device-validation.service';
 import { DevicesSeederService } from './services/devices-seeder.service';
 import { DevicesTypeMapperService } from './services/devices-type-mapper.service';
 import { DevicesControlsService } from './services/devices.controls.service';
@@ -109,6 +110,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelsService,
 		ChannelsControlsService,
 		ChannelsPropertiesService,
+		DeviceValidationService,
 		DeviceExistsConstraintValidator,
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
