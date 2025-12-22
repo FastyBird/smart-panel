@@ -394,8 +394,10 @@ export class Z2mDeviceMapperService {
 			const existing = channelMap.get(mappedChannel.identifier);
 			if (existing) {
 				// Merge properties into existing channel
+				// Use z2mProperty for deduplication since multiple Z2M properties can map to the same
+				// spec identifier (e.g., local_temperature and current_heating_setpoint both map to 'temperature')
 				for (const prop of mappedChannel.properties) {
-					if (!existing.properties.find((p) => p.identifier === prop.identifier)) {
+					if (!existing.properties.find((p) => p.z2mProperty === prop.z2mProperty)) {
 						existing.properties.push(prop);
 					}
 				}
