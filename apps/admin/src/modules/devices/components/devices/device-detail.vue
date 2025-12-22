@@ -45,6 +45,50 @@
 				</el-tag>
 			</el-text>
 		</dd>
+		<dt
+			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			style="background: var(--el-fill-color-light)"
+		>
+			{{ t('devicesModule.texts.devices.validation') }}
+		</dt>
+		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+			<el-text>
+				<el-tag
+					v-if="validationLoading"
+					size="small"
+					type="info"
+				>
+					<icon
+						icon="mdi:loading"
+						class="animate-spin"
+					/>
+				</el-tag>
+				<el-tag
+					v-else-if="isValid === true"
+					size="small"
+					type="success"
+				>
+					{{ t('devicesModule.validation.status.valid') }}
+				</el-tag>
+				<el-tag
+					v-else-if="isValid === false"
+					size="small"
+					type="danger"
+				>
+					{{ t('devicesModule.validation.status.invalid') }}
+					<template v-if="errorCount > 0 || warningCount > 0">
+						({{ errorCount }} {{ t('devicesModule.validation.errors') }}, {{ warningCount }} {{ t('devicesModule.validation.warnings') }})
+					</template>
+				</el-tag>
+				<el-tag
+					v-else
+					size="small"
+					type="info"
+				>
+					{{ t('devicesModule.validation.status.unknown') }}
+				</el-tag>
+			</el-text>
+		</dd>
 		<device-detail-description
 			v-if="deviceInfoChannel"
 			:device="device"
@@ -74,16 +118,77 @@
 			</el-text>
 		</dd>
 	</dl>
+
+	<!-- Validation Issues Section -->
+	<template v-if="issues.length > 0">
+		<el-divider>
+			<el-icon><icon icon="mdi:alert-circle-outline" /></el-icon>
+			{{ t('devicesModule.validation.issuesTitle') }}
+		</el-divider>
+
+		<el-table
+			:data="issues"
+			size="small"
+			class="w-full"
+		>
+			<el-table-column
+				:label="t('devicesModule.validation.table.severity')"
+				prop="severity"
+				:width="100"
+			>
+				<template #default="scope">
+					<el-tag
+						:type="scope.row.severity === 'error' ? 'danger' : 'warning'"
+						size="small"
+					>
+						{{ scope.row.severity === 'error' ? t('devicesModule.validation.severity.error') : t('devicesModule.validation.severity.warning') }}
+					</el-tag>
+				</template>
+			</el-table-column>
+			<el-table-column
+				:label="t('devicesModule.validation.table.type')"
+				prop="type"
+				:width="150"
+			>
+				<template #default="scope">
+					{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
+				</template>
+			</el-table-column>
+			<el-table-column
+				:label="t('devicesModule.validation.table.message')"
+				prop="message"
+			/>
+			<el-table-column
+				:label="t('devicesModule.validation.table.channel')"
+				prop="channelCategory"
+				:width="150"
+			>
+				<template #default="scope">
+					<template v-if="scope.row.channelCategory">
+						{{ t(`devicesModule.categories.channels.${scope.row.channelCategory}`, scope.row.channelCategory) }}
+					</template>
+					<span
+						v-else
+						class="text-gray-400"
+					>
+						-
+					</span>
+				</template>
+			</el-table-column>
+		</el-table>
+	</template>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { I18nT, useI18n } from 'vue-i18n';
 
-import { ElTag, ElText } from 'element-plus';
+import { ElDivider, ElIcon, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import { DevicesModuleChannelCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
-import { useChannels } from '../../composables/composables';
+import { useChannels, useDeviceValidation } from '../../composables/composables';
 import { type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';
 
@@ -99,6 +204,7 @@ const props = defineProps<IDeviceDetailProps>();
 const { t } = useI18n();
 
 const { channels } = useChannels({ deviceId: props.device.id });
+const { isValid, issues, errorCount, warningCount, isLoading: validationLoading } = useDeviceValidation({ id: props.device.id });
 
 const alerts: string[] = [];
 

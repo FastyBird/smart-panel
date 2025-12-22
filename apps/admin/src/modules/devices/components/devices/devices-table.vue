@@ -234,6 +234,20 @@
 		</el-table-column>
 
 		<el-table-column
+			:label="t('devicesModule.table.devices.columns.validation.title')"
+			prop="validation"
+			:width="130"
+		>
+			<template #default="scope">
+				<devices-table-column-validation
+					:device="scope.row"
+					:filters="innerFilters"
+					@filter-by="(value: 'valid' | 'invalid', add: boolean) => onFilterBy('validation', value, add)"
+				/>
+			</template>
+		</el-table-column>
+
+		<el-table-column
 			:width="180"
 			align="right"
 		>
@@ -295,6 +309,7 @@ import type { IDevice } from '../../store/devices.store.types';
 import DevicesTableColumnIcon from './devices-table-column-icon.vue';
 import DevicesTableColumnPlugin from './devices-table-column-plugin.vue';
 import DevicesTableColumnState from './devices-table-column-state.vue';
+import DevicesTableColumnValidation from './devices-table-column-validation.vue';
 import type { IDevicesTableProps } from './devices-table.types';
 
 defineOptions({
@@ -377,6 +392,12 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 			innerFilters.value.enabled = data as 'enabled' | 'disabled';
 		} else {
 			innerFilters.value.enabled = 'all';
+		}
+	} else if (column === 'validation') {
+		if (add === true) {
+			innerFilters.value.validation = data as 'valid' | 'invalid';
+		} else {
+			innerFilters.value.validation = 'all';
 		}
 	}
 };

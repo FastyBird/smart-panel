@@ -16,6 +16,7 @@ export const DevicesFilterSchema = z.object({
 	states: z.array(z.nativeEnum(DevicesModuleDeviceConnectionStatus)),
 	categories: z.array(z.nativeEnum(DevicesModuleDeviceCategory)),
 	enabled: z.enum(['all', 'enabled', 'disabled']).default('all'),
+	validation: z.enum(['all', 'valid', 'invalid']).default('all'),
 });
 
 export const ChannelsFilterSchema = z.object({

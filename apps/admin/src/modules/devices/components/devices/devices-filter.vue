@@ -40,6 +40,29 @@
 					/>
 				</el-radio-group>
 			</el-form-item>
+
+			<el-divider direction="vertical" />
+
+			<el-form-item
+				:label="t('devicesModule.fields.devices.validation.title')"
+				:class="[ns.e('device-validation')]"
+				class="p-1 m-0!"
+			>
+				<el-radio-group v-model="innerFilters.validation">
+					<el-radio-button
+						:label="t('devicesModule.validation.filter.valid')"
+						value="valid"
+					/>
+					<el-radio-button
+						:label="t('devicesModule.validation.filter.invalid')"
+						value="invalid"
+					/>
+					<el-radio-button
+						:label="t('devicesModule.validation.filter.all')"
+						value="all"
+					/>
+				</el-radio-group>
+			</el-form-item>
 		</el-form>
 
 		<el-button

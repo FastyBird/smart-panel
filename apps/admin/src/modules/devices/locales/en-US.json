@@ -186,7 +186,8 @@
       "alertsCount": "No alerts detected | One alert detected | {count} alerts detected",
       "channels": "Channels",
       "alerts": "Alerts",
-      "status": "Status"
+      "status": "Status",
+      "validation": "Validation"
     },
     "channels": {
       "noChannels": "You don't have configured any device channel",
@@ -312,6 +313,9 @@
       "enabled": {
         "title": "Enabled",
         "placeholder": "Enable or disable device"
+      },
+      "validation": {
+        "title": "Validation"
       }
     },
     "channels": {
@@ -455,6 +459,9 @@
             "enabled": "Enabled",
             "disabled": "Disabled"
           }
+        },
+        "validation": {
+          "title": "Validation"
         }
       }
     },
@@ -755,6 +762,40 @@
       "voltage": "Voltage",
       "volume": "Volume",
       "zoom": "Zoom"
+    }
+  },
+  "validation": {
+    "status": {
+      "valid": "Valid",
+      "invalid": "Invalid",
+      "unknown": "Unknown"
+    },
+    "filter": {
+      "valid": "Valid",
+      "invalid": "Invalid",
+      "all": "All"
+    },
+    "errors": "errors",
+    "warnings": "warnings",
+    "issuesTitle": "Validation Issues",
+    "severity": {
+      "error": "Error",
+      "warning": "Warning"
+    },
+    "table": {
+      "severity": "Severity",
+      "type": "Type",
+      "message": "Message",
+      "channel": "Channel"
+    },
+    "issueTypes": {
+      "missing_channel": "Missing channel",
+      "missing_property": "Missing property",
+      "invalid_data_type": "Invalid data type",
+      "invalid_permissions": "Invalid permissions",
+      "invalid_format": "Invalid format",
+      "unknown_channel": "Unknown channel",
+      "duplicate_channel": "Duplicate channel"
     }
   }
 }

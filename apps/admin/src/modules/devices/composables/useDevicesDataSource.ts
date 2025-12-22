@@ -9,7 +9,7 @@ import { type ISortEntry, injectStoresManager, useListQuery } from '../../../com
 import { DevicesModuleDeviceConnectionStatus } from '../../../openapi.constants';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
-import { devicesStoreKey } from '../store/keys';
+import { devicesStoreKey, devicesValidationStoreKey } from '../store/keys';
 
 import { DevicesFilterSchema } from './schemas';
 import type { IDevicesFilter, IUseDevicesDataSource } from './types';
@@ -21,6 +21,7 @@ export const defaultDevicesFilter: IDevicesFilter = {
 	states: [],
 	categories: [],
 	enabled: 'all',
+	validation: 'all',
 };
 
 export const defaultDevicesSort: ISortEntry = {
@@ -32,6 +33,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
+	const validationStore = storesManager.getStore(devicesValidationStoreKey);
 
 	const { firstLoad, semaphore } = storeToRefs(devicesStore);
 
@@ -66,7 +68,8 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 			filters.value.state !== defaultDevicesFilter.state ||
 			!isEqual(filters.value.states, defaultDevicesFilter.states) ||
 			!isEqual(filters.value.categories, defaultDevicesFilter.categories) ||
-			!isEqual(filters.value.enabled, defaultDevicesFilter.enabled)
+			!isEqual(filters.value.enabled, defaultDevicesFilter.enabled) ||
+			filters.value.validation !== defaultDevicesFilter.validation
 		);
 	});
 
@@ -79,6 +82,11 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 	);
 
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
+
+	const isDeviceValid = (deviceId: string): boolean | null => {
+		const result = validationStore.getDeviceValidation(deviceId);
+		return result?.isValid ?? null;
+	};
 
 	const devices = computed<IDevice[]>((): IDevice[] => {
 		return orderBy<IDevice>(
@@ -112,7 +120,10 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 									DevicesModuleDeviceConnectionStatus.stopped,
 									DevicesModuleDeviceConnectionStatus.lost,
 									DevicesModuleDeviceConnectionStatus.unknown,
-								].includes(device.status.status)))
+								].includes(device.status.status))) &&
+						(filters.value.validation === 'all' ||
+							(filters.value.validation === 'valid' && isDeviceValid(device.id) === true) ||
+							(filters.value.validation === 'invalid' && isDeviceValid(device.id) === false))
 				),
 			[
 				(device: IDevice) =>
