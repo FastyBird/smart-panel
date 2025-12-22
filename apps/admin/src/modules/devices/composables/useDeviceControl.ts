@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -17,6 +17,7 @@ interface IUseDeviceControlProps {
 }
 
 const DEBOUNCE_DELAY = 300;
+const PENDING_VALUE_TIMEOUT = 10000; // Clear pending values after 10 seconds as failsafe
 
 export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceControl => {
 	const storesManager = injectStoresManager();
@@ -32,6 +33,9 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 
 	// Debounce timers for each property
 	const debounceTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+	// Pending value cleanup timers
+	const pendingValueTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 	// Pending values (for optimistic updates)
 	const pendingValues: Ref<Record<string, string | number | boolean | null>> = ref({});
@@ -97,6 +101,28 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 		return loadingProperties.value[propertyId] ?? false;
 	};
 
+	const clearPendingValue = (propertyId: IChannelProperty['id']): void => {
+		delete pendingValues.value[propertyId];
+
+		if (pendingValueTimers[propertyId]) {
+			clearTimeout(pendingValueTimers[propertyId]);
+			delete pendingValueTimers[propertyId];
+		}
+	};
+
+	const schedulePendingValueCleanup = (propertyId: IChannelProperty['id']): void => {
+		// Clear any existing cleanup timer
+		if (pendingValueTimers[propertyId]) {
+			clearTimeout(pendingValueTimers[propertyId]);
+		}
+
+		// Set a failsafe timeout to clear pending value
+		pendingValueTimers[propertyId] = setTimeout(() => {
+			delete pendingValues.value[propertyId];
+			delete pendingValueTimers[propertyId];
+		}, PENDING_VALUE_TIMEOUT);
+	};
+
 	const setPropertyValue = async (
 		channelId: IChannel['id'],
 		propertyId: IChannelProperty['id'],
@@ -139,16 +165,17 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 
 					if (result !== true) {
 						// Revert optimistic update on failure
-						delete pendingValues.value[propertyId];
+						clearPendingValue(propertyId);
 						resolve(false);
 					} else {
-						// Success - remove pending value (real value will come from WS event)
-						delete pendingValues.value[propertyId];
+						// Success - keep pending value until store updates (WS event)
+						// Schedule cleanup as failsafe in case WS event never arrives
+						schedulePendingValueCleanup(propertyId);
 						resolve(true);
 					}
 				} catch {
 					// Revert optimistic update on error
-					delete pendingValues.value[propertyId];
+					clearPendingValue(propertyId);
 					resolve(false);
 				} finally {
 					loadingProperties.value[propertyId] = false;
@@ -195,6 +222,36 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	const areChannelsLoaded = computed<boolean>((): boolean => {
 		return channelsFirstLoad.value.includes(id);
 	});
+
+	// Watch for store value changes and clear pending values when they match
+	watch(
+		() => {
+			// Create a map of property values from the store for all pending properties
+			const storeValues: Record<string, string | number | boolean | null> = {};
+
+			for (const propertyId of Object.keys(pendingValues.value)) {
+				const property = channelsPropertiesStore.findById(propertyId);
+
+				if (property) {
+					storeValues[propertyId] = property.value;
+				}
+			}
+
+			return storeValues;
+		},
+		(storeValues) => {
+			// Clear pending values that now match the store
+			for (const [propertyId, pendingValue] of Object.entries(pendingValues.value)) {
+				const storeValue = storeValues[propertyId];
+
+				// Compare values (handle type coercion for booleans/numbers)
+				if (storeValue === pendingValue || String(storeValue) === String(pendingValue)) {
+					clearPendingValue(propertyId);
+				}
+			}
+		},
+		{ deep: true }
+	);
 
 	return {
 		device,
