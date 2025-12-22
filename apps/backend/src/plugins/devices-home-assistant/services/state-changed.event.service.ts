@@ -141,7 +141,7 @@ export class StateChangedEventService implements WsEventService {
 			]);
 
 			if (!haDevices?.length || !panelDevices?.length || !properties?.length) {
-				this.logger.warn('Missing data, skipping automatic sync');
+				this.logger.debug('Missing data, skipping automatic sync');
 
 				return false;
 			}

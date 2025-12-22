@@ -206,7 +206,7 @@ export class HomeAssistantHttpService {
 			]);
 
 			if (!states?.length || !haDevices?.length || !devices?.length || !properties?.length) {
-				this.logger.warn('Missing data, skipping automatic sync');
+				this.logger.debug('Missing data, skipping automatic sync');
 
 				return;
 			}

@@ -168,6 +168,12 @@ export class MapperService {
 				continue;
 			}
 
+			// Virtual command properties need a valid entity ID to send commands to
+			if (!property.haEntityId) {
+				this.logger.warn(`Virtual command property ${property.id} has no haEntityId, cannot send command`);
+				continue;
+			}
+
 			// Get the service call from VirtualPropertyService
 			const serviceCall = this.virtualPropertyService.getServiceCallForCommand(
 				channel.category,
