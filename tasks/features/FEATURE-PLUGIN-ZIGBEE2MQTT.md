@@ -1,11 +1,12 @@
 # Task: Zigbee2MQTT plugin for Zigbee devices via MQTT
 ID: FEATURE-PLUGIN-ZIGBEE2MQTT
 Type: feature
-Scope: backend
+Scope: backend, admin
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 Created: 2025-11-14
+Completed: 2025-12-22
 
 ## 1. Business goal
 
@@ -210,34 +211,35 @@ The plugin should:
 
 ## 4. Acceptance criteria
 
-- [ ] New Zigbee2MQTT plugin exists in the backend modules structure (e.g. `plugins/zigbee2mqtt` or similar, consistent with existing plugins).
-- [ ] Plugin can be **enabled/disabled** via the existing configuration system.
-- [ ] Plugin connects to the configured MQTT broker using the `mqtt` library and respects:
+- [x] New Zigbee2MQTT plugin exists in the backend modules structure (e.g. `plugins/zigbee2mqtt` or similar, consistent with existing plugins).
+- [x] Plugin can be **enabled/disabled** via the existing configuration system.
+- [x] Plugin connects to the configured MQTT broker using the `mqtt` library and respects:
     - base topic,
     - credentials,
     - reconnect logic.
-- [ ] On startup (when enabled) the plugin:
-    - [ ] subscribes to `\<base\>/bridge/devices`, `\<base\>/bridge/state`, `\<base\>/bridge/event`,
-    - [ ] subscribes to `\<base\>/+/availability` and `\<base\>/+` (or equivalent filtered subscriptions),
-    - [ ] builds an internal device registry from `bridge/devices`,
-    - [ ] creates corresponding **Device**, **Channel**, and **Property** entities in the Smart Panel backend for supported devices.
-- [ ] For at least these device types:
-    - [ ] **Light** (on/off, brightness, color_temp or color),
-    - [ ] **Switch** (on/off),
-    - [ ] **Binary sensor** (e.g. occupancy),
-    - [ ] **Numeric sensor** (e.g. temperature),
+- [x] On startup (when enabled) the plugin:
+    - [x] subscribes to `\<base\>/bridge/devices`, `\<base\>/bridge/state`, `\<base\>/bridge/event`,
+    - [x] subscribes to `\<base\>/+/availability` and `\<base\>/+` (or equivalent filtered subscriptions),
+    - [x] builds an internal device registry from `bridge/devices`,
+    - [x] creates corresponding **Device**, **Channel**, and **Property** entities in the Smart Panel backend for supported devices.
+- [x] For at least these device types:
+    - [x] **Light** (on/off, brightness, color_temp or color),
+    - [x] **Switch** (on/off),
+    - [x] **Binary sensor** (e.g. occupancy),
+    - [x] **Numeric sensor** (e.g. temperature),
       mapping from `exposes` to channels/properties is correct and state is synchronized.
-- [ ] Property values are updated when:
-    - [ ] device state changes (messages on `\<base\>/FRIENDLY_NAME`),
-    - [ ] device availability changes (messages on `\<base\>/FRIENDLY_NAME/availability`).
-- [ ] Commands sent via Smart Panel API (e.g. toggling a light, setting brightness) are published to `\<base\>/FRIENDLY_NAME/set` and:
-    - [ ] are reflected back in Z2M state messages,
-    - [ ] update Smart Panel property values accordingly.
-- [ ] All new services have **unit tests**:
-    - [ ] MQTT integration (at least mocked client-level tests),
-    - [ ] mapping layer (Z2M `exposes` + state JSON → Smart Panel properties),
-    - [ ] command layer (Smart Panel commands → Z2M `/set` payloads).
-- [ ] No breaking changes to other plugins or devices.
+- [x] Property values are updated when:
+    - [x] device state changes (messages on `\<base\>/FRIENDLY_NAME`),
+    - [x] device availability changes (messages on `\<base\>/FRIENDLY_NAME/availability`).
+- [x] Commands sent via Smart Panel API (e.g. toggling a light, setting brightness) are published to `\<base\>/FRIENDLY_NAME/set` and:
+    - [x] are reflected back in Z2M state messages,
+    - [x] update Smart Panel property values accordingly.
+- [x] All new services have **unit tests**:
+    - [x] MQTT integration (at least mocked client-level tests),
+    - [x] mapping layer (Z2M `exposes` + state JSON → Smart Panel properties),
+    - [x] command layer (Smart Panel commands → Z2M `/set` payloads).
+- [x] No breaking changes to other plugins or devices.
+- [x] Admin UI plugin for configuration and device management.
 
 ## 5. Example scenarios
 
