@@ -312,4 +312,66 @@ describe('PropertyCommandService', () => {
 			'devices-module',
 		);
 	});
+
+	describe('ACL permissions', () => {
+		beforeEach(() => {
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+			jest
+				.spyOn(channelsPropertiesService, 'findOne')
+				.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+			jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+			jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
+		});
+
+		it('should allow admin users to execute commands', async () => {
+			const adminUser: ClientUserDto = {
+				id: uuid().toString(),
+				role: UserRole.ADMIN,
+				type: 'user',
+			};
+
+			const result = await service.handleInternal(adminUser, validPayload);
+
+			expect(result.success).toBe(true);
+		});
+
+		it('should allow owner users to execute commands', async () => {
+			const ownerUser: ClientUserDto = {
+				id: uuid().toString(),
+				role: UserRole.OWNER,
+				type: 'user',
+			};
+
+			const result = await service.handleInternal(ownerUser, validPayload);
+
+			expect(result.success).toBe(true);
+		});
+
+		it('should reject regular users', async () => {
+			const regularUser: ClientUserDto = {
+				id: uuid().toString(),
+				role: UserRole.USER,
+				type: 'user',
+			};
+
+			await expect(service.handleInternal(regularUser, validPayload)).rejects.toThrow(
+				'This action is not allowed for this user',
+			);
+		});
+
+		it('should reject third-party tokens', async () => {
+			const thirdPartyToken: ClientUserDto = {
+				id: uuid().toString(),
+				role: UserRole.USER,
+				type: 'token',
+				ownerType: TokenOwnerType.THIRD_PARTY,
+				tokenId: 'third-party-token-id',
+			};
+
+			await expect(service.handleInternal(thirdPartyToken, validPayload)).rejects.toThrow(
+				'This action is not allowed for this user',
+			);
+		});
+	});
 });

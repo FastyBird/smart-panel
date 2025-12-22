@@ -5,6 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
+import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
 import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
@@ -31,8 +32,13 @@ export class PropertyCommandService {
 		user: ClientUserDto,
 		payload?: object,
 	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
-		// Only display clients can control device properties via WebSocket
-		if (user.type !== 'token' || user.ownerType !== TokenOwnerType.DISPLAY) {
+		// Allow display clients to control device properties via WebSocket
+		const isDisplayClient = user.type === 'token' && user.ownerType === TokenOwnerType.DISPLAY;
+
+		// Allow admin/owner users to control device properties via WebSocket
+		const isAdminUser = user.type === 'user' && (user.role === UserRole.ADMIN || user.role === UserRole.OWNER);
+
+		if (!isDisplayClient && !isAdminUser) {
 			throw new WebsocketNotAllowedException('This action is not allowed for this user');
 		}
 
