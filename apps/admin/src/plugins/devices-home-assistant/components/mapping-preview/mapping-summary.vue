@@ -63,10 +63,15 @@
 			<!-- Virtual properties auto-filled -->
 			<div
 				v-if="virtualPropertiesCount > 0"
-				class="flex items-center gap-2 text-sm text-gray-600"
+				class="flex items-center gap-2 text-sm text-gray-600 mb-2"
 			>
-				<el-icon class="text-primary"><InfoFilled /></el-icon>
-				<span>{{ virtualPropertiesCount }} {{ t('devicesHomeAssistantPlugin.fields.mapping.validation.autoFilled') }}</span>
+				<el-tag
+					type="info"
+					size="small"
+				>
+					{{ virtualPropertiesCount }}
+				</el-tag>
+				<span>{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.autoFilled') }}</span>
 			</div>
 
 			<!-- Missing channels warning -->
@@ -153,8 +158,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { InfoFilled } from '@element-plus/icons-vue';
-import { ElAlert, ElCard, ElIcon, ElTag } from 'element-plus';
+import { ElAlert, ElCard, ElTag } from 'element-plus';
 
 import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
