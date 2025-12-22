@@ -274,7 +274,7 @@ import {
 } from '../../../common';
 import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { ChannelDetail, DeviceDetail } from '../components/components';
-import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification } from '../composables/composables';
+import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification, useDeviceValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { deviceChannelsSpecificationOrder } from '../devices.mapping';
@@ -304,6 +304,7 @@ const { validate: validateUuid } = useUuid();
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
+const { fetchValidation } = useDeviceValidation({ id: props.id });
 
 // Track if device was previously loaded to detect deletion
 const wasDeviceLoaded = ref<boolean>(false);
@@ -555,6 +556,11 @@ onBeforeMount((): void => {
 				const err = error as Error;
 
 				throw new DevicesException('Something went wrong', err);
+			});
+
+			// Fetch validation data for this device
+			fetchValidation().catch((): void => {
+				// Silently ignore validation fetch errors - validation is non-critical
 			});
 		})
 		.catch((error: unknown): void => {
