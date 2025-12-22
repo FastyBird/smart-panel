@@ -1,98 +1,39 @@
-import { type Ref, ref } from 'vue';
+import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
-import type {
-	DevicesModuleDeviceValidationResultSchema,
-	DevicesModuleDevicesValidationSchema,
-	DevicesModuleGetDeviceValidationOperation,
-	DevicesModuleGetDevicesValidationOperation,
-	DevicesModuleValidationIssueSchema,
-	DevicesModuleValidationSummarySchema,
-} from '../../../openapi.constants';
+import type { DevicesModuleGetDeviceValidationOperation, DevicesModuleGetDevicesValidationOperation } from '../../../openapi.constants';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException } from '../devices.exceptions';
 
-// Types
-export interface IValidationIssue {
-	type: string;
-	severity: 'error' | 'warning';
-	channelCategory?: string | null;
-	channelId?: string | null;
-	propertyCategory?: string | null;
-	propertyId?: string | null;
-	message: string;
-	expected?: string | null;
-	actual?: string | null;
-}
+import type {
+	DevicesValidationStoreSetup,
+	IDeviceValidationResult,
+	IDevicesValidation,
+	IDevicesValidationGetActionPayload,
+	IDevicesValidationStateSemaphore,
+	IDevicesValidationStoreActions,
+	IDevicesValidationStoreState,
+} from './devices.validation.store.types';
+import { transformDeviceValidationResultResponse, transformDevicesValidationResponse } from './devices.validation.transformers';
 
-export interface IDeviceValidationResult {
-	deviceId: string;
-	deviceIdentifier: string | null;
-	deviceName: string;
-	deviceCategory: string;
-	pluginType: string;
-	isValid: boolean;
-	issues: IValidationIssue[];
-}
-
-export interface IValidationSummary {
-	totalDevices: number;
-	validDevices: number;
-	invalidDevices: number;
-	totalIssues: number;
-	errorCount: number;
-	warningCount: number;
-}
-
-export interface IDevicesValidation {
-	summary: IValidationSummary;
-	devices: IDeviceValidationResult[];
-}
-
-export interface IDevicesValidationStateSemaphore {
+const defaultSemaphore: IDevicesValidationStateSemaphore = {
 	fetching: {
-		items: boolean;
-		item: string[];
-	};
-}
-
-export interface IDevicesValidationStoreState {
-	semaphore: Ref<IDevicesValidationStateSemaphore>;
-	firstLoad: Ref<boolean>;
-	data: Ref<IDevicesValidation | null>;
-	deviceResults: Ref<{ [key: string]: IDeviceValidationResult }>;
-}
-
-export interface IDevicesValidationStoreActions {
-	firstLoadFinished(): boolean;
-	fetching(): boolean;
-	getting(id: string): boolean;
-	getValidation(): IDevicesValidation | null;
-	getDeviceValidation(deviceId: string): IDeviceValidationResult | null;
-	fetch(): Promise<IDevicesValidation>;
-	get(payload: { id: string }): Promise<IDeviceValidationResult>;
-	clear(): void;
-}
-
-export type DevicesValidationStoreSetup = IDevicesValidationStoreState & IDevicesValidationStoreActions;
+		items: false,
+		item: [],
+	},
+};
 
 export const useDevicesValidationStore = defineStore<'devices_module-devices_validation', DevicesValidationStoreSetup>(
 	'devices_module-devices_validation',
 	(): DevicesValidationStoreSetup => {
 		const backend = useBackend();
 
-		const semaphore = ref<IDevicesValidationStateSemaphore>({
-			fetching: {
-				items: false,
-				item: [],
-			},
-		});
+		const semaphore = ref<IDevicesValidationStateSemaphore>(defaultSemaphore);
 		const firstLoad = ref<boolean>(false);
 		const data = ref<IDevicesValidation | null>(null);
-		const deviceResults = ref<{ [key: string]: IDeviceValidationResult }>({});
 
 		let pendingFetchPromise: Promise<IDevicesValidation> | null = null;
 		const pendingGetPromises: Record<string, Promise<IDeviceValidationResult>> = {};
@@ -103,47 +44,16 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 
 		const getting = (id: string): boolean => semaphore.value.fetching.item.includes(id);
 
-		const getValidation = (): IDevicesValidation | null => data.value;
-
-		const getDeviceValidation = (deviceId: string): IDeviceValidationResult | null => {
-			return deviceResults.value[deviceId] || null;
+		const findAll = (): IDeviceValidationResult[] => {
+			return data.value?.devices ?? [];
 		};
 
-		const transformValidationIssue = (issue: DevicesModuleValidationIssueSchema): IValidationIssue => ({
-			type: issue.type,
-			severity: issue.severity as 'error' | 'warning',
-			channelCategory: issue.channel_category ?? null,
-			channelId: issue.channel_id ?? null,
-			propertyCategory: issue.property_category ?? null,
-			propertyId: issue.property_id ?? null,
-			message: issue.message,
-			expected: issue.expected ?? null,
-			actual: issue.actual ?? null,
-		});
-
-		const transformDeviceResult = (result: DevicesModuleDeviceValidationResultSchema): IDeviceValidationResult => ({
-			deviceId: result.device_id,
-			deviceIdentifier: result.device_identifier ?? null,
-			deviceName: result.device_name,
-			deviceCategory: result.device_category,
-			pluginType: result.plugin_type,
-			isValid: result.is_valid,
-			issues: result.issues.map(transformValidationIssue),
-		});
-
-		const transformSummary = (summary: DevicesModuleValidationSummarySchema): IValidationSummary => ({
-			totalDevices: summary.total_devices,
-			validDevices: summary.valid_devices,
-			invalidDevices: summary.invalid_devices,
-			totalIssues: summary.total_issues,
-			errorCount: summary.error_count,
-			warningCount: summary.warning_count,
-		});
-
-		const transformValidation = (validation: DevicesModuleDevicesValidationSchema): IDevicesValidation => ({
-			summary: transformSummary(validation.summary),
-			devices: validation.devices.map(transformDeviceResult),
-		});
+		const findById = (deviceId: string): IDeviceValidationResult | null => {
+			if (data.value === null) {
+				return null;
+			}
+			return data.value.devices.find((device) => device.deviceId === deviceId) ?? null;
+		};
 
 		const fetch = async (): Promise<IDevicesValidation> => {
 			if (pendingFetchPromise) {
@@ -165,15 +75,9 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 					} = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/validation`);
 
 					if (typeof responseData !== 'undefined') {
-						const transformed = transformValidation(responseData.data);
+						const transformed = transformDevicesValidationResponse(responseData.data);
 
 						data.value = transformed;
-
-						// Cache individual device results
-						for (const deviceResult of transformed.devices) {
-							deviceResults.value[deviceResult.deviceId] = deviceResult;
-						}
-
 						firstLoad.value = true;
 
 						return transformed;
@@ -200,7 +104,7 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 			}
 		};
 
-		const get = async (payload: { id: string }): Promise<IDeviceValidationResult> => {
+		const get = async (payload: IDevicesValidationGetActionPayload): Promise<IDeviceValidationResult> => {
 			if (payload.id in pendingGetPromises) {
 				return pendingGetPromises[payload.id];
 			}
@@ -224,9 +128,34 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 					});
 
 					if (typeof responseData !== 'undefined') {
-						const transformed = transformDeviceResult(responseData.data);
+						const transformed = transformDeviceValidationResultResponse(responseData.data);
 
-						deviceResults.value[transformed.deviceId] = transformed;
+						// Update data.devices array - create new array to trigger reactivity
+						if (data.value !== null) {
+							const existingIndex = data.value.devices.findIndex((d) => d.deviceId === transformed.deviceId);
+							if (existingIndex >= 0) {
+								// Update existing entry
+								const newDevices = [...data.value.devices];
+								newDevices[existingIndex] = transformed;
+								data.value = { ...data.value, devices: newDevices };
+							} else {
+								// Add new entry
+								data.value = { ...data.value, devices: [...data.value.devices, transformed] };
+							}
+						} else {
+							// Initialize data with just this device result
+							data.value = {
+								summary: {
+									totalDevices: 1,
+									validDevices: transformed.isValid ? 1 : 0,
+									invalidDevices: transformed.isValid ? 0 : 1,
+									totalIssues: transformed.issues.length,
+									errorCount: transformed.issues.filter((i) => i.severity === 'error').length,
+									warningCount: transformed.issues.filter((i) => i.severity === 'warning').length,
+								},
+								devices: [transformed],
+							};
+						}
 
 						return transformed;
 					}
@@ -254,7 +183,6 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 
 		const clear = (): void => {
 			data.value = null;
-			deviceResults.value = {};
 			firstLoad.value = false;
 		};
 
@@ -262,12 +190,11 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 			semaphore,
 			firstLoad,
 			data,
-			deviceResults,
 			firstLoadFinished,
 			fetching,
 			getting,
-			getValidation,
-			getDeviceValidation,
+			findAll,
+			findById,
 			fetch,
 			get,
 			clear,
@@ -278,3 +205,15 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 export const registerDevicesValidationStore = (pinia: Pinia): Store<string, IDevicesValidationStoreState, object, IDevicesValidationStoreActions> => {
 	return useDevicesValidationStore(pinia);
 };
+
+// Re-export types for convenience
+export type {
+	IValidationIssue,
+	IDeviceValidationResult,
+	IValidationSummary,
+	IDevicesValidation,
+	IDevicesValidationStateSemaphore,
+	IDevicesValidationStoreState,
+	IDevicesValidationStoreActions,
+	DevicesValidationStoreSetup,
+} from './devices.validation.store.types';

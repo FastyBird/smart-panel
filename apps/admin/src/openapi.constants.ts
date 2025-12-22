@@ -242,6 +242,9 @@ export type DevicesModuleDeviceValidationResultSchema = components['schemas']['D
 export type DevicesModuleValidationSummarySchema = components['schemas']['DevicesModuleDataValidationSummary'];
 export type DevicesModuleValidationIssueSchema = components['schemas']['DevicesModuleDataValidationIssue'];
 
+// Devices Module Validation Enums
+export { DevicesModuleDataValidationIssueType, DevicesModuleDataValidationIssueSeverity } from './openapi';
+
 // Dashboard Module Operations
 export type DashboardModuleGetPageOperation = operations['get-dashboard-module-page'];
 export type DashboardModuleGetPagesOperation = operations['get-dashboard-module-pages'];

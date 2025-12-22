@@ -111,13 +111,7 @@
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
 		:class="[ns.b()]"
 	>
-		<el-card
-			v-if="device"
-			class="mt-2"
-			body-class="p-0!"
-		>
-			<device-detail :device="device" />
-		</el-card>
+		<device-detail v-if="device" :device="device" />
 
 		<el-space
 			v-if="sortedChannels"

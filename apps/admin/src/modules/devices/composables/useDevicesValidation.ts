@@ -13,7 +13,7 @@ export interface IUseDevicesValidation {
 	isLoading: ComputedRef<boolean>;
 	isLoaded: ComputedRef<boolean>;
 	fetchValidation: () => Promise<void>;
-	getDeviceValidation: (deviceId: string) => IDeviceValidationResult | null;
+	findById: (deviceId: string) => IDeviceValidationResult | null;
 	isDeviceValid: (deviceId: string) => boolean | null;
 	getDeviceIssueCount: (deviceId: string) => number;
 }
@@ -23,7 +23,7 @@ export const useDevicesValidation = (): IUseDevicesValidation => {
 
 	const validationStore = storesManager.getStore(devicesValidationStoreKey);
 
-	const { data, semaphore, firstLoad, deviceResults } = storeToRefs(validationStore);
+	const { data, semaphore, firstLoad } = storeToRefs(validationStore);
 
 	const validation = computed<IDevicesValidation | null>(() => data.value);
 
@@ -44,17 +44,17 @@ export const useDevicesValidation = (): IUseDevicesValidation => {
 		await validationStore.fetch();
 	};
 
-	const getDeviceValidation = (deviceId: string): IDeviceValidationResult | null => {
-		return deviceResults.value[deviceId] ?? null;
+	const findById = (deviceId: string): IDeviceValidationResult | null => {
+		return validationStore.findById(deviceId);
 	};
 
 	const isDeviceValid = (deviceId: string): boolean | null => {
-		const result = deviceResults.value[deviceId];
+		const result = validationStore.findById(deviceId);
 		return result ? result.isValid : null;
 	};
 
 	const getDeviceIssueCount = (deviceId: string): number => {
-		const result = deviceResults.value[deviceId];
+		const result = validationStore.findById(deviceId);
 		return result ? result.issues.length : 0;
 	};
 
@@ -65,7 +65,7 @@ export const useDevicesValidation = (): IUseDevicesValidation => {
 		isLoading,
 		isLoaded,
 		fetchValidation,
-		getDeviceValidation,
+		findById,
 		isDeviceValid,
 		getDeviceIssueCount,
 	};

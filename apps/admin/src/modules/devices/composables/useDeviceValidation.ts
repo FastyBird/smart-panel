@@ -25,30 +25,30 @@ export const useDeviceValidation = ({ id }: IUseDeviceValidationProps): IUseDevi
 
 	const validationStore = storesManager.getStore(devicesValidationStoreKey);
 
-	const { deviceResults, semaphore } = storeToRefs(validationStore);
+	const { semaphore } = storeToRefs(validationStore);
 
 	const validation = computed<IDeviceValidationResult | null>(() => {
-		return deviceResults.value[id] ?? null;
+		return validationStore.findById(id);
 	});
 
 	const isValid = computed<boolean | null>(() => {
-		const result = deviceResults.value[id];
+		const result = validationStore.findById(id);
 		return result ? result.isValid : null;
 	});
 
 	const issues = computed<IValidationIssue[]>(() => {
-		const result = deviceResults.value[id];
+		const result = validationStore.findById(id);
 		return result ? result.issues : [];
 	});
 
 	const errorCount = computed<number>(() => {
-		const result = deviceResults.value[id];
+		const result = validationStore.findById(id);
 		if (!result) return 0;
 		return result.issues.filter((issue) => issue.severity === 'error').length;
 	});
 
 	const warningCount = computed<number>(() => {
-		const result = deviceResults.value[id];
+		const result = validationStore.findById(id);
 		if (!result) return 0;
 		return result.issues.filter((issue) => issue.severity === 'warning').length;
 	});

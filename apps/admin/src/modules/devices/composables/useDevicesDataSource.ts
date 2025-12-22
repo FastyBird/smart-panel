@@ -84,7 +84,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
 
 	const isDeviceValid = (deviceId: string): boolean | null => {
-		const result = validationStore.getDeviceValidation(deviceId);
+		const result = validationStore.findById(deviceId);
 		return result?.isValid ?? null;
 	};
 

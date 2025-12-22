@@ -1,130 +1,152 @@
 <template>
-	<dl class="grid m-0">
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('devicesModule.texts.devices.category') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				{{ t(`devicesModule.categories.devices.${device.category}`) }}
-			</el-text>
-		</dd>
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('devicesModule.texts.devices.channels') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				<i18n-t
-					keypath="devicesModule.texts.devices.channelsCount"
-					:plural="channels.length"
-				>
-					<template #count>
-						<strong>{{ channels.length }}</strong>
-					</template>
-				</i18n-t>
-			</el-text>
-		</dd>
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('devicesModule.texts.devices.status') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				<el-tag
-					:type="stateColor"
-					size="small"
-				>
-					{{ t(`devicesModule.states.${String(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown).toLowerCase()}`) }}
-				</el-tag>
-			</el-text>
-		</dd>
-		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('devicesModule.texts.devices.validation') }}
-		</dt>
-		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				<el-tag
-					v-if="validationLoading"
-					size="small"
-					type="info"
-				>
-					<icon
-						icon="mdi:loading"
-						class="animate-spin"
-					/>
-				</el-tag>
-				<el-tag
-					v-else-if="isValid === true"
-					size="small"
-					type="success"
-				>
-					{{ t('devicesModule.validation.status.valid') }}
-				</el-tag>
-				<el-tag
-					v-else-if="isValid === false"
-					size="small"
-					type="danger"
-				>
-					{{ t('devicesModule.validation.status.invalid') }}
-					<template v-if="errorCount > 0 || warningCount > 0">
-						({{ errorCount }} {{ t('devicesModule.validation.errors') }}, {{ warningCount }} {{ t('devicesModule.validation.warnings') }})
-					</template>
-				</el-tag>
-				<el-tag
-					v-else
-					size="small"
-					type="info"
-				>
-					{{ t('devicesModule.validation.status.unknown') }}
-				</el-tag>
-			</el-text>
-		</dd>
-		<device-detail-description
-			v-if="deviceInfoChannel"
-			:device="device"
-			:channel="deviceInfoChannel"
-		/>
-		<dt
-			class="b-r b-r-solid py-1 px-2 flex items-center justify-end"
-			style="background: var(--el-fill-color-light)"
-		>
-			{{ t('devicesModule.texts.devices.alerts') }}
-		</dt>
-		<dd class="col-start-2 m-0 p-2 flex items-center min-w-[8rem]">
-			<el-text>
-				<el-tag
-					size="small"
-					:type="alerts.length === 0 ? 'success' : 'danger'"
-				>
+	<el-card
+		class="mt-2"
+		body-class="p-0!"
+	>
+		<dl class="grid m-0">
+			<dt
+				class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+				style="background: var(--el-fill-color-light)"
+			>
+				{{ t('devicesModule.texts.devices.category') }}
+			</dt>
+			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+				<el-text>
+					{{ t(`devicesModule.categories.devices.${device.category}`) }}
+				</el-text>
+			</dd>
+			<dt
+				class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+				style="background: var(--el-fill-color-light)"
+			>
+				{{ t('devicesModule.texts.devices.channels') }}
+			</dt>
+			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+				<el-text>
 					<i18n-t
-						keypath="devicesModule.texts.devices.alertsCount"
-						:plural="alerts.length"
+						keypath="devicesModule.texts.devices.channelsCount"
+						:plural="channels.length"
 					>
 						<template #count>
-							<strong>{{ alerts.length }}</strong>
+							<strong>{{ channels.length }}</strong>
 						</template>
 					</i18n-t>
-				</el-tag>
-			</el-text>
-		</dd>
-	</dl>
+				</el-text>
+			</dd>
+			<dt
+				class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+				style="background: var(--el-fill-color-light)"
+			>
+				{{ t('devicesModule.texts.devices.status') }}
+			</dt>
+			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+				<el-text>
+					<el-tag
+						:type="stateColor"
+						size="small"
+					>
+						{{ t(`devicesModule.states.${String(device.status?.status ?? DevicesModuleDeviceConnectionStatus.unknown).toLowerCase()}`) }}
+					</el-tag>
+				</el-text>
+			</dd>
+			<dt
+				class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+				style="background: var(--el-fill-color-light)"
+			>
+				{{ t('devicesModule.texts.devices.validation') }}
+			</dt>
+			<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+				<el-text>
+					<el-tag
+						v-if="validationLoading"
+						size="small"
+						type="info"
+					>
+						<icon
+							icon="mdi:loading"
+							class="animate-spin"
+						/>
+					</el-tag>
+					<el-tag
+						v-else-if="isValid === true"
+						size="small"
+						type="success"
+					>
+						{{ t('devicesModule.validation.status.valid') }}
+					</el-tag>
+					<el-tag
+						v-else-if="isValid === false"
+						size="small"
+						type="danger"
+					>
+						{{ t('devicesModule.validation.status.invalid') }}
+						<template v-if="errorCount > 0 || warningCount > 0">
+							({{ errorCount }} {{ t('devicesModule.validation.errors') }}, {{ warningCount }} {{ t('devicesModule.validation.warnings') }})
+						</template>
+					</el-tag>
+					<el-tag
+						v-else
+						size="small"
+						type="info"
+					>
+						{{ t('devicesModule.validation.status.unknown') }}
+					</el-tag>
+				</el-text>
+			</dd>
+			<device-detail-description
+				v-if="deviceInfoChannel"
+				:device="device"
+				:channel="deviceInfoChannel"
+			/>
+			<dt
+				class="b-r b-r-solid py-1 px-2 flex items-center justify-end"
+				style="background: var(--el-fill-color-light)"
+			>
+				{{ t('devicesModule.texts.devices.alerts') }}
+			</dt>
+			<dd class="col-start-2 m-0 p-2 flex items-center min-w-[8rem]">
+				<el-text>
+					<el-tag
+						size="small"
+						:type="alerts.length === 0 ? 'success' : 'danger'"
+					>
+						<i18n-t
+							keypath="devicesModule.texts.devices.alertsCount"
+							:plural="alerts.length"
+						>
+							<template #count>
+								<strong>{{ alerts.length }}</strong>
+							</template>
+						</i18n-t>
+					</el-tag>
+				</el-text>
+			</dd>
+		</dl>
+	</el-card>
 
 	<!-- Validation Issues Section -->
-	<template v-if="issues.length > 0">
-		<el-divider>
-			<el-icon><icon icon="mdi:alert-circle-outline" /></el-icon>
-			{{ t('devicesModule.validation.issuesTitle') }}
-		</el-divider>
+	<el-card
+		v-if="issues.length > 0"
+		class="mt-4"
+		shadow="never"
+	>
+		<template #header>
+			<div class="flex items-center gap-2">
+				<el-icon
+					color="var(--el-color-danger)"
+					:size="18"
+				>
+					<icon icon="mdi:alert-circle-outline" />
+				</el-icon>
+				<span>{{ t('devicesModule.validation.issuesTitle') }}</span>
+				<el-tag
+					type="danger"
+					size="small"
+				>
+					{{ issues.length }}
+				</el-tag>
+			</div>
+		</template>
 
 		<el-table
 			:data="issues"
@@ -176,16 +198,14 @@
 				</template>
 			</el-table-column>
 		</el-table>
-	</template>
+	</el-card>
 </template>
 
 <script setup lang="ts">
-import { computed, toRef } from 'vue';
+import { computed } from 'vue';
 import { I18nT, useI18n } from 'vue-i18n';
 
-import { storeToRefs } from 'pinia';
-
-import { ElDivider, ElIcon, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
+import { ElCard, ElIcon, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -209,18 +229,16 @@ const { t } = useI18n();
 
 const { channels } = useChannels({ deviceId: props.device.id });
 
-// Get validation data directly from store with reactive device id
+// Get validation data using findById getter
 const storesManager = injectStoresManager();
 const validationStore = storesManager.getStore(devicesValidationStoreKey);
-const { deviceResults, semaphore } = storeToRefs(validationStore);
 
-const deviceId = toRef(() => props.device.id);
-const validationResult = computed(() => deviceResults.value[deviceId.value] ?? null);
+const validationResult = computed(() => validationStore.findById(props.device.id));
 const isValid = computed<boolean | null>(() => validationResult.value?.isValid ?? null);
 const issues = computed(() => validationResult.value?.issues ?? []);
 const errorCount = computed<number>(() => issues.value.filter((i) => i.severity === 'error').length);
 const warningCount = computed<number>(() => issues.value.filter((i) => i.severity === 'warning').length);
-const validationLoading = computed<boolean>(() => semaphore.value.fetching.items || semaphore.value.fetching.item.includes(deviceId.value));
+const validationLoading = computed<boolean>(() => validationStore.fetching() || validationStore.getting(props.device.id));
 
 const alerts: string[] = [];
 
