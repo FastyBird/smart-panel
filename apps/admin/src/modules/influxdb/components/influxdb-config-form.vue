@@ -87,10 +87,10 @@ const props = withDefaults(defineProps<IInfluxDbConfigFormProps>(), {
 });
 
 const emit = defineEmits<{
-	(e: 'update:remote-form-submit', remoteFormSubmit: boolean): void;
-	(e: 'update:remote-form-result', remoteFormResult: FormResultType): void;
-	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
-	(e: 'update:remote-form-changed', formChanged: boolean): void;
+	(e: 'update:remoteFormSubmit', remoteFormSubmit: boolean): void;
+	(e: 'update:remoteFormResult', remoteFormResult: FormResultType): void;
+	(e: 'update:remoteFormReset', remoteFormReset: boolean): void;
+	(e: 'update:remoteFormChanged', formChanged: boolean): void;
 }>();
 
 const { t } = useI18n();
@@ -111,7 +111,7 @@ const rules = reactive<FormRules<IInfluxDbConfigEditForm>>({
 watch(
 	(): FormResultType => formResult.value,
 	async (val: FormResultType): Promise<void> => {
-		emit('update:remote-form-result', val);
+		emit('update:remoteFormResult', val);
 	}
 );
 
@@ -119,7 +119,7 @@ watch(
 	(): boolean => props.remoteFormSubmit,
 	async (val: boolean): Promise<void> => {
 		if (val) {
-			emit('update:remote-form-submit', false);
+			emit('update:remoteFormSubmit', false);
 
 			submit().catch(() => {
 				// The form is not valid
@@ -131,7 +131,7 @@ watch(
 watch(
 	(): boolean => props.remoteFormReset,
 	(val: boolean): void => {
-		emit('update:remote-form-reset', false);
+		emit('update:remoteFormReset', false);
 
 		if (val) {
 			if (!formEl.value) return;
@@ -144,7 +144,7 @@ watch(
 watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
-		emit('update:remote-form-changed', val);
+		emit('update:remoteFormChanged', val);
 	}
 );
 </script>
