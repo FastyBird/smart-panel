@@ -446,21 +446,10 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 		],
 	},
 
-	// Leak - needs level when only detected is provided
-	{
-		channel_category: ChannelCategory.LEAK,
-		virtual_properties: [
-			// Level property - static when only detected is available
-			{
-				property_category: PropertyCategory.LEVEL,
-				virtual_type: VirtualPropertyType.STATIC,
-				data_type: DataTypeType.ENUM,
-				permissions: [PermissionType.READ_ONLY],
-				format: ['bright', 'moderate', 'dusky', 'dark'],
-				static_value: 'moderate',
-			},
-		],
-	},
+	// Note: LEAK channel virtual properties removed - the spec defines level with
+	// illuminance values (bright/moderate/dusky/dark) which are semantically incorrect
+	// for leak sensors. If HA doesn't provide level, we shouldn't create a virtual
+	// property with nonsensical values. The 'detected' boolean is sufficient.
 
 	// Gas - needs status when only detected is provided
 	{
