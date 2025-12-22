@@ -126,6 +126,9 @@ export class HomeAssistantWsService implements IManagedPluginService {
 					break;
 			}
 
+			// Clear cached config to ensure fresh values on restart
+			this.pluginConfig = null;
+
 			if (this.apiKey === null) {
 				this.logger.warn('Missing API key for Home Assistant WS service');
 				this.state = 'error';
@@ -212,8 +215,8 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	 * manager to perform the restart, ensuring proper error handling if auth fails.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
-		// Clear cached config so next access gets fresh values
-		this.pluginConfig = null;
+		// Don't clear config here - it may still be accessed by handlers during stop()
+		// Config will be refreshed when start() is called after restart
 
 		// Signal that restart is required to apply new settings
 		// The manager will handle stop/start to ensure proper authentication flow
@@ -222,6 +225,9 @@ export class HomeAssistantWsService implements IManagedPluginService {
 
 			return Promise.resolve({ restartRequired: true });
 		}
+
+		// Clear config only if not running (no handlers active)
+		this.pluginConfig = null;
 
 		return Promise.resolve({ restartRequired: false });
 	}

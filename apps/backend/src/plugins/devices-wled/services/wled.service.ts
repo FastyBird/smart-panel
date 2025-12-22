@@ -73,11 +73,15 @@ export class WledService implements IManagedPluginService {
 					return;
 				case 'stopping':
 					await this.waitUntil('stopped');
+					// Clear cached config to ensure fresh values on restart
+					this.pluginConfig = null;
 					await this.initialize();
 					await this.doStart();
 					return;
 				case 'stopped':
 				case 'error':
+					// Clear cached config to ensure fresh values on restart
+					this.pluginConfig = null;
 					await this.initialize();
 					await this.doStart();
 					return;
@@ -124,12 +128,16 @@ export class WledService implements IManagedPluginService {
 	 * Called by PluginServiceManagerService when config updates occur.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
-		this.pluginConfig = null;
+		// Don't clear config here - it may still be accessed by handlers during stop()
+		// Config will be refreshed when start() is called after restart
 
 		if (this.state === 'started') {
 			this.logger.log('Config changed, restart required');
 			return Promise.resolve({ restartRequired: true });
 		}
+
+		// Clear config only if not running (no handlers active)
+		this.pluginConfig = null;
 
 		return Promise.resolve({ restartRequired: false });
 	}
