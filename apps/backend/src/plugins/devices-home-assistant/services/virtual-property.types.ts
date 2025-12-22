@@ -1,4 +1,9 @@
-import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { HomeAssistantDomain } from '../devices-home-assistant.constants';
 import { HomeAssistantStateModel } from '../models/home-assistant.model';
 

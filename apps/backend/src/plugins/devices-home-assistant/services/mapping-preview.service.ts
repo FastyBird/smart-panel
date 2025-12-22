@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import {
 	DeviceValidationService,
 	ValidationIssueType,
 } from '../../../modules/devices/services/device-validation.service';
 import {
 	PropertyMetadata,
-	getAllowedChannels,
 	getPropertyMetadata,
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
@@ -41,7 +46,7 @@ import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 import { LightCapabilityAnalyzer } from './light-capability.analyzer';
 import { VirtualPropertyService } from './virtual-property.service';
-import { VirtualPropertyContext, VirtualPropertyDefinition, VirtualPropertyType } from './virtual-property.types';
+import { VirtualPropertyContext } from './virtual-property.types';
 
 /**
  * Service for generating mapping previews for Home Assistant devices
@@ -166,10 +171,7 @@ export class MappingPreviewService {
 		}
 
 		// Fill missing required properties with virtual properties
-		const virtualPropertiesAdded = this.fillMissingPropertiesWithVirtuals(
-			entityPreviews,
-			discoveredDevice.states,
-		);
+		const virtualPropertiesAdded = this.fillMissingPropertiesWithVirtuals(entityPreviews, discoveredDevice.states);
 
 		if (virtualPropertiesAdded > 0) {
 			this.logger.log(
@@ -208,6 +210,16 @@ export class MappingPreviewService {
 			);
 		}
 
+		// Filter out device_information and generic channels from the preview
+		// - device_information is auto-created during adoption from HA registry data
+		// - generic channels are fallbacks that shouldn't be adopted
+		const filteredEntityPreviews = entityPreviews.filter(
+			(e) =>
+				!e.suggestedChannel ||
+				(e.suggestedChannel.category !== ChannelCategory.DEVICE_INFORMATION &&
+					e.suggestedChannel.category !== ChannelCategory.GENERIC),
+		);
+
 		const preview = new MappingPreviewModel();
 		preview.haDevice = this.createHaDeviceInfo(deviceRegistry);
 		preview.suggestedDevice = this.createSuggestedDevice(
@@ -215,7 +227,7 @@ export class MappingPreviewService {
 			suggestedDeviceCategory,
 			mappedChannelCategories,
 		);
-		preview.entities = entityPreviews;
+		preview.entities = filteredEntityPreviews;
 		preview.warnings = warnings;
 		preview.readyToAdopt = readyToAdopt;
 		preview.validation = validation;
@@ -876,7 +888,11 @@ export class MappingPreviewService {
 
 		for (const entityPreview of entityPreviews) {
 			// Skip entities without a suggested channel
-			if (!entityPreview.suggestedChannel || entityPreview.status === 'skipped' || entityPreview.status === 'unmapped') {
+			if (
+				!entityPreview.suggestedChannel ||
+				entityPreview.status === 'skipped' ||
+				entityPreview.status === 'unmapped'
+			) {
 				continue;
 			}
 
@@ -961,10 +977,21 @@ export class MappingPreviewService {
 		deviceCategory: DeviceCategory,
 	): ValidationSummaryModel {
 		// Build a device structure from the entity previews
+		// Filter out:
+		// - device_information (auto-created during adoption, not user-configurable)
+		// - generic channels (fallback that shouldn't be adopted)
+		// - skipped/unmapped entities
 		const channels = entityPreviews
-			.filter((e) => e.suggestedChannel && e.status !== 'skipped' && e.status !== 'unmapped')
+			.filter(
+				(e) =>
+					e.suggestedChannel &&
+					e.status !== 'skipped' &&
+					e.status !== 'unmapped' &&
+					e.suggestedChannel.category !== ChannelCategory.DEVICE_INFORMATION &&
+					e.suggestedChannel.category !== ChannelCategory.GENERIC,
+			)
 			.map((e) => ({
-				category: e.suggestedChannel!.category,
+				category: e.suggestedChannel.category,
 				properties: e.suggestedProperties.map((p) => ({
 					category: p.category,
 					dataType: p.dataType,
@@ -972,14 +999,31 @@ export class MappingPreviewService {
 				})),
 			}));
 
-		// Add device_information channel (auto-created during adoption)
+		// Add device_information channel (auto-created during adoption with HA registry data)
+		// This is always added by the plugin, users cannot modify it
 		channels.push({
 			category: ChannelCategory.DEVICE_INFORMATION,
 			properties: [
-				{ category: PropertyCategory.MANUFACTURER, dataType: DataTypeType.STRING, permissions: [PermissionType.READ_ONLY] },
-				{ category: PropertyCategory.MODEL, dataType: DataTypeType.STRING, permissions: [PermissionType.READ_ONLY] },
-				{ category: PropertyCategory.SERIAL_NUMBER, dataType: DataTypeType.STRING, permissions: [PermissionType.READ_ONLY] },
-				{ category: PropertyCategory.FIRMWARE_REVISION, dataType: DataTypeType.STRING, permissions: [PermissionType.READ_ONLY] },
+				{
+					category: PropertyCategory.MANUFACTURER,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.MODEL,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.SERIAL_NUMBER,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.FIRMWARE_REVISION,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
 			],
 		});
 

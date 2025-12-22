@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import {
@@ -139,7 +139,7 @@ export class MapperService {
 		}
 
 		// Handle virtual command properties
-		const virtualUpdates = await this.handleVirtualCommandProperties(virtualCommandProps, values, channels);
+		const virtualUpdates = this.handleVirtualCommandProperties(virtualCommandProps, values, channels);
 		updates.push(...virtualUpdates);
 
 		return updates;
@@ -148,11 +148,11 @@ export class MapperService {
 	/**
 	 * Handle virtual command properties by translating them to HA service calls
 	 */
-	private async handleVirtualCommandProperties(
+	private handleVirtualCommandProperties(
 		properties: HomeAssistantChannelPropertyEntity[],
 		values: Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean>,
 		channels: HomeAssistantChannelEntity[],
-	): Promise<MappedToHa[]> {
+	): MappedToHa[] {
 		const updates: MappedToHa[] = [];
 
 		for (const property of properties) {
@@ -170,8 +170,8 @@ export class MapperService {
 
 			// Get the service call from VirtualPropertyService
 			const serviceCall = this.virtualPropertyService.getServiceCallForCommand(
-				channel.category as ChannelCategory,
-				property.category as PropertyCategory,
+				channel.category,
+				property.category,
 				String(value),
 				property.haEntityId,
 			);

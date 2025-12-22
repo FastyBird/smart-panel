@@ -2,10 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, HomeAssistantDomain } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
 import {
-	CommandVirtualPropertyDefinition,
 	DerivationType,
 	DerivedVirtualPropertyDefinition,
 	ResolvedVirtualProperty,
@@ -124,8 +123,7 @@ export class VirtualPropertyService {
 			return null;
 		}
 
-		const commandDef = definition as CommandVirtualPropertyDefinition;
-		const serviceName = commandDef.command_mapping.value_to_service[commandValue];
+		const serviceName = definition.command_mapping.value_to_service[commandValue];
 
 		if (!serviceName) {
 			this.logger.warn(
@@ -135,10 +133,10 @@ export class VirtualPropertyService {
 		}
 
 		return {
-			domain: commandDef.command_mapping.domain,
+			domain: definition.command_mapping.domain,
 			service: serviceName,
 			entityId,
-			data: commandDef.command_mapping.service_data,
+			data: definition.command_mapping.service_data,
 		};
 	}
 
@@ -172,7 +170,7 @@ export class VirtualPropertyService {
 				return this.deriveStaticFallback(context, derivation.params);
 
 			default:
-				this.logger.warn(`[VIRTUAL] Unknown derivation type: ${derivation.type}`);
+				this.logger.warn(`[VIRTUAL] Unknown derivation type: ${String(derivation.type)}`);
 				return null;
 		}
 	}
