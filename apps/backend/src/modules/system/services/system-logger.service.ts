@@ -132,7 +132,15 @@ export class SystemLoggerService implements LoggerService {
 					? contextOrTag.resource
 					: undefined,
 			message: String(message),
-			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
+			tag:
+				typeof contextOrTag === 'string'
+					? contextOrTag
+					: contextOrTag !== null &&
+						  typeof contextOrTag === 'object' &&
+						  'tag' in contextOrTag &&
+						  typeof contextOrTag.tag === 'string'
+						? contextOrTag.tag
+						: tagOrNothing,
 		});
 	}
 
@@ -169,9 +177,19 @@ export class SystemLoggerService implements LoggerService {
 			tag:
 				typeof stackOrContext === 'string'
 					? stackOrContext
-					: typeof contextOrTag === 'string'
-						? contextOrTag
-						: tagOrNothing,
+					: stackOrContext !== null &&
+						  typeof stackOrContext === 'object' &&
+						  'tag' in stackOrContext &&
+						  typeof stackOrContext.tag === 'string'
+						? stackOrContext.tag
+						: typeof contextOrTag === 'string'
+							? contextOrTag
+							: contextOrTag !== null &&
+								  typeof contextOrTag === 'object' &&
+								  'tag' in contextOrTag &&
+								  typeof contextOrTag.tag === 'string'
+								? contextOrTag.tag
+								: tagOrNothing,
 		});
 	}
 
@@ -194,7 +212,15 @@ export class SystemLoggerService implements LoggerService {
 					? contextOrTag.resource
 					: undefined,
 			message: String(message),
-			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
+			tag:
+				typeof contextOrTag === 'string'
+					? contextOrTag
+					: contextOrTag !== null &&
+						  typeof contextOrTag === 'object' &&
+						  'tag' in contextOrTag &&
+						  typeof contextOrTag.tag === 'string'
+						? contextOrTag.tag
+						: tagOrNothing,
 		});
 	}
 
@@ -217,7 +243,15 @@ export class SystemLoggerService implements LoggerService {
 					? contextOrTag.resource
 					: undefined,
 			message: String(message),
-			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
+			tag:
+				typeof contextOrTag === 'string'
+					? contextOrTag
+					: contextOrTag !== null &&
+						  typeof contextOrTag === 'object' &&
+						  'tag' in contextOrTag &&
+						  typeof contextOrTag.tag === 'string'
+						? contextOrTag.tag
+						: tagOrNothing,
 		});
 	}
 
@@ -234,7 +268,12 @@ export class SystemLoggerService implements LoggerService {
 					? context.resource
 					: undefined,
 			message: String(message),
-			tag: typeof context === 'string' ? context : undefined,
+			tag:
+				typeof context === 'string'
+					? context
+					: context !== null && typeof context === 'object' && 'tag' in context && typeof context.tag === 'string'
+						? context.tag
+						: undefined,
 		});
 	}
 

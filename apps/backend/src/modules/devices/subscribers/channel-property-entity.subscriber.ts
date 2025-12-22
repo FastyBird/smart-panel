@@ -25,14 +25,20 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 	}
 
 	async afterLoad(entity: ChannelPropertyEntity): Promise<void> {
+		// Use device ID if available through channel relation, otherwise use property ID
+		const resourceId = entity.channel?.device?.id ?? entity.id;
+
 		try {
 			entity.value = await this.propertyValueService.readLatest(entity);
 
-			this.logger.debug(`Loaded property value from InfluxDB id=${entity.id}, value=${entity.value}`);
+			this.logger.debug(`Loaded property value from InfluxDB id=${entity.id}, value=${entity.value}`, {
+				resource: resourceId,
+			});
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Failed to load property value from InfluxDB id=${entity.id}, error=${err.message}`, {
+				resource: resourceId,
 				stack: err.stack,
 			});
 		}
@@ -40,7 +46,10 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 
 	beforeUpdate(event: UpdateEvent<ChannelPropertyEntity>): void {
 		if (event.entity) {
-			this.logger.debug(`Updating property id=${event.entity.id}`);
+			// Use device ID if available through channel relation, otherwise use property ID
+			const resourceId = event.entity.channel?.device?.id ?? event.entity.id;
+
+			this.logger.debug(`Updating property id=${event.entity.id}`, { resource: resourceId });
 
 			event.entity.updatedAt = new Date();
 		}
@@ -53,18 +62,21 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 		}
 
 		const propertyId = event.entity.id;
+		// Use device ID if available through channel relation, otherwise use property ID
+		const resourceId = event.entity.channel?.device?.id ?? propertyId;
 
 		try {
-			this.logger.debug(`Deleting stored values for id=${propertyId}`);
+			this.logger.debug(`Deleting stored values for id=${propertyId}`, { resource: resourceId });
 
 			await this.propertyValueService.delete(event.entity);
 			await this.deviceStatusService.deleteByProperty(event.entity);
 
-			this.logger.log(`Successfully removed all stored values for id=${propertyId}`);
+			this.logger.log(`Successfully removed all stored values for id=${propertyId}`, { resource: resourceId });
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Failed to remove property value from InfluxDB id=${propertyId} error=${err.message}`, {
+				resource: resourceId,
 				stack: err.stack,
 			});
 		}
