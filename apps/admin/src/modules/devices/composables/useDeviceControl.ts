@@ -34,6 +34,9 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	// Debounce timers for each property
 	const debounceTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
+	// Resolve callbacks for debounced promises (to resolve when cancelled)
+	const debounceResolvers: Record<string, (value: boolean) => void> = {};
+
 	// Pending value cleanup timers
 	const pendingValueTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
@@ -150,9 +153,16 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 			return false;
 		}
 
-		// Clear existing debounce timer for this property
+		// Clear existing debounce timer and resolve its promise
 		if (debounceTimers[propertyId]) {
 			clearTimeout(debounceTimers[propertyId]);
+			delete debounceTimers[propertyId];
+
+			// Resolve the previous promise as cancelled (false) so it doesn't hang
+			if (debounceResolvers[propertyId]) {
+				debounceResolvers[propertyId](false);
+				delete debounceResolvers[propertyId];
+			}
 		}
 
 		// Set optimistic value immediately
@@ -160,7 +170,13 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 
 		// Return a promise that resolves after debounce and command execution
 		return new Promise((resolve) => {
+			// Store the resolve callback so it can be called if cancelled
+			debounceResolvers[propertyId] = resolve;
+
 			debounceTimers[propertyId] = setTimeout(async () => {
+				// Clear the resolver reference since we're now executing
+				delete debounceResolvers[propertyId];
+
 				loadingProperties.value[propertyId] = true;
 
 				try {
