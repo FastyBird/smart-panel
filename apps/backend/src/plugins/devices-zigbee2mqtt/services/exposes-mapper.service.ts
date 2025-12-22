@@ -259,7 +259,10 @@ export class Z2mExposesMapperService {
 			}
 			case 'numeric': {
 				const numericExpose = expose as Z2mExposeNumeric;
-				dataType = mapZ2mTypeToDataType('numeric', numericExpose.value_min, numericExpose.value_max);
+				// Prefer commonMapping dataType (e.g., FLOAT for humidity/pressure) over range-based inference
+				dataType =
+					commonMapping?.dataType ??
+					mapZ2mTypeToDataType('numeric', numericExpose.value_min, numericExpose.value_max);
 				min = numericExpose.value_min;
 				max = numericExpose.value_max;
 				step = numericExpose.value_step;
