@@ -165,10 +165,10 @@ export class DeviceAdoptionService {
 				: null;
 
 		const haDeviceInformationProperties: Record<PropertyCategory, unknown> = {
-			[PropertyCategory.MANUFACTURER]: haDevice.manufacturer,
-			[PropertyCategory.MODEL]: haDevice.model,
+			[PropertyCategory.MANUFACTURER]: haDevice.manufacturer || 'Unknown',
+			[PropertyCategory.MODEL]: haDevice.model || 'Unknown',
 			[PropertyCategory.SERIAL_NUMBER]: haDevice.serialNumber || 'N/A',
-			[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion,
+			[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion || 'N/A',
 			[PropertyCategory.HARDWARE_REVISION]: haDevice.hwVersion,
 			[PropertyCategory.CONNECTION_TYPE]: connectionType,
 			[PropertyCategory.STATUS]: ConnectionState.UNKNOWN,
@@ -548,10 +548,10 @@ export class DeviceAdoptionService {
 					: null;
 
 			const haDeviceInformationProperties: Record<PropertyCategory, unknown> = {
-				[PropertyCategory.MANUFACTURER]: haDevice.manufacturer,
-				[PropertyCategory.MODEL]: haDevice.model,
+				[PropertyCategory.MANUFACTURER]: haDevice.manufacturer || 'Unknown',
+				[PropertyCategory.MODEL]: haDevice.model || 'Unknown',
 				[PropertyCategory.SERIAL_NUMBER]: haDevice.serialNumber || 'N/A',
-				[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion,
+				[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion || 'N/A',
 				[PropertyCategory.HARDWARE_REVISION]: haDevice.hwVersion,
 				[PropertyCategory.CONNECTION_TYPE]: connectionType,
 				[PropertyCategory.STATUS]: ConnectionState.UNKNOWN,
