@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { PermissionType } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import {
@@ -16,9 +16,12 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { VirtualPropertyService } from '../services/virtual-property.service';
 
 import { IEntityMapper } from './entity.mapper';
 import { UniversalEntityMapperService } from './universal.entity.mapper.service';
+
+const VIRTUAL_ATTRIBUTE_PREFIX = 'fb.virtual.';
 
 type MappedToHa = {
 	domain: string;
@@ -44,6 +47,7 @@ export class MapperService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly universalEntityMapperService: UniversalEntityMapperService,
+		private readonly virtualPropertyService: VirtualPropertyService,
 	) {}
 
 	registerMapper(mapper: IEntityMapper): void {
@@ -92,9 +96,25 @@ export class MapperService {
 		device: HomeAssistantDeviceEntity,
 		values: Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean>,
 	): Promise<MappedToHa[]> {
-		const grouped = this.groupProperties(await this.getWritableProperties(await this.getChannels(device)));
+		const channels = await this.getChannels(device);
+		const allWritableProperties = await this.getWritableProperties(channels);
+
+		// Separate virtual command properties from regular properties
+		const virtualCommandProps: HomeAssistantChannelPropertyEntity[] = [];
+		const regularProps: HomeAssistantChannelPropertyEntity[] = [];
+
+		for (const prop of allWritableProperties) {
+			if (this.isVirtualProperty(prop)) {
+				virtualCommandProps.push(prop);
+			} else {
+				regularProps.push(prop);
+			}
+		}
 
 		const updates: MappedToHa[] = [];
+
+		// Handle regular properties through standard mappers
+		const grouped = this.groupProperties(regularProps);
 
 		for (const [entityId, properties] of grouped.entries()) {
 			const domain = this.getDomain(entityId);
@@ -118,6 +138,68 @@ export class MapperService {
 			updates.push(result);
 		}
 
+		// Handle virtual command properties
+		const virtualUpdates = await this.handleVirtualCommandProperties(virtualCommandProps, values, channels);
+		updates.push(...virtualUpdates);
+
+		return updates;
+	}
+
+	/**
+	 * Handle virtual command properties by translating them to HA service calls
+	 */
+	private async handleVirtualCommandProperties(
+		properties: HomeAssistantChannelPropertyEntity[],
+		values: Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean>,
+		channels: HomeAssistantChannelEntity[],
+	): Promise<MappedToHa[]> {
+		const updates: MappedToHa[] = [];
+
+		for (const property of properties) {
+			const value = values.get(property.id);
+			if (value === undefined) {
+				continue;
+			}
+
+			// Find the channel for this property to get the category
+			const channel = channels.find((ch) => ch.properties.some((p) => p.id === property.id));
+			if (!channel) {
+				this.logger.warn(`Could not find channel for virtual property ${property.id}`);
+				continue;
+			}
+
+			// Get the service call from VirtualPropertyService
+			const serviceCall = this.virtualPropertyService.getServiceCallForCommand(
+				channel.category as ChannelCategory,
+				property.category as PropertyCategory,
+				String(value),
+				property.haEntityId,
+			);
+
+			if (!serviceCall) {
+				this.logger.warn(
+					`Could not get service call for virtual command property: ` +
+						`channel=${channel.category}, property=${property.category}, value=${value}`,
+				);
+				continue;
+			}
+
+			this.logger.debug(
+				`[VIRTUAL COMMAND] Translating command: channel=${channel.category}, ` +
+					`property=${property.category}, value=${value} -> ` +
+					`service=${serviceCall.domain}.${serviceCall.service}`,
+			);
+
+			updates.push({
+				domain: serviceCall.domain,
+				entityId: serviceCall.entityId,
+				state: String(value),
+				service: serviceCall.service,
+				attributes: serviceCall.data ? new Map(Object.entries(serviceCall.data)) : undefined,
+				properties: [property],
+			});
+		}
+
 		return updates;
 	}
 
@@ -137,8 +219,11 @@ export class MapperService {
 	): Promise<HomeAssistantChannelPropertyEntity[]> {
 		return (await this.getProperties(channels)).filter(
 			(property) =>
-				property.permissions.includes(PermissionType.READ_WRITE) ||
-				property.permissions.includes(PermissionType.READ_ONLY),
+				// Must have readable permission
+				(property.permissions.includes(PermissionType.READ_WRITE) ||
+					property.permissions.includes(PermissionType.READ_ONLY)) &&
+				// Virtual properties don't have real HA data to read
+				!this.isVirtualProperty(property),
 		);
 	}
 
@@ -178,5 +263,13 @@ export class MapperService {
 		}
 
 		return domain;
+	}
+
+	/**
+	 * Check if a property is a virtual property based on its haAttribute
+	 * Virtual properties have haAttribute starting with 'fb.virtual.'
+	 */
+	private isVirtualProperty(property: HomeAssistantChannelPropertyEntity): boolean {
+		return property.haAttribute?.startsWith(VIRTUAL_ATTRIBUTE_PREFIX) ?? false;
 	}
 }

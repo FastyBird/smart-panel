@@ -27,6 +27,8 @@ export const MappingPreviewRequestSchema = z.object({
 // Response Schemas
 // ============================================================================
 
+export const VirtualPropertyTypeSchema = z.enum(['static', 'derived', 'command']);
+
 export const PropertyMappingPreviewSchema = z.object({
 	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
 	name: z.string(),
@@ -37,6 +39,9 @@ export const PropertyMappingPreviewSchema = z.object({
 	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
 	required: z.boolean(),
 	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+	haEntityId: z.string().nullable().optional(),
+	isVirtual: z.boolean().optional(),
+	virtualType: VirtualPropertyTypeSchema.nullable().optional(),
 });
 
 export const SuggestedChannelSchema = z.object({
@@ -78,12 +83,23 @@ export const HaDeviceInfoSchema = z.object({
 	model: z.string().nullable(),
 });
 
+export const ValidationSummarySchema = z.object({
+	isValid: z.boolean(),
+	missingChannelsCount: z.number(),
+	missingPropertiesCount: z.number(),
+	fillableWithVirtualCount: z.number(),
+	missingChannels: z.array(z.string()),
+	missingProperties: z.record(z.array(z.string())),
+	autoFilledVirtual: z.record(z.array(z.string())),
+});
+
 export const MappingPreviewResponseSchema = z.object({
 	haDevice: HaDeviceInfoSchema,
 	suggestedDevice: SuggestedDeviceSchema,
 	entities: z.array(EntityMappingPreviewSchema),
 	warnings: z.array(MappingWarningSchema),
 	readyToAdopt: z.boolean(),
+	validation: ValidationSummarySchema.optional(),
 });
 
 // ============================================================================

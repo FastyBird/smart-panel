@@ -44,6 +44,48 @@
 				</el-tag>
 			</dd>
 		</dl>
+
+		<!-- Validation Summary -->
+		<div
+			v-if="preview.validation"
+			class="mt-4 pt-4 border-t"
+		>
+			<div class="flex items-center gap-2 mb-2">
+				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.valid') }}:</span>
+				<el-tag
+					:type="preview.validation.isValid ? 'success' : 'danger'"
+					size="small"
+				>
+					{{ preview.validation.isValid ? 'Yes' : 'No' }}
+				</el-tag>
+			</div>
+
+			<!-- Virtual properties auto-filled -->
+			<div
+				v-if="virtualPropertiesCount > 0"
+				class="flex items-center gap-2 text-sm text-gray-600"
+			>
+				<el-icon class="text-primary"><InfoFilled /></el-icon>
+				<span>{{ virtualPropertiesCount }} {{ t('devicesHomeAssistantPlugin.fields.mapping.validation.autoFilled') }}</span>
+			</div>
+
+			<!-- Missing channels warning -->
+			<div
+				v-if="preview.validation.missingChannelsCount > 0"
+				class="mt-2"
+			>
+				<el-alert
+					type="warning"
+					:closable="false"
+					show-icon
+				>
+					<template #title>
+						{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.missingChannels') }}:
+						{{ preview.validation.missingChannels.join(', ') }}
+					</template>
+				</el-alert>
+			</div>
+		</div>
 	</el-card>
 </template>
 
@@ -51,7 +93,8 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElTag } from 'element-plus';
+import { InfoFilled } from '@element-plus/icons-vue';
+import { ElAlert, ElCard, ElIcon, ElTag } from 'element-plus';
 
 import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
@@ -67,4 +110,8 @@ const mappedCount = computed(() => props.preview.entities.filter((e) => e.status
 const partialCount = computed(() => props.preview.entities.filter((e) => e.status === 'partial').length);
 const unmappedCount = computed(() => props.preview.entities.filter((e) => e.status === 'unmapped').length);
 const skippedCount = computed(() => props.preview.entities.filter((e) => e.status === 'skipped').length);
+
+const virtualPropertiesCount = computed(() => {
+	return props.preview.validation?.fillableWithVirtualCount ?? 0;
+});
 </script>

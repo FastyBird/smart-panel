@@ -3,7 +3,12 @@ import { Injectable } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import {
+	DeviceValidationService,
+	ValidationIssueType,
+} from '../../../modules/devices/services/device-validation.service';
+import {
 	PropertyMetadata,
+	getAllowedChannels,
 	getPropertyMetadata,
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
@@ -23,6 +28,7 @@ import {
 	MappingWarningModel,
 	PropertyMappingPreviewModel,
 	SuggestedDeviceModel,
+	ValidationSummaryModel,
 } from '../models/mapping-preview.model';
 
 import {
@@ -34,6 +40,8 @@ import {
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 import { LightCapabilityAnalyzer } from './light-capability.analyzer';
+import { VirtualPropertyService } from './virtual-property.service';
+import { VirtualPropertyContext, VirtualPropertyDefinition, VirtualPropertyType } from './virtual-property.types';
 
 /**
  * Service for generating mapping previews for Home Assistant devices
@@ -52,6 +60,8 @@ export class MappingPreviewService {
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly homeAssistantWsService: HomeAssistantWsService,
 		private readonly lightCapabilityAnalyzer: LightCapabilityAnalyzer,
+		private readonly virtualPropertyService: VirtualPropertyService,
+		private readonly deviceValidationService: DeviceValidationService,
 	) {}
 
 	/**
@@ -155,8 +165,24 @@ export class MappingPreviewService {
 			}
 		}
 
-		// Determine if ready to adopt (all required elements mapped and no critical warnings)
-		const readyToAdopt = warnings.filter((w) => w.type === 'missing_required_channel').length === 0;
+		// Fill missing required properties with virtual properties
+		const virtualPropertiesAdded = this.fillMissingPropertiesWithVirtuals(
+			entityPreviews,
+			discoveredDevice.states,
+		);
+
+		if (virtualPropertiesAdded > 0) {
+			this.logger.log(
+				`[MAPPING PREVIEW] Added ${virtualPropertiesAdded} virtual properties to fill missing required properties`,
+			);
+		}
+
+		// Generate validation summary using DeviceValidationService
+		const validation = this.generateValidationSummary(entityPreviews, suggestedDeviceCategory);
+
+		// Determine if ready to adopt based on validation
+		// Device is ready if validation passes (all required channels/properties are present)
+		const readyToAdopt = validation.isValid;
 
 		// Log mapping summary for observability
 		const mappedCount = entityPreviews.filter((e) => e.status === 'mapped').length;
@@ -192,6 +218,7 @@ export class MappingPreviewService {
 		preview.entities = entityPreviews;
 		preview.warnings = warnings;
 		preview.readyToAdopt = readyToAdopt;
+		preview.validation = validation;
 
 		return preview;
 	}
@@ -831,5 +858,182 @@ export class MappingPreviewService {
 
 		// Return consolidated entities plus skipped/unmapped ones
 		return [...consolidated, ...skippedOrUnmapped];
+	}
+
+	/**
+	 * Fill missing required properties with virtual properties
+	 * This ensures devices can be fully adopted even when HA doesn't provide all required properties
+	 *
+	 * @param entityPreviews - Array of entity previews to update in place
+	 * @param states - All HA states for context
+	 * @returns Number of virtual properties added
+	 */
+	private fillMissingPropertiesWithVirtuals(
+		entityPreviews: EntityMappingPreviewModel[],
+		states: HomeAssistantStateModel[],
+	): number {
+		let virtualPropertiesAdded = 0;
+
+		for (const entityPreview of entityPreviews) {
+			// Skip entities without a suggested channel
+			if (!entityPreview.suggestedChannel || entityPreview.status === 'skipped' || entityPreview.status === 'unmapped') {
+				continue;
+			}
+
+			const channelCategory = entityPreview.suggestedChannel.category;
+			const existingPropertyCategories = new Set(entityPreview.suggestedProperties.map((p) => p.category));
+			const requiredProperties = getRequiredProperties(channelCategory);
+
+			// Find missing required properties that can be filled with virtuals
+			const missingVirtuals = this.virtualPropertyService.getMissingVirtualProperties(
+				channelCategory,
+				existingPropertyCategories,
+				requiredProperties,
+			);
+
+			// Add virtual properties to the entity preview
+			for (const virtualDef of missingVirtuals) {
+				const state = states.find((s) => s.entityId === entityPreview.entityId);
+				const context: VirtualPropertyContext = {
+					entityId: entityPreview.entityId,
+					domain: entityPreview.domain as HomeAssistantDomain,
+					deviceClass: entityPreview.deviceClass,
+					state,
+					allStates: states,
+				};
+
+				// Resolve the virtual property value
+				const resolved = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, context);
+
+				// Get property metadata for formatting
+				const propertyMetadata = getPropertyMetadata(channelCategory, virtualDef.property_category);
+
+				// Create property preview for the virtual property
+				const virtualPropertyPreview: PropertyMappingPreviewModel = {
+					category: virtualDef.property_category,
+					name: this.propertyNameFromCategory(virtualDef.property_category),
+					haAttribute: this.virtualPropertyService.getVirtualAttributeMarker(
+						virtualDef.property_category,
+						virtualDef.virtual_type,
+					),
+					dataType: virtualDef.data_type,
+					permissions: virtualDef.permissions,
+					unit: virtualDef.unit ?? propertyMetadata?.unit ?? null,
+					format: virtualDef.format ?? propertyMetadata?.format ?? null,
+					required: true, // Virtual properties are added to fill required slots
+					currentValue: resolved.value,
+					haEntityId: entityPreview.entityId,
+					isVirtual: true,
+					virtualType: virtualDef.virtual_type,
+				};
+
+				entityPreview.suggestedProperties.push(virtualPropertyPreview);
+				virtualPropertiesAdded++;
+
+				// Remove from missing required properties list
+				const missingIndex = entityPreview.missingRequiredProperties.indexOf(virtualDef.property_category);
+				if (missingIndex >= 0) {
+					entityPreview.missingRequiredProperties.splice(missingIndex, 1);
+				}
+
+				this.logger.debug(
+					`[MAPPING PREVIEW] Added virtual property: channel=${channelCategory}, ` +
+						`property=${virtualDef.property_category}, type=${virtualDef.virtual_type}, ` +
+						`value=${resolved.value}`,
+				);
+			}
+
+			// Update status if all missing properties are now filled
+			if (entityPreview.missingRequiredProperties.length === 0 && entityPreview.status === 'partial') {
+				entityPreview.status = 'mapped';
+			}
+		}
+
+		return virtualPropertiesAdded;
+	}
+
+	/**
+	 * Generate a validation summary for the current mapping
+	 * Uses DeviceValidationService to check if the device structure is valid
+	 */
+	private generateValidationSummary(
+		entityPreviews: EntityMappingPreviewModel[],
+		deviceCategory: DeviceCategory,
+	): ValidationSummaryModel {
+		// Build a device structure from the entity previews
+		const channels = entityPreviews
+			.filter((e) => e.suggestedChannel && e.status !== 'skipped' && e.status !== 'unmapped')
+			.map((e) => ({
+				category: e.suggestedChannel!.category,
+				properties: e.suggestedProperties.map((p) => ({
+					category: p.category,
+					dataType: p.dataType,
+					permissions: p.permissions,
+				})),
+			}));
+
+		// Add device_information channel (auto-created during adoption)
+		channels.push({
+			category: ChannelCategory.DEVICE_INFORMATION,
+			properties: [
+				{ category: PropertyCategory.MANUFACTURER },
+				{ category: PropertyCategory.MODEL },
+				{ category: PropertyCategory.SERIAL_NUMBER },
+				{ category: PropertyCategory.FIRMWARE_REVISION },
+			],
+		});
+
+		// Validate the structure
+		const validationResult = this.deviceValidationService.validateDeviceStructure({
+			category: deviceCategory,
+			channels,
+		});
+
+		// Build validation summary
+		const missingChannels: string[] = [];
+		const missingProperties: Record<string, string[]> = {};
+		const autoFilledVirtual: Record<string, string[]> = {};
+
+		for (const issue of validationResult.issues) {
+			if (issue.type === ValidationIssueType.MISSING_CHANNEL && issue.channelCategory) {
+				missingChannels.push(issue.channelCategory);
+			} else if (issue.type === ValidationIssueType.MISSING_PROPERTY && issue.channelCategory && issue.propertyCategory) {
+				if (!missingProperties[issue.channelCategory]) {
+					missingProperties[issue.channelCategory] = [];
+				}
+				missingProperties[issue.channelCategory].push(issue.propertyCategory);
+			}
+		}
+
+		// Count virtual properties by channel
+		for (const entityPreview of entityPreviews) {
+			if (!entityPreview.suggestedChannel) continue;
+
+			const channelCat = entityPreview.suggestedChannel.category;
+			const virtualProps = entityPreview.suggestedProperties.filter((p) => p.isVirtual);
+
+			if (virtualProps.length > 0) {
+				if (!autoFilledVirtual[channelCat]) {
+					autoFilledVirtual[channelCat] = [];
+				}
+				for (const vp of virtualProps) {
+					autoFilledVirtual[channelCat].push(vp.category);
+				}
+			}
+		}
+
+		// Calculate counts
+		const missingPropertiesCount = Object.values(missingProperties).reduce((sum, arr) => sum + arr.length, 0);
+		const fillableWithVirtualCount = Object.values(autoFilledVirtual).reduce((sum, arr) => sum + arr.length, 0);
+
+		return {
+			isValid: validationResult.isValid,
+			missingChannelsCount: missingChannels.length,
+			missingPropertiesCount,
+			fillableWithVirtualCount,
+			missingChannels,
+			missingProperties,
+			autoFilledVirtual,
+		};
 	}
 }

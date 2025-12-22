@@ -62,6 +62,7 @@ import { HomeAssistantWsService } from './services/home-assistant.ws.service';
 import { LightCapabilityAnalyzer } from './services/light-capability.analyzer';
 import { MappingPreviewService } from './services/mapping-preview.service';
 import { StateChangedEventService } from './services/state-changed.event.service';
+import { VirtualPropertyService } from './services/virtual-property.service';
 import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
 
 @ApiTag({
@@ -98,6 +99,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		DeviceAdoptionService,
 		LightCapabilityAnalyzer,
 		HaMdnsDiscovererService,
+		VirtualPropertyService,
 	],
 	controllers: [
 		HomeAssistantDiscoveredDevicesController,

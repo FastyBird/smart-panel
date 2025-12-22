@@ -11,6 +11,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { VirtualPropertyType } from '../services/virtual-property.types';
 
 // ============================================================================
 // Property Mapping Preview
@@ -110,6 +111,27 @@ export class PropertyMappingPreviewModel {
 	@IsOptional()
 	@IsString()
 	haEntityId?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Whether this is a virtual property (not directly mapped from HA)',
+		type: 'boolean',
+		name: 'is_virtual',
+	})
+	@Expose({ name: 'is_virtual' })
+	@IsOptional()
+	@IsBoolean()
+	isVirtual?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Type of virtual property (static, derived, or command)',
+		enum: VirtualPropertyType,
+		nullable: true,
+		name: 'virtual_type',
+	})
+	@Expose({ name: 'virtual_type' })
+	@IsOptional()
+	@IsEnum(VirtualPropertyType)
+	virtualType?: VirtualPropertyType | null;
 }
 
 // ============================================================================
@@ -368,6 +390,76 @@ export class HaDeviceInfoModel {
 }
 
 // ============================================================================
+// Validation Summary
+// ============================================================================
+
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataValidationSummary' })
+export class ValidationSummaryModel {
+	@ApiProperty({
+		description: 'Whether the device structure passes validation',
+		type: 'boolean',
+		name: 'is_valid',
+	})
+	@Expose({ name: 'is_valid' })
+	@IsBoolean()
+	isValid: boolean;
+
+	@ApiProperty({
+		description: 'Number of missing required channels',
+		type: 'number',
+		name: 'missing_channels_count',
+	})
+	@Expose({ name: 'missing_channels_count' })
+	missingChannelsCount: number;
+
+	@ApiProperty({
+		description: 'Number of missing required properties',
+		type: 'number',
+		name: 'missing_properties_count',
+	})
+	@Expose({ name: 'missing_properties_count' })
+	missingPropertiesCount: number;
+
+	@ApiProperty({
+		description: 'Number of missing properties that can be filled with virtual properties',
+		type: 'number',
+		name: 'fillable_with_virtual_count',
+	})
+	@Expose({ name: 'fillable_with_virtual_count' })
+	fillableWithVirtualCount: number;
+
+	@ApiProperty({
+		description: 'Missing required channels',
+		type: [String],
+		name: 'missing_channels',
+	})
+	@Expose({ name: 'missing_channels' })
+	@IsArray()
+	@IsString({ each: true })
+	missingChannels: string[];
+
+	@ApiProperty({
+		description: 'Missing required properties by channel',
+		type: 'object',
+		additionalProperties: { type: 'array', items: { type: 'string' } },
+		name: 'missing_properties',
+	})
+	@Expose({ name: 'missing_properties' })
+	@IsObject()
+	missingProperties: Record<string, string[]>;
+
+	@ApiProperty({
+		description: 'Properties that will be auto-filled with virtual values',
+		type: 'object',
+		additionalProperties: { type: 'array', items: { type: 'string' } },
+		name: 'auto_filled_virtual',
+	})
+	@Expose({ name: 'auto_filled_virtual' })
+	@IsObject()
+	autoFilledVirtual: Record<string, string[]>;
+}
+
+// ============================================================================
 // Mapping Preview (Data Model)
 // ============================================================================
 
@@ -421,6 +513,17 @@ export class MappingPreviewModel {
 	@Expose({ name: 'ready_to_adopt' })
 	@IsBoolean()
 	readyToAdopt: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Validation summary showing what is missing and what can be auto-filled',
+		type: () => ValidationSummaryModel,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => ValidationSummaryModel)
+	validation?: ValidationSummaryModel;
 }
 
 // ============================================================================

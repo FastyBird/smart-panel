@@ -45,7 +45,15 @@
 				>
 					<span class="text-gray-600">{{ property.name }}:</span>
 					<el-tag
-						v-if="property.currentValue !== null && property.currentValue !== undefined"
+						v-if="property.isVirtual"
+						size="small"
+						:type="getVirtualTagType(property.virtualType)"
+						effect="plain"
+					>
+						{{ getVirtualLabel(property.virtualType) }}
+					</el-tag>
+					<el-tag
+						v-else-if="property.currentValue !== null && property.currentValue !== undefined"
 						size="small"
 						type="info"
 					>
@@ -120,4 +128,36 @@ const confidenceType = computed(() => {
 			return 'info';
 	}
 });
+
+/**
+ * Get the tag type for virtual property indicators
+ */
+const getVirtualTagType = (virtualType: string | undefined | null): 'success' | 'warning' | 'info' => {
+	switch (virtualType) {
+		case 'static':
+			return 'info';
+		case 'derived':
+			return 'success';
+		case 'command':
+			return 'warning';
+		default:
+			return 'info';
+	}
+};
+
+/**
+ * Get the label for virtual property indicators
+ */
+const getVirtualLabel = (virtualType: string | undefined | null): string => {
+	switch (virtualType) {
+		case 'static':
+			return t('devicesHomeAssistantPlugin.fields.mapping.virtualTypes.static');
+		case 'derived':
+			return t('devicesHomeAssistantPlugin.fields.mapping.virtualTypes.derived');
+		case 'command':
+			return t('devicesHomeAssistantPlugin.fields.mapping.virtualTypes.command');
+		default:
+			return t('devicesHomeAssistantPlugin.fields.mapping.virtualTypes.virtual');
+	}
+};
 </script>

@@ -13,6 +13,8 @@ import {
 	PropertyMappingPreviewSchema,
 	SuggestedChannelSchema,
 	SuggestedDeviceSchema,
+	ValidationSummarySchema,
+	VirtualPropertyTypeSchema,
 } from './mapping-preview.schemas';
 
 // ============================================================================
@@ -64,3 +66,7 @@ export type MappingWarningType =
 	| 'missing_required_property'
 	| 'unsupported_entity'
 	| 'unknown_device_class';
+
+export type IVirtualPropertyType = z.infer<typeof VirtualPropertyTypeSchema>;
+
+export type IValidationSummary = z.infer<typeof ValidationSummarySchema>;
