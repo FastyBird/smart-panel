@@ -48,7 +48,7 @@
 								<!-- Boolean: Switch -->
 								<template v-if="property.dataType === DevicesModuleChannelPropertyDataType.bool">
 									<el-switch
-										:model-value="getPropertyValue(property.id) === true || getPropertyValue(property.id) === 'true'"
+										:model-value="isTruthyValue(getPropertyValue(property.id))"
 										:loading="isPropertyLoading(property.id)"
 										@change="(val: string | number | boolean) => onPropertyChange(channel.id, property.id, Boolean(val))"
 									/>
@@ -205,6 +205,26 @@ const getChannelIcon = (channel: IChannel): string => {
 	};
 
 	return iconMap[channel.category] ?? 'mdi:chip';
+};
+
+const isTruthyValue = (value: string | number | boolean | null): boolean => {
+	// Handle various truthy representations from IoT devices
+	if (value === null) {
+		return false;
+	}
+
+	if (typeof value === 'boolean') {
+		return value;
+	}
+
+	if (typeof value === 'number') {
+		return value !== 0;
+	}
+
+	// String comparisons (case-insensitive)
+	const strValue = value.toLowerCase();
+
+	return strValue === 'true' || strValue === '1' || strValue === 'on' || strValue === 'yes';
 };
 
 const isNumericType = (dataType: DevicesModuleChannelPropertyDataType): boolean => {
