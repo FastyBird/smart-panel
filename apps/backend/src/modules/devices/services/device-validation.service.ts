@@ -1,15 +1,20 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DEVICES_MODULE_NAME, DeviceCategory, PropertyCategory } from '../devices.constants';
+import {
+	ChannelCategory,
+	DEVICES_MODULE_NAME,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import {
 	type PropertyMetadata,
 	getAllProperties,
-	getRequiredChannels,
+	getAllowedChannels,
 	getRequiredProperties,
 	isChannelAllowed,
-	isChannelMultiple,
 } from '../utils/schema.utils';
 
 import { DevicesService } from './devices.service';
@@ -174,10 +179,33 @@ export class DeviceValidationService {
 		const deviceCategory = device.category;
 		const channels = device.channels || [];
 
-		// Get required channels for this device category
-		const requiredChannels = getRequiredChannels(deviceCategory);
+		// Get all channel specs for this device category
+		const allowedChannelSpecs = getAllowedChannels(deviceCategory);
 
-		// Track existing channel categories for duplicate detection
+		// Build a map of channel category to spec info (count required, multiple allowed)
+		// This handles the case where multiple spec entries have the same category
+		const channelSpecInfo = new Map<
+			ChannelCategory,
+			{ requiredCount: number; totalSlots: number; multipleAllowed: boolean }
+		>();
+
+		for (const spec of allowedChannelSpecs) {
+			const category = spec.category;
+			const existing = channelSpecInfo.get(category) || { requiredCount: 0, totalSlots: 0, multipleAllowed: false };
+
+			existing.totalSlots++;
+			if (spec.required) {
+				existing.requiredCount++;
+			}
+			// If any spec allows multiple, consider it allowed
+			if (spec.multiple) {
+				existing.multipleAllowed = true;
+			}
+
+			channelSpecInfo.set(category, existing);
+		}
+
+		// Track existing channel categories and their instances
 		const existingChannelCategories = new Map<ChannelCategory, ChannelEntity[]>();
 
 		for (const channel of channels) {
@@ -187,19 +215,31 @@ export class DeviceValidationService {
 		}
 
 		// Check for missing required channels
-		for (const requiredChannel of requiredChannels) {
-			if (!existingChannelCategories.has(requiredChannel)) {
-				issues.push({
-					type: ValidationIssueType.MISSING_CHANNEL,
-					severity: ValidationIssueSeverity.ERROR,
-					channelCategory: requiredChannel,
-					message: `Missing required channel: ${requiredChannel}`,
-				});
+		// A category is satisfied if we have at least requiredCount instances
+		for (const [category, specInfo] of channelSpecInfo) {
+			if (specInfo.requiredCount > 0) {
+				const existingCount = existingChannelCategories.get(category)?.length || 0;
+
+				if (existingCount < specInfo.requiredCount) {
+					issues.push({
+						type: ValidationIssueType.MISSING_CHANNEL,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: category,
+						message:
+							specInfo.requiredCount === 1
+								? `Missing required channel: ${category}`
+								: `Missing required channels: ${category} (found ${existingCount}, need at least ${specInfo.requiredCount})`,
+						expected: specInfo.requiredCount.toString(),
+						actual: existingCount.toString(),
+					});
+				}
 			}
 		}
 
 		// Check for unknown channels and duplicates
 		for (const [channelCategory, channelInstances] of existingChannelCategories) {
+			const specInfo = channelSpecInfo.get(channelCategory);
+
 			// Check if channel is allowed for this device category
 			if (!isChannelAllowed(deviceCategory, channelCategory)) {
 				for (const channel of channelInstances) {
@@ -211,18 +251,21 @@ export class DeviceValidationService {
 						message: `Channel category '${channelCategory}' is not defined in specification for device category '${deviceCategory}'`,
 					});
 				}
-			}
+			} else if (specInfo) {
+				// Check for duplicate channels when multiple is not allowed
+				// Only warn if we have more instances than defined slots AND multiple is not allowed
+				const maxAllowed = specInfo.multipleAllowed ? Infinity : specInfo.totalSlots;
 
-			// Check for duplicate channels when multiple is not allowed
-			if (channelInstances.length > 1 && !isChannelMultiple(deviceCategory, channelCategory)) {
-				issues.push({
-					type: ValidationIssueType.DUPLICATE_CHANNEL,
-					severity: ValidationIssueSeverity.WARNING,
-					channelCategory,
-					message: `Multiple instances of channel '${channelCategory}' found but only one is allowed`,
-					expected: '1',
-					actual: channelInstances.length.toString(),
-				});
+				if (channelInstances.length > maxAllowed) {
+					issues.push({
+						type: ValidationIssueType.DUPLICATE_CHANNEL,
+						severity: ValidationIssueSeverity.WARNING,
+						channelCategory,
+						message: `Too many instances of channel '${channelCategory}' found`,
+						expected: maxAllowed.toString(),
+						actual: channelInstances.length.toString(),
+					});
+				}
 			}
 		}
 	}
@@ -271,6 +314,29 @@ export class DeviceValidationService {
 	}
 
 	/**
+	 * Check if a property's permissions satisfy a required permission.
+	 * READ_WRITE satisfies both READ_ONLY and WRITE_ONLY requirements.
+	 */
+	private permissionSatisfied(requiredPermission: PermissionType, propertyPermissions: Set<PermissionType>): boolean {
+		// Direct match
+		if (propertyPermissions.has(requiredPermission)) {
+			return true;
+		}
+
+		// READ_WRITE satisfies READ_ONLY requirement
+		if (requiredPermission === PermissionType.READ_ONLY && propertyPermissions.has(PermissionType.READ_WRITE)) {
+			return true;
+		}
+
+		// READ_WRITE satisfies WRITE_ONLY requirement
+		if (requiredPermission === PermissionType.WRITE_ONLY && propertyPermissions.has(PermissionType.READ_WRITE)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Validate a property against its specification
 	 */
 	private validatePropertyAgainstSpec(
@@ -294,12 +360,15 @@ export class DeviceValidationService {
 			});
 		}
 
-		// Validate permissions (check if all required permissions are present)
+		// Validate permissions (check if all required permissions are satisfied)
+		// READ_WRITE satisfies both READ_ONLY and WRITE_ONLY requirements
 		if (spec.permissions && spec.permissions.length > 0) {
 			const propertyPermissions = new Set(property.permissions);
-			const missingPermissions = spec.permissions.filter((p) => !propertyPermissions.has(p));
+			const unsatisfiedPermissions = spec.permissions.filter(
+				(requiredPerm) => !this.permissionSatisfied(requiredPerm, propertyPermissions),
+			);
 
-			if (missingPermissions.length > 0) {
+			if (unsatisfiedPermissions.length > 0) {
 				issues.push({
 					type: ValidationIssueType.INVALID_PERMISSIONS,
 					severity: ValidationIssueSeverity.WARNING,
