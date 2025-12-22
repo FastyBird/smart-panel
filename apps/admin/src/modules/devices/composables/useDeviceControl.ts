@@ -101,7 +101,17 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 		return loadingProperties.value[propertyId] ?? false;
 	};
 
-	const clearPendingValue = (propertyId: IChannelProperty['id']): void => {
+	const clearPendingValue = (propertyId: IChannelProperty['id'], expectedValue?: string | number | boolean | null): void => {
+		// Only clear if expectedValue matches current pending value (or no expected value specified)
+		if (expectedValue !== undefined) {
+			const currentPending = pendingValues.value[propertyId];
+
+			// Don't clear if user has set a newer value while command was in-flight
+			if (currentPending !== expectedValue && String(currentPending) !== String(expectedValue)) {
+				return;
+			}
+		}
+
 		delete pendingValues.value[propertyId];
 
 		if (pendingValueTimers[propertyId]) {
@@ -110,15 +120,21 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 		}
 	};
 
-	const schedulePendingValueCleanup = (propertyId: IChannelProperty['id']): void => {
+	const schedulePendingValueCleanup = (propertyId: IChannelProperty['id'], expectedValue: string | number | boolean | null): void => {
 		// Clear any existing cleanup timer
 		if (pendingValueTimers[propertyId]) {
 			clearTimeout(pendingValueTimers[propertyId]);
 		}
 
-		// Set a failsafe timeout to clear pending value
+		// Set a failsafe timeout to clear pending value (only if it still matches)
 		pendingValueTimers[propertyId] = setTimeout(() => {
-			delete pendingValues.value[propertyId];
+			const currentPending = pendingValues.value[propertyId];
+
+			// Only clear if the pending value hasn't changed
+			if (currentPending === expectedValue || String(currentPending) === String(expectedValue)) {
+				delete pendingValues.value[propertyId];
+			}
+
 			delete pendingValueTimers[propertyId];
 		}, PENDING_VALUE_TIMEOUT);
 	};
@@ -164,18 +180,18 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 					);
 
 					if (result !== true) {
-						// Revert optimistic update on failure
-						clearPendingValue(propertyId);
+						// Revert optimistic update on failure (only if value hasn't changed)
+						clearPendingValue(propertyId, value);
 						resolve(false);
 					} else {
 						// Success - keep pending value until store updates (WS event)
 						// Schedule cleanup as failsafe in case WS event never arrives
-						schedulePendingValueCleanup(propertyId);
+						schedulePendingValueCleanup(propertyId, value);
 						resolve(true);
 					}
 				} catch {
-					// Revert optimistic update on error
-					clearPendingValue(propertyId);
+					// Revert optimistic update on error (only if value hasn't changed)
+					clearPendingValue(propertyId, value);
 					resolve(false);
 				} finally {
 					loadingProperties.value[propertyId] = false;
