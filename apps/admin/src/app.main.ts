@@ -40,6 +40,7 @@ import { DashboardModule } from './modules/dashboard';
 import { DevicesModule } from './modules/devices';
 import { DisplaysModule } from './modules/displays';
 import { ExtensionsModule, installRemoteExtensions, installStaticExtensions } from './modules/extensions';
+import { InfluxDbModule } from './modules/influxdb';
 import { MdnsModule } from './modules/mdns';
 import { StatsModule } from './modules/stats';
 import { SystemModule } from './modules/system';
@@ -135,6 +136,7 @@ app.use(UsersModule, moduleOptions);
 app.use(StatsModule, moduleOptions);
 app.use(WeatherModule, moduleOptions);
 app.use(MdnsModule, moduleOptions);
+app.use(InfluxDbModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {
