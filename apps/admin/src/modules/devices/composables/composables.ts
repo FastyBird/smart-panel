@@ -27,5 +27,7 @@ export * from './useDeviceAddForm';
 export * from './useDeviceEditForm';
 export * from './useDevicesPlugin';
 export * from './useDevicesPlugins';
+export * from './useDevicesValidation';
+export * from './useDeviceValidation';
 
 export * from './types';

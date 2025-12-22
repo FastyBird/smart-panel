@@ -5,6 +5,7 @@ import type { IChannelsPropertiesStoreActions, IChannelsPropertiesStoreState } f
 import type { IChannelsStoreActions, IChannelsStoreState } from './channels.store.types';
 import type { IDevicesControlsStoreActions, IDevicesControlsStoreState } from './devices.controls.store.types';
 import type { IDevicesStoreActions, IDevicesStoreState } from './devices.store.types';
+import type { IDevicesValidationStoreActions, IDevicesValidationStoreState } from './devices.validation.store';
 
 export const devicesStoreKey: StoreInjectionKey<string, IDevicesStoreState, object, IDevicesStoreActions> = Symbol('FB-Module-Devices-DevicesStore');
 
@@ -21,4 +22,8 @@ export const channelsControlsStoreKey: StoreInjectionKey<string, IChannelsContro
 
 export const channelsPropertiesStoreKey: StoreInjectionKey<string, IChannelsPropertiesStoreState, object, IChannelsPropertiesStoreActions> = Symbol(
 	'FB-Module-Devices-ChannelsPropertiesStore'
+);
+
+export const devicesValidationStoreKey: StoreInjectionKey<string, IDevicesValidationStoreState, object, IDevicesValidationStoreActions> = Symbol(
+	'FB-Module-Devices-DevicesValidationStore'
 );
