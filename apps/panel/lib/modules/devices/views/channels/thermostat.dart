@@ -13,6 +13,8 @@ class ThermostatChannelView extends ChannelView with ChannelActiveMixin {
   ThermostatChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

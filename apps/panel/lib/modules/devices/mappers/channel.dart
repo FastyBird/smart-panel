@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/channels/shelly_ng_
 import 'package:fastybird_smart_panel/modules/devices/models/channels/shelly_v1_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/third_party_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/wled_channel.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_particulate.dart';
@@ -83,271 +84,380 @@ ChannelModel buildChannelModel(String type, Map<String, dynamic> data) {
   }
 }
 
-Map<ChannelCategory,
-        ChannelView Function(ChannelModel, List<ChannelPropertyView>)>
-    channelViewsMappers = {
-  ChannelCategory.generic: (channel, properties) {
+Map<
+        ChannelCategory,
+        ChannelView Function(
+          ChannelModel,
+          List<ChannelPropertyView>,
+          bool,
+          List<ValidationIssue>,
+        )> channelViewsMappers = {
+  ChannelCategory.generic: (channel, properties, isValid, validationIssues) {
     return GenericChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.airParticulate: (channel, properties) {
+  ChannelCategory.airParticulate:
+      (channel, properties, isValid, validationIssues) {
     return AirParticulateChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.alarm: (channel, properties) {
+  ChannelCategory.alarm: (channel, properties, isValid, validationIssues) {
     return AlarmChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.battery: (channel, properties) {
+  ChannelCategory.battery: (channel, properties, isValid, validationIssues) {
     return BatteryChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.camera: (channel, properties) {
+  ChannelCategory.camera: (channel, properties, isValid, validationIssues) {
     return CameraChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.carbonDioxide: (channel, properties) {
+  ChannelCategory.carbonDioxide:
+      (channel, properties, isValid, validationIssues) {
     return CarbonDioxideChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.carbonMonoxide: (channel, properties) {
+  ChannelCategory.carbonMonoxide:
+      (channel, properties, isValid, validationIssues) {
     return CarbonMonoxideChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.contact: (channel, properties) {
+  ChannelCategory.contact: (channel, properties, isValid, validationIssues) {
     return ContactChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.cooler: (channel, properties) {
+  ChannelCategory.cooler: (channel, properties, isValid, validationIssues) {
     return CoolerChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.deviceInformation: (channel, properties) {
+  ChannelCategory.deviceInformation:
+      (channel, properties, isValid, validationIssues) {
     return DeviceInformationChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.door: (channel, properties) {
+  ChannelCategory.door: (channel, properties, isValid, validationIssues) {
     return DoorChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.doorbell: (channel, properties) {
+  ChannelCategory.doorbell: (channel, properties, isValid, validationIssues) {
     return DoorbellChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.electricalEnergy: (channel, properties) {
+  ChannelCategory.electricalEnergy:
+      (channel, properties, isValid, validationIssues) {
     return ElectricalEnergyChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.electricalPower: (channel, properties) {
+  ChannelCategory.electricalPower:
+      (channel, properties, isValid, validationIssues) {
     return ElectricalPowerChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.fan: (channel, properties) {
+  ChannelCategory.fan: (channel, properties, isValid, validationIssues) {
     return FanChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.flow: (channel, properties) {
+  ChannelCategory.flow: (channel, properties, isValid, validationIssues) {
     return FlowChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.heater: (channel, properties) {
+  ChannelCategory.heater: (channel, properties, isValid, validationIssues) {
     return HeaterChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.humidity: (channel, properties) {
+  ChannelCategory.humidity: (channel, properties, isValid, validationIssues) {
     return HumidityChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.illuminance: (channel, properties) {
+  ChannelCategory.illuminance:
+      (channel, properties, isValid, validationIssues) {
     return IlluminanceChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.leak: (channel, properties) {
+  ChannelCategory.leak: (channel, properties, isValid, validationIssues) {
     return LeakChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.light: (channel, properties) {
+  ChannelCategory.light: (channel, properties, isValid, validationIssues) {
     return LightChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.lock: (channel, properties) {
+  ChannelCategory.lock: (channel, properties, isValid, validationIssues) {
     return LockChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.mediaInput: (channel, properties) {
+  ChannelCategory.mediaInput:
+      (channel, properties, isValid, validationIssues) {
     return MediaInputChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.mediaPlayback: (channel, properties) {
+  ChannelCategory.mediaPlayback:
+      (channel, properties, isValid, validationIssues) {
     return MediaPlaybackChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.microphone: (channel, properties) {
+  ChannelCategory.microphone:
+      (channel, properties, isValid, validationIssues) {
     return MicrophoneChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.motion: (channel, properties) {
+  ChannelCategory.motion: (channel, properties, isValid, validationIssues) {
     return MotionChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.nitrogenDioxide: (channel, properties) {
+  ChannelCategory.nitrogenDioxide:
+      (channel, properties, isValid, validationIssues) {
     return NitrogenDioxideChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.occupancy: (channel, properties) {
+  ChannelCategory.occupancy: (channel, properties, isValid, validationIssues) {
     return OccupancyChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.outlet: (channel, properties) {
+  ChannelCategory.outlet: (channel, properties, isValid, validationIssues) {
     return OutletChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.ozone: (channel, properties) {
+  ChannelCategory.ozone: (channel, properties, isValid, validationIssues) {
     return OzoneChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.pressure: (channel, properties) {
+  ChannelCategory.pressure: (channel, properties, isValid, validationIssues) {
     return PressureChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.robotVacuum: (channel, properties) {
+  ChannelCategory.robotVacuum:
+      (channel, properties, isValid, validationIssues) {
     return RobotVacuumChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.smoke: (channel, properties) {
+  ChannelCategory.smoke: (channel, properties, isValid, validationIssues) {
     return SmokeChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.speaker: (channel, properties) {
+  ChannelCategory.speaker: (channel, properties, isValid, validationIssues) {
     return SpeakerChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.sulphurDioxide: (channel, properties) {
+  ChannelCategory.sulphurDioxide:
+      (channel, properties, isValid, validationIssues) {
     return SulphurDioxideChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.switcher: (channel, properties) {
+  ChannelCategory.switcher: (channel, properties, isValid, validationIssues) {
     return SwitcherChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.television: (channel, properties) {
+  ChannelCategory.television:
+      (channel, properties, isValid, validationIssues) {
     return TelevisionChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.temperature: (channel, properties) {
+  ChannelCategory.temperature:
+      (channel, properties, isValid, validationIssues) {
     return TemperatureChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.thermostat: (channel, properties) {
+  ChannelCategory.thermostat:
+      (channel, properties, isValid, validationIssues) {
     return ThermostatChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.valve: (channel, properties) {
+  ChannelCategory.valve: (channel, properties, isValid, validationIssues) {
     return ValveChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.volatileOrganicCompounds: (channel, properties) {
+  ChannelCategory.volatileOrganicCompounds:
+      (channel, properties, isValid, validationIssues) {
     return VolatileOrganicCompoundsChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  ChannelCategory.windowCovering: (channel, properties) {
+  ChannelCategory.windowCovering:
+      (channel, properties, isValid, validationIssues) {
     return WindowCoveringChannelView(
       channelModel: channel,
       properties: properties,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
 };
 
 ChannelView buildChannelView(
   ChannelModel channel,
-  List<ChannelPropertyView> properties,
-) {
+  List<ChannelPropertyView> properties, {
+  bool isValid = true,
+  List<ValidationIssue> validationIssues = const [],
+}) {
   final builder = channelViewsMappers[channel.category];
 
   if (builder != null) {
-    return builder(channel, properties);
+    return builder(channel, properties, isValid, validationIssues);
   } else {
     throw ArgumentError(
       'Channel view can not be created. Unsupported channel category: ${channel.category.value}',

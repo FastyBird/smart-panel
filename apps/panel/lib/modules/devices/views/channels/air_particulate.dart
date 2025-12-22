@@ -21,6 +21,8 @@ class AirParticulateChannelView extends ChannelView
   AirParticulateChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

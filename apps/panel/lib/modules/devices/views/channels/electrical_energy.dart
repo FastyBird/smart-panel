@@ -12,6 +12,8 @@ class ElectricalEnergyChannelView extends ChannelView
   ElectricalEnergyChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   ConsumptionChannelPropertyView get consumptionProp =>

@@ -18,6 +18,8 @@ class SpeakerDeviceView extends DeviceView
   SpeakerDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

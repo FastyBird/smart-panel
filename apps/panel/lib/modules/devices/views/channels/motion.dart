@@ -17,6 +17,8 @@ class MotionChannelView extends ChannelView
   MotionChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

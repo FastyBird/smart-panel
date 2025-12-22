@@ -42,6 +42,8 @@ class SensorDeviceView extends DeviceView
   SensorDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

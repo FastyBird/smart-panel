@@ -11,6 +11,8 @@ class FlowChannelView extends ChannelView
   FlowChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   RateChannelPropertyView get rateProp =>

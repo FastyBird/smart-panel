@@ -17,6 +17,8 @@ class ElectricalPowerChannelView extends ChannelView
   ElectricalPowerChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   PowerChannelPropertyView? get powerProp =>

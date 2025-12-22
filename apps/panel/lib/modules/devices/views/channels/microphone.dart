@@ -9,6 +9,8 @@ class MicrophoneChannelView extends ChannelView
   MicrophoneChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

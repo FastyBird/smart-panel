@@ -16,6 +16,8 @@ class ValveChannelView extends ChannelView
   ValveChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

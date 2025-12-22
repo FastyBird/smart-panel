@@ -20,6 +20,8 @@ class PumpDeviceView extends DeviceView
   PumpDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

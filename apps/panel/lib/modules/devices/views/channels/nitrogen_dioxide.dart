@@ -21,6 +21,8 @@ class NitrogenDioxideChannelView extends ChannelView
   NitrogenDioxideChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

@@ -6,8 +6,6 @@ import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
-import 'package:fastybird_smart_panel/spec/channel_spec.g.dart';
-import 'package:fastybird_smart_panel/spec/device_spec.g.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesService extends ChangeNotifier {
@@ -16,6 +14,7 @@ class DevicesService extends ChangeNotifier {
   final ChannelsRepository _channelsRepository;
   final ChannelPropertiesRepository _channelPropertiesRepository;
   final ChannelControlsRepository _channelControlsRepository;
+  final DeviceValidationRepository _validationRepository;
 
   Map<String, DeviceView> _devices = {};
   Map<String, ChannelView> _channels = {};
@@ -27,11 +26,13 @@ class DevicesService extends ChangeNotifier {
     required ChannelsRepository channelsRepository,
     required ChannelPropertiesRepository channelPropertiesRepository,
     required ChannelControlsRepository channelControlsRepository,
+    required DeviceValidationRepository validationRepository,
   })  : _devicesRepository = devicesRepository,
         _devicesControlsRepository = devicesControlsRepository,
         _channelsRepository = channelsRepository,
         _channelPropertiesRepository = channelPropertiesRepository,
-        _channelControlsRepository = channelControlsRepository;
+        _channelControlsRepository = channelControlsRepository,
+        _validationRepository = validationRepository;
 
   Future<void> initialize() async {
     await _devicesRepository.fetchAll();
@@ -47,9 +48,12 @@ class DevicesService extends ChangeNotifier {
       await _channelControlsRepository.fetchAll(channel.id);
     }
 
+    await _validationRepository.fetchAll();
+
     _devicesRepository.addListener(_updateData);
     _channelsRepository.addListener(_updateData);
     _channelPropertiesRepository.addListener(_updateData);
+    _validationRepository.addListener(_updateData);
 
     _updateData();
   }
@@ -156,27 +160,6 @@ class DevicesService extends ChangeNotifier {
           .map((entry) => entry.value)
           .toList();
 
-      final ChannelPropertiesSpecification propertiesSpec =
-          buildChannelPropertiesSpecification(channel.category);
-
-      final missingProperties = propertiesSpec.required
-          .where(
-            (requiredProp) => !properties.any(
-              (property) => property.category == requiredProp,
-            ),
-          )
-          .toList();
-
-      if (missingProperties.isNotEmpty) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DEVICES MODULE][SERVICE] Missing required properties: "${missingProperties.map((prop) => prop.value).join(", ")}" for channel category: "${channel.category.value}" - "${channel.id}".',
-          );
-        }
-
-        continue;
-      }
-
       try {
         newChannelsViews[channel.id] = buildChannelView(
           channel,
@@ -205,31 +188,34 @@ class DevicesService extends ChangeNotifier {
           .map((entry) => entry.value)
           .toList();
 
-      final DeviceChannelsSpecification channelsSpec =
-          buildDeviceChannelsSpecification(device.category);
+      // Get validation result for this device
+      final validationResult = _validationRepository.getForDevice(device.id);
+      final isValid = validationResult?.isValid ?? true;
+      final deviceIssues = validationResult?.issues
+              .where((issue) => issue.channelId == null)
+              .toList() ??
+          [];
 
-      final missingChannels = channelsSpec.required
-          .where(
-            (requiredChannel) => !channels.any(
-              (channel) => channel.category == requiredChannel,
-            ),
-          )
-          .toList();
+      // Update channel views with their validation issues
+      final List<ChannelView> channelsWithValidation = channels.map((channel) {
+        final channelIssues =
+            _validationRepository.getIssuesForChannel(device.id, channel.id);
+        final channelIsValid = channelIssues.isEmpty;
 
-      if (missingChannels.isNotEmpty) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DEVICES MODULE][SERVICE] Missing required channels: "${missingChannels.map((channel) => channel.value).join(", ")}" for device category: "${device.category.value}" - "${device.id}".',
-          );
-        }
-
-        continue;
-      }
+        return buildChannelView(
+          channel.channelModel,
+          channel.properties,
+          isValid: channelIsValid,
+          validationIssues: channelIssues,
+        );
+      }).toList();
 
       try {
         newDevicesViews[device.id] = buildDeviceView(
           device,
-          channels,
+          channelsWithValidation,
+          isValid: isValid,
+          validationIssues: deviceIssues,
         );
       } catch (e) {
         if (kDebugMode) {
@@ -258,5 +244,6 @@ class DevicesService extends ChangeNotifier {
     _devicesRepository.removeListener(_updateData);
     _channelsRepository.removeListener(_updateData);
     _channelPropertiesRepository.removeListener(_updateData);
+    _validationRepository.removeListener(_updateData);
   }
 }

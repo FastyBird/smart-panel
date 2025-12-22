@@ -21,6 +21,8 @@ class SulphurDioxideChannelView extends ChannelView
   SulphurDioxideChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

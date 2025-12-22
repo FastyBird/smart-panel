@@ -4,5 +4,7 @@ class AlarmChannelView extends ChannelView {
   AlarmChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 }

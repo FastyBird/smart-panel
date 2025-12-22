@@ -4,5 +4,7 @@ class GenericChannelView extends ChannelView {
   GenericChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 }

@@ -14,6 +14,8 @@ class FanDeviceView extends DeviceView
   FanDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

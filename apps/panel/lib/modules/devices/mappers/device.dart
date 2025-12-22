@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/devices/shelly_ng_d
 import 'package:fastybird_smart_panel/modules/devices/models/devices/shelly_v1_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/third_party_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/wled_device.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
@@ -66,168 +67,228 @@ DeviceModel buildDeviceModel(String type, Map<String, dynamic> data) {
   }
 }
 
-Map<DeviceCategory, DeviceView Function(DeviceModel, List<ChannelView>)>
-    deviceViewsMappers = {
-  DeviceCategory.generic: (device, channels) {
+Map<
+        DeviceCategory,
+        DeviceView Function(
+          DeviceModel,
+          List<ChannelView>,
+          bool,
+          List<ValidationIssue>,
+        )> deviceViewsMappers = {
+  DeviceCategory.generic: (device, channels, isValid, validationIssues) {
     return GenericDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.airConditioner: (device, channels) {
+  DeviceCategory.airConditioner:
+      (device, channels, isValid, validationIssues) {
     return AirConditionerDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.airDehumidifier: (device, channels) {
+  DeviceCategory.airDehumidifier:
+      (device, channels, isValid, validationIssues) {
     return AirDehumidifierDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.airHumidifier: (device, channels) {
+  DeviceCategory.airHumidifier: (device, channels, isValid, validationIssues) {
     return AirHumidifierDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.airPurifier: (device, channels) {
+  DeviceCategory.airPurifier: (device, channels, isValid, validationIssues) {
     return AirPurifierDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.alarm: (device, channels) {
+  DeviceCategory.alarm: (device, channels, isValid, validationIssues) {
     return AlarmDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.camera: (device, channels) {
+  DeviceCategory.camera: (device, channels, isValid, validationIssues) {
     return CameraDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.door: (device, channels) {
+  DeviceCategory.door: (device, channels, isValid, validationIssues) {
     return DoorDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.doorbell: (device, channels) {
+  DeviceCategory.doorbell: (device, channels, isValid, validationIssues) {
     return DoorbellDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.fan: (device, channels) {
+  DeviceCategory.fan: (device, channels, isValid, validationIssues) {
     return FanDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.heater: (device, channels) {
+  DeviceCategory.heater: (device, channels, isValid, validationIssues) {
     return HeaterDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.lighting: (device, channels) {
+  DeviceCategory.lighting: (device, channels, isValid, validationIssues) {
     return LightingDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.lock: (device, channels) {
+  DeviceCategory.lock: (device, channels, isValid, validationIssues) {
     return LockDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.media: (device, channels) {
+  DeviceCategory.media: (device, channels, isValid, validationIssues) {
     return MediaDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.outlet: (device, channels) {
+  DeviceCategory.outlet: (device, channels, isValid, validationIssues) {
     return OutletDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.pump: (device, channels) {
+  DeviceCategory.pump: (device, channels, isValid, validationIssues) {
     return PumpDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.robotVacuum: (device, channels) {
+  DeviceCategory.robotVacuum: (device, channels, isValid, validationIssues) {
     return RobotVacuumDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.sensor: (device, channels) {
+  DeviceCategory.sensor: (device, channels, isValid, validationIssues) {
     return SensorDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.speaker: (device, channels) {
+  DeviceCategory.speaker: (device, channels, isValid, validationIssues) {
     return SpeakerDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.sprinkler: (device, channels) {
+  DeviceCategory.sprinkler: (device, channels, isValid, validationIssues) {
     return SprinklerDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.switcher: (device, channels) {
+  DeviceCategory.switcher: (device, channels, isValid, validationIssues) {
     return SwitcherDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.television: (device, channels) {
+  DeviceCategory.television: (device, channels, isValid, validationIssues) {
     return TelevisionDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.thermostat: (device, channels) {
+  DeviceCategory.thermostat: (device, channels, isValid, validationIssues) {
     return ThermostatDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.valve: (device, channels) {
+  DeviceCategory.valve: (device, channels, isValid, validationIssues) {
     return ValveDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
-  DeviceCategory.windowCovering: (device, channels) {
+  DeviceCategory.windowCovering: (device, channels, isValid, validationIssues) {
     return WindowCoveringDeviceView(
       deviceModel: device,
       channels: channels,
+      isValid: isValid,
+      validationIssues: validationIssues,
     );
   },
 };
 
 DeviceView buildDeviceView(
   DeviceModel device,
-  List<ChannelView> channels,
-) {
+  List<ChannelView> channels, {
+  bool isValid = true,
+  List<ValidationIssue> validationIssues = const [],
+}) {
   final builder = deviceViewsMappers[device.category];
 
   if (builder != null) {
-    return builder(device, channels);
+    return builder(device, channels, isValid, validationIssues);
   } else {
     throw ArgumentError(
       'Device view can not be created. Unsupported device category: ${device.category.value}',

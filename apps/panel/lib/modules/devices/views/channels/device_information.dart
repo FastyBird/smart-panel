@@ -17,6 +17,8 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
   DeviceInformationChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   ManufacturerChannelPropertyView get manufacturerProp =>

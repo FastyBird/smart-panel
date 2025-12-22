@@ -9,6 +9,8 @@ class MediaInputChannelView extends ChannelView with ChannelActiveMixin {
   MediaInputChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   SourceChannelPropertyView get sourceProp =>

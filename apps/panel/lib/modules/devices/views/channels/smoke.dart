@@ -15,6 +15,8 @@ class SmokeChannelView extends ChannelView
   SmokeChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

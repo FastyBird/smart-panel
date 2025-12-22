@@ -22,6 +22,8 @@ class ValveDeviceView extends DeviceView
   ValveDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

@@ -17,6 +17,8 @@ class CameraChannelView extends ChannelView
   CameraChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   StatusChannelPropertyView get statusProp =>

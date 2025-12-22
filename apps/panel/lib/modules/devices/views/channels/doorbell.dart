@@ -13,6 +13,8 @@ class DoorbellChannelView extends ChannelView
   DoorbellChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   EventChannelPropertyView get eventPropProp =>
