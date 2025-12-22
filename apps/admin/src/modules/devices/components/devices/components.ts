@@ -3,6 +3,7 @@ export { default as DeviceEditForm } from './device-edit-form.vue';
 export { default as DeviceControlForm } from './device-control-form.vue';
 export { default as DeviceDetail } from './device-detail.vue';
 export { default as DeviceDetailDescription } from './device-detail-description.vue';
+export { default as DeviceLogs } from './device-logs.vue';
 export { default as DevicesFilter } from './devices-filter.vue';
 export { default as DevicesTable } from './devices-table.vue';
 export { default as DevicesTableColumnIcon } from './devices-table-column-icon.vue';

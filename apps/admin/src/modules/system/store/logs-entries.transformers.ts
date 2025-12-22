@@ -15,6 +15,7 @@ export const transformLogEntryResponse = (response: ILogEntryRes): ILogEntry => 
 		level: response.level,
 		type: response.type,
 		tag: response.tag,
+		device: response.device,
 		message: response.message,
 		args: response.args,
 		user: {

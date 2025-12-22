@@ -27,6 +27,7 @@ export const LogEntrySchema = z.object({
 	level: z.number().int().min(0).max(6),
 	type: z.nativeEnum(SystemModuleLogEntryType),
 	tag: z.string().max(128).optional(),
+	device: z.string().uuid().optional(),
 	message: z.string().max(2000).optional(),
 	args: z
 		.array(
@@ -113,6 +114,7 @@ export const LogsEntriesSetActionPayloadSchema = z.object({
 		level: z.number().int().min(0).max(6),
 		type: z.nativeEnum(SystemModuleLogEntryType),
 		tag: z.string().max(128).optional(),
+		device: z.string().uuid().optional(),
 		message: z.string().max(2000).optional(),
 		args: z
 			.array(
@@ -199,6 +201,7 @@ export const LogEntryResSchema: ZodType<ApiLogEntry> = z.object({
 	level: z.number(),
 	type: z.nativeEnum(SystemModuleLogEntryType),
 	tag: z.string().optional(),
+	device: z.string().optional(),
 	message: z.string().optional(),
 	args: z
 		.array(

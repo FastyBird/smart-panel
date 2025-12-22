@@ -104,25 +104,62 @@
 			>
 				{{ t('devicesModule.texts.devices.alerts') }}
 			</dt>
-			<dd class="col-start-2 m-0 p-2 flex items-center min-w-[8rem]">
+			<dd class="col-start-2 m-0 p-2 flex items-center gap-2 min-w-[8rem]">
 				<el-text>
 					<el-tag
+						v-if="logsLoading"
 						size="small"
-						:type="alerts.length === 0 ? 'success' : 'danger'"
+						type="info"
+					>
+						<icon
+							icon="mdi:loading"
+							class="animate-spin"
+						/>
+					</el-tag>
+					<el-tag
+						v-else
+						size="small"
+						:type="hasAlerts ? 'danger' : 'success'"
 					>
 						<i18n-t
 							keypath="devicesModule.texts.devices.alertsCount"
-							:plural="alerts.length"
+							:plural="alertCount"
 						>
 							<template #count>
-								<strong>{{ alerts.length }}</strong>
+								<strong>{{ alertCount }}</strong>
 							</template>
 						</i18n-t>
 					</el-tag>
 				</el-text>
+				<el-button
+					size="small"
+					text
+					@click="openLogsDialog"
+				>
+					<template #icon>
+						<icon icon="mdi:console" />
+					</template>
+					{{ t('devicesModule.buttons.viewLogs.title') }}
+				</el-button>
 			</dd>
 		</dl>
 	</el-card>
+
+	<!-- Device Logs Dialog -->
+	<el-dialog
+		v-model="logsDialogVisible"
+		:title="t('devicesModule.texts.devices.logs.title')"
+		width="80%"
+		destroy-on-close
+		@close="closeLogsDialog"
+	>
+		<div class="h-96">
+			<device-logs
+				v-model:live="logsLive"
+				:device-id="device.id"
+			/>
+		</div>
+	</el-dialog>
 
 	<!-- Validation Issues Section -->
 	<el-card
@@ -203,21 +240,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeMount, ref, toRef } from 'vue';
 import { I18nT, useI18n } from 'vue-i18n';
 
-import { ElCard, ElIcon, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
+import { ElButton, ElCard, ElDialog, ElIcon, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { injectStoresManager } from '../../../../common';
 import { DevicesModuleChannelCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
-import { useChannels } from '../../composables/composables';
+import { useChannels, useDeviceLogs } from '../../composables/composables';
 import { type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';
 import { devicesValidationStoreKey } from '../../store/keys';
 
 import DeviceDetailDescription from './device-detail-description.vue';
+import DeviceLogs from './device-logs.vue';
 import type { IDeviceDetailProps } from './device-detail.types';
 
 defineOptions({
@@ -241,7 +279,23 @@ const errorCount = computed<number>(() => issues.value.filter((i) => i.severity 
 const warningCount = computed<number>(() => issues.value.filter((i) => i.severity === 'warning').length);
 const validationLoading = computed<boolean>(() => validationStore.fetching() || validationStore.getting(props.device.id));
 
-const alerts: string[] = [];
+// Get device logs for alerts
+const { alertLogs, alertCount, hasAlerts, isLoading: logsLoading, fetchLogs } = useDeviceLogs({
+	deviceId: toRef(() => props.device.id),
+});
+
+// Logs dialog state
+const logsDialogVisible = ref<boolean>(false);
+const logsLive = ref<boolean>(false);
+
+const openLogsDialog = (): void => {
+	logsDialogVisible.value = true;
+};
+
+const closeLogsDialog = (): void => {
+	logsDialogVisible.value = false;
+	logsLive.value = false;
+};
 
 const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefined => {
 	return channels.value.find((channel) => channel.category === DevicesModuleChannelCategory.device_information);
@@ -271,5 +325,9 @@ const stateColor = computed<StateColor>((): StateColor => {
 	}
 
 	return 'danger';
+});
+
+onBeforeMount(() => {
+	void fetchLogs();
 });
 </script>
