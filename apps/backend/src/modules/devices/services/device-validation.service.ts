@@ -480,7 +480,7 @@ export class DeviceValidationService {
 					propertyId: property.id,
 					message: `Property '${property.category}' is missing permissions`,
 					expected: spec.permissions.join(', '),
-					actual: property.permissions.join(', '),
+					actual: (property.permissions ?? []).join(', '),
 				});
 			}
 		}
