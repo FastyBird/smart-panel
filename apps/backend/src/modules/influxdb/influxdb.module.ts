@@ -1,4 +1,4 @@
-import { forwardRef, Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 
 import { ConfigModule } from '../config/config.module';
