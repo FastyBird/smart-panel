@@ -2,6 +2,11 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory } from '../../../modules/devices/devices.constants';
+import {
+	DeviceValidationService,
+	ValidationIssueSeverity,
+	ValidationIssueType,
+} from '../../../modules/devices/services/device-validation.service';
 import { DevicesHomeAssistantNotFoundException } from '../devices-home-assistant.exceptions';
 import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 
@@ -9,11 +14,13 @@ import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 import { LightCapabilityAnalyzer } from './light-capability.analyzer';
 import { MappingPreviewService } from './mapping-preview.service';
+import { VirtualPropertyService } from './virtual-property.service';
 
 describe('MappingPreviewService', () => {
 	let service: MappingPreviewService;
 	let homeAssistantHttpService: jest.Mocked<HomeAssistantHttpService>;
 	let homeAssistantWsService: jest.Mocked<HomeAssistantWsService>;
+	let deviceValidationService: jest.Mocked<DeviceValidationService>;
 
 	const mockDeviceRegistry = [
 		{
@@ -81,18 +88,31 @@ describe('MappingPreviewService', () => {
 			getEntitiesRegistry: jest.fn(),
 		};
 
+		const virtualPropertyServiceMock: Partial<jest.Mocked<VirtualPropertyService>> = {
+			getMissingVirtualProperties: jest.fn().mockReturnValue([]),
+			resolveVirtualPropertyValue: jest.fn(),
+			canFulfillWithVirtual: jest.fn().mockReturnValue(false),
+		};
+
+		const deviceValidationServiceMock: Partial<jest.Mocked<DeviceValidationService>> = {
+			validateDeviceStructure: jest.fn().mockReturnValue({ isValid: true, issues: [] }),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				MappingPreviewService,
 				LightCapabilityAnalyzer,
 				{ provide: HomeAssistantHttpService, useValue: homeAssistantHttpServiceMock },
 				{ provide: HomeAssistantWsService, useValue: homeAssistantWsServiceMock },
+				{ provide: VirtualPropertyService, useValue: virtualPropertyServiceMock },
+				{ provide: DeviceValidationService, useValue: deviceValidationServiceMock },
 			],
 		}).compile();
 
 		service = module.get(MappingPreviewService);
 		homeAssistantHttpService = module.get(HomeAssistantHttpService);
 		homeAssistantWsService = module.get(HomeAssistantWsService);
+		deviceValidationService = module.get(DeviceValidationService);
 
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -209,6 +229,19 @@ describe('MappingPreviewService', () => {
 			homeAssistantWsService.getDevicesRegistry.mockResolvedValue(mockDeviceRegistry);
 			homeAssistantWsService.getEntitiesRegistry.mockResolvedValue(mockSensorEntityRegistry);
 			homeAssistantHttpService.getDiscoveredDevice.mockResolvedValue(mockSensorDiscoveredDevice);
+
+			// Configure validation to return invalid when thermostat channel is missing
+			deviceValidationService.validateDeviceStructure.mockReturnValue({
+				isValid: false,
+				issues: [
+					{
+						type: ValidationIssueType.MISSING_CHANNEL,
+						severity: ValidationIssueSeverity.ERROR,
+						channelCategory: ChannelCategory.THERMOSTAT,
+						message: 'Missing required channel: thermostat',
+					},
+				],
+			});
 
 			const request: MappingPreviewRequestDto = {
 				deviceCategory: DeviceCategory.THERMOSTAT,
