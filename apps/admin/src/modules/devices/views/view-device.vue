@@ -74,6 +74,17 @@
 						<icon icon="mdi:pencil" />
 					</template>
 				</el-button>
+				<el-button
+					plain
+					class="px-4! ml-2!"
+					@click="onDeviceControl"
+				>
+					<template #icon>
+						<icon icon="mdi:tune-variant" />
+					</template>
+
+					{{ t('devicesModule.buttons.control.title') }}
+				</el-button>
 
 				<el-dropdown
 					trigger="click"
@@ -441,6 +452,24 @@ const onDeviceEdit = (): void => {
 	}
 };
 
+const onDeviceControl = (): void => {
+	if (isLGDevice.value) {
+		router.replace({
+			name: RouteNames.DEVICE_CONTROL,
+			params: {
+				id: props.id,
+			},
+		});
+	} else {
+		router.push({
+			name: RouteNames.DEVICE_CONTROL,
+			params: {
+				id: props.id,
+			},
+		});
+	}
+};
+
 const onChannelAdd = (): void => {
 	if (isLGDevice.value) {
 		router.replace({
@@ -573,6 +602,7 @@ onBeforeMount((): void => {
 		route.matched.find(
 			(matched) =>
 				matched.name === RouteNames.DEVICE_EDIT ||
+				matched.name === RouteNames.DEVICE_CONTROL ||
 				matched.name === RouteNames.DEVICE_ADD_CHANNEL ||
 				matched.name === RouteNames.DEVICE_EDIT_CHANNEL ||
 				matched.name === RouteNames.DEVICE_CHANNEL_ADD_PROPERTY ||
@@ -591,6 +621,7 @@ watch(
 			route.matched.find(
 				(matched) =>
 					matched.name === RouteNames.DEVICE_EDIT ||
+					matched.name === RouteNames.DEVICE_CONTROL ||
 					matched.name === RouteNames.DEVICE_ADD_CHANNEL ||
 					matched.name === RouteNames.DEVICE_EDIT_CHANNEL ||
 					matched.name === RouteNames.DEVICE_CHANNEL_ADD_PROPERTY ||

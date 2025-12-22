@@ -78,6 +78,20 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'control',
+				name: RouteNames.DEVICE_CONTROL,
+				component: () => import('../views/view-device-control.vue'),
+				props: true,
+				meta: {
+					guards: {
+						authenticated: true,
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+					},
+					title: 'Control device',
+					icon: 'mdi:tune-variant',
+				},
+			},
+			{
 				path: 'channel/add',
 				name: RouteNames.DEVICE_ADD_CHANNEL,
 				component: () => import('../views/view-channel-add.vue'),

@@ -278,3 +278,21 @@ export interface IUseDevicesPlugins {
 	getByType: (type: IPluginElement['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
 }
+
+export interface IUseDeviceControl {
+	device: ComputedRef<IDevice | null>;
+	channels: ComputedRef<IChannel[]>;
+	controllableChannels: ComputedRef<IChannel[]>;
+	hasControllableProperties: ComputedRef<boolean>;
+	isLoading: ComputedRef<boolean>;
+	areChannelsLoaded: ComputedRef<boolean>;
+	arePropertiesLoaded: ComputedRef<boolean>;
+	fetchDevice: () => Promise<void>;
+	fetchChannels: () => Promise<void>;
+	fetchProperties: () => Promise<void>;
+	getPropertiesForChannel: (channelId: IChannel['id']) => IChannelProperty[];
+	isPropertyWritable: (property: IChannelProperty) => boolean;
+	getPropertyValue: (propertyId: IChannelProperty['id']) => string | number | boolean | null;
+	isPropertyLoading: (propertyId: IChannelProperty['id']) => boolean;
+	setPropertyValue: (channelId: IChannel['id'], propertyId: IChannelProperty['id'], value: string | number | boolean | null) => Promise<boolean>;
+}
