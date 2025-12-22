@@ -19,9 +19,16 @@ export class DisplayConnectionStateService {
 			return;
 		}
 
-		try {
-			const isOnline = OnlineDisplayState.includes(status);
+		const isOnline = OnlineDisplayState.includes(status);
 
+		// Update local cache regardless of InfluxDB availability
+		this.statusMap.set(display.id, { online: isOnline, status });
+
+		if (!this.influxDbService.isConnected()) {
+			return;
+		}
+
+		try {
 			await this.influxDbService.writePoints([
 				{
 					measurement: 'display_status',
@@ -35,8 +42,6 @@ export class DisplayConnectionStateService {
 				},
 			]);
 
-			this.statusMap.set(display.id, { online: isOnline, status });
-
 			this.logger.debug(`Status saved id=${display.id} status=${status}`);
 		} catch (error) {
 			const err = error as Error;
@@ -46,15 +51,24 @@ export class DisplayConnectionStateService {
 	}
 
 	async readLatest(display: DisplayEntity): Promise<{ online: boolean; status: ConnectionState }> {
+		// Check local cache first
+		if (this.statusMap.has(display.id)) {
+			this.logger.debug(
+				`Loaded cached status for display id=${display.id}, status=${this.statusMap.get(display.id)?.status}`,
+			);
+
+			return this.statusMap.get(display.id);
+		}
+
+		// Return default if InfluxDB not connected
+		if (!this.influxDbService.isConnected()) {
+			return {
+				online: false,
+				status: ConnectionState.UNKNOWN,
+			};
+		}
+
 		try {
-			if (this.statusMap.has(display.id)) {
-				this.logger.debug(
-					`Loaded cached status for display id=${display.id}, status=${this.statusMap.get(display.id)?.status}`,
-				);
-
-				return this.statusMap.get(display.id);
-			}
-
 			const query = `
         SELECT * FROM display_status
         WHERE displayId = '${display.id}'
@@ -100,12 +114,17 @@ export class DisplayConnectionStateService {
 	}
 
 	async delete(display: DisplayEntity): Promise<void> {
+		// Always clear local cache
+		this.statusMap.delete(display.id);
+
+		if (!this.influxDbService.isConnected()) {
+			return;
+		}
+
 		try {
 			const query = `DELETE FROM display_status WHERE displayId = '${display.id}'`;
 
 			await this.influxDbService.query(query);
-
-			this.statusMap.delete(display.id);
 
 			this.logger.log(`Deleted display status for id=${display.id}`);
 		} catch (error) {

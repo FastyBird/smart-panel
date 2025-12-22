@@ -26,9 +26,19 @@ export class DeviceConnectionStateService {
 			return;
 		}
 
-		try {
-			const isOnline = OnlineDeviceState.includes(status);
+		const isOnline = OnlineDeviceState.includes(status);
 
+		// Update local cache regardless of InfluxDB availability
+		this.statusMap.set(device.id, { online: isOnline, status });
+		this.statusPropertyMap.set(device.id, property.id);
+
+		if (!this.influxDbService.isConnected()) {
+			this.logger.debug(`InfluxDB not connected, skipping status write for id=${device.id}`);
+
+			return;
+		}
+
+		try {
 			await this.influxDbService.writePoints([
 				{
 					measurement: 'device_status',
@@ -42,9 +52,6 @@ export class DeviceConnectionStateService {
 				},
 			]);
 
-			this.statusMap.set(device.id, { online: isOnline, status });
-			this.statusPropertyMap.set(device.id, property.id);
-
 			this.logger.debug(`Status saved id=${device.id} status=${status}`);
 		} catch (error) {
 			const err = error as Error;
@@ -54,15 +61,24 @@ export class DeviceConnectionStateService {
 	}
 
 	async readLatest(device: DeviceEntity): Promise<{ online: boolean; status: ConnectionState }> {
+		// Check local cache first
+		if (this.statusMap.has(device.id)) {
+			this.logger.debug(
+				`Loaded cached status for device id=${device.id}, status=${this.statusMap.get(device.id)?.status}`,
+			);
+
+			return this.statusMap.get(device.id);
+		}
+
+		// Return default if InfluxDB not connected
+		if (!this.influxDbService.isConnected()) {
+			return {
+				online: false,
+				status: ConnectionState.UNKNOWN,
+			};
+		}
+
 		try {
-			if (this.statusMap.has(device.id)) {
-				this.logger.debug(
-					`Loaded cached status for device id=${device.id}, status=${this.statusMap.get(device.id)?.status}`,
-				);
-
-				return this.statusMap.get(device.id);
-			}
-
 			const query = `
         SELECT * FROM device_status
         WHERE deviceId = '${device.id}'
@@ -110,6 +126,10 @@ export class DeviceConnectionStateService {
 	}
 
 	async getOnlineCount(windowMinutes = 15): Promise<number> {
+		if (!this.influxDbService.isConnected()) {
+			return 0;
+		}
+
 		const query = `
       SELECT SUM(v) FROM (
         SELECT LAST("online") AS v
@@ -135,13 +155,18 @@ export class DeviceConnectionStateService {
 	}
 
 	async delete(device: DeviceEntity): Promise<void> {
+		// Always clear local cache
+		this.statusMap.delete(device.id);
+		this.statusPropertyMap.delete(device.id);
+
+		if (!this.influxDbService.isConnected()) {
+			return;
+		}
+
 		try {
 			const query = `DELETE FROM device_status WHERE deviceId = '${device.id}'`;
 
 			await this.influxDbService.query(query);
-
-			this.statusMap.delete(device.id);
-			this.statusPropertyMap.delete(device.id);
 
 			this.logger.log(`Deleted device status for id=${device.id}`);
 		} catch (error) {
@@ -152,17 +177,22 @@ export class DeviceConnectionStateService {
 	}
 
 	async deleteByProperty(property: ChannelPropertyEntity): Promise<void> {
+		// Always clear local cache
+		const deviceId = [...this.statusPropertyMap.entries()].find(([_, val]) => val === property.id)?.[0];
+
+		if (typeof deviceId !== 'undefined') {
+			this.statusMap.delete(deviceId);
+			this.statusPropertyMap.delete(deviceId);
+		}
+
+		if (!this.influxDbService.isConnected()) {
+			return;
+		}
+
 		try {
 			const query = `DELETE FROM device_status WHERE propertyId = '${property.id}'`;
 
 			await this.influxDbService.query(query);
-
-			const deviceId = [...this.statusPropertyMap.entries()].find(([_, val]) => val === property.id)?.[0];
-
-			if (typeof deviceId !== 'undefined') {
-				this.statusMap.delete(deviceId);
-				this.statusPropertyMap.delete(deviceId);
-			}
 
 			this.logger.log(`Deleted device status for id=${deviceId}`);
 		} catch (error) {

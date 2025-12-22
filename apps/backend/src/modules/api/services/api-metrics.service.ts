@@ -45,18 +45,28 @@ export class ApiMetricsService implements OnModuleInit, OnModuleDestroy {
 		const p95 = sorted[Math.floor(0.95 * (sorted.length - 1))] ?? 0;
 		const avg = Math.round(this.durations.reduce((a, b) => a + b, 0) / this.durations.length);
 
-		await this.influx.writePoints([
-			{
-				measurement: 'api_minute',
-				tags: { route: '_all' },
-				fields: { count: this.count, errors: this.errors, p95_ms: Math.round(p95), avg_ms: avg },
-				timestamp: new Date(),
-			},
-		]);
-
-		// reset bucket
+		// Reset bucket before attempting write to avoid accumulation
+		const countToWrite = this.count;
+		const errorsToWrite = this.errors;
 		this.count = 0;
 		this.errors = 0;
 		this.durations = [];
+
+		if (!this.influx.isConnected()) {
+			return;
+		}
+
+		try {
+			await this.influx.writePoints([
+				{
+					measurement: 'api_minute',
+					tags: { route: '_all' },
+					fields: { count: countToWrite, errors: errorsToWrite, p95_ms: Math.round(p95), avg_ms: avg },
+					timestamp: new Date(),
+				},
+			]);
+		} catch {
+			// Silently ignore write failures - metrics are best effort
+		}
 	}
 }

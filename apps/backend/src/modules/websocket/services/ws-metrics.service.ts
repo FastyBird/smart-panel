@@ -25,6 +25,10 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 	onModuleInit() {
 		// heartbeat every 10s
 		this.beat = setInterval(() => {
+			if (!this.influx.isConnected()) {
+				return;
+			}
+
 			this.influx
 				.writePoints([
 					{
@@ -38,6 +42,10 @@ export class WsMetricsService implements OnModuleInit, OnModuleDestroy {
 
 		// clients gauge every 60s
 		this.gauge = setInterval(() => {
+			if (!this.influx.isConnected()) {
+				return;
+			}
+
 			this.influx
 				.writePoints([
 					{

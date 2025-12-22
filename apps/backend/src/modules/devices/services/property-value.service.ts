@@ -19,35 +19,42 @@ export class PropertyValueService {
 			return;
 		}
 
+		const formattedValue: { stringValue?: string; numberValue?: number } = {};
+
+		switch (property.dataType) {
+			case DataTypeType.ENUM:
+			case DataTypeType.STRING:
+				formattedValue.stringValue = String(value);
+				break;
+
+			case DataTypeType.BOOL:
+				formattedValue.stringValue = String(value ? 'true' : 'false');
+				break;
+
+			case DataTypeType.CHAR:
+			case DataTypeType.UCHAR:
+			case DataTypeType.SHORT:
+			case DataTypeType.USHORT:
+			case DataTypeType.INT:
+			case DataTypeType.UINT:
+			case DataTypeType.FLOAT:
+				formattedValue.numberValue = Number(value);
+				break;
+
+			default:
+				this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
+
+				return;
+		}
+
+		// Update local cache regardless of InfluxDB availability
+		this.valuesMap.set(property.id, value);
+
+		if (!this.influxDbService.isConnected()) {
+			return;
+		}
+
 		try {
-			const formattedValue: { stringValue?: string; numberValue?: number } = {};
-
-			switch (property.dataType) {
-				case DataTypeType.ENUM:
-				case DataTypeType.STRING:
-					formattedValue.stringValue = String(value);
-					break;
-
-				case DataTypeType.BOOL:
-					formattedValue.stringValue = String(value ? 'true' : 'false');
-					break;
-
-				case DataTypeType.CHAR:
-				case DataTypeType.UCHAR:
-				case DataTypeType.SHORT:
-				case DataTypeType.USHORT:
-				case DataTypeType.INT:
-				case DataTypeType.UINT:
-				case DataTypeType.FLOAT:
-					formattedValue.numberValue = Number(value);
-					break;
-
-				default:
-					this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
-
-					return;
-			}
-
 			await this.influxDbService.writePoints([
 				{
 					measurement: 'property_value',
@@ -56,8 +63,6 @@ export class PropertyValueService {
 					timestamp: new Date(),
 				},
 			]);
-
-			this.valuesMap.set(property.id, value);
 
 			this.logger.debug(`Value saved id=${property.id} dataType=${property.dataType} value=${value}`);
 		} catch (error) {
@@ -71,15 +76,21 @@ export class PropertyValueService {
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<string | number | boolean | null> {
+		// Check local cache first
+		if (this.valuesMap.has(property.id)) {
+			this.logger.debug(
+				`Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`,
+			);
+
+			return this.valuesMap.get(property.id);
+		}
+
+		// Return null if InfluxDB not connected
+		if (!this.influxDbService.isConnected()) {
+			return null;
+		}
+
 		try {
-			if (this.valuesMap.has(property.id)) {
-				this.logger.debug(
-					`Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`,
-				);
-
-				return this.valuesMap.get(property.id);
-			}
-
 			const query = `
         SELECT * FROM property_value
         WHERE propertyId = '${property.id}'
@@ -147,12 +158,17 @@ export class PropertyValueService {
 	}
 
 	async delete(property: ChannelPropertyEntity): Promise<void> {
+		// Always clear local cache
+		this.valuesMap.delete(property.id);
+
+		if (!this.influxDbService.isConnected()) {
+			return;
+		}
+
 		try {
 			const query = `DELETE FROM property_value WHERE propertyId = '${property.id}'`;
 
 			await this.influxDbService.query(query);
-
-			this.valuesMap.delete(property.id);
 
 			this.logger.log(`Deleted all stored values for id=${property.id}`);
 		} catch (error) {

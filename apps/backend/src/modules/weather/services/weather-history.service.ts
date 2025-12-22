@@ -81,6 +81,10 @@ export class WeatherHistoryService implements OnModuleInit {
 	 * Store current weather data to InfluxDB
 	 */
 	async storeWeatherData(locationId: string, locationName: string, current: CurrentDayModel): Promise<void> {
+		if (!this.influxDb.isConnected()) {
+			return;
+		}
+
 		try {
 			const point: IPoint = {
 				measurement: MEASUREMENT_NAME,
@@ -122,6 +126,10 @@ export class WeatherHistoryService implements OnModuleInit {
 	 * Query historical weather data from InfluxDB
 	 */
 	async getHistory(query: IWeatherHistoryQuery): Promise<IWeatherHistoryPoint[]> {
+		if (!this.influxDb.isConnected()) {
+			return [];
+		}
+
 		try {
 			const { locationId, startTime, endTime, limit = 100 } = query;
 
@@ -204,6 +212,10 @@ export class WeatherHistoryService implements OnModuleInit {
 		totalRain: number | null;
 		totalSnow: number | null;
 	} | null> {
+		if (!this.influxDb.isConnected()) {
+			return null;
+		}
+
 		try {
 			const start = startTime ? startTime.toISOString() : 'now() - 7d';
 			const end = endTime ? endTime.toISOString() : 'now()';
