@@ -47,7 +47,7 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		ConfigModule,
 		ExtensionsModule,
 		forwardRef(() => SystemModule),
-		InfluxDbModule,
+		forwardRef(() => InfluxDbModule),
 	],
 	controllers: [DisplaysController, RegistrationController],
 	providers: [

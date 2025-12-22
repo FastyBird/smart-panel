@@ -8,6 +8,8 @@ import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateDashboard' })
 export class UpdateDashboardConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',

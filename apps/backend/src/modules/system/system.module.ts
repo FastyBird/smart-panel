@@ -45,7 +45,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		NestConfigModule,
 		PlatformModule,
 		WebsocketModule,
-		InfluxDbModule,
+		forwardRef(() => InfluxDbModule),
 		StatsModule,
 		forwardRef(() => ConfigModule),
 		forwardRef(() => ExtensionsModule),

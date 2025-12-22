@@ -23,8 +23,8 @@ void main() {
 
       test('should have correct default timeout', () {
         expect(
-          MdnsDiscoveryService.defaultTimeoutSeconds,
-          equals(10),
+          MdnsDiscoveryService.defaultDiscoveryTimeoutMs,
+          equals(10000),
         );
       });
     });

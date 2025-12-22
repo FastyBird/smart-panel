@@ -23,6 +23,7 @@ describe('PropertyValueService', () => {
 		const mockInfluxDbService = {
 			writePoints: jest.fn(),
 			query: jest.fn(),
+			isConnected: jest.fn().mockReturnValue(true),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({

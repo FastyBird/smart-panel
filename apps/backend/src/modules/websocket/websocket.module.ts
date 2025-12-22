@@ -34,7 +34,7 @@ import { WEBSOCKET_SWAGGER_EXTRA_MODELS } from './websocket.openapi';
 		}),
 		forwardRef(() => AuthModule),
 		forwardRef(() => UsersModule),
-		InfluxDbModule,
+		forwardRef(() => InfluxDbModule),
 		StatsModule,
 	],
 	providers: [WebsocketGateway, CommandEventRegistryService, WsAuthService, WsMetricsService, WsStatsProvider],

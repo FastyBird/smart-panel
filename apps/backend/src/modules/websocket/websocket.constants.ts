@@ -10,7 +10,7 @@ export const EXCHANGE_ROOM = 'exchange-room';
 
 export const WsStatsInfluxDbSchema: ISchemaOptions = {
 	measurement: 'ws_heartbeat',
-	fields: { clients: FieldType.INTEGER },
+	fields: { n: FieldType.INTEGER },
 	tags: [],
 };
 

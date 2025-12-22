@@ -22,12 +22,18 @@ export class SeedTools {
 
 	constructor(private readonly configService: NestConfigService) {}
 
+	/**
+	 * Get the seed data path.
+	 * Derives from FB_CONFIG_PATH to work correctly in both dev and production.
+	 */
 	private getSeedPath(): string {
-		return getEnvValue<string>(
+		const configPath = getEnvValue<string>(
 			this.configService,
-			'FB_SEED_DATA_PATH',
-			path.resolve(__dirname, '../../../../../../var/data/seed'),
+			'FB_CONFIG_PATH',
+			path.resolve(__dirname, '../../../../../../var/data'),
 		);
+
+		return path.join(configPath, 'seed');
 	}
 
 	loadJsonData(filename: string): Record<string, any>[] {

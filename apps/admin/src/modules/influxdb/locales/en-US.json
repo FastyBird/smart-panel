@@ -1,0 +1,41 @@
+{
+	"headings": {
+		"aboutInfluxDb": "InfluxDB Configuration",
+		"authentication": "Authentication (Optional)"
+	},
+	"messages": {
+		"config": {
+			"edited": "InfluxDB configuration has been successfully updated",
+			"notEdited": "Failed to update InfluxDB configuration"
+		}
+	},
+	"texts": {
+		"aboutInfluxDb": "Configure the connection to InfluxDB for storing time-series data such as device property history and analytics. InfluxDB 1.x is required."
+	},
+	"fields": {
+		"config": {
+			"host": {
+				"title": "Host",
+				"placeholder": "127.0.0.1",
+				"validation": {
+					"required": "Host is required"
+				}
+			},
+			"database": {
+				"title": "Database",
+				"placeholder": "fastybird",
+				"validation": {
+					"required": "Database name is required"
+				}
+			},
+			"username": {
+				"title": "Username",
+				"placeholder": "Leave empty if not required"
+			},
+			"password": {
+				"title": "Password",
+				"placeholder": "Leave empty if not required"
+			}
+		}
+	}
+}

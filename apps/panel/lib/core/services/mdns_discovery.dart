@@ -11,20 +11,8 @@ class MdnsDiscoveryService {
   /// Default service type for FastyBird Smart Panel backends
   static const String defaultServiceType = '_fastybird-panel._tcp';
 
-  /// Default discovery timeout in seconds
-  static const int defaultTimeoutSeconds = 10;
-
-  /// mDNS discovery enabled flag from environment
-  static const bool _discoveryEnabled = bool.fromEnvironment(
-    'FB_MDNS_DISCOVERY_ENABLED',
-    defaultValue: true,
-  );
-
-  /// Discovery timeout from environment (in milliseconds)
-  static const int _discoveryTimeoutMs = int.fromEnvironment(
-    'FB_MDNS_DISCOVERY_TIMEOUT',
-    defaultValue: 10000,
-  );
+  /// Default discovery timeout in milliseconds
+  static const int defaultDiscoveryTimeoutMs = 10000;
 
   BonsoirDiscovery? _discovery;
   StreamSubscription<BonsoirDiscoveryEvent>? _subscription;
@@ -40,11 +28,11 @@ class MdnsDiscoveryService {
         Platform.isLinux;
   }
 
-  /// Check if mDNS discovery is enabled
-  bool get isEnabled => _discoveryEnabled && isSupported;
+  /// Check if mDNS discovery is enabled (always enabled if platform supports it)
+  bool get isEnabled => isSupported;
 
   /// Get discovery timeout duration
-  Duration get timeout => Duration(milliseconds: _discoveryTimeoutMs);
+  Duration get timeout => const Duration(milliseconds: defaultDiscoveryTimeoutMs);
 
   /// Get list of currently discovered backends
   List<DiscoveredBackend> get discoveredBackends =>
@@ -127,15 +115,15 @@ class MdnsDiscoveryService {
     if (!isEnabled) {
       if (kDebugMode) {
         debugPrint(
-          '[MDNS DISCOVERY] mDNS discovery is disabled or not supported on this platform',
+          '[MDNS DISCOVERY] mDNS discovery is not supported on this platform',
         );
       }
-      // If mDNS is disabled, try fallback backend (dev mode)
+      // If mDNS is not supported, try fallback backend (dev mode)
       final fallbackBackend = _getFallbackBackend();
       if (fallbackBackend != null) {
         if (kDebugMode) {
           debugPrint(
-            '[MDNS DISCOVERY] Using fallback backend (mDNS disabled)',
+            '[MDNS DISCOVERY] Using fallback backend (mDNS not supported)',
           );
         }
         _discoveredBackends.clear();

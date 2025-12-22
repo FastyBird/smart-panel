@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../config/config.module';
@@ -38,7 +38,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 		TypeOrmModule.forFeature([WeatherLocationEntity]),
 		ConfigModule,
 		SwaggerModule,
-		InfluxDbModule,
+		forwardRef(() => InfluxDbModule),
 		ExtensionsModule,
 	],
 	controllers: [WeatherController, LocationsController, HistoryController],

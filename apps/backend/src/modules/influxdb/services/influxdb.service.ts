@@ -1,12 +1,12 @@
 import { IPingStats, IQueryOptions, IResults, ISchemaOptions, InfluxDB } from 'influx';
 
-import { Injectable } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { getEnvValue } from '../../../common/utils/config.utils';
 import { safeNumber, safeToString } from '../../../common/utils/transform.utils';
-import { INFLUXDB_MODULE_NAME } from '../influxdb.constants';
+import { ConfigService } from '../../config/services/config.service';
+import { INFLUXDB_DEFAULT_DATABASE, INFLUXDB_DEFAULT_HOST, INFLUXDB_MODULE_NAME } from '../influxdb.constants';
+import { InfluxDbConfigModel } from '../models/config.model';
 
 type RetentionPolicyRow = {
 	name: string;
@@ -46,17 +46,45 @@ const isArrayOfContinuousQueries = (v: unknown): boolean => {
 };
 
 @Injectable()
-export class InfluxDbService {
+export class InfluxDbService implements OnApplicationBootstrap {
 	private readonly logger = createExtensionLogger(INFLUXDB_MODULE_NAME, 'InfluxDbService');
 	private connection: InfluxDB | null = null;
 	private readonly schemas: ISchemaOptions[] = [];
 
-	constructor(private readonly configService: NestConfigService) {
-		this.initializeConnection().catch((error) => {
+	constructor(private readonly configService: ConfigService) {}
+
+	/**
+	 * Initialize connection after all module mappings are registered.
+	 * This lifecycle hook runs after all onModuleInit hooks complete,
+	 * ensuring the InfluxDB config mapping is available.
+	 */
+	async onApplicationBootstrap(): Promise<void> {
+		try {
+			await this.initializeConnection();
+		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error('Database can not be initialized', { message: err.message, stack: err.stack });
-		});
+		}
+	}
+
+	/**
+	 * Get InfluxDB configuration from app config
+	 */
+	private getConfig(): InfluxDbConfigModel {
+		try {
+			return this.configService.getModuleConfig<InfluxDbConfigModel>(INFLUXDB_MODULE_NAME);
+		} catch (error) {
+			this.logger.warn('Failed to load InfluxDB configuration, using defaults', error);
+
+			// Return default configuration
+			const defaultConfig = new InfluxDbConfigModel();
+			defaultConfig.type = INFLUXDB_MODULE_NAME;
+			defaultConfig.host = INFLUXDB_DEFAULT_HOST;
+			defaultConfig.database = INFLUXDB_DEFAULT_DATABASE;
+
+			return defaultConfig;
+		}
 	}
 
 	registerSchema(schema: ISchemaOptions): void {
@@ -64,16 +92,13 @@ export class InfluxDbService {
 	}
 
 	private async initializeConnection() {
-		const host = getEnvValue<string>(this.configService, 'FB_INFLUXDB_HOST', 'localhost');
-		const database = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
-		const username = getEnvValue<string | undefined>(this.configService, 'FB_INFLUXDB_USER', undefined);
-		const password = getEnvValue<string | undefined>(this.configService, 'FB_INFLUXDB_PASSWORD', undefined);
+		const config = this.getConfig();
 
 		this.connection = new InfluxDB({
-			host,
-			database,
-			username,
-			password,
+			host: config.host,
+			database: config.database,
+			username: config.username,
+			password: config.password,
 			schema: this.schemas,
 		});
 
@@ -82,15 +107,15 @@ export class InfluxDbService {
 
 	private async setupDatabase(): Promise<void> {
 		try {
-			const database = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
+			const config = this.getConfig();
 			const databases = await this.connection.getDatabaseNames();
 
-			if (!databases.includes(database)) {
-				await this.connection.createDatabase(database);
-				this.logger.log(`Database '${database}' created.`);
+			if (!databases.includes(config.database)) {
+				await this.connection.createDatabase(config.database);
+				this.logger.log(`Database '${config.database}' created.`);
 			}
 
-			await this.ensureRetentionPolicies(database);
+			await this.ensureRetentionPolicies(config.database);
 		} catch (error) {
 			const err = error as Error;
 
@@ -110,6 +135,10 @@ export class InfluxDbService {
 		this.logger.log('Connection closed.');
 	}
 
+	public isConnected(): boolean {
+		return this.connection !== null;
+	}
+
 	public async alterRetentionPolicy(...args: Parameters<InfluxDB['alterRetentionPolicy']>): Promise<void> {
 		return this.getConnection().alterRetentionPolicy(...args);
 	}
@@ -118,9 +147,9 @@ export class InfluxDbService {
 		const [name, body, db, resample] = args;
 
 		if (!db) {
-			const cfgDb = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
+			const config = this.getConfig();
 
-			return this.createContinuousQuery(name, body, cfgDb, resample);
+			return this.createContinuousQuery(name, body, config.database, resample);
 		}
 
 		const existing = await this.listContinuousQueriesClean(db);
@@ -209,12 +238,12 @@ export class InfluxDbService {
 		return this.getConnection().ping(...args);
 	}
 
-	query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
+	async query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
 		return this.getConnection().query(query, options);
 	}
 
-	queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
-		return this.getConnection().queryRaw(query, options);
+	async queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
+		return this.getConnection().queryRaw(query, options) as Promise<T>;
 	}
 
 	public async revokeAdminPrivilege(...args: Parameters<InfluxDB['revokeAdminPrivilege']>): Promise<void> {
@@ -229,7 +258,7 @@ export class InfluxDbService {
 		return this.getConnection().setPassword(...args);
 	}
 
-	public showContinuousQueries(...args: Parameters<InfluxDB['showContinousQueries']>): Promise<
+	public async showContinuousQueries(...args: Parameters<InfluxDB['showContinousQueries']>): Promise<
 		IResults<{
 			name: string;
 			query: string;
@@ -238,7 +267,7 @@ export class InfluxDbService {
 		return this.getConnection().showContinousQueries(...args);
 	}
 
-	public showRetentionPolicies(...args: Parameters<InfluxDB['showRetentionPolicies']>): Promise<
+	public async showRetentionPolicies(...args: Parameters<InfluxDB['showRetentionPolicies']>): Promise<
 		IResults<{
 			default: boolean;
 			duration: string;
@@ -250,11 +279,11 @@ export class InfluxDbService {
 		return this.getConnection().showRetentionPolicies(...args);
 	}
 
-	public writeMeasurement(...args: Parameters<InfluxDB['writeMeasurement']>): Promise<void> {
+	public async writeMeasurement(...args: Parameters<InfluxDB['writeMeasurement']>): Promise<void> {
 		return this.getConnection().writeMeasurement(...args);
 	}
 
-	public writePoints(...args: Parameters<InfluxDB['writePoints']>): Promise<void> {
+	public async writePoints(...args: Parameters<InfluxDB['writePoints']>): Promise<void> {
 		return this.getConnection().writePoints(...args);
 	}
 

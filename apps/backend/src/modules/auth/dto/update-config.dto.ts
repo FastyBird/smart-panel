@@ -8,6 +8,8 @@ import { AUTH_MODULE_NAME } from '../auth.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateAuth' })
 export class UpdateAuthConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',

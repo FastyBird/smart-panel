@@ -93,7 +93,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		]),
 		forwardRef(() => ConfigModule),
 		forwardRef(() => ExtensionsModule),
-		InfluxDbModule,
+		forwardRef(() => InfluxDbModule),
 		SeedModule,
 		forwardRef(() => SystemModule),
 		StatsModule,

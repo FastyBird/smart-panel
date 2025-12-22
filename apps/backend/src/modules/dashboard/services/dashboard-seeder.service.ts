@@ -2,10 +2,8 @@ import inquirer from 'inquirer';
 import { validate as uuidValidate } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
-import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
 import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
@@ -21,12 +19,16 @@ import { PagesService } from './pages.service';
 import { TilesTypeMapperService } from './tiles-type-mapper.service';
 import { TilesService } from './tiles.service';
 
+// Default seed file names
+const DEFAULT_PAGES_FILE = 'pages.json';
+const DEFAULT_TILES_FILE = 'tiles.json';
+const DEFAULT_TILES_DATA_SOURCE_FILE = 'tiles_data_source.json';
+
 @Injectable()
 export class DashboardSeederService implements Seeder {
 	private readonly logger = createExtensionLogger(DASHBOARD_MODULE_NAME, 'DashboardSeederService');
 
 	constructor(
-		private readonly configService: NestConfigService,
 		private readonly pagesService: PagesService,
 		private readonly tilesService: TilesService,
 		private readonly dataSourceService: DataSourcesService,
@@ -54,15 +56,9 @@ export class DashboardSeederService implements Seeder {
 
 		this.logger.log('[SEED] Seeding dashboard module...');
 
-		const pages = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'FB_SEED_PAGES_FILE', 'pages.json'),
-		);
-		const tiles = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'FB_SEED_TILES_FILE', 'tiles.json'),
-		);
-		const dataSources = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'FB_SEED_TILES_DATA_SOURCE_FILE', 'tiles_data_source.json'),
-		);
+		const pages = this.seedTools.loadJsonData(DEFAULT_PAGES_FILE);
+		const tiles = this.seedTools.loadJsonData(DEFAULT_TILES_FILE);
+		const dataSources = this.seedTools.loadJsonData(DEFAULT_TILES_DATA_SOURCE_FILE);
 
 		await this.seedPages(pages);
 		await this.seedTiles(tiles);
