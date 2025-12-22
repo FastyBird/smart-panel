@@ -1,6 +1,6 @@
 import { IPingStats, IQueryOptions, IResults, ISchemaOptions, InfluxDB } from 'influx';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { safeNumber, safeToString } from '../../../common/utils/transform.utils';
@@ -46,17 +46,26 @@ const isArrayOfContinuousQueries = (v: unknown): boolean => {
 };
 
 @Injectable()
-export class InfluxDbService {
+export class InfluxDbService implements OnApplicationBootstrap {
 	private readonly logger = createExtensionLogger(INFLUXDB_MODULE_NAME, 'InfluxDbService');
 	private connection: InfluxDB | null = null;
 	private readonly schemas: ISchemaOptions[] = [];
 
-	constructor(private readonly configService: ConfigService) {
-		this.initializeConnection().catch((error) => {
+	constructor(private readonly configService: ConfigService) {}
+
+	/**
+	 * Initialize connection after all module mappings are registered.
+	 * This lifecycle hook runs after all onModuleInit hooks complete,
+	 * ensuring the InfluxDB config mapping is available.
+	 */
+	async onApplicationBootstrap(): Promise<void> {
+		try {
+			await this.initializeConnection();
+		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error('Database can not be initialized', { message: err.message, stack: err.stack });
-		});
+		}
 	}
 
 	/**
