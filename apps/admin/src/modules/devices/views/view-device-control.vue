@@ -38,7 +38,7 @@
 		class="flex flex-col overflow-hidden h-full"
 	>
 		<device-control-form
-			v-if="device !== null && areChannelsLoaded"
+			v-if="device !== null && arePropertiesLoaded"
 			:device-control="deviceControl"
 		/>
 
@@ -97,7 +97,7 @@ const { validate: validateUuid } = useUuid();
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const deviceControl = useDeviceControl({ id: props.id });
-const { device, isLoading, areChannelsLoaded, fetchDevice, fetchChannels, fetchProperties } = deviceControl;
+const { device, isLoading, arePropertiesLoaded, fetchDevice, fetchChannels, fetchProperties } = deviceControl;
 const { icon: deviceIcon } = useDeviceIcon({ id: props.id });
 
 // Track if device was previously loaded to detect deletion

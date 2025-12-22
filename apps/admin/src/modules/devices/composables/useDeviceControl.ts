@@ -28,6 +28,7 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 
 	const { data: devicesData, semaphore: devicesSemaphore } = storeToRefs(devicesStore);
 	const { data: channelsData, semaphore: channelsSemaphore, firstLoad: channelsFirstLoad } = storeToRefs(channelsStore);
+	const { semaphore: propertiesSemaphore, firstLoad: propertiesFirstLoad } = storeToRefs(channelsPropertiesStore);
 
 	const { sendCommand } = useSockets();
 
@@ -245,12 +246,21 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	};
 
 	const isLoading = computed<boolean>((): boolean => {
+		// Device is loading
 		if (devicesSemaphore.value.fetching.item.includes(id)) {
 			return true;
 		}
 
+		// Channels are loading
 		if (channelsSemaphore.value.fetching.items.includes(id)) {
 			return true;
+		}
+
+		// Any channel's properties are still loading
+		for (const channel of channels.value) {
+			if (propertiesSemaphore.value.fetching.items.includes(channel.id)) {
+				return true;
+			}
 		}
 
 		return false;
@@ -258,6 +268,22 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 
 	const areChannelsLoaded = computed<boolean>((): boolean => {
 		return channelsFirstLoad.value.includes(id);
+	});
+
+	const arePropertiesLoaded = computed<boolean>((): boolean => {
+		// Not loaded if channels aren't loaded yet
+		if (!areChannelsLoaded.value) {
+			return false;
+		}
+
+		// Check if all channels have their properties loaded
+		for (const channel of channels.value) {
+			if (!propertiesFirstLoad.value.includes(channel.id)) {
+				return false;
+			}
+		}
+
+		return true;
 	});
 
 	// Watch for store value changes and clear pending values when they match
@@ -318,6 +344,7 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 		hasControllableProperties,
 		isLoading,
 		areChannelsLoaded,
+		arePropertiesLoaded,
 		fetchDevice,
 		fetchChannels,
 		fetchProperties,

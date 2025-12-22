@@ -286,6 +286,7 @@ export interface IUseDeviceControl {
 	hasControllableProperties: ComputedRef<boolean>;
 	isLoading: ComputedRef<boolean>;
 	areChannelsLoaded: ComputedRef<boolean>;
+	arePropertiesLoaded: ComputedRef<boolean>;
 	fetchDevice: () => Promise<void>;
 	fetchChannels: () => Promise<void>;
 	fetchProperties: () => Promise<void>;

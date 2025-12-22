@@ -50,7 +50,7 @@
 									<el-switch
 										:model-value="getPropertyValue(property.id) === true || getPropertyValue(property.id) === 'true'"
 										:loading="isPropertyLoading(property.id)"
-										@change="(val: boolean) => onPropertyChange(channel.id, property.id, val)"
+										@change="(val: string | number | boolean) => onPropertyChange(channel.id, property.id, Boolean(val))"
 									/>
 								</template>
 
@@ -81,7 +81,7 @@
 											:step="property.step ?? 1"
 											:disabled="isPropertyLoading(property.id)"
 											class="flex-grow touch-action-none"
-											@input="(val: number) => onPropertyChange(channel.id, property.id, val)"
+											@input="(val: number | number[]) => onPropertyChange(channel.id, property.id, Array.isArray(val) ? val[0] : val)"
 										/>
 										<el-text class="min-w-[60px] text-right">
 											{{ getPropertyValue(property.id) ?? '-' }}{{ property.unit ? ` ${property.unit}` : '' }}
