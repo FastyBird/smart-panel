@@ -62,9 +62,6 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		category: DevicesModuleDeviceCategory.generic,
 		name: '',
 		description: '',
-		ieeeAddress: null,
-		friendlyName: null,
-		modelId: null,
 		enabled: true,
 	});
 

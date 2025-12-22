@@ -83,41 +83,6 @@
 				name="enabled"
 			/>
 		</el-form-item>
-
-		<el-divider />
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.ieeeAddress.title')"
-			prop="ieeeAddress"
-		>
-			<el-input
-				v-model="model.ieeeAddress"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.ieeeAddress.placeholder')"
-				name="ieeeAddress"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.friendlyName.title')"
-			prop="friendlyName"
-		>
-			<el-input
-				v-model="model.friendlyName"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.friendlyName.placeholder')"
-				name="friendlyName"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.modelId.title')"
-			prop="modelId"
-		>
-			<el-input
-				v-model="model.modelId"
-				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.modelId.placeholder')"
-				name="modelId"
-			/>
-		</el-form-item>
 	</el-form>
 </template>
 

@@ -1,10 +1,10 @@
 {
 	"headings": {
-		"aboutPluginStatus": "Plugin Status",
-		"aboutMqtt": "MQTT Connection",
-		"advancedMqttSettings": "Advanced MQTT Settings",
-		"aboutTls": "TLS/SSL Configuration",
-		"aboutDiscovery": "Device Discovery"
+		"aboutPluginStatus": "Plugin status",
+		"aboutMqtt": "MQTT connection",
+		"advancedMqttSettings": "Advanced MQTT settings",
+		"aboutTls": "TLS/SSL configuration",
+		"aboutDiscovery": "Device discovery"
 	},
 	"texts": {
 		"aboutPluginStatus": "Enable or disable the Zigbee2MQTT plugin. When disabled, no Zigbee devices will be monitored or controlled.",
@@ -15,11 +15,11 @@
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enable Plugin"
+				"title": "Enabled"
 			},
 			"mqtt": {
 				"host": {
-					"title": "MQTT Broker Host",
+					"title": "MQTT broker host",
 					"placeholder": "e.g., localhost or 192.168.1.100",
 					"validation": {
 						"required": "MQTT broker host is required"
@@ -41,7 +41,7 @@
 					"placeholder": "MQTT password (optional)"
 				},
 				"baseTopic": {
-					"title": "Base Topic",
+					"title": "Base topic",
 					"placeholder": "e.g., zigbee2mqtt",
 					"validation": {
 						"required": "Base topic is required"
@@ -52,22 +52,22 @@
 					"placeholder": "Auto-generated if empty"
 				},
 				"cleanSession": {
-					"title": "Clean Session"
+					"title": "Clean session"
 				},
 				"keepalive": {
-					"title": "Keepalive (seconds)",
+					"title": "Keepalive (s)",
 					"validation": {
 						"number": "Must be a number >= 10"
 					}
 				},
 				"connectTimeout": {
-					"title": "Connect Timeout (ms)",
+					"title": "Timeout (ms)",
 					"validation": {
 						"number": "Must be a number >= 1000"
 					}
 				},
 				"reconnectInterval": {
-					"title": "Reconnect Interval (ms)",
+					"title": "Reconnect (ms)",
 					"validation": {
 						"number": "Must be a number >= 1000"
 					}
@@ -78,27 +78,27 @@
 					"title": "Enable TLS"
 				},
 				"rejectUnauthorized": {
-					"title": "Reject Unauthorized Certificates"
+					"title": "Reject unauthorized certificates"
 				},
 				"ca": {
-					"title": "CA Certificate",
+					"title": "CA certificate",
 					"placeholder": "Paste CA certificate content or path"
 				},
 				"cert": {
-					"title": "Client Certificate",
+					"title": "Client certificate",
 					"placeholder": "Paste client certificate content or path"
 				},
 				"key": {
-					"title": "Client Private Key",
+					"title": "Client private key",
 					"placeholder": "Paste client private key content or path"
 				}
 			},
 			"discovery": {
 				"autoAdd": {
-					"title": "Auto-Add Discovered Devices"
+					"title": "Auto-add discovered devices"
 				},
 				"syncOnStartup": {
-					"title": "Sync Devices on Startup"
+					"title": "Sync devices on startup"
 				}
 			}
 		},
@@ -108,34 +108,22 @@
 				"placeholder": "Device ID"
 			},
 			"name": {
-				"title": "Device Name",
-				"placeholder": "Enter device name",
+				"title": "Name",
+				"placeholder": "Device name",
 				"validation": {
-					"required": "Device name is required"
+					"required": "Please fill in device name"
 				}
 			},
 			"category": {
-				"title": "Device Category",
-				"placeholder": "Select category",
+				"title": "Category",
+				"placeholder": "Device category",
 				"validation": {
-					"required": "Device category is required"
+					"required": "Please select device category"
 				}
 			},
 			"description": {
 				"title": "Description",
-				"placeholder": "Enter device description (optional)"
-			},
-			"ieeeAddress": {
-				"title": "IEEE Address",
-				"placeholder": "e.g., 0x00158d00018255df"
-			},
-			"friendlyName": {
-				"title": "Friendly Name",
-				"placeholder": "e.g., living_room_light"
-			},
-			"modelId": {
-				"title": "Model ID",
-				"placeholder": "e.g., WXKG01LM"
+				"placeholder": "Device description"
 			},
 			"enabled": {
 				"title": "Enabled"
