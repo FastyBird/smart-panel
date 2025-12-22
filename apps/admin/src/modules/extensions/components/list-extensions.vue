@@ -1,67 +1,65 @@
 <template>
-	<div class="h-full w-full flex flex-col">
+	<el-card
+		shadow="never"
+		class="px-1 py-2 shrink-0"
+		body-class="p-0!"
+	>
+		<extensions-filter
+			v-model:filters="innerFilters"
+			v-model:view-mode="innerViewMode"
+			:filters-active="props.filtersActive"
+			@reset-filters="emit('reset-filters')"
+			@adjust-list="emit('adjust-list')"
+		/>
+	</el-card>
+
+	<div
+		ref="wrapper"
+		class="grow-1 overflow-hidden"
+	>
 		<el-card
+			v-if="innerViewMode === 'table'"
 			shadow="never"
-			class="px-1 py-2 mt-2 shrink-0"
-			body-class="p-0!"
+			class="max-h-full flex flex-col overflow-hidden box-border"
+			body-class="p-0! grow-1 max-h-full overflow-hidden flex flex-col"
 		>
-			<extensions-filter
-				v-model:filters="innerFilters"
-				v-model:view-mode="innerViewMode"
-				:filters-active="props.filtersActive"
-				@reset-filters="emit('reset-filters')"
-				@adjust-list="emit('adjust-list')"
-			/>
-		</el-card>
-
-		<div
-			ref="wrapper"
-			class="flex-grow overflow-hidden mt-2"
-		>
-			<el-card
-				v-if="innerViewMode === 'table'"
-				shadow="never"
-				class="max-h-full"
-				body-class="p-0! max-h-full overflow-hidden flex flex-col"
-			>
-				<extensions-table
-					v-model:sort-by="sortBy"
-					v-model:sort-dir="sortDir"
-					:items="props.items"
-					:total-rows="props.totalRows"
-					:loading="props.loading"
-					:filters-active="props.filtersActive"
-					:table-height="tableHeight"
-					@detail="onDetail"
-					@toggle-enabled="onToggleEnabled"
-					@reset-filters="onResetFilters"
-				/>
-
-				<div
-					ref="paginator"
-					class="flex justify-center w-full py-4"
-				>
-					<el-pagination
-						v-model:current-page="paginatePage"
-						v-model:page-size="paginateSize"
-						:layout="isMDDevice ? 'total, sizes, prev, pager, next, jumper' : 'total, sizes, prev, pager, next'"
-						:total="props.allItems.length"
-						@size-change="onPaginatePageSize"
-						@current-change="onPaginatePage"
-					/>
-				</div>
-			</el-card>
-
-			<extensions-cards
-				v-else
-				:items="props.allItems"
+			<extensions-table
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				:items="props.items"
+				:total-rows="props.totalRows"
 				:loading="props.loading"
 				:filters-active="props.filtersActive"
+				:table-height="tableHeight"
 				@detail="onDetail"
 				@toggle-enabled="onToggleEnabled"
 				@reset-filters="onResetFilters"
 			/>
-		</div>
+
+			<div
+				ref="paginator"
+				class="flex justify-center w-full py-4 shrink-0"
+			>
+				<el-pagination
+					v-model:current-page="paginatePage"
+					v-model:page-size="paginateSize"
+					:layout="isMDDevice ? 'total, sizes, prev, pager, next, jumper' : 'total, sizes, prev, pager, next'"
+					:total="props.allItems.length"
+					@size-change="onPaginatePageSize"
+					@current-change="onPaginatePage"
+				/>
+			</div>
+		</el-card>
+
+		<extensions-cards
+			v-else
+			:items="props.allItems"
+			:loading="props.loading"
+			:filters-active="props.filtersActive"
+			@detail="onDetail"
+			@toggle-enabled="onToggleEnabled"
+			@reset-filters="onResetFilters"
+		/>
 	</div>
 </template>
 

@@ -1,5 +1,7 @@
 <template>
-	<div class="services-list">
+	<el-scrollbar
+		class="h-full"
+	>
 		<!-- Loading state -->
 		<el-skeleton
 			v-if="loading && services.length === 0"
@@ -29,13 +31,13 @@
 				@restart="onRestart(service.pluginName, service.serviceId)"
 			/>
 		</div>
-	</div>
+	</el-scrollbar>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElResult, ElSkeleton } from 'element-plus';
+import { ElResult, ElSkeleton, ElScrollbar } from 'element-plus';
 
 import ServiceItem from './service-item.vue';
 

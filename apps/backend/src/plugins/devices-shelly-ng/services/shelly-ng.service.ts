@@ -68,12 +68,16 @@ export class ShellyNgService implements IManagedPluginService {
 					return;
 				case 'stopping':
 					await this.waitUntil('stopped');
+					// Clear cached config to ensure fresh values on restart
+					this.pluginConfig = null;
 					await this.initialize();
 					await this.doStart();
 					return;
 				case 'stopped':
 				case 'error':
 					// Both stopped and error states can be started
+					// Clear cached config to ensure fresh values on restart
+					this.pluginConfig = null;
 					await this.initialize();
 					await this.doStart();
 					return;
@@ -126,16 +130,33 @@ export class ShellyNgService implements IManagedPluginService {
 	 * the manager to perform the restart, ensuring proper runtime tracking.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
-		// Clear cached config so next access gets fresh values
-		this.pluginConfig = null;
+		// Check if config values actually changed for THIS plugin
+		if (this.state === 'started' && this.pluginConfig) {
+			const oldConfig = this.pluginConfig;
+			const newConfig = this.configService.getPluginConfig<ShellyNgConfigModel>(DEVICES_SHELLY_NG_PLUGIN_NAME);
 
-		// Signal that restart is required to apply new settings
-		// The manager will handle stop/start to maintain accurate runtime tracking
-		if (this.state === 'started') {
-			this.logger.log('Config changed, restart required');
+			// Compare relevant settings that would require restart
+			const mdnsChanged =
+				oldConfig.mdns.enabled !== newConfig.mdns.enabled || oldConfig.mdns.interface !== newConfig.mdns.interface;
 
-			return Promise.resolve({ restartRequired: true });
+			const websocketsChanged =
+				oldConfig.websockets.requestTimeout !== newConfig.websockets.requestTimeout ||
+				oldConfig.websockets.pingInterval !== newConfig.websockets.pingInterval ||
+				JSON.stringify(oldConfig.websockets.reconnectInterval) !==
+					JSON.stringify(newConfig.websockets.reconnectInterval);
+
+			if (mdnsChanged || websocketsChanged) {
+				this.logger.log('Config changed, restart required');
+				return Promise.resolve({ restartRequired: true });
+			}
+
+			// Config didn't change for this plugin, no restart needed
+			this.logger.debug('Config event received but no relevant changes for this plugin');
+			return Promise.resolve({ restartRequired: false });
 		}
+
+		// Clear config only if not running (no handlers active)
+		this.pluginConfig = null;
 
 		return Promise.resolve({ restartRequired: false });
 	}

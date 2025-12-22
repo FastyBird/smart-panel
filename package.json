@@ -54,7 +54,7 @@
     "node": ">=20",
     "pnpm": ">=10"
   },
-  "packageManager": "pnpm@10.25.0",
+  "packageManager": "pnpm@10.26.1",
   "pnpm": {
     "overrides": {
       "@types/node": "^20.17.0",
@@ -89,8 +89,8 @@
     "onlyBuiltDependencies": [
       "@nestjs/core",
       "@parcel/watcher",
-      "@scarf/scarf",
       "@swc/core",
+      "@tailwindcss/oxide",
       "bcrypt",
       "esbuild",
       "sharp",

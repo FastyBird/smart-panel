@@ -301,8 +301,6 @@ const { isMDDevice } = useBreakpoints();
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
-const tableHeight = computed<number>(() => props.tableHeight ?? 400);
-
 // Items are already sorted by the datasource based on user selection
 const sortedItems = computed<IExtension[]>(() => props.items);
 

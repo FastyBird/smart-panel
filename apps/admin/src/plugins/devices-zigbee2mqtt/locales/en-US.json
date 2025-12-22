@@ -1,0 +1,145 @@
+{
+	"headings": {
+		"aboutPluginStatus": "Plugin status",
+		"aboutMqtt": "MQTT connection",
+		"advancedMqttSettings": "Advanced MQTT settings",
+		"aboutTls": "TLS/SSL configuration",
+		"aboutDiscovery": "Device discovery"
+	},
+	"texts": {
+		"aboutPluginStatus": "Enable or disable the Zigbee2MQTT plugin. When disabled, no Zigbee devices will be monitored or controlled.",
+		"aboutMqtt": "Configure the connection to your MQTT broker where Zigbee2MQTT publishes device data.",
+		"aboutTls": "Configure TLS/SSL settings for secure MQTT connections. Enable TLS if your broker requires encrypted connections.",
+		"aboutDiscovery": "Configure how devices are discovered and added from the Zigbee2MQTT bridge."
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"mqtt": {
+				"host": {
+					"title": "MQTT broker host",
+					"placeholder": "e.g., localhost or 192.168.1.100",
+					"validation": {
+						"required": "MQTT broker host is required"
+					}
+				},
+				"port": {
+					"title": "Port",
+					"validation": {
+						"required": "Port is required",
+						"range": "Port must be between 1 and 65535"
+					}
+				},
+				"username": {
+					"title": "Username",
+					"placeholder": "MQTT username (optional)"
+				},
+				"password": {
+					"title": "Password",
+					"placeholder": "MQTT password (optional)"
+				},
+				"baseTopic": {
+					"title": "Base topic",
+					"placeholder": "e.g., zigbee2mqtt",
+					"validation": {
+						"required": "Base topic is required"
+					}
+				},
+				"clientId": {
+					"title": "Client ID",
+					"placeholder": "Auto-generated if empty"
+				},
+				"cleanSession": {
+					"title": "Clean session"
+				},
+				"keepalive": {
+					"title": "Keepalive (s)",
+					"validation": {
+						"number": "Must be a number >= 10"
+					}
+				},
+				"connectTimeout": {
+					"title": "Timeout (ms)",
+					"validation": {
+						"number": "Must be a number >= 1000"
+					}
+				},
+				"reconnectInterval": {
+					"title": "Reconnect (ms)",
+					"validation": {
+						"number": "Must be a number >= 1000"
+					}
+				}
+			},
+			"tls": {
+				"enabled": {
+					"title": "Enable TLS"
+				},
+				"rejectUnauthorized": {
+					"title": "Reject unauthorized certificates"
+				},
+				"ca": {
+					"title": "CA certificate",
+					"placeholder": "Paste CA certificate content or path"
+				},
+				"cert": {
+					"title": "Client certificate",
+					"placeholder": "Paste client certificate content or path"
+				},
+				"key": {
+					"title": "Client private key",
+					"placeholder": "Paste client private key content or path"
+				}
+			},
+			"discovery": {
+				"autoAdd": {
+					"title": "Auto-add discovered devices"
+				},
+				"syncOnStartup": {
+					"title": "Sync devices on startup"
+				}
+			}
+		},
+		"devices": {
+			"id": {
+				"title": "Device ID",
+				"placeholder": "Device ID"
+			},
+			"name": {
+				"title": "Name",
+				"placeholder": "Device name",
+				"validation": {
+					"required": "Please fill in device name"
+				}
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Device category",
+				"validation": {
+					"required": "Please select device category"
+				}
+			},
+			"description": {
+				"title": "Description",
+				"placeholder": "Device description"
+			},
+			"enabled": {
+				"title": "Enabled"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Zigbee2MQTT plugin configuration has been updated",
+			"notEdited": "Failed to update Zigbee2MQTT plugin configuration"
+		},
+		"devices": {
+			"created": "Zigbee2MQTT device '{device}' has been created",
+			"notCreated": "Failed to create Zigbee2MQTT device '{device}'",
+			"edited": "Zigbee2MQTT device '{device}' has been updated",
+			"notEdited": "Failed to update Zigbee2MQTT device '{device}'"
+		}
+	}
+}

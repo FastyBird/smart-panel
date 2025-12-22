@@ -110,6 +110,7 @@
 		"lodash.isundefined": "^3.0.1",
 		"lodash.omitby": "^4.6.0",
 		"mime-types": "^3.0.1",
+		"mqtt": "^5.14.1",
 		"nest-commander": "^3.0.0",
 		"nestjs-cls": "^6.1.0",
 		"node-fetch": "^2.7.0",

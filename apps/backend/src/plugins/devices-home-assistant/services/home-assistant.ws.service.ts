@@ -126,6 +126,9 @@ export class HomeAssistantWsService implements IManagedPluginService {
 					break;
 			}
 
+			// Clear cached config to ensure fresh values on restart
+			this.pluginConfig = null;
+
 			if (this.apiKey === null) {
 				this.logger.warn('Missing API key for Home Assistant WS service');
 				this.state = 'error';
@@ -212,16 +215,26 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	 * manager to perform the restart, ensuring proper error handling if auth fails.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
-		// Clear cached config so next access gets fresh values
-		this.pluginConfig = null;
+		// Check if config values actually changed for THIS plugin
+		if (this.state === 'started' && this.pluginConfig) {
+			const oldConfig = this.pluginConfig;
+			const newConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(
+				DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+			);
 
-		// Signal that restart is required to apply new settings
-		// The manager will handle stop/start to ensure proper authentication flow
-		if (this.state === 'started') {
-			this.logger.log('Config changed, restart required');
+			// Only restart if connection-relevant settings changed
+			if (oldConfig.hostname !== newConfig.hostname || oldConfig.apiKey !== newConfig.apiKey) {
+				this.logger.log('Config changed, restart required');
+				return Promise.resolve({ restartRequired: true });
+			}
 
-			return Promise.resolve({ restartRequired: true });
+			// Config didn't change for this plugin, no restart needed
+			this.logger.debug('Config event received but no relevant changes for this plugin');
+			return Promise.resolve({ restartRequired: false });
 		}
+
+		// Clear config only if not running (no handlers active)
+		this.pluginConfig = null;
 
 		return Promise.resolve({ restartRequired: false });
 	}

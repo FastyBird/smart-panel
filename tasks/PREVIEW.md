@@ -6,9 +6,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 17 |
+| Done | 18 |
 | Planned | 7 |
-| **Total** | **24** |
+| **Total** | **25** |
 
 ---
 
@@ -29,6 +29,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | Home Assistant Adoption Improvements | backend | large |
 | FEATURE-PLUGIN-SHELLY-V1 | Shelly Gen 1 Plugin | backend | large |
 | FEATURE-PLUGIN-SHELLY-V1-UI | Shelly Gen 1 Plugin UI | admin, panel | medium |
+| FEATURE-PLUGIN-ZIGBEE2MQTT | Zigbee2MQTT Plugin | backend, admin | large |
 | FEATURE-PROPERTY-TIMESERIES | Property Timeseries Endpoint | backend | medium |
 | FEATURE-PLUGIN-WLED | WLED Plugin (superseded) | backend | medium |
 | FEATURE-UNIFIED-EXTENSION-LOGS | Unified Extension Logs | backend, admin | medium |
@@ -42,7 +43,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | Linux Installation Enhancements | backend, admin | medium | FEATURE-LINUX-DEVICE-INSTALLATION |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | Sensor Device Detail Page | panel | large | - |
 | FEATURE-PLUGIN-MATTER | Matter Plugin | backend | large | - |
-| FEATURE-PLUGIN-ZIGBEE2MQTT | Zigbee2MQTT Plugin | backend | large | - |
+| FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | Zigbee2MQTT Adoption Improvements | backend, admin | large | FEATURE-PLUGIN-ZIGBEE2MQTT |
 
 ---
 
@@ -96,6 +97,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-HA-AUTO-MAP | feature | done |
 | FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | feature | done |
 | FEATURE-PLUGIN-SHELLY-V1 | feature | done |
+| FEATURE-PLUGIN-ZIGBEE2MQTT | feature | done |
 | FEATURE-PROPERTY-TIMESERIES | feature | done |
 | TECHNICAL-BACKEND-OPENAPI-SOURCE | technical | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
@@ -103,7 +105,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
 | FEATURE-PLUGIN-MATTER | feature | planned |
-| FEATURE-PLUGIN-ZIGBEE2MQTT | feature | planned |
+| FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
 | FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
 
 ### Admin
@@ -117,11 +119,13 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-MODULE-CONFIG | feature | done |
 | FEATURE-MULTI-LOCATION-WEATHER | feature | done |
 | FEATURE-PLUGIN-SHELLY-V1-UI | feature | done |
+| FEATURE-PLUGIN-ZIGBEE2MQTT | feature | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
+| FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
 
 ### Panel
 
@@ -150,6 +154,9 @@ FEATURE-PLUGIN-HA-AUTO-MAP (done)
 
 FEATURE-PLUGIN-SHELLY-V1 (done)
 └── FEATURE-PLUGIN-SHELLY-V1-UI (done)
+
+FEATURE-PLUGIN-ZIGBEE2MQTT (done)
+└── FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS (planned)
 ```
 
 ---
@@ -180,6 +187,7 @@ tasks/
 │   ├── FEATURE-PLUGIN-SHELLY-V1-UI.md
 │   ├── FEATURE-PLUGIN-SHELLY-V1.md
 │   ├── FEATURE-PLUGIN-WLED.md
+│   ├── FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-ZIGBEE2MQTT.md
 │   ├── FEATURE-PROPERTY-TIMESERIES.md
 │   ├── FEATURE-UNIFIED-EXTENSION-LOGS.md
@@ -192,4 +200,4 @@ tasks/
 
 ---
 
-*Last updated: 2025-12-21*
+*Last updated: 2025-12-22*

@@ -1,7 +1,7 @@
 <template>
 	<el-card
 		shadow="never"
-		class="px-1 py-2 mt-2 shrink-0"
+		class="px-1 py-2 shrink-0"
 		body-class="p-0!"
 	>
 		<pages-filter
@@ -18,7 +18,7 @@
 	>
 		<el-card
 			shadow="never"
-			class="mt-2 max-h-full"
+			class="max-h-full flex flex-col overflow-hidden box-border"
 			body-class="p-0! max-h-full overflow-hidden flex flex-col"
 		>
 			<pages-table

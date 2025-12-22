@@ -1,7 +1,7 @@
 <template>
 	<el-card
 		shadow="never"
-		class="px-1 py-2 mt-2 shrink-0"
+		class="px-1 py-2 shrink-0"
 		body-class="p-0!"
 	>
 		<channels-properties-filter
