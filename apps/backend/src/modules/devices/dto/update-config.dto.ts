@@ -8,6 +8,8 @@ import { DEVICES_MODULE_NAME } from '../devices.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateDevices' })
 export class UpdateDevicesConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',

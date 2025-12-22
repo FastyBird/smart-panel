@@ -243,7 +243,7 @@ export class InfluxDbService implements OnApplicationBootstrap {
 	}
 
 	async queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
-		return this.getConnection().queryRaw(query, options);
+		return this.getConnection().queryRaw(query, options) as Promise<T>;
 	}
 
 	public async revokeAdminPrivilege(...args: Parameters<InfluxDB['revokeAdminPrivilege']>): Promise<void> {

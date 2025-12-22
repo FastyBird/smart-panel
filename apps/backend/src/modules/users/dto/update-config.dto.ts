@@ -8,6 +8,8 @@ import { USERS_MODULE_NAME } from '../users.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateUsers' })
 export class UpdateUsersConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',

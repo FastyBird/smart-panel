@@ -8,6 +8,8 @@ import { MDNS_MODULE_NAME } from '../mdns.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateMdns' })
 export class UpdateMdnsConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',

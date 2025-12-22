@@ -9,6 +9,8 @@ import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateSystem' })
 export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',

@@ -78,9 +78,7 @@ export class PropertyValueService {
 	async readLatest(property: ChannelPropertyEntity): Promise<string | number | boolean | null> {
 		// Check local cache first
 		if (this.valuesMap.has(property.id)) {
-			this.logger.debug(
-				`Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`,
-			);
+			this.logger.debug(`Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`);
 
 			return this.valuesMap.get(property.id);
 		}

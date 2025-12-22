@@ -1,4 +1,4 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -8,6 +8,8 @@ import { INFLUXDB_MODULE_NAME } from '../influxdb.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateInfluxdb' })
 export class UpdateInfluxDbConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',
@@ -16,13 +18,6 @@ export class UpdateInfluxDbConfigDto extends UpdateModuleConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
 	type: string = INFLUXDB_MODULE_NAME;
-
-	/**
-	 * InfluxDB is a core module and cannot be disabled.
-	 * This field is excluded from the DTO to prevent modification.
-	 */
-	@Exclude()
-	override enabled?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'InfluxDB server host.',

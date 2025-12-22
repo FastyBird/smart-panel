@@ -8,6 +8,8 @@ import { WEATHER_MODULE_NAME } from '../weather.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateWeather' })
 export class UpdateWeatherConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',

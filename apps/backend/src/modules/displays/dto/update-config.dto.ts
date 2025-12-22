@@ -8,6 +8,8 @@ import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateDisplays' })
 export class UpdateDisplaysConfigDto extends UpdateModuleConfigDto {
+	override enabled = true;
+
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',
