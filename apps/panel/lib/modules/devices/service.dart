@@ -151,6 +151,7 @@ class DevicesService extends ChangeNotifier {
       triggerNotifyListeners = true;
     }
 
+    // First pass: create basic channel views (properties only, no validation yet)
     Map<String, ChannelView> newChannelsViews = {};
 
     for (var channel in channels) {
@@ -174,16 +175,10 @@ class DevicesService extends ChangeNotifier {
       }
     }
 
-    if (!mapEquals(_channels, newChannelsViews)) {
-      _channels = newChannelsViews;
-
-      triggerNotifyListeners = true;
-    }
-
     Map<String, DeviceView> newDevicesViews = {};
 
     for (var device in devices) {
-      final List<ChannelView> channels = newChannelsViews.entries
+      final List<ChannelView> deviceChannels = newChannelsViews.entries
           .where((entry) => device.channels.contains(entry.key))
           .map((entry) => entry.value)
           .toList();
@@ -196,18 +191,24 @@ class DevicesService extends ChangeNotifier {
               .toList() ??
           [];
 
-      // Update channel views with their validation issues
-      final List<ChannelView> channelsWithValidation = channels.map((channel) {
+      // Create validated channel views and update the global map
+      final List<ChannelView> channelsWithValidation =
+          deviceChannels.map((channel) {
         final channelIssues =
             _validationRepository.getIssuesForChannel(device.id, channel.id);
         final channelIsValid = !channelIssues.any((issue) => issue.isError);
 
-        return buildChannelView(
+        final validatedChannel = buildChannelView(
           channel.channelModel,
           channel.properties,
           isValid: channelIsValid,
           validationIssues: channelIssues,
         );
+
+        // Update the global channels map with validated version
+        newChannelsViews[channel.id] = validatedChannel;
+
+        return validatedChannel;
       }).toList();
 
       try {
@@ -224,6 +225,13 @@ class DevicesService extends ChangeNotifier {
           );
         }
       }
+    }
+
+    // Update channels after all devices processed (includes validation)
+    if (!mapEquals(_channels, newChannelsViews)) {
+      _channels = newChannelsViews;
+
+      triggerNotifyListeners = true;
     }
 
     if (!mapEquals(_devices, newDevicesViews)) {
