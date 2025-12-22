@@ -413,7 +413,7 @@ export class DeviceValidationService {
 			}
 		}
 
-		// Check oneOf constraints - exactly one (or zero) channel from each group can be present
+		// Check oneOf constraints - at most one channel from each group can be present (mutually exclusive)
 		if (constraints.oneOf) {
 			for (const group of constraints.oneOf) {
 				const presentCount = group.filter((channelCat) => existingCategories.has(channelCat)).length;
@@ -539,7 +539,7 @@ export class DeviceValidationService {
 			}
 		}
 
-		// Check oneOf constraints - exactly one (or zero) property from each group can be present
+		// Check oneOf constraints - at most one property from each group can be present (mutually exclusive)
 		if (constraints.oneOf) {
 			for (const group of constraints.oneOf) {
 				const presentCount = group.filter((prop) => existingProperties.has(prop)).length;
@@ -813,7 +813,7 @@ export class DeviceValidationService {
 			}
 		}
 
-		// Check oneOf constraints - exactly one (or zero) channel from each group can be present
+		// Check oneOf constraints - at most one channel from each group can be present (mutually exclusive)
 		if (constraints.oneOf) {
 			for (const group of constraints.oneOf) {
 				const presentCount = group.filter((channelCat) => existingCategories.has(channelCat)).length;

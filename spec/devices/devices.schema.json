@@ -58,7 +58,7 @@
           "type": "object",
           "properties": {
             "oneOf": {
-              "description": "Exactly one channel from each group can be present",
+              "description": "At most one channel from each group can be present (mutually exclusive)",
               "type": "array",
               "items": {
                 "type": "array",

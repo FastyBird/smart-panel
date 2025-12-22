@@ -268,7 +268,7 @@
           "type": "object",
           "properties": {
             "oneOf": {
-              "description": "Exactly one property from each group can be present (mutually exclusive)",
+              "description": "At most one property from each group can be present (mutually exclusive)",
               "type": "array",
               "items": {
                 "type": "array",
