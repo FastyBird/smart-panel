@@ -9,6 +9,11 @@ import { ChannelSpecModel } from '../../../modules/devices/models/devices.model'
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import {
+	type ChannelDataInput,
+	DeviceValidationService,
+	ValidationIssueSeverity,
+} from '../../../modules/devices/services/device-validation.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { channelsSchema } from '../../../spec/channels';
 import {
@@ -52,6 +57,7 @@ export class Z2mDeviceAdoptionService {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly deviceValidationService: DeviceValidationService,
 	) {}
 
 	/**
@@ -310,58 +316,70 @@ export class Z2mDeviceAdoptionService {
 	}
 
 	/**
-	 * Pre-validate device structure before creation
+	 * Pre-validate device structure before creation using the DeviceValidationService
 	 */
 	private async preValidateDeviceStructure(request: AdoptDeviceRequestDto): Promise<void> {
-		this.logger.debug(`[DEVICE ADOPTION] Pre-validating device structure`);
-
-		const validationErrors: string[] = [];
+		this.logger.debug(`[DEVICE ADOPTION] Pre-validating device structure using DeviceValidationService`);
 
 		// Check that at least one channel is provided
 		if (!request.channels.length) {
-			validationErrors.push('At least one channel must be defined');
+			throw new DevicesZigbee2mqttValidationException('At least one channel must be defined');
 		}
 
-		// Validate each channel
+		// Build the device data input for validation
+		// Include device_information channel that will be auto-created
+		const channels: ChannelDataInput[] = [
+			{
+				category: ChannelCategory.DEVICE_INFORMATION,
+				properties: [
+					{ category: PropertyCategory.MANUFACTURER },
+					{ category: PropertyCategory.MODEL },
+					{ category: PropertyCategory.SERIAL_NUMBER },
+					{ category: PropertyCategory.FIRMWARE_REVISION },
+				],
+			},
+		];
+
+		// Add user-defined channels (excluding device_information if duplicated)
 		for (const channelDef of request.channels) {
-			// Skip device_information channel validation (created automatically)
 			if (channelDef.category === ChannelCategory.DEVICE_INFORMATION) {
 				continue;
 			}
 
-			// Check channel spec exists
-			const channelSpec = this.getChannelSpec(channelDef.category);
-			if (!channelSpec) {
-				validationErrors.push(`Channel ${channelDef.category}: No specification found`);
-				continue;
-			}
+			channels.push({
+				category: channelDef.category,
+				properties: channelDef.properties.map((p) => ({
+					category: p.category,
+					dataType: p.dataType,
+					permissions: p.permissions,
+				})),
+			});
+		}
 
-			// Check for required properties
-			const requiredProperties = channelSpec.properties.filter((p) => p.required);
-			const providedCategories = new Set(channelDef.properties.map((p) => p.category));
+		// Use the DeviceValidationService to validate the structure
+		const validationResult = this.deviceValidationService.validateDeviceStructure({
+			category: request.category,
+			channels,
+		});
 
-			for (const reqProp of requiredProperties) {
-				if (!providedCategories.has(reqProp.category)) {
-					validationErrors.push(`Channel ${channelDef.category}: Missing required property ${reqProp.category}`);
-				}
-			}
+		if (!validationResult.isValid) {
+			// Filter to only show errors (not warnings)
+			const errors = validationResult.issues.filter((i) => i.severity === ValidationIssueSeverity.ERROR);
 
-			// Validate property data types
-			for (const propDef of channelDef.properties) {
-				const propSpec = channelSpec.properties.find((p) => p.category === propDef.category);
-				if (propSpec && propDef.dataType !== propSpec.data_type) {
-					validationErrors.push(
-						`Channel ${channelDef.category}, Property ${propDef.category}: ` +
-						`Data type mismatch (expected ${propSpec.data_type}, got ${propDef.dataType})`,
-					);
-				}
+			if (errors.length > 0) {
+				const errorMessages = errors.map((issue) => issue.message);
+				this.logger.error(`[DEVICE ADOPTION] Pre-validation failed: ${errorMessages.join(', ')}`);
+				throw new DevicesZigbee2mqttValidationException(
+					`Device structure validation failed:\n${errorMessages.join('\n')}`,
+				);
 			}
 		}
 
-		if (validationErrors.length > 0) {
-			this.logger.error(`[DEVICE ADOPTION] Pre-validation failed: ${validationErrors.join(', ')}`);
-			throw new DevicesZigbee2mqttValidationException(
-				`Device structure validation failed:\n${validationErrors.join('\n')}`,
+		// Log warnings but don't fail
+		const warnings = validationResult.issues.filter((i) => i.severity === ValidationIssueSeverity.WARNING);
+		if (warnings.length > 0) {
+			this.logger.warn(
+				`[DEVICE ADOPTION] Pre-validation warnings: ${warnings.map((w) => w.message).join(', ')}`,
 			);
 		}
 
