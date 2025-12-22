@@ -238,11 +238,11 @@ export class InfluxDbService implements OnApplicationBootstrap {
 		return this.getConnection().ping(...args);
 	}
 
-	query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
+	async query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
 		return this.getConnection().query(query, options);
 	}
 
-	queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
+	async queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
 		return this.getConnection().queryRaw(query, options);
 	}
 
@@ -258,7 +258,7 @@ export class InfluxDbService implements OnApplicationBootstrap {
 		return this.getConnection().setPassword(...args);
 	}
 
-	public showContinuousQueries(...args: Parameters<InfluxDB['showContinousQueries']>): Promise<
+	public async showContinuousQueries(...args: Parameters<InfluxDB['showContinousQueries']>): Promise<
 		IResults<{
 			name: string;
 			query: string;
@@ -267,7 +267,7 @@ export class InfluxDbService implements OnApplicationBootstrap {
 		return this.getConnection().showContinousQueries(...args);
 	}
 
-	public showRetentionPolicies(...args: Parameters<InfluxDB['showRetentionPolicies']>): Promise<
+	public async showRetentionPolicies(...args: Parameters<InfluxDB['showRetentionPolicies']>): Promise<
 		IResults<{
 			default: boolean;
 			duration: string;
@@ -279,11 +279,11 @@ export class InfluxDbService implements OnApplicationBootstrap {
 		return this.getConnection().showRetentionPolicies(...args);
 	}
 
-	public writeMeasurement(...args: Parameters<InfluxDB['writeMeasurement']>): Promise<void> {
+	public async writeMeasurement(...args: Parameters<InfluxDB['writeMeasurement']>): Promise<void> {
 		return this.getConnection().writeMeasurement(...args);
 	}
 
-	public writePoints(...args: Parameters<InfluxDB['writePoints']>): Promise<void> {
+	public async writePoints(...args: Parameters<InfluxDB['writePoints']>): Promise<void> {
 		return this.getConnection().writePoints(...args);
 	}
 
