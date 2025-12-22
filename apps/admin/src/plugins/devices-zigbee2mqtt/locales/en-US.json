@@ -4,13 +4,47 @@
 		"aboutMqtt": "MQTT connection",
 		"advancedMqttSettings": "Advanced MQTT settings",
 		"aboutTls": "TLS/SSL configuration",
-		"aboutDiscovery": "Device discovery"
+		"aboutDiscovery": "Device discovery",
+		"steps": {
+			"selectDevice": "Select Device",
+			"selectCategory": "Device Category",
+			"mappingPreview": "Mapping Preview",
+			"customizeMapping": "Customize Mapping",
+			"deviceConfiguration": "Device Configuration"
+		},
+		"mapping": {
+			"summary": "Mapping Summary",
+			"warnings": "Mapping Warnings ({count})",
+			"exposeMappings": "Expose Mappings",
+			"customization": "Mapping Customization"
+		},
+		"device": {
+			"deviceSelection": "Select Device",
+			"categorySelection": "Device Category",
+			"mappingPreview": "Mapping Preview",
+			"mappingCustomization": "Customize Mapping",
+			"deviceConfiguration": "Device Configuration",
+			"deviceInfo": "Device Information"
+		}
 	},
 	"texts": {
 		"aboutPluginStatus": "Enable or disable the Zigbee2MQTT plugin. When disabled, no Zigbee devices will be monitored or controlled.",
 		"aboutMqtt": "Configure the connection to your MQTT broker where Zigbee2MQTT publishes device data.",
 		"aboutTls": "Configure TLS/SSL settings for secure MQTT connections. Enable TLS if your broker requires encrypted connections.",
-		"aboutDiscovery": "Configure how devices are discovered and added from the Zigbee2MQTT bridge."
+		"aboutDiscovery": "Configure how devices are discovered and added from the Zigbee2MQTT bridge.",
+		"steps": {
+			"selectDevice": "Select a Zigbee device to adopt from the discovered devices list.",
+			"selectCategory": "Choose the device category. The suggested category is based on the device's exposes.",
+			"mappingPreview": "Review how the device's exposes will be mapped to Smart Panel channels and properties.",
+			"customizeMapping": "Customize which exposes to include and adjust channel categories if needed.",
+			"deviceConfiguration": "Configure device name, description, and other settings."
+		},
+		"noDiscoveredDevices": "No discovered devices available. Make sure Zigbee2MQTT is running and devices are paired.",
+		"loadingDevices": "Loading discovered devices...",
+		"loadingPreview": "Loading mapping preview...",
+		"mapping": {
+			"customizationDescription": "Toggle which exposes to include and customize channel categories. Disabled exposes will not be created."
+		}
 	},
 	"fields": {
 		"config": {
@@ -127,7 +161,44 @@
 			},
 			"enabled": {
 				"title": "Enabled"
+			},
+			"ieeeAddress": {
+				"title": "IEEE Address",
+				"placeholder": "Select a device",
+				"validation": {
+					"required": "Please select a device"
+				}
+			},
+			"friendlyName": {
+				"title": "Friendly Name"
+			},
+			"manufacturer": {
+				"title": "Manufacturer"
+			},
+			"model": {
+				"title": "Model"
 			}
+		},
+		"mapping": {
+			"mapped": "Mapped",
+			"partial": "Partial",
+			"unmapped": "Unmapped",
+			"skipped": "Skipped",
+			"excluded": "Excluded",
+			"totalExposes": "Total Exposes",
+			"deviceName": "Device Name",
+			"suggestedCategory": "Suggested Category",
+			"suggestedChannel": {
+				"title": "Suggested Channel",
+				"validation": {
+					"required": "Please select a channel category"
+				}
+			},
+			"properties": "Properties",
+			"missingRequiredProperties": "Missing Required Properties",
+			"exposeEnabled": "Enabled",
+			"channelCategory": "Channel Category",
+			"noChannelSuggested": "No channel suggested"
 		}
 	},
 	"messages": {
@@ -139,7 +210,38 @@
 			"created": "Zigbee2MQTT device '{device}' has been created",
 			"notCreated": "Failed to create Zigbee2MQTT device '{device}'",
 			"edited": "Zigbee2MQTT device '{device}' has been updated",
-			"notEdited": "Failed to update Zigbee2MQTT device '{device}'"
+			"notEdited": "Failed to update Zigbee2MQTT device '{device}'",
+			"adopted": "Device '{device}' has been successfully adopted",
+			"notAdopted": "Failed to adopt device '{device}'",
+			"noDiscoveredDevices": "No discovered devices available. Make sure Zigbee2MQTT is running and devices are paired.",
+			"deviceOffline": "This device is currently offline"
+		},
+		"discoveredDevices": {
+			"loadFailed": "Failed to load discovered devices",
+			"mappingPreviewFailed": "Failed to load mapping preview"
+		},
+		"mapping": {
+			"previewError": "Failed to load mapping preview",
+			"previewLoading": "Loading mapping preview...",
+			"missingChannelCategory": "Please select a channel category for: {exposes}",
+			"notReadyToAdopt": "Device is not ready to be adopted. Please review and fix any warnings.",
+			"readyToAdopt": "Device is ready to be adopted",
+			"noPreview": "No mapping preview available",
+			"selectDeviceFirst": "Please select a device first to see the mapping preview",
+			"adoptionSuccess": "Device '{device}' has been successfully adopted"
+		},
+		"categorySelection": {
+			"description": "Choose the device category. The suggested category is based on the device's capabilities."
 		}
+	},
+	"labels": {
+		"suggested": "Suggested"
+	},
+	"buttons": {
+		"next": "Next",
+		"previous": "Previous",
+		"adoptDevice": "Adopt Device",
+		"refresh": "Refresh",
+		"use": "Use"
 	}
 }

@@ -3,3 +3,7 @@ export * from './channels.store.schemas';
 export * from './config.store.schemas';
 export * from './devices.store.schemas';
 export * from './devices.store.types';
+export * from './keys';
+export * from './zigbee2mqtt-discovered-devices.store';
+export * from './zigbee2mqtt-discovered-devices.store.schemas';
+export * from './zigbee2mqtt-discovered-devices.store.types';
