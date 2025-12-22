@@ -94,10 +94,14 @@ export class ShellyV1Service implements IManagedPluginService {
 					return;
 				case 'stopping':
 					await this.waitUntil('stopped');
+					// Clear cached config to ensure fresh values on restart
+					this.pluginConfig = null;
 					break;
 				case 'stopped':
 				case 'error':
 					// Both stopped and error states can be started
+					// Clear cached config to ensure fresh values on restart
+					this.pluginConfig = null;
 					break;
 			}
 
@@ -194,16 +198,30 @@ export class ShellyV1Service implements IManagedPluginService {
 	 * the manager to perform the restart, ensuring proper runtime tracking.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
-		// Clear cached config so next access gets fresh values
-		this.pluginConfig = null;
+		// Check if config values actually changed for THIS plugin
+		if (this.state === 'started' && this.pluginConfig) {
+			const oldConfig = this.pluginConfig;
+			const newConfig = this.configService.getPluginConfig<ShellyV1ConfigModel>(DEVICES_SHELLY_V1_PLUGIN_NAME);
 
-		// Signal that restart is required to apply new settings
-		// The manager will handle stop/start to maintain accurate runtime tracking
-		if (this.state === 'started') {
-			this.logger.log('Config changed, restart required');
+			// Compare relevant settings that would require restart
+			const configChanged =
+				oldConfig.discovery.enabled !== newConfig.discovery.enabled ||
+				oldConfig.discovery.interface !== newConfig.discovery.interface ||
+				oldConfig.timeouts.requestTimeout !== newConfig.timeouts.requestTimeout ||
+				oldConfig.timeouts.staleTimeout !== newConfig.timeouts.staleTimeout;
 
-			return Promise.resolve({ restartRequired: true });
+			if (configChanged) {
+				this.logger.log('Config changed, restart required');
+				return Promise.resolve({ restartRequired: true });
+			}
+
+			// Config didn't change for this plugin, no restart needed
+			this.logger.debug('Config event received but no relevant changes for this plugin');
+			return Promise.resolve({ restartRequired: false });
 		}
+
+		// Clear config only if not running (no handlers active)
+		this.pluginConfig = null;
 
 		return Promise.resolve({ restartRequired: false });
 	}
