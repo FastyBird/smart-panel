@@ -446,7 +446,7 @@ export class LogEntryModel {
 	tag?: string;
 
 	@ApiPropertyOptional({
-		description: 'Device ID associated with this log entry',
+		description: 'Resource ID associated with this log entry (device, channel, page, tile, etc.)',
 		type: 'string',
 		format: 'uuid',
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
@@ -454,7 +454,7 @@ export class LogEntryModel {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4')
-	device?: string;
+	resource?: string;
 
 	@ApiPropertyOptional({ description: 'Log message', type: 'string', example: 'User performed an action' })
 	@Expose()

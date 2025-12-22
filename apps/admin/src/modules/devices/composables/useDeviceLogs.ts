@@ -75,7 +75,7 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 			const { data: responseData, error } = await backend.client.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/logs`, {
 				params: {
 					query: {
-						device: deviceId,
+						resource: deviceId,
 						limit: 50,
 					},
 				},
@@ -128,7 +128,7 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 			const { data: responseData, error } = await backend.client.GET(`/${MODULES_PREFIX}/${SYSTEM_MODULE_PREFIX}/logs`, {
 				params: {
 					query: {
-						device: deviceId,
+						resource: deviceId,
 						after_id: cursor,
 						limit: 50,
 					},

@@ -76,7 +76,7 @@ export class SystemLoggerService implements LoggerService {
 			ingestedAt: now.toISOString(),
 			seq: this.seq++,
 			source: entry.source,
-			device: entry.device,
+			resource: entry.resource,
 			...entry,
 		});
 
@@ -124,12 +124,12 @@ export class SystemLoggerService implements LoggerService {
 				typeof contextOrTag.source === 'string'
 					? (contextOrTag.source as LogEntrySource)
 					: LogEntrySource.BACKEND,
-			device:
+			resource:
 				contextOrTag !== null &&
 				typeof contextOrTag === 'object' &&
-				'device' in contextOrTag &&
-				typeof contextOrTag.device === 'string'
-					? contextOrTag.device
+				'resource' in contextOrTag &&
+				typeof contextOrTag.resource === 'string'
+					? contextOrTag.resource
 					: undefined,
 			message: String(message),
 			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
@@ -152,17 +152,17 @@ export class SystemLoggerService implements LoggerService {
 						  typeof contextOrTag.source === 'string'
 						? (contextOrTag.source as LogEntrySource)
 						: LogEntrySource.BACKEND,
-			device:
+			resource:
 				stackOrContext !== null &&
 				typeof stackOrContext === 'object' &&
-				'device' in stackOrContext &&
-				typeof stackOrContext.device === 'string'
-					? stackOrContext.device
+				'resource' in stackOrContext &&
+				typeof stackOrContext.resource === 'string'
+					? stackOrContext.resource
 					: contextOrTag !== null &&
 						  typeof contextOrTag === 'object' &&
-						  'device' in contextOrTag &&
-						  typeof contextOrTag.device === 'string'
-						? contextOrTag.device
+						  'resource' in contextOrTag &&
+						  typeof contextOrTag.resource === 'string'
+						? contextOrTag.resource
 						: undefined,
 			message: String(message),
 			args: stackOrContext ? [stackOrContext] : undefined,
@@ -186,12 +186,12 @@ export class SystemLoggerService implements LoggerService {
 				typeof contextOrTag.source === 'string'
 					? (contextOrTag.source as LogEntrySource)
 					: LogEntrySource.BACKEND,
-			device:
+			resource:
 				contextOrTag !== null &&
 				typeof contextOrTag === 'object' &&
-				'device' in contextOrTag &&
-				typeof contextOrTag.device === 'string'
-					? contextOrTag.device
+				'resource' in contextOrTag &&
+				typeof contextOrTag.resource === 'string'
+					? contextOrTag.resource
 					: undefined,
 			message: String(message),
 			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
@@ -209,12 +209,12 @@ export class SystemLoggerService implements LoggerService {
 				typeof contextOrTag.source === 'string'
 					? (contextOrTag.source as LogEntrySource)
 					: LogEntrySource.BACKEND,
-			device:
+			resource:
 				contextOrTag !== null &&
 				typeof contextOrTag === 'object' &&
-				'device' in contextOrTag &&
-				typeof contextOrTag.device === 'string'
-					? contextOrTag.device
+				'resource' in contextOrTag &&
+				typeof contextOrTag.resource === 'string'
+					? contextOrTag.resource
 					: undefined,
 			message: String(message),
 			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
@@ -229,16 +229,16 @@ export class SystemLoggerService implements LoggerService {
 				context !== null && typeof context === 'object' && 'source' in context && typeof context.source === 'string'
 					? (context.source as LogEntrySource)
 					: LogEntrySource.BACKEND,
-			device:
-				context !== null && typeof context === 'object' && 'device' in context && typeof context.device === 'string'
-					? context.device
+			resource:
+				context !== null && typeof context === 'object' && 'resource' in context && typeof context.resource === 'string'
+					? context.resource
 					: undefined,
 			message: String(message),
 			tag: typeof context === 'string' ? context : undefined,
 		});
 	}
 
-	getLatest(afterId?: string, limit = 50, tags?: string[], devices?: string[]): LogEntryModel[] {
+	getLatest(afterId?: string, limit = 50, tags?: string[], resources?: string[]): LogEntryModel[] {
 		let all = this.rb.toArrayNewestFirst();
 
 		// Filter by tags if provided (case-insensitive)
@@ -247,10 +247,10 @@ export class SystemLoggerService implements LoggerService {
 			all = all.filter((e) => e.tag && lowerTags.includes(e.tag.toLowerCase()));
 		}
 
-		// Filter by device IDs if provided (case-insensitive)
-		if (devices && devices.length > 0) {
-			const lowerDevices = devices.map((d) => d.toLowerCase());
-			all = all.filter((e) => e.device && lowerDevices.includes(e.device.toLowerCase()));
+		// Filter by resource IDs if provided (case-insensitive)
+		if (resources && resources.length > 0) {
+			const lowerResources = resources.map((r) => r.toLowerCase());
+			all = all.filter((e) => e.resource && lowerResources.includes(e.resource.toLowerCase()));
 		}
 
 		const start = afterId ? all.findIndex((e) => e.id === afterId) : -1;
