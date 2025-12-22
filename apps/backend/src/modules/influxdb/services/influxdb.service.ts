@@ -135,11 +135,19 @@ export class InfluxDbService implements OnApplicationBootstrap {
 		this.logger.log('Connection closed.');
 	}
 
+	public isConnected(): boolean {
+		return this.connection !== null;
+	}
+
 	public async alterRetentionPolicy(...args: Parameters<InfluxDB['alterRetentionPolicy']>): Promise<void> {
 		return this.getConnection().alterRetentionPolicy(...args);
 	}
 
 	public async createContinuousQuery(...args: Parameters<InfluxDB['createContinuousQuery']>): Promise<void> {
+		if (!this.isConnected()) {
+			return Promise.resolve();
+		}
+
 		const [name, body, db, resample] = args;
 
 		if (!db) {
@@ -235,10 +243,16 @@ export class InfluxDbService implements OnApplicationBootstrap {
 	}
 
 	query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
+		if (!this.isConnected()) {
+			return Promise.resolve([] as unknown as IResults<T>);
+		}
 		return this.getConnection().query(query, options);
 	}
 
 	queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
+		if (!this.isConnected()) {
+			return Promise.resolve({ results: [] } as unknown as T);
+		}
 		return this.getConnection().queryRaw(query, options);
 	}
 
@@ -276,10 +290,16 @@ export class InfluxDbService implements OnApplicationBootstrap {
 	}
 
 	public writeMeasurement(...args: Parameters<InfluxDB['writeMeasurement']>): Promise<void> {
+		if (!this.isConnected()) {
+			return Promise.resolve();
+		}
 		return this.getConnection().writeMeasurement(...args);
 	}
 
 	public writePoints(...args: Parameters<InfluxDB['writePoints']>): Promise<void> {
+		if (!this.isConnected()) {
+			return Promise.resolve();
+		}
 		return this.getConnection().writePoints(...args);
 	}
 
