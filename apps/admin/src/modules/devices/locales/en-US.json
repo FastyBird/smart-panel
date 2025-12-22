@@ -12,6 +12,9 @@
       },
       "detail": {
         "title": "Device: {device}"
+      },
+      "control": {
+        "title": "Control device: {device}"
       }
     },
     "channels": {
@@ -42,7 +45,8 @@
       "list": "devices",
       "add": "add device",
       "edit": "edit device",
-      "detail": "device: {device}"
+      "detail": "device: {device}",
+      "control": "control: {device}"
     },
     "channels": {
       "list": "channels",
@@ -61,6 +65,7 @@
       "add": "Add device",
       "edit": "Edit device",
       "detail": "Device: {device}",
+      "control": "Control: {device}",
       "remove": "Remove device?",
       "adjustFilters": "Filter devices",
       "selectPlugin": "Device plugin required"
@@ -90,6 +95,7 @@
       "add": "Add new smart panel device",
       "edit": "Edit smart panel device",
       "detail": "Manage smart panel device",
+      "control": "Control smart panel device",
       "adjustFilters": "Adjust display filters"
     },
     "channels": {
@@ -187,7 +193,8 @@
       "channels": "Channels",
       "alerts": "Alerts",
       "status": "Status",
-      "validation": "Validation"
+      "validation": "Validation",
+      "noControllableProperties": "This device has no controllable properties. Properties must have read-write or write-only permissions to be controlled."
     },
     "channels": {
       "noChannels": "You don't have configured any device channel",
@@ -594,6 +601,9 @@
     },
     "addProperty": {
       "title": "Add property"
+    },
+    "control": {
+      "title": "Control"
     }
   },
   "states": {
