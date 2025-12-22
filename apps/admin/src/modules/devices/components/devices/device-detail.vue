@@ -180,17 +180,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 import { I18nT, useI18n } from 'vue-i18n';
+
+import { storeToRefs } from 'pinia';
 
 import { ElDivider, ElIcon, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { injectStoresManager } from '../../../../common';
 import { DevicesModuleChannelCategory, DevicesModuleDeviceConnectionStatus } from '../../../../openapi.constants';
-import { useChannels, useDeviceValidation } from '../../composables/composables';
+import { useChannels } from '../../composables/composables';
 import { type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';
+import { devicesValidationStoreKey } from '../../store/keys';
 
 import DeviceDetailDescription from './device-detail-description.vue';
 import type { IDeviceDetailProps } from './device-detail.types';
@@ -204,7 +208,19 @@ const props = defineProps<IDeviceDetailProps>();
 const { t } = useI18n();
 
 const { channels } = useChannels({ deviceId: props.device.id });
-const { isValid, issues, errorCount, warningCount, isLoading: validationLoading } = useDeviceValidation({ id: props.device.id });
+
+// Get validation data directly from store with reactive device id
+const storesManager = injectStoresManager();
+const validationStore = storesManager.getStore(devicesValidationStoreKey);
+const { deviceResults, semaphore } = storeToRefs(validationStore);
+
+const deviceId = toRef(() => props.device.id);
+const validationResult = computed(() => deviceResults.value[deviceId.value] ?? null);
+const isValid = computed<boolean | null>(() => validationResult.value?.isValid ?? null);
+const issues = computed(() => validationResult.value?.issues ?? []);
+const errorCount = computed<number>(() => issues.value.filter((i) => i.severity === 'error').length);
+const warningCount = computed<number>(() => issues.value.filter((i) => i.severity === 'warning').length);
+const validationLoading = computed<boolean>(() => semaphore.value.fetching.items || semaphore.value.fetching.item.includes(deviceId.value));
 
 const alerts: string[] = [];
 

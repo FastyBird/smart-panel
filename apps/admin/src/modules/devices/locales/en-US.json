@@ -525,6 +525,9 @@
       "category": {
         "title": "Filter by device category",
         "placeholder": "Select one or more"
+      },
+      "validation": {
+        "title": "Filter by validation status"
       }
     },
     "channels": {

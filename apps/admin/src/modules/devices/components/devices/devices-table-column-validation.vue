@@ -54,14 +54,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
+
+import { storeToRefs } from 'pinia';
 
 import { ElIcon, ElLink, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useDeviceValidation } from '../../composables/composables';
+import { injectStoresManager } from '../../../../common';
+import { devicesValidationStoreKey } from '../../store/keys';
 
 import type { IDevicesTableColumnValidationProps } from './devices-table-column-validation.types';
 
@@ -77,9 +80,22 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { isValid, issues, isLoading } = useDeviceValidation({ id: props.device.id });
+const storesManager = injectStoresManager();
+const validationStore = storesManager.getStore(devicesValidationStoreKey);
+const { deviceResults, semaphore } = storeToRefs(validationStore);
+
+// Use toRef to make props.device.id reactive
+const deviceId = toRef(() => props.device.id);
+
+const validationResult = computed(() => deviceResults.value[deviceId.value] ?? null);
+
+const isValid = computed<boolean | null>(() => validationResult.value?.isValid ?? null);
+
+const issues = computed(() => validationResult.value?.issues ?? []);
 
 const issueCount = computed<number>(() => issues.value.length);
+
+const isLoading = computed<boolean>(() => semaphore.value.fetching.items || semaphore.value.fetching.item.includes(deviceId.value));
 
 const currentFilterValue = computed<'valid' | 'invalid' | null>(() => {
 	if (isValid.value === true) return 'valid';
