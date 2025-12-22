@@ -432,22 +432,29 @@ export class DeviceValidationService {
 		}
 
 		// Check mutuallyExclusiveGroups constraints (e.g., outlet vs switcher)
+		// Each entry can contain 2+ groups that are all mutually exclusive with each other
 		if (constraints.mutuallyExclusiveGroups) {
-			for (const groupPair of constraints.mutuallyExclusiveGroups) {
-				if (groupPair.length < 2) continue;
+			for (const groups of constraints.mutuallyExclusiveGroups) {
+				if (groups.length < 2) continue;
 
-				const [groupA, groupB] = groupPair;
-				const hasGroupA = groupA.some((channelCat) => existingCategories.has(channelCat));
-				const hasGroupB = groupB.some((channelCat) => existingCategories.has(channelCat));
+				// Check all pairs of groups for mutual exclusivity
+				for (let i = 0; i < groups.length; i++) {
+					for (let j = i + 1; j < groups.length; j++) {
+						const groupA = groups[i];
+						const groupB = groups[j];
+						const hasGroupA = groupA.some((channelCat) => existingCategories.has(channelCat));
+						const hasGroupB = groupB.some((channelCat) => existingCategories.has(channelCat));
 
-				if (hasGroupA && hasGroupB) {
-					issues.push({
-						type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
-						severity: ValidationIssueSeverity.ERROR,
-						message: `Channels [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together for device category: ${device.category}`,
-						expected: 'only one group',
-						actual: 'both groups present',
-					});
+						if (hasGroupA && hasGroupB) {
+							issues.push({
+								type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
+								severity: ValidationIssueSeverity.ERROR,
+								message: `Channels [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together for device category: ${device.category}`,
+								expected: 'only one group',
+								actual: 'both groups present',
+							});
+						}
+					}
 				}
 			}
 		}
@@ -553,24 +560,31 @@ export class DeviceValidationService {
 		}
 
 		// Check mutuallyExclusiveGroups constraints (e.g., RGB vs HSV)
+		// Each entry can contain 2+ groups that are all mutually exclusive with each other
 		if (constraints.mutuallyExclusiveGroups) {
-			for (const groupPair of constraints.mutuallyExclusiveGroups) {
-				if (groupPair.length < 2) continue;
+			for (const groups of constraints.mutuallyExclusiveGroups) {
+				if (groups.length < 2) continue;
 
-				const [groupA, groupB] = groupPair;
-				const hasGroupA = groupA.some((prop) => existingProperties.has(prop));
-				const hasGroupB = groupB.some((prop) => existingProperties.has(prop));
+				// Check all pairs of groups for mutual exclusivity
+				for (let i = 0; i < groups.length; i++) {
+					for (let j = i + 1; j < groups.length; j++) {
+						const groupA = groups[i];
+						const groupB = groups[j];
+						const hasGroupA = groupA.some((prop) => existingProperties.has(prop));
+						const hasGroupB = groupB.some((prop) => existingProperties.has(prop));
 
-				if (hasGroupA && hasGroupB) {
-					issues.push({
-						type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
-						severity: ValidationIssueSeverity.ERROR,
-						channelCategory: channel.category,
-						channelId: channel.id,
-						message: `Properties [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together in channel: ${channel.category}`,
-						expected: 'only one group',
-						actual: 'both groups present',
-					});
+						if (hasGroupA && hasGroupB) {
+							issues.push({
+								type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
+								severity: ValidationIssueSeverity.ERROR,
+								channelCategory: channel.category,
+								channelId: channel.id,
+								message: `Properties [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together in channel: ${channel.category}`,
+								expected: 'only one group',
+								actual: 'both groups present',
+							});
+						}
+					}
 				}
 			}
 		}
@@ -818,22 +832,29 @@ export class DeviceValidationService {
 		}
 
 		// Check mutuallyExclusiveGroups constraints (e.g., outlet vs switcher)
+		// Each entry can contain 2+ groups that are all mutually exclusive with each other
 		if (constraints.mutuallyExclusiveGroups) {
-			for (const groupPair of constraints.mutuallyExclusiveGroups) {
-				if (groupPair.length < 2) continue;
+			for (const groups of constraints.mutuallyExclusiveGroups) {
+				if (groups.length < 2) continue;
 
-				const [groupA, groupB] = groupPair;
-				const hasGroupA = groupA.some((channelCat) => existingCategories.has(channelCat));
-				const hasGroupB = groupB.some((channelCat) => existingCategories.has(channelCat));
+				// Check all pairs of groups for mutual exclusivity
+				for (let i = 0; i < groups.length; i++) {
+					for (let j = i + 1; j < groups.length; j++) {
+						const groupA = groups[i];
+						const groupB = groups[j];
+						const hasGroupA = groupA.some((channelCat) => existingCategories.has(channelCat));
+						const hasGroupB = groupB.some((channelCat) => existingCategories.has(channelCat));
 
-				if (hasGroupA && hasGroupB) {
-					issues.push({
-						type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
-						severity: ValidationIssueSeverity.ERROR,
-						message: `Channels [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together for device category: ${deviceCategory}`,
-						expected: 'only one group',
-						actual: 'both groups present',
-					});
+						if (hasGroupA && hasGroupB) {
+							issues.push({
+								type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
+								severity: ValidationIssueSeverity.ERROR,
+								message: `Channels [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together for device category: ${deviceCategory}`,
+								expected: 'only one group',
+								actual: 'both groups present',
+							});
+						}
+					}
 				}
 			}
 		}
@@ -936,23 +957,30 @@ export class DeviceValidationService {
 		}
 
 		// Check mutuallyExclusiveGroups constraints (e.g., RGB vs HSV)
+		// Each entry can contain 2+ groups that are all mutually exclusive with each other
 		if (constraints.mutuallyExclusiveGroups) {
-			for (const groupPair of constraints.mutuallyExclusiveGroups) {
-				if (groupPair.length < 2) continue;
+			for (const groups of constraints.mutuallyExclusiveGroups) {
+				if (groups.length < 2) continue;
 
-				const [groupA, groupB] = groupPair;
-				const hasGroupA = groupA.some((prop) => existingProperties.has(prop));
-				const hasGroupB = groupB.some((prop) => existingProperties.has(prop));
+				// Check all pairs of groups for mutual exclusivity
+				for (let i = 0; i < groups.length; i++) {
+					for (let j = i + 1; j < groups.length; j++) {
+						const groupA = groups[i];
+						const groupB = groups[j];
+						const hasGroupA = groupA.some((prop) => existingProperties.has(prop));
+						const hasGroupB = groupB.some((prop) => existingProperties.has(prop));
 
-				if (hasGroupA && hasGroupB) {
-					issues.push({
-						type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
-						severity: ValidationIssueSeverity.ERROR,
-						channelCategory,
-						message: `Properties [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together in channel: ${channelCategory}`,
-						expected: 'only one group',
-						actual: 'both groups present',
-					});
+						if (hasGroupA && hasGroupB) {
+							issues.push({
+								type: ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION,
+								severity: ValidationIssueSeverity.ERROR,
+								channelCategory,
+								message: `Properties [${groupA.join(', ')}] and [${groupB.join(', ')}] cannot be used together in channel: ${channelCategory}`,
+								expected: 'only one group',
+								actual: 'both groups present',
+							});
+						}
+					}
 				}
 			}
 		}
