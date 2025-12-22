@@ -81,6 +81,7 @@ import type { IViewDeviceControlProps } from './view-device-control.types';
 
 defineOptions({
 	name: 'ViewDeviceControl',
+	inheritAttrs: false,
 });
 
 const props = defineProps<IViewDeviceControlProps>();
