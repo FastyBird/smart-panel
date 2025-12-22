@@ -798,7 +798,10 @@
       "invalid_permissions": "Invalid permissions",
       "invalid_format": "Invalid format",
       "unknown_channel": "Unknown channel",
-      "duplicate_channel": "Duplicate channel"
+      "duplicate_channel": "Duplicate channel",
+      "constraint_one_of_violation": "Constraint violation (one of)",
+      "constraint_one_or_more_of_violation": "Constraint violation (one or more of)",
+      "constraint_mutually_exclusive_violation": "Constraint violation (mutually exclusive)"
     }
   }
 }
