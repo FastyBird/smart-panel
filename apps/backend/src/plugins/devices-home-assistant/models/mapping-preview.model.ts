@@ -457,6 +457,36 @@ export class ValidationSummaryModel {
 	@Expose({ name: 'auto_filled_virtual' })
 	@IsObject()
 	autoFilledVirtual: Record<string, string[]>;
+
+	@ApiProperty({
+		description: 'Channels that are not allowed for this device type',
+		type: [String],
+		name: 'unknown_channels',
+	})
+	@Expose({ name: 'unknown_channels' })
+	@IsArray()
+	@IsString({ each: true })
+	unknownChannels: string[];
+
+	@ApiProperty({
+		description: 'Channels that appear multiple times but should be unique',
+		type: [String],
+		name: 'duplicate_channels',
+	})
+	@Expose({ name: 'duplicate_channels' })
+	@IsArray()
+	@IsString({ each: true })
+	duplicateChannels: string[];
+
+	@ApiProperty({
+		description: 'Constraint violations (e.g., mutually exclusive channels present)',
+		type: [String],
+		name: 'constraint_violations',
+	})
+	@Expose({ name: 'constraint_violations' })
+	@IsArray()
+	@IsString({ each: true })
+	constraintViolations: string[];
 }
 
 // ============================================================================

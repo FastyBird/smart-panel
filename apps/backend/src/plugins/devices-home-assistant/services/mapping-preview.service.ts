@@ -983,25 +983,70 @@ export class MappingPreviewService {
 			],
 		});
 
-		// Validate the structure
+		// Validate the structure using DeviceValidationService
 		const validationResult = this.deviceValidationService.validateDeviceStructure({
 			category: deviceCategory,
 			channels,
 		});
 
-		// Build validation summary
+		// Build validation summary - categorize all issues
 		const missingChannels: string[] = [];
 		const missingProperties: Record<string, string[]> = {};
 		const autoFilledVirtual: Record<string, string[]> = {};
+		const unknownChannels: string[] = [];
+		const duplicateChannels: string[] = [];
+		const constraintViolations: string[] = [];
 
 		for (const issue of validationResult.issues) {
-			if (issue.type === ValidationIssueType.MISSING_CHANNEL && issue.channelCategory) {
-				missingChannels.push(issue.channelCategory);
-			} else if (issue.type === ValidationIssueType.MISSING_PROPERTY && issue.channelCategory && issue.propertyCategory) {
-				if (!missingProperties[issue.channelCategory]) {
-					missingProperties[issue.channelCategory] = [];
-				}
-				missingProperties[issue.channelCategory].push(issue.propertyCategory);
+			switch (issue.type) {
+				case ValidationIssueType.MISSING_CHANNEL:
+					if (issue.channelCategory) {
+						missingChannels.push(issue.channelCategory);
+					}
+					break;
+
+				case ValidationIssueType.MISSING_PROPERTY:
+					if (issue.channelCategory && issue.propertyCategory) {
+						if (!missingProperties[issue.channelCategory]) {
+							missingProperties[issue.channelCategory] = [];
+						}
+						missingProperties[issue.channelCategory].push(issue.propertyCategory);
+					}
+					break;
+
+				case ValidationIssueType.UNKNOWN_CHANNEL:
+					if (issue.channelCategory) {
+						unknownChannels.push(issue.channelCategory);
+						this.logger.warn(
+							`[VALIDATION] Channel ${issue.channelCategory} is not allowed for device category ${deviceCategory}`,
+						);
+					}
+					break;
+
+				case ValidationIssueType.DUPLICATE_CHANNEL:
+					if (issue.channelCategory) {
+						duplicateChannels.push(issue.channelCategory);
+						this.logger.warn(
+							`[VALIDATION] Channel ${issue.channelCategory} appears multiple times but should be unique`,
+						);
+					}
+					break;
+
+				case ValidationIssueType.CONSTRAINT_ONE_OF_VIOLATION:
+				case ValidationIssueType.CONSTRAINT_ONE_OR_MORE_OF_VIOLATION:
+				case ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION:
+					constraintViolations.push(issue.message);
+					this.logger.warn(`[VALIDATION] Constraint violation: ${issue.message}`);
+					break;
+
+				case ValidationIssueType.INVALID_DATA_TYPE:
+				case ValidationIssueType.INVALID_PERMISSIONS:
+				case ValidationIssueType.INVALID_FORMAT:
+					// Log these but they're less common in mapping preview
+					this.logger.debug(
+						`[VALIDATION] ${issue.type}: ${issue.message} (channel=${issue.channelCategory}, property=${issue.propertyCategory})`,
+					);
+					break;
 			}
 		}
 
@@ -1026,6 +1071,14 @@ export class MappingPreviewService {
 		const missingPropertiesCount = Object.values(missingProperties).reduce((sum, arr) => sum + arr.length, 0);
 		const fillableWithVirtualCount = Object.values(autoFilledVirtual).reduce((sum, arr) => sum + arr.length, 0);
 
+		// Log validation summary for observability
+		this.logger.debug(
+			`[VALIDATION] Summary for ${deviceCategory}: isValid=${validationResult.isValid}, ` +
+				`missingChannels=${missingChannels.length}, missingProperties=${missingPropertiesCount}, ` +
+				`unknownChannels=${unknownChannels.length}, duplicateChannels=${duplicateChannels.length}, ` +
+				`constraintViolations=${constraintViolations.length}, virtualFilled=${fillableWithVirtualCount}`,
+		);
+
 		return {
 			isValid: validationResult.isValid,
 			missingChannelsCount: missingChannels.length,
@@ -1034,6 +1087,9 @@ export class MappingPreviewService {
 			missingChannels,
 			missingProperties,
 			autoFilledVirtual,
+			unknownChannels,
+			duplicateChannels,
+			constraintViolations,
 		};
 	}
 }

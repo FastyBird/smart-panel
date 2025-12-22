@@ -85,6 +85,66 @@
 					</template>
 				</el-alert>
 			</div>
+
+			<!-- Unknown channels error -->
+			<div
+				v-if="preview.validation.unknownChannels?.length > 0"
+				class="mt-2"
+			>
+				<el-alert
+					type="error"
+					:closable="false"
+					show-icon
+				>
+					<template #title>
+						{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.unknownChannels') }}:
+						{{ preview.validation.unknownChannels.join(', ') }}
+					</template>
+				</el-alert>
+			</div>
+
+			<!-- Duplicate channels error -->
+			<div
+				v-if="preview.validation.duplicateChannels?.length > 0"
+				class="mt-2"
+			>
+				<el-alert
+					type="error"
+					:closable="false"
+					show-icon
+				>
+					<template #title>
+						{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.duplicateChannels') }}:
+						{{ preview.validation.duplicateChannels.join(', ') }}
+					</template>
+				</el-alert>
+			</div>
+
+			<!-- Constraint violations error -->
+			<div
+				v-if="preview.validation.constraintViolations?.length > 0"
+				class="mt-2"
+			>
+				<el-alert
+					type="error"
+					:closable="false"
+					show-icon
+				>
+					<template #title>
+						{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.constraintViolations') }}
+					</template>
+					<template #default>
+						<ul class="list-disc pl-4 mt-1">
+							<li
+								v-for="(violation, index) in preview.validation.constraintViolations"
+								:key="index"
+							>
+								{{ violation }}
+							</li>
+						</ul>
+					</template>
+				</el-alert>
+			</div>
 		</div>
 	</el-card>
 </template>

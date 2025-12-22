@@ -122,7 +122,10 @@
         "invalid": "Device configuration has issues",
         "missingChannels": "Missing required channels",
         "missingProperties": "Missing required properties",
-        "autoFilled": "Auto-filled with virtual properties"
+        "autoFilled": "Auto-filled with virtual properties",
+        "unknownChannels": "Channels not allowed for this device type",
+        "duplicateChannels": "Duplicate channels (should be unique)",
+        "constraintViolations": "Configuration constraint violations"
       }
     },
     "config": {

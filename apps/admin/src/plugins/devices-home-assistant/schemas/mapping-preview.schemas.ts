@@ -91,6 +91,9 @@ export const ValidationSummarySchema = z.object({
 	missingChannels: z.array(z.string()),
 	missingProperties: z.record(z.array(z.string())),
 	autoFilledVirtual: z.record(z.array(z.string())),
+	unknownChannels: z.array(z.string()),
+	duplicateChannels: z.array(z.string()),
+	constraintViolations: z.array(z.string()),
 });
 
 export const MappingPreviewResponseSchema = z.object({
