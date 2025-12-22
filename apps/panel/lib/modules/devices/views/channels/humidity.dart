@@ -12,6 +12,8 @@ class HumidityChannelView extends ChannelView
   HumidityChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   HumidityChannelPropertyView get humidityProp =>

@@ -21,6 +21,8 @@ class OzoneChannelView extends ChannelView
   OzoneChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

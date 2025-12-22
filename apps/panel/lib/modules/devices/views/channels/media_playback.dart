@@ -12,6 +12,8 @@ class MediaPlaybackChannelView extends ChannelView {
   MediaPlaybackChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   StatusChannelPropertyView get statusProp =>

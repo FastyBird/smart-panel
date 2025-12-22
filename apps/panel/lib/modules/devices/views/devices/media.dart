@@ -16,6 +16,8 @@ class MediaDeviceView extends DeviceView
   MediaDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

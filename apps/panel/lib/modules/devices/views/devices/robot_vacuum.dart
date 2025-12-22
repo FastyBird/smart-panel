@@ -18,6 +18,8 @@ class RobotVacuumDeviceView extends DeviceView
   RobotVacuumDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

@@ -6,6 +6,8 @@ class GenericDeviceView extends DeviceView with DeviceDeviceInformationMixin {
   GenericDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

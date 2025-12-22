@@ -16,6 +16,8 @@ class WindowCoveringDeviceView extends DeviceView
   WindowCoveringDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

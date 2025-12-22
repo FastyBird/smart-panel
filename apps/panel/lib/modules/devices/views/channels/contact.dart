@@ -15,6 +15,8 @@ class ContactChannelView extends ChannelView
   ContactChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

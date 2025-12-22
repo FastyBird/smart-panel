@@ -121,6 +121,34 @@
 						</el-select>
 					</div>
 				</el-collapse-item>
+
+				<el-collapse-item
+					name="validation"
+					:class="[ns.e('filter-item')]"
+				>
+					<template #title>
+						<el-text class="!px-2">
+							{{ t('devicesModule.filters.devices.validation.title') }}
+						</el-text>
+					</template>
+
+					<div class="px-2">
+						<el-radio-group v-model="innerFilters.validation">
+							<el-radio-button
+								:label="t('devicesModule.validation.filter.valid')"
+								value="valid"
+							/>
+							<el-radio-button
+								:label="t('devicesModule.validation.filter.invalid')"
+								value="invalid"
+							/>
+							<el-radio-button
+								:label="t('devicesModule.validation.filter.all')"
+								value="all"
+							/>
+						</el-radio-group>
+					</div>
+				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
 
@@ -198,7 +226,7 @@ const states: DevicesModuleDeviceConnectionStatus[] = [
 
 const categories: string[] = Object.values(DevicesModuleDeviceCategory);
 
-const activeBoxes = ref<string[]>(['types', 'states', 'enabled', 'categories']);
+const activeBoxes = ref<string[]>(['types', 'states', 'enabled', 'categories', 'validation']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>

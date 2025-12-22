@@ -18,6 +18,8 @@ class LightingDeviceView extends DeviceView
   LightingDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

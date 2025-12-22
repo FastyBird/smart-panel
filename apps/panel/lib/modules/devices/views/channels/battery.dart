@@ -11,6 +11,8 @@ class BatteryChannelView extends ChannelView
   BatteryChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

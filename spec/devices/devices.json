@@ -1314,15 +1314,34 @@
   "switcher": {
     "category": "switcher",
     "description": {
-      "en": "The Switcher device represents a controllable outlet or switch that can toggle the power supply to connected devices and monitor energy usage. It supports multiple outlets for power control."
+      "en": "The Switcher device represents a controllable outlet or switch that can toggle the power supply to connected devices and monitor energy usage. It supports multiple outlets or switches for power control."
+    },
+    "constraints": {
+      "oneOrMoreOf": [
+        ["outlet", "switcher"]
+      ],
+      "mutuallyExclusiveGroups": [
+        [
+          ["outlet"],
+          ["switcher"]
+        ]
+      ]
     },
     "channels": {
       "outlet": {
         "category": "outlet",
-        "required": true,
+        "required": false,
         "multiple": true,
         "description": {
           "en": "Controls and monitors electrical outlets."
+        }
+      },
+      "switcher": {
+        "category": "switcher",
+        "required": false,
+        "multiple": true,
+        "description": {
+          "en": "Controls and monitors electrical switches."
         }
       },
       "device_information": {

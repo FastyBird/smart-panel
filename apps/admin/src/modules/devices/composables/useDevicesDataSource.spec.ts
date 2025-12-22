@@ -27,6 +27,7 @@ const DefaultFilter = {
 	states: [],
 	categories: [],
 	enabled: 'all',
+	validation: 'all',
 };
 
 const DefaultPagination = { page: 1, size: 1 };

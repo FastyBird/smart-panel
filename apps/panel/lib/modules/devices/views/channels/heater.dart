@@ -8,6 +8,8 @@ class HeaterChannelView extends ChannelView with ChannelTemperatureMixin {
   HeaterChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

@@ -19,6 +19,8 @@ class CarbonMonoxideChannelView extends ChannelView
   CarbonMonoxideChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

@@ -22,6 +22,8 @@ class AirDehumidifierDeviceView extends DeviceView
   AirDehumidifierDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

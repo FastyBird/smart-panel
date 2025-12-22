@@ -15,6 +15,8 @@ class LeakChannelView extends ChannelView
   LeakChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

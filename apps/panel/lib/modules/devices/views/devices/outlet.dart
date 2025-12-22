@@ -15,6 +15,8 @@ class OutletDeviceView extends DeviceView
   OutletDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

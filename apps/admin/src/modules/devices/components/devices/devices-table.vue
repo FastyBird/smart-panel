@@ -98,6 +98,7 @@
 		<el-table-column
 			v-if="isMDDevice"
 			type="selection"
+			fixed
 			:width="30"
 		/>
 
@@ -140,7 +141,7 @@
 			prop="type"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="200"
+			:width="170"
 		>
 			<template #default="scope">
 				<devices-table-column-plugin
@@ -172,28 +173,39 @@
 			prop="category"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="180"
+			:width="140"
 		>
 			<template #default="scope">
-				<el-link
-					:type="innerFilters.categories.includes(scope.row.category) ? 'danger' : undefined"
-					underline="never"
-					class="font-400!"
-					@click.stop="onFilterBy('category', scope.row.category, !innerFilters.categories.includes(scope.row.category))"
+				<el-tooltip
+					:content="t(`devicesModule.categories.devices.${scope.row.category}`)"
+					placement="top"
+					:show-after="500"
 				>
-					<el-icon class="el-icon--left">
-						<icon
-							v-if="innerFilters.categories.includes(scope.row.category)"
-							icon="mdi:filter-minus"
-						/>
-						<icon
-							v-else
-							icon="mdi:filter-plus"
-						/>
-					</el-icon>
+					<el-link
+						:type="innerFilters.categories.includes(scope.row.category) ? 'danger' : undefined"
+						underline="never"
+						class="font-400! overflow-hidden"
+						@click.stop="onFilterBy('category', scope.row.category, !innerFilters.categories.includes(scope.row.category))"
+					>
+						<el-icon class="el-icon--left">
+							<icon
+								v-if="innerFilters.categories.includes(scope.row.category)"
+								icon="mdi:filter-minus"
+							/>
+							<icon
+								v-else
+								icon="mdi:filter-plus"
+							/>
+						</el-icon>
 
-					{{ t(`devicesModule.categories.devices.${scope.row.category}`) }}
-				</el-link>
+						<el-text
+							class="block leading-4 max-w-[80%]!"
+							truncated
+						>
+							{{ t(`devicesModule.categories.devices.${scope.row.category}`) }}
+						</el-text>
+					</el-link>
+				</el-tooltip>
 			</template>
 		</el-table-column>
 
@@ -202,7 +214,7 @@
 			prop="enabled"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="120"
+			:width="110"
 		>
 			<template #default="scope">
 				<el-link
@@ -230,6 +242,16 @@
 							: t('devicesModule.table.devices.columns.enabled.values.disabled')
 					}}
 				</el-link>
+			</template>
+		</el-table-column>
+
+		<el-table-column
+			:label="t('devicesModule.table.devices.columns.validation.title')"
+			prop="validation"
+			:width="115"
+		>
+			<template #default="scope">
+				<devices-table-column-validation :device="scope.row" />
 			</template>
 		</el-table-column>
 
@@ -282,7 +304,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
+import { ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -295,6 +317,7 @@ import type { IDevice } from '../../store/devices.store.types';
 import DevicesTableColumnIcon from './devices-table-column-icon.vue';
 import DevicesTableColumnPlugin from './devices-table-column-plugin.vue';
 import DevicesTableColumnState from './devices-table-column-state.vue';
+import DevicesTableColumnValidation from './devices-table-column-validation.vue';
 import type { IDevicesTableProps } from './devices-table.types';
 
 defineOptions({
@@ -377,6 +400,12 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 			innerFilters.value.enabled = data as 'enabled' | 'disabled';
 		} else {
 			innerFilters.value.enabled = 'all';
+		}
+	} else if (column === 'validation') {
+		if (add === true) {
+			innerFilters.value.validation = data as 'valid' | 'invalid';
+		} else {
+			innerFilters.value.validation = 'all';
 		}
 	}
 };

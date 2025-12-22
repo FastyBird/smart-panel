@@ -262,6 +262,50 @@
             }
           },
           "additionalProperties": false
+        },
+        "constraints": {
+          "description": "Property constraints defining relationships between properties",
+          "type": "object",
+          "properties": {
+            "oneOf": {
+              "description": "At most one property from each group can be present (mutually exclusive)",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2
+              }
+            },
+            "oneOrMoreOf": {
+              "description": "At least one property from each group must be present",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2
+              }
+            },
+            "mutuallyExclusiveGroups": {
+              "description": "Property groups that cannot be mixed (e.g., RGB vs HSV)",
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1
+                },
+                "minItems": 2
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

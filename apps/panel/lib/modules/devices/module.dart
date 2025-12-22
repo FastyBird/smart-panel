@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/channel_prope
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/device_controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:flutter/foundation.dart';
 
@@ -18,6 +19,7 @@ class DevicesModuleService {
   late ChannelsRepository _channelsRepository;
   late ChannelControlsRepository _channelControlsRepository;
   late ChannelPropertiesRepository _channelPropertiesRepository;
+  late DeviceValidationRepository _validationRepository;
 
   late DevicesService _devicesService;
 
@@ -44,6 +46,9 @@ class DevicesModuleService {
       socketService: _socketService,
       channelsRepository: _channelsRepository,
     );
+    _validationRepository = DeviceValidationRepository(
+      apiClient: apiClient.devicesModule,
+    );
 
     _devicesService = DevicesService(
       devicesRepository: _devicesRepository,
@@ -51,6 +56,7 @@ class DevicesModuleService {
       channelsRepository: _channelsRepository,
       channelPropertiesRepository: _channelPropertiesRepository,
       channelControlsRepository: _channelControlsRepository,
+      validationRepository: _validationRepository,
     );
 
     locator.registerSingleton(_devicesRepository);
@@ -59,6 +65,7 @@ class DevicesModuleService {
     locator.registerSingleton(_channelsRepository);
     locator.registerSingleton(_channelControlsRepository);
     locator.registerSingleton(_channelPropertiesRepository);
+    locator.registerSingleton(_validationRepository);
 
     locator.registerSingleton(_devicesService);
   }

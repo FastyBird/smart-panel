@@ -22,12 +22,14 @@ import { registerChannelsPropertiesStore } from './store/channels.properties.sto
 import { registerChannelsStore } from './store/channels.store';
 import { registerDevicesControlsStore } from './store/devices.controls.store';
 import { registerDevicesStore } from './store/devices.store';
+import { registerDevicesValidationStore } from './store/devices.validation.store';
 import {
 	channelsControlsStoreKey,
 	channelsPropertiesStoreKey,
 	channelsStoreKey,
 	devicesControlsStoreKey,
 	devicesStoreKey,
+	devicesValidationStoreKey,
 } from './store/keys';
 
 const devicesAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Devices');
@@ -70,6 +72,11 @@ export default {
 
 		app.provide(channelsPropertiesStoreKey, channelsPropertiesStore);
 		storesManager.addStore(channelsPropertiesStoreKey, channelsPropertiesStore);
+
+		const devicesValidationStore = registerDevicesValidationStore(options.store);
+
+		app.provide(devicesValidationStoreKey, devicesValidationStore);
+		storesManager.addStore(devicesValidationStoreKey, devicesValidationStore);
 
 		modulesManager.addModule(devicesAdminModuleKey, {
 			type: DEVICES_MODULE_NAME,

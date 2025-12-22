@@ -21,6 +21,8 @@ class VolatileOrganicCompoundsChannelView extends ChannelView
   VolatileOrganicCompoundsChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

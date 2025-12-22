@@ -13,6 +13,8 @@ class SpeakerChannelView extends ChannelView
   SpeakerChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

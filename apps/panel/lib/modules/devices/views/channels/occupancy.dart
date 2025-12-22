@@ -17,6 +17,8 @@ class OccupancyChannelView extends ChannelView
   OccupancyChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

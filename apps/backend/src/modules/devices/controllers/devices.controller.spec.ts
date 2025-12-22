@@ -16,6 +16,7 @@ import { ConnectionState, DeviceCategory } from '../devices.constants';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
+import { DeviceValidationService } from '../services/device-validation.service';
 import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
@@ -63,6 +64,23 @@ describe('DevicesController', () => {
 						create: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
 						update: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
 						remove: jest.fn().mockResolvedValue(undefined),
+					},
+				},
+				{
+					provide: DeviceValidationService,
+					useValue: {
+						validateAllDevices: jest.fn().mockResolvedValue({
+							summary: {
+								totalDevices: 0,
+								validDevices: 0,
+								invalidDevices: 0,
+								totalIssues: 0,
+								errorCount: 0,
+								warningCount: 0,
+							},
+							devices: [],
+						}),
+						validateDeviceById: jest.fn().mockResolvedValue(null),
 					},
 				},
 			],

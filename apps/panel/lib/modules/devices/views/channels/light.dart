@@ -23,6 +23,8 @@ class LightChannelView extends ChannelView
   LightChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

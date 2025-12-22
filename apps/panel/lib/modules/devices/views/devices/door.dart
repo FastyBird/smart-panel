@@ -18,6 +18,8 @@ class DoorDeviceView extends DeviceView
   DoorDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

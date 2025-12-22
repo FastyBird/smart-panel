@@ -22,6 +22,8 @@ class SprinklerDeviceView extends DeviceView
   SprinklerDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

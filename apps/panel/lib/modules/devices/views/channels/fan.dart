@@ -13,6 +13,8 @@ class FanChannelView extends ChannelView with ChannelOnMixin {
   FanChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

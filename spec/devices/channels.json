@@ -13,6 +13,11 @@
   },
   "air_particulate": {
     "category": "air_particulate",
+    "constraints": {
+      "oneOrMoreOf": [
+        ["detected", "density"]
+      ]
+    },
     "properties": {
       "detected": {
         "category": "detected",
@@ -306,6 +311,11 @@
   },
   "carbon_dioxide": {
     "category": "carbon_dioxide",
+    "constraints": {
+      "oneOrMoreOf": [
+        ["detected", "density"]
+      ]
+    },
     "properties": {
       "detected": {
         "category": "detected",
@@ -406,6 +416,11 @@
   },
   "carbon_monoxide": {
     "category": "carbon_monoxide",
+    "constraints": {
+      "oneOrMoreOf": [
+        ["detected", "density"]
+      ]
+    },
     "properties": {
       "detected": {
         "category": "detected",
@@ -1680,6 +1695,14 @@
   },
   "light": {
     "category": "light",
+    "constraints": {
+      "mutuallyExclusiveGroups": [
+        [
+          ["color_red", "color_green", "color_blue"],
+          ["hue", "saturation"]
+        ]
+      ]
+    },
     "properties": {
       "on": {
         "category": "on",
@@ -2149,6 +2172,11 @@
   },
   "nitrogen_dioxide": {
     "category": "nitrogen_dioxide",
+    "constraints": {
+      "oneOrMoreOf": [
+        ["detected", "density"]
+      ]
+    },
     "properties": {
       "detected": {
         "category": "detected",
@@ -2370,6 +2398,14 @@
   },
   "ozone": {
     "category": "ozone",
+    "constraints": {
+      "oneOrMoreOf": [
+        ["detected", "density", "level"]
+      ],
+      "oneOf": [
+        ["density", "level"]
+      ]
+    },
     "properties": {
       "detected": {
         "category": "detected",
@@ -3183,6 +3219,14 @@
   },
   "volatile_organic_compounds": {
     "category": "volatile_organic_compounds",
+    "constraints": {
+      "oneOrMoreOf": [
+        ["detected", "density", "level"]
+      ],
+      "oneOf": [
+        ["density", "level"]
+      ]
+    },
     "properties": {
       "detected": {
         "category": "detected",

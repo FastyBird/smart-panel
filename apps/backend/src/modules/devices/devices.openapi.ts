@@ -9,6 +9,14 @@ import {
 	DeviceEntity,
 } from './entities/devices.entity';
 import {
+	DeviceValidationResponseModel,
+	DeviceValidationResultModel,
+	DevicesValidationModel,
+	DevicesValidationResponseModel,
+	ValidationIssueModel,
+	ValidationSummaryModel,
+} from './models/device-validation.model';
+import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleDeviceCategory,
@@ -58,6 +66,14 @@ export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	ChannelControlResponseModel,
 	ChannelControlsResponseModel,
 	PropertyTimeseriesResponseModel,
+	// Validation response models
+	DevicesValidationResponseModel,
+	DeviceValidationResponseModel,
+	// Validation data models
+	DevicesValidationModel,
+	DeviceValidationResultModel,
+	ValidationSummaryModel,
+	ValidationIssueModel,
 	// Data models
 	DeviceChannelSpecModel,
 	DeviceSpecModel,

@@ -6,9 +6,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 18 |
+| Done | 19 |
 | Planned | 7 |
-| **Total** | **25** |
+| **Total** | **26** |
 
 ---
 
@@ -19,6 +19,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Title | Scope | Size |
 |----|-------|-------|------|
 | FEATURE-ADMIN-PLUGIN-SERVICES | Admin Plugin Services Management UI | admin | medium |
+| FEATURE-DEVICE-VALIDATION-CONSTRAINTS | Device Validation Constraints | backend, admin, panel | medium |
 | FEATURE-WLED-PLUGIN | WLED Device Plugin | backend, admin, panel | large |
 | FEATURE-CONFIG-CONSOLIDATION | Configuration Module Consolidation | backend, admin, panel | large |
 | FEATURE-LINUX-DEVICE-INSTALLATION | Linux Device Installation | backend, admin | large |
@@ -88,6 +89,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Type | Status |
 |----|------|--------|
+| FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
 | FEATURE-WLED-PLUGIN | feature | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-LINUX-DEVICE-INSTALLATION | feature | done |
@@ -113,6 +115,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Type | Status |
 |----|------|--------|
 | FEATURE-ADMIN-PLUGIN-SERVICES | feature | done |
+| FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
 | FEATURE-WLED-PLUGIN | feature | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-LINUX-DEVICE-INSTALLATION | feature | done |
@@ -131,6 +134,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Type | Status |
 |----|------|--------|
+| FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
 | FEATURE-WLED-PLUGIN | feature | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-MDNS-BACKEND-DISCOVERY | feature | done |
@@ -174,6 +178,7 @@ tasks/
 ├── features/               # Feature implementations
 │   ├── FEATURE-ADMIN-PLUGIN-SERVICES.md
 │   ├── FEATURE-APP-UPDATES.md
+│   ├── FEATURE-DEVICE-VALIDATION-CONSTRAINTS.md
 │   ├── FEATURE-CONFIG-CONSOLIDATION.md
 │   ├── FEATURE-LINUX-DEVICE-INSTALLATION.md
 │   ├── FEATURE-LINUX-INSTALL-ENHANCEMENTS.md

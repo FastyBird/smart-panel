@@ -15,6 +15,8 @@ class SwitcherDeviceView extends DeviceView
   SwitcherDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

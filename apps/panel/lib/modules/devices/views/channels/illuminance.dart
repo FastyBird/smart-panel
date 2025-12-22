@@ -14,6 +14,8 @@ class IlluminanceChannelView extends ChannelView
   IlluminanceChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

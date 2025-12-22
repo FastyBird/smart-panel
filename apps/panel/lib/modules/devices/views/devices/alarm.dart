@@ -6,6 +6,8 @@ class AlarmDeviceView extends DeviceView with DeviceDeviceInformationMixin {
   AlarmDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

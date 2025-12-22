@@ -9,6 +9,8 @@ class OutletChannelView extends ChannelView with ChannelOnMixin {
   OutletChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

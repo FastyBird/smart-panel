@@ -1,6 +1,7 @@
 import { channelsSchema } from '../../../spec/channels';
+import { devicesSchema } from '../../../spec/devices';
 import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
-import { ChannelCategory as ChannelCategoryType } from '../devices.constants';
+import { ChannelCategory as ChannelCategoryType, DeviceCategory as DeviceCategoryType } from '../devices.constants';
 
 /**
  * Type for property spec from schema
@@ -27,6 +28,71 @@ export interface PropertyMetadata {
 	format: string[] | number[] | null;
 	invalid: unknown;
 	step: number | null;
+}
+
+/**
+ * Channel constraints defining relationships between properties
+ */
+export interface ChannelConstraints {
+	/** Exactly one property from each group can be present (mutually exclusive) */
+	oneOf?: PropertyCategory[][];
+	/** At least one property from each group must be present */
+	oneOrMoreOf?: PropertyCategory[][];
+	/** Property groups that cannot be mixed (e.g., RGB vs HSV) - array of [groupA[], groupB[]] pairs */
+	mutuallyExclusiveGroups?: PropertyCategory[][][];
+}
+
+/**
+ * Type for channel constraints from schema
+ */
+interface ChannelConstraintsSpec {
+	oneOf?: string[][];
+	oneOrMoreOf?: string[][];
+	mutuallyExclusiveGroups?: string[][][];
+}
+
+/**
+ * Get constraints for a given channel category
+ * @param channelCategory The channel category to query
+ * @returns Channel constraints or null if none defined
+ */
+export function getChannelConstraints(channelCategory: ChannelCategoryType): ChannelConstraints | null {
+	const channelSpec = channelsSchema[channelCategory] as { constraints?: ChannelConstraintsSpec } | undefined;
+
+	if (!channelSpec || typeof channelSpec !== 'object' || !channelSpec.constraints) {
+		return null;
+	}
+
+	const constraints = channelSpec.constraints;
+
+	const result: ChannelConstraints = {};
+
+	if (constraints.oneOf) {
+		result.oneOf = constraints.oneOf.map((group) =>
+			group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
+		);
+	}
+
+	if (constraints.oneOrMoreOf) {
+		result.oneOrMoreOf = constraints.oneOrMoreOf.map((group) =>
+			group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
+		);
+	}
+
+	if (constraints.mutuallyExclusiveGroups) {
+		result.mutuallyExclusiveGroups = constraints.mutuallyExclusiveGroups.map((groupPair) =>
+			groupPair.map((group) =>
+				group.map((p) => mapPropertyCategory(p)).filter((p): p is PropertyCategory => p !== null),
+			),
+		);
+	}
+
+	// Return null if no constraints were mapped
+	if (!result.oneOf && !result.oneOrMoreOf && !result.mutuallyExclusiveGroups) {
+		return null;
+	}
+
+	return result;
 }
 
 /**
@@ -160,46 +226,72 @@ export function getPropertyDefaultValue(
 
 /**
  * Map property category string from schema to PropertyCategory enum
+ * Note: 'generic' is intentionally not mapped as it's not a valid property category
  */
 function mapPropertyCategory(key: string): PropertyCategory | null {
 	const mapping: Partial<Record<string, PropertyCategory>> = {
-		percentage: PropertyCategory.PERCENTAGE,
-		status: PropertyCategory.STATUS,
-		on: PropertyCategory.ON,
-		brightness: PropertyCategory.BRIGHTNESS,
-		color_red: PropertyCategory.COLOR_RED,
-		color_green: PropertyCategory.COLOR_GREEN,
-		color_blue: PropertyCategory.COLOR_BLUE,
-		color_white: PropertyCategory.COLOR_WHITE,
-		color_temperature: PropertyCategory.COLOR_TEMPERATURE,
-		hue: PropertyCategory.HUE,
-		saturation: PropertyCategory.SATURATION,
-		temperature: PropertyCategory.TEMPERATURE,
-		humidity: PropertyCategory.HUMIDITY,
-		power: PropertyCategory.POWER,
-		voltage: PropertyCategory.VOLTAGE,
-		current: PropertyCategory.CURRENT,
-		consumption: PropertyCategory.CONSUMPTION,
-		detected: PropertyCategory.DETECTED,
 		active: PropertyCategory.ACTIVE,
-		fault: PropertyCategory.FAULT,
-		tampered: PropertyCategory.TAMPERED,
-		position: PropertyCategory.POSITION,
+		angle: PropertyCategory.ANGLE,
+		brightness: PropertyCategory.BRIGHTNESS,
+		color_blue: PropertyCategory.COLOR_BLUE,
+		color_green: PropertyCategory.COLOR_GREEN,
+		color_red: PropertyCategory.COLOR_RED,
+		color_temperature: PropertyCategory.COLOR_TEMPERATURE,
+		color_white: PropertyCategory.COLOR_WHITE,
 		command: PropertyCategory.COMMAND,
-		obstruction: PropertyCategory.OBSTRUCTION,
-		type: PropertyCategory.TYPE,
-		manufacturer: PropertyCategory.MANUFACTURER,
-		model: PropertyCategory.MODEL,
-		serial_number: PropertyCategory.SERIAL_NUMBER,
-		firmware_revision: PropertyCategory.FIRMWARE_REVISION,
-		hardware_revision: PropertyCategory.HARDWARE_REVISION,
-		link_quality: PropertyCategory.LINK_QUALITY,
 		connection_type: PropertyCategory.CONNECTION_TYPE,
-		in_use: PropertyCategory.IN_USE,
+		consumption: PropertyCategory.CONSUMPTION,
+		current: PropertyCategory.CURRENT,
 		density: PropertyCategory.DENSITY,
-		measured: PropertyCategory.MEASURED,
+		detected: PropertyCategory.DETECTED,
+		direction: PropertyCategory.DIRECTION,
+		distance: PropertyCategory.DISTANCE,
+		duration: PropertyCategory.DURATION,
+		event: PropertyCategory.EVENT,
+		fault: PropertyCategory.FAULT,
+		firmware_revision: PropertyCategory.FIRMWARE_REVISION,
+		frequency: PropertyCategory.FREQUENCY,
+		hardware_revision: PropertyCategory.HARDWARE_REVISION,
+		hue: PropertyCategory.HUE,
+		humidity: PropertyCategory.HUMIDITY,
+		in_use: PropertyCategory.IN_USE,
+		infrared: PropertyCategory.INFRARED,
+		input_source: PropertyCategory.INPUT_SOURCE,
 		level: PropertyCategory.LEVEL,
-		// Add more mappings as needed
+		link_quality: PropertyCategory.LINK_QUALITY,
+		locked: PropertyCategory.LOCKED,
+		manufacturer: PropertyCategory.MANUFACTURER,
+		measured: PropertyCategory.MEASURED,
+		model: PropertyCategory.MODEL,
+		mode: PropertyCategory.MODE,
+		obstruction: PropertyCategory.OBSTRUCTION,
+		on: PropertyCategory.ON,
+		over_current: PropertyCategory.OVER_CURRENT,
+		over_voltage: PropertyCategory.OVER_VOLTAGE,
+		over_power: PropertyCategory.OVER_POWER,
+		pan: PropertyCategory.PAN,
+		peak_level: PropertyCategory.PEAK_LEVEL,
+		percentage: PropertyCategory.PERCENTAGE,
+		position: PropertyCategory.POSITION,
+		power: PropertyCategory.POWER,
+		rate: PropertyCategory.RATE,
+		remaining: PropertyCategory.REMAINING,
+		remote_key: PropertyCategory.REMOTE_KEY,
+		saturation: PropertyCategory.SATURATION,
+		serial_number: PropertyCategory.SERIAL_NUMBER,
+		source: PropertyCategory.SOURCE,
+		speed: PropertyCategory.SPEED,
+		status: PropertyCategory.STATUS,
+		swing: PropertyCategory.SWING,
+		tampered: PropertyCategory.TAMPERED,
+		temperature: PropertyCategory.TEMPERATURE,
+		tilt: PropertyCategory.TILT,
+		track: PropertyCategory.TRACK,
+		type: PropertyCategory.TYPE,
+		units: PropertyCategory.UNITS,
+		voltage: PropertyCategory.VOLTAGE,
+		volume: PropertyCategory.VOLUME,
+		zoom: PropertyCategory.ZOOM,
 	};
 
 	return mapping[key] ?? null;
@@ -207,46 +299,72 @@ function mapPropertyCategory(key: string): PropertyCategory | null {
 
 /**
  * Map PropertyCategory enum to schema property key
+ * Note: GENERIC is intentionally not mapped as it's not a valid property category
  */
 function mapPropertyCategoryToSchemaKey(category: PropertyCategory): string | null {
 	const mapping: Partial<Record<PropertyCategory, string>> = {
-		[PropertyCategory.PERCENTAGE]: 'percentage',
-		[PropertyCategory.STATUS]: 'status',
-		[PropertyCategory.ON]: 'on',
-		[PropertyCategory.BRIGHTNESS]: 'brightness',
-		[PropertyCategory.COLOR_RED]: 'color_red',
-		[PropertyCategory.COLOR_GREEN]: 'color_green',
-		[PropertyCategory.COLOR_BLUE]: 'color_blue',
-		[PropertyCategory.COLOR_WHITE]: 'color_white',
-		[PropertyCategory.COLOR_TEMPERATURE]: 'color_temperature',
-		[PropertyCategory.HUE]: 'hue',
-		[PropertyCategory.SATURATION]: 'saturation',
-		[PropertyCategory.TEMPERATURE]: 'temperature',
-		[PropertyCategory.HUMIDITY]: 'humidity',
-		[PropertyCategory.POWER]: 'power',
-		[PropertyCategory.VOLTAGE]: 'voltage',
-		[PropertyCategory.CURRENT]: 'current',
-		[PropertyCategory.CONSUMPTION]: 'consumption',
-		[PropertyCategory.DETECTED]: 'detected',
 		[PropertyCategory.ACTIVE]: 'active',
-		[PropertyCategory.FAULT]: 'fault',
-		[PropertyCategory.TAMPERED]: 'tampered',
-		[PropertyCategory.POSITION]: 'position',
+		[PropertyCategory.ANGLE]: 'angle',
+		[PropertyCategory.BRIGHTNESS]: 'brightness',
+		[PropertyCategory.COLOR_BLUE]: 'color_blue',
+		[PropertyCategory.COLOR_GREEN]: 'color_green',
+		[PropertyCategory.COLOR_RED]: 'color_red',
+		[PropertyCategory.COLOR_TEMPERATURE]: 'color_temperature',
+		[PropertyCategory.COLOR_WHITE]: 'color_white',
 		[PropertyCategory.COMMAND]: 'command',
-		[PropertyCategory.OBSTRUCTION]: 'obstruction',
-		[PropertyCategory.TYPE]: 'type',
-		[PropertyCategory.MANUFACTURER]: 'manufacturer',
-		[PropertyCategory.MODEL]: 'model',
-		[PropertyCategory.SERIAL_NUMBER]: 'serial_number',
-		[PropertyCategory.FIRMWARE_REVISION]: 'firmware_revision',
-		[PropertyCategory.HARDWARE_REVISION]: 'hardware_revision',
-		[PropertyCategory.LINK_QUALITY]: 'link_quality',
 		[PropertyCategory.CONNECTION_TYPE]: 'connection_type',
-		[PropertyCategory.IN_USE]: 'in_use',
+		[PropertyCategory.CONSUMPTION]: 'consumption',
+		[PropertyCategory.CURRENT]: 'current',
 		[PropertyCategory.DENSITY]: 'density',
-		[PropertyCategory.MEASURED]: 'measured',
+		[PropertyCategory.DETECTED]: 'detected',
+		[PropertyCategory.DIRECTION]: 'direction',
+		[PropertyCategory.DISTANCE]: 'distance',
+		[PropertyCategory.DURATION]: 'duration',
+		[PropertyCategory.EVENT]: 'event',
+		[PropertyCategory.FAULT]: 'fault',
+		[PropertyCategory.FIRMWARE_REVISION]: 'firmware_revision',
+		[PropertyCategory.FREQUENCY]: 'frequency',
+		[PropertyCategory.HARDWARE_REVISION]: 'hardware_revision',
+		[PropertyCategory.HUE]: 'hue',
+		[PropertyCategory.HUMIDITY]: 'humidity',
+		[PropertyCategory.IN_USE]: 'in_use',
+		[PropertyCategory.INFRARED]: 'infrared',
+		[PropertyCategory.INPUT_SOURCE]: 'input_source',
 		[PropertyCategory.LEVEL]: 'level',
-		// Add more mappings as needed
+		[PropertyCategory.LINK_QUALITY]: 'link_quality',
+		[PropertyCategory.LOCKED]: 'locked',
+		[PropertyCategory.MANUFACTURER]: 'manufacturer',
+		[PropertyCategory.MEASURED]: 'measured',
+		[PropertyCategory.MODEL]: 'model',
+		[PropertyCategory.MODE]: 'mode',
+		[PropertyCategory.OBSTRUCTION]: 'obstruction',
+		[PropertyCategory.ON]: 'on',
+		[PropertyCategory.OVER_CURRENT]: 'over_current',
+		[PropertyCategory.OVER_VOLTAGE]: 'over_voltage',
+		[PropertyCategory.OVER_POWER]: 'over_power',
+		[PropertyCategory.PAN]: 'pan',
+		[PropertyCategory.PEAK_LEVEL]: 'peak_level',
+		[PropertyCategory.PERCENTAGE]: 'percentage',
+		[PropertyCategory.POSITION]: 'position',
+		[PropertyCategory.POWER]: 'power',
+		[PropertyCategory.RATE]: 'rate',
+		[PropertyCategory.REMAINING]: 'remaining',
+		[PropertyCategory.REMOTE_KEY]: 'remote_key',
+		[PropertyCategory.SATURATION]: 'saturation',
+		[PropertyCategory.SERIAL_NUMBER]: 'serial_number',
+		[PropertyCategory.SOURCE]: 'source',
+		[PropertyCategory.SPEED]: 'speed',
+		[PropertyCategory.STATUS]: 'status',
+		[PropertyCategory.SWING]: 'swing',
+		[PropertyCategory.TAMPERED]: 'tampered',
+		[PropertyCategory.TEMPERATURE]: 'temperature',
+		[PropertyCategory.TILT]: 'tilt',
+		[PropertyCategory.TRACK]: 'track',
+		[PropertyCategory.TYPE]: 'type',
+		[PropertyCategory.UNITS]: 'units',
+		[PropertyCategory.VOLTAGE]: 'voltage',
+		[PropertyCategory.VOLUME]: 'volume',
+		[PropertyCategory.ZOOM]: 'zoom',
 	};
 
 	return mapping[category] ?? null;
@@ -264,6 +382,7 @@ function mapPermissions(permissions: string[]): PermissionType[] {
 		ro: PermissionType.READ_ONLY,
 		wo: PermissionType.WRITE_ONLY,
 		rw: PermissionType.READ_WRITE,
+		ev: PermissionType.EVENT_ONLY,
 	};
 
 	return permissions.map((p) => mapping[p] ?? PermissionType.READ_WRITE);
@@ -275,8 +394,11 @@ function mapPermissions(permissions: string[]): PermissionType[] {
 function mapDataType(dataType: string): DataTypeType {
 	const mapping: Record<string, DataTypeType> = {
 		bool: DataTypeType.BOOL,
+		char: DataTypeType.CHAR,
 		uchar: DataTypeType.UCHAR,
+		short: DataTypeType.SHORT,
 		ushort: DataTypeType.USHORT,
+		int: DataTypeType.INT,
 		uint: DataTypeType.UINT,
 		float: DataTypeType.FLOAT,
 		string: DataTypeType.STRING,
@@ -284,4 +406,288 @@ function mapDataType(dataType: string): DataTypeType {
 	};
 
 	return mapping[dataType] ?? DataTypeType.UNKNOWN;
+}
+
+// ============================================================================
+// Device-level schema utilities
+// ============================================================================
+
+/**
+ * Device constraints defining relationships between channels
+ */
+export interface DeviceConstraints {
+	/** Exactly one channel from each group can be present (mutually exclusive) */
+	oneOf?: ChannelCategoryType[][];
+	/** At least one channel from each group must be present */
+	oneOrMoreOf?: ChannelCategoryType[][];
+	/** Channel groups that cannot be mixed (e.g., outlet vs switcher) - array of [groupA[], groupB[]] pairs */
+	mutuallyExclusiveGroups?: ChannelCategoryType[][][];
+}
+
+/**
+ * Type for device constraints from schema
+ */
+interface DeviceConstraintsSpec {
+	oneOf?: string[][];
+	oneOrMoreOf?: string[][];
+	mutuallyExclusiveGroups?: string[][][];
+}
+
+/**
+ * Get constraints for a given device category
+ * @param deviceCategory The device category to query
+ * @returns Device constraints or null if none defined
+ */
+export function getDeviceConstraints(deviceCategory: DeviceCategoryType): DeviceConstraints | null {
+	const deviceSpec = devicesSchema[deviceCategory] as { constraints?: DeviceConstraintsSpec } | undefined;
+
+	if (!deviceSpec || typeof deviceSpec !== 'object' || !deviceSpec.constraints) {
+		return null;
+	}
+
+	const constraints = deviceSpec.constraints;
+
+	const result: DeviceConstraints = {};
+
+	if (constraints.oneOf) {
+		result.oneOf = constraints.oneOf.map((group) =>
+			group.map((c) => mapChannelCategory(c)).filter((c): c is ChannelCategoryType => c !== null),
+		);
+	}
+
+	if (constraints.oneOrMoreOf) {
+		result.oneOrMoreOf = constraints.oneOrMoreOf.map((group) =>
+			group.map((c) => mapChannelCategory(c)).filter((c): c is ChannelCategoryType => c !== null),
+		);
+	}
+
+	if (constraints.mutuallyExclusiveGroups) {
+		result.mutuallyExclusiveGroups = constraints.mutuallyExclusiveGroups.map((groupPair) =>
+			groupPair.map((group) =>
+				group.map((c) => mapChannelCategory(c)).filter((c): c is ChannelCategoryType => c !== null),
+			),
+		);
+	}
+
+	// Return null if no constraints were mapped
+	if (!result.oneOf && !result.oneOrMoreOf && !result.mutuallyExclusiveGroups) {
+		return null;
+	}
+
+	return result;
+}
+
+/**
+ * Channel spec from device schema
+ */
+export interface ChannelSpec {
+	category: ChannelCategoryType;
+	required: boolean;
+	multiple: boolean;
+	description: { en: string };
+}
+
+/**
+ * Device spec from schema
+ */
+export interface DeviceSpec {
+	category: DeviceCategoryType;
+	description: { en: string };
+	channels: Record<string, ChannelSpec>;
+}
+
+/**
+ * Get device specification by category
+ * @param deviceCategory The device category to query
+ * @returns Device specification or null if not found
+ */
+export function getDeviceSpec(deviceCategory: DeviceCategoryType): DeviceSpec | null {
+	const deviceSpec = devicesSchema[deviceCategory] as DeviceSpec | undefined;
+
+	if (!deviceSpec || typeof deviceSpec !== 'object') {
+		return null;
+	}
+
+	return deviceSpec;
+}
+
+/**
+ * Get required channels for a device category
+ * @param deviceCategory The device category to query
+ * @returns Array of required channel categories
+ */
+export function getRequiredChannels(deviceCategory: DeviceCategoryType): ChannelCategoryType[] {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return [];
+	}
+
+	const requiredChannels: ChannelCategoryType[] = [];
+
+	for (const [, channelSpec] of Object.entries(deviceSpec.channels)) {
+		if (channelSpec.required === true) {
+			const channelCategory = mapChannelCategory(channelSpec.category);
+
+			if (channelCategory) {
+				requiredChannels.push(channelCategory);
+			}
+		}
+	}
+
+	return requiredChannels;
+}
+
+/**
+ * Get all allowed channels for a device category (required + optional)
+ * @param deviceCategory The device category to query
+ * @returns Array of all allowed channel specs
+ */
+export function getAllowedChannels(deviceCategory: DeviceCategoryType): ChannelSpec[] {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return [];
+	}
+
+	return Object.values(deviceSpec.channels);
+}
+
+/**
+ * Check if a channel category is allowed for a device category
+ * @param deviceCategory The device category
+ * @param channelCategory The channel category to check
+ * @returns true if the channel is allowed for this device
+ */
+export function isChannelAllowed(deviceCategory: DeviceCategoryType, channelCategory: ChannelCategoryType): boolean {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return false;
+	}
+
+	for (const channelSpec of Object.values(deviceSpec.channels)) {
+		if (channelSpec.category === channelCategory) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Check if a channel can have multiple instances
+ * @param deviceCategory The device category
+ * @param channelCategory The channel category to check
+ * @returns true if multiple instances are allowed
+ */
+export function isChannelMultiple(deviceCategory: DeviceCategoryType, channelCategory: ChannelCategoryType): boolean {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return false;
+	}
+
+	for (const channelSpec of Object.values(deviceSpec.channels)) {
+		if (channelSpec.category === channelCategory) {
+			return channelSpec.multiple === true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Check if a channel is required for a device category
+ * @param deviceCategory The device category
+ * @param channelCategory The channel category to check
+ * @returns true if the channel is required
+ */
+export function isChannelRequired(deviceCategory: DeviceCategoryType, channelCategory: ChannelCategoryType): boolean {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return false;
+	}
+
+	for (const channelSpec of Object.values(deviceSpec.channels)) {
+		if (channelSpec.category === channelCategory) {
+			return channelSpec.required === true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Get channel spec for a specific channel category within a device
+ * @param deviceCategory The device category
+ * @param channelCategory The channel category
+ * @returns Channel spec or null if not found
+ */
+export function getChannelSpec(
+	deviceCategory: DeviceCategoryType,
+	channelCategory: ChannelCategoryType,
+): ChannelSpec | null {
+	const deviceSpec = getDeviceSpec(deviceCategory);
+
+	if (!deviceSpec || !deviceSpec.channels) {
+		return null;
+	}
+
+	for (const channelSpec of Object.values(deviceSpec.channels)) {
+		if (channelSpec.category === channelCategory) {
+			return channelSpec;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Get all property categories for a channel
+ * @param channelCategory The channel category
+ * @returns Array of all property categories with their specs
+ */
+export function getAllProperties(channelCategory: ChannelCategoryType): PropertyMetadata[] {
+	const channelSpec = channelsSchema[channelCategory] as { properties?: Record<string, PropertySpec> } | undefined;
+
+	if (!channelSpec || typeof channelSpec !== 'object' || !channelSpec.properties) {
+		return [];
+	}
+
+	const properties: PropertyMetadata[] = [];
+
+	for (const [propKey, propSpec] of Object.entries(channelSpec.properties)) {
+		const propertyCategory = mapPropertyCategory(propKey);
+
+		if (propertyCategory) {
+			properties.push({
+				category: propertyCategory,
+				required: propSpec.required ?? false,
+				permissions: mapPermissions(propSpec.permissions ?? []),
+				data_type: mapDataType(propSpec.data_type ?? ''),
+				unit: propSpec.unit ?? null,
+				format: propSpec.format ?? null,
+				invalid: propSpec.invalid ?? null,
+				step: propSpec.step ?? null,
+			});
+		}
+	}
+
+	return properties;
+}
+
+/**
+ * Map channel category string from schema to ChannelCategory enum
+ */
+function mapChannelCategory(category: string): ChannelCategoryType | null {
+	// The category values in the schema match the enum values (lowercase with underscores)
+	const validCategories = Object.values(ChannelCategoryType) as string[];
+
+	if (validCategories.includes(category)) {
+		return category as ChannelCategoryType;
+	}
+
+	return null;
 }

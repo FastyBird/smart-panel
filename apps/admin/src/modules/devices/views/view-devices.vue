@@ -171,7 +171,7 @@ import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { ListDevices, ListDevicesAdjust } from '../components/components';
-import { useDevicesActions, useDevicesDataSource } from '../composables/composables';
+import { useDevicesActions, useDevicesDataSource, useDevicesValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import type { IDevice } from '../store/devices.store.types';
@@ -209,6 +209,7 @@ const {
 	resetFilter,
 } = useDevicesDataSource();
 const deviceActions = useDevicesActions();
+const { fetchValidation } = useDevicesValidation();
 
 const mounted = ref<boolean>(false);
 
@@ -334,6 +335,11 @@ onBeforeMount((): void => {
 		const err = error as Error;
 
 		throw new DevicesException('Something went wrong', err);
+	});
+
+	fetchValidation().catch((error: unknown): void => {
+		// Validation fetch errors are non-critical, just log them
+		console.warn('Failed to fetch device validation data:', error);
 	});
 
 	showDrawer.value =

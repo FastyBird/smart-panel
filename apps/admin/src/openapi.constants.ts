@@ -233,6 +233,17 @@ export type DevicesModuleGetDeviceControlOperation = operations['get-devices-mod
 export type DevicesModuleGetDeviceControlsOperation = operations['get-devices-module-device-controls'];
 export type DevicesModuleCreateDeviceControlOperation = operations['create-devices-module-device-control'];
 export type DevicesModuleDeleteDeviceControlOperation = operations['delete-devices-module-device-control'];
+export type DevicesModuleGetDevicesValidationOperation = operations['get-devices-module-devices-validation'];
+export type DevicesModuleGetDeviceValidationOperation = operations['get-devices-module-device-validation'];
+
+// Devices Module Validation Schemas
+export type DevicesModuleDevicesValidationSchema = components['schemas']['DevicesModuleDataDevicesValidation'];
+export type DevicesModuleDeviceValidationResultSchema = components['schemas']['DevicesModuleDataDeviceValidationResult'];
+export type DevicesModuleValidationSummarySchema = components['schemas']['DevicesModuleDataValidationSummary'];
+export type DevicesModuleValidationIssueSchema = components['schemas']['DevicesModuleDataValidationIssue'];
+
+// Devices Module Validation Enums
+export { DevicesModuleDataValidationIssueType, DevicesModuleDataValidationIssueSeverity } from './openapi';
 
 // Dashboard Module Operations
 export type DashboardModuleGetPageOperation = operations['get-dashboard-module-page'];

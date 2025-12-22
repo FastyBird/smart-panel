@@ -8,6 +8,8 @@ class CoolerChannelView extends ChannelView with ChannelTemperatureMixin {
   CoolerChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

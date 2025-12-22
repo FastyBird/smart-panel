@@ -36,6 +36,8 @@ class AirPurifierDeviceView extends DeviceView
   AirPurifierDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

@@ -26,6 +26,8 @@ class DoorbellDeviceView extends DeviceView
   DoorbellDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

@@ -24,6 +24,8 @@ class AirConditionerDeviceView extends DeviceView
   AirConditionerDeviceView({
     required super.deviceModel,
     required super.channels,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override

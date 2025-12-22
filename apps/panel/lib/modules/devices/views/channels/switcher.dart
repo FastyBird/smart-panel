@@ -6,6 +6,8 @@ class SwitcherChannelView extends ChannelView with ChannelOnMixin {
   SwitcherChannelView({
     required super.channelModel,
     required super.properties,
+    super.isValid,
+    super.validationIssues,
   });
 
   @override
