@@ -177,11 +177,18 @@ onBeforeMount(async (): Promise<void> => {
 		.catch((error: unknown): void => {
 			const err = error as Error;
 
+			// Handle API 404 errors
 			if (err instanceof DevicesApiException && err.code === 404) {
 				throw new DevicesException('Device not found');
-			} else {
-				throw new DevicesException('Something went wrong', err);
 			}
+
+			// Re-throw DevicesException as-is (e.g., thrown from .then() block)
+			if (err instanceof DevicesException) {
+				throw err;
+			}
+
+			// Wrap unknown errors
+			throw new DevicesException('Something went wrong', err);
 		});
 });
 
