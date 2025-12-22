@@ -16,6 +16,7 @@ import type {
 	IDevicesValidationStateSemaphore,
 	IDevicesValidationStoreActions,
 	IDevicesValidationStoreState,
+	IValidationSummary,
 } from './devices.validation.store.types';
 import { transformDeviceValidationResultResponse, transformDevicesValidationResponse } from './devices.validation.transformers';
 
@@ -24,6 +25,33 @@ const defaultSemaphore: IDevicesValidationStateSemaphore = {
 		items: false,
 		item: [],
 	},
+};
+
+/**
+ * Recalculate summary statistics from devices array
+ */
+const calculateSummary = (devices: IDeviceValidationResult[]): IValidationSummary => {
+	let errorCount = 0;
+	let warningCount = 0;
+
+	for (const device of devices) {
+		for (const issue of device.issues) {
+			if (issue.severity === 'error') {
+				errorCount++;
+			} else {
+				warningCount++;
+			}
+		}
+	}
+
+	return {
+		totalDevices: devices.length,
+		validDevices: devices.filter((d) => d.isValid).length,
+		invalidDevices: devices.filter((d) => !d.isValid).length,
+		totalIssues: errorCount + warningCount,
+		errorCount,
+		warningCount,
+	};
 };
 
 export const useDevicesValidationStore = defineStore<'devices_module-devices_validation', DevicesValidationStoreSetup>(
@@ -130,30 +158,31 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 					if (typeof responseData !== 'undefined') {
 						const transformed = transformDeviceValidationResultResponse(responseData.data);
 
-						// Update data.devices array - create new array to trigger reactivity
+						// Update data.devices array and recalculate summary
 						if (data.value !== null) {
 							const existingIndex = data.value.devices.findIndex((d) => d.deviceId === transformed.deviceId);
+							let newDevices: IDeviceValidationResult[];
+
 							if (existingIndex >= 0) {
 								// Update existing entry
-								const newDevices = [...data.value.devices];
+								newDevices = [...data.value.devices];
 								newDevices[existingIndex] = transformed;
-								data.value = { ...data.value, devices: newDevices };
 							} else {
 								// Add new entry
-								data.value = { ...data.value, devices: [...data.value.devices, transformed] };
+								newDevices = [...data.value.devices, transformed];
 							}
+
+							// Recalculate summary to keep it consistent with devices
+							data.value = {
+								summary: calculateSummary(newDevices),
+								devices: newDevices,
+							};
 						} else {
 							// Initialize data with just this device result
+							const newDevices = [transformed];
 							data.value = {
-								summary: {
-									totalDevices: 1,
-									validDevices: transformed.isValid ? 1 : 0,
-									invalidDevices: transformed.isValid ? 0 : 1,
-									totalIssues: transformed.issues.length,
-									errorCount: transformed.issues.filter((i) => i.severity === 'error').length,
-									warningCount: transformed.issues.filter((i) => i.severity === 'warning').length,
-								},
-								devices: [transformed],
+								summary: calculateSummary(newDevices),
+								devices: newDevices,
 							};
 						}
 
