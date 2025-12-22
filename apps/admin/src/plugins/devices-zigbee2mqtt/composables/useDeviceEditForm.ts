@@ -55,7 +55,14 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		}
 	);
 
-	const model = reactive<IZigbee2mqttDeviceEditForm>(device as unknown as IZigbee2mqttDeviceEditForm);
+	const model = reactive<IZigbee2mqttDeviceEditForm>({
+		id: device.id,
+		type: device.type,
+		category: device.category,
+		name: device.name,
+		description: device.description ?? '',
+		enabled: device.enabled,
+	});
 
 	let initialModel: Reactive<IZigbee2mqttDeviceEditForm> = deepClone<Reactive<IZigbee2mqttDeviceEditForm>>(toRaw(model));
 
