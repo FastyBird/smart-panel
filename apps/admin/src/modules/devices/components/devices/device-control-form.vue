@@ -80,7 +80,7 @@
 											:max="getMaxValue(property)"
 											:step="property.step ?? 1"
 											:disabled="isPropertyLoading(property.id)"
-											class="flex-grow"
+											class="flex-grow touch-action-none"
 											@change="(val: number) => onPropertyChange(channel.id, property.id, val)"
 										/>
 										<el-text class="min-w-[60px] text-right">
