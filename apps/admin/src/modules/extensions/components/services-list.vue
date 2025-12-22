@@ -37,7 +37,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElResult, ElSkeleton } from 'element-plus';
+import { ElResult, ElSkeleton, ElScrollbar } from 'element-plus';
 
 import ServiceItem from './service-item.vue';
 

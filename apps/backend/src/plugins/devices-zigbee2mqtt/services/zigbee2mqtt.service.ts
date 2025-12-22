@@ -18,6 +18,7 @@ import {
 	Z2mAdapterEventType,
 	Z2mBridgeOfflineEvent,
 	Z2mBridgeOnlineEvent,
+	Z2mDevice,
 	Z2mDeviceAvailabilityChangedEvent,
 	Z2mDeviceJoinedEvent,
 	Z2mDeviceLeftEvent,
@@ -50,6 +51,8 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	private state: ServiceState = 'stopped';
 	private startStopLock: Promise<void> = Promise.resolve();
 	private deviceSyncPending = false;
+	private bridgeOnline = false;
+	private pendingDevices: Z2mDevice[] | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -262,11 +265,18 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * Handle bridge online event
 	 */
 	@OnEvent(Z2mAdapterEventType.BRIDGE_ONLINE)
-	handleBridgeOnline(_event: Z2mBridgeOnlineEvent): void {
+	async handleBridgeOnline(_event: Z2mBridgeOnlineEvent): Promise<void> {
 		this.logger.log('Bridge is online');
+		this.bridgeOnline = true;
 
-		// Sync devices if configured
-		if (this.config.discovery.syncOnStartup && !this.deviceSyncPending) {
+		// Check if we have pending devices that arrived before bridge came online
+		// This handles the race condition where DEVICES_RECEIVED arrives before BRIDGE_ONLINE
+		if (this.config.discovery.syncOnStartup && this.pendingDevices !== null) {
+			this.logger.log('Processing pending devices that arrived before bridge online');
+			await this.syncDevices(this.pendingDevices, this.config.discovery.autoAdd);
+			this.pendingDevices = null;
+		} else if (this.config.discovery.syncOnStartup) {
+			// Set flag for when devices message arrives
 			this.deviceSyncPending = true;
 		}
 	}
@@ -277,6 +287,8 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	@OnEvent(Z2mAdapterEventType.BRIDGE_OFFLINE)
 	async handleBridgeOffline(_event: Z2mBridgeOfflineEvent): Promise<void> {
 		this.logger.warn('Bridge is offline');
+		this.bridgeOnline = false;
+		this.pendingDevices = null;
 
 		// Set all devices to unknown state
 		try {
@@ -303,17 +315,32 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		const shouldSyncExisting = this.deviceSyncPending;
 		const shouldAddNew = this.config.discovery.autoAdd;
 
+		// If bridge is not online yet and syncOnStartup is enabled,
+		// cache devices for processing when BRIDGE_ONLINE arrives
+		// This handles the race condition where DEVICES_RECEIVED arrives before BRIDGE_ONLINE
+		if (!this.bridgeOnline && this.config.discovery.syncOnStartup) {
+			this.logger.debug('Bridge not online yet, caching devices for later sync');
+			this.pendingDevices = event.devices;
+			return;
+		}
+
 		// Skip if neither auto-add nor sync is needed
 		if (!shouldAddNew && !shouldSyncExisting) {
 			this.logger.debug('Auto-add disabled and no sync pending, skipping device mapping');
 			return;
 		}
 
+		await this.syncDevices(event.devices, shouldAddNew);
+	}
+
+	/**
+	 * Sync devices from Z2M to Smart Panel
+	 */
+	private async syncDevices(devices: Z2mDevice[], createIfNotExists: boolean): Promise<void> {
 		// Map each device
-		// createIfNotExists: true if autoAdd is enabled, false if only syncing existing devices
-		for (const z2mDevice of event.devices) {
+		for (const z2mDevice of devices) {
 			try {
-				await this.deviceMapper.mapDevice(z2mDevice, shouldAddNew);
+				await this.deviceMapper.mapDevice(z2mDevice, createIfNotExists);
 			} catch (error) {
 				this.logger.error(`Failed to map device ${z2mDevice.friendly_name}`, {
 					message: error instanceof Error ? error.message : String(error),

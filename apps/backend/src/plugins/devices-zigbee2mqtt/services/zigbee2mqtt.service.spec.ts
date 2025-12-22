@@ -305,6 +305,9 @@ describe('Zigbee2mqttService', () => {
 
 	describe('handleDevicesReceived', () => {
 		it('should map devices when auto-add is enabled', async () => {
+			// Bridge must be online first for devices to be processed immediately
+			await service.handleBridgeOnline({ timestamp: new Date() });
+
 			const event: Z2mDevicesReceivedEvent = {
 				devices: [
 					{
@@ -330,11 +333,14 @@ describe('Zigbee2mqttService', () => {
 			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(event.devices[0], true);
 		});
 
-		it('should not map devices when auto-add is disabled', async () => {
+		it('should not map devices when auto-add is disabled and no sync pending', async () => {
 			configService.getPluginConfig.mockReturnValue({
 				...mockConfig,
-				discovery: { autoAdd: false, syncOnStartup: true },
+				discovery: { autoAdd: false, syncOnStartup: false },
 			} as unknown as Zigbee2mqttConfigModel);
+
+			// Bridge must be online first
+			await service.handleBridgeOnline({ timestamp: new Date() });
 
 			const event: Z2mDevicesReceivedEvent = {
 				devices: [

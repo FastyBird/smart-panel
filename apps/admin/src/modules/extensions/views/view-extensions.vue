@@ -52,7 +52,7 @@
 			class="h-full overflow-hidden flex flex-col gap-2"
 		>
 			<template #label>
-				<div class="flex items-center c">
+				<div class="flex items-center gap-2">
 					<icon icon="mdi:puzzle" />
 					{{ t('extensionsModule.tabs.all') }}
 				</div>

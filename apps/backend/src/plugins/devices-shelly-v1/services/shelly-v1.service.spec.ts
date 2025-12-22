@@ -1,5 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method,
+eslint-disable @typescript-eslint/unbound-method,
 @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unused-vars
 */
 /*

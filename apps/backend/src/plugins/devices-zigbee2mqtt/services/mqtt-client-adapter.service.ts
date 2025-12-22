@@ -305,6 +305,16 @@ export class Z2mMqttClientAdapterService {
 
 	/**
 	 * Handle incoming MQTT messages
+	 *
+	 * Topic routing handles devices with slashes in friendly names correctly.
+	 * We check the device registry FIRST to disambiguate edge cases:
+	 *
+	 * 1. Devices starting with "bridge/" (e.g., "bridge/light1"):
+	 *    - State: zigbee2mqtt/bridge/light1 → routed as device state, not bridge message
+	 *
+	 * 2. Devices ending with "/availability", "/set", "/get":
+	 *    - State: zigbee2mqtt/sensor/availability → routed as state for "sensor/availability"
+	 *    - Availability: zigbee2mqtt/sensor/availability/availability
 	 */
 	private handleMessage(topic: string, payload: Buffer): void {
 		const message = payload.toString();
@@ -315,27 +325,49 @@ export class Z2mMqttClientAdapterService {
 			const relativePath = topic.replace(`${this.baseTopic}/`, '');
 			const topicParts = relativePath.split('/');
 
+			if (topicParts.length === 0) {
+				return;
+			}
+
+			// IMPORTANT: Check device registry FIRST, before bridge routing
+			// This handles devices with names starting with "bridge/" (e.g., "bridge/light1")
+			// Without this check, "zigbee2mqtt/bridge/light1" would be misrouted to handleBridgeMessage
+			if (this.deviceRegistry.has(relativePath)) {
+				this.handleDeviceStateMessage(relativePath, message);
+				return;
+			}
+
+			// Now safe to check for bridge messages (no known device matches this path)
 			if (topicParts[0] === 'bridge') {
 				this.handleBridgeMessage(topicParts[1], message);
-			} else if (topicParts.length > 0) {
-				// Check if the last part is 'availability'
-				const lastPart = topicParts[topicParts.length - 1];
-
-				if (lastPart === 'availability') {
-					// Device availability: zigbee2mqtt/<friendly_name>/availability
-					// friendly_name can contain slashes, so join all parts except the last
-					const friendlyName = topicParts.slice(0, -1).join('/');
-					if (friendlyName) {
-						this.handleDeviceAvailabilityMessage(friendlyName, message);
-					}
-				} else if (lastPart !== 'set' && lastPart !== 'get') {
-					// Device state message: zigbee2mqtt/<friendly_name>
-					// friendly_name can contain slashes, so join all parts
-					// Skip 'set' and 'get' topics (those are for commands, not state)
-					const friendlyName = relativePath;
-					this.handleDeviceStateMessage(friendlyName, message);
-				}
+				return;
 			}
+
+			const lastPart = topicParts[topicParts.length - 1];
+			const pathWithoutSuffix = topicParts.slice(0, -1).join('/');
+
+			if (lastPart === 'availability' && pathWithoutSuffix) {
+				// Check if path without suffix is a known device
+				// e.g., "sensor/availability" topic for device "sensor"
+				if (this.deviceRegistry.has(pathWithoutSuffix)) {
+					this.handleDeviceAvailabilityMessage(pathWithoutSuffix, message);
+				} else {
+					// Unknown device, might be availability for a new device not yet in registry
+					// or state message for device ending with /availability not yet registered
+					this.handleDeviceAvailabilityMessage(pathWithoutSuffix, message);
+				}
+				return;
+			}
+
+			if (lastPart === 'set' || lastPart === 'get') {
+				// Command topics - skip unless it's a device with that name
+				// Commands are outbound only, we don't receive meaningful data here
+				return;
+			}
+
+			// Default: treat as state message for the full path
+			// This handles devices not yet in registry
+			this.handleDeviceStateMessage(relativePath, message);
 		} catch (error) {
 			this.logger.warn(`Failed to handle message on topic ${topic}`, {
 				message: error instanceof Error ? error.message : String(error),

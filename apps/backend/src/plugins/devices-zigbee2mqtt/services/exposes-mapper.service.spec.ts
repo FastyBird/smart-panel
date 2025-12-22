@@ -54,16 +54,18 @@ describe('Z2mExposesMapperService', () => {
 			expect(result[0].category).toBe(ChannelCategory.LIGHT);
 			expect(result[0].properties).toHaveLength(2);
 
-			// Check state property
-			const stateProperty = result[0].properties.find((p) => p.identifier === 'state');
+			// Check state property - identifier is 'on' (from PropertyCategory.ON), z2mProperty is 'state'
+			const stateProperty = result[0].properties.find((p) => p.z2mProperty === 'state');
 			expect(stateProperty).toBeDefined();
+			expect(stateProperty?.identifier).toBe('on');
 			expect(stateProperty?.dataType).toBe(DataTypeType.BOOL);
 			expect(stateProperty?.category).toBe(PropertyCategory.ON);
 			expect(stateProperty?.permissions).toContain(PermissionType.READ_WRITE);
 
-			// Check brightness property
-			const brightnessProperty = result[0].properties.find((p) => p.identifier === 'brightness');
+			// Check brightness property - identifier is 'brightness' (from PropertyCategory.BRIGHTNESS)
+			const brightnessProperty = result[0].properties.find((p) => p.z2mProperty === 'brightness');
 			expect(brightnessProperty).toBeDefined();
+			expect(brightnessProperty?.identifier).toBe('brightness');
 			expect(brightnessProperty?.dataType).toBe(DataTypeType.UCHAR);
 			expect(brightnessProperty?.category).toBe(PropertyCategory.BRIGHTNESS);
 			expect(brightnessProperty?.min).toBe(0);
@@ -110,10 +112,13 @@ describe('Z2mExposesMapperService', () => {
 			const result = service.mapExposes(exposes);
 
 			expect(result).toHaveLength(1);
-			expect(result[0].category).toBe(ChannelCategory.GENERIC);
+			expect(result[0].category).toBe(ChannelCategory.TEMPERATURE);
+			expect(result[0].identifier).toBe(ChannelCategory.TEMPERATURE);
 
-			const tempProperty = result[0].properties.find((p) => p.identifier === 'temperature');
+			// Property identifier comes from category, z2mProperty is 'temperature'
+			const tempProperty = result[0].properties.find((p) => p.z2mProperty === 'temperature');
 			expect(tempProperty).toBeDefined();
+			expect(tempProperty?.identifier).toBe('temperature');
 			expect(tempProperty?.category).toBe(PropertyCategory.TEMPERATURE);
 			expect(tempProperty?.unit).toBe('°C');
 			expect(tempProperty?.permissions).toContain(PermissionType.READ_ONLY);
@@ -134,9 +139,12 @@ describe('Z2mExposesMapperService', () => {
 			const result = service.mapExposes(exposes);
 
 			expect(result).toHaveLength(1);
+			expect(result[0].category).toBe(ChannelCategory.OCCUPANCY);
 
-			const occupancyProperty = result[0].properties.find((p) => p.identifier === 'occupancy');
+			// Property identifier is 'detected' (from PropertyCategory.DETECTED), z2mProperty is 'occupancy'
+			const occupancyProperty = result[0].properties.find((p) => p.z2mProperty === 'occupancy');
 			expect(occupancyProperty).toBeDefined();
+			expect(occupancyProperty?.identifier).toBe('detected');
 			expect(occupancyProperty?.dataType).toBe(DataTypeType.BOOL);
 			expect(occupancyProperty?.category).toBe(PropertyCategory.DETECTED);
 		});
@@ -158,9 +166,11 @@ describe('Z2mExposesMapperService', () => {
 
 			expect(result).toHaveLength(1);
 
-			const batteryProperty = result[0].properties.find((p) => p.identifier === 'battery');
+			// Battery maps to: identifier='percentage', z2mProperty='battery', category=PERCENTAGE
+			const batteryProperty = result[0].properties.find((p) => p.z2mProperty === 'battery');
 			expect(batteryProperty).toBeDefined();
-			expect(batteryProperty?.category).toBe(PropertyCategory.LEVEL);
+			expect(batteryProperty?.identifier).toBe('percentage');
+			expect(batteryProperty?.category).toBe(PropertyCategory.PERCENTAGE);
 			expect(batteryProperty?.unit).toBe('%');
 		});
 
@@ -207,7 +217,7 @@ describe('Z2mExposesMapperService', () => {
 			expect(result).toHaveLength(0);
 		});
 
-		it('should skip diagnostic exposes', () => {
+		it('should keep diagnostic exposes as operational data', () => {
 			const exposes: Z2mExposeNumeric[] = [
 				{
 					type: 'numeric',
@@ -221,7 +231,11 @@ describe('Z2mExposesMapperService', () => {
 
 			const result = service.mapExposes(exposes);
 
-			expect(result).toHaveLength(0);
+			// Diagnostic exposes (like voltage) are kept as operational data
+			expect(result).toHaveLength(1);
+			const voltageProperty = result[0].properties.find((p) => p.z2mProperty === 'voltage');
+			expect(voltageProperty).toBeDefined();
+			expect(voltageProperty?.category).toBe(PropertyCategory.VOLTAGE);
 		});
 
 		it('should handle climate expose', () => {
@@ -277,10 +291,12 @@ describe('Z2mExposesMapperService', () => {
 
 			const result = service.mapExposes(exposes);
 
-			// Each expose maps to its own channel (merging happens in device-mapper)
+			// Each expose maps to its own channel with category-based identifier
 			expect(result).toHaveLength(2);
-			expect(result[0].identifier).toBe('sensor');
-			expect(result[1].identifier).toBe('sensor');
+			expect(result[0].identifier).toBe(ChannelCategory.TEMPERATURE);
+			expect(result[0].category).toBe(ChannelCategory.TEMPERATURE);
+			expect(result[1].identifier).toBe(ChannelCategory.HUMIDITY);
+			expect(result[1].category).toBe(ChannelCategory.HUMIDITY);
 		});
 	});
 });
