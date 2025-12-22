@@ -76,7 +76,7 @@ export class Z2mMappingPreviewService {
 
 		// Check if device is already adopted
 		const existingDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
-		const existingDevice = existingDevices.find((d) => d.ieeeAddress === ieeeAddress);
+		const existingDevice = existingDevices.find((d) => d.identifier === ieeeAddress);
 
 		// Map exposes to channels
 		const mappedChannels = this.exposesMapper.mapExposes(z2mDevice.definition.exposes);
