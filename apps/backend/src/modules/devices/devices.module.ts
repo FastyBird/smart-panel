@@ -155,6 +155,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 		DeviceConnectivityService,
+		DeviceValidationService,
 	],
 })
 export class DevicesModule implements OnModuleInit {
