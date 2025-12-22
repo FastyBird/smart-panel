@@ -20,7 +20,7 @@ export class InfluxDbConfigModel extends ModuleConfigModel {
 	@ApiProperty({
 		description: 'InfluxDB server host',
 		type: 'string',
-		example: 'localhost',
+		example: '127.0.0.1',
 	})
 	@Expose()
 	@IsString()

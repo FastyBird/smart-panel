@@ -16,7 +16,7 @@
 		"config": {
 			"host": {
 				"title": "Host",
-				"placeholder": "localhost",
+				"placeholder": "127.0.0.1",
 				"validation": {
 					"required": "Host is required"
 				}
