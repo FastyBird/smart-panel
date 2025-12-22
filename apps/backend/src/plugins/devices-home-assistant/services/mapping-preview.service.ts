@@ -1001,9 +1001,11 @@ export class MappingPreviewService {
 
 		// Add device_information channel (auto-created during adoption with HA registry data)
 		// This is always added by the plugin, users cannot modify it
+		// Must match properties created in device-adoption.service.ts
 		channels.push({
 			category: ChannelCategory.DEVICE_INFORMATION,
 			properties: [
+				// Required properties
 				{
 					category: PropertyCategory.MANUFACTURER,
 					dataType: DataTypeType.STRING,
@@ -1022,6 +1024,22 @@ export class MappingPreviewService {
 				{
 					category: PropertyCategory.FIRMWARE_REVISION,
 					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				// Optional properties (also created by device-adoption.service)
+				{
+					category: PropertyCategory.HARDWARE_REVISION,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.CONNECTION_TYPE,
+					dataType: DataTypeType.ENUM,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.STATUS,
+					dataType: DataTypeType.ENUM,
 					permissions: [PermissionType.READ_ONLY],
 				},
 			],
