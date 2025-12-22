@@ -398,17 +398,18 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 	{
 		channel_category: ChannelCategory.LOCK,
 		virtual_properties: [
-			// ON property - derived from status
+			// ON property - command to lock/unlock
+			// true = locked, false = unlocked
 			{
 				property_category: PropertyCategory.ON,
-				virtual_type: VirtualPropertyType.DERIVED,
+				virtual_type: VirtualPropertyType.COMMAND,
 				data_type: DataTypeType.BOOL,
-				permissions: [PermissionType.READ_WRITE],
-				derivation: {
-					type: DerivationType.STATIC_FALLBACK,
-					params: {
-						defaultValue: false,
-						// Will be overridden by actual lock state mapping
+				permissions: [PermissionType.WRITE_ONLY],
+				command_mapping: {
+					domain: HomeAssistantDomain.LOCK,
+					value_to_service: {
+						true: 'lock',
+						false: 'unlock',
 					},
 				},
 			},
