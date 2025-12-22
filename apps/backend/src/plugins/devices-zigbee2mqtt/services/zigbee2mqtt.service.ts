@@ -129,12 +129,36 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * Handle configuration changes.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
-		// Don't clear config here - it may still be accessed by handlers during stop()
-		// Config will be refreshed when start() is called after restart
+		// Check if config values actually changed for THIS plugin
+		if (this.state === 'started' && this.pluginConfig) {
+			const oldConfig = this.pluginConfig;
+			const newConfig = this.configService.getPluginConfig<Zigbee2mqttConfigModel>(DEVICES_ZIGBEE2MQTT_PLUGIN_NAME);
 
-		if (this.state === 'started') {
-			this.logger.log('Config changed, restart required');
-			return Promise.resolve({ restartRequired: true });
+			// Compare MQTT connection settings that would require restart
+			const mqttChanged =
+				oldConfig.mqtt.host !== newConfig.mqtt.host ||
+				oldConfig.mqtt.port !== newConfig.mqtt.port ||
+				oldConfig.mqtt.username !== newConfig.mqtt.username ||
+				oldConfig.mqtt.password !== newConfig.mqtt.password ||
+				oldConfig.mqtt.baseTopic !== newConfig.mqtt.baseTopic ||
+				oldConfig.mqtt.clientId !== newConfig.mqtt.clientId;
+
+			// Compare TLS settings
+			const tlsChanged =
+				oldConfig.tls.enabled !== newConfig.tls.enabled ||
+				oldConfig.tls.rejectUnauthorized !== newConfig.tls.rejectUnauthorized ||
+				oldConfig.tls.ca !== newConfig.tls.ca ||
+				oldConfig.tls.cert !== newConfig.tls.cert ||
+				oldConfig.tls.key !== newConfig.tls.key;
+
+			if (mqttChanged || tlsChanged) {
+				this.logger.log('Config changed, restart required');
+				return Promise.resolve({ restartRequired: true });
+			}
+
+			// Config didn't change for this plugin (or only discovery settings changed), no restart needed
+			this.logger.debug('Config event received but no relevant changes for this plugin');
+			return Promise.resolve({ restartRequired: false });
 		}
 
 		// Clear config only if not running (no handlers active)

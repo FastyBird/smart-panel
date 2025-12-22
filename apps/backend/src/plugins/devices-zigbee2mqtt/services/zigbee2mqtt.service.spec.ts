@@ -278,14 +278,32 @@ describe('Zigbee2mqttService', () => {
 	});
 
 	describe('onConfigChanged', () => {
-		it('should return restartRequired true when service is started', async () => {
+		it('should return restartRequired true when relevant config changes', async () => {
 			mqttAdapter.connect.mockResolvedValue(undefined);
 
 			await service.start();
 
+			// Simulate config change by returning different values
+			const changedConfig = {
+				...mockConfig,
+				mqtt: { ...mockConfig.mqtt, host: 'new-host' }, // Changed from localhost
+			};
+			configService.getPluginConfig.mockReturnValue(changedConfig as Zigbee2mqttConfigModel);
+
 			const result = await service.onConfigChanged();
 
 			expect(result).toEqual({ restartRequired: true });
+		});
+
+		it('should return restartRequired false when config does not change', async () => {
+			mqttAdapter.connect.mockResolvedValue(undefined);
+
+			await service.start();
+
+			// Config is the same, no change
+			const result = await service.onConfigChanged();
+
+			expect(result).toEqual({ restartRequired: false });
 		});
 
 		it('should return restartRequired false when service is stopped', async () => {

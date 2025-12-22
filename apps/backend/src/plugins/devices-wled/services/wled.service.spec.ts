@@ -290,7 +290,7 @@ describe('WledService', () => {
 	});
 
 	describe('onConfigChanged', () => {
-		it('should return restartRequired true when service is started', async () => {
+		it('should return restartRequired true when relevant config changes', async () => {
 			// Start the service first
 			wledAdapter.connect.mockResolvedValue(undefined);
 			wledAdapter.getDevice.mockReturnValue(null);
@@ -298,9 +298,30 @@ describe('WledService', () => {
 
 			await service.start();
 
+			// Simulate config change by returning different values
+			const changedConfig = {
+				...mockConfig,
+				polling: { interval: 20000 }, // Changed from 10000
+			};
+			configService.getPluginConfig.mockReturnValue(changedConfig as WledConfigModel);
+
 			const result = await service.onConfigChanged();
 
 			expect(result).toEqual({ restartRequired: true });
+		});
+
+		it('should return restartRequired false when config does not change', async () => {
+			// Start the service first
+			wledAdapter.connect.mockResolvedValue(undefined);
+			wledAdapter.getDevice.mockReturnValue(null);
+			mdnsDiscoverer.start.mockImplementation(() => undefined);
+
+			await service.start();
+
+			// Config is the same, no change
+			const result = await service.onConfigChanged();
+
+			expect(result).toEqual({ restartRequired: false });
 		});
 
 		it('should return restartRequired false when service is stopped', async () => {
