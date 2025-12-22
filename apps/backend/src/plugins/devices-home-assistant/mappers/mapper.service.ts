@@ -195,7 +195,9 @@ export class MapperService {
 				entityId: serviceCall.entityId,
 				state: String(value),
 				service: serviceCall.service,
-				attributes: serviceCall.data ? new Map(Object.entries(serviceCall.data)) : undefined,
+				attributes: serviceCall.data
+					? new Map(Object.entries(serviceCall.data) as [string, string | number | number[] | boolean | null][])
+					: undefined,
 				properties: [property],
 			});
 		}

@@ -249,7 +249,7 @@ export class VirtualPropertyService {
 		const defaultValue = (params?.defaultValue as 'opened' | 'closed' | 'opening' | 'closing' | 'stopped') ?? 'stopped';
 
 		const state = context.state?.state;
-		if (!state) {
+		if (state === undefined || state === null) {
 			return defaultValue;
 		}
 
@@ -263,7 +263,7 @@ export class VirtualPropertyService {
 			stopped: 'stopped',
 		};
 
-		return stateMapping[state.toLowerCase()] ?? defaultValue;
+		return stateMapping[String(state).toLowerCase()] ?? defaultValue;
 	}
 
 	/**

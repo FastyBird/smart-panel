@@ -382,7 +382,7 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 			{
 				property_category: PropertyCategory.OBSTRUCTION,
 				virtual_type: VirtualPropertyType.STATIC,
-				data_type: DataTypeType.BOOLEAN,
+				data_type: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
 				static_value: false,
 			},
@@ -397,7 +397,7 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 			{
 				property_category: PropertyCategory.ON,
 				virtual_type: VirtualPropertyType.DERIVED,
-				data_type: DataTypeType.BOOLEAN,
+				data_type: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_WRITE],
 				derivation: {
 					type: DerivationType.STATIC_FALLBACK,

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import {
 	DeviceValidationService,
 	ValidationIssueType,
@@ -976,10 +976,10 @@ export class MappingPreviewService {
 		channels.push({
 			category: ChannelCategory.DEVICE_INFORMATION,
 			properties: [
-				{ category: PropertyCategory.MANUFACTURER },
-				{ category: PropertyCategory.MODEL },
-				{ category: PropertyCategory.SERIAL_NUMBER },
-				{ category: PropertyCategory.FIRMWARE_REVISION },
+				{ category: PropertyCategory.MANUFACTURER, dataType: DataTypeType.STRING, permissions: [PermissionType.READ_ONLY] },
+				{ category: PropertyCategory.MODEL, dataType: DataTypeType.STRING, permissions: [PermissionType.READ_ONLY] },
+				{ category: PropertyCategory.SERIAL_NUMBER, dataType: DataTypeType.STRING, permissions: [PermissionType.READ_ONLY] },
+				{ category: PropertyCategory.FIRMWARE_REVISION, dataType: DataTypeType.STRING, permissions: [PermissionType.READ_ONLY] },
 			],
 		});
 
