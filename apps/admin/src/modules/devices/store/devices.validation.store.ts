@@ -79,19 +79,17 @@ export interface IDevicesValidationStoreActions {
 
 export type DevicesValidationStoreSetup = IDevicesValidationStoreState & IDevicesValidationStoreActions;
 
-const defaultSemaphore: IDevicesValidationStateSemaphore = {
-	fetching: {
-		items: false,
-		item: [],
-	},
-};
-
 export const useDevicesValidationStore = defineStore<'devices_module-devices_validation', DevicesValidationStoreSetup>(
 	'devices_module-devices_validation',
 	(): DevicesValidationStoreSetup => {
 		const backend = useBackend();
 
-		const semaphore = ref<IDevicesValidationStateSemaphore>({ ...defaultSemaphore, fetching: { ...defaultSemaphore.fetching } });
+		const semaphore = ref<IDevicesValidationStateSemaphore>({
+			fetching: {
+				items: false,
+				item: [],
+			},
+		});
 		const firstLoad = ref<boolean>(false);
 		const data = ref<IDevicesValidation | null>(null);
 		const deviceResults = ref<{ [key: string]: IDeviceValidationResult }>({});
