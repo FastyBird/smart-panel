@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -284,6 +284,27 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 		},
 		{ deep: true }
 	);
+
+	// Cleanup all timers and resolve pending promises on unmount
+	onBeforeUnmount(() => {
+		// Clear all debounce timers and resolve their promises
+		for (const propertyId of Object.keys(debounceTimers)) {
+			clearTimeout(debounceTimers[propertyId]);
+			delete debounceTimers[propertyId];
+
+			// Resolve any pending promises so they don't hang
+			if (debounceResolvers[propertyId]) {
+				debounceResolvers[propertyId](false);
+				delete debounceResolvers[propertyId];
+			}
+		}
+
+		// Clear all pending value cleanup timers
+		for (const propertyId of Object.keys(pendingValueTimers)) {
+			clearTimeout(pendingValueTimers[propertyId]);
+			delete pendingValueTimers[propertyId];
+		}
+	});
 
 	return {
 		device,
