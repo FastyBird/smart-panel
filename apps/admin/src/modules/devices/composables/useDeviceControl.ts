@@ -173,7 +173,7 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 			// Store the resolve callback so it can be called if cancelled
 			debounceResolvers[propertyId] = resolve;
 
-			debounceTimers[propertyId] = setTimeout(async () => {
+			const timerId = setTimeout(async () => {
 				// Clear the resolver reference since we're now executing
 				delete debounceResolvers[propertyId];
 
@@ -211,9 +211,14 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 					resolve(false);
 				} finally {
 					loadingProperties.value[propertyId] = false;
-					delete debounceTimers[propertyId];
+					// Only delete if this is still the current timer (not overwritten by newer call)
+					if (debounceTimers[propertyId] === timerId) {
+						delete debounceTimers[propertyId];
+					}
 				}
 			}, DEBOUNCE_DELAY);
+
+			debounceTimers[propertyId] = timerId;
 		});
 	};
 
