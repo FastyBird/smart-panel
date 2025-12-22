@@ -200,7 +200,7 @@ class DevicesService extends ChangeNotifier {
       final List<ChannelView> channelsWithValidation = channels.map((channel) {
         final channelIssues =
             _validationRepository.getIssuesForChannel(device.id, channel.id);
-        final channelIsValid = channelIssues.isEmpty;
+        final channelIsValid = !channelIssues.any((issue) => issue.isError);
 
         return buildChannelView(
           channel.channelModel,
