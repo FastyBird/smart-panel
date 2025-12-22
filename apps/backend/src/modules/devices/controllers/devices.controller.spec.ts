@@ -70,7 +70,14 @@ describe('DevicesController', () => {
 					provide: DeviceValidationService,
 					useValue: {
 						validateAllDevices: jest.fn().mockResolvedValue({
-							summary: { totalDevices: 0, validDevices: 0, invalidDevices: 0, totalIssues: 0, errorCount: 0, warningCount: 0 },
+							summary: {
+								totalDevices: 0,
+								validDevices: 0,
+								invalidDevices: 0,
+								totalIssues: 0,
+								errorCount: 0,
+								warningCount: 0,
+							},
 							devices: [],
 						}),
 						validateDeviceById: jest.fn().mockResolvedValue(null),
