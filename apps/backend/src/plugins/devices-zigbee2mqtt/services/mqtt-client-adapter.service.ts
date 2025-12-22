@@ -557,18 +557,12 @@ export class Z2mMqttClientAdapterService {
 
 	/**
 	 * Handle device state message
+	 *
+	 * Note: No filtering for "bridge" or "bridge/" names here.
+	 * The routing in handleMessage() checks the device registry first,
+	 * so if we reach this function, the friendlyName is a legitimate device.
 	 */
 	private handleDeviceStateMessage(friendlyName: string, message: string): void {
-		// Skip bridge messages
-		if (friendlyName === 'bridge') {
-			return;
-		}
-
-		// Skip bridge sub-topics that might slip through
-		if (friendlyName.startsWith('bridge/')) {
-			return;
-		}
-
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
 
