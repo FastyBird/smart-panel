@@ -17,6 +17,18 @@ export class InfluxDbConfigModel extends ModuleConfigModel {
 	@IsString()
 	type: string = INFLUXDB_MODULE_NAME;
 
+	/**
+	 * InfluxDB is a core module and cannot be disabled.
+	 * Always returns true regardless of configuration.
+	 */
+	@ApiProperty({
+		description: 'Module enabled state (always true for core modules)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	override enabled: boolean = true;
+
 	@ApiProperty({
 		description: 'InfluxDB server host',
 		type: 'string',
