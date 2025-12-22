@@ -9,11 +9,6 @@ import {
 	DeviceEntity,
 } from './entities/devices.entity';
 import {
-	DevicesModuleChannelCategory,
-	DevicesModuleChannelPropertyCategory,
-	DevicesModuleDeviceCategory,
-} from './models/devices-enums.model';
-import {
 	DeviceValidationResponseModel,
 	DeviceValidationResultModel,
 	DevicesValidationModel,
@@ -21,6 +16,11 @@ import {
 	ValidationIssueModel,
 	ValidationSummaryModel,
 } from './models/device-validation.model';
+import {
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleDeviceCategory,
+} from './models/devices-enums.model';
 import {
 	ChannelControlResponseModel,
 	ChannelControlsResponseModel,

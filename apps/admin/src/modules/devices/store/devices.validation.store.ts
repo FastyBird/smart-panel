@@ -2,7 +2,7 @@ import { type Ref, ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { getErrorReason, useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	DevicesModuleDeviceValidationResultSchema,
@@ -90,7 +90,6 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 	'devices_module-devices_validation',
 	(): DevicesValidationStoreSetup => {
 		const backend = useBackend();
-		const logger = useLogger();
 
 		const semaphore = ref<IDevicesValidationStateSemaphore>({ ...defaultSemaphore, fetching: { ...defaultSemaphore.fetching } });
 		const firstLoad = ref<boolean>(false);

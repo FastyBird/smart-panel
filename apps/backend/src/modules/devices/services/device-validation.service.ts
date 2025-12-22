@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DeviceCategory, DEVICES_MODULE_NAME, PropertyCategory } from '../devices.constants';
+import { ChannelCategory, DEVICES_MODULE_NAME, DeviceCategory, PropertyCategory } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import {
+	type PropertyMetadata,
 	getAllProperties,
 	getRequiredChannels,
 	getRequiredProperties,
@@ -275,7 +276,7 @@ export class DeviceValidationService {
 	private validatePropertyAgainstSpec(
 		channel: ChannelEntity,
 		property: ChannelPropertyEntity,
-		spec: { data_type: string; permissions: string[]; format: string[] | number[] | null },
+		spec: PropertyMetadata,
 		issues: ValidationIssue[],
 	): void {
 		// Validate data type
@@ -296,7 +297,7 @@ export class DeviceValidationService {
 		// Validate permissions (check if all required permissions are present)
 		if (spec.permissions && spec.permissions.length > 0) {
 			const propertyPermissions = new Set(property.permissions);
-			const missingPermissions = spec.permissions.filter((p) => !propertyPermissions.has(p as any));
+			const missingPermissions = spec.permissions.filter((p) => !propertyPermissions.has(p));
 
 			if (missingPermissions.length > 0) {
 				issues.push({
