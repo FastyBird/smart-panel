@@ -137,8 +137,7 @@ export class ShellyNgService implements IManagedPluginService {
 
 			// Compare relevant settings that would require restart
 			const mdnsChanged =
-				oldConfig.mdns.enabled !== newConfig.mdns.enabled ||
-				oldConfig.mdns.interface !== newConfig.mdns.interface;
+				oldConfig.mdns.enabled !== newConfig.mdns.enabled || oldConfig.mdns.interface !== newConfig.mdns.interface;
 
 			const websocketsChanged =
 				oldConfig.websockets.requestTimeout !== newConfig.websockets.requestTimeout ||
