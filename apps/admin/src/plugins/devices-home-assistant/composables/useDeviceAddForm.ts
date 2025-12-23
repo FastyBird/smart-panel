@@ -4,9 +4,9 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { deepClone, getSchemaDefaults, router, useFlashMessage, useLogger } from '../../../common';
+import { deepClone, getSchemaDefaults, useFlashMessage, useLogger } from '../../../common';
 import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { FormResult, type FormResultType, type IDevice, RouteNames as DevicesRouteNames } from '../../../modules/devices';
+import { FormResult, type FormResultType, type IDevice } from '../../../modules/devices';
 import { DevicesApiException } from '../../../modules/devices/devices.exceptions';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
@@ -400,13 +400,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					})
 				);
 
-				// Redirect to device edit page
-				router.push({
-					name: DevicesRouteNames.DEVICES_EDIT,
-					params: {
-						id: adoptedDevice.id,
-					},
-				});
+				// Navigation to devices list is handled by the parent view (view-device-add.vue)
+				// when it detects formResult === FormResult.OK
 
 				return 'added';
 			} catch (error: unknown) {

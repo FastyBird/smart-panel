@@ -48,6 +48,7 @@ import {
 } from './entities/devices-home-assistant.entity';
 import { BinarySensorEntityMapperService } from './mappers/binary-sensor.entity.mapper.service';
 import { ClimateEntityMapperService } from './mappers/climate.entity.mapper.service';
+import { CoverEntityMapperService } from './mappers/cover.entity.mapper.service';
 import { LightEntityMapperService } from './mappers/light.entity.mapper.service';
 import { MapperService } from './mappers/mapper.service';
 import { SensorEntityMapperService } from './mappers/sensor.entity.mapper.service';
@@ -89,6 +90,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		MapperService,
 		BinarySensorEntityMapperService,
 		ClimateEntityMapperService,
+		CoverEntityMapperService,
 		LightEntityMapperService,
 		SensorEntityMapperService,
 		SwitchEntityMapperService,
@@ -120,6 +122,7 @@ export class DevicesHomeAssistantPlugin {
 		private readonly homeAssistantMapperService: MapperService,
 		private readonly homeAssistantBinarySensorEntityMapper: BinarySensorEntityMapperService,
 		private readonly homeAssistantClimateEntityMapper: ClimateEntityMapperService,
+		private readonly homeAssistantCoverEntityMapper: CoverEntityMapperService,
 		private readonly homeAssistantLightEntityMapper: LightEntityMapperService,
 		private readonly homeAssistantSensorEntityMapper: SensorEntityMapperService,
 		private readonly homeAssistantSwitchEntityMapper: SwitchEntityMapperService,
@@ -183,6 +186,7 @@ export class DevicesHomeAssistantPlugin {
 
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantBinarySensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantClimateEntityMapper);
+		this.homeAssistantMapperService.registerMapper(this.homeAssistantCoverEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantLightEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSwitchEntityMapper);

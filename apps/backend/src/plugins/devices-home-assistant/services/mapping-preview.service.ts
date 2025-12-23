@@ -422,7 +422,9 @@ export class MappingPreviewService {
 			const hasValue = attributeValue !== undefined && attributeValue !== null;
 
 			if (hasValue || propertyMetadata.required) {
-				suggestedProperties.push(this.createPropertyPreview(binding, propertyMetadata, attributeValue, entityId));
+				suggestedProperties.push(
+					this.createPropertyPreview(binding, propertyMetadata, attributeValue, entityId, state, channelCategory),
+				);
 				mappedAttributes.add(binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.ha_attribute);
 				mappedPropertyCategories.add(binding.property_category);
 			}
@@ -538,7 +540,12 @@ export class MappingPreviewService {
 		metadata: PropertyMetadata,
 		currentValue: unknown,
 		entityId?: string,
+		state?: HomeAssistantStateModel,
+		channelCategory?: ChannelCategory,
 	): PropertyMappingPreviewModel {
+		// Try to get HA-provided format values (e.g., hvac_modes for thermostat mode)
+		const haProvidedFormat = this.getHaProvidedFormat(binding.property_category, state, channelCategory);
+
 		return {
 			category: binding.property_category,
 			name: this.propertyNameFromCategory(binding.property_category),
@@ -546,11 +553,78 @@ export class MappingPreviewService {
 			dataType: metadata.data_type,
 			permissions: metadata.permissions,
 			unit: metadata.unit,
-			format: metadata.format,
+			format: haProvidedFormat ?? metadata.format,
 			required: metadata.required,
 			currentValue: this.normalizeValue(currentValue),
 			haEntityId: entityId ?? null,
 		};
+	}
+
+	/**
+	 * Get HA-provided format values for enum properties
+	 * Some HA entities provide available values as attributes (e.g., hvac_modes, fan_modes)
+	 * Using these ensures the property format only includes values the device actually supports
+	 */
+	private getHaProvidedFormat(
+		propertyCategory: PropertyCategory,
+		state?: HomeAssistantStateModel,
+		channelCategory?: ChannelCategory,
+	): (string | number)[] | null {
+		if (!state?.attributes) {
+			return null;
+		}
+
+		const attrs = state.attributes;
+
+		// Thermostat mode - use hvac_modes from HA
+		if (channelCategory === ChannelCategory.THERMOSTAT && propertyCategory === PropertyCategory.MODE) {
+			const hvacModes = attrs.hvac_modes;
+			if (Array.isArray(hvacModes) && hvacModes.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided hvac_modes: ${hvacModes.join(', ')}`);
+				return hvacModes as string[];
+			}
+		}
+
+		// Fan speed - use speed_list or percentage_step from HA
+		if (channelCategory === ChannelCategory.FAN && propertyCategory === PropertyCategory.SPEED) {
+			const speedList = attrs.speed_list;
+			if (Array.isArray(speedList) && speedList.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided speed_list: ${speedList.join(', ')}`);
+				return speedList as string[];
+			}
+		}
+
+		// Fan mode - use preset_modes or fan_modes from HA
+		if (channelCategory === ChannelCategory.FAN && propertyCategory === PropertyCategory.MODE) {
+			const fanModes = attrs.fan_modes ?? attrs.preset_modes;
+			if (Array.isArray(fanModes) && fanModes.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided fan_modes: ${fanModes.join(', ')}`);
+				return fanModes as string[];
+			}
+		}
+
+		// Climate fan mode
+		if (channelCategory === ChannelCategory.THERMOSTAT && propertyCategory === PropertyCategory.SWING) {
+			const swingModes = attrs.swing_modes;
+			if (Array.isArray(swingModes) && swingModes.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided swing_modes: ${swingModes.join(', ')}`);
+				return swingModes as string[];
+			}
+		}
+
+		// Media input source
+		if (
+			(channelCategory === ChannelCategory.MEDIA_INPUT || channelCategory === ChannelCategory.TELEVISION) &&
+			propertyCategory === PropertyCategory.INPUT_SOURCE
+		) {
+			const sourceList = attrs.source_list;
+			if (Array.isArray(sourceList) && sourceList.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided source_list: ${sourceList.join(', ')}`);
+				return sourceList as string[];
+			}
+		}
+
+		return null;
 	}
 
 	/**

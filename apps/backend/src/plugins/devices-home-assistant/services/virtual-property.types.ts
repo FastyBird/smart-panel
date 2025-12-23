@@ -329,6 +329,8 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 	},
 
 	// Battery - needs status virtual property when not provided
+	// Note: The format only includes 'ok' and 'low' because the derivation from
+	// percentage cannot detect charging state (that would require a separate HA attribute)
 	{
 		channel_category: ChannelCategory.BATTERY,
 		virtual_properties: [
@@ -338,7 +340,7 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 				virtual_type: VirtualPropertyType.DERIVED,
 				data_type: DataTypeType.ENUM,
 				permissions: [PermissionType.READ_ONLY],
-				format: ['ok', 'low', 'charging'],
+				format: ['ok', 'low'],
 				derivation: {
 					type: DerivationType.BATTERY_STATUS_FROM_PERCENTAGE,
 					params: {
@@ -453,16 +455,18 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 	// property with nonsensical values. The 'detected' boolean is sufficient.
 
 	// Gas - needs status when only detected is provided
+	// Note: The format only includes 'normal' because the static fallback derivation
+	// cannot derive warning/alarm states from HA data (that would require gas level/concentration)
 	{
 		channel_category: ChannelCategory.GAS,
 		virtual_properties: [
-			// Status property - derived from detected
+			// Status property - static fallback (no gas level data from HA)
 			{
 				property_category: PropertyCategory.STATUS,
 				virtual_type: VirtualPropertyType.DERIVED,
 				data_type: DataTypeType.ENUM,
 				permissions: [PermissionType.READ_ONLY],
-				format: ['normal', 'warning', 'alarm'],
+				format: ['normal'],
 				derivation: {
 					type: DerivationType.STATIC_FALLBACK,
 					params: {
