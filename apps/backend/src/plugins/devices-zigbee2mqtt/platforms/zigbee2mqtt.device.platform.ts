@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { DataTypeType } from '../../../modules/devices/devices.constants';
+import { DataTypeType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mSetPayload } from '../interfaces/zigbee2mqtt.interface';
 import { Z2mMqttClientAdapterService } from '../services/mqtt-client-adapter.service';
+import { Z2mVirtualPropertyService } from '../services/virtual-property.service';
 
 export type IZigbee2mqttDevicePropertyData = IDevicePropertyData & {
 	device: Zigbee2mqttDeviceEntity;
@@ -30,7 +31,10 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		'DevicePlatform',
 	);
 
-	constructor(private readonly mqttAdapter: Z2mMqttClientAdapterService) {}
+	constructor(
+		private readonly mqttAdapter: Z2mMqttClientAdapterService,
+		private readonly virtualPropertyService: Z2mVirtualPropertyService,
+	) {}
 
 	getType(): string {
 		return DEVICES_ZIGBEE2MQTT_TYPE;
@@ -143,7 +147,35 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		const payload: Z2mSetPayload = {};
 
 		for (const { property, value } of propertyUpdates) {
-			// Property identifier = z2m property name
+			// Check if this is a virtual command property
+			if (property.identifier.startsWith('fb_virtual_')) {
+				// Extract property category from identifier (e.g., fb_virtual_command -> COMMAND)
+				const categoryStr = property.identifier.replace('fb_virtual_', '').toUpperCase();
+				const propertyCategory = PropertyCategory[categoryStr as keyof typeof PropertyCategory];
+
+				if (propertyCategory) {
+					// Get command translation
+					const translation = this.virtualPropertyService.getCommandTranslation(
+						channel.category,
+						propertyCategory,
+						value,
+					);
+
+					if (translation) {
+						this.logger.debug(
+							`Translating virtual command: ${property.identifier}=${value} -> ${translation.targetProperty}=${translation.translatedValue}`,
+						);
+						payload[translation.targetProperty] = translation.translatedValue;
+						continue;
+					} else {
+						this.logger.warn(`No translation found for virtual command: ${property.identifier}=${value}`);
+					}
+				}
+				// Skip virtual properties we can't translate
+				continue;
+			}
+
+			// Regular property - identifier = z2m property name
 			const z2mProperty = property.identifier;
 
 			// Convert value to appropriate format

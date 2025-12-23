@@ -631,7 +631,7 @@ export class Z2mExposesMapperService {
 			name: 'Status',
 			category: PropertyCategory.STATUS,
 			channelCategory: ChannelCategory.WINDOW_COVERING,
-			dataType: DataTypeType.STRING,
+			dataType: DataTypeType.ENUM,
 			// Status is read-only - we read the current state from Z2M
 			permissions: [PermissionType.READ_ONLY],
 			z2mProperty: expose.property ?? expose.name ?? 'state',
