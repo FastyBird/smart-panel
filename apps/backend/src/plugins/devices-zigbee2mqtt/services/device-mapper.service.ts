@@ -278,6 +278,33 @@ export class Z2mDeviceMapperService {
 				);
 			}
 
+			// Handle window_covering status from Z2M 'state' property
+			// Z2M sends: state: "OPEN" | "CLOSE" | "STOP"
+			// We normalize to: status = "opened" | "closed" | "stopped"
+			if (channel.category === ChannelCategory.WINDOW_COVERING && 'state' in state) {
+				const statusProp = properties.find((p) => p.identifier === PropertyCategory.STATUS.toString());
+
+				if (statusProp) {
+					const z2mState = state.state;
+					const normalizedStatus = this.normalizeCoverState(z2mState);
+
+					if (normalizedStatus) {
+						this.logger.debug(`Updating window covering status: ${JSON.stringify(z2mState)} -> ${normalizedStatus}`);
+
+						await this.channelsPropertiesService.update<
+							Zigbee2mqttChannelPropertyEntity,
+							UpdateZigbee2mqttChannelPropertyDto
+						>(
+							statusProp.id,
+							toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+								type: DEVICES_ZIGBEE2MQTT_TYPE,
+								value: normalizedStatus,
+							}),
+						);
+					}
+				}
+			}
+
 			// Also update link_quality in device_information channel
 			if (channel.category === ChannelCategory.DEVICE_INFORMATION && 'linkquality' in state) {
 				const linkQualityProp = properties.find(
@@ -641,6 +668,31 @@ export class Z2mDeviceMapperService {
 			.split('_')
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
 			.join(' ');
+	}
+
+	/**
+	 * Normalize Z2M cover state to spec format
+	 * Z2M uses: OPEN, CLOSE, STOP (uppercase, imperative)
+	 * Spec uses: opened, closed, stopped (lowercase, past tense)
+	 */
+	private normalizeCoverState(z2mState: unknown): string | null {
+		if (typeof z2mState !== 'string') {
+			return null;
+		}
+
+		const lower = z2mState.toLowerCase();
+
+		switch (lower) {
+			case 'open':
+				return 'opened';
+			case 'close':
+				return 'closed';
+			case 'stop':
+				return 'stopped';
+			default:
+				// For other values, return as-is (lowercase)
+				return lower;
+		}
 	}
 
 	/**
