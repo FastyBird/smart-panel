@@ -37,6 +37,8 @@ import {
 } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 
+import { Z2mVirtualPropertyService } from './virtual-property.service';
+import { VirtualPropertyContext, getVirtualPropertyDefinition } from './virtual-property.types';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
 
 /**
@@ -58,6 +60,7 @@ export class Z2mDeviceAdoptionService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly deviceValidationService: DeviceValidationService,
+		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 	) {}
 
 	/**
@@ -110,15 +113,19 @@ export class Z2mDeviceAdoptionService {
 			identifier: z2mDevice.friendlyName,
 			name: request.name,
 			category: request.category,
-			description: request.description ?? null,
+			description: request.description || null, // Convert empty string to null
 			enabled: request.enabled ?? true,
 		});
 
 		// Validate device DTO
 		const deviceErrors = await validate(createDeviceDto);
 		if (deviceErrors.length) {
-			this.logger.error(`[DEVICE ADOPTION] Device validation failed: ${JSON.stringify(deviceErrors)}`);
-			throw new DevicesZigbee2mqttValidationException('Device validation failed');
+			const errorMessages = deviceErrors.map((e) => {
+				const constraints = e.constraints ? Object.values(e.constraints).join(', ') : 'unknown error';
+				return `${e.property}: ${constraints}`;
+			});
+			this.logger.error(`[DEVICE ADOPTION] Device validation failed: ${errorMessages.join('; ')}`);
+			throw new DevicesZigbee2mqttValidationException(`Device validation failed: ${errorMessages.join('; ')}`);
 		}
 
 		// Create the device
@@ -138,7 +145,7 @@ export class Z2mDeviceAdoptionService {
 				if (channelDef.category === ChannelCategory.DEVICE_INFORMATION) {
 					continue;
 				}
-				await this.createChannel(device, channelDef);
+				await this.createChannel(device, channelDef, z2mDevice);
 			}
 
 			// Set initial connection state
@@ -189,6 +196,11 @@ export class Z2mDeviceAdoptionService {
 			createChannelDto,
 		);
 
+		// Get link quality from current state (Z2M provides this as 'linkquality')
+		const linkQuality = z2mDevice.currentState?.linkquality;
+		// Normalize to percentage (Z2M reports 0-255, spec expects 0-100)
+		const linkQualityPercent = typeof linkQuality === 'number' ? Math.round((linkQuality / 255) * 100) : null;
+
 		// Create device info properties
 		const infoProperties = [
 			{
@@ -214,6 +226,12 @@ export class Z2mDeviceAdoptionService {
 				name: 'Firmware Revision',
 				category: PropertyCategory.FIRMWARE_REVISION,
 				value: 'Unknown',
+			},
+			{
+				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
+				name: 'Link Quality',
+				category: PropertyCategory.LINK_QUALITY,
+				value: linkQualityPercent,
 			},
 		];
 
@@ -252,6 +270,7 @@ export class Z2mDeviceAdoptionService {
 	private async createChannel(
 		device: Zigbee2mqttDeviceEntity,
 		channelDef: AdoptDeviceRequestDto['channels'][0],
+		z2mDevice: Z2mRegisteredDevice,
 	): Promise<void> {
 		// Get channel spec
 		const channelSpec = this.getChannelSpec(channelDef.category);
@@ -278,15 +297,44 @@ export class Z2mDeviceAdoptionService {
 			createChannelDto,
 		);
 
+		// Build virtual property context for this channel
+		const virtualContext: VirtualPropertyContext = {
+			state: z2mDevice.currentState,
+			friendlyName: z2mDevice.friendlyName,
+			ieeeAddress: z2mDevice.ieeeAddress,
+		};
+
 		// Create properties
 		for (const propDef of channelDef.properties) {
 			const propSpec = channelSpec?.properties?.find((p) => p.category === propDef.category);
 
-			// Use z2mProperty as identifier for state matching
+			// Check if this is a virtual property (z2mProperty starts with "fb.virtual.")
+			const isVirtualProperty = propDef.z2mProperty.startsWith('fb.virtual.');
+
+			// For virtual properties, use a different identifier format and resolve the initial value
+			let identifier: string;
+			let initialValue: string | number | boolean | null = null;
+
+			if (isVirtualProperty) {
+				// Virtual property identifier: fb_virtual_{category}
+				identifier = `fb_virtual_${propDef.category.toLowerCase()}`;
+
+				// Get the virtual property definition and resolve its value
+				const virtualDef = getVirtualPropertyDefinition(channelDef.category, propDef.category);
+
+				if (virtualDef) {
+					initialValue = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
+					this.logger.debug(`[DEVICE ADOPTION] Resolved virtual property ${propDef.category} = ${initialValue}`);
+				}
+			} else {
+				// Regular property: use z2mProperty as identifier for state matching
+				identifier = propDef.z2mProperty;
+			}
+
 			const createPropertyDto = toInstance(CreateZigbee2mqttChannelPropertyDto, {
 				type: DEVICES_ZIGBEE2MQTT_TYPE,
-				identifier: propDef.z2mProperty,
-				name: this.formatPropertyName(propDef.z2mProperty),
+				identifier,
+				name: this.formatPropertyName(isVirtualProperty ? propDef.category : propDef.z2mProperty),
 				category: propDef.category,
 				data_type: propDef.dataType,
 				permissions: propDef.permissions,
@@ -294,7 +342,7 @@ export class Z2mDeviceAdoptionService {
 				format: propDef.format ?? propSpec?.format ?? null,
 				invalid: propSpec?.invalid ?? null,
 				step: propSpec?.step ?? null,
-				value: null,
+				value: initialValue,
 			});
 
 			const propertyErrors = await validate(createPropertyDto, { skipMissingProperties: true });

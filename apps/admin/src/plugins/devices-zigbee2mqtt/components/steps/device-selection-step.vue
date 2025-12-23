@@ -26,11 +26,11 @@
 					:label="item.label"
 					:value="item.value"
 				>
-					<div class="flex justify-between items-center">
-						<span>{{ item.label }}</span>
-						<span v-if="item.manufacturer || item.model" class="text-sm text-gray-500">
-							{{ [item.manufacturer, item.model].filter(Boolean).join(' - ') }}
-						</span>
+					<div class="flex flex-row justify-between items-center w-full overflow-hidden">
+						<div class="grow-1">{{ item.label }}</div>
+						<div v-if="item.manufacturer || item.model" class="text-sm">
+							{{ [item.manufacturer].filter(Boolean).join(' - ') }}
+						</div>
 					</div>
 				</el-option>
 			</el-select>
@@ -41,37 +41,38 @@
 			</template>
 		</el-form-item>
 
-		<el-alert
-			v-if="selectedDeviceInfo"
-			type="info"
-			:title="t('devicesZigbee2mqttPlugin.headings.device.deviceInfo')"
-			:closable="false"
-			show-icon
-		>
-			<dl class="grid grid-cols-[auto_1fr] gap-x-4 my-0">
-				<dt>{{ t('devicesZigbee2mqttPlugin.fields.devices.friendlyName.title') }}:</dt>
-				<dd class="m-0 inline-block font-bold">
-					{{ selectedDeviceInfo.friendlyName }}
-				</dd>
-				<template v-if="selectedDeviceInfo.manufacturer">
-					<dt>{{ t('devicesZigbee2mqttPlugin.fields.devices.manufacturer.title') }}:</dt>
-					<dd class="m-0">{{ selectedDeviceInfo.manufacturer }}</dd>
-				</template>
-				<template v-if="selectedDeviceInfo.model">
-					<dt>{{ t('devicesZigbee2mqttPlugin.fields.devices.model.title') }}:</dt>
-					<dd class="m-0">{{ selectedDeviceInfo.model }}</dd>
-				</template>
-			</dl>
-		</el-alert>
+		<div class="flex flex-col gap-2">
+			<el-alert
+				v-if="selectedDeviceInfo"
+				type="info"
+				:title="t('devicesZigbee2mqttPlugin.headings.device.deviceInfo')"
+				:closable="false"
+				show-icon
+			>
+				<dl class="grid grid-cols-[auto_1fr] gap-x-4 my-0">
+					<dt>{{ t('devicesZigbee2mqttPlugin.fields.devices.friendlyName.title') }}:</dt>
+					<dd class="m-0 inline-block font-bold">
+						{{ selectedDeviceInfo.friendlyName }}
+					</dd>
+					<template v-if="selectedDeviceInfo.manufacturer">
+						<dt>{{ t('devicesZigbee2mqttPlugin.fields.devices.manufacturer.title') }}:</dt>
+						<dd class="m-0">{{ selectedDeviceInfo.manufacturer }}</dd>
+					</template>
+					<template v-if="selectedDeviceInfo.model">
+						<dt>{{ t('devicesZigbee2mqttPlugin.fields.devices.model.title') }}:</dt>
+						<dd class="m-0">{{ selectedDeviceInfo.model }}</dd>
+					</template>
+				</dl>
+			</el-alert>
 
-		<el-alert
-			v-if="selectedDeviceInfo && !selectedDeviceInfo.available"
-			type="warning"
-			:title="t('devicesZigbee2mqttPlugin.messages.devices.deviceOffline')"
-			:closable="false"
-			show-icon
-			class="mt-4"
-		/>
+			<el-alert
+				v-if="selectedDeviceInfo && !selectedDeviceInfo.available"
+				type="warning"
+				:title="t('devicesZigbee2mqttPlugin.messages.devices.deviceOffline')"
+				:closable="false"
+				show-icon
+			/>
+		</div>
 	</el-form>
 </template>
 

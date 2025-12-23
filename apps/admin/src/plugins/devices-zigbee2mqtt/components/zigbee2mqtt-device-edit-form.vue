@@ -39,6 +39,8 @@
 				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.category.placeholder')"
 				name="category"
 				filterable
+				readonly
+				disabled
 			>
 				<el-option
 					v-for="item in categoriesOptions"
@@ -82,6 +84,29 @@
 				v-model="model.enabled"
 				name="enabled"
 			/>
+		</el-form-item>
+
+		<el-divider />
+
+		<el-form-item
+			:label="t('devicesZigbee2mqttPlugin.fields.devices.zigbee2mqttDeviceId.title')"
+			prop="identifier"
+		>
+			<el-select
+				v-model="model.identifier"
+				:placeholder="t('devicesZigbee2mqttPlugin.fields.devices.zigbee2mqttDeviceId.placeholder')"
+				:loading="devicesOptionsLoading"
+				name="identifier"
+				filterable
+				disabled
+			>
+				<el-option
+					v-for="item in devicesOptions"
+					:key="item.value"
+					:label="item.label"
+					:value="item.value"
+				/>
+			</el-select>
 		</el-form-item>
 	</el-form>
 </template>

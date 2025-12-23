@@ -7,12 +7,21 @@
 					:key="index"
 					:type="getWarningType(warning.type)"
 					:title="warning.message"
-					:description="warning.suggestion"
 					:closable="false"
 					show-icon
 				>
 					<template v-if="warning.exposeName" #title>
-						<span>{{ warning.exposeName }}: {{ warning.message }}</span>
+						{{ warning.exposeName }}
+					</template>
+
+					<template v-if="warning.exposeName" #default>
+						<div class="mb-1">
+							{{ warning.message }}
+						</div>
+						<small>{{ warning.suggestion }}</small>
+					</template>
+					<template v-else #default>
+						{{ warning.suggestion }}
 					</template>
 				</el-alert>
 			</div>

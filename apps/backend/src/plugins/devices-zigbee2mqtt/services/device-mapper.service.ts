@@ -32,6 +32,12 @@ import {
 import { Z2mDevice, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 
 import { MappedChannel, MappedProperty, Z2mExposesMapperService } from './exposes-mapper.service';
+import { Z2mVirtualPropertyService } from './virtual-property.service';
+import {
+	VirtualPropertyContext,
+	getVirtualPropertiesForChannel,
+	getVirtualPropertyDefinition,
+} from './virtual-property.types';
 
 /**
  * Device Mapper Service
@@ -59,6 +65,7 @@ export class Z2mDeviceMapperService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly exposesMapper: Z2mExposesMapperService,
+		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 	) {}
 
 	/**
@@ -151,7 +158,17 @@ export class Z2mDeviceMapperService {
 
 		// Map exposes to channels and properties
 		const mappedChannels = this.exposesMapper.mapExposes(definition.exposes);
-		await this.createChannelsAndProperties(device, mappedChannels);
+
+		// Build virtual property context
+		const ieeeAddress = 'ieee_address' in z2mDevice ? z2mDevice.ieee_address : z2mDevice.ieeeAddress;
+		const currentState = 'currentState' in z2mDevice ? z2mDevice.currentState : {};
+		const virtualContext: VirtualPropertyContext = {
+			state: currentState,
+			friendlyName,
+			ieeeAddress,
+		};
+
+		await this.createChannelsAndProperties(device, mappedChannels, virtualContext);
 
 		return device;
 	}
@@ -185,6 +202,13 @@ export class Z2mDeviceMapperService {
 
 		this.logger.debug(`Found ${channels.length} channels for device ${friendlyName}`);
 
+		// Build virtual property context
+		const virtualContext: VirtualPropertyContext = {
+			state,
+			friendlyName,
+			ieeeAddress: '', // Not available in state update context
+		};
+
 		for (const channel of channels) {
 			// Get all properties for this channel
 			const properties = await this.channelsPropertiesService.findAll<Zigbee2mqttChannelPropertyEntity>(
@@ -193,19 +217,53 @@ export class Z2mDeviceMapperService {
 			);
 
 			for (const property of properties) {
-				// Property identifier = z2m property name
-				const z2mProperty = property.identifier;
+				const propertyIdentifier = property.identifier;
 
-				if (!(z2mProperty in state)) {
+				// Skip properties without identifier
+				if (!propertyIdentifier) {
+					this.logger.warn(`Property ${property.id} has no identifier, skipping`);
 					continue;
 				}
 
-				const value = state[z2mProperty];
+				// Check if this is a virtual property (identifier starts with "fb_virtual_")
+				if (propertyIdentifier.startsWith('fb_virtual_')) {
+					// Virtual property - recalculate value from Z2M state
+					const virtualDef = getVirtualPropertyDefinition(channel.category, property.category);
 
-				// Convert value to appropriate type
-				const convertedValue = this.convertValue(value);
+					if (virtualDef) {
+						const newValue = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
 
-				this.logger.debug(`Updating property ${property.identifier} = ${JSON.stringify(value)} -> ${convertedValue}`);
+						this.logger.debug(
+							`Updating virtual property ${propertyIdentifier} = ${newValue} (channel: ${channel.category})`,
+						);
+
+						await this.channelsPropertiesService.update<
+							Zigbee2mqttChannelPropertyEntity,
+							UpdateZigbee2mqttChannelPropertyDto
+						>(
+							property.id,
+							toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+								type: DEVICES_ZIGBEE2MQTT_TYPE,
+								value: newValue,
+							}),
+						);
+					}
+					continue;
+				}
+
+				// Regular property - update from Z2M state if present
+				if (!(propertyIdentifier in state)) {
+					continue;
+				}
+
+				const value = state[propertyIdentifier];
+
+				// Convert value to appropriate type based on property's data type
+				const convertedValue = this.convertValue(value, property.dataType);
+
+				this.logger.debug(
+					`Updating property ${propertyIdentifier} (${property.dataType}) = ${JSON.stringify(value)} -> ${convertedValue}`,
+				);
 
 				// Update property value
 				await this.channelsPropertiesService.update<
@@ -218,6 +276,32 @@ export class Z2mDeviceMapperService {
 						value: convertedValue,
 					}),
 				);
+			}
+
+			// Also update link_quality in device_information channel
+			if (channel.category === ChannelCategory.DEVICE_INFORMATION && 'linkquality' in state) {
+				const linkQualityProp = properties.find(
+					(p) => p.identifier === Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
+				);
+
+				if (linkQualityProp) {
+					const linkQuality = state.linkquality;
+					// Normalize to percentage (Z2M reports 0-255, spec expects 0-100)
+					const linkQualityPercent = typeof linkQuality === 'number' ? Math.round((linkQuality / 255) * 100) : null;
+
+					this.logger.debug(`Updating link_quality = ${linkQualityPercent}%`);
+
+					await this.channelsPropertiesService.update<
+						Zigbee2mqttChannelPropertyEntity,
+						UpdateZigbee2mqttChannelPropertyDto
+					>(
+						linkQualityProp.id,
+						toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+							type: DEVICES_ZIGBEE2MQTT_TYPE,
+							value: linkQualityPercent,
+						}),
+					);
+				}
 			}
 		}
 	}
@@ -278,6 +362,14 @@ export class Z2mDeviceMapperService {
 		const definition = z2mDevice.definition;
 		const ieeeAddress = 'ieee_address' in z2mDevice ? z2mDevice.ieee_address : z2mDevice.ieeeAddress;
 
+		// Get current state if available (Z2mRegisteredDevice has it)
+		const currentState = 'currentState' in z2mDevice ? z2mDevice.currentState : {};
+
+		// Get link quality from current state (Z2M provides this as 'linkquality')
+		const linkQuality = currentState?.linkquality;
+		// Normalize to percentage (Z2M reports 0-255, spec expects 0-100)
+		const linkQualityPercent = typeof linkQuality === 'number' ? Math.round((linkQuality / 255) * 100) : null;
+
 		// Find or create channel
 		let channel = await this.channelsService.findOneBy<Zigbee2mqttChannelEntity>(
 			'identifier',
@@ -302,36 +394,44 @@ export class Z2mDeviceMapperService {
 
 		// Create/update device info properties
 		// Properties must match the device_information channel spec
-		const infoProperties = [
-			{
-				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.MANUFACTURER,
-				name: 'Manufacturer',
-				category: PropertyCategory.MANUFACTURER,
-				value: definition?.vendor ?? 'Unknown',
-			},
-			{
-				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
-				name: 'Model',
-				category: PropertyCategory.MODEL,
-				value: definition?.model ?? 'Unknown',
-			},
-			{
-				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
-				name: 'Serial Number',
-				category: PropertyCategory.SERIAL_NUMBER,
-				value: ieeeAddress,
-			},
-			{
-				identifier: Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_REVISION,
-				name: 'Firmware Revision',
-				category: PropertyCategory.FIRMWARE_REVISION,
-				value: 'Unknown',
-			},
-		];
-
-		for (const info of infoProperties) {
-			await this.createOrUpdateInfoProperty(channel, info.identifier, info.name, info.category, info.value);
-		}
+		await this.createOrUpdateInfoProperty(
+			channel,
+			Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.MANUFACTURER,
+			'Manufacturer',
+			PropertyCategory.MANUFACTURER,
+			definition?.vendor ?? 'Unknown',
+		);
+		await this.createOrUpdateInfoProperty(
+			channel,
+			Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
+			'Model',
+			PropertyCategory.MODEL,
+			definition?.model ?? 'Unknown',
+		);
+		await this.createOrUpdateInfoProperty(
+			channel,
+			Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
+			'Serial Number',
+			PropertyCategory.SERIAL_NUMBER,
+			ieeeAddress,
+		);
+		await this.createOrUpdateInfoProperty(
+			channel,
+			Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_REVISION,
+			'Firmware Revision',
+			PropertyCategory.FIRMWARE_REVISION,
+			'Unknown',
+		);
+		await this.createOrUpdateInfoProperty(
+			channel,
+			Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
+			'Link Quality',
+			PropertyCategory.LINK_QUALITY,
+			linkQualityPercent,
+			DataTypeType.UCHAR,
+			'%',
+			[0, 100],
+		);
 	}
 
 	/**
@@ -342,7 +442,10 @@ export class Z2mDeviceMapperService {
 		identifier: string,
 		name: string,
 		category: PropertyCategory,
-		value: string,
+		value: string | number | null,
+		dataType: DataTypeType = DataTypeType.STRING,
+		unit: string | null = null,
+		format: string[] | number[] | null = null,
 	): Promise<void> {
 		const property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
 			'identifier',
@@ -357,8 +460,10 @@ export class Z2mDeviceMapperService {
 				identifier,
 				name,
 				category,
-				data_type: DataTypeType.STRING,
+				data_type: dataType,
 				permissions: [PermissionType.READ_ONLY],
+				unit,
+				format,
 				value,
 			};
 
@@ -386,6 +491,7 @@ export class Z2mDeviceMapperService {
 	private async createChannelsAndProperties(
 		device: Zigbee2mqttDeviceEntity,
 		mappedChannels: MappedChannel[],
+		virtualContext: VirtualPropertyContext,
 	): Promise<void> {
 		// Group properties by channel to merge sensor channels
 		const channelMap = new Map<string, MappedChannel>();
@@ -408,14 +514,18 @@ export class Z2mDeviceMapperService {
 
 		// Create each channel
 		for (const mappedChannel of channelMap.values()) {
-			await this.createChannel(device, mappedChannel);
+			await this.createChannel(device, mappedChannel, virtualContext);
 		}
 	}
 
 	/**
 	 * Create a single channel with its properties
 	 */
-	private async createChannel(device: Zigbee2mqttDeviceEntity, mappedChannel: MappedChannel): Promise<void> {
+	private async createChannel(
+		device: Zigbee2mqttDeviceEntity,
+		mappedChannel: MappedChannel,
+		virtualContext: VirtualPropertyContext,
+	): Promise<void> {
 		// Find or create channel
 		let channel = await this.channelsService.findOneBy<Zigbee2mqttChannelEntity>(
 			'identifier',
@@ -438,10 +548,83 @@ export class Z2mDeviceMapperService {
 			);
 		}
 
-		// Create properties
+		// Create regular properties
 		for (const mappedProperty of mappedChannel.properties) {
 			await this.createProperty(channel, mappedProperty);
 		}
+
+		// Add virtual properties for missing required properties
+		await this.createVirtualProperties(channel, mappedChannel, virtualContext);
+	}
+
+	/**
+	 * Create virtual properties for a channel
+	 */
+	private async createVirtualProperties(
+		channel: Zigbee2mqttChannelEntity,
+		mappedChannel: MappedChannel,
+		virtualContext: VirtualPropertyContext,
+	): Promise<void> {
+		// Get virtual property definitions for this channel category
+		const virtualDefs = getVirtualPropertiesForChannel(mappedChannel.category);
+		if (virtualDefs.length === 0) {
+			return;
+		}
+
+		// Get existing property categories
+		const existingCategories = new Set(mappedChannel.properties.map((p) => p.category));
+
+		for (const virtualDef of virtualDefs) {
+			// Skip if this property category already exists
+			if (existingCategories.has(virtualDef.property_category)) {
+				continue;
+			}
+
+			// Create virtual property
+			const identifier = `fb_virtual_${virtualDef.property_category.toLowerCase()}`;
+			const value = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
+
+			this.logger.debug(
+				`Creating virtual property ${identifier} for channel ${mappedChannel.category}, value=${value}`,
+			);
+
+			const format =
+				virtualDef.format && virtualDef.format.length > 0
+					? Array.isArray(virtualDef.format) &&
+						virtualDef.format.length === 2 &&
+						typeof virtualDef.format[0] === 'number'
+						? (virtualDef.format as [number, number])
+						: (virtualDef.format as string[])
+					: null;
+
+			const createDto: CreateZigbee2mqttChannelPropertyDto = {
+				type: DEVICES_ZIGBEE2MQTT_TYPE,
+				identifier,
+				name: this.formatPropertyName(virtualDef.property_category),
+				category: virtualDef.property_category,
+				data_type: virtualDef.data_type,
+				permissions: virtualDef.permissions,
+				unit: virtualDef.unit ?? null,
+				format,
+				value,
+			};
+
+			await this.channelsPropertiesService.create<
+				Zigbee2mqttChannelPropertyEntity,
+				CreateZigbee2mqttChannelPropertyDto
+			>(channel.id, createDto);
+		}
+	}
+
+	/**
+	 * Format property name from category
+	 */
+	private formatPropertyName(category: PropertyCategory | string): string {
+		return category
+			.toString()
+			.split('_')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+			.join(' ');
 	}
 
 	/**
@@ -489,22 +672,44 @@ export class Z2mDeviceMapperService {
 	}
 
 	/**
-	 * Convert value to appropriate type
+	 * Convert value to appropriate type based on property data type
+	 * Z2M may send floats for integer properties, so we need to round them
 	 */
-	private convertValue(value: unknown): string | number | boolean {
+	private convertValue(value: unknown, dataType?: DataTypeType): string | number | boolean | null {
+		if (value === null || value === undefined) {
+			return null;
+		}
+
 		if (typeof value === 'boolean') {
 			return value;
 		}
+
 		if (typeof value === 'number') {
-			return value;
+			// Transform numeric values based on expected data type
+			switch (dataType) {
+				case DataTypeType.CHAR:
+				case DataTypeType.UCHAR:
+				case DataTypeType.SHORT:
+				case DataTypeType.USHORT:
+				case DataTypeType.INT:
+				case DataTypeType.UINT:
+					// Integer types - round the value
+					return Math.round(value);
+				case DataTypeType.FLOAT:
+				default:
+					// Float or unknown - keep as-is
+					return value;
+			}
 		}
+
 		if (typeof value === 'string') {
 			return value;
 		}
+
 		if (typeof value === 'object' && value !== null) {
 			return JSON.stringify(value);
 		}
-		// For null, undefined, or other primitives
-		return value === null ? 'null' : value === undefined ? 'undefined' : JSON.stringify(value);
+
+		return JSON.stringify(value);
 	}
 }

@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 
-import { getErrorReason, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, snakeToCamel, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { devicesStoreKey, type IDevice } from '../../../modules/devices';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
@@ -43,9 +43,9 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 			});
 
 			if (typeof responseData !== 'undefined' && responseData.data) {
-				// Parse and validate the response
+				// Parse and validate the response (convert snake_case from API to camelCase)
 				const parsedDevice = Zigbee2mqttDeviceSchema.safeParse({
-					...responseData.data,
+					...snakeToCamel(responseData.data),
 					type: DEVICES_ZIGBEE2MQTT_TYPE,
 				});
 

@@ -1,5 +1,5 @@
 <template>
-	<el-card shadow="never">
+	<el-card shadow="never" header-class="py-2! px-4!" body-class="px-0!">
 		<template #header>
 			<div class="font-semibold">
 				{{ t('devicesZigbee2mqttPlugin.headings.mapping.summary') }}
@@ -27,7 +27,7 @@
 
 		<el-divider />
 
-		<div class="grid grid-cols-2 gap-4 text-sm">
+		<div class="grid grid-cols-1 gap-4 text-sm mx-4">
 			<div>
 				<span class="font-medium">{{ t('devicesZigbee2mqttPlugin.fields.mapping.deviceName') }}:</span>
 				<span class="ml-2">{{ preview.z2mDevice.friendlyName }}</span>

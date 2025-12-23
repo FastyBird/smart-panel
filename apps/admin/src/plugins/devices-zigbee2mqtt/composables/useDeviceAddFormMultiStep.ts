@@ -5,7 +5,13 @@ import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
 import { deepClone, getSchemaDefaults, router, useFlashMessage, useLogger } from '../../../common';
-import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import {
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleChannelPropertyDataType,
+	DevicesModuleChannelPropertyPermissions,
+	DevicesModuleDeviceCategory,
+} from '../../../openapi.constants';
 import { FormResult, type FormResultType, type IDevice, RouteNames as DevicesRouteNames } from '../../../modules/devices';
 import { DevicesApiException } from '../../../modules/devices/devices.exceptions';
 import { DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
@@ -310,47 +316,73 @@ export const useDeviceAddFormMultiStep = ({ id }: IUseDeviceAddFormMultiStepProp
 					throw new DevicesZigbee2mqttValidationException(t('devicesZigbee2mqttPlugin.messages.mapping.notReadyToAdopt'));
 				}
 
-				// Build channels from preview exposes
-				const channels = preview.value.exposes
-					.filter((expose) => {
-						if (expose.status === 'skipped') {
-							return false;
-						}
-						const override = exposeOverrides.value?.find((o) => o.exposeName === expose.exposeName);
-						if (override?.skip) {
-							return false;
-						}
-						if (!expose.suggestedChannel && !override?.channelCategory) {
-							return false;
-						}
-						const finalChannelCategory = override?.channelCategory || expose.suggestedChannel?.category;
-						if (finalChannelCategory === DevicesModuleChannelCategory.generic) {
-							return false;
-						}
-						if (!expose.suggestedProperties || expose.suggestedProperties.length === 0) {
-							return false;
-						}
-						return true;
-					})
-					.map((expose) => {
-						const override = exposeOverrides.value?.find((o) => o.exposeName === expose.exposeName);
-						const channelCategory = override?.channelCategory || expose.suggestedChannel!.category;
-						const channelName = expose.suggestedChannel?.name || expose.exposeName;
+				// Build channels from preview exposes - GROUP by channel category
+				const channelMap = new Map<
+					DevicesModuleChannelCategory,
+					{
+						category: DevicesModuleChannelCategory;
+						name: string;
+						identifier: string;
+						properties: {
+							category: DevicesModuleChannelPropertyCategory;
+							z2mProperty: string;
+							dataType: DevicesModuleChannelPropertyDataType;
+							permissions: DevicesModuleChannelPropertyPermissions[];
+							unit: string | null;
+							format: string[] | number[] | null;
+						}[];
+					}
+				>();
 
-						return {
-							identifier: expose.exposeName,
-							category: channelCategory,
-							name: channelName,
-							properties: expose.suggestedProperties.map((prop) => ({
+				for (const expose of preview.value.exposes) {
+					// Skip filtered exposes
+					if (expose.status === 'skipped') {
+						continue;
+					}
+					const override = exposeOverrides.value?.find((o) => o.exposeName === expose.exposeName);
+					if (override?.skip) {
+						continue;
+					}
+					if (!expose.suggestedChannel && !override?.channelCategory) {
+						continue;
+					}
+					const finalChannelCategory = override?.channelCategory || expose.suggestedChannel?.category;
+					if (!finalChannelCategory || finalChannelCategory === DevicesModuleChannelCategory.generic) {
+						continue;
+					}
+					if (!expose.suggestedProperties || expose.suggestedProperties.length === 0) {
+						continue;
+					}
+
+					// Get or create channel for this category
+					let channel = channelMap.get(finalChannelCategory);
+					if (!channel) {
+						channel = {
+							category: finalChannelCategory,
+							name: expose.suggestedChannel?.name || finalChannelCategory,
+							identifier: finalChannelCategory, // Use category as identifier
+							properties: [],
+						};
+						channelMap.set(finalChannelCategory, channel);
+					}
+
+					// Add properties from this expose to the channel
+					for (const prop of expose.suggestedProperties) {
+						// Avoid duplicate properties (by z2mProperty)
+						if (!channel.properties.find((p) => p.z2mProperty === prop.z2mProperty)) {
+							channel.properties.push({
 								category: prop.category,
 								z2mProperty: prop.z2mProperty,
 								dataType: prop.dataType,
 								permissions: prop.permissions,
 								unit: prop.unit ?? null,
 								format: prop.format ?? null,
-							})),
-						};
-					});
+							});
+						}
+					}
+				}
+
+				const channels = Array.from(channelMap.values());
 
 				const adoptRequest: IAdoptDeviceRequest = {
 					ieeeAddress: model.ieeeAddress,

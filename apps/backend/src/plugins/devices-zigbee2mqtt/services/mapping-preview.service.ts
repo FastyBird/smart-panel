@@ -29,6 +29,8 @@ import {
 } from '../models/zigbee2mqtt-response.model';
 
 import { MappedChannel, MappedProperty, Z2mExposesMapperService } from './exposes-mapper.service';
+import { Z2mVirtualPropertyService } from './virtual-property.service';
+import { VirtualPropertyContext } from './virtual-property.types';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
 
 /**
@@ -47,6 +49,7 @@ export class Z2mMappingPreviewService {
 		private readonly zigbee2mqttService: Zigbee2mqttService,
 		private readonly exposesMapper: Z2mExposesMapperService,
 		private readonly devicesService: DevicesService,
+		private readonly virtualPropertyService: Z2mVirtualPropertyService,
 	) {}
 
 	/**
@@ -86,6 +89,7 @@ export class Z2mMappingPreviewService {
 			z2mDevice.definition.exposes,
 			overriddenChannels,
 			z2mDevice.currentState,
+			z2mDevice,
 			request,
 		);
 
@@ -181,6 +185,7 @@ export class Z2mMappingPreviewService {
 		exposes: Z2mExpose[],
 		mappedChannels: MappedChannel[],
 		currentState: Record<string, unknown>,
+		z2mDevice: Z2mRegisteredDevice,
 		request?: MappingPreviewRequestDto,
 	): Z2mExposeMappingPreviewModel[] {
 		const previews: Z2mExposeMappingPreviewModel[] = [];
@@ -193,12 +198,32 @@ export class Z2mMappingPreviewService {
 			}
 		}
 
+		// Build a map of channel category to all property categories from all exposes
+		// This is used to check if a channel has all required properties across ALL exposes
+		const channelPropertyCategories = new Map<string, Set<PropertyCategory>>();
+		for (const channel of mappedChannels) {
+			const categorySet = channelPropertyCategories.get(channel.category) ?? new Set();
+			for (const prop of channel.properties) {
+				categorySet.add(prop.category);
+			}
+			channelPropertyCategories.set(channel.category, categorySet);
+		}
+
 		// Build a set of skipped exposes
 		const skippedExposes = new Set(request?.exposeOverrides?.filter((o) => o.skip).map((o) => o.exposeName) ?? []);
+
+		// Exposes that are automatically managed and should not appear in the preview
+		// These are added automatically to device_information channel during adoption
+		const hiddenExposes = new Set(['linkquality', 'link_quality']);
 
 		// Process each expose
 		for (const expose of exposes) {
 			const exposeName = expose.property ?? expose.name ?? expose.type;
+
+			// Skip hidden exposes (auto-managed by the system)
+			if (hiddenExposes.has(exposeName)) {
+				continue;
+			}
 
 			// Skip specific types (they have features that are mapped separately)
 			if (['light', 'switch', 'fan', 'cover', 'lock', 'climate'].includes(expose.type)) {
@@ -210,7 +235,17 @@ export class Z2mMappingPreviewService {
 						const mapping = propertyMap.get(featureName);
 						const isSkipped = skippedExposes.has(featureName);
 
-						previews.push(this.buildExposePreview(feature, featureName, mapping, currentState, isSkipped));
+						previews.push(
+							this.buildExposePreview(
+								feature,
+								featureName,
+								mapping,
+								currentState,
+								isSkipped,
+								z2mDevice,
+								channelPropertyCategories,
+							),
+						);
 					}
 				}
 				continue;
@@ -219,7 +254,9 @@ export class Z2mMappingPreviewService {
 			const mapping = propertyMap.get(exposeName);
 			const isSkipped = skippedExposes.has(exposeName);
 
-			previews.push(this.buildExposePreview(expose, exposeName, mapping, currentState, isSkipped));
+			previews.push(
+				this.buildExposePreview(expose, exposeName, mapping, currentState, isSkipped, z2mDevice, channelPropertyCategories),
+			);
 		}
 
 		return previews;
@@ -234,6 +271,8 @@ export class Z2mMappingPreviewService {
 		mapping: { channel: MappedChannel; property: MappedProperty } | undefined,
 		currentState: Record<string, unknown>,
 		isSkipped: boolean,
+		z2mDevice: Z2mRegisteredDevice,
+		channelPropertyCategories: Map<string, Set<PropertyCategory>>,
 	): Z2mExposeMappingPreviewModel {
 		// Determine status
 		let status: 'mapped' | 'partial' | 'unmapped' | 'skipped';
@@ -277,17 +316,55 @@ export class Z2mMappingPreviewService {
 			});
 		}
 
-		// Check for missing required properties
+		// Check for missing required properties and add virtual properties if available
+		// Use the aggregated channel properties to check across ALL exposes for this channel
 		const missingRequiredProperties: PropertyCategory[] = [];
 		if (mapping && !isSkipped) {
 			const channelSpec = this.getChannelSpec(mapping.channel.category);
 			if (channelSpec) {
 				const requiredProps = channelSpec.properties.filter((p) => p.required);
-				const mappedCategories = new Set(suggestedProperties.map((p) => p.category));
+
+				// Get ALL property categories mapped to this channel from ALL exposes
+				const allChannelCategories = channelPropertyCategories.get(mapping.channel.category) ?? new Set();
+				const mappedCategories = new Set([...allChannelCategories, ...suggestedProperties.map((p) => p.category)]);
+
+				// Build virtual property context
+				const virtualContext: VirtualPropertyContext = {
+					state: currentState,
+					friendlyName: z2mDevice.friendlyName,
+					ieeeAddress: z2mDevice.ieeeAddress,
+				};
 
 				for (const reqProp of requiredProps) {
 					if (!mappedCategories.has(reqProp.category)) {
-						missingRequiredProperties.push(reqProp.category);
+						// Check if we can provide this as a virtual property
+						const virtualProps = this.virtualPropertyService.getMissingVirtualProperties(
+							mapping.channel.category,
+							Array.from(mappedCategories),
+							[reqProp.category],
+							virtualContext,
+						);
+
+						if (virtualProps.length > 0) {
+							// Add virtual property to suggested properties
+							for (const vp of virtualProps) {
+								suggestedProperties.push({
+									category: vp.category,
+									name: this.getPropertyName(vp.category),
+									z2mProperty: `fb.virtual.${vp.category}`, // Virtual marker
+									dataType: vp.dataType,
+									permissions: vp.permissions,
+									unit: vp.unit ?? null,
+									format: vp.format ?? null,
+									required: true,
+									currentValue: vp.value,
+								});
+								mappedCategories.add(vp.category);
+							}
+						} else {
+							// Cannot provide virtual property, mark as missing
+							missingRequiredProperties.push(reqProp.category);
+						}
 					}
 				}
 			}
@@ -301,6 +378,16 @@ export class Z2mMappingPreviewService {
 			suggestedProperties,
 			missingRequiredProperties,
 		};
+	}
+
+	/**
+	 * Get human-readable property name from category
+	 */
+	private getPropertyName(category: PropertyCategory): string {
+		return category
+			.split('_')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+			.join(' ');
 	}
 
 	/**

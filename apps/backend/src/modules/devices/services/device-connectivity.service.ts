@@ -73,8 +73,9 @@ export class DeviceConnectivityService {
 			channel = await this.channelsService.create({
 				device: device.id,
 				type: device.type,
+				identifier: 'device_information',
 				category: ChannelCategory.DEVICE_INFORMATION,
-				name: 'Device information',
+				name: 'Device Information',
 			});
 		}
 
@@ -94,6 +95,8 @@ export class DeviceConnectivityService {
 		if (property === null && create) {
 			property = await this.channelsPropertiesService.create(channel.id, {
 				type: channel.type,
+				identifier: 'connection_state',
+				name: 'Connection State',
 				category: PropertyCategory.STATUS,
 				permissions: [PermissionType.READ_ONLY],
 				data_type: DataTypeType.ENUM,

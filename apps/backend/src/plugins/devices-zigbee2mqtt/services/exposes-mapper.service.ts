@@ -220,6 +220,8 @@ export class Z2mExposesMapperService {
 			'color_power_on_behavior',
 			// Identification
 			'identify',
+			// Link quality - handled automatically by device_information channel
+			'linkquality',
 		];
 		if (skipProperties.includes(propertyName)) {
 			this.logger.debug(`Skipping settings property: ${propertyName}`);
@@ -509,11 +511,11 @@ export class Z2mExposesMapperService {
 			if (name.includes('pressure')) {
 				return PropertyCategory.MEASURED;
 			}
-			if (name.includes('illuminance') || name.includes('lux') || name.includes('light')) {
-				return PropertyCategory.MEASURED;
+			if (name.includes('illuminance') || name.includes('lux')) {
+				return PropertyCategory.DENSITY;
 			}
-			if (name.includes('battery')) {
-				return PropertyCategory.LEVEL;
+			if (name === 'battery') {
+				return PropertyCategory.PERCENTAGE;
 			}
 			if (name.includes('voltage')) {
 				return PropertyCategory.VOLTAGE;
