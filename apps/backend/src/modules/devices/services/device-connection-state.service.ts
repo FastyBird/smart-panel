@@ -208,12 +208,15 @@ export class DeviceConnectionStateService {
 
 			await this.influxDbService.query(query);
 
-			this.logger.log(`Deleted device status for id=${deviceId}`, { resource: deviceId });
+			this.logger.log(
+				`Deleted device status for propertyId=${property.id}${deviceId ? ` deviceId=${deviceId}` : ''}`,
+				deviceId ? { resource: deviceId } : {},
+			);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Failed to delete device status from InfluxDB propertyId=${property.id} error=${err.message}`, {
-				resource: deviceId,
+				...(deviceId ? { resource: deviceId } : {}),
 				stack: err.stack,
 			});
 		}
