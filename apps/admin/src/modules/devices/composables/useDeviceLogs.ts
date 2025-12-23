@@ -187,7 +187,12 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 			}
 
 			if (on) {
-				timer = setInterval(() => void fetchLogs(), 3000);
+				timer = setInterval(() => {
+					// Skip if a request is already in flight to prevent concurrent requests
+					if (!isLoading.value) {
+						void fetchLogs();
+					}
+				}, 3000);
 			}
 		}
 	);
