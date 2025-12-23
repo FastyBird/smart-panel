@@ -474,9 +474,9 @@ watch(
 watch(
 	(): boolean => props.remoteFormReset,
 	async (val: boolean): Promise<void> => {
-		emit('update:remote-form-reset', false);
-
 		if (val) {
+			emit('update:remote-form-reset', false);
+
 			activeStep.value = 'one';
 			reachedSteps.value = new Set(['one']);
 
