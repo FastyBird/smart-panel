@@ -55,15 +55,20 @@ export class StateChangedEventService implements WsEventService {
 		private readonly virtualPropertyService: VirtualPropertyService,
 	) {}
 
-	// Invalidate cache only on structural changes (create/delete), NOT on value updates.
-	// Property values come from HA state, not from the cache. Invalidating on every
-	// CHANNEL_PROPERTY_UPDATED causes a race condition where the cache is reloaded
-	// before InfluxDB writes complete, resulting in stale values.
+	// Invalidate cache on structural changes (create/delete/update).
+	// This ensures that when users modify property metadata like haEntityId or haAttribute
+	// through the API, the cache is refreshed and new mappings take effect immediately.
+	// Note: While value updates also trigger CHANNEL_PROPERTY_UPDATED, this is acceptable
+	// because the cache reload fetches the latest metadata from the database, and HA state
+	// values are always applied fresh from incoming WebSocket events.
 	@OnEvent(DevicesModuleEventType.DEVICE_CREATED)
+	@OnEvent(DevicesModuleEventType.DEVICE_UPDATED)
 	@OnEvent(DevicesModuleEventType.DEVICE_DELETED)
 	@OnEvent(DevicesModuleEventType.CHANNEL_CREATED)
+	@OnEvent(DevicesModuleEventType.CHANNEL_UPDATED)
 	@OnEvent(DevicesModuleEventType.CHANNEL_DELETED)
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_CREATED)
+	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_DELETED)
 	handleDevicesUpdatedEvent() {
 		this.entityIdToHaDevice = null;
