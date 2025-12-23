@@ -207,10 +207,17 @@ export class DeviceAdoptionService {
 
 		if (existingDeviceInfoChannel) {
 			this.logger.debug(
-				`[DEVICE ADOPTION] Device information channel already exists for device ${device.id}, merging mapping properties into it`,
+				`[DEVICE ADOPTION] Device information channel already exists for device ${device.id}, adding base properties and merging mapping properties`,
 			);
 
-			// If channel exists, merge mapping properties into it instead of creating a new one
+			// Add base properties from HA registry to existing channel
+			await this.addBasePropertiesToExistingChannel(
+				existingDeviceInfoChannel.id,
+				haDeviceInformationProperties,
+				categorySpec,
+			);
+
+			// Merge additional properties from mapping channels (e.g., link_quality from RSSI sensors)
 			if (mappingDeviceInfoChannels.length > 0) {
 				await this.mergePropertiesIntoExistingChannel(
 					existingDeviceInfoChannel.id,
@@ -442,6 +449,80 @@ export class DeviceAdoptionService {
 						error,
 					);
 				}
+			}
+		}
+	}
+
+	/**
+	 * Add base properties from HA device registry to an existing device_information channel
+	 */
+	private async addBasePropertiesToExistingChannel(
+		channelId: string,
+		haDeviceInformationProperties: Record<PropertyCategory, unknown>,
+		categorySpec: ChannelSpecModel,
+	): Promise<void> {
+		// Get existing properties to avoid duplicates
+		const existingProperties = await this.channelsPropertiesService.findAll(channelId, DEVICES_HOME_ASSISTANT_TYPE);
+		const existingPropertyCategories = new Set(existingProperties.map((p) => p.category));
+
+		// Add each base property if not already present
+		for (const [category, value] of Object.entries(haDeviceInformationProperties)) {
+			// Skip null/undefined values
+			if (value == null) {
+				continue;
+			}
+
+			// Skip if property already exists
+			if (existingPropertyCategories.has(category as PropertyCategory)) {
+				this.logger.debug(`[DEVICE ADOPTION] Property ${category} already exists in channel, skipping`);
+				continue;
+			}
+
+			const spec = categorySpec.properties.find((p) => p.category === (category as PropertyCategory));
+			if (!spec) {
+				this.logger.debug(`[DEVICE ADOPTION] Property ${category} not found in spec, skipping`);
+				continue;
+			}
+
+			// Convert value to string safely
+			let stringValue: string;
+			if (typeof value === 'object' && value !== null) {
+				stringValue = JSON.stringify(value);
+			} else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+				stringValue = String(value);
+			} else {
+				stringValue = '';
+			}
+
+			const createPropertyDto = toInstance(CreateHomeAssistantChannelPropertyDto, {
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: category as PropertyCategory,
+				permissions: spec.permissions,
+				data_type: spec.data_type,
+				unit: spec.unit,
+				format: spec.format,
+				invalid: spec.invalid,
+				step: spec.step,
+				value: stringValue,
+				ha_entity_id: null,
+				ha_attribute: null,
+			});
+
+			const propertyValidationErrors = await validate(createPropertyDto, { skipMissingProperties: true });
+			if (propertyValidationErrors.length) {
+				this.logger.warn(
+					`[DEVICE ADOPTION] Base property ${category} validation failed: ${JSON.stringify(propertyValidationErrors)}, skipping`,
+				);
+				continue;
+			}
+
+			try {
+				await this.channelsPropertiesService.create(channelId, createPropertyDto);
+				this.logger.debug(
+					`[DEVICE ADOPTION] Added base property ${category} with value "${stringValue}" to existing device_information channel`,
+				);
+			} catch (error) {
+				this.logger.error(`[DEVICE ADOPTION] Failed to add base property ${category} to channel ${channelId}:`, error);
 			}
 		}
 	}

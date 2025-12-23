@@ -155,16 +155,25 @@ export class MapperService {
 	): MappedToHa[] {
 		const updates: MappedToHa[] = [];
 
+		// Build a map from channel ID to channel for quick lookup
+		// Properties have a channel field (either string ID or ChannelEntity) that we can use
+		const channelMap = new Map<string, HomeAssistantChannelEntity>();
+		for (const channel of channels) {
+			channelMap.set(channel.id, channel);
+		}
+
 		for (const property of properties) {
 			const value = values.get(property.id);
 			if (value === undefined) {
 				continue;
 			}
 
-			// Find the channel for this property to get the category
-			const channel = channels.find((ch) => ch.properties.some((p) => p.id === property.id));
+			// Find the channel for this property using the property's channel reference
+			// property.channel can be either a string (channel ID) or a ChannelEntity
+			const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+			const channel = channelId ? channelMap.get(channelId) : undefined;
 			if (!channel) {
-				this.logger.warn(`Could not find channel for virtual property ${property.id}`);
+				this.logger.warn(`Could not find channel for virtual property ${property.id} (channelId: ${channelId})`);
 				continue;
 			}
 
