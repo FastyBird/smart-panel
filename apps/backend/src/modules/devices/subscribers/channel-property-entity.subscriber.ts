@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
-import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { DeviceConnectionStateService } from '../services/device-connection-state.service';
 import { PropertyValueService } from '../services/property-value.service';
 
@@ -24,9 +24,26 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 		return ChannelPropertyEntity;
 	}
 
+	/**
+	 * Extract the device ID from the property's channel relation for logging purposes.
+	 * Falls back to the provided fallback ID if the channel/device relation is not loaded.
+	 */
+	private getResourceId(channel: ChannelEntity | string | undefined, fallbackId: string): string {
+		if (!channel || typeof channel === 'string') {
+			return fallbackId;
+		}
+
+		const device = channel.device;
+
+		if (!device) {
+			return fallbackId;
+		}
+
+		return typeof device === 'string' ? device : device.id;
+	}
+
 	async afterLoad(entity: ChannelPropertyEntity): Promise<void> {
-		// Use device ID if available through channel relation, otherwise use property ID
-		const resourceId = entity.channel?.device?.id ?? entity.id;
+		const resourceId = this.getResourceId(entity.channel, entity.id);
 
 		try {
 			entity.value = await this.propertyValueService.readLatest(entity);
@@ -46,8 +63,7 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 
 	beforeUpdate(event: UpdateEvent<ChannelPropertyEntity>): void {
 		if (event.entity) {
-			// Use device ID if available through channel relation, otherwise use property ID
-			const resourceId = event.entity.channel?.device?.id ?? event.entity.id;
+			const resourceId = this.getResourceId(event.entity.channel, event.entity.id);
 
 			this.logger.debug(`Updating property id=${event.entity.id}`, { resource: resourceId });
 
@@ -62,8 +78,7 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 		}
 
 		const propertyId = event.entity.id;
-		// Use device ID if available through channel relation, otherwise use property ID
-		const resourceId = event.entity.channel?.device?.id ?? propertyId;
+		const resourceId = this.getResourceId(event.entity.channel, propertyId);
 
 		try {
 			this.logger.debug(`Deleting stored values for id=${propertyId}`, { resource: resourceId });
