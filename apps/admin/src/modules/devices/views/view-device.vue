@@ -91,6 +91,8 @@
 					<template #icon>
 						<icon icon="mdi:console" />
 					</template>
+
+					{{ t('devicesModule.buttons.viewLogs.title') }}
 				</el-button>
 
 				<el-dropdown
