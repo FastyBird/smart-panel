@@ -253,7 +253,7 @@ export class MappingPreviewService {
 		// Find matching rule
 		const rule = overrideChannelCategory
 			? this.findRuleForChannel(domain, overrideChannelCategory)
-			: findMatchingRule(domain, deviceClass);
+			: findMatchingRule(domain, deviceClass, entityId);
 
 		if (!rule) {
 			return this.createUnmappedEntityPreview(entityId, domain, deviceClass, state);
