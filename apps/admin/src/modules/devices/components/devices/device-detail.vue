@@ -280,7 +280,7 @@ const warningCount = computed<number>(() => issues.value.filter((i) => i.severit
 const validationLoading = computed<boolean>(() => validationStore.fetching() || validationStore.getting(props.device.id));
 
 // Get device logs for alerts
-const { alertLogs, alertCount, hasAlerts, isLoading: logsLoading, fetchLogs } = useDeviceLogs({
+const { alertCount, hasAlerts, isLoading: logsLoading, fetchLogs } = useDeviceLogs({
 	deviceId: toRef(() => props.device.id),
 });
 
