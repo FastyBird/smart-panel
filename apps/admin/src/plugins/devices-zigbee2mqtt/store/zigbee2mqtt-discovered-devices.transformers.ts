@@ -1,5 +1,3 @@
-import type { DevicesZigbee2mqttPluginGetDeviceOperationApplicationJsonResponse } from '../../../openapi.constants';
-
 import type { IZ2mExpose, IZigbee2mqttDiscoveredDevice } from './zigbee2mqtt-discovered-devices.store.types';
 
 type ApiExposeType = {
@@ -15,7 +13,17 @@ type ApiExposeType = {
 	features?: ApiExposeType[];
 };
 
-type ApiDiscoveredDeviceResponse = DevicesZigbee2mqttPluginGetDeviceOperationApplicationJsonResponse['data'];
+// Manual type definition until OpenAPI is regenerated
+type ApiDiscoveredDeviceResponse = {
+	ieee_address: string;
+	friendly_name: string;
+	manufacturer?: string | null;
+	model?: string | null;
+	description?: string | null;
+	exposes?: ApiExposeType[];
+	available?: boolean;
+	disabled?: boolean;
+};
 
 const transformExposes = (exposes: ApiExposeType[]): IZ2mExpose[] => {
 	return exposes.map((expose) => ({
@@ -41,7 +49,7 @@ export const transformZigbee2mqttDiscoveredDeviceResponse = (
 		manufacturer: response.manufacturer ?? null,
 		model: response.model ?? null,
 		description: response.description ?? null,
-		exposes: response.exposes ? transformExposes(response.exposes as ApiExposeType[]) : [],
+		exposes: response.exposes ? transformExposes(response.exposes) : [],
 		available: response.available ?? false,
 		disabled: response.disabled ?? false,
 	};

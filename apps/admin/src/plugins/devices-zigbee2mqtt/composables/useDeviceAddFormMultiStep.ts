@@ -12,7 +12,12 @@ import { DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttApiException, DevicesZigbee2mqttValidationException } from '../devices-zigbee2mqtt.exceptions';
 import { Zigbee2mqttDeviceAddMultiStepFormSchema } from '../schemas/devices.schemas';
 import type { IZigbee2mqttDeviceAddMultiStepForm } from '../schemas/devices.types';
-import type { IAdoptDeviceRequest, IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
+import type {
+	IAdoptDeviceRequest,
+	IMappingExposeOverride,
+	IMappingPreviewRequest,
+	IMappingPreviewResponse,
+} from '../schemas/mapping-preview.types';
 
 import type { IUseDeviceAddFormMultiStep } from './types';
 import { useDeviceAdoption } from './useDeviceAdoption';
@@ -68,7 +73,7 @@ export const useDeviceAddFormMultiStep = ({ id }: IUseDeviceAddFormMultiStepProp
 
 	const formChanged = ref<boolean>(false);
 
-	const exposeOverrides = ref<IMappingPreviewRequest['exposeOverrides']>([]);
+	const exposeOverrides = ref<IMappingExposeOverride[]>([]);
 	const suggestedCategory = ref<DevicesModuleDeviceCategory | null>(null);
 
 	const submitStep = async (

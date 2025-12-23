@@ -4,7 +4,6 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager, injectStoresManager } from '../../common';
-import type { IZigbee2mqttDiscoveredDevicesStoreActions, IZigbee2mqttDiscoveredDevicesStoreState } from './store/zigbee2mqtt-discovered-devices.store.types';
 import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents, type IPluginsSchemas } from '../../modules/config';
 import {
 	DEVICES_MODULE_NAME,
@@ -34,9 +33,7 @@ import { discoveredDevicesStoreKey, registerZigbee2mqttDiscoveredDevicesStore } 
 export const devicesZigbee2mqttPluginKey: PluginInjectionKey<
 	IPlugin<
 		IDevicePluginsComponents & IChannelPluginsComponents & IChannelPropertyPluginsComponents & IPluginsComponents,
-		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas & IPluginsSchemas,
-		IZigbee2mqttDiscoveredDevicesStoreState,
-		IZigbee2mqttDiscoveredDevicesStoreActions
+		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas & IPluginsSchemas
 	>
 > = Symbol('FB-Plugin-DevicesZigbee2mqtt');
 

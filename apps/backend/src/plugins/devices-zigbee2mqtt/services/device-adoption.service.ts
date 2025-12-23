@@ -102,7 +102,7 @@ export class Z2mDeviceAdoptionService {
 		}
 
 		// Pre-validate the device structure
-		await this.preValidateDeviceStructure(request);
+		this.preValidateDeviceStructure(request);
 
 		// Create device DTO
 		const createDeviceDto = toInstance(CreateZigbee2mqttDeviceDto, {
@@ -318,7 +318,7 @@ export class Z2mDeviceAdoptionService {
 	/**
 	 * Pre-validate device structure before creation using the DeviceValidationService
 	 */
-	private async preValidateDeviceStructure(request: AdoptDeviceRequestDto): Promise<void> {
+	private preValidateDeviceStructure(request: AdoptDeviceRequestDto): void {
 		this.logger.debug(`[DEVICE ADOPTION] Pre-validating device structure using DeviceValidationService`);
 
 		// Check that at least one channel is provided
@@ -378,9 +378,7 @@ export class Z2mDeviceAdoptionService {
 		// Log warnings but don't fail
 		const warnings = validationResult.issues.filter((i) => i.severity === ValidationIssueSeverity.WARNING);
 		if (warnings.length > 0) {
-			this.logger.warn(
-				`[DEVICE ADOPTION] Pre-validation warnings: ${warnings.map((w) => w.message).join(', ')}`,
-			);
+			this.logger.warn(`[DEVICE ADOPTION] Pre-validation warnings: ${warnings.map((w) => w.message).join(', ')}`);
 		}
 
 		this.logger.debug(`[DEVICE ADOPTION] Pre-validation passed`);
@@ -399,9 +397,7 @@ export class Z2mDeviceAdoptionService {
 			ChannelSpecModel,
 			{
 				...rawSchema,
-				properties: 'properties' in rawSchema && rawSchema.properties
-					? Object.values(rawSchema.properties)
-					: [],
+				properties: 'properties' in rawSchema && rawSchema.properties ? Object.values(rawSchema.properties) : [],
 			},
 			{ excludeExtraneousValues: false },
 		);

@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 
-import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
+import { useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from '../devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttApiException, DevicesZigbee2mqttValidationException } from '../devices-zigbee2mqtt.exceptions';
@@ -37,29 +37,31 @@ export const useMappingPreview = (): IUseMappingPreview => {
 		try {
 			const requestBody = overrides ? transformMappingPreviewRequest(overrides) : undefined;
 
-			const {
-				data: responseData,
-				error: apiError,
-				response,
-			} = await backend.client.POST(
-				`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices/{id}/preview-mapping`,
+			const apiResponse = await backend.client.POST(
+				`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices/{ieeeAddress}/preview-mapping` as never,
 				{
 					params: {
-						path: { id: ieeeAddress },
+						path: { ieeeAddress },
 					},
-					body: requestBody as never,
-				}
+					body: requestBody,
+				} as never
 			);
+
+			const { data: responseData, error: apiError, response } = apiResponse as {
+				data?: { data: unknown };
+				error?: unknown;
+				response?: { status: number };
+			};
 
 			// Sequence guard: ignore response if this request is no longer the current one
 			if (requestId !== currentRequestId) {
-				throw new DevicesZigbee2mqttApiException('Request was superseded by a newer request.');
+				throw new DevicesZigbee2mqttApiException('Request was superseded by a newer request.', 0);
 			}
 
 			if (typeof responseData !== 'undefined' && responseData.data) {
 				// Double-check sequence guard before updating state
 				if (requestId !== currentRequestId) {
-					throw new DevicesZigbee2mqttApiException('Request was superseded by a newer request.');
+					throw new DevicesZigbee2mqttApiException('Request was superseded by a newer request.', 0);
 				}
 
 				const transformed = transformMappingPreviewResponse(responseData.data as never);
@@ -70,13 +72,9 @@ export const useMappingPreview = (): IUseMappingPreview => {
 				return transformed;
 			}
 
-			let errorReason: string | null = 'Failed to fetch mapping preview.';
+			const errorReason = apiError ? String(apiError) : 'Failed to fetch mapping preview.';
 
-			if (apiError) {
-				errorReason = getErrorReason(apiError as never, errorReason);
-			}
-
-			throw new DevicesZigbee2mqttApiException(errorReason, response?.status);
+			throw new DevicesZigbee2mqttApiException(errorReason, response?.status ?? 500);
 		} catch (err: unknown) {
 			// Only update loading state if this is still the current request
 			if (requestId === currentRequestId) {

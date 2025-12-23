@@ -2,12 +2,8 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { useBackend, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import type {
-	DevicesZigbee2mqttPluginGetDeviceOperation,
-	DevicesZigbee2mqttPluginGetDevicesOperation,
-} from '../../../openapi.constants';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX } from '../devices-zigbee2mqtt.constants';
 import { DevicesZigbee2mqttApiException, DevicesZigbee2mqttValidationException } from '../devices-zigbee2mqtt.exceptions';
 
@@ -103,36 +99,36 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 
 		const fetchPromise = (async (): Promise<IZigbee2mqttDiscoveredDevice> => {
 			if (semaphore.value.fetching.item.includes(payload.id)) {
-				throw new DevicesZigbee2mqttApiException('Already fetching Zigbee2MQTT discovered device.');
+				throw new DevicesZigbee2mqttApiException('Already fetching Zigbee2MQTT discovered device.', 409);
 			}
 
 			semaphore.value.fetching.item.push(payload.id);
 
 			try {
 				const apiResponse = await backend.client.GET(
-					`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices/{id}`,
+					`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices/{ieeeAddress}` as never,
 					{
 						params: {
-							path: { id: payload.id },
+							path: { ieeeAddress: payload.id },
 						},
-					}
+					} as never
 				);
 
-				const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, error, response } = apiResponse as {
+					data?: { data: unknown };
+					error?: unknown;
+					response: { status: number };
+				};
 
 				if (typeof responseData !== 'undefined') {
-					const transformed = transformZigbee2mqttDiscoveredDeviceResponse(responseData.data);
+					const transformed = transformZigbee2mqttDiscoveredDeviceResponse(responseData.data as never);
 
 					data.value[transformed.id] = transformed;
 
 					return transformed;
 				}
 
-				let errorReason: string | null = 'Failed to fetch Zigbee2MQTT discovered device.';
-
-				if (error) {
-					errorReason = getErrorReason<DevicesZigbee2mqttPluginGetDeviceOperation>(error, errorReason);
-				}
+				const errorReason = error ? String(error) : 'Failed to fetch Zigbee2MQTT discovered device.';
 
 				throw new DevicesZigbee2mqttApiException(errorReason, response.status);
 			} finally {
@@ -156,22 +152,26 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 
 		const fetchPromise = (async (): Promise<IZigbee2mqttDiscoveredDevice[]> => {
 			if (semaphore.value.fetching.items) {
-				throw new DevicesZigbee2mqttApiException('Already fetching Zigbee2MQTT discovered devices.');
+				throw new DevicesZigbee2mqttApiException('Already fetching Zigbee2MQTT discovered devices.', 409);
 			}
 
 			semaphore.value.fetching.items = true;
 
 			try {
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices`);
+				const apiResponse = await backend.client.GET(
+					`/${PLUGINS_PREFIX}/${DEVICES_ZIGBEE2MQTT_PLUGIN_PREFIX}/discovered-devices` as never
+				);
+
+				const { data: responseData, error, response } = apiResponse as {
+					data?: { data: unknown[] };
+					error?: unknown;
+					response: { status: number };
+				};
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
 						responseData.data.map((device) => {
-							const transformed = transformZigbee2mqttDiscoveredDeviceResponse(device);
+							const transformed = transformZigbee2mqttDiscoveredDeviceResponse(device as never);
 
 							return [transformed.id, transformed];
 						})
@@ -182,11 +182,7 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 					return Object.values(data.value);
 				}
 
-				let errorReason: string | null = 'Failed to fetch Zigbee2MQTT discovered devices.';
-
-				if (error) {
-					errorReason = getErrorReason<DevicesZigbee2mqttPluginGetDevicesOperation>(error, errorReason);
-				}
+				const errorReason = error ? String(error) : 'Failed to fetch Zigbee2MQTT discovered devices.';
 
 				throw new DevicesZigbee2mqttApiException(errorReason, response.status);
 			} finally {

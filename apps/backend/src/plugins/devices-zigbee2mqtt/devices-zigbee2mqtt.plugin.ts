@@ -42,9 +42,9 @@ import {
 	Zigbee2mqttChannelPropertyEntity,
 	Zigbee2mqttDeviceEntity,
 } from './entities/devices-zigbee2mqtt.entity';
+import { Zigbee2mqttDiscoveredDevicesController } from './controllers/zigbee2mqtt-discovered-devices.controller';
 import { Zigbee2mqttConfigModel } from './models/config.model';
 import { Zigbee2mqttDevicePlatform } from './platforms/zigbee2mqtt.device.platform';
-import { Zigbee2mqttDiscoveredDevicesController } from './controllers/zigbee2mqtt-discovered-devices.controller';
 import { Z2mDeviceAdoptionService } from './services/device-adoption.service';
 import { Z2mDeviceMapperService } from './services/device-mapper.service';
 import { Z2mExposesMapperService } from './services/exposes-mapper.service';

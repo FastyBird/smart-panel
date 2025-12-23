@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { channelsSchema } from '../../../spec/channels';
-import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	DEVICES_ZIGBEE2MQTT_TYPE,
@@ -17,7 +17,7 @@ import {
 } from '../devices-zigbee2mqtt.exceptions';
 import { MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
-import { Z2mDevice, Z2mExpose, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mExpose, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import {
 	Z2mDeviceInfoModel,
 	Z2mExposeMappingPreviewModel,
@@ -52,10 +52,7 @@ export class Z2mMappingPreviewService {
 	/**
 	 * Generate a mapping preview for a Z2M device
 	 */
-	async generatePreview(
-		ieeeAddress: string,
-		request?: MappingPreviewRequestDto,
-	): Promise<Z2mMappingPreviewModel> {
+	async generatePreview(ieeeAddress: string, request?: MappingPreviewRequestDto): Promise<Z2mMappingPreviewModel> {
 		this.logger.debug(`[MAPPING PREVIEW] Generating preview for device: ${ieeeAddress}`);
 
 		// Get device from Z2M registry
@@ -95,11 +92,10 @@ export class Z2mMappingPreviewService {
 		// Determine device category
 		const exposeTypes = z2mDevice.definition.exposes.map((e) => e.type);
 		const propertyNames = z2mDevice.definition.exposes
-			.filter((e) => e.property)
-			.map((e) => e.property as string);
+			.filter((e): e is typeof e & { property: string } => !!e.property)
+			.map((e) => e.property);
 
-		const suggestedCategory = request?.deviceCategory ??
-			mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
+		const suggestedCategory = request?.deviceCategory ?? mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
 
 		// Build suggested device
 		const suggestedDevice: Z2mSuggestedDeviceModel = {
@@ -133,7 +129,7 @@ export class Z2mMappingPreviewService {
 
 		this.logger.debug(
 			`[MAPPING PREVIEW] Generated preview: ${exposePreviews.length} exposes, ` +
-			`${warnings.length} warnings, ready=${readyToAdopt}`,
+				`${warnings.length} warnings, ready=${readyToAdopt}`,
 		);
 
 		return preview;
@@ -142,41 +138,40 @@ export class Z2mMappingPreviewService {
 	/**
 	 * Apply user overrides to mapped channels
 	 */
-	private applyOverrides(
-		channels: MappedChannel[],
-		request?: MappingPreviewRequestDto,
-	): MappedChannel[] {
+	private applyOverrides(channels: MappedChannel[], request?: MappingPreviewRequestDto): MappedChannel[] {
 		if (!request?.exposeOverrides?.length) {
 			return channels;
 		}
 
-		const overrideMap = new Map(
-			request.exposeOverrides.map((o) => [o.exposeName, o]),
-		);
+		const overrideMap = new Map(request.exposeOverrides.map((o) => [o.exposeName, o]));
 
-		return channels.map((channel) => {
-			// Check if any property in this channel has an override
-			const updatedProperties = channel.properties.map((prop) => {
-				const override = overrideMap.get(prop.z2mProperty);
-				if (override) {
-					if (override.skip) {
-						return null; // Mark for removal
-					}
-					if (override.channelCategory) {
-						return {
-							...prop,
-							channelCategory: override.channelCategory,
-						};
-					}
-				}
-				return prop;
-			}).filter((p): p is MappedProperty => p !== null);
+		return channels
+			.map((channel) => {
+				// Check if any property in this channel has an override
+				const updatedProperties = channel.properties
+					.map((prop) => {
+						const override = overrideMap.get(prop.z2mProperty);
+						if (override) {
+							if (override.skip) {
+								return null; // Mark for removal
+							}
+							if (override.channelCategory) {
+								return {
+									...prop,
+									channelCategory: override.channelCategory,
+								};
+							}
+						}
+						return prop;
+					})
+					.filter((p): p is MappedProperty => p !== null);
 
-			return {
-				...channel,
-				properties: updatedProperties,
-			};
-		}).filter((ch) => ch.properties.length > 0);
+				return {
+					...channel,
+					properties: updatedProperties,
+				};
+			})
+			.filter((ch) => ch.properties.length > 0);
 	}
 
 	/**
@@ -199,9 +194,7 @@ export class Z2mMappingPreviewService {
 		}
 
 		// Build a set of skipped exposes
-		const skippedExposes = new Set(
-			request?.exposeOverrides?.filter((o) => o.skip).map((o) => o.exposeName) ?? [],
-		);
+		const skippedExposes = new Set(request?.exposeOverrides?.filter((o) => o.skip).map((o) => o.exposeName) ?? []);
 
 		// Process each expose
 		for (const expose of exposes) {
@@ -217,13 +210,7 @@ export class Z2mMappingPreviewService {
 						const mapping = propertyMap.get(featureName);
 						const isSkipped = skippedExposes.has(featureName);
 
-						previews.push(this.buildExposePreview(
-							feature,
-							featureName,
-							mapping,
-							currentState,
-							isSkipped,
-						));
+						previews.push(this.buildExposePreview(feature, featureName, mapping, currentState, isSkipped));
 					}
 				}
 				continue;
@@ -232,13 +219,7 @@ export class Z2mMappingPreviewService {
 			const mapping = propertyMap.get(exposeName);
 			const isSkipped = skippedExposes.has(exposeName);
 
-			previews.push(this.buildExposePreview(
-				expose,
-				exposeName,
-				mapping,
-				currentState,
-				isSkipped,
-			));
+			previews.push(this.buildExposePreview(expose, exposeName, mapping, currentState, isSkipped));
 		}
 
 		return previews;
@@ -325,10 +306,7 @@ export class Z2mMappingPreviewService {
 	/**
 	 * Get current value from device state
 	 */
-	private getCurrentValue(
-		propertyName: string,
-		state: Record<string, unknown>,
-	): string | number | boolean | null {
+	private getCurrentValue(propertyName: string, state: Record<string, unknown>): string | number | boolean | null {
 		const value = state[propertyName];
 		if (value === undefined || value === null) {
 			return null;
@@ -352,9 +330,7 @@ export class Z2mMappingPreviewService {
 			ChannelSpecModel,
 			{
 				...rawSchema,
-				properties: 'properties' in rawSchema && rawSchema.properties
-					? Object.values(rawSchema.properties)
-					: [],
+				properties: 'properties' in rawSchema && rawSchema.properties ? Object.values(rawSchema.properties) : [],
 			},
 			{ excludeExtraneousValues: false },
 		);
@@ -462,8 +438,8 @@ export class Z2mMappingPreviewService {
 		}
 
 		// Check for blocking warnings
-		const blockingWarnings = warnings.filter((w) =>
-			w.type === 'missing_required_channel' || w.type === 'missing_required_property',
+		const blockingWarnings = warnings.filter(
+			(w) => w.type === 'missing_required_channel' || w.type === 'missing_required_property',
 		);
 
 		return blockingWarnings.length === 0;
@@ -472,10 +448,7 @@ export class Z2mMappingPreviewService {
 	/**
 	 * Calculate device category confidence
 	 */
-	private calculateDeviceConfidence(
-		category: DeviceCategory,
-		exposeTypes: string[],
-	): 'high' | 'medium' | 'low' {
+	private calculateDeviceConfidence(category: DeviceCategory, exposeTypes: string[]): 'high' | 'medium' | 'low' {
 		// High confidence for specific device types
 		const specificTypes = ['light', 'switch', 'climate', 'cover', 'lock', 'fan'];
 		if (specificTypes.some((t) => exposeTypes.includes(t))) {

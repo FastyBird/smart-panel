@@ -88,8 +88,8 @@ export class Zigbee2mqttDiscoveredDevicesController {
 			const adoptedIdentifiers = new Set(adoptedDevices.map((d) => d.identifier));
 
 			// Transform to response model
-			const devices = await Promise.all(
-				registeredDevices.map((d) => this.transformToDiscoveredDevice(d, adoptedIdentifiers, adoptedDevices)),
+			const devices = registeredDevices.map((d) =>
+				this.transformToDiscoveredDevice(d, adoptedIdentifiers, adoptedDevices),
 			);
 
 			this.logger.debug(`Retrieved ${devices.length} discovered devices`);
@@ -143,16 +143,14 @@ export class Zigbee2mqttDiscoveredDevicesController {
 			const z2mDevice = registeredDevices.find((d) => d.ieeeAddress === ieeeAddress);
 
 			if (!z2mDevice) {
-				throw new DevicesZigbee2mqttNotFoundException(
-					`Zigbee2MQTT device with IEEE address ${ieeeAddress} not found`,
-				);
+				throw new DevicesZigbee2mqttNotFoundException(`Zigbee2MQTT device with IEEE address ${ieeeAddress} not found`);
 			}
 
 			// Get already adopted devices
 			const adoptedDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
 			const adoptedIdentifiers = new Set(adoptedDevices.map((d) => d.identifier));
 
-			const device = await this.transformToDiscoveredDevice(z2mDevice, adoptedIdentifiers, adoptedDevices);
+			const device = this.transformToDiscoveredDevice(z2mDevice, adoptedIdentifiers, adoptedDevices);
 
 			this.logger.debug(`Found Zigbee2MQTT discovered device ieeeAddress=${z2mDevice.ieeeAddress}`);
 
@@ -205,8 +203,8 @@ export class Zigbee2mqttDiscoveredDevicesController {
 
 			this.logger.debug(
 				`Generated mapping preview for device ieeeAddress=${ieeeAddress}, ` +
-				`exposes=${preview.exposes.length}, warnings=${preview.warnings.length}, ` +
-				`readyToAdopt=${preview.readyToAdopt}`,
+					`exposes=${preview.exposes.length}, warnings=${preview.warnings.length}, ` +
+					`readyToAdopt=${preview.readyToAdopt}`,
 			);
 
 			const response = new Z2mMappingPreviewResponseModel();
@@ -295,11 +293,11 @@ export class Zigbee2mqttDiscoveredDevicesController {
 	/**
 	 * Transform Z2M registered device to discovered device model
 	 */
-	private async transformToDiscoveredDevice(
+	private transformToDiscoveredDevice(
 		z2mDevice: Z2mRegisteredDevice,
 		adoptedIdentifiers: Set<string | null>,
 		adoptedDevices: Zigbee2mqttDeviceEntity[],
-	): Promise<Zigbee2mqttDiscoveredDeviceModel> {
+	): Zigbee2mqttDiscoveredDeviceModel {
 		const isAdopted = adoptedIdentifiers.has(z2mDevice.friendlyName);
 		const adoptedDevice = adoptedDevices.find((d) => d.identifier === z2mDevice.friendlyName);
 
@@ -308,8 +306,8 @@ export class Zigbee2mqttDiscoveredDevicesController {
 		if (z2mDevice.definition) {
 			const exposeTypes = z2mDevice.definition.exposes.map((e) => e.type);
 			const propertyNames = z2mDevice.definition.exposes
-				.filter((e) => e.property)
-				.map((e) => e.property as string);
+				.filter((e): e is typeof e & { property: string } => !!e.property)
+				.map((e) => e.property);
 			suggestedCategory = mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
 		}
 
