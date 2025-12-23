@@ -17,12 +17,18 @@ type ApiExposeType = {
 type ApiDiscoveredDeviceResponse = {
 	ieee_address: string;
 	friendly_name: string;
+	type: 'Router' | 'EndDevice';
+	model_id?: string | null;
 	manufacturer?: string | null;
 	model?: string | null;
 	description?: string | null;
+	power_source?: string | null;
+	supported: boolean;
+	available: boolean;
+	adopted: boolean;
+	adopted_device_id?: string | null;
 	exposes?: ApiExposeType[];
-	available?: boolean;
-	disabled?: boolean;
+	suggested_category?: string | null;
 };
 
 const transformExposes = (exposes: ApiExposeType[]): IZ2mExpose[] => {
@@ -46,11 +52,17 @@ export const transformZigbee2mqttDiscoveredDeviceResponse = (
 	return {
 		id: response.ieee_address,
 		friendlyName: response.friendly_name,
+		type: response.type,
+		modelId: response.model_id ?? null,
 		manufacturer: response.manufacturer ?? null,
 		model: response.model ?? null,
 		description: response.description ?? null,
+		powerSource: response.power_source ?? null,
+		supported: response.supported,
+		available: response.available,
+		adopted: response.adopted,
+		adoptedDeviceId: response.adopted_device_id ?? null,
 		exposes: response.exposes ? transformExposes(response.exposes) : [],
-		available: response.available ?? false,
-		disabled: response.disabled ?? false,
+		suggestedCategory: response.suggested_category ?? null,
 	};
 };

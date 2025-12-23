@@ -27,9 +27,9 @@ export const useDiscoveredDevicesOptions = (): IUseDiscoveredDevicesOptions => {
 	const devicesOptions = computed<IDiscoveredDeviceOption[]>(() => {
 		const devices = discoveredDevicesStore.findAll();
 
-		// Filter out disabled devices and sort by friendly name
+		// Filter out adopted devices and sort by friendly name
 		const sortedDevices = orderBy(
-			devices.filter((d) => !d.disabled),
+			devices.filter((d) => !d.adopted),
 			[(d) => d.friendlyName.toLowerCase()],
 			['asc']
 		);

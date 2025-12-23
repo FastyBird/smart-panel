@@ -35,12 +35,18 @@ export const Z2mExposeSchema: z.ZodType<{
 export const Zigbee2mqttDiscoveredDeviceSchema = z.object({
 	id: z.string(),
 	friendlyName: z.string(),
+	type: z.enum(['Router', 'EndDevice']),
+	modelId: z.string().nullable(),
 	manufacturer: z.string().nullable(),
 	model: z.string().nullable(),
 	description: z.string().nullable(),
-	exposes: z.array(Z2mExposeSchema),
+	powerSource: z.string().nullable(),
+	supported: z.boolean(),
 	available: z.boolean(),
-	disabled: z.boolean(),
+	adopted: z.boolean(),
+	adoptedDeviceId: z.string().nullable(),
+	exposes: z.array(Z2mExposeSchema),
+	suggestedCategory: z.string().nullable(),
 });
 
 export type Zigbee2mqttDiscoveredDeviceSchemaType = z.infer<typeof Zigbee2mqttDiscoveredDeviceSchema>;

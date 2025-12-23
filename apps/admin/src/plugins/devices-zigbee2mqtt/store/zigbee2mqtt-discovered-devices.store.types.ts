@@ -24,12 +24,18 @@ export interface IZ2mExpose {
 export interface IZigbee2mqttDiscoveredDevice {
 	id: string; // ieeeAddress
 	friendlyName: string;
+	type: 'Router' | 'EndDevice';
+	modelId: string | null;
 	manufacturer: string | null;
 	model: string | null;
 	description: string | null;
-	exposes: IZ2mExpose[];
+	powerSource: string | null;
+	supported: boolean;
 	available: boolean;
-	disabled: boolean;
+	adopted: boolean;
+	adoptedDeviceId: string | null;
+	exposes: IZ2mExpose[];
+	suggestedCategory: string | null;
 }
 
 // ============================================================================

@@ -31,6 +31,7 @@ import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity'
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import {
 	Z2mExposeInfoModel,
+	Z2mMappingPreviewModel,
 	Z2mMappingPreviewResponseModel,
 	Zigbee2mqttDiscoveredDeviceModel,
 	Zigbee2mqttDiscoveredDeviceResponseModel,
@@ -95,7 +96,7 @@ export class Zigbee2mqttDiscoveredDevicesController {
 			this.logger.debug(`Retrieved ${devices.length} discovered devices`);
 
 			const response = new Zigbee2mqttDiscoveredDevicesResponseModel();
-			response.data = devices;
+			response.data = toInstance(Zigbee2mqttDiscoveredDeviceModel, devices);
 			return response;
 		} catch (error) {
 			const err = error as Error;
@@ -155,7 +156,7 @@ export class Zigbee2mqttDiscoveredDevicesController {
 			this.logger.debug(`Found Zigbee2MQTT discovered device ieeeAddress=${z2mDevice.ieeeAddress}`);
 
 			const response = new Zigbee2mqttDiscoveredDeviceResponseModel();
-			response.data = device;
+			response.data = toInstance(Zigbee2mqttDiscoveredDeviceModel, device);
 			return response;
 		} catch (error) {
 			const err = error as Error;
@@ -208,7 +209,7 @@ export class Zigbee2mqttDiscoveredDevicesController {
 			);
 
 			const response = new Z2mMappingPreviewResponseModel();
-			response.data = preview;
+			response.data = toInstance(Z2mMappingPreviewModel, preview);
 			return response;
 		} catch (error) {
 			const err = error as Error;
