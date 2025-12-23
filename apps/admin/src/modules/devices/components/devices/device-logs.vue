@@ -129,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, type Ref, toRef, watch } from 'vue';
+import { computed, onBeforeMount, type Ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElResult, ElScrollbar, ElSwitch, ElTag, ElTooltip } from 'element-plus';
@@ -155,31 +155,47 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { logs, hasMore, isLoading, live, fetchLogs, loadMoreLogs, refreshLogs } = useDeviceLogs({
-	deviceId: toRef(() => props.deviceId),
-});
+// Check if parent provided composable data (shared mode) or we need our own (standalone mode)
+const isSharedMode = props.logs !== undefined;
+
+// Create own composable only in standalone mode
+const ownComposable = isSharedMode ? null : useDeviceLogs({ deviceId: toRef(() => props.deviceId) });
+
+// Use props if provided, otherwise use own composable
+const logs = computed(() => (isSharedMode ? props.logs!.value : ownComposable!.logs.value));
+const hasMore = computed(() => (isSharedMode ? props.hasMore!.value : ownComposable!.hasMore.value));
+const isLoading = computed(() => (isSharedMode ? props.isLoading!.value : ownComposable!.isLoading.value));
+const live = isSharedMode ? null : ownComposable!.live;
+
+const doRefreshLogs = (): Promise<void> => (isSharedMode ? props.refreshLogs!() : ownComposable!.refreshLogs());
+const doLoadMoreLogs = (): Promise<void> => (isSharedMode ? props.loadMoreLogs!() : ownComposable!.loadMoreLogs());
+const doFetchLogs = (): Promise<void> => (isSharedMode ? props.fetchLogs!() : ownComposable!.fetchLogs());
 
 const innerLive: Ref<boolean> = useVModel(props, 'live', emit, { defaultValue: false });
 
-// Sync live state between parent prop and composable
+// Sync live state between parent prop and composable (only in standalone mode)
 watch(
 	innerLive,
 	(val) => {
-		live.value = val;
+		if (live) {
+			live.value = val;
+		}
 	},
 	{ immediate: true }
 );
 
-watch(live, (val) => {
-	innerLive.value = val;
-});
+if (live) {
+	watch(live, (val) => {
+		innerLive.value = val;
+	});
+}
 
 const onRefresh = (): void => {
-	void refreshLogs();
+	void doRefreshLogs();
 };
 
 const onLoadMore = (): void => {
-	void loadMoreLogs();
+	void doLoadMoreLogs();
 };
 
 const formatRelative = (iso: string): string => {
@@ -211,7 +227,10 @@ const levelTagProps = (lvl: SystemModuleLogEntryType) => {
 	};
 };
 
+// Only fetch on mount in standalone mode - in shared mode, parent already fetched
 onBeforeMount(() => {
-	void fetchLogs();
+	if (!isSharedMode) {
+		void doFetchLogs();
+	}
 });
 </script>

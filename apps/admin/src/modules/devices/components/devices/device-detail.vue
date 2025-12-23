@@ -157,6 +157,12 @@
 			<device-logs
 				v-model:live="logsLive"
 				:device-id="device.id"
+				:logs="deviceLogs.logs"
+				:has-more="deviceLogs.hasMore"
+				:is-loading="deviceLogs.isLoading"
+				:fetch-logs="deviceLogs.fetchLogs"
+				:load-more-logs="deviceLogs.loadMoreLogs"
+				:refresh-logs="deviceLogs.refreshLogs"
 			/>
 		</div>
 	</el-dialog>
@@ -279,10 +285,11 @@ const errorCount = computed<number>(() => issues.value.filter((i) => i.severity 
 const warningCount = computed<number>(() => issues.value.filter((i) => i.severity === 'warning').length);
 const validationLoading = computed<boolean>(() => validationStore.fetching() || validationStore.getting(props.device.id));
 
-// Get device logs for alerts
-const { alertCount, hasAlerts, isLoading: logsLoading, fetchLogs } = useDeviceLogs({
+// Get device logs for alerts and pass to logs dialog
+const deviceLogs = useDeviceLogs({
 	deviceId: toRef(() => props.device.id),
 });
+const { alertCount, hasAlerts, isLoading: logsLoading, fetchLogs } = deviceLogs;
 
 // Logs dialog state
 const logsDialogVisible = ref<boolean>(false);
