@@ -82,13 +82,11 @@
 					<template #icon>
 						<icon icon="mdi:tune-variant" />
 					</template>
-
-					{{ t('devicesModule.buttons.control.title') }}
 				</el-button>
 
 				<el-dropdown
+					v-if="controls.length !== 0"
 					trigger="click"
-					:disabled="controls.length === 0"
 				>
 					<el-button
 						plain

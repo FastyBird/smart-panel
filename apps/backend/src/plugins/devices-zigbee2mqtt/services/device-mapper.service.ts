@@ -256,6 +256,15 @@ export class Z2mDeviceMapperService {
 					continue;
 				}
 
+				// Skip window_covering status - handled separately with value normalization
+				if (
+					channel.category === ChannelCategory.WINDOW_COVERING &&
+					property.category === PropertyCategory.STATUS &&
+					propertyIdentifier === 'state'
+				) {
+					continue;
+				}
+
 				const value = state[propertyIdentifier];
 
 				// Convert value to appropriate type based on property's data type
@@ -281,8 +290,9 @@ export class Z2mDeviceMapperService {
 			// Handle window_covering status from Z2M 'state' property
 			// Z2M sends: state: "OPEN" | "CLOSE" | "STOP"
 			// We normalize to: status = "opened" | "closed" | "stopped"
+			// Note: Property identifier is 'state' (z2m property), category is STATUS
 			if (channel.category === ChannelCategory.WINDOW_COVERING && 'state' in state) {
-				const statusProp = properties.find((p) => p.identifier === PropertyCategory.STATUS.toString());
+				const statusProp = properties.find((p) => p.category === PropertyCategory.STATUS);
 
 				if (statusProp) {
 					const z2mState = state.state;
