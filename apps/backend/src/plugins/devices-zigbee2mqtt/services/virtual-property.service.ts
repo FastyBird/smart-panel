@@ -6,6 +6,7 @@ import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME } from '../devices-zigbee2mqtt.constant
 
 import {
 	CHANNEL_VIRTUAL_PROPERTIES,
+	CommandVirtualPropertyDefinition,
 	DerivationType,
 	DerivedVirtualPropertyDefinition,
 	ResolvedVirtualProperty,
@@ -85,7 +86,11 @@ export class Z2mVirtualPropertyService {
 	private canProvideVirtualProperty(def: VirtualPropertyDefinition, _context: VirtualPropertyContext): boolean {
 		// Virtual properties are always available - they will use default values
 		// if the source data isn't available yet
-		return def.virtual_type === VirtualPropertyType.STATIC || def.virtual_type === VirtualPropertyType.DERIVED;
+		return (
+			def.virtual_type === VirtualPropertyType.STATIC ||
+			def.virtual_type === VirtualPropertyType.DERIVED ||
+			def.virtual_type === VirtualPropertyType.COMMAND
+		);
 	}
 
 	/**
@@ -103,7 +108,44 @@ export class Z2mVirtualPropertyService {
 			return this.resolveDerivedValue(def, context);
 		}
 
+		if (def.virtual_type === VirtualPropertyType.COMMAND) {
+			// Command properties are write-only, they don't have a readable value
+			return null;
+		}
+
 		return null;
+	}
+
+	/**
+	 * Get command translation for a virtual command property
+	 * Returns the target Z2M property and translated value
+	 */
+	getCommandTranslation(
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		commandValue: string | number | boolean,
+	): { targetProperty: string; translatedValue: string | number | boolean } | null {
+		const virtuals = getVirtualPropertiesForChannel(channelCategory);
+		const commandDef = virtuals.find(
+			(vp) => vp.property_category === propertyCategory && vp.virtual_type === VirtualPropertyType.COMMAND,
+		) as CommandVirtualPropertyDefinition | undefined;
+
+		if (!commandDef) {
+			return null;
+		}
+
+		const stringValue = String(commandValue);
+		const translatedValue = commandDef.value_mappings[stringValue];
+
+		if (translatedValue === undefined) {
+			this.logger.warn(`[VIRTUAL] No translation for command value: ${stringValue}`);
+			return null;
+		}
+
+		return {
+			targetProperty: commandDef.target_property,
+			translatedValue,
+		};
 	}
 
 	/**

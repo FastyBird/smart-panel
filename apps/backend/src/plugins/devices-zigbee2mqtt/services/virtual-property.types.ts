@@ -20,6 +20,12 @@ export enum VirtualPropertyType {
 	 * Example: battery status derived from percentage threshold
 	 */
 	DERIVED = 'derived',
+
+	/**
+	 * Command property that translates to a Z2M property when set
+	 * Example: command = "open" translates to Z2M state = "OPEN"
+	 */
+	COMMAND = 'command',
 }
 
 /**
@@ -87,9 +93,31 @@ export interface DerivedVirtualPropertyDefinition extends VirtualPropertyDefinit
 }
 
 /**
+ * Command virtual property - translates to a Z2M property when set
+ */
+export interface CommandVirtualPropertyDefinition extends VirtualPropertyDefinitionBase {
+	virtual_type: VirtualPropertyType.COMMAND;
+
+	/**
+	 * Target Z2M property to set when command is issued
+	 */
+	target_property: string;
+
+	/**
+	 * Value mappings from command value to Z2M value
+	 * Key: command value (e.g., "open")
+	 * Value: Z2M value to set (e.g., "OPEN")
+	 */
+	value_mappings: Record<string, string | number | boolean>;
+}
+
+/**
  * Union type for all virtual property definitions
  */
-export type VirtualPropertyDefinition = StaticVirtualPropertyDefinition | DerivedVirtualPropertyDefinition;
+export type VirtualPropertyDefinition =
+	| StaticVirtualPropertyDefinition
+	| DerivedVirtualPropertyDefinition
+	| CommandVirtualPropertyDefinition;
 
 /**
  * Defines how to derive a value from source data
@@ -260,27 +288,11 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 		],
 	},
 
-	// Window Covering - needs STATUS (derived from position) and TYPE (static)
+	// Window Covering - needs TYPE (static) and COMMAND (virtual command)
+	// STATUS is mapped directly from Z2M 'state' property (OPEN/CLOSE/STOP)
 	{
 		channel_category: ChannelCategory.WINDOW_COVERING,
 		virtual_properties: [
-			// Status property - derived from position
-			// Position 0 = closed, position 100 = opened, other values = stopped
-			{
-				property_category: PropertyCategory.STATUS,
-				virtual_type: VirtualPropertyType.DERIVED,
-				data_type: DataTypeType.ENUM,
-				permissions: [PermissionType.READ_ONLY],
-				format: ['opened', 'closed', 'opening', 'closing', 'stopped'],
-				source_property: 'position',
-				derivation: {
-					type: DerivationType.COVER_STATUS_FROM_POSITION,
-					params: {
-						closedPosition: 0,
-						openedPosition: 100,
-					},
-				},
-			},
 			// Type property - static value for cover type
 			{
 				property_category: PropertyCategory.TYPE,
@@ -289,6 +301,21 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 				permissions: [PermissionType.READ_ONLY],
 				format: ['curtain', 'blind', 'roller', 'outdoor_blind'],
 				static_value: 'curtain',
+			},
+			// Command property - translates to Z2M 'state' property
+			// When user sends command "open", it sets Z2M state to "OPEN"
+			{
+				property_category: PropertyCategory.COMMAND,
+				virtual_type: VirtualPropertyType.COMMAND,
+				data_type: DataTypeType.ENUM,
+				permissions: [PermissionType.WRITE_ONLY],
+				format: ['open', 'close', 'stop'],
+				target_property: 'state',
+				value_mappings: {
+					open: 'OPEN',
+					close: 'CLOSE',
+					stop: 'STOP',
+				},
 			},
 		],
 	},

@@ -189,11 +189,12 @@ export class Z2mExposesMapperService {
 			return null;
 		}
 
-		// Check for cover state enum (OPEN/CLOSE/STOP) - should map to command, not on
+		// Check for cover state enum (OPEN/CLOSE/STOP) - should map to status, not on
+		// Z2M state represents the current status of the cover
 		if (propertyName === 'state' && expose.type === 'enum') {
 			const enumExpose = expose as Z2mExposeEnum;
 			if (this.isCoverStateEnum(enumExpose.values)) {
-				return this.mapCoverStateToCommand(expose, enumExpose.values);
+				return this.mapCoverStateToStatus(expose, enumExpose.values);
 			}
 		}
 
@@ -617,24 +618,49 @@ export class Z2mExposesMapperService {
 	}
 
 	/**
-	 * Map cover state enum to command property
+	 * Map cover state enum to status property
+	 * Z2M state (OPEN/CLOSE/STOP) represents the current status of the cover
+	 * Values are normalized to match spec format (opened/closed/stopped)
 	 */
-	private mapCoverStateToCommand(expose: Z2mExpose, values: string[]): MappedProperty {
-		const access = expose.access ?? Z2M_ACCESS.STATE;
-		const permissions = mapZ2mAccessToPermissions(access);
-
-		// Normalize values to lowercase for format
-		const format = values.map((v) => v.toLowerCase());
+	private mapCoverStateToStatus(expose: Z2mExpose, values: string[]): MappedProperty {
+		// Normalize Z2M values to spec format
+		const normalizedFormat = this.normalizeCoverStateValues(values);
 
 		return {
-			identifier: PropertyCategory.COMMAND.toString(),
-			name: 'Command',
-			category: PropertyCategory.COMMAND,
+			identifier: PropertyCategory.STATUS.toString(),
+			name: 'Status',
+			category: PropertyCategory.STATUS,
 			channelCategory: ChannelCategory.WINDOW_COVERING,
 			dataType: DataTypeType.STRING,
-			permissions,
+			// Status is read-only - we read the current state from Z2M
+			permissions: [PermissionType.READ_ONLY],
 			z2mProperty: expose.property ?? expose.name ?? 'state',
-			format,
+			format: normalizedFormat,
 		};
+	}
+
+	/**
+	 * Normalize Z2M cover state values to spec format
+	 * Z2M uses: OPEN, CLOSE, STOP (uppercase, imperative)
+	 * Spec uses: opened, closed, stopped (lowercase, past tense)
+	 */
+	private normalizeCoverStateValues(values: string[]): string[] {
+		const normalized: string[] = [];
+
+		for (const value of values) {
+			const lower = value.toLowerCase();
+			if (lower === 'open') {
+				normalized.push('opened');
+			} else if (lower === 'close') {
+				normalized.push('closed');
+			} else if (lower === 'stop') {
+				normalized.push('stopped');
+			} else {
+				// Keep other values as-is (lowercase)
+				normalized.push(lower);
+			}
+		}
+
+		return normalized;
 	}
 }
