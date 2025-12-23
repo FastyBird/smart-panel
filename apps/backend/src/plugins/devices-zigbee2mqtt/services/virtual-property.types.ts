@@ -121,6 +121,12 @@ export enum DerivationType {
 	 * Thresholds: >= 1000 lx = bright, >= 100 lx = moderate, >= 10 lx = dusky, < 10 lx = dark
 	 */
 	ILLUMINANCE_LEVEL_FROM_DENSITY = 'illuminance_level_from_density',
+
+	/**
+	 * Derive window covering status from position
+	 * Position 0 = closed, position 100 = opened, other = stopped
+	 */
+	COVER_STATUS_FROM_POSITION = 'cover_status_from_position',
 }
 
 /**
@@ -250,6 +256,39 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 						duskyThreshold: 10,
 					},
 				},
+			},
+		],
+	},
+
+	// Window Covering - needs STATUS (derived from position) and TYPE (static)
+	{
+		channel_category: ChannelCategory.WINDOW_COVERING,
+		virtual_properties: [
+			// Status property - derived from position
+			// Position 0 = closed, position 100 = opened, other values = stopped
+			{
+				property_category: PropertyCategory.STATUS,
+				virtual_type: VirtualPropertyType.DERIVED,
+				data_type: DataTypeType.ENUM,
+				permissions: [PermissionType.READ_ONLY],
+				format: ['opened', 'closed', 'opening', 'closing', 'stopped'],
+				source_property: 'position',
+				derivation: {
+					type: DerivationType.COVER_STATUS_FROM_POSITION,
+					params: {
+						closedPosition: 0,
+						openedPosition: 100,
+					},
+				},
+			},
+			// Type property - static value for cover type
+			{
+				property_category: PropertyCategory.TYPE,
+				virtual_type: VirtualPropertyType.STATIC,
+				data_type: DataTypeType.ENUM,
+				permissions: [PermissionType.READ_ONLY],
+				format: ['curtain', 'blind', 'roller', 'outdoor_blind'],
+				static_value: 'curtain',
 			},
 		],
 	},

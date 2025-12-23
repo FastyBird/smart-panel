@@ -122,6 +122,9 @@ export class Z2mVirtualPropertyService {
 			case DerivationType.ILLUMINANCE_LEVEL_FROM_DENSITY:
 				return this.deriveIlluminanceLevel(definition, context, derivation.params);
 
+			case DerivationType.COVER_STATUS_FROM_POSITION:
+				return this.deriveCoverStatus(definition, context, derivation.params);
+
 			default:
 				this.logger.warn(`[VIRTUAL] Unknown derivation type: ${String(derivation.type)}`);
 				return null;
@@ -197,6 +200,43 @@ export class Z2mVirtualPropertyService {
 			return 'dusky';
 		}
 		return 'dark';
+	}
+
+	/**
+	 * Derive cover status from position
+	 * Returns: 'opened', 'closed', or 'stopped'
+	 * Note: 'opening' and 'closing' require tracking movement direction which
+	 * we can't do statically. We use 'stopped' for intermediate positions.
+	 */
+	private deriveCoverStatus(
+		definition: DerivedVirtualPropertyDefinition,
+		context: VirtualPropertyContext,
+		params?: Record<string, unknown>,
+	): 'opened' | 'closed' | 'stopped' {
+		const closedPosition = (params?.closedPosition as number) ?? 0;
+		const openedPosition = (params?.openedPosition as number) ?? 100;
+
+		// Get position from Z2M state
+		const sourceProperty = definition.source_property ?? 'position';
+		const positionValue = context.state[sourceProperty];
+
+		if (positionValue === undefined || positionValue === null) {
+			// Default to stopped if position unknown
+			return 'stopped';
+		}
+
+		const position = Number(positionValue);
+		if (isNaN(position)) {
+			return 'stopped';
+		}
+
+		if (position <= closedPosition) {
+			return 'closed';
+		}
+		if (position >= openedPosition) {
+			return 'opened';
+		}
+		return 'stopped';
 	}
 
 	/**

@@ -189,6 +189,14 @@ export class Z2mExposesMapperService {
 			return null;
 		}
 
+		// Check for cover state enum (OPEN/CLOSE/STOP) - should map to command, not on
+		if (propertyName === 'state' && expose.type === 'enum') {
+			const enumExpose = expose as Z2mExposeEnum;
+			if (this.isCoverStateEnum(enumExpose.values)) {
+				return this.mapCoverStateToCommand(expose, enumExpose.values);
+			}
+		}
+
 		// Skip calibration and settings properties that Z2M doesn't mark as config
 		const skipProperties = [
 			// Calibration settings
@@ -588,5 +596,45 @@ export class Z2mExposesMapperService {
 	 */
 	private sanitizeIdentifier(name: string): string {
 		return name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+	}
+
+	/**
+	 * Check if enum values indicate a cover state (OPEN/CLOSE/STOP)
+	 */
+	private isCoverStateEnum(values: string[] | undefined): boolean {
+		if (!values || values.length === 0) {
+			return false;
+		}
+
+		const lowerValues = values.map((v) => v.toLowerCase());
+
+		// Check for cover control values
+		const hasOpen = lowerValues.includes('open');
+		const hasClose = lowerValues.includes('close');
+
+		// A cover state enum should have at least open and close (stop is optional)
+		return hasOpen && hasClose;
+	}
+
+	/**
+	 * Map cover state enum to command property
+	 */
+	private mapCoverStateToCommand(expose: Z2mExpose, values: string[]): MappedProperty {
+		const access = expose.access ?? Z2M_ACCESS.STATE;
+		const permissions = mapZ2mAccessToPermissions(access);
+
+		// Normalize values to lowercase for format
+		const format = values.map((v) => v.toLowerCase());
+
+		return {
+			identifier: PropertyCategory.COMMAND.toString(),
+			name: 'Command',
+			category: PropertyCategory.COMMAND,
+			channelCategory: ChannelCategory.WINDOW_COVERING,
+			dataType: DataTypeType.STRING,
+			permissions,
+			z2mProperty: expose.property ?? expose.name ?? 'state',
+			format,
+		};
 	}
 }
