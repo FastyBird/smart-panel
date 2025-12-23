@@ -550,7 +550,11 @@ export class HomeAssistantWsService implements IManagedPluginService {
 				const handler = this.eventsHandlers.get(msg.event.event_type) ?? this.eventsHandlers.get('*');
 
 				if (handler) {
-					const event = toInstance(HomeAssistantStateChangedEventDto, msg.event as object);
+					// Use excludeExtraneousValues: false to preserve dynamic attributes like brightness, color, etc.
+					// Without this, class-transformer strips the nested attributes object
+					const event = toInstance(HomeAssistantStateChangedEventDto, msg.event as object, {
+						excludeExtraneousValues: false,
+					});
 
 					await handler.handle(event);
 				}

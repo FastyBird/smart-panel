@@ -210,14 +210,12 @@ export class MappingPreviewService {
 			);
 		}
 
-		// Filter out device_information and generic channels from the preview
-		// - device_information is auto-created during adoption from HA registry data
+		// Filter out only generic channels from the preview
 		// - generic channels are fallbacks that shouldn't be adopted
+		// - device_information entities (like signal_strength sensors) MUST be kept
+		//   so they can be merged into the auto-created device_information channel during adoption
 		const filteredEntityPreviews = entityPreviews.filter(
-			(e) =>
-				!e.suggestedChannel ||
-				(e.suggestedChannel.category !== ChannelCategory.DEVICE_INFORMATION &&
-					e.suggestedChannel.category !== ChannelCategory.GENERIC),
+			(e) => !e.suggestedChannel || e.suggestedChannel.category !== ChannelCategory.GENERIC,
 		);
 
 		const preview = new MappingPreviewModel();

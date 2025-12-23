@@ -30,7 +30,22 @@ export class LightEntityMapperService extends EntityMapper {
 	): Promise<Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean | null>> {
 		const mapped: Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean | null> = new Map();
 
+		// Debug: Log available properties and their haAttribute values
+		this.logger.debug(
+			`[LIGHT ENTITY MAPPER] mapFromHA called with ${properties.length} properties for entity ${state.entity_id}`,
+		);
+		this.logger.debug(
+			`[LIGHT ENTITY MAPPER] Properties: ${properties.map((p) => `${p.category}:${p.haAttribute}`).join(', ')}`,
+		);
+		this.logger.debug(
+			`[LIGHT ENTITY MAPPER] State attributes: ${Object.keys(state.attributes).join(', ')}`,
+		);
+
 		const brightness = state.attributes[LightEntityAttribute.BRIGHTNESS];
+
+		this.logger.debug(
+			`[LIGHT ENTITY MAPPER] Brightness from HA: ${brightness} (type: ${typeof brightness})`,
+		);
 
 		if (typeof brightness === 'number') {
 			const brightnessProp = await this.getValidProperty(
@@ -40,8 +55,28 @@ export class LightEntityMapperService extends EntityMapper {
 				[ChannelCategory.LIGHT],
 			);
 
+			this.logger.debug(
+				`[LIGHT ENTITY MAPPER] Brightness prop found: ${!!brightnessProp}, ` +
+					`looking for haAttribute='${LightEntityAttribute.BRIGHTNESS}'`,
+			);
+
 			if (brightnessProp) {
-				mapped.set(brightnessProp.id, Math.round((brightness / 255) * 100));
+				const mappedValue = Math.round((brightness / 255) * 100);
+				mapped.set(brightnessProp.id, mappedValue);
+				this.logger.debug(
+					`[LIGHT ENTITY MAPPER] Mapped brightness: ${brightness} (0-255) -> ${mappedValue}% (0-100)`,
+				);
+			} else {
+				// Check what haAttribute the brightness property actually has
+				const anyBrightnessProp = properties.find((p) => p.category === PropertyCategory.BRIGHTNESS);
+				if (anyBrightnessProp) {
+					this.logger.warn(
+						`[LIGHT ENTITY MAPPER] Brightness property exists but haAttribute mismatch: ` +
+							`expected '${LightEntityAttribute.BRIGHTNESS}', got '${anyBrightnessProp.haAttribute}'`,
+					);
+				} else {
+					this.logger.warn(`[LIGHT ENTITY MAPPER] No brightness property found at all`);
+				}
 			}
 		}
 
@@ -147,6 +182,8 @@ export class LightEntityMapperService extends EntityMapper {
 		if (Array.isArray(rgbwColor) && rgbwColor.length === 4) {
 			const [r, g, b, w] = rgbwColor as [number, number, number, number];
 
+			this.logger.debug(`[LIGHT ENTITY MAPPER] Received rgbw_color: [${r}, ${g}, ${b}, ${w}]`);
+
 			const redProp = await this.getValidProperty(
 				properties,
 				PropertyCategory.COLOR_RED,
@@ -172,6 +209,10 @@ export class LightEntityMapperService extends EntityMapper {
 				[ChannelCategory.LIGHT],
 			);
 
+			this.logger.debug(
+				`[LIGHT ENTITY MAPPER] RGBW props found: red=${!!redProp}, green=${!!greenProp}, blue=${!!blueProp}, white=${!!whiteProp}`,
+			);
+
 			if (
 				redProp &&
 				typeof r === 'number' &&
@@ -186,6 +227,12 @@ export class LightEntityMapperService extends EntityMapper {
 				mapped.set(greenProp.id, g);
 				mapped.set(blueProp.id, b);
 				mapped.set(whiteProp.id, w);
+				this.logger.debug(`[LIGHT ENTITY MAPPER] Mapped RGBW values: r=${r}, g=${g}, b=${b}, w=${w}`);
+			} else {
+				this.logger.warn(
+					`[LIGHT ENTITY MAPPER] Could not map RGBW - missing properties or invalid values. ` +
+						`Props: red=${!!redProp}, green=${!!greenProp}, blue=${!!blueProp}, white=${!!whiteProp}`,
+				);
 			}
 		}
 
@@ -241,10 +288,10 @@ export class LightEntityMapperService extends EntityMapper {
 		);
 
 		if (hueProp && saturationProp && (values.has(hueProp.id) || values.has(saturationProp.id))) {
-			const hue = values.has(hueProp.id) ? values.get(hueProp.id) : hueProp.value;
-			const saturation = values.has(saturationProp.id) ? values.get(saturationProp.id) : saturationProp.value;
+			const hue = this.toNumber(values.has(hueProp.id) ? values.get(hueProp.id) : hueProp.value);
+			const saturation = this.toNumber(values.has(saturationProp.id) ? values.get(saturationProp.id) : saturationProp.value);
 
-			if (typeof hue === 'number' && typeof saturation === 'number') {
+			if (hue !== null && saturation !== null) {
 				attributes.set(LightEntityAttribute.HS_COLOR, [hue, saturation]);
 			}
 		}
@@ -274,11 +321,11 @@ export class LightEntityMapperService extends EntityMapper {
 			rgbBProp &&
 			(values.has(rgbRProp.id) || values.has(rgbGProp.id) || values.has(rgbBProp.id))
 		) {
-			const rgbR = values.has(rgbRProp.id) ? values.get(rgbRProp.id) : rgbRProp.value;
-			const rgbG = values.has(rgbGProp.id) ? values.get(rgbGProp.id) : rgbGProp.value;
-			const rgbB = values.has(rgbBProp.id) ? values.get(rgbBProp.id) : rgbBProp.value;
+			const rgbR = this.toNumber(values.has(rgbRProp.id) ? values.get(rgbRProp.id) : rgbRProp.value);
+			const rgbG = this.toNumber(values.has(rgbGProp.id) ? values.get(rgbGProp.id) : rgbGProp.value);
+			const rgbB = this.toNumber(values.has(rgbBProp.id) ? values.get(rgbBProp.id) : rgbBProp.value);
 
-			if (typeof rgbR === 'number' && typeof rgbG === 'number' && typeof rgbB === 'number') {
+			if (rgbR !== null && rgbG !== null && rgbB !== null) {
 				attributes.set(LightEntityAttribute.RGB_COLOR, [rgbR, rgbG, rgbB]);
 			}
 		}
@@ -315,17 +362,12 @@ export class LightEntityMapperService extends EntityMapper {
 			rgbwWProp &&
 			(values.has(rgbwRProp.id) || values.has(rgbwGProp.id) || values.has(rgbwBProp.id) || values.has(rgbwWProp.id))
 		) {
-			const rgbwR = values.has(rgbwRProp.id) ? values.get(rgbwRProp.id) : rgbwRProp.value;
-			const rgbwG = values.has(rgbwGProp.id) ? values.get(rgbwGProp.id) : rgbwGProp.value;
-			const rgbwB = values.has(rgbwBProp.id) ? values.get(rgbwBProp.id) : rgbwBProp.value;
-			const rgbwW = values.has(rgbwWProp.id) ? values.get(rgbwWProp.id) : rgbwWProp.value;
+			const rgbwR = this.toNumber(values.has(rgbwRProp.id) ? values.get(rgbwRProp.id) : rgbwRProp.value);
+			const rgbwG = this.toNumber(values.has(rgbwGProp.id) ? values.get(rgbwGProp.id) : rgbwGProp.value);
+			const rgbwB = this.toNumber(values.has(rgbwBProp.id) ? values.get(rgbwBProp.id) : rgbwBProp.value);
+			const rgbwW = this.toNumber(values.has(rgbwWProp.id) ? values.get(rgbwWProp.id) : rgbwWProp.value);
 
-			if (
-				typeof rgbwR === 'number' &&
-				typeof rgbwG === 'number' &&
-				typeof rgbwB === 'number' &&
-				typeof rgbwW === 'number'
-			) {
+			if (rgbwR !== null && rgbwG !== null && rgbwB !== null && rgbwW !== null) {
 				attributes.set(LightEntityAttribute.RGBW_COLOR, [rgbwR, rgbwG, rgbwB, rgbwW]);
 			}
 		}
@@ -352,7 +394,7 @@ export class LightEntityMapperService extends EntityMapper {
 
 		if (colorTemperatureProp && values.has(colorTemperatureProp.id)) {
 			if (typeof values.get(colorTemperatureProp.id) === 'number') {
-				attributes.set(LightEntityAttribute.WHITE, values.get(colorTemperatureProp.id));
+				attributes.set(LightEntityAttribute.COLOR_TEMP_KELVIN, values.get(colorTemperatureProp.id));
 			}
 		}
 
@@ -388,5 +430,29 @@ export class LightEntityMapperService extends EntityMapper {
 		this.logger.debug('[LIGHT ENTITY MAPPER] Received properties were mapped to Home Assistant entity state');
 
 		return { state, service, attributes };
+	}
+
+	/**
+	 * Convert a value to a number, handling strings stored in the database
+	 */
+	private toNumber(value: string | number | boolean | null | undefined): number | null {
+		if (value === null || value === undefined) {
+			return null;
+		}
+
+		if (typeof value === 'number') {
+			return value;
+		}
+
+		if (typeof value === 'string') {
+			const parsed = parseFloat(value);
+			return isNaN(parsed) ? null : parsed;
+		}
+
+		if (typeof value === 'boolean') {
+			return value ? 1 : 0;
+		}
+
+		return null;
 	}
 }

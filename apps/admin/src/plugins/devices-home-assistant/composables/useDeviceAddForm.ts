@@ -372,7 +372,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 							unit: prop.unit ?? null,
 							format: prop.format ?? null,
 							// Include entity ID for consolidated channels (each property can map to a different entity)
-							haEntityId: entity.entityId,
+							// Use prop.haEntityId if available (from mapping preview), otherwise fallback to entity.entityId
+							haEntityId: prop.haEntityId ?? entity.entityId,
 						})),
 						};
 					});

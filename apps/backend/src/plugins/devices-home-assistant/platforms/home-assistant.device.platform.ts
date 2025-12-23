@@ -140,9 +140,11 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 			excludeExtraneousValues: false,
 		});
 
+		// Don't use forbidNonWhitelisted since Home Assistant service calls have many dynamic
+		// attributes (brightness, color_temp, rgb_color, hs_color, white, effect, etc.)
+		// that cannot be enumerated in a DTO. Only validate that required fields are present.
 		const errors = await validate(instance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
+			whitelist: false,
 			stopAtFirstError: false,
 		});
 

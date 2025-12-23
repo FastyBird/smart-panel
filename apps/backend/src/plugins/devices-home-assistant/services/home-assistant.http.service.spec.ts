@@ -15,6 +15,7 @@ import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.en
 import { MapperService } from '../mappers/mapper.service';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
+import { VirtualPropertyService } from './virtual-property.service';
 
 const mockConfigService = {
 	getPluginConfig: jest.fn(),
@@ -37,6 +38,10 @@ const mockDeviceConnectivityService = {
 	setConnectionState: jest.fn(),
 };
 
+const mockVirtualPropertyService = {
+	resolveVirtualPropertyValue: jest.fn(),
+};
+
 describe('HomeAssistantHttpService', () => {
 	let service: HomeAssistantHttpService;
 	let configService: ConfigService;
@@ -51,6 +56,7 @@ describe('HomeAssistantHttpService', () => {
 				{ provide: ChannelsPropertiesService, useValue: mockChannelsPropertiesService },
 				{ provide: MapperService, useValue: mockHomeAssistantMapperService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
+				{ provide: VirtualPropertyService, useValue: mockVirtualPropertyService },
 			],
 		}).compile();
 
