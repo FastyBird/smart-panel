@@ -74,6 +74,33 @@ export class Z2mMappingPreviewService {
 			);
 		}
 
+		// Get current state from multiple sources:
+		// 1. z2mDevice.currentState (from registry)
+		// 2. stateCache (global cache that stores ALL state messages)
+		// This ensures we have state even if messages arrived before device was registered
+		const cachedState = this.zigbee2mqttService.getCachedState(z2mDevice.friendlyName);
+		const currentState = { ...cachedState, ...z2mDevice.currentState };
+
+		// If still no state, request it from Z2M and wait briefly
+		if (Object.keys(currentState).length === 0) {
+			this.logger.debug(`[MAPPING PREVIEW] Device ${z2mDevice.friendlyName} has no state, requesting from Z2M`);
+
+			const stateRequested = await this.zigbee2mqttService.requestDeviceState(z2mDevice.friendlyName);
+
+			if (stateRequested) {
+				// Wait for state response (Z2M typically responds within 100-500ms)
+				await this.delay(500);
+
+				// Get updated state from cache (stateCache is always updated by handleDeviceStateMessage)
+				const updatedCachedState = this.zigbee2mqttService.getCachedState(z2mDevice.friendlyName);
+				Object.assign(currentState, updatedCachedState);
+
+				this.logger.debug(
+					`[MAPPING PREVIEW] After state request, device has ${Object.keys(currentState).length} state keys`,
+				);
+			}
+		}
+
 		// Check if device is already adopted
 		const existingDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
 		const existingDevice = existingDevices.find((d) => d.identifier === ieeeAddress);
@@ -88,7 +115,7 @@ export class Z2mMappingPreviewService {
 		const exposePreviews = this.buildExposePreviews(
 			z2mDevice.definition.exposes,
 			overriddenChannels,
-			z2mDevice.currentState,
+			currentState,
 			z2mDevice,
 			request,
 		);
@@ -255,7 +282,15 @@ export class Z2mMappingPreviewService {
 			const isSkipped = skippedExposes.has(exposeName);
 
 			previews.push(
-				this.buildExposePreview(expose, exposeName, mapping, currentState, isSkipped, z2mDevice, channelPropertyCategories),
+				this.buildExposePreview(
+					expose,
+					exposeName,
+					mapping,
+					currentState,
+					isSkipped,
+					z2mDevice,
+					channelPropertyCategories,
+				),
 			);
 		}
 
@@ -433,12 +468,12 @@ export class Z2mMappingPreviewService {
 	): Z2mMappingWarningModel[] {
 		const warnings: Z2mMappingWarningModel[] = [];
 
-		// Check if device is already adopted
+		// Check if device is already adopted - this is informational, not blocking
 		if (existingDevice) {
 			warnings.push({
-				type: 'device_not_available',
-				message: `Device is already adopted as "${existingDevice.name}" (${existingDevice.id})`,
-				suggestion: 'Delete the existing device first if you want to re-adopt it',
+				type: 'device_already_adopted',
+				message: `Device is already adopted as "${existingDevice.name}"`,
+				suggestion: 'Continuing will re-adopt the device with the new configuration',
 			});
 		}
 
@@ -506,25 +541,20 @@ export class Z2mMappingPreviewService {
 	}
 
 	/**
-	 * Determine if the device is ready to adopt
+	 * Determine if the device is ready to adopt (or re-adopt)
 	 */
 	private isReadyToAdopt(
 		exposePreviews: Z2mExposeMappingPreviewModel[],
 		warnings: Z2mMappingWarningModel[],
-		existingDevice?: Zigbee2mqttDeviceEntity,
+		_existingDevice?: Zigbee2mqttDeviceEntity,
 	): boolean {
-		// Not ready if already adopted
-		if (existingDevice) {
-			return false;
-		}
-
 		// Check if at least one expose is mapped
 		const hasMappedExpose = exposePreviews.some((e) => e.status === 'mapped');
 		if (!hasMappedExpose) {
 			return false;
 		}
 
-		// Check for blocking warnings
+		// Check for blocking warnings (device_already_adopted is not blocking)
 		const blockingWarnings = warnings.filter(
 			(w) => w.type === 'missing_required_channel' || w.type === 'missing_required_property',
 		);
@@ -553,5 +583,12 @@ export class Z2mMappingPreviewService {
 		}
 
 		return 'medium';
+	}
+
+	/**
+	 * Helper to delay execution
+	 */
+	private delay(ms: number): Promise<void> {
+		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 }

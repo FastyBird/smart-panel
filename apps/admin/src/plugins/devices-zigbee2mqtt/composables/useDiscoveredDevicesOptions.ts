@@ -27,12 +27,8 @@ export const useDiscoveredDevicesOptions = (): IUseDiscoveredDevicesOptions => {
 	const devicesOptions = computed<IDiscoveredDeviceOption[]>(() => {
 		const devices = discoveredDevicesStore.findAll();
 
-		// Filter out adopted devices and sort by friendly name
-		const sortedDevices = orderBy(
-			devices.filter((d) => !d.adopted),
-			[(d) => d.friendlyName.toLowerCase()],
-			['asc']
-		);
+		// Include all devices (adopted ones can be re-adopted), sort by friendly name
+		const sortedDevices = orderBy(devices, [(d) => d.friendlyName.toLowerCase()], ['asc']);
 
 		return sortedDevices.map((device) => ({
 			value: device.id,

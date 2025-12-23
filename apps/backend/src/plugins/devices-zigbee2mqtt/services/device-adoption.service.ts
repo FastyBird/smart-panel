@@ -64,7 +64,7 @@ export class Z2mDeviceAdoptionService {
 	) {}
 
 	/**
-	 * Adopt a Z2M device into Smart Panel
+	 * Adopt a Z2M device into Smart Panel (or re-adopt if already exists)
 	 */
 	async adoptDevice(request: AdoptDeviceRequestDto): Promise<Zigbee2mqttDeviceEntity> {
 		this.logger.debug(`[DEVICE ADOPTION] Adopting Z2M device: ${request.ieeeAddress}`);
@@ -79,27 +79,34 @@ export class Z2mDeviceAdoptionService {
 			);
 		}
 
-		// Check if device is already adopted (by friendly_name identifier)
+		// Check if device is already adopted and remove it for re-adoption
 		const existingDevices = await this.devicesService.findAll<Zigbee2mqttDeviceEntity>(DEVICES_ZIGBEE2MQTT_TYPE);
-		const existingDevice = existingDevices.find((d) => d.identifier === z2mDevice.friendlyName);
 
-		if (existingDevice) {
-			throw new DevicesZigbee2mqttValidationException(
-				`Zigbee2MQTT device "${z2mDevice.friendlyName}" is already adopted as device ${existingDevice.id}`,
-			);
+		// Check by friendly_name identifier
+		const existingByIdentifier = existingDevices.find((d) => d.identifier === z2mDevice.friendlyName);
+		if (existingByIdentifier) {
+			this.logger.debug(`[DEVICE ADOPTION] Re-adopting device: removing existing device ${existingByIdentifier.id}`);
+			await this.devicesService.remove(existingByIdentifier.id);
 		}
 
 		// Also check by IEEE address in serial_number property to be thorough
 		for (const device of existingDevices) {
+			// Skip if already removed above
+			if (existingByIdentifier && device.id === existingByIdentifier.id) {
+				continue;
+			}
+
 			const channels = await this.channelsService.findAll(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
 			const infoChannel = channels.find((ch) => ch.category === ChannelCategory.DEVICE_INFORMATION);
 			if (infoChannel) {
 				const properties = await this.channelsPropertiesService.findAll(infoChannel.id, DEVICES_ZIGBEE2MQTT_TYPE);
 				const serialProp = properties.find((p) => p.category === PropertyCategory.SERIAL_NUMBER);
 				if (serialProp?.value === request.ieeeAddress) {
-					throw new DevicesZigbee2mqttValidationException(
-						`Zigbee2MQTT device with IEEE address ${request.ieeeAddress} is already adopted as device ${device.id}`,
+					this.logger.debug(
+						`[DEVICE ADOPTION] Re-adopting device: removing existing device ${device.id} (matched by IEEE address)`,
 					);
+					await this.devicesService.remove(device.id);
+					break; // Only one device should match
 				}
 			}
 		}
@@ -152,6 +159,17 @@ export class Z2mDeviceAdoptionService {
 			await this.deviceConnectivityService.setConnectionState(device.id, {
 				state: z2mDevice.available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 			});
+
+			// Request current state from Z2M to populate property values
+			// This triggers Z2M to publish the device's current state, which will be processed by updateDeviceState
+			const stateRequested = await this.zigbee2mqttService.requestDeviceState(z2mDevice.friendlyName);
+			if (stateRequested) {
+				this.logger.debug(`[DEVICE ADOPTION] Requested current state for device: ${z2mDevice.friendlyName}`);
+			} else {
+				this.logger.warn(
+					`[DEVICE ADOPTION] Failed to request state for device: ${z2mDevice.friendlyName} (MQTT may not be connected)`,
+				);
+			}
 
 			// Return the fully loaded device
 			return await this.devicesService.findOne<Zigbee2mqttDeviceEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
@@ -329,6 +347,22 @@ export class Z2mDeviceAdoptionService {
 			} else {
 				// Regular property: use z2mProperty as identifier for state matching
 				identifier = propDef.z2mProperty;
+
+				// Get initial value from cached Z2M state (if available)
+				// The MQTT adapter caches state messages in deviceRegistry[friendlyName].currentState
+				const cachedValue = z2mDevice.currentState?.[propDef.z2mProperty];
+				if (cachedValue !== undefined) {
+					// Convert value to appropriate type
+					if (typeof cachedValue === 'boolean' || typeof cachedValue === 'number' || typeof cachedValue === 'string') {
+						initialValue = cachedValue;
+					} else if (cachedValue !== null) {
+						// For complex values (objects), stringify them
+						initialValue = JSON.stringify(cachedValue);
+					}
+					this.logger.debug(
+						`[DEVICE ADOPTION] Using cached state for ${propDef.z2mProperty} = ${JSON.stringify(initialValue)}`,
+					);
+				}
 			}
 
 			const createPropertyDto = toInstance(CreateZigbee2mqttChannelPropertyDto, {

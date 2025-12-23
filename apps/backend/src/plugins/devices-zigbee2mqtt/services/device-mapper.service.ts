@@ -325,7 +325,9 @@ export class Z2mDeviceMapperService {
 				state: available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 			});
 		} else {
-			this.logger.error(`Device not found for availability update: ${friendlyName}`);
+			// Use debug level - device may not exist yet if availability arrives before mapping
+			// This is normal during startup when Z2M sends availability before bridge/devices
+			this.logger.debug(`Device not found for availability update: ${friendlyName} (may not be adopted yet)`);
 		}
 	}
 
@@ -571,17 +573,31 @@ export class Z2mDeviceMapperService {
 			return;
 		}
 
-		// Get existing property categories
-		const existingCategories = new Set(mappedChannel.properties.map((p) => p.category));
+		// Get existing property categories from mapped properties
+		const mappedCategories = new Set(mappedChannel.properties.map((p) => p.category));
+
+		// Also get existing properties from database to avoid UNIQUE constraint violations
+		const existingDbProperties = await this.channelsPropertiesService.findAll<Zigbee2mqttChannelPropertyEntity>(
+			channel.id,
+			DEVICES_ZIGBEE2MQTT_TYPE,
+		);
+		const existingDbIdentifiers = new Set(existingDbProperties.map((p) => p.identifier));
 
 		for (const virtualDef of virtualDefs) {
-			// Skip if this property category already exists
-			if (existingCategories.has(virtualDef.property_category)) {
+			// Skip if this property category already exists in mapped properties
+			if (mappedCategories.has(virtualDef.property_category)) {
 				continue;
 			}
 
 			// Create virtual property
 			const identifier = `fb_virtual_${virtualDef.property_category.toLowerCase()}`;
+
+			// Skip if this property already exists in database (prevents UNIQUE constraint violation)
+			if (existingDbIdentifiers.has(identifier)) {
+				this.logger.debug(`Virtual property ${identifier} already exists in database, skipping creation`);
+				continue;
+			}
+
 			const value = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
 
 			this.logger.debug(

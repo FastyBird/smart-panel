@@ -69,6 +69,15 @@
 				:closable="false"
 				show-icon
 			/>
+
+			<el-alert
+				v-if="selectedDeviceInfo && selectedDeviceInfo.adoptedDeviceId"
+				type="warning"
+				:title="t('devicesZigbee2mqttPlugin.messages.devices.alreadyAdopted')"
+				:description="t('devicesZigbee2mqttPlugin.messages.devices.alreadyAdoptedDescription')"
+				:closable="false"
+				show-icon
+			/>
 		</div>
 	</el-form>
 </template>

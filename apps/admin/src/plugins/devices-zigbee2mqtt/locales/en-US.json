@@ -218,7 +218,9 @@
 			"adopted": "Device '{device}' has been successfully adopted",
 			"notAdopted": "Failed to adopt device '{device}'",
 			"noDiscoveredDevices": "No discovered devices available. Make sure Zigbee2MQTT is running and devices are paired.",
-			"deviceOffline": "This device is currently offline"
+			"deviceOffline": "This device is currently offline",
+			"alreadyAdopted": "This device is already adopted",
+			"alreadyAdoptedDescription": "Continuing will re-adopt the device with the new configuration. The existing device will be updated."
 		},
 		"discoveredDevices": {
 			"loadFailed": "Failed to load discovered devices",

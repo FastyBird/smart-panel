@@ -443,6 +443,7 @@ export class Z2mMappingWarningModel {
 			'unsupported_expose',
 			'unknown_expose_type',
 			'device_not_available',
+			'device_already_adopted',
 		],
 	})
 	@Expose()
@@ -452,7 +453,8 @@ export class Z2mMappingWarningModel {
 		| 'missing_required_property'
 		| 'unsupported_expose'
 		| 'unknown_expose_type'
-		| 'device_not_available';
+		| 'device_not_available'
+		| 'device_already_adopted';
 
 	@ApiPropertyOptional({
 		description: 'Related expose name',

@@ -394,7 +394,7 @@ export const useDeviceAddFormMultiStep = ({ id }: IUseDeviceAddFormMultiStepProp
 				};
 
 				// Adopt the device
-				const adoptedDevice = await adoptDevice(adoptRequest);
+				await adoptDevice(adoptRequest);
 
 				formResult.value = FormResult.OK;
 
@@ -406,12 +406,9 @@ export const useDeviceAddFormMultiStep = ({ id }: IUseDeviceAddFormMultiStepProp
 					})
 				);
 
-				// Redirect to device edit page
+				// Redirect to devices list
 				router.push({
-					name: DevicesRouteNames.DEVICES_EDIT,
-					params: {
-						id: adoptedDevice.id,
-					},
+					name: DevicesRouteNames.DEVICES,
 				});
 
 				return 'added';

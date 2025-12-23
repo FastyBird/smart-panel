@@ -42,6 +42,11 @@ export class Z2mMqttClientAdapterService {
 	// Internal device registry (keyed by friendly_name)
 	private readonly deviceRegistry = new Map<string, Z2mRegisteredDevice>();
 
+	// Global state cache - stores ALL state messages by friendly_name
+	// This is independent of deviceRegistry and is always populated when state messages arrive
+	// Used as the source of truth for current device values during adoption and preview
+	private readonly stateCache = new Map<string, Record<string, unknown>>();
+
 	constructor(private readonly eventEmitter: EventEmitter2) {}
 
 	/**
@@ -89,6 +94,15 @@ export class Z2mMqttClientAdapterService {
 			}
 		}
 		return undefined;
+	}
+
+	/**
+	 * Get cached state for a device by friendly name
+	 * This returns state from the global cache, which is always populated
+	 * regardless of whether the device is in the registry or adopted
+	 */
+	getCachedState(friendlyName: string): Record<string, unknown> {
+		return this.stateCache.get(friendlyName) ?? {};
 	}
 
 	/**
@@ -213,6 +227,7 @@ export class Z2mMqttClientAdapterService {
 					this.connected = false;
 					this.bridgeOnline = false;
 					this.deviceRegistry.clear();
+					this.stateCache.clear();
 					resolve();
 				});
 			});
@@ -469,6 +484,9 @@ export class Z2mMqttClientAdapterService {
 
 				const existing = this.deviceRegistry.get(device.friendly_name);
 
+				// Get cached state from the global state cache
+				const cachedState = this.stateCache.get(device.friendly_name) ?? {};
+
 				const registeredDevice: Z2mRegisteredDevice = {
 					ieeeAddress: device.ieee_address,
 					friendlyName: device.friendly_name,
@@ -480,10 +498,17 @@ export class Z2mMqttClientAdapterService {
 					modelId: device.model_id,
 					available: existing?.available ?? true,
 					lastSeen: existing?.lastSeen,
-					currentState: existing?.currentState ?? {},
+					// Use cached state as the source of truth for current values
+					currentState: { ...(existing?.currentState ?? {}), ...cachedState },
 				};
 
 				this.deviceRegistry.set(device.friendly_name, registeredDevice);
+
+				if (Object.keys(cachedState).length > 0) {
+					this.logger.debug(
+						`Applied cached state to "${device.friendly_name}": ${Object.keys(cachedState).join(', ')}`,
+					);
+				}
 			}
 
 			// Remove devices no longer in registry
@@ -493,6 +518,10 @@ export class Z2mMqttClientAdapterService {
 					this.deviceRegistry.delete(friendlyName);
 				}
 			}
+
+			// Request state for devices that don't have currentState
+			// This ensures we have initial values even if Z2M hasn't sent state updates
+			this.requestMissingStates();
 
 			// Emit event with all devices
 			this.eventEmitter.emit(Z2mAdapterEventType.DEVICES_RECEIVED, {
@@ -508,6 +537,22 @@ export class Z2mMqttClientAdapterService {
 			this.logger.error('Failed to parse bridge/devices message', {
 				message: error instanceof Error ? error.message : String(error),
 			});
+		}
+	}
+
+	/**
+	 * Request state for devices that don't have currentState populated
+	 */
+	private requestMissingStates(): void {
+		for (const [friendlyName, device] of this.deviceRegistry.entries()) {
+			// Check if device has any state values
+			if (Object.keys(device.currentState).length === 0) {
+				this.logger.debug(`Requesting state for device without current state: ${friendlyName}`);
+				// Fire and forget - responses will be handled by handleDeviceStateMessage
+				this.requestState(friendlyName).catch(() => {
+					// Ignore errors - device might be offline
+				});
+			}
 		}
 	}
 
@@ -568,14 +613,19 @@ export class Z2mMqttClientAdapterService {
 
 			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
 
-			// Update internal registry
+			// ALWAYS store state in the global cache (independent of device registry)
+			// This ensures state is available for adoption preview even if device isn't registered yet
+			const existingCachedState = this.stateCache.get(friendlyName) ?? {};
+			this.stateCache.set(friendlyName, { ...existingCachedState, ...state });
+
+			// Also update internal registry if device exists there
 			const device = this.deviceRegistry.get(friendlyName);
 			if (device) {
 				device.currentState = { ...device.currentState, ...state };
 				device.lastSeen = new Date();
-				this.logger.debug(`Updated internal registry for "${friendlyName}"`);
+				this.logger.debug(`Updated registry and cache for "${friendlyName}"`);
 			} else {
-				this.logger.debug(`Device "${friendlyName}" not in internal registry`);
+				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
 			// Emit state changed event
