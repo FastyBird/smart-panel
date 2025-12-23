@@ -6,10 +6,7 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
-			prop="haDeviceId"
-		>
+		<el-form-item prop="haDeviceId">
 			<!-- eslint-disable vue/no-mutating-props -->
 			<el-select
 				v-model="model.haDeviceId"
@@ -37,7 +34,7 @@
 		<el-alert
 			v-if="selectedDeviceInfo"
 			type="info"
-			:title="t('devicesHomeAssistantPlugin.headings.device.deviceSelection')"
+			:title="t('devicesHomeAssistantPlugin.headings.device.deviceInformation')"
 			:closable="false"
 			show-icon
 		>

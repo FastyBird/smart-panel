@@ -58,6 +58,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 	const model = reactive<IZigbee2mqttDeviceEditForm>({
 		id: device.id,
 		type: device.type,
+		identifier: device.identifier,
 		category: device.category,
 		name: device.name,
 		description: device.description ?? '',

@@ -6,10 +6,7 @@
 		label-position="top"
 		status-icon
 	>
-		<el-form-item
-			:label="t('devicesZigbee2mqttPlugin.fields.devices.ieeeAddress.title')"
-			prop="ieeeAddress"
-		>
+		<el-form-item prop="ieeeAddress">
 			<!-- eslint-disable vue/no-mutating-props -->
 			<el-select
 				v-model="model.ieeeAddress"

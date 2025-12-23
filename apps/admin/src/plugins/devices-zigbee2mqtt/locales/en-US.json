@@ -6,25 +6,25 @@
 		"aboutTls": "TLS/SSL configuration",
 		"aboutDiscovery": "Device discovery",
 		"steps": {
-			"selectDevice": "Select Device",
-			"selectCategory": "Device Category",
-			"mappingPreview": "Mapping Preview",
-			"customizeMapping": "Customize Mapping",
-			"deviceConfiguration": "Device Configuration"
+			"selectDevice": "Select device",
+			"selectCategory": "Device category",
+			"mappingPreview": "Mapping preview",
+			"customizeMapping": "Customize mapping",
+			"deviceConfiguration": "Device configuration"
 		},
 		"mapping": {
-			"summary": "Mapping Summary",
-			"warnings": "Mapping Warnings ({count})",
-			"exposeMappings": "Expose Mappings",
-			"customization": "Mapping Customization"
+			"summary": "Mapping summary",
+			"warnings": "Mapping warnings ({count})",
+			"exposeMappings": "Expose mappings",
+			"customization": "Mapping customization"
 		},
 		"device": {
-			"deviceSelection": "Select Device",
-			"categorySelection": "Device Category",
-			"mappingPreview": "Mapping Preview",
-			"mappingCustomization": "Customize Mapping",
-			"deviceConfiguration": "Device Configuration",
-			"deviceInfo": "Device Information"
+			"deviceSelection": "Select device",
+			"categorySelection": "Device category",
+			"mappingPreview": "Mapping preview",
+			"mappingCustomization": "Customize mapping",
+			"deviceConfiguration": "Device configuration",
+			"deviceInfo": "Device information"
 		}
 	},
 	"texts": {
@@ -163,20 +163,24 @@
 				"title": "Enabled"
 			},
 			"ieeeAddress": {
-				"title": "IEEE Address",
+				"title": "IEEE address",
 				"placeholder": "Select a device",
 				"validation": {
 					"required": "Please select a device"
 				}
 			},
 			"friendlyName": {
-				"title": "Friendly Name"
+				"title": "Friendly name"
 			},
 			"manufacturer": {
 				"title": "Manufacturer"
 			},
 			"model": {
 				"title": "Model"
+			},
+			"zigbee2mqttDeviceId": {
+				"title": "Connected Zigbee2MQTT device",
+				"placeholder": "Select connected device"
 			}
 		},
 		"mapping": {
@@ -185,19 +189,19 @@
 			"unmapped": "Unmapped",
 			"skipped": "Skipped",
 			"excluded": "Excluded",
-			"totalExposes": "Total Exposes",
-			"deviceName": "Device Name",
-			"suggestedCategory": "Suggested Category",
+			"totalExposes": "Total exposes",
+			"deviceName": "Device name",
+			"suggestedCategory": "Suggested category",
 			"suggestedChannel": {
-				"title": "Suggested Channel",
+				"title": "Suggested channel",
 				"validation": {
 					"required": "Please select a channel category"
 				}
 			},
 			"properties": "Properties",
-			"missingRequiredProperties": "Missing Required Properties",
+			"missingRequiredProperties": "Missing required properties",
 			"exposeEnabled": "Enabled",
-			"channelCategory": "Channel Category",
+			"channelCategory": "Channel category",
 			"noChannelSuggested": "No channel suggested"
 		}
 	},
@@ -240,7 +244,7 @@
 	"buttons": {
 		"next": "Next",
 		"previous": "Previous",
-		"adoptDevice": "Adopt Device",
+		"adoptDevice": "Adopt device",
 		"refresh": "Refresh",
 		"use": "Use"
 	}
