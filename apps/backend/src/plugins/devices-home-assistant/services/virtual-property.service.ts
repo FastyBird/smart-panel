@@ -169,6 +169,9 @@ export class VirtualPropertyService {
 			case DerivationType.STATIC_FALLBACK:
 				return this.deriveStaticFallback(context, derivation.params);
 
+			case DerivationType.ILLUMINANCE_LEVEL_FROM_DENSITY:
+				return this.deriveIlluminanceLevel(context, derivation.params);
+
 			default:
 				this.logger.warn(`[VIRTUAL] Unknown derivation type: ${String(derivation.type)}`);
 				return null;
@@ -288,6 +291,44 @@ export class VirtualPropertyService {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Derive illuminance level from density (LUX value)
+	 * Returns: 'bright', 'moderate', 'dusky', or 'dark'
+	 */
+	private deriveIlluminanceLevel(
+		context: VirtualPropertyContext,
+		params?: Record<string, unknown>,
+	): 'bright' | 'moderate' | 'dusky' | 'dark' {
+		// Default thresholds in LUX
+		const brightThreshold = (params?.brightThreshold as number) ?? 1000;
+		const moderateThreshold = (params?.moderateThreshold as number) ?? 100;
+		const duskyThreshold = (params?.duskyThreshold as number) ?? 10;
+
+		// Try to get density (LUX) from state
+		const state = context.state;
+		if (!state) {
+			return 'moderate'; // Default when no data
+		}
+
+		// The state value should be the LUX reading
+		const luxValue = parseFloat(String(state.state));
+
+		if (isNaN(luxValue)) {
+			return 'moderate'; // Default when value is invalid
+		}
+
+		// Determine level based on thresholds
+		if (luxValue >= brightThreshold) {
+			return 'bright';
+		} else if (luxValue >= moderateThreshold) {
+			return 'moderate';
+		} else if (luxValue >= duskyThreshold) {
+			return 'dusky';
+		} else {
+			return 'dark';
+		}
 	}
 
 	/**

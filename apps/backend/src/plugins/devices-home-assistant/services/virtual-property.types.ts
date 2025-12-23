@@ -157,6 +157,12 @@ export enum DerivationType {
 	 * Use a specific static value (fallback)
 	 */
 	STATIC_FALLBACK = 'static_fallback',
+
+	/**
+	 * Derive illuminance level from density (LUX value)
+	 * Thresholds: >= 1000 lx = bright, >= 100 lx = moderate, >= 10 lx = dusky, < 10 lx = dark
+	 */
+	ILLUMINANCE_LEVEL_FROM_DENSITY = 'illuminance_level_from_density',
 }
 
 /**
@@ -416,21 +422,12 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 		],
 	},
 
-	// Illuminance - needs density when only level is provided
+	// Illuminance - LEVEL is derived from DENSITY (LUX value from HA)
+	// Thresholds: >= 1000 lx = bright, >= 100 lx = moderate, >= 10 lx = dusky, < 10 lx = dark
 	{
 		channel_category: ChannelCategory.ILLUMINANCE,
 		virtual_properties: [
-			// Density property - static when only level is available
-			{
-				property_category: PropertyCategory.DENSITY,
-				virtual_type: VirtualPropertyType.STATIC,
-				data_type: DataTypeType.FLOAT,
-				permissions: [PermissionType.READ_ONLY],
-				unit: 'lx',
-				format: [0.0, 100000.0],
-				static_value: 0,
-			},
-			// Level property - static when only density is available
+			// Level property - derived from density (LUX value)
 			{
 				property_category: PropertyCategory.LEVEL,
 				virtual_type: VirtualPropertyType.DERIVED,
@@ -438,9 +435,12 @@ export const CHANNEL_VIRTUAL_PROPERTIES: ChannelVirtualProperties[] = [
 				permissions: [PermissionType.READ_ONLY],
 				format: ['bright', 'moderate', 'dusky', 'dark'],
 				derivation: {
-					type: DerivationType.STATIC_FALLBACK,
+					type: DerivationType.ILLUMINANCE_LEVEL_FROM_DENSITY,
 					params: {
-						defaultValue: 'moderate',
+						// Thresholds in LUX
+						brightThreshold: 1000,
+						moderateThreshold: 100,
+						duskyThreshold: 10,
 					},
 				},
 			},

@@ -275,6 +275,8 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 
 	// ============================================================================
 	// SENSOR ENTITIES - Illuminance
+	// Maps LUX value to DENSITY property. LEVEL (bright/moderate/dusky/dark) is
+	// calculated as a virtual property based on the DENSITY value.
 	// ============================================================================
 	{
 		domain: HomeAssistantDomain.SENSOR,
@@ -282,7 +284,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		channel_category: ChannelCategory.ILLUMINANCE,
 		device_category_hint: DeviceCategory.SENSOR,
 		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.LEVEL }],
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DENSITY }],
 	},
 
 	// ============================================================================
