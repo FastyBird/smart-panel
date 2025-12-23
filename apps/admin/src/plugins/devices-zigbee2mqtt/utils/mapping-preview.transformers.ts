@@ -24,7 +24,7 @@ import type {
 // Request Transformers
 // ============================================================================
 
-interface ApiMappingPreviewRequest {
+interface ApiMappingPreviewRequestData {
 	device_category?: string;
 	expose_overrides?: Array<{
 		expose_name: string;
@@ -33,18 +33,24 @@ interface ApiMappingPreviewRequest {
 	}>;
 }
 
+interface ApiMappingPreviewRequest {
+	data?: ApiMappingPreviewRequestData;
+}
+
 export const transformMappingPreviewRequest = (request: IMappingPreviewRequest): ApiMappingPreviewRequest => {
 	return {
-		device_category: request.deviceCategory,
-		expose_overrides: request.exposeOverrides?.map((override) => ({
-			expose_name: override.exposeName,
-			channel_category: override.channelCategory,
-			skip: override.skip,
-		})),
+		data: {
+			device_category: request.deviceCategory,
+			expose_overrides: request.exposeOverrides?.map((override) => ({
+				expose_name: override.exposeName,
+				channel_category: override.channelCategory,
+				skip: override.skip,
+			})),
+		},
 	};
 };
 
-interface ApiAdoptDeviceRequest {
+interface ApiAdoptDeviceRequestData {
 	ieee_address: string;
 	name: string;
 	category: string;
@@ -65,26 +71,32 @@ interface ApiAdoptDeviceRequest {
 	}>;
 }
 
+interface ApiAdoptDeviceRequest {
+	data: ApiAdoptDeviceRequestData;
+}
+
 export const transformAdoptDeviceRequest = (request: IAdoptDeviceRequest): ApiAdoptDeviceRequest => {
 	return {
-		ieee_address: request.ieeeAddress,
-		name: request.name,
-		category: request.category,
-		description: request.description,
-		enabled: request.enabled,
-		channels: request.channels.map((channel) => ({
-			identifier: channel.identifier,
-			category: channel.category,
-			name: channel.name,
-			properties: channel.properties.map((prop) => ({
-				category: prop.category,
-				z2m_property: prop.z2mProperty,
-				data_type: prop.dataType,
-				permissions: prop.permissions,
-				unit: prop.unit,
-				format: prop.format,
+		data: {
+			ieee_address: request.ieeeAddress,
+			name: request.name,
+			category: request.category,
+			description: request.description,
+			enabled: request.enabled,
+			channels: request.channels.map((channel) => ({
+				identifier: channel.identifier,
+				category: channel.category,
+				name: channel.name,
+				properties: channel.properties.map((prop) => ({
+					category: prop.category,
+					z2m_property: prop.z2mProperty,
+					data_type: prop.dataType,
+					permissions: prop.permissions,
+					unit: prop.unit,
+					format: prop.format,
+				})),
 			})),
-		})),
+		},
 	};
 };
 

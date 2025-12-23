@@ -232,3 +232,32 @@ export class AdoptDeviceRequestDto {
 	@Type(() => AdoptChannelDefinitionDto)
 	channels: AdoptChannelDefinitionDto[];
 }
+
+// =============================================================================
+// Request Wrapper DTOs (matching API convention with 'data' property)
+// =============================================================================
+
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginReqMappingPreview' })
+export class ReqMappingPreviewDto {
+	@ApiPropertyOptional({
+		description: 'Mapping preview request data',
+		type: () => MappingPreviewRequestDto,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => MappingPreviewRequestDto)
+	data?: MappingPreviewRequestDto;
+}
+
+@ApiSchema({ name: 'DevicesZigbee2mqttPluginReqAdoptDevice' })
+export class ReqAdoptDeviceDto {
+	@ApiProperty({
+		description: 'Device adoption request data',
+		type: () => AdoptDeviceRequestDto,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => AdoptDeviceRequestDto)
+	data: AdoptDeviceRequestDto;
+}

@@ -26,7 +26,12 @@ import {
 	DevicesZigbee2mqttValidationException,
 	Zigbee2mqttBridgeOfflineException,
 } from '../devices-zigbee2mqtt.exceptions';
-import { AdoptDeviceRequestDto, MappingPreviewRequestDto } from '../dto/mapping-preview.dto';
+import {
+	AdoptDeviceRequestDto,
+	MappingPreviewRequestDto,
+	ReqAdoptDeviceDto,
+	ReqMappingPreviewDto,
+} from '../dto/mapping-preview.dto';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import {
@@ -185,7 +190,7 @@ export class Zigbee2mqttDiscoveredDevicesController {
 		operationId: 'preview-devices-zigbee2mqtt-plugin-device-mapping',
 	})
 	@ApiParam({ name: 'ieeeAddress', type: 'string', description: 'Device IEEE address' })
-	@ApiBody({ type: MappingPreviewRequestDto, required: false, description: 'Optional mapping overrides' })
+	@ApiBody({ type: ReqMappingPreviewDto, required: false, description: 'Optional mapping overrides' })
 	@ApiSuccessResponse(Z2mMappingPreviewResponseModel, 'Mapping preview generated successfully')
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiNotFoundResponse('Zigbee2MQTT device not found')
@@ -194,12 +199,12 @@ export class Zigbee2mqttDiscoveredDevicesController {
 	@Post(':ieeeAddress/preview-mapping')
 	async previewMapping(
 		@Param('ieeeAddress') ieeeAddress: string,
-		@Body() body?: MappingPreviewRequestDto,
+		@Body() body?: ReqMappingPreviewDto,
 	): Promise<Z2mMappingPreviewResponseModel> {
 		this.logger.debug(`Previewing mapping for device ieeeAddress=${ieeeAddress}`);
 
 		try {
-			const request = body ? toInstance(MappingPreviewRequestDto, body) : undefined;
+			const request = body?.data ? toInstance(MappingPreviewRequestDto, body.data) : undefined;
 			const preview = await this.mappingPreviewService.generatePreview(ieeeAddress, request);
 
 			this.logger.debug(
@@ -242,21 +247,21 @@ export class Zigbee2mqttDiscoveredDevicesController {
 			'This will create the device, channels, and properties in the Smart Panel system.',
 		operationId: 'adopt-devices-zigbee2mqtt-plugin-device',
 	})
-	@ApiBody({ type: AdoptDeviceRequestDto, description: 'Device adoption configuration' })
+	@ApiBody({ type: ReqAdoptDeviceDto, description: 'Device adoption configuration' })
 	@ApiCreatedSuccessResponse(DeviceResponseModel, 'Device adopted successfully')
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiNotFoundResponse('Zigbee2MQTT device not found')
 	@ApiUnprocessableEntityResponse('Device adoption failed due to validation errors or already adopted')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('adopt')
-	async adoptDevice(@Body() body: AdoptDeviceRequestDto): Promise<DeviceResponseModel> {
-		this.logger.debug(`Adopting device ieeeAddress=${body.ieeeAddress}`);
+	async adoptDevice(@Body() body: ReqAdoptDeviceDto): Promise<DeviceResponseModel> {
+		this.logger.debug(`Adopting device ieeeAddress=${body.data.ieeeAddress}`);
 
 		try {
-			const request = toInstance(AdoptDeviceRequestDto, body);
+			const request = toInstance(AdoptDeviceRequestDto, body.data);
 			const device = await this.deviceAdoptionService.adoptDevice(request);
 
-			this.logger.debug(`Adopted device ieeeAddress=${body.ieeeAddress} as device id=${device.id}`);
+			this.logger.debug(`Adopted device ieeeAddress=${body.data.ieeeAddress} as device id=${device.id}`);
 
 			const response = new DeviceResponseModel();
 			response.data = device;
