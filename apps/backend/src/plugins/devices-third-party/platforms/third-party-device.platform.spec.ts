@@ -69,7 +69,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		expect(result).toBe(true);
 		expect(loggerLogSpy).toHaveBeenCalledWith(
 			'[ThirdPartyDevicePlatform] Successfully updated properties',
-			'devices-third-party-plugin',
+			expect.objectContaining({ tag: 'devices-third-party-plugin' }),
 		);
 	});
 
@@ -99,7 +99,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		expect(result).toBe(true);
 		expect(loggerLogSpy).toHaveBeenCalledWith(
 			`[ThirdPartyDevicePlatform] Successfully processed all property updates for device id=${mockDevice.id}`,
-			'devices-third-party-plugin',
+			expect.objectContaining({ tag: 'devices-third-party-plugin' }),
 		);
 	});
 
@@ -129,7 +129,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		expect(result).toBe(false);
 		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			`[ThirdPartyDevicePlatform] Some properties failed to update for device id=${mockDevice.id}: ${JSON.stringify(mockResponseBody.properties)}`,
-			'devices-third-party-plugin',
+			expect.objectContaining({ tag: 'devices-third-party-plugin' }),
 		);
 	});
 
@@ -149,7 +149,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			`[ThirdPartyDevicePlatform] Unexpected response status=500 id=${mockDevice.id}`,
 			undefined,
-			'devices-third-party-plugin',
+			expect.objectContaining({ tag: 'devices-third-party-plugin' }),
 		);
 	});
 
@@ -169,7 +169,7 @@ describe('ThirdPartyDevicePlatform', () => {
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('[ThirdPartyDevicePlatform] Error processing property update'),
 			undefined,
-			'devices-third-party-plugin',
+			expect.objectContaining({ tag: 'devices-third-party-plugin' }),
 		);
 	});
 

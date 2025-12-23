@@ -227,7 +227,7 @@ describe('PropertyCommandService', () => {
 			expect.stringContaining(
 				`[PropertyCommandService] Successfully executed batch command for deviceId=${mockDevice.id}`,
 			),
-			'devices-module',
+			expect.objectContaining({ tag: 'devices-module' }),
 		);
 	});
 
@@ -241,7 +241,7 @@ describe('PropertyCommandService', () => {
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('[PropertyCommandService] Command validation failed'),
 			undefined,
-			'devices-module',
+			expect.objectContaining({ tag: 'devices-module' }),
 		);
 	});
 
@@ -289,7 +289,7 @@ describe('PropertyCommandService', () => {
 		expect(result.results).toEqual([{ device: mockDevice.id, success: false, reason: 'Unsupported device type' }]);
 		expect(loggerWarnSpy).toHaveBeenCalledWith(
 			`[PropertyCommandService] No platform registered for device id=${mockDevice.id} type=mock`,
-			'devices-module',
+			expect.objectContaining({ tag: 'devices-module' }),
 		);
 	});
 
@@ -309,7 +309,7 @@ describe('PropertyCommandService', () => {
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
 			`[PropertyCommandService] Batch command execution failed for deviceId=${mockDevice.id}`,
 			undefined,
-			'devices-module',
+			expect.objectContaining({ tag: 'devices-module' }),
 		);
 	});
 

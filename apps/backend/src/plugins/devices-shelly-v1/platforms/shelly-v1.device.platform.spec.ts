@@ -103,7 +103,7 @@ describe('ShellyV1DevicePlatform', () => {
 		expect(shellyDevice.setRelay).toHaveBeenCalledWith(0, true);
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
 			`[ShellyV1DevicePlatform] Successfully processed all property updates for device id=${device.id}`,
-			'devices-shelly-v1-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 		);
 	});
 
@@ -119,7 +119,7 @@ describe('ShellyV1DevicePlatform', () => {
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
 			'[ShellyV1DevicePlatform] Failed to update device property, invalid device provided',
 			undefined,
-			'devices-shelly-v1-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 		);
 	});
 
@@ -132,7 +132,7 @@ describe('ShellyV1DevicePlatform', () => {
 		expect(ok).toBe(false);
 		expect(Logger.prototype.debug).toHaveBeenCalledWith(
 			`[ShellyV1DevicePlatform] Device ${device.identifier} is disabled, ignoring command`,
-			'devices-shelly-v1-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 		);
 	});
 
@@ -147,7 +147,7 @@ describe('ShellyV1DevicePlatform', () => {
 		expect(ok).toBe(false);
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
 			`[ShellyV1DevicePlatform] Shelly device not found in adapter: ${device.identifier}, device may be offline`,
-			'devices-shelly-v1-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 		);
 	});
 
@@ -211,7 +211,7 @@ describe('ShellyV1DevicePlatform', () => {
 			expect(ok).toBe(false);
 			expect(Logger.prototype.warn).toHaveBeenCalledWith(
 				`[ShellyV1DevicePlatform] Device ${device.identifier} does not support setRelay method`,
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 		});
 	});
@@ -369,7 +369,7 @@ describe('ShellyV1DevicePlatform', () => {
 			expect(ok).toBe(false);
 			expect(Logger.prototype.warn).toHaveBeenCalledWith(
 				'[ShellyV1DevicePlatform] Invalid roller command: invalid, must be one of: open, close, stop',
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 		});
 	});
@@ -391,7 +391,7 @@ describe('ShellyV1DevicePlatform', () => {
 			expect(Logger.prototype.error).toHaveBeenCalledWith(
 				expect.stringContaining('[ShellyV1DevicePlatform] Error processing property update'),
 				undefined,
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 		});
 	});

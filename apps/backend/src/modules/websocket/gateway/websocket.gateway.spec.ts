@@ -114,7 +114,10 @@ describe('WebsocketGateway', () => {
 
 			gateway.afterInit();
 
-			expect(logSpy).toHaveBeenCalledWith('[WebsocketGateway] Websockets gateway started', 'websocket-module');
+			expect(logSpy).toHaveBeenCalledWith(
+				'[WebsocketGateway] Websockets gateway started',
+				expect.objectContaining({ tag: 'websocket-module' }),
+			);
 		});
 	});
 
@@ -124,7 +127,10 @@ describe('WebsocketGateway', () => {
 
 			await gateway.handleConnection(mockSocket);
 
-			expect(logSpy).toHaveBeenCalledWith(`[WebsocketGateway] Client connected: ${mockSocket.id}`, 'websocket-module');
+			expect(logSpy).toHaveBeenCalledWith(
+				`[WebsocketGateway] Client connected: ${mockSocket.id}`,
+				expect.objectContaining({ tag: 'websocket-module' }),
+			);
 			expect(mockSocket.join).toHaveBeenCalledWith('default-room');
 		});
 	});
@@ -137,7 +143,7 @@ describe('WebsocketGateway', () => {
 
 			expect(logSpy).toHaveBeenCalledWith(
 				`[WebsocketGateway] Client disconnected: ${mockSocket.id}`,
-				'websocket-module',
+				expect.objectContaining({ tag: 'websocket-module' }),
 			);
 		});
 	});

@@ -102,7 +102,7 @@ describe('ShelliesAdapterService', () => {
 			expect(mockShelliesLibrary.start).toHaveBeenCalledWith(null);
 			expect(Logger.prototype.log).toHaveBeenCalledWith(
 				'[ShelliesAdapterService] Shellies adapter started successfully',
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 		});
 
@@ -115,7 +115,7 @@ describe('ShelliesAdapterService', () => {
 
 			expect(Logger.prototype.warn).toHaveBeenCalledWith(
 				'[ShelliesAdapterService] Shellies adapter already started',
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 			expect(mockShelliesLibrary.start).not.toHaveBeenCalled();
 		});
@@ -155,7 +155,7 @@ describe('ShelliesAdapterService', () => {
 
 			expect(Logger.prototype.debug).toHaveBeenCalledWith(
 				'[ShelliesAdapterService] Shellies adapter not started, nothing to stop',
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 			expect(mockShelliesLibrary.stop).not.toHaveBeenCalled();
 		});
@@ -274,7 +274,7 @@ describe('ShelliesAdapterService', () => {
 			expect(registered?.enabled).toBe(false);
 			expect(Logger.prototype.debug).toHaveBeenCalledWith(
 				'[ShelliesAdapterService] Updated enabled status for shelly1pm-ABC123: false',
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 		});
 
@@ -297,7 +297,7 @@ describe('ShelliesAdapterService', () => {
 			expect(device.setAuthCredentials).toHaveBeenCalledWith('admin', 'password123');
 			expect(Logger.prototype.debug).toHaveBeenCalledWith(
 				'[ShelliesAdapterService] Set auth credentials for shelly1pm-ABC123 (username: admin)',
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 		});
 
@@ -310,7 +310,7 @@ describe('ShelliesAdapterService', () => {
 
 			expect(Logger.prototype.warn).toHaveBeenCalledWith(
 				'[ShelliesAdapterService] Cannot set auth credentials - device not found: unknown-device',
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 		});
 
@@ -402,7 +402,7 @@ describe('ShelliesAdapterService', () => {
 			expect(service.getRegisteredDevice('shelly1pm-ABC123')).toBeUndefined();
 			expect(Logger.prototype.debug).toHaveBeenCalledWith(
 				expect.stringContaining('[ShelliesAdapterService] Device unregistered: shelly1pm-ABC123'),
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 		});
 	});

@@ -79,7 +79,7 @@ describe('ShellyNgDevicePlatform', () => {
 		expect(delegates.setPropertyValue as jest.Mock).not.toHaveBeenCalled();
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
 			`[ShellyNgDevicePlatform] Successfully processed all property updates for device id=${device.id}`,
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 	});
 
@@ -95,7 +95,7 @@ describe('ShellyNgDevicePlatform', () => {
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
 			'[ShellyNgDevicePlatform] Failed to update device property, invalid device provided',
 			undefined,
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 	});
 
@@ -123,7 +123,7 @@ describe('ShellyNgDevicePlatform', () => {
 		expect(delegates.setPropertyValue as jest.Mock).not.toHaveBeenCalled();
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
 			`[ShellyNgDevicePlatform] Successfully processed all property updates for device id=${device.id}`,
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 	});
 
@@ -150,11 +150,11 @@ describe('ShellyNgDevicePlatform', () => {
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
 			'[ShellyNgDevicePlatform] Failed to update device property',
 			undefined,
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
 			expect.stringContaining(`Some properties failed to update for device id=${device.id}`),
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 	});
 
@@ -183,7 +183,7 @@ describe('ShellyNgDevicePlatform', () => {
 
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
 			`[ShellyNgDevicePlatform] Successfully processed all property updates for device id=${device.id}`,
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 	});
 
@@ -212,11 +212,11 @@ describe('ShellyNgDevicePlatform', () => {
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
 			'[ShellyNgDevicePlatform] Failed to update device property',
 			undefined,
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
 			expect.stringContaining(`Some properties failed to update for device id=${device.id}`),
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 	});
 
@@ -237,7 +237,7 @@ describe('ShellyNgDevicePlatform', () => {
 		expect(Logger.prototype.error).toHaveBeenCalledWith(
 			expect.stringContaining('[ShellyNgDevicePlatform] Error processing property update'),
 			undefined,
-			'devices-shelly-ng-plugin',
+			expect.objectContaining({ tag: 'devices-shelly-ng-plugin' }),
 		);
 	});
 });
