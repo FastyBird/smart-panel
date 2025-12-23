@@ -160,6 +160,7 @@
 				:logs="deviceLogs.logs"
 				:has-more="deviceLogs.hasMore"
 				:is-loading="deviceLogs.isLoading"
+				:live-ref="deviceLogs.live"
 				:fetch-logs="deviceLogs.fetchLogs"
 				:load-more-logs="deviceLogs.loadMoreLogs"
 				:refresh-logs="deviceLogs.refreshLogs"
@@ -261,6 +262,7 @@ import type { IChannel } from '../../store/channels.store.types';
 import { devicesValidationStoreKey } from '../../store/keys';
 
 import DeviceDetailDescription from './device-detail-description.vue';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import DeviceLogs from './device-logs.vue';
 import type { IDeviceDetailProps } from './device-detail.types';
 

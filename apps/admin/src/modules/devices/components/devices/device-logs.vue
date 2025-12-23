@@ -165,7 +165,7 @@ const ownComposable = isSharedMode ? null : useDeviceLogs({ deviceId: toRef(() =
 const logs = computed(() => (isSharedMode ? props.logs!.value : ownComposable!.logs.value));
 const hasMore = computed(() => (isSharedMode ? props.hasMore!.value : ownComposable!.hasMore.value));
 const isLoading = computed(() => (isSharedMode ? props.isLoading!.value : ownComposable!.isLoading.value));
-const live = isSharedMode ? null : ownComposable!.live;
+const live = isSharedMode ? props.liveRef! : ownComposable!.live;
 
 const doRefreshLogs = (): Promise<void> => (isSharedMode ? props.refreshLogs!() : ownComposable!.refreshLogs());
 const doLoadMoreLogs = (): Promise<void> => (isSharedMode ? props.loadMoreLogs!() : ownComposable!.loadMoreLogs());
@@ -173,22 +173,18 @@ const doFetchLogs = (): Promise<void> => (isSharedMode ? props.fetchLogs!() : ow
 
 const innerLive: Ref<boolean> = useVModel(props, 'live', emit, { defaultValue: false });
 
-// Sync live state between parent prop and composable (only in standalone mode)
+// Sync live state between parent prop/v-model and composable's live ref
 watch(
 	innerLive,
 	(val) => {
-		if (live) {
-			live.value = val;
-		}
+		live.value = val;
 	},
 	{ immediate: true }
 );
 
-if (live) {
-	watch(live, (val) => {
-		innerLive.value = val;
-	});
-}
+watch(live, (val) => {
+	innerLive.value = val;
+});
 
 const onRefresh = (): void => {
 	void doRefreshLogs();

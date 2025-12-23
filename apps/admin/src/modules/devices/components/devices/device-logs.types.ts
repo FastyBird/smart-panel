@@ -10,6 +10,7 @@ export interface IDeviceLogsProps {
 	logs?: ComputedRef<ILogEntry[]>;
 	hasMore?: Ref<boolean>;
 	isLoading?: Ref<boolean>;
+	liveRef?: Ref<boolean>;
 	fetchLogs?: () => Promise<void>;
 	loadMoreLogs?: () => Promise<void>;
 	refreshLogs?: () => Promise<void>;
