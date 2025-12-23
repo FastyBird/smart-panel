@@ -5,6 +5,7 @@
 			<div class="flex items-center gap-2">
 				<el-button
 					size="small"
+					:loading="isLoading"
 					@click="onRefresh"
 				>
 					<template #icon>

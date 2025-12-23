@@ -71,10 +71,12 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 		// Update the expected device ID before making the request
 		currentFetchDevice = deviceId;
 
-		// Increment generation to invalidate any in-flight loadMoreLogs requests
+		// Increment generation to invalidate any in-flight requests
 		fetchGeneration++;
 
-		// Allow concurrent requests but track which device we're fetching for
+		// Capture the current generation to detect if another fetch started mid-flight
+		const generationAtStart = fetchGeneration;
+
 		isLoading.value = true;
 
 		try {
@@ -87,8 +89,8 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 				},
 			});
 
-			// Discard response if device ID changed while request was in-flight
-			if (currentFetchDevice !== deviceId) {
+			// Discard response if device ID changed or another fetch started while request was in-flight
+			if (currentFetchDevice !== deviceId || fetchGeneration !== generationAtStart) {
 				return;
 			}
 
@@ -108,13 +110,13 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 				logger.error('Failed to fetch device logs:', error);
 			}
 		} catch (err) {
-			// Only log error if this is still the current device
-			if (currentFetchDevice === deviceId) {
+			// Only log error if this is still the current device and generation
+			if (currentFetchDevice === deviceId && fetchGeneration === generationAtStart) {
 				logger.error('Error fetching device logs:', err);
 			}
 		} finally {
-			// Only clear loading state if this is still the current device
-			if (currentFetchDevice === deviceId) {
+			// Only clear loading state if this is still the current device and generation
+			if (currentFetchDevice === deviceId && fetchGeneration === generationAtStart) {
 				isLoading.value = false;
 			}
 		}
