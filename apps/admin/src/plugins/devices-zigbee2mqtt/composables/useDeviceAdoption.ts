@@ -61,7 +61,6 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				});
 
 				isAdopting.value = false;
-				flashMessage.success(`Device "${request.name}" has been adopted successfully.`);
 
 				return parsedDevice.data;
 			}
