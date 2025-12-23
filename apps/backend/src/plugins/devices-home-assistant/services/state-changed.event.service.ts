@@ -9,7 +9,11 @@ import { EventType as DevicesModuleEventType } from '../../../modules/devices/de
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	DEVICES_HOME_ASSISTANT_TYPE,
+	HomeAssistantDomain,
+} from '../devices-home-assistant.constants';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantStateChangedEventDto, HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
@@ -103,7 +107,7 @@ export class StateChangedEventService implements WsEventService {
 					this.logger.debug(
 						`[STATE CHANGED] Processing state for ${entityId}, ` +
 							`state=${event.data.new_state.state}, ` +
-							`brightness=${event.data.new_state.attributes?.brightness ?? 'N/A'}`,
+							`brightness=${JSON.stringify(event.data.new_state.attributes?.brightness ?? 'N/A')}`,
 					);
 
 					const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [event.data.new_state]);
@@ -203,7 +207,7 @@ export class StateChangedEventService implements WsEventService {
 			// Build context for virtual property resolution
 			const context: VirtualPropertyContext = {
 				entityId,
-				domain: entityId.split('.')[0] as any,
+				domain: entityId.split('.')[0] as HomeAssistantDomain,
 				deviceClass: (state.attributes?.device_class as string) ?? null,
 				state: {
 					entityId: state.entity_id,

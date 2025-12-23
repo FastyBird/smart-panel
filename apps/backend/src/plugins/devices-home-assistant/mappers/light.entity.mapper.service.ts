@@ -41,7 +41,9 @@ export class LightEntityMapperService extends EntityMapper {
 
 		const brightness = state.attributes[LightEntityAttribute.BRIGHTNESS];
 
-		this.logger.debug(`[LIGHT ENTITY MAPPER] Brightness from HA: ${String(brightness)} (type: ${typeof brightness})`);
+		this.logger.debug(
+			`[LIGHT ENTITY MAPPER] Brightness from HA: ${JSON.stringify(brightness)} (type: ${typeof brightness})`,
+		);
 
 		if (typeof brightness === 'number') {
 			const brightnessProp = await this.getValidProperty(

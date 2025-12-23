@@ -13,7 +13,11 @@ import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../mod
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	DEVICES_HOME_ASSISTANT_TYPE,
+	HomeAssistantDomain,
+} from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
 	DevicesHomeAssistantNotFoundException,
