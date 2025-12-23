@@ -23,6 +23,7 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { Zigbee2mqttDiscoveredDevicesController } from './controllers/zigbee2mqtt-discovered-devices.controller';
 import {
 	DEVICES_ZIGBEE2MQTT_API_TAG_DESCRIPTION,
 	DEVICES_ZIGBEE2MQTT_API_TAG_NAME,
@@ -42,7 +43,6 @@ import {
 	Zigbee2mqttChannelPropertyEntity,
 	Zigbee2mqttDeviceEntity,
 } from './entities/devices-zigbee2mqtt.entity';
-import { Zigbee2mqttDiscoveredDevicesController } from './controllers/zigbee2mqtt-discovered-devices.controller';
 import { Zigbee2mqttConfigModel } from './models/config.model';
 import { Zigbee2mqttDevicePlatform } from './platforms/zigbee2mqtt.device.platform';
 import { Z2mDeviceAdoptionService } from './services/device-adoption.service';
