@@ -40,6 +40,9 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 	// Track the current device ID to detect stale responses
 	let currentFetchDevice: string | null = null;
 
+	// Generation counter to detect stale loadMoreLogs responses after a refresh
+	let fetchGeneration = 0;
+
 	const logs = computed<ILogEntry[]>(() => {
 		return Object.values(logsData.value).sort((a, b) => {
 			return new Date(b.ts).getTime() - new Date(a.ts).getTime();
@@ -67,6 +70,9 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 
 		// Update the expected device ID before making the request
 		currentFetchDevice = deviceId;
+
+		// Increment generation to invalidate any in-flight loadMoreLogs requests
+		fetchGeneration++;
 
 		// Allow concurrent requests but track which device we're fetching for
 		isLoading.value = true;
@@ -122,6 +128,9 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 		const deviceId = toValue(props.deviceId);
 		const cursor = nextCursor.value;
 
+		// Capture the current generation to detect if a refresh occurs mid-flight
+		const generationAtStart = fetchGeneration;
+
 		isLoading.value = true;
 
 		try {
@@ -135,8 +144,8 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 				},
 			});
 
-			// Discard response if device ID changed while request was in-flight
-			if (currentFetchDevice !== deviceId) {
+			// Discard response if device ID changed or a refresh occurred while request was in-flight
+			if (currentFetchDevice !== deviceId || fetchGeneration !== generationAtStart) {
 				return;
 			}
 
@@ -155,13 +164,13 @@ export const useDeviceLogs = (props: IUseDeviceLogsProps): IUseDeviceLogs => {
 				logger.error('Failed to load more device logs:', error);
 			}
 		} catch (err) {
-			// Only log error if this is still the current device
-			if (currentFetchDevice === deviceId) {
+			// Only log error if this is still the current device and generation
+			if (currentFetchDevice === deviceId && fetchGeneration === generationAtStart) {
 				logger.error('Error loading more device logs:', err);
 			}
 		} finally {
-			// Only clear loading state if this is still the current device
-			if (currentFetchDevice === deviceId) {
+			// Only clear loading state if this is still the current device and generation
+			if (currentFetchDevice === deviceId && fetchGeneration === generationAtStart) {
 				isLoading.value = false;
 			}
 		}
