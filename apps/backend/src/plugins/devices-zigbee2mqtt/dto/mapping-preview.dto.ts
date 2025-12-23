@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -20,7 +20,9 @@ export class MappingExposeOverrideDto {
 	@ApiProperty({
 		description: 'The Z2M expose property name to override',
 		example: 'temperature',
+		name: 'expose_name',
 	})
+	@Expose({ name: 'expose_name' })
 	@IsString()
 	exposeName: string;
 
@@ -28,7 +30,9 @@ export class MappingExposeOverrideDto {
 		description: 'Override the channel category for this expose',
 		enum: ChannelCategory,
 		enumName: 'DevicesModuleChannelCategory',
+		name: 'channel_category',
 	})
+	@Expose({ name: 'channel_category' })
 	@IsOptional()
 	@IsEnum(ChannelCategory)
 	channelCategory?: ChannelCategory;
@@ -37,6 +41,7 @@ export class MappingExposeOverrideDto {
 		description: 'Skip this expose during adoption',
 		default: false,
 	})
+	@Expose()
 	@IsOptional()
 	@IsBoolean()
 	skip?: boolean;
@@ -52,7 +57,9 @@ export class MappingPreviewRequestDto {
 		description: 'Override device category suggestion',
 		enum: DeviceCategory,
 		enumName: 'DevicesModuleDeviceCategory',
+		name: 'device_category',
 	})
+	@Expose({ name: 'device_category' })
 	@IsOptional()
 	@IsEnum(DeviceCategory)
 	deviceCategory?: DeviceCategory;
@@ -60,7 +67,9 @@ export class MappingPreviewRequestDto {
 	@ApiPropertyOptional({
 		description: 'Override entity mappings',
 		type: () => [MappingExposeOverrideDto],
+		name: 'expose_overrides',
 	})
+	@Expose({ name: 'expose_overrides' })
 	@IsOptional()
 	@IsArray()
 	@ValidateNested({ each: true })
@@ -79,6 +88,7 @@ export class AdoptPropertyDefinitionDto {
 		enum: PropertyCategory,
 		enumName: 'DevicesModulePropertyCategory',
 	})
+	@Expose()
 	@IsEnum(PropertyCategory)
 	category: PropertyCategory;
 
@@ -86,7 +96,9 @@ export class AdoptPropertyDefinitionDto {
 		description: 'Property data type',
 		enum: DataTypeType,
 		enumName: 'DevicesModuleDataType',
+		name: 'data_type',
 	})
+	@Expose({ name: 'data_type' })
 	@IsEnum(DataTypeType)
 	dataType: DataTypeType;
 
@@ -96,6 +108,7 @@ export class AdoptPropertyDefinitionDto {
 		enumName: 'DevicesModulePermissionType',
 		isArray: true,
 	})
+	@Expose()
 	@IsArray()
 	@IsEnum(PermissionType, { each: true })
 	permissions: PermissionType[];
@@ -104,6 +117,7 @@ export class AdoptPropertyDefinitionDto {
 		description: 'Property unit',
 		example: '°C',
 	})
+	@Expose()
 	@IsOptional()
 	@IsString()
 	unit?: string | null;
@@ -111,13 +125,16 @@ export class AdoptPropertyDefinitionDto {
 	@ApiPropertyOptional({
 		description: 'Property format',
 	})
+	@Expose()
 	@IsOptional()
 	format?: string[] | number[] | null;
 
 	@ApiProperty({
 		description: 'Z2M expose property name (for binding)',
 		example: 'temperature',
+		name: 'z2m_property',
 	})
+	@Expose({ name: 'z2m_property' })
 	@IsString()
 	z2mProperty: string;
 }
@@ -129,6 +146,7 @@ export class AdoptChannelDefinitionDto {
 		enum: ChannelCategory,
 		enumName: 'DevicesModuleChannelCategory',
 	})
+	@Expose()
 	@IsEnum(ChannelCategory)
 	category: ChannelCategory;
 
@@ -136,12 +154,14 @@ export class AdoptChannelDefinitionDto {
 		description: 'Channel name',
 		example: 'Temperature Sensor',
 	})
+	@Expose()
 	@IsString()
 	name: string;
 
 	@ApiPropertyOptional({
 		description: 'Channel identifier (defaults to category)',
 	})
+	@Expose()
 	@IsOptional()
 	@IsString()
 	identifier?: string;
@@ -150,6 +170,7 @@ export class AdoptChannelDefinitionDto {
 		description: 'Channel properties',
 		type: () => [AdoptPropertyDefinitionDto],
 	})
+	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => AdoptPropertyDefinitionDto)
@@ -161,7 +182,9 @@ export class AdoptDeviceRequestDto {
 	@ApiProperty({
 		description: 'IEEE address of the Z2M device to adopt',
 		example: '0xa4c138e4f788f9fe',
+		name: 'ieee_address',
 	})
+	@Expose({ name: 'ieee_address' })
 	@IsString()
 	ieeeAddress: string;
 
@@ -169,6 +192,7 @@ export class AdoptDeviceRequestDto {
 		description: 'Device name',
 		example: 'Living Room Temperature Sensor',
 	})
+	@Expose()
 	@IsString()
 	name: string;
 
@@ -177,12 +201,14 @@ export class AdoptDeviceRequestDto {
 		enum: DeviceCategory,
 		enumName: 'DevicesModuleDeviceCategory',
 	})
+	@Expose()
 	@IsEnum(DeviceCategory)
 	category: DeviceCategory;
 
 	@ApiPropertyOptional({
 		description: 'Device description',
 	})
+	@Expose()
 	@IsOptional()
 	@IsString()
 	description?: string;
@@ -191,6 +217,7 @@ export class AdoptDeviceRequestDto {
 		description: 'Enable device',
 		default: true,
 	})
+	@Expose()
 	@IsOptional()
 	@IsBoolean()
 	enabled?: boolean;
@@ -199,6 +226,7 @@ export class AdoptDeviceRequestDto {
 		description: 'Channel definitions for the device',
 		type: () => [AdoptChannelDefinitionDto],
 	})
+	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => AdoptChannelDefinitionDto)
