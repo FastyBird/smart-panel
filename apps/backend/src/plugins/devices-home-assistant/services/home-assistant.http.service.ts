@@ -30,6 +30,7 @@ import {
 import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config.model';
 import { HomeAssistantDiscoveredDeviceModel, HomeAssistantStateModel } from '../models/home-assistant.model';
+
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext, VirtualPropertyType, getVirtualPropertiesForChannel } from './virtual-property.types';
 
@@ -445,12 +446,12 @@ export class HomeAssistantHttpService {
 				channelEntities.set(channelId, property.channel);
 			}
 
-			channelProperties.get(channelId)!.push(property);
+			channelProperties.get(channelId).push(property);
 		}
 
 		// Process each channel's virtual properties
 		for (const [channelId, props] of channelProperties) {
-			const channel = channelEntities.get(channelId)!;
+			const channel = channelEntities.get(channelId);
 			const virtualDefs = getVirtualPropertiesForChannel(channel.category);
 
 			// Skip channels without virtual property definitions
@@ -466,13 +467,13 @@ export class HomeAssistantHttpService {
 			}
 
 			// Find an entity state to use for context
-			const entityIds = props.filter((p) => p.haEntityId).map((p) => p.haEntityId!);
+			const entityIds = props.filter((p) => p.haEntityId).map((p) => p.haEntityId);
 			const state = states.find((s) => entityIds.includes(s.entity_id));
 
 			// Build context for virtual property resolution
 			const context: VirtualPropertyContext = {
 				entityId: entityIds[0] ?? '',
-				domain: entityIds[0]?.split('.')[0] as any,
+				domain: (entityIds[0]?.split('.')[0] ?? '') as HomeAssistantDomain,
 				deviceClass: (state?.attributes?.device_class as string) ?? null,
 				state: state
 					? {

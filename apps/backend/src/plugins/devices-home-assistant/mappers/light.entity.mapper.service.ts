@@ -37,15 +37,11 @@ export class LightEntityMapperService extends EntityMapper {
 		this.logger.debug(
 			`[LIGHT ENTITY MAPPER] Properties: ${properties.map((p) => `${p.category}:${p.haAttribute}`).join(', ')}`,
 		);
-		this.logger.debug(
-			`[LIGHT ENTITY MAPPER] State attributes: ${Object.keys(state.attributes).join(', ')}`,
-		);
+		this.logger.debug(`[LIGHT ENTITY MAPPER] State attributes: ${Object.keys(state.attributes).join(', ')}`);
 
 		const brightness = state.attributes[LightEntityAttribute.BRIGHTNESS];
 
-		this.logger.debug(
-			`[LIGHT ENTITY MAPPER] Brightness from HA: ${brightness} (type: ${typeof brightness})`,
-		);
+		this.logger.debug(`[LIGHT ENTITY MAPPER] Brightness from HA: ${String(brightness)} (type: ${typeof brightness})`);
 
 		if (typeof brightness === 'number') {
 			const brightnessProp = await this.getValidProperty(
@@ -63,9 +59,7 @@ export class LightEntityMapperService extends EntityMapper {
 			if (brightnessProp) {
 				const mappedValue = Math.round((brightness / 255) * 100);
 				mapped.set(brightnessProp.id, mappedValue);
-				this.logger.debug(
-					`[LIGHT ENTITY MAPPER] Mapped brightness: ${brightness} (0-255) -> ${mappedValue}% (0-100)`,
-				);
+				this.logger.debug(`[LIGHT ENTITY MAPPER] Mapped brightness: ${brightness} (0-255) -> ${mappedValue}% (0-100)`);
 			} else {
 				// Check what haAttribute the brightness property actually has
 				const anyBrightnessProp = properties.find((p) => p.category === PropertyCategory.BRIGHTNESS);
@@ -289,7 +283,9 @@ export class LightEntityMapperService extends EntityMapper {
 
 		if (hueProp && saturationProp && (values.has(hueProp.id) || values.has(saturationProp.id))) {
 			const hue = this.toNumber(values.has(hueProp.id) ? values.get(hueProp.id) : hueProp.value);
-			const saturation = this.toNumber(values.has(saturationProp.id) ? values.get(saturationProp.id) : saturationProp.value);
+			const saturation = this.toNumber(
+				values.has(saturationProp.id) ? values.get(saturationProp.id) : saturationProp.value,
+			);
 
 			if (hue !== null && saturation !== null) {
 				attributes.set(LightEntityAttribute.HS_COLOR, [hue, saturation]);

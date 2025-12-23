@@ -388,7 +388,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 				};
 
 				// Adopt the device
-				const adoptedDevice = await adoptDevice(adoptRequest);
+				await adoptDevice(adoptRequest);
 
 				formResult.value = FormResult.OK;
 
