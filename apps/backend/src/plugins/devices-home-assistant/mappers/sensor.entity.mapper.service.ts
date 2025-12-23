@@ -409,9 +409,11 @@ export class SensorEntityMapperService extends EntityMapper {
 					break;
 				case 'illuminance':
 					{
+						// Illuminance LUX value is stored in DENSITY property
+						// LEVEL is a virtual property derived from DENSITY
 						const sensorProp = await this.getValidProperty(
 							properties,
-							PropertyCategory.LEVEL,
+							PropertyCategory.DENSITY,
 							ENTITY_MAIN_STATE_ATTRIBUTE,
 							[ChannelCategory.ILLUMINANCE],
 						);

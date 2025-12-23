@@ -21,6 +21,7 @@ import { CreateHomeAssistantDeviceDto } from '../dto/create-device.dto';
 import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
 
+import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 
 /**
@@ -45,6 +46,7 @@ export class DeviceAdoptionService {
 
 	constructor(
 		private readonly homeAssistantWsService: HomeAssistantWsService,
+		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
@@ -104,6 +106,11 @@ export class DeviceAdoptionService {
 		this.logger.debug(`[DEVICE ADOPTION] Created device: ${device.id}`);
 
 		try {
+			// Log all incoming channels for debugging
+			this.logger.debug(
+				`[DEVICE ADOPTION] Incoming channels: ${JSON.stringify(request.channels.map((ch) => ({ entityId: ch.entityId, category: ch.category, propsCount: ch.properties?.length ?? 0 })))}`,
+			);
+
 			// Separate device_information channels from other channels
 			// Device_information channels should be merged into the auto-created one
 			const deviceInformationChannels = request.channels.filter(
@@ -114,6 +121,13 @@ export class DeviceAdoptionService {
 			this.logger.debug(
 				`[DEVICE ADOPTION] Found ${deviceInformationChannels.length} device_information channels to merge, ${otherChannels.length} other channels to create`,
 			);
+
+			// Log device_information channel details
+			for (const diChannel of deviceInformationChannels) {
+				this.logger.debug(
+					`[DEVICE ADOPTION] Device info channel: entityId=${diChannel.entityId}, properties=${JSON.stringify(diChannel.properties.map((p) => ({ category: p.category, haAttribute: p.haAttribute, haEntityId: p.haEntityId })))}`,
+				);
+			}
 
 			// Create device information channel (auto-populated from HA registry)
 			// Merge any device_information properties from mapping into it
@@ -126,6 +140,12 @@ export class DeviceAdoptionService {
 
 			// Final validation (should pass since we pre-validated, but double-check)
 			await this.validateDeviceStructure(device.id);
+
+			// Sync initial states from Home Assistant to populate property values
+			// This also updates virtual property values and sets device connection state
+			await this.homeAssistantHttpService.syncDeviceStates(device.id);
+
+			this.logger.debug(`[DEVICE ADOPTION] Device ${device.id} adopted successfully`);
 
 			// Return the fully loaded device
 			return await this.devicesService.findOne<HomeAssistantDeviceEntity>(device.id, DEVICES_HOME_ASSISTANT_TYPE);
@@ -149,6 +169,7 @@ export class DeviceAdoptionService {
 	private async createDeviceInformationChannel(
 		device: HomeAssistantDeviceEntity,
 		haDevice: {
+			id: string;
 			manufacturer: string | null;
 			model: string | null;
 			serialNumber: string | null;
@@ -164,11 +185,27 @@ export class DeviceAdoptionService {
 				? this.CONNECTION_TYPE_MAP[connectionTypeRaw]
 				: null;
 
+		// Determine serial number with fallbacks:
+		// 1. Use HA serial number if available
+		// 2. Use MAC address from connections if available
+		// 3. Use HA device ID as last fallback
+		let serialNumber = haDevice.serialNumber;
+		if (!serialNumber) {
+			// Try to find MAC address in connections
+			const macConnection = haDevice.connections.find(([type]) => type === 'mac');
+			if (macConnection) {
+				serialNumber = macConnection[1].toUpperCase().replace(/:/g, '');
+			} else {
+				// Use HA device ID as fallback
+				serialNumber = haDevice.id;
+			}
+		}
+
 		const haDeviceInformationProperties: Record<PropertyCategory, unknown> = {
-			[PropertyCategory.MANUFACTURER]: haDevice.manufacturer,
-			[PropertyCategory.MODEL]: haDevice.model,
-			[PropertyCategory.SERIAL_NUMBER]: haDevice.serialNumber || 'N/A',
-			[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion,
+			[PropertyCategory.MANUFACTURER]: haDevice.manufacturer || 'Unknown',
+			[PropertyCategory.MODEL]: haDevice.model || 'Unknown',
+			[PropertyCategory.SERIAL_NUMBER]: serialNumber,
+			[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion || 'N/A',
 			[PropertyCategory.HARDWARE_REVISION]: haDevice.hwVersion,
 			[PropertyCategory.CONNECTION_TYPE]: connectionType,
 			[PropertyCategory.STATUS]: ConnectionState.UNKNOWN,
@@ -207,10 +244,17 @@ export class DeviceAdoptionService {
 
 		if (existingDeviceInfoChannel) {
 			this.logger.debug(
-				`[DEVICE ADOPTION] Device information channel already exists for device ${device.id}, merging mapping properties into it`,
+				`[DEVICE ADOPTION] Device information channel already exists for device ${device.id}, adding base properties and merging mapping properties`,
 			);
 
-			// If channel exists, merge mapping properties into it instead of creating a new one
+			// Add base properties from HA registry to existing channel
+			await this.addBasePropertiesToExistingChannel(
+				existingDeviceInfoChannel.id,
+				haDeviceInformationProperties,
+				categorySpec,
+			);
+
+			// Merge additional properties from mapping channels (e.g., link_quality from RSSI sensors)
 			if (mappingDeviceInfoChannels.length > 0) {
 				await this.mergePropertiesIntoExistingChannel(
 					existingDeviceInfoChannel.id,
@@ -447,6 +491,80 @@ export class DeviceAdoptionService {
 	}
 
 	/**
+	 * Add base properties from HA device registry to an existing device_information channel
+	 */
+	private async addBasePropertiesToExistingChannel(
+		channelId: string,
+		haDeviceInformationProperties: Record<PropertyCategory, unknown>,
+		categorySpec: ChannelSpecModel,
+	): Promise<void> {
+		// Get existing properties to avoid duplicates
+		const existingProperties = await this.channelsPropertiesService.findAll(channelId, DEVICES_HOME_ASSISTANT_TYPE);
+		const existingPropertyCategories = new Set(existingProperties.map((p) => p.category));
+
+		// Add each base property if not already present
+		for (const [category, value] of Object.entries(haDeviceInformationProperties)) {
+			// Skip null/undefined values
+			if (value == null) {
+				continue;
+			}
+
+			// Skip if property already exists
+			if (existingPropertyCategories.has(category as PropertyCategory)) {
+				this.logger.debug(`[DEVICE ADOPTION] Property ${category} already exists in channel, skipping`);
+				continue;
+			}
+
+			const spec = categorySpec.properties.find((p) => p.category === (category as PropertyCategory));
+			if (!spec) {
+				this.logger.debug(`[DEVICE ADOPTION] Property ${category} not found in spec, skipping`);
+				continue;
+			}
+
+			// Convert value to string safely
+			let stringValue: string;
+			if (typeof value === 'object' && value !== null) {
+				stringValue = JSON.stringify(value);
+			} else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+				stringValue = String(value);
+			} else {
+				stringValue = '';
+			}
+
+			const createPropertyDto = toInstance(CreateHomeAssistantChannelPropertyDto, {
+				type: DEVICES_HOME_ASSISTANT_TYPE,
+				category: category as PropertyCategory,
+				permissions: spec.permissions,
+				data_type: spec.data_type,
+				unit: spec.unit,
+				format: spec.format,
+				invalid: spec.invalid,
+				step: spec.step,
+				value: stringValue,
+				ha_entity_id: null,
+				ha_attribute: null,
+			});
+
+			const propertyValidationErrors = await validate(createPropertyDto, { skipMissingProperties: true });
+			if (propertyValidationErrors.length) {
+				this.logger.warn(
+					`[DEVICE ADOPTION] Base property ${category} validation failed: ${JSON.stringify(propertyValidationErrors)}, skipping`,
+				);
+				continue;
+			}
+
+			try {
+				await this.channelsPropertiesService.create(channelId, createPropertyDto);
+				this.logger.debug(
+					`[DEVICE ADOPTION] Added base property ${category} with value "${stringValue}" to existing device_information channel`,
+				);
+			} catch (error) {
+				this.logger.error(`[DEVICE ADOPTION] Failed to add base property ${category} to channel ${channelId}:`, error);
+			}
+		}
+	}
+
+	/**
 	 * Create a channel from the adoption request
 	 */
 	private async createChannel(
@@ -505,6 +623,7 @@ export class DeviceAdoptionService {
 	private async preValidateDeviceStructure(
 		request: AdoptDeviceRequestDto,
 		haDevice: {
+			id: string;
 			manufacturer: string | null;
 			model: string | null;
 			serialNumber: string | null;
@@ -547,11 +666,22 @@ export class DeviceAdoptionService {
 					? this.CONNECTION_TYPE_MAP[connectionTypeRaw]
 					: null;
 
+			// Determine serial number with fallbacks (same logic as createDeviceInformationChannel)
+			let serialNumber = haDevice.serialNumber;
+			if (!serialNumber) {
+				const macConnection = haDevice.connections.find(([type]) => type === 'mac');
+				if (macConnection) {
+					serialNumber = macConnection[1].toUpperCase().replace(/:/g, '');
+				} else {
+					serialNumber = haDevice.id;
+				}
+			}
+
 			const haDeviceInformationProperties: Record<PropertyCategory, unknown> = {
-				[PropertyCategory.MANUFACTURER]: haDevice.manufacturer,
-				[PropertyCategory.MODEL]: haDevice.model,
-				[PropertyCategory.SERIAL_NUMBER]: haDevice.serialNumber || 'N/A',
-				[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion,
+				[PropertyCategory.MANUFACTURER]: haDevice.manufacturer || 'Unknown',
+				[PropertyCategory.MODEL]: haDevice.model || 'Unknown',
+				[PropertyCategory.SERIAL_NUMBER]: serialNumber,
+				[PropertyCategory.FIRMWARE_REVISION]: haDevice.swVersion || 'N/A',
 				[PropertyCategory.HARDWARE_REVISION]: haDevice.hwVersion,
 				[PropertyCategory.CONNECTION_TYPE]: connectionType,
 				[PropertyCategory.STATUS]: ConnectionState.UNKNOWN,

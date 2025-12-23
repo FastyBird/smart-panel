@@ -13,7 +13,11 @@ import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../mod
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	DEVICES_HOME_ASSISTANT_TYPE,
+	HomeAssistantDomain,
+} from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
 	DevicesHomeAssistantNotFoundException,
@@ -30,6 +34,9 @@ import {
 import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config.model';
 import { HomeAssistantDiscoveredDeviceModel, HomeAssistantStateModel } from '../models/home-assistant.model';
+
+import { VirtualPropertyService } from './virtual-property.service';
+import { VirtualPropertyContext, VirtualPropertyType, getVirtualPropertiesForChannel } from './virtual-property.types';
 
 const DISCOVERED_DEVICES_TEMPLATE =
 	"{% set devices = states | map(attribute='entity_id') | map('device_id') | unique | reject('eq', None) | list %}{% set ns = namespace(list=[]) %}{% for device in devices %}{% set entities = device_entities(device) | list %}{% if entities %}{% set ns.list = ns.list + [{'id': device, 'name': device_attr(device, 'name'), 'entities': entities}] %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
@@ -52,6 +59,7 @@ export class HomeAssistantHttpService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly homeAssistantMapperService: MapperService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly virtualPropertyService: VirtualPropertyService,
 	) {}
 
 	async getDiscoveredDevice(id: string): Promise<HomeAssistantDiscoveredDeviceModel> {
@@ -206,7 +214,7 @@ export class HomeAssistantHttpService {
 			]);
 
 			if (!states?.length || !haDevices?.length || !devices?.length || !properties?.length) {
-				this.logger.warn('Missing data, skipping automatic sync');
+				this.logger.debug('Missing data, skipping automatic sync');
 
 				return;
 			}
@@ -262,6 +270,16 @@ export class HomeAssistantHttpService {
 					}
 				}
 
+				// Update virtual property values for this device
+				const deviceProperties = properties.filter(
+					(p) =>
+						p.channel instanceof HomeAssistantChannelEntity &&
+						p.channel.device instanceof HomeAssistantDeviceEntity &&
+						p.channel.device.id === device.id,
+				);
+
+				await this.updateVirtualPropertyValues(deviceProperties, haDeviceStates);
+
 				const stateProperty = properties.find(
 					(property) =>
 						property.category === PropertyCategory.STATUS &&
@@ -294,6 +312,223 @@ export class HomeAssistantHttpService {
 				message: err.message,
 				stack: err.stack,
 			});
+		}
+	}
+
+	/**
+	 * Sync states for a specific device from Home Assistant
+	 * This is called after device adoption to immediately populate property values
+	 */
+	async syncDeviceStates(deviceId: string): Promise<void> {
+		if (this.apiKey === null || this.enabled !== true) {
+			this.logger.debug(`[SYNC] Skipping sync for device ${deviceId} - HA not configured`);
+			return;
+		}
+
+		try {
+			this.logger.debug(`[SYNC] Syncing states for device ${deviceId}`);
+
+			// Load the device
+			const device = await this.devicesService.findOne<HomeAssistantDeviceEntity>(
+				deviceId,
+				DEVICES_HOME_ASSISTANT_TYPE,
+			);
+
+			if (!device) {
+				this.logger.warn(`[SYNC] Device ${deviceId} not found`);
+				return;
+			}
+
+			// Fetch HA device info and states
+			const [haDevices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
+
+			if (!haDevices?.length || !states?.length) {
+				this.logger.debug(`[SYNC] Missing HA data for device ${deviceId}`);
+				return;
+			}
+
+			// Find the HA device
+			const haDevice = haDevices.find((d) => d.id === device.haDeviceId);
+			if (!haDevice) {
+				this.logger.warn(`[SYNC] HA device ${device.haDeviceId} not found in registry`);
+				return;
+			}
+
+			// Get states for this device's entities
+			const deviceStates = states.filter((s) => haDevice.entities.includes(s.entity_id));
+
+			if (!deviceStates.length) {
+				this.logger.debug(`[SYNC] No states found for device ${deviceId}`);
+				return;
+			}
+
+			// Load device properties
+			const properties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
+				undefined,
+				DEVICES_HOME_ASSISTANT_TYPE,
+			);
+
+			const deviceProperties = properties.filter(
+				(p) =>
+					p.channel instanceof HomeAssistantChannelEntity &&
+					p.channel.device instanceof HomeAssistantDeviceEntity &&
+					p.channel.device.id === deviceId,
+			);
+
+			if (!deviceProperties.length) {
+				this.logger.debug(`[SYNC] No properties found for device ${deviceId}`);
+				return;
+			}
+
+			// Map HA states to property values
+			const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, deviceStates);
+
+			for (const map of resultMaps) {
+				for (const [propertyId, value] of map) {
+					const property = deviceProperties.find((p) => p.id === propertyId);
+
+					if (!property) {
+						continue;
+					}
+
+					await this.channelsPropertiesService.update(
+						property.id,
+						toInstance(UpdateHomeAssistantChannelPropertyDto, {
+							...instanceToPlain(property),
+							value,
+						}),
+					);
+				}
+			}
+
+			// Update virtual property values
+			await this.updateVirtualPropertyValues(deviceProperties, deviceStates);
+
+			// Update device connection state
+			const isOffline = deviceStates.every(
+				(state) => typeof state.state === 'string' && state.state.toLowerCase() === 'unavailable',
+			);
+
+			await this.deviceConnectivityService.setConnectionState(deviceId, {
+				state: isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
+			});
+
+			this.logger.debug(
+				`[SYNC] Device ${device.name} (${deviceId}) sync completed, marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,
+			);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`[SYNC] Failed to sync states for device ${deviceId}`, {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
+	}
+
+	/**
+	 * Update virtual property values based on source properties
+	 * This recalculates derived values like battery status from percentage
+	 */
+	private async updateVirtualPropertyValues(
+		properties: HomeAssistantChannelPropertyEntity[],
+		states: HomeAssistantStateDto[],
+	): Promise<void> {
+		// Group properties by channel
+		const channelProperties = new Map<string, HomeAssistantChannelPropertyEntity[]>();
+		const channelEntities = new Map<string, HomeAssistantChannelEntity>();
+
+		for (const property of properties) {
+			if (!(property.channel instanceof HomeAssistantChannelEntity)) {
+				continue;
+			}
+
+			const channelId = property.channel.id;
+
+			if (!channelProperties.has(channelId)) {
+				channelProperties.set(channelId, []);
+				channelEntities.set(channelId, property.channel);
+			}
+
+			channelProperties.get(channelId).push(property);
+		}
+
+		// Process each channel's virtual properties
+		for (const [channelId, props] of channelProperties) {
+			const channel = channelEntities.get(channelId);
+			const virtualDefs = getVirtualPropertiesForChannel(channel.category);
+
+			// Skip channels without virtual property definitions
+			if (virtualDefs.length === 0) {
+				continue;
+			}
+
+			// Find virtual properties (have fb.virtual. attribute prefix)
+			const virtualProps = props.filter((p) => p.haAttribute?.startsWith('fb.virtual.'));
+
+			if (virtualProps.length === 0) {
+				continue;
+			}
+
+			// Find an entity state to use for context
+			const entityIds = props.filter((p) => p.haEntityId).map((p) => p.haEntityId);
+			const state = states.find((s) => entityIds.includes(s.entity_id));
+
+			// Build context for virtual property resolution
+			const context: VirtualPropertyContext = {
+				entityId: entityIds[0] ?? '',
+				domain: (entityIds[0]?.split('.')[0] ?? '') as HomeAssistantDomain,
+				deviceClass: (state?.attributes?.device_class as string) ?? null,
+				state: state
+					? {
+							entityId: state.entity_id,
+							state: state.state,
+							attributes: state.attributes,
+							lastChanged: state.last_changed,
+							lastReported: state.last_reported,
+							lastUpdated: state.last_updated,
+						}
+					: undefined,
+				allStates: states.map((s) => ({
+					entityId: s.entity_id,
+					state: s.state,
+					attributes: s.attributes,
+					lastChanged: s.last_changed,
+					lastReported: s.last_reported,
+					lastUpdated: s.last_updated,
+				})),
+			};
+
+			// Update each virtual property
+			for (const virtualProp of virtualProps) {
+				const virtualDef = virtualDefs.find((vd) => vd.property_category === virtualProp.category);
+
+				if (!virtualDef) {
+					continue;
+				}
+
+				// Skip command properties - they don't have readable values
+				if (virtualDef.virtual_type === VirtualPropertyType.COMMAND) {
+					continue;
+				}
+
+				// Resolve the virtual property value
+				const resolved = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, context);
+
+				if (resolved.value !== null) {
+					await this.channelsPropertiesService.update(
+						virtualProp.id,
+						toInstance(UpdateHomeAssistantChannelPropertyDto, {
+							...instanceToPlain(virtualProp),
+							value: resolved.value,
+						}),
+					);
+
+					this.logger.debug(
+						`[SYNC] Updated virtual property ${virtualProp.category} = ${String(resolved.value)} for channel ${channel.category}`,
+					);
+				}
+			}
 		}
 	}
 

@@ -110,7 +110,23 @@
       },
       "properties": "Properties",
       "unmappedAttributes": "Unmapped attributes",
-      "missingRequiredProperties": "Missing required properties"
+      "missingRequiredProperties": "Missing required properties",
+      "virtualTypes": {
+        "static": "Static",
+        "derived": "Auto",
+        "command": "Command",
+        "virtual": "Virtual"
+      },
+      "validation": {
+        "valid": "Device configuration is valid",
+        "invalid": "Device configuration has issues",
+        "missingChannels": "Missing required channels",
+        "missingProperties": "Missing required properties",
+        "autoFilled": "Auto-filled with virtual properties",
+        "unknownChannels": "Channels not allowed for this device type",
+        "duplicateChannels": "Duplicate channels (should be unique)",
+        "constraintViolations": "Configuration constraint violations"
+      }
     },
     "config": {
       "enabled": {

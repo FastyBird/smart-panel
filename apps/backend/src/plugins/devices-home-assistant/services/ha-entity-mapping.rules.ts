@@ -61,6 +61,12 @@ export interface HaEntityMappingRule {
 	 * Useful when multiple rules could match
 	 */
 	priority?: number;
+
+	/**
+	 * Optional entity_id pattern to match (substring match)
+	 * Useful for matching entities like Zigbee link quality sensors that don't have a device_class
+	 */
+	entity_id_contains?: string;
 }
 
 /**
@@ -269,6 +275,8 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 
 	// ============================================================================
 	// SENSOR ENTITIES - Illuminance
+	// Maps LUX value to DENSITY property. LEVEL (bright/moderate/dusky/dark) is
+	// calculated as a virtual property based on the DENSITY value.
 	// ============================================================================
 	{
 		domain: HomeAssistantDomain.SENSOR,
@@ -276,7 +284,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		channel_category: ChannelCategory.ILLUMINANCE,
 		device_category_hint: DeviceCategory.SENSOR,
 		priority: 20,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.LEVEL }],
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.DENSITY }],
 	},
 
 	// ============================================================================
@@ -751,7 +759,7 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 	},
 
 	// ============================================================================
-	// SENSOR ENTITIES - Signal Strength
+	// SENSOR ENTITIES - Signal Strength (WiFi devices with device_class)
 	// ============================================================================
 	{
 		domain: HomeAssistantDomain.SENSOR,
@@ -759,6 +767,20 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 		channel_category: ChannelCategory.DEVICE_INFORMATION,
 		device_category_hint: DeviceCategory.SENSOR,
 		priority: 20,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.LINK_QUALITY }],
+	},
+
+	// ============================================================================
+	// SENSOR ENTITIES - Zigbee Link Quality (no device_class, entity_id contains "linkquality")
+	// Zigbee2MQTT and ZHA expose link quality as sensors without device_class
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.SENSOR,
+		device_class: null,
+		channel_category: ChannelCategory.DEVICE_INFORMATION,
+		device_category_hint: DeviceCategory.SENSOR,
+		priority: 25, // Higher priority than generic sensor fallback
+		entity_id_contains: 'linkquality',
 		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.LINK_QUALITY }],
 	},
 
@@ -837,17 +859,31 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 
 /**
  * Find a matching mapping rule for an HA entity
+ * @param domain - Home Assistant domain (e.g., 'sensor', 'light')
+ * @param deviceClass - Device class from HA entity (can be null)
+ * @param entityId - Optional entity_id for pattern matching (e.g., 'sensor.device_linkquality')
  */
 export function findMatchingRule(
 	domain: HomeAssistantDomain,
 	deviceClass: string | null | undefined,
+	entityId?: string,
 ): HaEntityMappingRule | null {
 	// Sort rules by priority (descending) to check higher priority rules first
 	const sortedRules = [...HA_ENTITY_MAPPING_RULES].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
+	// First pass: look for rules with specific device_class or entity_id_contains
 	for (const rule of sortedRules) {
 		// Check domain match
 		if (rule.domain !== domain) {
+			continue;
+		}
+
+		// Check entity_id_contains pattern (if specified in rule)
+		if (rule.entity_id_contains) {
+			if (entityId && entityId.toLowerCase().includes(rule.entity_id_contains.toLowerCase())) {
+				return rule;
+			}
+			// Rule requires entity_id pattern but it doesn't match - skip
 			continue;
 		}
 
@@ -868,8 +904,9 @@ export function findMatchingRule(
 	}
 
 	// If no specific match found, look for a rule with device_class: null (fallback)
+	// But skip rules that require entity_id_contains
 	for (const rule of sortedRules) {
-		if (rule.domain === domain && rule.device_class === null) {
+		if (rule.domain === domain && rule.device_class === null && !rule.entity_id_contains) {
 			return rule;
 		}
 	}

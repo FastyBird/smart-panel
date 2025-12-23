@@ -1,4 +1,4 @@
-import { ChannelCategory, DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { HomeAssistantDomain } from '../devices-home-assistant.constants';
 
 import { findMatchingRule, inferDeviceCategory } from './ha-entity-mapping.rules';
@@ -166,6 +166,25 @@ describe('HaEntityMappingRules', () => {
 			const rule = findMatchingRule(HomeAssistantDomain.REMOTE, null);
 
 			expect(rule).not.toBeNull();
+		});
+
+		it('should find a rule for Zigbee linkquality sensor by entity_id pattern', () => {
+			// Zigbee link quality sensors don't have device_class but entity_id contains 'linkquality'
+			const rule = findMatchingRule(HomeAssistantDomain.SENSOR, null, 'sensor.bathroom_occupancy_sensor_linkquality');
+
+			expect(rule).not.toBeNull();
+			expect(rule?.channel_category).toBe(ChannelCategory.DEVICE_INFORMATION);
+			expect(rule?.property_bindings[0].property_category).toBe(PropertyCategory.LINK_QUALITY);
+		});
+
+		it('should not match linkquality rule for unrelated sensor without device_class', () => {
+			// A sensor without device_class that doesn't have linkquality in the entity_id
+			// should NOT match the linkquality rule (returns null since no fallback for sensors)
+			const rule = findMatchingRule(HomeAssistantDomain.SENSOR, null, 'sensor.some_random_sensor');
+
+			// Sensors without device_class and without matching entity_id pattern return null
+			// This is expected since we don't have a generic fallback for sensors
+			expect(rule).toBeNull();
 		});
 	});
 

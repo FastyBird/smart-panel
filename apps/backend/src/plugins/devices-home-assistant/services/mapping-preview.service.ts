@@ -1,7 +1,17 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import {
+	DeviceValidationService,
+	ValidationIssueType,
+} from '../../../modules/devices/services/device-validation.service';
 import {
 	PropertyMetadata,
 	getPropertyMetadata,
@@ -23,6 +33,7 @@ import {
 	MappingWarningModel,
 	PropertyMappingPreviewModel,
 	SuggestedDeviceModel,
+	ValidationSummaryModel,
 } from '../models/mapping-preview.model';
 
 import {
@@ -34,6 +45,8 @@ import {
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 import { LightCapabilityAnalyzer } from './light-capability.analyzer';
+import { VirtualPropertyService } from './virtual-property.service';
+import { VirtualPropertyContext } from './virtual-property.types';
 
 /**
  * Service for generating mapping previews for Home Assistant devices
@@ -52,6 +65,8 @@ export class MappingPreviewService {
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly homeAssistantWsService: HomeAssistantWsService,
 		private readonly lightCapabilityAnalyzer: LightCapabilityAnalyzer,
+		private readonly virtualPropertyService: VirtualPropertyService,
+		private readonly deviceValidationService: DeviceValidationService,
 	) {}
 
 	/**
@@ -155,8 +170,21 @@ export class MappingPreviewService {
 			}
 		}
 
-		// Determine if ready to adopt (all required elements mapped and no critical warnings)
-		const readyToAdopt = warnings.filter((w) => w.type === 'missing_required_channel').length === 0;
+		// Fill missing required properties with virtual properties
+		const virtualPropertiesAdded = this.fillMissingPropertiesWithVirtuals(entityPreviews, discoveredDevice.states);
+
+		if (virtualPropertiesAdded > 0) {
+			this.logger.log(
+				`[MAPPING PREVIEW] Added ${virtualPropertiesAdded} virtual properties to fill missing required properties`,
+			);
+		}
+
+		// Generate validation summary using DeviceValidationService
+		const validation = this.generateValidationSummary(entityPreviews, suggestedDeviceCategory);
+
+		// Determine if ready to adopt based on validation
+		// Device is ready if validation passes (all required channels/properties are present)
+		const readyToAdopt = validation.isValid;
 
 		// Log mapping summary for observability
 		const mappedCount = entityPreviews.filter((e) => e.status === 'mapped').length;
@@ -182,6 +210,14 @@ export class MappingPreviewService {
 			);
 		}
 
+		// Filter out only generic channels from the preview
+		// - generic channels are fallbacks that shouldn't be adopted
+		// - device_information entities (like signal_strength sensors) MUST be kept
+		//   so they can be merged into the auto-created device_information channel during adoption
+		const filteredEntityPreviews = entityPreviews.filter(
+			(e) => !e.suggestedChannel || e.suggestedChannel.category !== ChannelCategory.GENERIC,
+		);
+
 		const preview = new MappingPreviewModel();
 		preview.haDevice = this.createHaDeviceInfo(deviceRegistry);
 		preview.suggestedDevice = this.createSuggestedDevice(
@@ -189,9 +225,10 @@ export class MappingPreviewService {
 			suggestedDeviceCategory,
 			mappedChannelCategories,
 		);
-		preview.entities = entityPreviews;
+		preview.entities = filteredEntityPreviews;
 		preview.warnings = warnings;
 		preview.readyToAdopt = readyToAdopt;
+		preview.validation = validation;
 
 		return preview;
 	}
@@ -216,7 +253,7 @@ export class MappingPreviewService {
 		// Find matching rule
 		const rule = overrideChannelCategory
 			? this.findRuleForChannel(domain, overrideChannelCategory)
-			: findMatchingRule(domain, deviceClass);
+			: findMatchingRule(domain, deviceClass, entityId);
 
 		if (!rule) {
 			return this.createUnmappedEntityPreview(entityId, domain, deviceClass, state);
@@ -385,7 +422,9 @@ export class MappingPreviewService {
 			const hasValue = attributeValue !== undefined && attributeValue !== null;
 
 			if (hasValue || propertyMetadata.required) {
-				suggestedProperties.push(this.createPropertyPreview(binding, propertyMetadata, attributeValue, entityId));
+				suggestedProperties.push(
+					this.createPropertyPreview(binding, propertyMetadata, attributeValue, entityId, state, channelCategory),
+				);
 				mappedAttributes.add(binding.ha_attribute === ENTITY_MAIN_STATE_ATTRIBUTE ? 'state' : binding.ha_attribute);
 				mappedPropertyCategories.add(binding.property_category);
 			}
@@ -501,7 +540,12 @@ export class MappingPreviewService {
 		metadata: PropertyMetadata,
 		currentValue: unknown,
 		entityId?: string,
+		state?: HomeAssistantStateModel,
+		channelCategory?: ChannelCategory,
 	): PropertyMappingPreviewModel {
+		// Try to get HA-provided format values (e.g., hvac_modes for thermostat mode)
+		const haProvidedFormat = this.getHaProvidedFormat(binding.property_category, state, channelCategory);
+
 		return {
 			category: binding.property_category,
 			name: this.propertyNameFromCategory(binding.property_category),
@@ -509,11 +553,78 @@ export class MappingPreviewService {
 			dataType: metadata.data_type,
 			permissions: metadata.permissions,
 			unit: metadata.unit,
-			format: metadata.format,
+			format: haProvidedFormat ?? metadata.format,
 			required: metadata.required,
 			currentValue: this.normalizeValue(currentValue),
 			haEntityId: entityId ?? null,
 		};
+	}
+
+	/**
+	 * Get HA-provided format values for enum properties
+	 * Some HA entities provide available values as attributes (e.g., hvac_modes, fan_modes)
+	 * Using these ensures the property format only includes values the device actually supports
+	 */
+	private getHaProvidedFormat(
+		propertyCategory: PropertyCategory,
+		state?: HomeAssistantStateModel,
+		channelCategory?: ChannelCategory,
+	): (string | number)[] | null {
+		if (!state?.attributes) {
+			return null;
+		}
+
+		const attrs = state.attributes;
+
+		// Thermostat mode - use hvac_modes from HA
+		if (channelCategory === ChannelCategory.THERMOSTAT && propertyCategory === PropertyCategory.MODE) {
+			const hvacModes = attrs.hvac_modes;
+			if (Array.isArray(hvacModes) && hvacModes.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided hvac_modes: ${hvacModes.join(', ')}`);
+				return hvacModes as string[];
+			}
+		}
+
+		// Fan speed - use speed_list or percentage_step from HA
+		if (channelCategory === ChannelCategory.FAN && propertyCategory === PropertyCategory.SPEED) {
+			const speedList = attrs.speed_list;
+			if (Array.isArray(speedList) && speedList.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided speed_list: ${speedList.join(', ')}`);
+				return speedList as string[];
+			}
+		}
+
+		// Fan mode - use preset_modes or fan_modes from HA
+		if (channelCategory === ChannelCategory.FAN && propertyCategory === PropertyCategory.MODE) {
+			const fanModes = attrs.fan_modes ?? attrs.preset_modes;
+			if (Array.isArray(fanModes) && fanModes.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided fan_modes: ${fanModes.join(', ')}`);
+				return fanModes as string[];
+			}
+		}
+
+		// Climate fan mode
+		if (channelCategory === ChannelCategory.THERMOSTAT && propertyCategory === PropertyCategory.SWING) {
+			const swingModes = attrs.swing_modes;
+			if (Array.isArray(swingModes) && swingModes.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided swing_modes: ${swingModes.join(', ')}`);
+				return swingModes as string[];
+			}
+		}
+
+		// Media input source
+		if (
+			(channelCategory === ChannelCategory.MEDIA_INPUT || channelCategory === ChannelCategory.TELEVISION) &&
+			propertyCategory === PropertyCategory.INPUT_SOURCE
+		) {
+			const sourceList = attrs.source_list;
+			if (Array.isArray(sourceList) && sourceList.length > 0) {
+				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided source_list: ${sourceList.join(', ')}`);
+				return sourceList as string[];
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -831,5 +942,288 @@ export class MappingPreviewService {
 
 		// Return consolidated entities plus skipped/unmapped ones
 		return [...consolidated, ...skippedOrUnmapped];
+	}
+
+	/**
+	 * Fill missing required properties with virtual properties
+	 * This ensures devices can be fully adopted even when HA doesn't provide all required properties
+	 *
+	 * @param entityPreviews - Array of entity previews to update in place
+	 * @param states - All HA states for context
+	 * @returns Number of virtual properties added
+	 */
+	private fillMissingPropertiesWithVirtuals(
+		entityPreviews: EntityMappingPreviewModel[],
+		states: HomeAssistantStateModel[],
+	): number {
+		let virtualPropertiesAdded = 0;
+
+		for (const entityPreview of entityPreviews) {
+			// Skip entities without a suggested channel
+			if (
+				!entityPreview.suggestedChannel ||
+				entityPreview.status === 'skipped' ||
+				entityPreview.status === 'unmapped'
+			) {
+				continue;
+			}
+
+			const channelCategory = entityPreview.suggestedChannel.category;
+			const existingPropertyCategories = new Set(entityPreview.suggestedProperties.map((p) => p.category));
+			const requiredProperties = getRequiredProperties(channelCategory);
+
+			// Find missing required properties that can be filled with virtuals
+			const missingVirtuals = this.virtualPropertyService.getMissingVirtualProperties(
+				channelCategory,
+				existingPropertyCategories,
+				requiredProperties,
+			);
+
+			// Add virtual properties to the entity preview
+			for (const virtualDef of missingVirtuals) {
+				const state = states.find((s) => s.entityId === entityPreview.entityId);
+				const context: VirtualPropertyContext = {
+					entityId: entityPreview.entityId,
+					domain: entityPreview.domain as HomeAssistantDomain,
+					deviceClass: entityPreview.deviceClass,
+					state,
+					allStates: states,
+				};
+
+				// Resolve the virtual property value
+				const resolved = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, context);
+
+				// Get property metadata for formatting
+				const propertyMetadata = getPropertyMetadata(channelCategory, virtualDef.property_category);
+
+				// Create property preview for the virtual property
+				const virtualPropertyPreview: PropertyMappingPreviewModel = {
+					category: virtualDef.property_category,
+					name: this.propertyNameFromCategory(virtualDef.property_category),
+					haAttribute: this.virtualPropertyService.getVirtualAttributeMarker(
+						virtualDef.property_category,
+						virtualDef.virtual_type,
+					),
+					dataType: virtualDef.data_type,
+					permissions: virtualDef.permissions,
+					unit: virtualDef.unit ?? propertyMetadata?.unit ?? null,
+					format: virtualDef.format ?? propertyMetadata?.format ?? null,
+					required: true, // Virtual properties are added to fill required slots
+					currentValue: resolved.value,
+					haEntityId: entityPreview.entityId,
+					isVirtual: true,
+					virtualType: virtualDef.virtual_type,
+				};
+
+				entityPreview.suggestedProperties.push(virtualPropertyPreview);
+				virtualPropertiesAdded++;
+
+				// Remove from missing required properties list
+				const missingIndex = entityPreview.missingRequiredProperties.indexOf(virtualDef.property_category);
+				if (missingIndex >= 0) {
+					entityPreview.missingRequiredProperties.splice(missingIndex, 1);
+				}
+
+				this.logger.debug(
+					`[MAPPING PREVIEW] Added virtual property: channel=${channelCategory}, ` +
+						`property=${virtualDef.property_category}, type=${virtualDef.virtual_type}, ` +
+						`value=${resolved.value}`,
+				);
+			}
+
+			// Update status if all missing properties are now filled
+			if (entityPreview.missingRequiredProperties.length === 0 && entityPreview.status === 'partial') {
+				entityPreview.status = 'mapped';
+			}
+		}
+
+		return virtualPropertiesAdded;
+	}
+
+	/**
+	 * Generate a validation summary for the current mapping
+	 * Uses DeviceValidationService to check if the device structure is valid
+	 */
+	private generateValidationSummary(
+		entityPreviews: EntityMappingPreviewModel[],
+		deviceCategory: DeviceCategory,
+	): ValidationSummaryModel {
+		// Build a device structure from the entity previews
+		// Filter out:
+		// - device_information (auto-created during adoption, not user-configurable)
+		// - generic channels (fallback that shouldn't be adopted)
+		// - skipped/unmapped entities
+		const channels = entityPreviews
+			.filter(
+				(e) =>
+					e.suggestedChannel &&
+					e.status !== 'skipped' &&
+					e.status !== 'unmapped' &&
+					e.suggestedChannel.category !== ChannelCategory.DEVICE_INFORMATION &&
+					e.suggestedChannel.category !== ChannelCategory.GENERIC,
+			)
+			.map((e) => ({
+				category: e.suggestedChannel.category,
+				properties: e.suggestedProperties.map((p) => ({
+					category: p.category,
+					dataType: p.dataType,
+					permissions: p.permissions,
+				})),
+			}));
+
+		// Add device_information channel (auto-created during adoption with HA registry data)
+		// This is always added by the plugin, users cannot modify it
+		// Must match properties created in device-adoption.service.ts
+		channels.push({
+			category: ChannelCategory.DEVICE_INFORMATION,
+			properties: [
+				// Required properties
+				{
+					category: PropertyCategory.MANUFACTURER,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.MODEL,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.SERIAL_NUMBER,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.FIRMWARE_REVISION,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				// Optional properties (also created by device-adoption.service)
+				{
+					category: PropertyCategory.HARDWARE_REVISION,
+					dataType: DataTypeType.STRING,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.CONNECTION_TYPE,
+					dataType: DataTypeType.ENUM,
+					permissions: [PermissionType.READ_ONLY],
+				},
+				{
+					category: PropertyCategory.STATUS,
+					dataType: DataTypeType.ENUM,
+					permissions: [PermissionType.READ_ONLY],
+				},
+			],
+		});
+
+		// Validate the structure using DeviceValidationService
+		const validationResult = this.deviceValidationService.validateDeviceStructure({
+			category: deviceCategory,
+			channels,
+		});
+
+		// Build validation summary - categorize all issues
+		const missingChannels: string[] = [];
+		const missingProperties: Record<string, string[]> = {};
+		const autoFilledVirtual: Record<string, string[]> = {};
+		const unknownChannels: string[] = [];
+		const duplicateChannels: string[] = [];
+		const constraintViolations: string[] = [];
+
+		for (const issue of validationResult.issues) {
+			switch (issue.type) {
+				case ValidationIssueType.MISSING_CHANNEL:
+					if (issue.channelCategory) {
+						missingChannels.push(issue.channelCategory);
+					}
+					break;
+
+				case ValidationIssueType.MISSING_PROPERTY:
+					if (issue.channelCategory && issue.propertyCategory) {
+						if (!missingProperties[issue.channelCategory]) {
+							missingProperties[issue.channelCategory] = [];
+						}
+						missingProperties[issue.channelCategory].push(issue.propertyCategory);
+					}
+					break;
+
+				case ValidationIssueType.UNKNOWN_CHANNEL:
+					if (issue.channelCategory) {
+						unknownChannels.push(issue.channelCategory);
+						this.logger.warn(
+							`[VALIDATION] Channel ${issue.channelCategory} is not allowed for device category ${deviceCategory}`,
+						);
+					}
+					break;
+
+				case ValidationIssueType.DUPLICATE_CHANNEL:
+					if (issue.channelCategory) {
+						duplicateChannels.push(issue.channelCategory);
+						this.logger.warn(
+							`[VALIDATION] Channel ${issue.channelCategory} appears multiple times but should be unique`,
+						);
+					}
+					break;
+
+				case ValidationIssueType.CONSTRAINT_ONE_OF_VIOLATION:
+				case ValidationIssueType.CONSTRAINT_ONE_OR_MORE_OF_VIOLATION:
+				case ValidationIssueType.CONSTRAINT_MUTUALLY_EXCLUSIVE_VIOLATION:
+					constraintViolations.push(issue.message);
+					this.logger.warn(`[VALIDATION] Constraint violation: ${issue.message}`);
+					break;
+
+				case ValidationIssueType.INVALID_DATA_TYPE:
+				case ValidationIssueType.INVALID_PERMISSIONS:
+				case ValidationIssueType.INVALID_FORMAT:
+					// Log these but they're less common in mapping preview
+					this.logger.debug(
+						`[VALIDATION] ${issue.type}: ${issue.message} (channel=${issue.channelCategory}, property=${issue.propertyCategory})`,
+					);
+					break;
+			}
+		}
+
+		// Count virtual properties by channel
+		for (const entityPreview of entityPreviews) {
+			if (!entityPreview.suggestedChannel) continue;
+
+			const channelCat = entityPreview.suggestedChannel.category;
+			const virtualProps = entityPreview.suggestedProperties.filter((p) => p.isVirtual);
+
+			if (virtualProps.length > 0) {
+				if (!autoFilledVirtual[channelCat]) {
+					autoFilledVirtual[channelCat] = [];
+				}
+				for (const vp of virtualProps) {
+					autoFilledVirtual[channelCat].push(vp.category);
+				}
+			}
+		}
+
+		// Calculate counts
+		const missingPropertiesCount = Object.values(missingProperties).reduce((sum, arr) => sum + arr.length, 0);
+		const fillableWithVirtualCount = Object.values(autoFilledVirtual).reduce((sum, arr) => sum + arr.length, 0);
+
+		// Log validation summary for observability
+		this.logger.debug(
+			`[VALIDATION] Summary for ${deviceCategory}: isValid=${validationResult.isValid}, ` +
+				`missingChannels=${missingChannels.length}, missingProperties=${missingPropertiesCount}, ` +
+				`unknownChannels=${unknownChannels.length}, duplicateChannels=${duplicateChannels.length}, ` +
+				`constraintViolations=${constraintViolations.length}, virtualFilled=${fillableWithVirtualCount}`,
+		);
+
+		return {
+			isValid: validationResult.isValid,
+			missingChannelsCount: missingChannels.length,
+			missingPropertiesCount,
+			fillableWithVirtualCount,
+			missingChannels,
+			missingProperties,
+			autoFilledVirtual,
+			unknownChannels,
+			duplicateChannels,
+			constraintViolations,
+		};
 	}
 }

@@ -16,6 +16,7 @@ import { AdoptDeviceRequestDto } from '../dto/mapping-preview.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
 
 import { DeviceAdoptionService } from './device-adoption.service';
+import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
 
 describe('DeviceAdoptionService', () => {
@@ -72,6 +73,10 @@ describe('DeviceAdoptionService', () => {
 			findAll: jest.fn().mockResolvedValue([]),
 		};
 
+		const homeAssistantHttpServiceMock: Partial<jest.Mocked<HomeAssistantHttpService>> = {
+			syncDeviceStates: jest.fn().mockResolvedValue(undefined),
+		};
+
 		// Mock the device exists validator
 		const deviceExistsValidatorMock: Partial<jest.Mocked<DeviceExistsConstraintValidator>> = {
 			validate: jest.fn().mockResolvedValue(true),
@@ -81,6 +86,7 @@ describe('DeviceAdoptionService', () => {
 			providers: [
 				DeviceAdoptionService,
 				{ provide: HomeAssistantWsService, useValue: homeAssistantWsServiceMock },
+				{ provide: HomeAssistantHttpService, useValue: homeAssistantHttpServiceMock },
 				{ provide: DevicesService, useValue: devicesServiceMock },
 				{ provide: ChannelsService, useValue: channelsServiceMock },
 				{ provide: ChannelsPropertiesService, useValue: channelsPropertiesServiceMock },

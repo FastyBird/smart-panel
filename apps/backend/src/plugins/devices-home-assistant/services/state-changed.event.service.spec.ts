@@ -12,6 +12,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
 import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
@@ -24,6 +25,7 @@ import { HomeAssistantDiscoveredDeviceModel } from '../models/home-assistant.mod
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { StateChangedEventService } from './state-changed.event.service';
+import { VirtualPropertyService } from './virtual-property.service';
 
 describe('StateChangedEventService', () => {
 	let service: StateChangedEventService;
@@ -37,9 +39,11 @@ describe('StateChangedEventService', () => {
 			providers: [
 				StateChangedEventService,
 				{ provide: DevicesService, useValue: { findAll: jest.fn() } },
+				{ provide: ChannelsService, useValue: { findOne: jest.fn() } },
 				{ provide: ChannelsPropertiesService, useValue: { findAll: jest.fn(), update: jest.fn() } },
 				{ provide: MapperService, useValue: { mapFromHA: jest.fn() } },
 				{ provide: HomeAssistantHttpService, useValue: { getDiscoveredDevices: jest.fn() } },
+				{ provide: VirtualPropertyService, useValue: { resolveVirtualPropertyValue: jest.fn() } },
 			],
 		}).compile();
 
