@@ -42,6 +42,7 @@
 						>
 							{{ entity.status }}
 						</el-tag>
+						<span class="text-sm text-gray-500 ml-2">({{ entity.domain }})</span>
 					</div>
 				</div>
 

@@ -44,6 +44,9 @@
       },
       "model": {
         "title": "Model"
+      },
+      "entities": {
+        "title": "Entities"
       }
     },
     "channelsProperties": {
@@ -173,6 +176,8 @@
       "created": "New Home Assistant device added successfully.",
       "notCreated": "Something went wrong. Unable to create the Home Assistant device.",
       "exists": "Device is already adopted in the system.",
+      "alreadyAdopted": "This device is already adopted",
+      "alreadyAdoptedDescription": "Continuing will re-adopt the device with the new configuration. The existing device will be updated.",
       "noDiscoveredDevices": "No Home Assistant devices are available. Make sure your Home Assistant instance is connected and devices are discovered."
     },
     "mapping": {
