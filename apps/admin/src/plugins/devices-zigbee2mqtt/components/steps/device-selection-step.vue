@@ -26,7 +26,7 @@
 					<div class="flex flex-row justify-between items-center w-full overflow-hidden">
 						<div class="grow-1">{{ item.label }}</div>
 						<div v-if="item.manufacturer || item.model" class="text-sm">
-							{{ [item.manufacturer].filter(Boolean).join(' - ') }}
+							{{ [item.manufacturer, item.model].filter(Boolean).join(' - ') }}
 						</div>
 					</div>
 				</el-option>
