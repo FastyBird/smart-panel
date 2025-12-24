@@ -345,23 +345,62 @@ export class Z2mDeviceAdoptionService {
 					this.logger.debug(`[DEVICE ADOPTION] Resolved virtual property ${propDef.category} = ${initialValue}`);
 				}
 			} else {
-				// Regular property: use z2mProperty as identifier for state matching
-				identifier = propDef.z2mProperty;
+				// For properties that share the same z2mProperty (like hue and saturation both mapping to "color"),
+				// we need to use a different identifier to avoid conflicts
+				const isSharedZ2mProperty =
+					propDef.z2mProperty === 'color' &&
+					(propDef.category === PropertyCategory.HUE || propDef.category === PropertyCategory.SATURATION);
+
+				// Use spec identifier for shared properties, z2mProperty for regular properties
+				identifier = isSharedZ2mProperty ? propDef.category : propDef.z2mProperty;
 
 				// Get initial value from cached Z2M state (if available)
 				// The MQTT adapter caches state messages in deviceRegistry[friendlyName].currentState
 				const cachedValue = z2mDevice.currentState?.[propDef.z2mProperty];
 				if (cachedValue !== undefined) {
-					// Convert value to appropriate type
-					if (typeof cachedValue === 'boolean' || typeof cachedValue === 'number' || typeof cachedValue === 'string') {
+					// Handle color object - extract individual values for hue/saturation
+					if (
+						propDef.z2mProperty === 'color' &&
+						typeof cachedValue === 'object' &&
+						cachedValue !== null &&
+						!Array.isArray(cachedValue)
+					) {
+						const colorObj = cachedValue as Record<string, unknown>;
+
+						if (propDef.category === PropertyCategory.HUE) {
+							// Extract hue from color object
+							if ('hue' in colorObj && typeof colorObj.hue === 'number') {
+								initialValue = Math.round(colorObj.hue);
+							} else if ('h' in colorObj && typeof colorObj.h === 'number') {
+								initialValue = Math.round(colorObj.h);
+							}
+						} else if (propDef.category === PropertyCategory.SATURATION) {
+							// Extract saturation from color object
+							if ('saturation' in colorObj && typeof colorObj.saturation === 'number') {
+								initialValue = Math.round(colorObj.saturation);
+							} else if ('s' in colorObj && typeof colorObj.s === 'number') {
+								initialValue = Math.round(colorObj.s);
+							}
+						}
+
+						if (initialValue !== null) {
+							this.logger.debug(`[DEVICE ADOPTION] Extracted ${propDef.category} from color object = ${initialValue}`);
+						}
+					} else if (
+						typeof cachedValue === 'boolean' ||
+						typeof cachedValue === 'number' ||
+						typeof cachedValue === 'string'
+					) {
+						// Convert value to appropriate type
 						initialValue = cachedValue;
+						this.logger.debug(
+							`[DEVICE ADOPTION] Using cached state for ${propDef.z2mProperty} = ${JSON.stringify(initialValue)}`,
+						);
 					} else if (cachedValue !== null) {
 						// For complex values (objects), stringify them
 						initialValue = JSON.stringify(cachedValue);
+						this.logger.debug(`[DEVICE ADOPTION] Using cached state (stringified) for ${propDef.z2mProperty}`);
 					}
-					this.logger.debug(
-						`[DEVICE ADOPTION] Using cached state for ${propDef.z2mProperty} = ${JSON.stringify(initialValue)}`,
-					);
 				}
 			}
 

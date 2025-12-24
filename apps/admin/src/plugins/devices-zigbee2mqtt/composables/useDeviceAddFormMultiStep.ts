@@ -368,8 +368,9 @@ export const useDeviceAddFormMultiStep = ({ id }: IUseDeviceAddFormMultiStepProp
 
 					// Add properties from this expose to the channel
 					for (const prop of expose.suggestedProperties) {
-						// Avoid duplicate properties (by z2mProperty)
-						if (!channel.properties.find((p) => p.z2mProperty === prop.z2mProperty)) {
+						// Avoid duplicate properties (by category, not z2mProperty)
+						// Multiple properties can share the same z2mProperty (e.g., hue and saturation both use "color")
+						if (!channel.properties.find((p) => p.category === prop.category)) {
 							channel.properties.push({
 								category: prop.category,
 								z2mProperty: prop.z2mProperty,

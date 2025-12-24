@@ -265,6 +265,19 @@ export class Z2mDeviceMapperService {
 					continue;
 				}
 
+				// Skip brightness - handled separately with range normalization (Z2M 0-254 -> spec 0-100%)
+				if (channel.category === ChannelCategory.LIGHT && property.category === PropertyCategory.BRIGHTNESS) {
+					continue;
+				}
+
+				// Skip hue/saturation - handled separately from color object
+				if (
+					channel.category === ChannelCategory.LIGHT &&
+					(property.category === PropertyCategory.HUE || property.category === PropertyCategory.SATURATION)
+				) {
+					continue;
+				}
+
 				const value = state[propertyIdentifier];
 
 				// Convert value to appropriate type based on property's data type
@@ -338,6 +351,79 @@ export class Z2mDeviceMapperService {
 							value: linkQualityPercent,
 						}),
 					);
+				}
+			}
+
+			// Handle brightness normalization for light channels
+			// Z2M uses 0-254, spec uses 0-100%
+			if (channel.category === ChannelCategory.LIGHT && 'brightness' in state) {
+				const brightnessProp = properties.find((p) => p.category === PropertyCategory.BRIGHTNESS);
+
+				if (brightnessProp) {
+					const z2mBrightness = state.brightness;
+					// Convert Z2M range (0-254) to spec range (0-100%)
+					const brightnessPercent = typeof z2mBrightness === 'number' ? Math.round((z2mBrightness / 254) * 100) : null;
+
+					this.logger.debug(`Updating brightness: ${JSON.stringify(z2mBrightness)} -> ${brightnessPercent}%`);
+
+					await this.channelsPropertiesService.update<
+						Zigbee2mqttChannelPropertyEntity,
+						UpdateZigbee2mqttChannelPropertyDto
+					>(
+						brightnessProp.id,
+						toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+							type: DEVICES_ZIGBEE2MQTT_TYPE,
+							value: brightnessPercent,
+						}),
+					);
+				}
+			}
+
+			// Handle color state updates for light channels
+			// Z2M sends: color: { hue: 0-360, saturation: 0-100 } or { x: 0-1, y: 0-1 }
+			if (channel.category === ChannelCategory.LIGHT && 'color' in state) {
+				const colorState = state.color as Record<string, unknown> | undefined;
+
+				if (colorState && typeof colorState === 'object') {
+					// Handle hue - only update if we have a valid number
+					if ('hue' in colorState && typeof colorState.hue === 'number') {
+						const hueProp = properties.find((p) => p.category === PropertyCategory.HUE);
+						if (hueProp) {
+							const hueValue = Math.round(colorState.hue);
+							this.logger.debug(`Updating hue: ${colorState.hue} -> ${hueValue}`);
+
+							await this.channelsPropertiesService.update<
+								Zigbee2mqttChannelPropertyEntity,
+								UpdateZigbee2mqttChannelPropertyDto
+							>(
+								hueProp.id,
+								toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+									type: DEVICES_ZIGBEE2MQTT_TYPE,
+									value: hueValue,
+								}),
+							);
+						}
+					}
+
+					// Handle saturation - only update if we have a valid number
+					if ('saturation' in colorState && typeof colorState.saturation === 'number') {
+						const saturationProp = properties.find((p) => p.category === PropertyCategory.SATURATION);
+						if (saturationProp) {
+							const satValue = Math.round(colorState.saturation);
+							this.logger.debug(`Updating saturation: ${colorState.saturation} -> ${satValue}%`);
+
+							await this.channelsPropertiesService.update<
+								Zigbee2mqttChannelPropertyEntity,
+								UpdateZigbee2mqttChannelPropertyDto
+							>(
+								saturationProp.id,
+								toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+									type: DEVICES_ZIGBEE2MQTT_TYPE,
+									value: satValue,
+								}),
+							);
+						}
+					}
 				}
 			}
 		}
@@ -707,11 +793,19 @@ export class Z2mDeviceMapperService {
 
 	/**
 	 * Create a single property
-	 * Property identifier = z2mProperty (for matching MQTT state keys)
+	 * Property identifier = z2mProperty for regular properties, but for composite properties
+	 * like color (where multiple properties share the same z2mProperty), we use the spec identifier
 	 */
 	private async createProperty(channel: Zigbee2mqttChannelEntity, mappedProperty: MappedProperty): Promise<void> {
-		// Use z2mProperty as identifier for direct MQTT state matching
-		const propertyIdentifier = mappedProperty.z2mProperty;
+		// For properties that share the same z2mProperty (like hue and saturation both mapping to "color"),
+		// we need to use the spec identifier to avoid conflicts
+		// Check if this is a color-related property that shares z2mProperty="color"
+		const isSharedZ2mProperty =
+			mappedProperty.z2mProperty === 'color' &&
+			(mappedProperty.category === PropertyCategory.HUE || mappedProperty.category === PropertyCategory.SATURATION);
+
+		// Use spec identifier for shared properties, z2mProperty for regular properties
+		const propertyIdentifier = isSharedZ2mProperty ? mappedProperty.identifier : mappedProperty.z2mProperty;
 
 		const property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
 			'identifier',

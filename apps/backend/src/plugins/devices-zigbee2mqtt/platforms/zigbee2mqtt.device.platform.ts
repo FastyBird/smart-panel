@@ -146,6 +146,10 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		// Build MQTT payload
 		const payload: Z2mSetPayload = {};
 
+		// Track color components for batching into a single color object
+		let colorHue: number | undefined;
+		let colorSaturation: number | undefined;
+
 		for (const { property, value } of propertyUpdates) {
 			// Check if this is a virtual command property
 			if (property.identifier.startsWith('fb_virtual_')) {
@@ -175,12 +179,35 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 				continue;
 			}
 
+			// Handle color properties - collect them for batching
+			if (property.category === PropertyCategory.HUE) {
+				colorHue = this.coerceNumber(value, 0, 360);
+				continue;
+			}
+			if (property.category === PropertyCategory.SATURATION) {
+				colorSaturation = this.coerceNumber(value, 0, 100);
+				continue;
+			}
+
 			// Regular property - identifier = z2m property name
 			const z2mProperty = property.identifier;
 
 			// Convert value to appropriate format
 			const convertedValue = this.convertValue(property, value);
 			payload[z2mProperty] = convertedValue;
+		}
+
+		// Build color object if any color components were set
+		if (colorHue !== undefined || colorSaturation !== undefined) {
+			const colorPayload: Record<string, number> = {};
+			if (colorHue !== undefined) {
+				colorPayload.hue = colorHue;
+			}
+			if (colorSaturation !== undefined) {
+				colorPayload.saturation = colorSaturation;
+			}
+			payload.color = colorPayload;
+			this.logger.debug(`Building color payload: ${JSON.stringify(colorPayload)}`);
 		}
 
 		if (Object.keys(payload).length === 0) {
@@ -208,6 +235,17 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		property: Zigbee2mqttChannelPropertyEntity,
 		value: string | number | boolean,
 	): string | number | boolean | Record<string, unknown> {
+		// Handle special property types by category FIRST
+		// This must happen before format check to ensure proper range conversion
+
+		// Brightness: convert from spec range (0-100%) to Z2M range (0-254)
+		if (property.category === PropertyCategory.BRIGHTNESS) {
+			const percentage = this.coerceNumber(value, 0, 100);
+			const z2mValue = Math.round((percentage / 100) * 254);
+			this.logger.debug(`Converting brightness: ${percentage}% -> ${z2mValue} (Z2M range)`);
+			return z2mValue;
+		}
+
 		// Check if property has special format (e.g., ON/OFF values for binary, or [min, max] for numeric)
 		const format = property.format;
 
@@ -223,18 +261,13 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			}
 		}
 
-		// Handle special property types (identifier = z2m property name)
+		// Handle special property types by identifier
 		const z2mProperty = property.identifier;
 
 		if (z2mProperty === 'state') {
 			// Convert boolean to ON/OFF
 			const boolValue = this.coerceBoolean(value);
 			return boolValue ? 'ON' : 'OFF';
-		}
-
-		if (z2mProperty === 'brightness') {
-			// Ensure brightness is within default range (device-specific range handled above via format)
-			return this.coerceNumber(value, 0, 254);
 		}
 
 		if (z2mProperty === 'color_temp') {

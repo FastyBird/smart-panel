@@ -217,11 +217,14 @@ export class Z2mMappingPreviewService {
 	): Z2mExposeMappingPreviewModel[] {
 		const previews: Z2mExposeMappingPreviewModel[] = [];
 
-		// Build a map of z2m property to mapped property
-		const propertyMap = new Map<string, { channel: MappedChannel; property: MappedProperty }>();
+		// Build a map of z2m property to mapped properties (multiple properties can share same z2mProperty)
+		// For example, color composite maps to both hue and saturation, both with z2mProperty="color"
+		const propertyMap = new Map<string, Array<{ channel: MappedChannel; property: MappedProperty }>>();
 		for (const channel of mappedChannels) {
 			for (const prop of channel.properties) {
-				propertyMap.set(prop.z2mProperty, { channel, property: prop });
+				const existing = propertyMap.get(prop.z2mProperty) ?? [];
+				existing.push({ channel, property: prop });
+				propertyMap.set(prop.z2mProperty, existing);
 			}
 		}
 
@@ -257,16 +260,34 @@ export class Z2mMappingPreviewService {
 				// Process features of specific expose types
 				const specificExpose = expose as { features?: Z2mExpose[] };
 				if (specificExpose.features) {
+					// Track processed z2m properties to avoid duplicates
+					// (e.g., both color_xy and color_hs have property="color")
+					const processedProperties = new Set<string>();
+
 					for (const feature of specificExpose.features) {
 						const featureName = feature.property ?? feature.name ?? feature.type;
-						const mapping = propertyMap.get(featureName);
+						const featureTypeName = feature.name ?? feature.type;
+
+						// Skip color_xy composite - we prefer color_hs for HSV support
+						if (featureTypeName === 'color_xy') {
+							continue;
+						}
+
+						// Skip if we already processed this z2m property
+						// This prevents duplicate entries when both color_xy and color_hs exist
+						if (processedProperties.has(featureName)) {
+							continue;
+						}
+						processedProperties.add(featureName);
+
+						const mappings = propertyMap.get(featureName);
 						const isSkipped = skippedExposes.has(featureName);
 
 						previews.push(
 							this.buildExposePreview(
 								feature,
 								featureName,
-								mapping,
+								mappings,
 								currentState,
 								isSkipped,
 								z2mDevice,
@@ -278,14 +299,14 @@ export class Z2mMappingPreviewService {
 				continue;
 			}
 
-			const mapping = propertyMap.get(exposeName);
+			const mappings = propertyMap.get(exposeName);
 			const isSkipped = skippedExposes.has(exposeName);
 
 			previews.push(
 				this.buildExposePreview(
 					expose,
 					exposeName,
-					mapping,
+					mappings,
 					currentState,
 					isSkipped,
 					z2mDevice,
@@ -299,21 +320,26 @@ export class Z2mMappingPreviewService {
 
 	/**
 	 * Build a single expose preview
+	 * mappings is an array because multiple properties can map to the same z2mProperty
+	 * (e.g., hue and saturation both map to "color")
 	 */
 	private buildExposePreview(
 		expose: Z2mExpose,
 		exposeName: string,
-		mapping: { channel: MappedChannel; property: MappedProperty } | undefined,
+		mappings: Array<{ channel: MappedChannel; property: MappedProperty }> | undefined,
 		currentState: Record<string, unknown>,
 		isSkipped: boolean,
 		z2mDevice: Z2mRegisteredDevice,
 		channelPropertyCategories: Map<string, Set<PropertyCategory>>,
 	): Z2mExposeMappingPreviewModel {
+		// Get first mapping for channel info (all mappings should be for the same channel)
+		const firstMapping = mappings?.[0];
+
 		// Determine status
 		let status: 'mapped' | 'partial' | 'unmapped' | 'skipped';
 		if (isSkipped) {
 			status = 'skipped';
-		} else if (mapping) {
+		} else if (firstMapping) {
 			status = 'mapped';
 		} else {
 			status = 'unmapped';
@@ -321,46 +347,48 @@ export class Z2mMappingPreviewService {
 
 		// Build suggested channel
 		let suggestedChannel: Z2mSuggestedChannelModel | null = null;
-		if (mapping && !isSkipped) {
+		if (firstMapping && !isSkipped) {
 			suggestedChannel = {
-				category: mapping.channel.category,
-				name: mapping.channel.name,
+				category: firstMapping.channel.category,
+				name: firstMapping.channel.name,
 				confidence: 'high',
 			};
 		}
 
-		// Build suggested properties
+		// Build suggested properties - include ALL mapped properties
 		const suggestedProperties: Z2mPropertyMappingPreviewModel[] = [];
-		if (mapping && !isSkipped) {
-			const prop = mapping.property;
+		if (mappings && !isSkipped) {
+			for (const mapping of mappings) {
+				const prop = mapping.property;
 
-			// Get channel spec to check if property is required
-			const channelSpec = this.getChannelSpec(mapping.channel.category);
-			const propSpec = channelSpec?.properties?.find((p) => p.category === prop.category);
+				// Get channel spec to check if property is required
+				const channelSpec = this.getChannelSpec(mapping.channel.category);
+				const propSpec = channelSpec?.properties?.find((p) => p.category === prop.category);
 
-			suggestedProperties.push({
-				category: prop.category,
-				name: prop.name,
-				z2mProperty: prop.z2mProperty,
-				dataType: prop.dataType,
-				permissions: prop.permissions,
-				unit: prop.unit ?? null,
-				format: prop.format ?? null,
-				required: propSpec?.required ?? false,
-				currentValue: this.getCurrentValue(exposeName, currentState),
-			});
+				suggestedProperties.push({
+					category: prop.category,
+					name: prop.name,
+					z2mProperty: prop.z2mProperty,
+					dataType: prop.dataType,
+					permissions: prop.permissions,
+					unit: prop.unit ?? null,
+					format: prop.format ?? null,
+					required: propSpec?.required ?? false,
+					currentValue: this.getCurrentValue(exposeName, currentState, prop.category),
+				});
+			}
 		}
 
 		// Check for missing required properties and add virtual properties if available
 		// Use the aggregated channel properties to check across ALL exposes for this channel
 		const missingRequiredProperties: PropertyCategory[] = [];
-		if (mapping && !isSkipped) {
-			const channelSpec = this.getChannelSpec(mapping.channel.category);
+		if (firstMapping && !isSkipped) {
+			const channelSpec = this.getChannelSpec(firstMapping.channel.category);
 			if (channelSpec) {
 				const requiredProps = channelSpec.properties.filter((p) => p.required);
 
 				// Get ALL property categories mapped to this channel from ALL exposes
-				const allChannelCategories = channelPropertyCategories.get(mapping.channel.category) ?? new Set();
+				const allChannelCategories = channelPropertyCategories.get(firstMapping.channel.category) ?? new Set();
 				const mappedCategories = new Set([...allChannelCategories, ...suggestedProperties.map((p) => p.category)]);
 
 				// Build virtual property context
@@ -374,7 +402,7 @@ export class Z2mMappingPreviewService {
 					if (!mappedCategories.has(reqProp.category)) {
 						// Check if we can provide this as a virtual property
 						const virtualProps = this.virtualPropertyService.getMissingVirtualProperties(
-							mapping.channel.category,
+							firstMapping.channel.category,
 							Array.from(mappedCategories),
 							[reqProp.category],
 							virtualContext,
@@ -427,8 +455,13 @@ export class Z2mMappingPreviewService {
 
 	/**
 	 * Get current value from device state
+	 * For composite properties like color, extract the specific value based on property category
 	 */
-	private getCurrentValue(propertyName: string, state: Record<string, unknown>): string | number | boolean | null {
+	private getCurrentValue(
+		propertyName: string,
+		state: Record<string, unknown>,
+		propertyCategory?: PropertyCategory,
+	): string | number | boolean | null {
 		const value = state[propertyName];
 		if (value === undefined || value === null) {
 			return null;
@@ -436,6 +469,34 @@ export class Z2mMappingPreviewService {
 		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 			return value;
 		}
+
+		// Handle composite values like color object
+		if (typeof value === 'object' && propertyCategory) {
+			const objValue = value as Record<string, unknown>;
+
+			// Extract hue from color object
+			if (propertyCategory === PropertyCategory.HUE) {
+				if ('hue' in objValue && typeof objValue.hue === 'number') {
+					return Math.round(objValue.hue);
+				}
+				if ('h' in objValue && typeof objValue.h === 'number') {
+					return Math.round(objValue.h);
+				}
+				return null;
+			}
+
+			// Extract saturation from color object
+			if (propertyCategory === PropertyCategory.SATURATION) {
+				if ('saturation' in objValue && typeof objValue.saturation === 'number') {
+					return Math.round(objValue.saturation);
+				}
+				if ('s' in objValue && typeof objValue.s === 'number') {
+					return Math.round(objValue.s);
+				}
+				return null;
+			}
+		}
+
 		return JSON.stringify(value);
 	}
 

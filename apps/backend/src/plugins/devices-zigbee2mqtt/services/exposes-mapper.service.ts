@@ -120,6 +120,13 @@ export class Z2mExposesMapperService {
 
 		// Map features to properties
 		for (const feature of expose.features || []) {
+			// Handle color composite exposes - expand to hue/saturation properties
+			if (feature.type === 'composite') {
+				const colorProperties = this.mapColorCompositeToProperties(feature as Z2mExposeComposite);
+				properties.push(...colorProperties);
+				continue;
+			}
+
 			const mappedProperty = this.mapFeatureToProperty(feature);
 			if (mappedProperty) {
 				properties.push(mappedProperty);
@@ -139,6 +146,97 @@ export class Z2mExposesMapperService {
 				properties,
 			},
 		];
+	}
+
+	/**
+	 * Map color composite expose to hue and saturation properties
+	 * Z2M color composites can have different structures:
+	 * - color_hs (name) with property "color" - has features: hue (0-360), saturation (0-100)
+	 * - color_xy (name) with property "color" - has features: x (0-1), y (0-1) - skipped
+	 *
+	 * Important: We must use composite.name to distinguish between color_hs and color_xy
+	 * because both have property="color"
+	 */
+	private mapColorCompositeToProperties(composite: Z2mExposeComposite): MappedProperty[] {
+		// Use composite.name to distinguish between color_xy and color_hs
+		// Both have property="color" but different names
+		const compositeName = composite.name ?? '';
+		const compositeProperty = composite.property ?? composite.name ?? 'color';
+		const properties: MappedProperty[] = [];
+
+		// Log the composite structure for debugging
+		const featureNames = (composite.features || []).map((f) => f.property ?? f.name).join(', ');
+		this.logger.debug(
+			`Processing color composite: name=${compositeName}, property=${compositeProperty}, features=[${featureNames}]`,
+		);
+
+		// Skip color_xy - we prefer color_hs for HSV/HSB support
+		// Check by name since both color_xy and color_hs have property="color"
+		if (compositeName === 'color_xy') {
+			this.logger.debug('Skipping color_xy composite - prefer color_hs for HSV support');
+			return properties;
+		}
+
+		// Handle color_hs composite (or generic color with hs features)
+		if (compositeName === 'color_hs' || compositeName === 'color') {
+			for (const feature of composite.features || []) {
+				const featureName = (feature.property ?? feature.name ?? '').toLowerCase();
+
+				// Match hue feature (h, hue)
+				if (featureName === 'hue' || featureName === 'h') {
+					const numericFeature = feature as Z2mExposeNumeric;
+					this.logger.debug(`Found hue feature: ${featureName}`);
+					properties.push({
+						identifier: PropertyCategory.HUE.toString(),
+						name: 'Hue',
+						category: PropertyCategory.HUE,
+						channelCategory: ChannelCategory.LIGHT,
+						dataType: DataTypeType.USHORT,
+						permissions: mapZ2mAccessToPermissions(feature.access ?? Z2M_ACCESS.STATE),
+						z2mProperty: 'color',
+						unit: 'deg',
+						format: [0, 360],
+						min: 0,
+						max: 360,
+						step: numericFeature.value_step,
+					});
+				}
+
+				// Match saturation feature (s, saturation)
+				if (featureName === 'saturation' || featureName === 's') {
+					const numericFeature = feature as Z2mExposeNumeric;
+					this.logger.debug(`Found saturation feature: ${featureName}`);
+					properties.push({
+						identifier: PropertyCategory.SATURATION.toString(),
+						name: 'Saturation',
+						category: PropertyCategory.SATURATION,
+						channelCategory: ChannelCategory.LIGHT,
+						dataType: DataTypeType.UCHAR,
+						permissions: mapZ2mAccessToPermissions(feature.access ?? Z2M_ACCESS.STATE),
+						z2mProperty: 'color',
+						unit: '%',
+						format: [0, 100],
+						min: 0,
+						max: 100,
+						step: numericFeature.value_step,
+					});
+				}
+
+				// Check for nested color_hs inside color composite
+				if (featureName === 'color_hs' && feature.type === 'composite') {
+					const nestedProperties = this.mapColorCompositeToProperties(feature as Z2mExposeComposite);
+					properties.push(...nestedProperties);
+				}
+			}
+
+			if (properties.length > 0) {
+				this.logger.debug(`Mapped ${compositeName} to ${properties.length} properties (hue, saturation)`);
+			} else {
+				this.logger.warn(`No hue/saturation features found in ${compositeName} composite`);
+			}
+		}
+
+		return properties;
 	}
 
 	/**
@@ -273,10 +371,12 @@ export class Z2mExposesMapperService {
 				// Prefer commonMapping dataType (e.g., FLOAT for humidity/pressure) over range-based inference
 				dataType =
 					commonMapping?.dataType ?? mapZ2mTypeToDataType('numeric', numericExpose.value_min, numericExpose.value_max);
-				min = numericExpose.value_min;
-				max = numericExpose.value_max;
+				// Prefer spec-compliant range from commonMapping over Z2M raw range
+				// This handles brightness (Z2M 0-254 -> spec 0-100%) etc.
+				min = commonMapping?.min ?? numericExpose.value_min;
+				max = commonMapping?.max ?? numericExpose.value_max;
 				step = numericExpose.value_step;
-				unit = numericExpose.unit ?? commonMapping?.unit;
+				unit = commonMapping?.unit ?? numericExpose.unit;
 				if (min !== undefined && max !== undefined) {
 					format = [min, max];
 				}
@@ -294,7 +394,14 @@ export class Z2mExposesMapperService {
 			case 'composite': {
 				// Handle composite types like color
 				const compositeExpose = expose as Z2mExposeComposite;
-				// For color, we store as JSON string
+				// Color composites should be expanded to separate properties (hue, saturation)
+				// This is handled specially in mapFeatureToProperty which returns null for composites
+				// so they're skipped here - the features are mapped separately
+				if (propertyName === 'color' || propertyName === 'color_hs' || propertyName === 'color_xy') {
+					this.logger.debug(`Skipping composite color expose ${propertyName} - features mapped separately`);
+					return null;
+				}
+				// For other composites, store as JSON string
 				dataType = DataTypeType.STRING;
 				this.logger.debug(`Composite expose ${propertyName} with ${compositeExpose.features?.length ?? 0} features`);
 				break;

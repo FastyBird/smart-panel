@@ -252,20 +252,26 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 		unit: '%',
 	},
 
-	// Color properties
-	color_hs: {
+	// Color properties - hue and saturation are mapped from color composite
+	hue: {
 		propertyIdentifier: 'hue',
 		channelCategory: ChannelCategory.LIGHT,
 		category: PropertyCategory.HUE,
-		dataType: DataTypeType.STRING,
-		name: 'Color (HS)',
+		dataType: DataTypeType.USHORT,
+		name: 'Hue',
+		unit: 'deg',
+		min: 0,
+		max: 360,
 	},
-	color_xy: {
-		propertyIdentifier: 'hue',
+	saturation: {
+		propertyIdentifier: 'saturation',
 		channelCategory: ChannelCategory.LIGHT,
-		category: PropertyCategory.HUE,
-		dataType: DataTypeType.STRING,
-		name: 'Color (XY)',
+		category: PropertyCategory.SATURATION,
+		dataType: DataTypeType.UCHAR,
+		name: 'Saturation',
+		unit: '%',
+		min: 0,
+		max: 100,
 	},
 
 	// Climate properties
