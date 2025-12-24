@@ -44,44 +44,39 @@
 			/>
 		</el-form-item>
 
-		<el-divider />
-
 		<!-- Final Review -->
-		<div v-if="preview" class="space-y-2">
-			<h4 class="font-semibold">{{ t('devicesHomeAssistantPlugin.headings.mapping.summary') }}</h4>
-			<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-				<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.totalEntities') }}:</dt>
-				<dd class="m-0">{{ preview.entities.length }}</dd>
-
-				<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}:</dt>
-				<dd class="m-0">
-					<el-tag type="success" size="small">
-						{{ mappedCount }}
+		<el-card shadow="never" header-class="py-2! px-4!" body-class="px-0!">
+			<template #header>
+				<div class="font-semibold">
+					{{ t('devicesHomeAssistantPlugin.fields.mapping.totalEntities') }}:
+					<el-tag
+						type="info"
+						size="small"
+					>
+						{{ preview?.entities.length ?? 0 }}
 					</el-tag>
-				</dd>
+				</div>
+			</template>
 
-				<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.partial') }}:</dt>
-				<dd class="m-0">
-					<el-tag type="warning" size="small">
-						{{ partialCount }}
-					</el-tag>
-				</dd>
-
-				<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmapped') }}:</dt>
-				<dd class="m-0">
-					<el-tag type="danger" size="small">
-						{{ unmappedCount }}
-					</el-tag>
-				</dd>
-
-				<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.excluded') }}:</dt>
-				<dd class="m-0">
-					<el-tag type="info" size="small">
-						{{ excludedCount }}
-					</el-tag>
-				</dd>
-			</dl>
-		</div>
+			<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+				<div>
+					<div class="text-2xl font-bold text-green-600">{{ mappedCount }}</div>
+					<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}</div>
+				</div>
+				<div>
+					<div class="text-2xl font-bold text-yellow-600">{{ partialCount }}</div>
+					<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.partial') }}</div>
+				</div>
+				<div>
+					<div class="text-2xl font-bold text-red-600">{{ unmappedCount }}</div>
+					<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmapped') }}</div>
+				</div>
+				<div>
+					<div class="text-2xl font-bold text-blue-600">{{ excludedCount }}</div>
+					<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.excluded') }}</div>
+				</div>
+			</div>
+		</el-card>
 	</el-form>
 </template>
 
@@ -89,7 +84,7 @@
 import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElDivider, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormInstance, type FormRules } from 'element-plus';
+import { ElCard, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormInstance, type FormRules } from 'element-plus';
 import type { IHomeAssistantDeviceAddForm } from '../../schemas/devices.types';
 import type { IMappingEntityOverride, IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
