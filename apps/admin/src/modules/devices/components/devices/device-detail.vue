@@ -304,6 +304,8 @@ const openLogsDialog = (): void => {
 const closeLogsDialog = (): void => {
 	logsDialogVisible.value = false;
 	logsLive.value = false;
+	// Directly stop live polling to ensure timer is cleared even if dialog destroys child before watcher propagates
+	deviceLogs.live.value = false;
 };
 
 const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefined => {
