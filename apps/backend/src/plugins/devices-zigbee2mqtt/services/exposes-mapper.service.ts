@@ -371,12 +371,21 @@ export class Z2mExposesMapperService {
 				// Prefer commonMapping dataType (e.g., FLOAT for humidity/pressure) over range-based inference
 				dataType =
 					commonMapping?.dataType ?? mapZ2mTypeToDataType('numeric', numericExpose.value_min, numericExpose.value_max);
-				// Prefer spec-compliant range from commonMapping over Z2M raw range
-				// This handles brightness (Z2M 0-254 -> spec 0-100%) etc.
-				min = commonMapping?.min ?? numericExpose.value_min;
-				max = commonMapping?.max ?? numericExpose.value_max;
+
+				// Convert Z2M ranges to spec-compliant ranges
+				// This handles unit conversions like mired->Kelvin, 0-254->0-100%, etc.
+				const convertedRange = this.convertZ2mRangeToSpec(
+					propertyName,
+					numericExpose.value_min,
+					numericExpose.value_max,
+					numericExpose.unit,
+				);
+
+				min = convertedRange.min;
+				max = convertedRange.max;
+				unit = convertedRange.unit;
 				step = numericExpose.value_step;
-				unit = commonMapping?.unit ?? numericExpose.unit;
+
 				if (min !== undefined && max !== undefined) {
 					format = [min, max];
 				}
@@ -679,6 +688,44 @@ export class Z2mExposesMapperService {
 
 		// Default to STATUS for unknown properties (GENERIC is deprecated)
 		return PropertyCategory.STATUS;
+	}
+
+	/**
+	 * Convert Z2M value range to spec-compliant range
+	 * Handles unit conversions like:
+	 * - brightness: 0-254/255 -> 0-100%
+	 * - color_temp: mired -> Kelvin (inverted scale)
+	 * - other numeric values: keep as-is with original unit
+	 */
+	private convertZ2mRangeToSpec(
+		propertyName: string,
+		z2mMin: number | undefined,
+		z2mMax: number | undefined,
+		z2mUnit: string | undefined,
+	): { min: number | undefined; max: number | undefined; unit: string | undefined } {
+		// Brightness conversion: 0-254/255 -> 0-100%
+		if (propertyName === 'brightness') {
+			// Always normalize to 0-100% regardless of Z2M range
+			return { min: 0, max: 100, unit: '%' };
+		}
+
+		// Color temperature: mired -> Kelvin (inverted scale)
+		// mired = 1,000,000 / Kelvin, so Kelvin = 1,000,000 / mired
+		// Z2M min mired = max Kelvin (coolest), Z2M max mired = min Kelvin (warmest)
+		if (propertyName === 'color_temp' && z2mUnit === 'mired') {
+			const minKelvin = z2mMax && z2mMax > 0 ? Math.round(1000000 / z2mMax) : 2000;
+			const maxKelvin = z2mMin && z2mMin > 0 ? Math.round(1000000 / z2mMin) : 6500;
+			this.logger.debug(`Converting color_temp range: ${z2mMin}-${z2mMax} mired -> ${minKelvin}-${maxKelvin} K`);
+			return { min: minKelvin, max: maxKelvin, unit: 'K' };
+		}
+
+		// Link quality: 0-255 -> 0-100%
+		if (propertyName === 'linkquality') {
+			return { min: 0, max: 100, unit: '%' };
+		}
+
+		// Default: keep original range and unit
+		return { min: z2mMin, max: z2mMax, unit: z2mUnit };
 	}
 
 	/**

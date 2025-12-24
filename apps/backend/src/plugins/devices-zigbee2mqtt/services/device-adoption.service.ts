@@ -393,8 +393,8 @@ export class Z2mDeviceAdoptionService {
 						cachedValue > 0
 					) {
 						// Convert mired to Kelvin for color temperature
-						const kelvin = Math.round(1000000 / cachedValue);
-						initialValue = Math.max(2000, Math.min(10000, kelvin));
+						// Device-specific range is already set in property format by exposes-mapper
+						initialValue = Math.round(1000000 / cachedValue);
 						this.logger.debug(`[DEVICE ADOPTION] Converted color_temp: ${cachedValue} mired -> ${initialValue} K`);
 					} else if (
 						typeof cachedValue === 'boolean' ||

@@ -433,7 +433,7 @@ export class Z2mDeviceMapperService {
 			}
 
 			// Handle color temperature conversion for light channels
-			// Z2M uses mired (158-500), spec uses Kelvin (2000-10000)
+			// Z2M uses mired, spec uses Kelvin
 			// Conversion: Kelvin = 1,000,000 / mired
 			if (channel.category === ChannelCategory.LIGHT && 'color_temp' in state) {
 				const colorTempProp = properties.find((p) => p.category === PropertyCategory.COLOR_TEMPERATURE);
@@ -441,11 +441,18 @@ export class Z2mDeviceMapperService {
 				if (colorTempProp) {
 					const z2mColorTemp = state.color_temp;
 					if (typeof z2mColorTemp === 'number' && z2mColorTemp > 0) {
-						// Convert mired to Kelvin and clamp to spec range
+						// Convert mired to Kelvin
 						const kelvin = Math.round(1000000 / z2mColorTemp);
-						const clampedKelvin = Math.max(2000, Math.min(10000, kelvin));
 
-						this.logger.debug(`Updating color_temp: ${z2mColorTemp} mired -> ${clampedKelvin} K`);
+						// Clamp to property's format (device-specific Kelvin range)
+						const propFormat = colorTempProp.format;
+						const minKelvin = Array.isArray(propFormat) && typeof propFormat[0] === 'number' ? propFormat[0] : 2000;
+						const maxKelvin = Array.isArray(propFormat) && typeof propFormat[1] === 'number' ? propFormat[1] : 6500;
+						const clampedKelvin = Math.max(minKelvin, Math.min(maxKelvin, kelvin));
+
+						this.logger.debug(
+							`Updating color_temp: ${z2mColorTemp} mired -> ${clampedKelvin} K (range: ${minKelvin}-${maxKelvin})`,
+						);
 
 						await this.channelsPropertiesService.update<
 							Zigbee2mqttChannelPropertyEntity,

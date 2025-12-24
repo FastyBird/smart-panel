@@ -468,9 +468,9 @@ export class Z2mMappingPreviewService {
 		}
 
 		// Handle color temperature conversion (mired -> Kelvin)
+		// Note: Clamping happens in exposes-mapper based on device's actual range
 		if (propertyCategory === PropertyCategory.COLOR_TEMPERATURE && typeof value === 'number' && value > 0) {
-			const kelvin = Math.round(1000000 / value);
-			return Math.max(2000, Math.min(10000, kelvin));
+			return Math.round(1000000 / value);
 		}
 
 		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
