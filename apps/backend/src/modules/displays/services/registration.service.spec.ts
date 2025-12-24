@@ -55,6 +55,8 @@ describe('RegistrationService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
+		spaceId: null,
+		space: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,

@@ -49,6 +49,8 @@ describe('DevicesChannelsPropertiesController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		spaceId: null,
+		space: null,
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,

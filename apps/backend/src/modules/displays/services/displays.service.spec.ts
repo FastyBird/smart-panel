@@ -50,6 +50,8 @@ describe('DisplaysService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
+		spaceId: null,
+		space: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
@@ -80,6 +82,8 @@ describe('DisplaysService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
+		spaceId: null,
+		space: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(Date.now() + 1000), // Created later
 		updatedAt: null,

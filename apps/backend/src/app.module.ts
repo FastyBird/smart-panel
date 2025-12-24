@@ -24,6 +24,8 @@ import { DISPLAYS_MODULE_PREFIX } from './modules/displays/displays.constants';
 import { DisplaysModule } from './modules/displays/displays.module';
 import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.constants';
 import { ExtensionsModule } from './modules/extensions/extensions.module';
+import { SPACES_MODULE_PREFIX } from './modules/spaces/spaces.constants';
+import { SpacesModule } from './modules/spaces/spaces.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SeedModule } from './modules/seed/seeding.module';
@@ -148,6 +150,10 @@ export class AppModule {
 								module: ExtensionsModule,
 							},
 							{
+								path: SPACES_MODULE_PREFIX,
+								module: SpacesModule,
+							},
+							{
 								path: SYSTEM_MODULE_PREFIX,
 								module: SystemModule,
 							},
@@ -221,6 +227,7 @@ export class AppModule {
 				DisplaysModule,
 				ExtensionsModule,
 				PlatformModule,
+				SpacesModule,
 				SeedModule,
 				StatsModule,
 				SystemModule,

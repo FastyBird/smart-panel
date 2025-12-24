@@ -1,5 +1,5 @@
-import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { Expose, Transform, Type } from 'class-transformer';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -76,6 +76,23 @@ export class UpdateDeviceDto {
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
 	enabled?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'space_id',
+		description: 'Space (room/zone) this device belongs to',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'space_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => value !== null)
+	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
+		toClassOnly: true,
+	})
+	spaceId?: string | null;
 }
 
 @ApiSchema({ name: 'DevicesModuleReqUpdateDevice' })

@@ -1,10 +1,11 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsMACAddress, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
-import { Column, Entity } from 'typeorm';
+import { IsBoolean, IsEnum, IsInt, IsMACAddress, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { ConnectionState } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleDataDisplay' })
@@ -209,6 +210,30 @@ export class DisplayEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true, default: null })
 	name: string | null;
+
+	// === Space Assignment ===
+
+	@ApiPropertyOptional({
+		name: 'space_id',
+		description: 'Space (room/zone) this display belongs to',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'space_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
+		toClassOnly: true,
+	})
+	@Index()
+	@Column({ nullable: true, default: null })
+	spaceId: string | null;
+
+	@ManyToOne(() => SpaceEntity, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'spaceId' })
+	space: SpaceEntity | null;
 
 	// === Audio Capabilities (set during registration) ===
 

@@ -5,6 +5,7 @@ import {
 	IsNumber,
 	IsOptional,
 	IsString,
+	IsUUID,
 	Max,
 	Min,
 	ValidateIf,
@@ -193,6 +194,25 @@ export class UpdateDisplayDto {
 	@IsString({ message: '[{"field":"name","reason":"Name must be a string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	name?: string | null;
+
+	// === Space Assignment ===
+
+	@ApiPropertyOptional({
+		name: 'space_id',
+		description: 'Space (room/zone) this display belongs to',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'space_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => value !== null)
+	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
+		toClassOnly: true,
+	})
+	spaceId?: string | null;
 
 	// === Audio Settings (only editable if the display supports the feature) ===
 
