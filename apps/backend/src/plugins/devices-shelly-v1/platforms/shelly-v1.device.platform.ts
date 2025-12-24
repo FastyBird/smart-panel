@@ -57,7 +57,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 		// Check if a device is enabled
 		if (!device.enabled) {
-			this.logger.debug(`Device ${device.identifier} is disabled, ignoring command`);
+			this.logger.debug(`Device ${device.identifier} is disabled, ignoring command`, { resource: device.id });
 
 			return false;
 		}
@@ -66,7 +66,9 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		const shellyDevice = this.shelliesAdapter.getDevice(device.identifier.split('-')[0], device.identifier);
 
 		if (!shellyDevice) {
-			this.logger.warn(`Shelly device not found in adapter: ${device.identifier}, device may be offline`);
+			this.logger.warn(`Shelly device not found in adapter: ${device.identifier}, device may be offline`, {
+				resource: device.id,
+			});
 
 			return false;
 		}
@@ -108,6 +110,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				const err = error as Error;
 
 				this.logger.error('Error processing property update', {
+					resource: device.id,
 					message: err.message,
 					stack: err.stack,
 				});
@@ -120,9 +123,11 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		const allSucceeded = results.every((r) => r === true);
 
 		if (!allSucceeded) {
-			this.logger.warn(`Some properties failed to update for device id=${device.id}`);
+			this.logger.warn(`Some properties failed to update for device id=${device.id}`, { resource: device.id });
 		} else {
-			this.logger.log(`Successfully processed all property updates for device id=${device.id}`);
+			this.logger.log(`Successfully processed all property updates for device id=${device.id}`, {
+				resource: device.id,
+			});
 		}
 
 		return allSucceeded;
@@ -141,7 +146,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		const descriptor = this.findDescriptor(shellyDevice.type);
 
 		if (!descriptor) {
-			this.logger.warn(`No descriptor found for device type: ${shellyDevice.type}`);
+			this.logger.warn(`No descriptor found for device type: ${shellyDevice.type}`, { resource: device.id });
 
 			return false;
 		}
@@ -150,7 +155,9 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		const bindings = this.getBindings(descriptor, shellyDevice);
 
 		if (!bindings || bindings.length === 0) {
-			this.logger.debug(`No bindings found for device ${device.identifier}, cannot execute command`);
+			this.logger.debug(`No bindings found for device ${device.identifier}, cannot execute command`, {
+				resource: device.id,
+			});
 
 			return false;
 		}
@@ -198,7 +205,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		propertyUpdates: Array<{ property: ShellyV1ChannelPropertyEntity; value: string | number | boolean }>,
 	): Promise<boolean> {
 		if (!shellyDevice.setRelay) {
-			this.logger.warn(`Device ${device.identifier} does not support setRelay method`);
+			this.logger.warn(`Device ${device.identifier} does not support setRelay method`, { resource: device.id });
 
 			return false;
 		}
@@ -214,11 +221,13 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 		const boolValue = coerceBooleanSafe(stateUpdate.value);
 
-		this.logger.log(`Setting relay ${index} to ${boolValue ? 'ON' : 'OFF'} on device ${device.identifier}`);
+		this.logger.log(`Setting relay ${index} to ${boolValue ? 'ON' : 'OFF'} on device ${device.identifier}`, {
+			resource: device.id,
+		});
 
 		await shellyDevice.setRelay(index, boolValue);
 
-		this.logger.debug(`Successfully set relay ${index} on device ${device.identifier}`);
+		this.logger.debug(`Successfully set relay ${index} on device ${device.identifier}`, { resource: device.id });
 
 		return true;
 	}
@@ -308,7 +317,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		if (hasColorProperties) {
 			// RGB/RGBW color mode
 			if (!shellyDevice.setColor) {
-				this.logger.warn(`Device ${device.identifier} does not support setColor method`);
+				this.logger.warn(`Device ${device.identifier} does not support setColor method`, { resource: device.id });
 			} else {
 				const colorOpts: ShellyColorOptions = {};
 
@@ -338,6 +347,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 				this.logger.log(
 					`Setting light ${index} color with options ${JSON.stringify(colorOpts)} on device ${device.identifier}`,
+					{ resource: device.id },
 				);
 
 				await shellyDevice.setColor(colorOpts);
@@ -348,7 +358,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		if (hasWhiteProperties) {
 			// White/brightness mode
 			if (!shellyDevice.setWhite) {
-				this.logger.warn(`Device ${device.identifier} does not support setWhite method`);
+				this.logger.warn(`Device ${device.identifier} does not support setWhite method`, { resource: device.id });
 			} else {
 				// Use current device values as defaults if not provided in the command
 				const currentBrightness = shellyDevice[`brightness${index}`] ?? shellyDevice['brightness'];
@@ -367,6 +377,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 					this.logger.log(
 						`Setting light ${index} white with temperature (temp=${temperature}, brightness=${brightness}, on=${on}) on device ${device.identifier}`,
+						{ resource: device.id },
 					);
 
 					await shellyDevice.setWhite(temperature, brightness, on);
@@ -374,6 +385,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					// Multi-channel device without temperature: setWhite(index, brightness, on)
 					this.logger.log(
 						`Setting light ${index} white multi-channel (index=${index}, brightness=${brightness}, on=${on}) on device ${device.identifier}`,
+						{ resource: device.id },
 					);
 
 					await shellyDevice.setWhite(index, brightness, on);
@@ -381,6 +393,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					// Single-channel device without temperature: setWhite(brightness, on)
 					this.logger.log(
 						`Setting light white single-channel (brightness=${brightness}, on=${on}) on device ${device.identifier}`,
+						{ resource: device.id },
 					);
 
 					await shellyDevice.setWhite(brightness, on);
@@ -395,6 +408,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			if (shellyDevice.setColor) {
 				this.logger.log(
 					`Setting light ${index} state to ${values.state ? 'ON' : 'OFF'} on device ${device.identifier}`,
+					{ resource: device.id },
 				);
 
 				await shellyDevice.setColor({ switch: values.state });
@@ -409,6 +423,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 				this.logger.log(
 					`Setting light ${index} state to ${values.state ? 'ON' : 'OFF'} on device ${device.identifier}`,
+					{ resource: device.id },
 				);
 
 				if (isMultiChannel) {
@@ -426,12 +441,13 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		if (!executed) {
 			this.logger.warn(
 				`No recognized light properties to update or methods not supported for device ${device.identifier}`,
+				{ resource: device.id },
 			);
 
 			return false;
 		}
 
-		this.logger.debug(`Successfully set light ${index} on device ${device.identifier}`);
+		this.logger.debug(`Successfully set light ${index} on device ${device.identifier}`, { resource: device.id });
 
 		return true;
 	}
@@ -446,7 +462,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		propertyUpdates: Array<{ property: ShellyV1ChannelPropertyEntity; value: string | number | boolean }>,
 	): Promise<boolean> {
 		if (!shellyDevice.setRoller) {
-			this.logger.warn(`Device ${device.identifier} does not support setRoller method`);
+			this.logger.warn(`Device ${device.identifier} does not support setRoller method`, { resource: device.id });
 
 			return false;
 		}
@@ -457,7 +473,9 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				// Set position (0-100)
 				const position = coerceNumberSafe(value, { clamp: { min: 0, max: 100 } }) ?? 0;
 
-				this.logger.log(`Setting roller ${index} to position ${position}% on device ${device.identifier}`);
+				this.logger.log(`Setting roller ${index} to position ${position}% on device ${device.identifier}`, {
+					resource: device.id,
+				});
 
 				await shellyDevice.setRollerPosition(position);
 			} else if (property.identifier === 'command') {
@@ -468,12 +486,16 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				const allowedCommands = Object.keys(ROLLER_COMMAND_VALUE_MAP);
 
 				if (!validateEnumValue(command, allowedCommands, 'roller command')) {
-					this.logger.warn(`Invalid roller command: ${command}, must be one of: ${allowedCommands.join(', ')}`);
+					this.logger.warn(`Invalid roller command: ${command}, must be one of: ${allowedCommands.join(', ')}`, {
+						resource: device.id,
+					});
 
 					return false;
 				}
 
-				this.logger.log(`Executing roller ${index} command ${command} on device ${device.identifier}`);
+				this.logger.log(`Executing roller ${index} command ${command} on device ${device.identifier}`, {
+					resource: device.id,
+				});
 
 				// For roller commands, canonical values match raw values (open/close/stop)
 				// No reverse mapping needed
@@ -483,7 +505,9 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			}
 		}
 
-		this.logger.debug(`Successfully executed roller ${index} command on device ${device.identifier}`);
+		this.logger.debug(`Successfully executed roller ${index} command on device ${device.identifier}`, {
+			resource: device.id,
+		});
 
 		return true;
 	}

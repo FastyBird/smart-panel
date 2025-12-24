@@ -103,12 +103,13 @@ export class DeviceAdoptionService {
 			createDeviceDto,
 		);
 
-		this.logger.debug(`[DEVICE ADOPTION] Created device: ${device.id}`);
+		this.logger.debug(`[DEVICE ADOPTION] Created device: ${device.id}`, { resource: device.id });
 
 		try {
 			// Log all incoming channels for debugging
 			this.logger.debug(
 				`[DEVICE ADOPTION] Incoming channels: ${JSON.stringify(request.channels.map((ch) => ({ entityId: ch.entityId, category: ch.category, propsCount: ch.properties?.length ?? 0 })))}`,
+				{ resource: device.id },
 			);
 
 			// Separate device_information channels from other channels
@@ -120,12 +121,14 @@ export class DeviceAdoptionService {
 
 			this.logger.debug(
 				`[DEVICE ADOPTION] Found ${deviceInformationChannels.length} device_information channels to merge, ${otherChannels.length} other channels to create`,
+				{ resource: device.id },
 			);
 
 			// Log device_information channel details
 			for (const diChannel of deviceInformationChannels) {
 				this.logger.debug(
 					`[DEVICE ADOPTION] Device info channel: entityId=${diChannel.entityId}, properties=${JSON.stringify(diChannel.properties.map((p) => ({ category: p.category, haAttribute: p.haAttribute, haEntityId: p.haEntityId })))}`,
+					{ resource: device.id },
 				);
 			}
 
@@ -145,18 +148,20 @@ export class DeviceAdoptionService {
 			// This also updates virtual property values and sets device connection state
 			await this.homeAssistantHttpService.syncDeviceStates(device.id);
 
-			this.logger.debug(`[DEVICE ADOPTION] Device ${device.id} adopted successfully`);
+			this.logger.debug(`[DEVICE ADOPTION] Device ${device.id} adopted successfully`, { resource: device.id });
 
 			// Return the fully loaded device
 			return await this.devicesService.findOne<HomeAssistantDeviceEntity>(device.id, DEVICES_HOME_ASSISTANT_TYPE);
 		} catch (error) {
 			// If channel creation fails, we should clean up the device
 			// This should rarely happen now since we pre-validate, but keep as safety net
-			this.logger.error(`[DEVICE ADOPTION] Failed to create channels, cleaning up device: ${device.id}`, error);
+			this.logger.error(`[DEVICE ADOPTION] Failed to create channels, cleaning up device: ${device.id}`, {
+				resource: device.id,
+			});
 			try {
 				await this.devicesService.remove(device.id);
-			} catch (cleanupError) {
-				this.logger.error(`[DEVICE ADOPTION] Failed to cleanup device: ${device.id}`, cleanupError);
+			} catch {
+				this.logger.error(`[DEVICE ADOPTION] Failed to cleanup device: ${device.id}`, { resource: device.id });
 			}
 			throw error;
 		}
@@ -245,6 +250,7 @@ export class DeviceAdoptionService {
 		if (existingDeviceInfoChannel) {
 			this.logger.debug(
 				`[DEVICE ADOPTION] Device information channel already exists for device ${device.id}, adding base properties and merging mapping properties`,
+				{ resource: device.id },
 			);
 
 			// Add base properties from HA registry to existing channel
@@ -376,12 +382,14 @@ export class DeviceAdoptionService {
 
 		this.logger.debug(
 			`[DEVICE ADOPTION] Device information channel will have ${mergedProperties.length} properties: ${mergedProperties.map((p) => p.category).join(', ')}`,
+			{ resource: device.id },
 		);
 
 		// Log each property in detail for debugging
 		for (const prop of mergedProperties) {
 			this.logger.debug(
 				`[DEVICE ADOPTION] Property: ${prop.category}, dataType: ${prop.data_type}, ha_entity_id: ${prop.ha_entity_id}, ha_attribute: ${prop.ha_attribute}`,
+				{ resource: device.id },
 			);
 		}
 
@@ -395,6 +403,7 @@ export class DeviceAdoptionService {
 
 		this.logger.debug(
 			`[DEVICE ADOPTION] CreateChannelDto has ${createChannelDto.properties?.length ?? 0} properties after transformation`,
+			{ resource: device.id },
 		);
 
 		const channelValidationErrors = await validate(createChannelDto, { skipMissingProperties: true });
@@ -402,19 +411,23 @@ export class DeviceAdoptionService {
 		if (channelValidationErrors.length) {
 			this.logger.debug(
 				`[DEVICE ADOPTION] Validation errors details: ${JSON.stringify(channelValidationErrors, null, 2)}`,
+				{ resource: device.id },
 			);
 		}
 
 		if (channelValidationErrors.length) {
 			this.logger.error(
 				`[DEVICE ADOPTION] Device information channel validation failed: ${JSON.stringify(channelValidationErrors)}`,
+				{ resource: device.id },
 			);
 			throw new DevicesHomeAssistantValidationException('Device information channel validation failed');
 		}
 
 		await this.channelsService.create(createChannelDto);
 
-		this.logger.debug(`[DEVICE ADOPTION] Created device information channel for device: ${device.id}`);
+		this.logger.debug(`[DEVICE ADOPTION] Created device information channel for device: ${device.id}`, {
+			resource: device.id,
+		});
 	}
 
 	/**
@@ -607,13 +620,16 @@ export class DeviceAdoptionService {
 		if (channelValidationErrors.length) {
 			this.logger.error(
 				`[DEVICE ADOPTION] Channel validation failed for ${channelDef.category}: ${JSON.stringify(channelValidationErrors)}`,
+				{ resource: device.id },
 			);
 			throw new DevicesHomeAssistantValidationException(`Channel validation failed for ${channelDef.category}`);
 		}
 
 		await this.channelsService.create(createChannelDto);
 
-		this.logger.debug(`[DEVICE ADOPTION] Created channel ${channelDef.category} for device: ${device.id}`);
+		this.logger.debug(`[DEVICE ADOPTION] Created channel ${channelDef.category} for device: ${device.id}`, {
+			resource: device.id,
+		});
 	}
 
 	/**
@@ -961,7 +977,7 @@ export class DeviceAdoptionService {
 	 * Validate the complete device structure against specifications before finalizing
 	 */
 	private async validateDeviceStructure(deviceId: string): Promise<void> {
-		this.logger.debug(`[DEVICE ADOPTION] Validating device structure for device: ${deviceId}`);
+		this.logger.debug(`[DEVICE ADOPTION] Validating device structure for device: ${deviceId}`, { resource: deviceId });
 
 		const device = await this.devicesService.findOne<HomeAssistantDeviceEntity>(deviceId, DEVICES_HOME_ASSISTANT_TYPE);
 		if (!device) {
@@ -1043,12 +1059,16 @@ export class DeviceAdoptionService {
 		}
 
 		if (validationErrors.length > 0) {
-			this.logger.error(`[DEVICE ADOPTION] Device structure validation failed: ${validationErrors.join(', ')}`);
+			this.logger.error(`[DEVICE ADOPTION] Device structure validation failed: ${validationErrors.join(', ')}`, {
+				resource: deviceId,
+			});
 			throw new DevicesHomeAssistantValidationException(
 				`Device structure validation failed:\n${validationErrors.join('\n')}`,
 			);
 		}
 
-		this.logger.debug(`[DEVICE ADOPTION] Device structure validation passed for device: ${deviceId}`);
+		this.logger.debug(`[DEVICE ADOPTION] Device structure validation passed for device: ${deviceId}`, {
+			resource: deviceId,
+		});
 	}
 }

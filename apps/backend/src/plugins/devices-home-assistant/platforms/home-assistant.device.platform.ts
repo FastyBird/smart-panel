@@ -70,7 +70,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		const setStates = await this.mapperService.mapToHA(device, values);
 
 		if (setStates.length === 0) {
-			this.logger.error('Failed to update device property, no payload to send');
+			this.logger.error('Failed to update device property, no payload to send', { resource: device.id });
 
 			return false;
 		}
@@ -104,12 +104,13 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 				});
 
 				if (response === false) {
-					this.logger.error('Failed to update device property');
+					this.logger.error('Failed to update device property', { resource: device.id });
 				}
 			} catch (error) {
 				const err = error as Error;
 
 				this.logger.error('Error processing property update', {
+					resource: device.id,
 					message: err.message,
 					stack: err.stack,
 				});
@@ -125,12 +126,14 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		const failed = Array.from(result.values()).filter((success) => !success);
 
 		if (failed.length > 0) {
-			this.logger.warn(`Some properties failed to update for device id=${device.id}: ${JSON.stringify(failed)}`);
+			this.logger.warn(`Some properties failed to update for device id=${device.id}: ${JSON.stringify(failed)}`, {
+				resource: device.id,
+			});
 
 			return false;
 		}
 
-		this.logger.log(`Successfully processed all property updates for device id=${device.id}`);
+		this.logger.log(`Successfully processed all property updates for device id=${device.id}`, { resource: device.id });
 
 		return true;
 	}

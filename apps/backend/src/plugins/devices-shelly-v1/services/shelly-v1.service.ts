@@ -255,7 +255,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			// Map and create the device with its channels and properties
 			const device = await this.deviceMapper.mapDevice(event);
 
-			this.logger.log(`Device mapped successfully: ${device.identifier} (${device.id})`);
+			this.logger.log(`Device mapped successfully: ${device.identifier} (${device.id})`, { resource: device.id });
 		} catch (error) {
 			this.logger.error(`Failed to map device ${event.id}:`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -391,7 +391,7 @@ export class ShellyV1Service implements IManagedPluginService {
 				state: ConnectionState.DISCONNECTED,
 			});
 
-			this.logger.debug(`Device ${device.identifier} marked as offline`);
+			this.logger.debug(`Device ${device.identifier} marked as offline`, { resource: device.id });
 		} catch (error) {
 			this.logger.error(`Failed to mark device ${event.id} as offline:`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -435,7 +435,7 @@ export class ShellyV1Service implements IManagedPluginService {
 				state: ConnectionState.CONNECTED,
 			});
 
-			this.logger.debug(`Device ${device.identifier} marked as online`);
+			this.logger.debug(`Device ${device.identifier} marked as online`, { resource: device.id });
 		} catch (error) {
 			this.logger.error(`Failed to mark device ${event.id} as online:`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -457,7 +457,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		const descriptor = await this.findDescriptor(device);
 
 		if (!descriptor) {
-			this.logger.warn(`No descriptor found for device: ${device.identifier}`);
+			this.logger.warn(`No descriptor found for device: ${device.identifier}`, { resource: device.id });
 
 			return null;
 		}
@@ -472,7 +472,9 @@ export class ShellyV1Service implements IManagedPluginService {
 			const shellyDevice = this.shelliesAdapter.getDevice(deviceModel, device.identifier);
 
 			if (!shellyDevice) {
-				this.logger.warn(`Device ${device.identifier} not found in adapter, cannot determine mode`);
+				this.logger.warn(`Device ${device.identifier} not found in adapter, cannot determine mode`, {
+					resource: device.id,
+				});
 
 				return null;
 			}
@@ -483,7 +485,9 @@ export class ShellyV1Service implements IManagedPluginService {
 			if (modeProfile) {
 				bindings = modeProfile.bindings;
 			} else {
-				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)} on device ${device.identifier}`);
+				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)} on device ${device.identifier}`, {
+					resource: device.id,
+				});
 
 				return null;
 			}
@@ -519,7 +523,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		);
 
 		if (!deviceInfoChannel) {
-			this.logger.warn(`No device_information channel found for device: ${device.identifier}`);
+			this.logger.warn(`No device_information channel found for device: ${device.identifier}`, { resource: device.id });
 
 			return null;
 		}
@@ -533,7 +537,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		);
 
 		if (!modelProperty || !modelProperty.value) {
-			this.logger.warn(`No model property found for device: ${device.identifier}`);
+			this.logger.warn(`No model property found for device: ${device.identifier}`, { resource: device.id });
 
 			return null;
 		}
@@ -729,7 +733,9 @@ export class ShellyV1Service implements IManagedPluginService {
 								value: status.wifi_sta.rssi,
 							});
 
-							this.logger.debug(`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`);
+							this.logger.debug(`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`, {
+								resource: device.id,
+							});
 						}
 					}
 
@@ -751,7 +757,9 @@ export class ShellyV1Service implements IManagedPluginService {
 								value: info.fw,
 							});
 
-							this.logger.debug(`Updated firmware version for ${registeredDevice.id}: ${info.fw}`);
+							this.logger.debug(`Updated firmware version for ${registeredDevice.id}: ${info.fw}`, {
+								resource: device.id,
+							});
 						}
 					}
 				} catch (error) {

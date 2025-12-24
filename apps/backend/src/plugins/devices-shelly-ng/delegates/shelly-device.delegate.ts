@@ -199,7 +199,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	}
 
 	private handleConnect = (): void => {
-		this.logger.log(`Device=${this.shelly.id} connected`);
+		this.logger.log(`Device=${this.shelly.id} connected`, { resource: this.shelly.id });
 
 		this.connected = true;
 
@@ -210,9 +210,9 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		const details = reason.length > 0 ? 'reason: ' + reason : 'code: ' + code;
 
 		if (this.connected) {
-			this.logger.warn(`Device=${this.shelly.id} disconnected, ${details}`);
+			this.logger.warn(`Device=${this.shelly.id} disconnected, ${details}`, { resource: this.shelly.id });
 		} else {
-			this.logger.warn(`Connection with device=${this.shelly.id} failed, ${details}`);
+			this.logger.warn(`Connection with device=${this.shelly.id} failed, ${details}`, { resource: this.shelly.id });
 		}
 
 		if (reconnectIn !== null) {
@@ -226,7 +226,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 				msg += Math.floor(reconnectIn / (60 * 60 * 1000)) + ' hour(s)';
 			}
 
-			this.logger.log(msg);
+			this.logger.log(msg, { resource: this.shelly.id });
 		}
 
 		this.connected = false;

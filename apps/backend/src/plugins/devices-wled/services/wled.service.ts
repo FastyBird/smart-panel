@@ -272,12 +272,12 @@ export class WledService implements IManagedPluginService {
 	 */
 	private async connectToDevice(device: WledDeviceEntity): Promise<void> {
 		if (!device.hostname || !device.identifier) {
-			this.logger.warn(`Device ${device.id} missing hostname or identifier, skipping`);
+			this.logger.warn(`Device ${device.id} missing hostname or identifier, skipping`, { resource: device.id });
 			return;
 		}
 
 		try {
-			this.logger.debug(`Connecting to WLED device at ${device.hostname}`);
+			this.logger.debug(`Connecting to WLED device at ${device.hostname}`, { resource: device.id });
 
 			await this.wledAdapter.connect(device.hostname, device.identifier, this.config.timeouts.connectionTimeout);
 
@@ -289,6 +289,7 @@ export class WledService implements IManagedPluginService {
 			}
 		} catch (error) {
 			this.logger.error(`Failed to connect to WLED device at ${device.hostname}`, {
+				resource: device.id,
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}

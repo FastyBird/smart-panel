@@ -315,15 +315,18 @@ export class ShellyNgService implements IManagedPluginService {
 					this.deviceManagerService
 						.createOrUpdate(sysDevice.id)
 						.then((): void => {
-							this.logger.debug(`Device=${sysDevice.id} was updated in system`);
+							this.logger.debug(`Device=${sysDevice.id} was updated in system`, { resource: sysDevice.id });
 
 							this.delegatesRegistryService
 								.insert(device)
 								.then((): void => {
-									this.logger.debug(`Device=${sysDevice.id} was added to delegates registry`);
+									this.logger.debug(`Device=${sysDevice.id} was added to delegates registry`, {
+										resource: sysDevice.id,
+									});
 								})
 								.catch((err: Error): void => {
 									this.logger.error(`Failed to create Shelly device delegate for device=${sysDevice.id}`, {
+										resource: sysDevice.id,
 										message: err.message,
 										stack: err.stack,
 									});
