@@ -153,9 +153,11 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 		propertyIdentifier: 'color_temperature',
 		channelCategory: ChannelCategory.LIGHT,
 		category: PropertyCategory.COLOR_TEMPERATURE,
-		dataType: DataTypeType.UINT,
+		dataType: DataTypeType.USHORT,
 		name: 'Color Temperature',
-		unit: 'mired',
+		unit: 'K',
+		min: 2000,
+		max: 10000,
 	},
 	temperature: {
 		propertyIdentifier: 'temperature',
@@ -169,9 +171,11 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 		propertyIdentifier: 'humidity',
 		channelCategory: ChannelCategory.HUMIDITY,
 		category: PropertyCategory.HUMIDITY,
-		dataType: DataTypeType.FLOAT,
+		dataType: DataTypeType.UCHAR,
 		name: 'Humidity',
 		unit: '%',
+		min: 0,
+		max: 100,
 	},
 	pressure: {
 		propertyIdentifier: 'measured',
@@ -182,18 +186,18 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 		unit: 'hPa',
 	},
 	illuminance: {
-		propertyIdentifier: 'measured',
+		propertyIdentifier: 'density',
 		channelCategory: ChannelCategory.ILLUMINANCE,
-		category: PropertyCategory.MEASURED,
-		dataType: DataTypeType.UINT,
+		category: PropertyCategory.DENSITY,
+		dataType: DataTypeType.FLOAT,
 		name: 'Illuminance',
 		unit: 'lx',
 	},
 	illuminance_lux: {
-		propertyIdentifier: 'measured',
+		propertyIdentifier: 'density',
 		channelCategory: ChannelCategory.ILLUMINANCE,
-		category: PropertyCategory.MEASURED,
-		dataType: DataTypeType.UINT,
+		category: PropertyCategory.DENSITY,
+		dataType: DataTypeType.FLOAT,
 		name: 'Illuminance',
 		unit: 'lx',
 	},
@@ -250,20 +254,26 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 		unit: '%',
 	},
 
-	// Color properties
-	color_hs: {
+	// Color properties - hue and saturation are mapped from color composite
+	hue: {
 		propertyIdentifier: 'hue',
 		channelCategory: ChannelCategory.LIGHT,
 		category: PropertyCategory.HUE,
-		dataType: DataTypeType.STRING,
-		name: 'Color (HS)',
+		dataType: DataTypeType.USHORT,
+		name: 'Hue',
+		unit: 'deg',
+		min: 0,
+		max: 360,
 	},
-	color_xy: {
-		propertyIdentifier: 'hue',
+	saturation: {
+		propertyIdentifier: 'saturation',
 		channelCategory: ChannelCategory.LIGHT,
-		category: PropertyCategory.HUE,
-		dataType: DataTypeType.STRING,
-		name: 'Color (XY)',
+		category: PropertyCategory.SATURATION,
+		dataType: DataTypeType.UCHAR,
+		name: 'Saturation',
+		unit: '%',
+		min: 0,
+		max: 100,
 	},
 
 	// Climate properties
@@ -417,6 +427,7 @@ export const Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS = {
 	MODEL: 'model',
 	SERIAL_NUMBER: 'serial_number',
 	FIRMWARE_REVISION: 'firmware_revision',
+	LINK_QUALITY: 'linkquality',
 } as const;
 
 // Map Z2M device category to Smart Panel device category

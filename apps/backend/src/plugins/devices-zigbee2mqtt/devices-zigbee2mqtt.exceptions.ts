@@ -63,3 +63,51 @@ export class Zigbee2mqttBridgeOfflineException extends HttpException {
 		);
 	}
 }
+
+/**
+ * Base exception for Zigbee2MQTT plugin errors
+ */
+export class DevicesZigbee2mqttException extends HttpException {
+	constructor(message: string) {
+		super(
+			{
+				statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+				message,
+				error: 'Zigbee2MQTT Plugin Error',
+			},
+			HttpStatus.INTERNAL_SERVER_ERROR,
+		);
+	}
+}
+
+/**
+ * Exception thrown when a Z2M device is not found
+ */
+export class DevicesZigbee2mqttNotFoundException extends HttpException {
+	constructor(message: string) {
+		super(
+			{
+				statusCode: HttpStatus.NOT_FOUND,
+				message,
+				error: 'Not Found',
+			},
+			HttpStatus.NOT_FOUND,
+		);
+	}
+}
+
+/**
+ * Exception thrown when validation fails
+ */
+export class DevicesZigbee2mqttValidationException extends HttpException {
+	constructor(message: string) {
+		super(
+			{
+				statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+				message,
+				error: 'Validation Error',
+			},
+			HttpStatus.UNPROCESSABLE_ENTITY,
+		);
+	}
+}

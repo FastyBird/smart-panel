@@ -120,6 +120,13 @@ export class Z2mExposesMapperService {
 
 		// Map features to properties
 		for (const feature of expose.features || []) {
+			// Handle color composite exposes - expand to hue/saturation properties
+			if (feature.type === 'composite') {
+				const colorProperties = this.mapColorCompositeToProperties(feature as Z2mExposeComposite);
+				properties.push(...colorProperties);
+				continue;
+			}
+
 			const mappedProperty = this.mapFeatureToProperty(feature);
 			if (mappedProperty) {
 				properties.push(mappedProperty);
@@ -139,6 +146,97 @@ export class Z2mExposesMapperService {
 				properties,
 			},
 		];
+	}
+
+	/**
+	 * Map color composite expose to hue and saturation properties
+	 * Z2M color composites can have different structures:
+	 * - color_hs (name) with property "color" - has features: hue (0-360), saturation (0-100)
+	 * - color_xy (name) with property "color" - has features: x (0-1), y (0-1) - skipped
+	 *
+	 * Important: We must use composite.name to distinguish between color_hs and color_xy
+	 * because both have property="color"
+	 */
+	private mapColorCompositeToProperties(composite: Z2mExposeComposite): MappedProperty[] {
+		// Use composite.name to distinguish between color_xy and color_hs
+		// Both have property="color" but different names
+		const compositeName = composite.name ?? '';
+		const compositeProperty = composite.property ?? composite.name ?? 'color';
+		const properties: MappedProperty[] = [];
+
+		// Log the composite structure for debugging
+		const featureNames = (composite.features || []).map((f) => f.property ?? f.name).join(', ');
+		this.logger.debug(
+			`Processing color composite: name=${compositeName}, property=${compositeProperty}, features=[${featureNames}]`,
+		);
+
+		// Skip color_xy - we prefer color_hs for HSV/HSB support
+		// Check by name since both color_xy and color_hs have property="color"
+		if (compositeName === 'color_xy') {
+			this.logger.debug('Skipping color_xy composite - prefer color_hs for HSV support');
+			return properties;
+		}
+
+		// Handle color_hs composite (or generic color with hs features)
+		if (compositeName === 'color_hs' || compositeName === 'color') {
+			for (const feature of composite.features || []) {
+				const featureName = (feature.property ?? feature.name ?? '').toLowerCase();
+
+				// Match hue feature (h, hue)
+				if (featureName === 'hue' || featureName === 'h') {
+					const numericFeature = feature as Z2mExposeNumeric;
+					this.logger.debug(`Found hue feature: ${featureName}`);
+					properties.push({
+						identifier: PropertyCategory.HUE.toString(),
+						name: 'Hue',
+						category: PropertyCategory.HUE,
+						channelCategory: ChannelCategory.LIGHT,
+						dataType: DataTypeType.USHORT,
+						permissions: mapZ2mAccessToPermissions(feature.access ?? Z2M_ACCESS.STATE),
+						z2mProperty: 'color',
+						unit: 'deg',
+						format: [0, 360],
+						min: 0,
+						max: 360,
+						step: numericFeature.value_step,
+					});
+				}
+
+				// Match saturation feature (s, saturation)
+				if (featureName === 'saturation' || featureName === 's') {
+					const numericFeature = feature as Z2mExposeNumeric;
+					this.logger.debug(`Found saturation feature: ${featureName}`);
+					properties.push({
+						identifier: PropertyCategory.SATURATION.toString(),
+						name: 'Saturation',
+						category: PropertyCategory.SATURATION,
+						channelCategory: ChannelCategory.LIGHT,
+						dataType: DataTypeType.UCHAR,
+						permissions: mapZ2mAccessToPermissions(feature.access ?? Z2M_ACCESS.STATE),
+						z2mProperty: 'color',
+						unit: '%',
+						format: [0, 100],
+						min: 0,
+						max: 100,
+						step: numericFeature.value_step,
+					});
+				}
+
+				// Check for nested color_hs inside color composite
+				if (featureName === 'color_hs' && feature.type === 'composite') {
+					const nestedProperties = this.mapColorCompositeToProperties(feature as Z2mExposeComposite);
+					properties.push(...nestedProperties);
+				}
+			}
+
+			if (properties.length > 0) {
+				this.logger.debug(`Mapped ${compositeName} to ${properties.length} properties (hue, saturation)`);
+			} else {
+				this.logger.warn(`No hue/saturation features found in ${compositeName} composite`);
+			}
+		}
+
+		return properties;
 	}
 
 	/**
@@ -189,6 +287,15 @@ export class Z2mExposesMapperService {
 			return null;
 		}
 
+		// Check for cover state enum (OPEN/CLOSE/STOP) - should map to status, not on
+		// Z2M state represents the current status of the cover
+		if (propertyName === 'state' && expose.type === 'enum') {
+			const enumExpose = expose as Z2mExposeEnum;
+			if (this.isCoverStateEnum(enumExpose.values)) {
+				return this.mapCoverStateToStatus(expose, enumExpose.values);
+			}
+		}
+
 		// Skip calibration and settings properties that Z2M doesn't mark as config
 		const skipProperties = [
 			// Calibration settings
@@ -220,6 +327,8 @@ export class Z2mExposesMapperService {
 			'color_power_on_behavior',
 			// Identification
 			'identify',
+			// Link quality - handled automatically by device_information channel
+			'linkquality',
 		];
 		if (skipProperties.includes(propertyName)) {
 			this.logger.debug(`Skipping settings property: ${propertyName}`);
@@ -262,10 +371,21 @@ export class Z2mExposesMapperService {
 				// Prefer commonMapping dataType (e.g., FLOAT for humidity/pressure) over range-based inference
 				dataType =
 					commonMapping?.dataType ?? mapZ2mTypeToDataType('numeric', numericExpose.value_min, numericExpose.value_max);
-				min = numericExpose.value_min;
-				max = numericExpose.value_max;
+
+				// Convert Z2M ranges to spec-compliant ranges
+				// This handles unit conversions like mired->Kelvin, 0-254->0-100%, etc.
+				const convertedRange = this.convertZ2mRangeToSpec(
+					propertyName,
+					numericExpose.value_min,
+					numericExpose.value_max,
+					numericExpose.unit,
+				);
+
+				min = convertedRange.min;
+				max = convertedRange.max;
+				unit = convertedRange.unit;
 				step = numericExpose.value_step;
-				unit = numericExpose.unit ?? commonMapping?.unit;
+
 				if (min !== undefined && max !== undefined) {
 					format = [min, max];
 				}
@@ -283,7 +403,14 @@ export class Z2mExposesMapperService {
 			case 'composite': {
 				// Handle composite types like color
 				const compositeExpose = expose as Z2mExposeComposite;
-				// For color, we store as JSON string
+				// Color composites should be expanded to separate properties (hue, saturation)
+				// This is handled specially in mapFeatureToProperty which returns null for composites
+				// so they're skipped here - the features are mapped separately
+				if (propertyName === 'color' || propertyName === 'color_hs' || propertyName === 'color_xy') {
+					this.logger.debug(`Skipping composite color expose ${propertyName} - features mapped separately`);
+					return null;
+				}
+				// For other composites, store as JSON string
 				dataType = DataTypeType.STRING;
 				this.logger.debug(`Composite expose ${propertyName} with ${compositeExpose.features?.length ?? 0} features`);
 				break;
@@ -509,11 +636,11 @@ export class Z2mExposesMapperService {
 			if (name.includes('pressure')) {
 				return PropertyCategory.MEASURED;
 			}
-			if (name.includes('illuminance') || name.includes('lux') || name.includes('light')) {
-				return PropertyCategory.MEASURED;
+			if (name.includes('illuminance') || name.includes('lux')) {
+				return PropertyCategory.DENSITY;
 			}
-			if (name.includes('battery')) {
-				return PropertyCategory.LEVEL;
+			if (name === 'battery') {
+				return PropertyCategory.PERCENTAGE;
 			}
 			if (name.includes('voltage')) {
 				return PropertyCategory.VOLTAGE;
@@ -564,6 +691,44 @@ export class Z2mExposesMapperService {
 	}
 
 	/**
+	 * Convert Z2M value range to spec-compliant range
+	 * Handles unit conversions like:
+	 * - brightness: 0-254/255 -> 0-100%
+	 * - color_temp: mired -> Kelvin (inverted scale)
+	 * - other numeric values: keep as-is with original unit
+	 */
+	private convertZ2mRangeToSpec(
+		propertyName: string,
+		z2mMin: number | undefined,
+		z2mMax: number | undefined,
+		z2mUnit: string | undefined,
+	): { min: number | undefined; max: number | undefined; unit: string | undefined } {
+		// Brightness conversion: 0-254/255 -> 0-100%
+		if (propertyName === 'brightness') {
+			// Always normalize to 0-100% regardless of Z2M range
+			return { min: 0, max: 100, unit: '%' };
+		}
+
+		// Color temperature: mired -> Kelvin (inverted scale)
+		// mired = 1,000,000 / Kelvin, so Kelvin = 1,000,000 / mired
+		// Z2M min mired = max Kelvin (coolest), Z2M max mired = min Kelvin (warmest)
+		if (propertyName === 'color_temp' && z2mUnit === 'mired') {
+			const minKelvin = z2mMax && z2mMax > 0 ? Math.round(1000000 / z2mMax) : 2000;
+			const maxKelvin = z2mMin && z2mMin > 0 ? Math.round(1000000 / z2mMin) : 6500;
+			this.logger.debug(`Converting color_temp range: ${z2mMin}-${z2mMax} mired -> ${minKelvin}-${maxKelvin} K`);
+			return { min: minKelvin, max: maxKelvin, unit: 'K' };
+		}
+
+		// Link quality: 0-255 -> 0-100%
+		if (propertyName === 'linkquality') {
+			return { min: 0, max: 100, unit: '%' };
+		}
+
+		// Default: keep original range and unit
+		return { min: z2mMin, max: z2mMax, unit: z2mUnit };
+	}
+
+	/**
 	 * Format channel name for display
 	 */
 	private formatChannelName(type: string, endpoint?: string): string {
@@ -586,5 +751,70 @@ export class Z2mExposesMapperService {
 	 */
 	private sanitizeIdentifier(name: string): string {
 		return name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+	}
+
+	/**
+	 * Check if enum values indicate a cover state (OPEN/CLOSE/STOP)
+	 */
+	private isCoverStateEnum(values: string[] | undefined): boolean {
+		if (!values || values.length === 0) {
+			return false;
+		}
+
+		const lowerValues = values.map((v) => v.toLowerCase());
+
+		// Check for cover control values
+		const hasOpen = lowerValues.includes('open');
+		const hasClose = lowerValues.includes('close');
+
+		// A cover state enum should have at least open and close (stop is optional)
+		return hasOpen && hasClose;
+	}
+
+	/**
+	 * Map cover state enum to status property
+	 * Z2M state (OPEN/CLOSE/STOP) represents the current status of the cover
+	 * Values are normalized to match spec format (opened/closed/stopped)
+	 */
+	private mapCoverStateToStatus(expose: Z2mExpose, values: string[]): MappedProperty {
+		// Normalize Z2M values to spec format
+		const normalizedFormat = this.normalizeCoverStateValues(values);
+
+		return {
+			identifier: PropertyCategory.STATUS.toString(),
+			name: 'Status',
+			category: PropertyCategory.STATUS,
+			channelCategory: ChannelCategory.WINDOW_COVERING,
+			dataType: DataTypeType.ENUM,
+			// Status is read-only - we read the current state from Z2M
+			permissions: [PermissionType.READ_ONLY],
+			z2mProperty: expose.property ?? expose.name ?? 'state',
+			format: normalizedFormat,
+		};
+	}
+
+	/**
+	 * Normalize Z2M cover state values to spec format
+	 * Z2M uses: OPEN, CLOSE, STOP (uppercase, imperative)
+	 * Spec uses: opened, closed, stopped (lowercase, past tense)
+	 */
+	private normalizeCoverStateValues(values: string[]): string[] {
+		const normalized: string[] = [];
+
+		for (const value of values) {
+			const lower = value.toLowerCase();
+			if (lower === 'open') {
+				normalized.push('opened');
+			} else if (lower === 'close') {
+				normalized.push('closed');
+			} else if (lower === 'stop') {
+				normalized.push('stopped');
+			} else {
+				// Keep other values as-is (lowercase)
+				normalized.push(lower);
+			}
+		}
+
+		return normalized;
 	}
 }

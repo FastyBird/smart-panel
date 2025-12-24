@@ -69,7 +69,7 @@ describe('Z2mExposesMapperService', () => {
 			expect(brightnessProperty?.dataType).toBe(DataTypeType.UCHAR);
 			expect(brightnessProperty?.category).toBe(PropertyCategory.BRIGHTNESS);
 			expect(brightnessProperty?.min).toBe(0);
-			expect(brightnessProperty?.max).toBe(254);
+			expect(brightnessProperty?.max).toBe(100);
 		});
 
 		it('should map switch expose', () => {

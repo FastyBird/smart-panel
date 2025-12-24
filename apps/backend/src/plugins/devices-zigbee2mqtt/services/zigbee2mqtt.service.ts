@@ -53,6 +53,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	private deviceSyncPending = false;
 	private bridgeOnline = false;
 	private pendingDevices: Z2mDevice[] | null = null;
+	private isSyncing = false; // Prevents concurrent sync operations
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -193,6 +194,23 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	}
 
 	/**
+	 * Request current state from a Z2M device
+	 * This triggers Z2M to publish the device's current state
+	 */
+	async requestDeviceState(friendlyName: string): Promise<boolean> {
+		return this.mqttAdapter.requestState(friendlyName);
+	}
+
+	/**
+	 * Get cached state for a device by friendly name
+	 * This returns state from the global cache, which is always populated
+	 * regardless of whether the device is in the registry or adopted
+	 */
+	getCachedState(friendlyName: string): Record<string, unknown> {
+		return this.mqttAdapter.getCachedState(friendlyName);
+	}
+
+	/**
 	 * Initialize device states before starting
 	 */
 	private async initialize(): Promise<void> {
@@ -321,6 +339,7 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		this.logger.warn('Bridge is offline');
 		this.bridgeOnline = false;
 		this.pendingDevices = null;
+		this.isSyncing = false;
 
 		// Set all devices to unknown state
 		try {
@@ -362,6 +381,12 @@ export class Zigbee2mqttService implements IManagedPluginService {
 			return;
 		}
 
+		// Prevent concurrent sync operations (can happen if Z2M sends devices list multiple times)
+		if (this.isSyncing) {
+			this.logger.debug('Sync already in progress, skipping duplicate device list');
+			return;
+		}
+
 		await this.syncDevices(event.devices, shouldAddNew);
 	}
 
@@ -369,18 +394,25 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 * Sync devices from Z2M to Smart Panel
 	 */
 	private async syncDevices(devices: Z2mDevice[], createIfNotExists: boolean): Promise<void> {
-		// Map each device
-		for (const z2mDevice of devices) {
-			try {
-				await this.deviceMapper.mapDevice(z2mDevice, createIfNotExists);
-			} catch (error) {
-				this.logger.error(`Failed to map device ${z2mDevice.friendly_name}`, {
-					message: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
+		// Set syncing flag to prevent concurrent sync operations
+		this.isSyncing = true;
 
-		this.deviceSyncPending = false;
+		try {
+			// Map each device
+			for (const z2mDevice of devices) {
+				try {
+					await this.deviceMapper.mapDevice(z2mDevice, createIfNotExists);
+				} catch (error) {
+					this.logger.error(`Failed to map device ${z2mDevice.friendly_name}`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+
+			this.deviceSyncPending = false;
+		} finally {
+			this.isSyncing = false;
+		}
 	}
 
 	/**

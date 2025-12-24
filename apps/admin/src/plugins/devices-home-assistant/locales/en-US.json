@@ -151,11 +151,12 @@
   "headings": {
     "aboutConnectionSettings": "Home Assistant Connection",
     "device": {
-      "deviceSelection": "Device Selection",
-      "categorySelection": "Category Selection",
-      "mappingPreview": "Mapping Preview",
-      "mappingCustomization": "Mapping Customization",
-      "deviceConfiguration": "Device Configuration"
+      "deviceSelection": "Select device",
+      "deviceInformation": "Device information",
+      "categorySelection": "Device category",
+      "mappingPreview": "Mapping preview",
+      "mappingCustomization": "Mapping customization",
+      "deviceConfiguration": "Device configuration"
     },
     "mapping": {
       "entityMappings": "Entity Mappings",
