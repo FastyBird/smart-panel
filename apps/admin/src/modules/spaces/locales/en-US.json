@@ -1,0 +1,66 @@
+{
+	"title": "Spaces",
+	"headings": {
+		"list": "Spaces",
+		"detail": "Space detail",
+		"add": "Add space",
+		"edit": "Edit space"
+	},
+	"messages": {
+		"notFound": "Requested space was not found",
+		"confirmDelete": "Are you sure you want to delete this space?",
+		"deleted": "Space was successfully deleted",
+		"saved": "Space was successfully saved"
+	},
+	"buttons": {
+		"add": "Add space",
+		"edit": "Edit",
+		"delete": "Delete",
+		"save": "Save",
+		"cancel": "Cancel"
+	},
+	"table": {
+		"columns": {
+			"name": "Name",
+			"type": "Type",
+			"description": "Description",
+			"devices": "Devices",
+			"displays": "Displays",
+			"actions": "Actions"
+		},
+		"empty": "No spaces found. Create your first space to get started."
+	},
+	"fields": {
+		"spaces": {
+			"name": {
+				"title": "Name",
+				"placeholder": "Enter space name (e.g., Living Room)"
+			},
+			"description": {
+				"title": "Description",
+				"placeholder": "Optional description of the space"
+			},
+			"type": {
+				"title": "Type",
+				"options": {
+					"room": "Room",
+					"zone": "Zone"
+				}
+			},
+			"icon": {
+				"title": "Icon",
+				"placeholder": "mdi:home (Iconify icon name)"
+			},
+			"displayOrder": {
+				"title": "Display order",
+				"placeholder": "Order in lists"
+			}
+		}
+	},
+	"misc": {
+		"types": {
+			"room": "Room",
+			"zone": "Zone"
+		}
+	}
+}
