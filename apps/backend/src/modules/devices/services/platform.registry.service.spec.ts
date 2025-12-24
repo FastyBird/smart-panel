@@ -41,7 +41,7 @@ describe('PlatformRegistryService', () => {
 		expect(service.list()).toContain('mock-platform');
 		expect(mockLogger).toHaveBeenCalledWith(
 			'[PlatformRegistryService] Registered new platform type=mock-platform',
-			'devices-module',
+			expect.objectContaining({ tag: 'devices-module' }),
 		);
 	});
 
@@ -53,7 +53,7 @@ describe('PlatformRegistryService', () => {
 		expect(service.list()).toContain('mock-platform');
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
 			'[PlatformRegistryService] Platform already registered type=mock-platform',
-			'devices-module',
+			expect.objectContaining({ tag: 'devices-module' }),
 		);
 	});
 
@@ -73,7 +73,7 @@ describe('PlatformRegistryService', () => {
 		expect(platform).toBeNull();
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
 			'[PlatformRegistryService] No platform found for device type=unknown-platform',
-			'devices-module',
+			expect.objectContaining({ tag: 'devices-module' }),
 		);
 	});
 

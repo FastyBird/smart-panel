@@ -83,6 +83,17 @@
 						<icon icon="mdi:tune-variant" />
 					</template>
 				</el-button>
+				<el-button
+					plain
+					class="px-4! ml-2!"
+					@click="openLogsDialog"
+				>
+					<template #icon>
+						<icon icon="mdi:console" />
+					</template>
+
+					{{ t('devicesModule.buttons.viewLogs.title') }}
+				</el-button>
 
 				<el-dropdown
 					v-if="controls.length !== 0"
@@ -114,6 +125,23 @@
 			</div>
 		</template>
 	</view-header>
+
+	<!-- Device Logs Dialog -->
+	<el-dialog
+		v-model="logsDialogVisible"
+		:title="t('devicesModule.texts.devices.logs.title')"
+		width="80%"
+		destroy-on-close
+		@close="closeLogsDialog"
+	>
+		<div class="h-96">
+			<device-logs
+				v-if="device"
+				v-model:live="logsLive"
+				:device-id="device.id"
+			/>
+		</div>
+	</el-dialog>
 
 	<el-scrollbar
 		v-if="isDeviceRoute || isLGDevice"
@@ -253,6 +281,7 @@ import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-rout
 import {
 	ElButton,
 	ElCard,
+	ElDialog,
 	ElDrawer,
 	ElDropdown,
 	ElDropdownItem,
@@ -282,7 +311,7 @@ import {
 	useUuid,
 } from '../../../common';
 import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
-import { ChannelDetail, DeviceDetail } from '../components/components';
+import { ChannelDetail, DeviceDetail, DeviceLogs } from '../components/components';
 import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification, useDeviceValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
@@ -331,6 +360,19 @@ const mounted = ref<boolean>(false);
 const showDrawer = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
+
+// Logs dialog state
+const logsDialogVisible = ref<boolean>(false);
+const logsLive = ref<boolean>(false);
+
+const openLogsDialog = (): void => {
+	logsDialogVisible.value = true;
+};
+
+const closeLogsDialog = (): void => {
+	logsDialogVisible.value = false;
+	logsLive.value = false;
+};
 
 const isDeviceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DEVICE;

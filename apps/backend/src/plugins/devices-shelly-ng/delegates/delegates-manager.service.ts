@@ -167,6 +167,7 @@ export class DelegatesManagerService {
 						this.logger.error(
 							`Failed to set value for component=${deviceInformation.identifier} attribute=rssi and property=${linkQuality.id}`,
 							{
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							},
@@ -205,6 +206,7 @@ export class DelegatesManagerService {
 					this.logger.error(
 						`Failed to set value for component=${comp.key} attribute=output and property=${switcherOn.id}`,
 						{
+							resource: device.id,
 							message: err.message,
 							stack: err.stack,
 						},
@@ -357,6 +359,7 @@ export class DelegatesManagerService {
 					this.logger.error(
 						`Failed to set value for component=${comp.key} attribute=state and property=${coverState.id}`,
 						{
+							resource: device.id,
 							message: err.message,
 							stack: err.stack,
 						},
@@ -463,6 +466,7 @@ export class DelegatesManagerService {
 					this.logger.error(
 						`Failed to set value for component=${comp.key} attribute=output and property=${lightOn.id}`,
 						{
+							resource: device.id,
 							message: err.message,
 							stack: err.stack,
 						},
@@ -555,6 +559,7 @@ export class DelegatesManagerService {
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(rgbOn, coerceBooleanSafe(val)).catch((err: Error): void => {
 					this.logger.error(`Failed to set value for component=${comp.key} attribute=output and property=${rgbOn.id}`, {
+						resource: device.id,
 						message: err.message,
 						stack: err.stack,
 					});
@@ -801,6 +806,7 @@ export class DelegatesManagerService {
 					this.logger.error(
 						`Failed to set value for component=${comp.key} attribute=output and property=${rgbwOn.id}`,
 						{
+							resource: device.id,
 							message: err.message,
 							stack: err.stack,
 						},
@@ -1094,6 +1100,7 @@ export class DelegatesManagerService {
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(cctOn, coerceBooleanSafe(val)).catch((err: Error): void => {
 					this.logger.error(`Failed to set value for component=${comp.key} attribute=output and property=${cctOn.id}`, {
+						resource: device.id,
 						message: err.message,
 						stack: err.stack,
 					});
@@ -1438,6 +1445,7 @@ export class DelegatesManagerService {
 				const err = error as Error;
 
 				this.logger.error(`Shelly handler error for component=${compKey} attribute=${attr}`, {
+					resource: device.id,
 					message: err.message,
 					stack: err.stack,
 				});
@@ -1456,15 +1464,20 @@ export class DelegatesManagerService {
 				})
 				.then((): void => {
 					if (state) {
-						this.logger.debug(`Connection state for device=${delegate.id} changed to connected`);
+						this.logger.debug(`Connection state for device=${delegate.id} changed to connected`, {
+							resource: device.id,
+						});
 					} else {
-						this.logger.debug(`Connection state for device=${delegate.id} changed to disconnected`);
+						this.logger.debug(`Connection state for device=${delegate.id} changed to disconnected`, {
+							resource: device.id,
+						});
 					}
 				})
 				.catch((err: Error) => {
 					this.logger.error(
 						`Failed to set state=${state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED} for device=${delegate.id}`,
 						{
+							resource: device.id,
 							message: err.message,
 							stack: err.stack,
 						},
@@ -1478,7 +1491,7 @@ export class DelegatesManagerService {
 
 		connectionHandler(true);
 
-		this.logger.log(`Attached Shelly device=${delegate.id}`);
+		this.logger.log(`Attached Shelly device=${delegate.id}`, { resource: device.id });
 
 		return delegate;
 	}
@@ -1533,7 +1546,7 @@ export class DelegatesManagerService {
 
 		this.delegates.delete(deviceId);
 
-		this.logger.log(`Detached Shelly device=${deviceId}`);
+		this.logger.log(`Detached Shelly device=${deviceId}`, { resource: deviceId });
 	}
 
 	async setChannelValue(
@@ -1544,14 +1557,21 @@ export class DelegatesManagerService {
 		const handler = this.setChannelsHandlers.get(`${device.identifier}|${channel.id}`);
 
 		if (!handler) {
-			this.logger.debug(`Trying to write to device=${device.identifier} and channel=${channel.id} multiple properties`);
+			this.logger.debug(
+				`Trying to write to device=${device.identifier} and channel=${channel.id} multiple properties`,
+				{
+					resource: device.id,
+				},
+			);
 
 			return Promise.reject(
 				new DevicesShellyNgNotImplementedException('Multiple property writes are not supported by the component.'),
 			);
 		}
 
-		this.logger.debug(`Writing value to Shelly device=${device.identifier} channel=${channel.id}`);
+		this.logger.debug(`Writing value to Shelly device=${device.identifier} channel=${channel.id}`, {
+			resource: device.id,
+		});
 
 		return handler(updates.map((row): BatchUpdate => ({ property: row.property, val: row.value })));
 	}
@@ -1566,12 +1586,15 @@ export class DelegatesManagerService {
 		if (!handler) {
 			this.logger.warn(
 				`Trying to write to device=${device.identifier} to not writable property=${property.id} value=${value}`,
+				{ resource: device.id },
 			);
 
 			return Promise.resolve(false);
 		}
 
-		this.logger.debug(`Writing value to Shelly device=${device.identifier} property=${property.id} value=${value}`);
+		this.logger.debug(`Writing value to Shelly device=${device.identifier} property=${property.id} value=${value}`, {
+			resource: device.id,
+		});
 
 		return handler(value);
 	}
@@ -1644,6 +1667,7 @@ export class DelegatesManagerService {
 		}
 
 		void write(n).catch((err: Error) => {
+			// Note: We don't have direct device.id access here in this private helper method
 			this.logger.error(`Failed to set value for component=${compKey} attribute=${attr} property=${propertyId}`, {
 				message: err.message,
 				stack: err.stack,

@@ -81,23 +81,28 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 				if (failedProperties.length > 0) {
 					this.logger.warn(
 						`Some properties failed to update for device id=${device.id}: ${JSON.stringify(failedProperties)}`,
+						{ resource: device.id },
 					);
 
 					return false;
 				}
 
-				this.logger.log(`Successfully processed all property updates for device id=${device.id}`);
+				this.logger.log(`Successfully processed all property updates for device id=${device.id}`, {
+					resource: device.id,
+				});
 
 				return true;
 			}
 
-			this.logger.error(`Unexpected response status=${response.status} id=${device.id}`);
+			this.logger.error(`Unexpected response status=${response.status} id=${device.id}`, { resource: device.id });
 
 			return false;
 		} catch (error) {
 			const err = error as Error;
+			const device = updates[0]?.device;
 
 			this.logger.error('Error processing property update', {
+				...(device ? { resource: device.id } : {}),
 				message: err.message,
 				stack: err.stack,
 			});

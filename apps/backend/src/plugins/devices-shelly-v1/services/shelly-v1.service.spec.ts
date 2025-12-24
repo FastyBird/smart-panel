@@ -582,7 +582,10 @@ describe('ShellyV1Service', () => {
 
 			await service.handleDeviceDiscovered(discoveryEvent);
 
-			expect(loggerSpy).toHaveBeenCalledWith(expect.not.stringContaining('[SHELLY V1]'), 'devices-shelly-v1-plugin');
+			expect(loggerSpy).toHaveBeenCalledWith(
+				expect.not.stringContaining('[SHELLY V1]'),
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
+			);
 			loggerSpy.mockRestore();
 		});
 
@@ -603,7 +606,7 @@ describe('ShellyV1Service', () => {
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				expect.not.stringContaining('[SHELLY V1]'),
 				undefined,
-				'devices-shelly-v1-plugin',
+				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 			loggerErrorSpy.mockRestore();
 		});

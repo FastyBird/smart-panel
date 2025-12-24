@@ -149,7 +149,7 @@ export class Z2mDeviceMapperService {
 
 		// Skip channel/property creation if device is disabled
 		if (!device.enabled) {
-			this.logger.debug(`Device ${identifier} is disabled, skipping channel creation`);
+			this.logger.debug(`Device ${identifier} is disabled, skipping channel creation`, { resource: device.id });
 			return device;
 		}
 
@@ -195,12 +195,12 @@ export class Z2mDeviceMapperService {
 			return;
 		}
 
-		this.logger.debug(`Updating state for ${friendlyName}: ${JSON.stringify(state)}`);
+		this.logger.debug(`Updating state for ${friendlyName}: ${JSON.stringify(state)}`, { resource: device.id });
 
 		// Get all channels for this device
 		const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
 
-		this.logger.debug(`Found ${channels.length} channels for device ${friendlyName}`);
+		this.logger.debug(`Found ${channels.length} channels for device ${friendlyName}`, { resource: device.id });
 
 		// Build virtual property context
 		const virtualContext: VirtualPropertyContext = {
@@ -221,7 +221,7 @@ export class Z2mDeviceMapperService {
 
 				// Skip properties without identifier
 				if (!propertyIdentifier) {
-					this.logger.warn(`Property ${property.id} has no identifier, skipping`);
+					this.logger.warn(`Property ${property.id} has no identifier, skipping`, { resource: device.id });
 					continue;
 				}
 
@@ -235,6 +235,7 @@ export class Z2mDeviceMapperService {
 
 						this.logger.debug(
 							`Updating virtual property ${propertyIdentifier} = ${newValue} (channel: ${channel.category})`,
+							{ resource: device.id },
 						);
 
 						await this.channelsPropertiesService.update<

@@ -136,7 +136,7 @@ describe('SystemService', () => {
 			expect(loggerSpy).toHaveBeenCalledWith(
 				expect.stringContaining('[SystemService] Failed to broadcast system info'),
 				undefined,
-				'system-module',
+				expect.objectContaining({ tag: 'system-module' }),
 			);
 		});
 	});

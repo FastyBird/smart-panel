@@ -131,12 +131,14 @@ export class ShellyNgDevicePlatform implements IDevicePlatform {
 		const failed = Array.from(result.values()).filter((success) => !success);
 
 		if (failed.length > 0) {
-			this.logger.warn(`Some properties failed to update for device id=${device.id}: ${JSON.stringify(failed)}`);
+			this.logger.warn(`Some properties failed to update for device id=${device.id}: ${JSON.stringify(failed)}`, {
+				resource: device.id,
+			});
 
 			return false;
 		}
 
-		this.logger.log(`Successfully processed all property updates for device id=${device.id}`);
+		this.logger.log(`Successfully processed all property updates for device id=${device.id}`, { resource: device.id });
 
 		return true;
 	}

@@ -234,6 +234,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for switch=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -303,7 +304,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} switch component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} switch component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.COVER) && deviceInfo.profile === String(DeviceProfile.COVER)) {
 				const tasks = ids.map((key) =>
@@ -321,6 +324,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for cover=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -379,7 +383,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} cover component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} cover component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.LIGHT)) {
 				const tasks = ids.map((key) =>
@@ -397,6 +403,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for light=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -455,7 +462,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} light component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} light component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.RGB)) {
 				const tasks = ids.map((key) =>
@@ -473,6 +482,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for rgb=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -545,7 +555,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} rgb component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} rgb component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.RGBW)) {
 				const tasks = ids.map((key) =>
@@ -563,6 +575,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for rgbw=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -639,7 +652,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} rgbw component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} rgbw component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.CCT)) {
 				const tasks = ids.map((key) =>
@@ -657,6 +672,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for cct=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -725,7 +741,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} cct component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} cct component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.INPUT)) {
 				const tasks = ids.map((key) =>
@@ -743,6 +761,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for input=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -751,7 +770,11 @@ export class DeviceManagerService {
 						});
 
 						// TODO: To be implemented in the future
-						this.logger.debug(`Received device input status for input=${key}`, { inputConfig, inputStatus });
+						this.logger.debug(`Received device input status for input=${key}`, {
+							resource: device.id,
+							inputConfig,
+							inputStatus,
+						});
 					}),
 				);
 
@@ -760,7 +783,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} input component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} input component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.DEVICE_POWER)) {
 				for (const key of ids) {
@@ -774,6 +799,7 @@ export class DeviceManagerService {
 						const err = error as Error;
 
 						this.logger.error(`Failed to load device power status for device=${device.id} and devicePower=${key}`, {
+							resource: device.id,
 							message: err.message,
 							stack: err.stack,
 						});
@@ -816,6 +842,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for humidity=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -842,7 +869,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} humidity component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} humidity component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.TEMPERATURE)) {
 				const tasks = ids.map((key) =>
@@ -860,6 +889,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for temperature=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -886,7 +916,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} temperature component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} temperature component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			} else if (type === String(ComponentType.PM1)) {
 				const tasks = ids.map((key) =>
@@ -904,6 +936,7 @@ export class DeviceManagerService {
 							{ retries: 2, baseMs: 300, factor: 2 },
 						).catch((err: Error) => {
 							this.logger.error(`Failed load for pm1=${key} on device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -930,7 +963,9 @@ export class DeviceManagerService {
 				const failed = settled.filter((r) => r.status === 'rejected').length;
 
 				if (failed) {
-					this.logger.warn(`${failed}/${ids.length} pm1 component(s) failed for device=${device.id}`);
+					this.logger.warn(`${failed}/${ids.length} pm1 component(s) failed for device=${device.id}`, {
+						resource: device.id,
+					});
 				}
 			}
 		}
@@ -941,7 +976,9 @@ export class DeviceManagerService {
 			if (!channelsIds.includes(channel.id)) {
 				await this.channelsService.remove(channel.id);
 
-				this.logger.debug(`Remove channel=${channel.id} because this channel is not specified for current device`);
+				this.logger.debug(`Remove channel=${channel.id} because this channel is not specified for current device`, {
+					resource: device.id,
+				});
 			}
 		}
 
@@ -969,7 +1006,12 @@ export class DeviceManagerService {
 			const channelSpec = channelsSchema[category] as ChannelDefinition | undefined;
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
-				this.logger.warn(`Missing or invalid schema for channel category=${category}. Falling back to minimal channel`);
+				this.logger.warn(
+					`Missing or invalid schema for channel category=${category}. Falling back to minimal channel`,
+					{
+						resource: device.id,
+					},
+				);
 
 				if (this.strictSchema) {
 					throw new DevicesShellyNgException('Failed to load specification for channel category');

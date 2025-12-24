@@ -30,5 +30,6 @@ export * from './useDevicesPlugins';
 export * from './useDevicesValidation';
 export * from './useDeviceValidation';
 export * from './useDeviceControl';
+export * from './useDeviceLogs';
 
 export * from './types';

@@ -63,11 +63,11 @@ describe('HttpDevicePlatform', () => {
 			expect(mockedFetch).toHaveBeenCalledTimes(1);
 			expect(loggerLogSpy).toHaveBeenCalledWith(
 				`[HttpDevicePlatform] Sending command to ${endpoint}`,
-				'devices-module',
+				expect.objectContaining({ tag: 'devices-module' }),
 			);
 			expect(loggerLogSpy).toHaveBeenCalledWith(
 				`[HttpDevicePlatform] Successfully processed command to ${endpoint}`,
-				'devices-module',
+				expect.objectContaining({ tag: 'devices-module' }),
 			);
 		});
 
@@ -83,7 +83,7 @@ describe('HttpDevicePlatform', () => {
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				`[HttpDevicePlatform] Sending command failed after 3 attempts`,
 				undefined,
-				'devices-module',
+				expect.objectContaining({ tag: 'devices-module' }),
 			);
 		});
 
@@ -97,7 +97,7 @@ describe('HttpDevicePlatform', () => {
 			expect(mockedFetch).toHaveBeenCalledTimes(1);
 			expect(loggerWarnSpy).toHaveBeenCalledWith(
 				`[HttpDevicePlatform] Failed request to ${endpoint} status=401 response="Unauthorized"`,
-				'devices-module',
+				expect.objectContaining({ tag: 'devices-module' }),
 			);
 		});
 
@@ -111,7 +111,7 @@ describe('HttpDevicePlatform', () => {
 			expect(loggerErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining('[HttpDevicePlatform] Error processing command'),
 				undefined,
-				'devices-module',
+				expect.objectContaining({ tag: 'devices-module' }),
 			);
 		});
 	});

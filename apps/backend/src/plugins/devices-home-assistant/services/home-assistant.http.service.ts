@@ -300,6 +300,7 @@ export class HomeAssistantHttpService {
 
 					this.logger.debug(
 						`Device ${device.name} (${device.id}) marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,
+						{ resource: device.id },
 					);
 				}
 			}
@@ -321,12 +322,12 @@ export class HomeAssistantHttpService {
 	 */
 	async syncDeviceStates(deviceId: string): Promise<void> {
 		if (this.apiKey === null || this.enabled !== true) {
-			this.logger.debug(`[SYNC] Skipping sync for device ${deviceId} - HA not configured`);
+			this.logger.debug(`[SYNC] Skipping sync for device ${deviceId} - HA not configured`, { resource: deviceId });
 			return;
 		}
 
 		try {
-			this.logger.debug(`[SYNC] Syncing states for device ${deviceId}`);
+			this.logger.debug(`[SYNC] Syncing states for device ${deviceId}`, { resource: deviceId });
 
 			// Load the device
 			const device = await this.devicesService.findOne<HomeAssistantDeviceEntity>(
@@ -335,7 +336,7 @@ export class HomeAssistantHttpService {
 			);
 
 			if (!device) {
-				this.logger.warn(`[SYNC] Device ${deviceId} not found`);
+				this.logger.warn(`[SYNC] Device ${deviceId} not found`, { resource: deviceId });
 				return;
 			}
 
@@ -343,14 +344,14 @@ export class HomeAssistantHttpService {
 			const [haDevices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
 
 			if (!haDevices?.length || !states?.length) {
-				this.logger.debug(`[SYNC] Missing HA data for device ${deviceId}`);
+				this.logger.debug(`[SYNC] Missing HA data for device ${deviceId}`, { resource: deviceId });
 				return;
 			}
 
 			// Find the HA device
 			const haDevice = haDevices.find((d) => d.id === device.haDeviceId);
 			if (!haDevice) {
-				this.logger.warn(`[SYNC] HA device ${device.haDeviceId} not found in registry`);
+				this.logger.warn(`[SYNC] HA device ${device.haDeviceId} not found in registry`, { resource: deviceId });
 				return;
 			}
 
@@ -358,7 +359,7 @@ export class HomeAssistantHttpService {
 			const deviceStates = states.filter((s) => haDevice.entities.includes(s.entity_id));
 
 			if (!deviceStates.length) {
-				this.logger.debug(`[SYNC] No states found for device ${deviceId}`);
+				this.logger.debug(`[SYNC] No states found for device ${deviceId}`, { resource: deviceId });
 				return;
 			}
 
@@ -376,7 +377,7 @@ export class HomeAssistantHttpService {
 			);
 
 			if (!deviceProperties.length) {
-				this.logger.debug(`[SYNC] No properties found for device ${deviceId}`);
+				this.logger.debug(`[SYNC] No properties found for device ${deviceId}`, { resource: deviceId });
 				return;
 			}
 
@@ -415,11 +416,13 @@ export class HomeAssistantHttpService {
 
 			this.logger.debug(
 				`[SYNC] Device ${device.name} (${deviceId}) sync completed, marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,
+				{ resource: deviceId },
 			);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`[SYNC] Failed to sync states for device ${deviceId}`, {
+				resource: deviceId,
 				message: err.message,
 				stack: err.stack,
 			});

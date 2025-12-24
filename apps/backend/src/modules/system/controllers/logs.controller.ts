@@ -57,6 +57,13 @@ export class LogsController {
 			'Alias for "tag" parameter. Filter logs by extension type (e.g., "devices-shelly-ng-plugin"). Supports comma-separated values.',
 		type: 'string',
 	})
+	@ApiQuery({
+		name: 'resource',
+		required: false,
+		description:
+			'Filter logs by resource ID (device, channel, page, tile, etc.). Supports comma-separated values for multiple resources.',
+		type: 'string',
+	})
 	@ApiSuccessResponse(LogEntriesResponseModel, 'Log entries retrieved successfully')
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -67,6 +74,7 @@ export class LogsController {
 		@Query('limit') limit: number | string = DEFAULT_PAGE_SIZE,
 		@Query('tag') tag?: string,
 		@Query('extension') extension?: string,
+		@Query('resource') resource?: string,
 	): LogEntriesResponseModel {
 		const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
 		const lim = Math.min(Math.max(isNaN(parsedLimit) ? DEFAULT_PAGE_SIZE : parsedLimit, 1), 200);
@@ -80,7 +88,15 @@ export class LogsController {
 					.filter((t) => t.length > 0)
 			: undefined;
 
-		const data = this.appLogger.getLatest(afterId, lim, tags);
+		// Parse resource IDs (comma-separated)
+		const resources = resource
+			? resource
+					.split(',')
+					.map((r) => r.trim())
+					.filter((r) => r.length > 0)
+			: undefined;
+
+		const data = this.appLogger.getLatest(afterId, lim, tags, resources);
 
 		const next = data.length === lim ? data[data.length - 1].id : undefined;
 

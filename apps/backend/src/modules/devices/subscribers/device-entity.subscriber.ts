@@ -26,11 +26,14 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<DeviceE
 		try {
 			entity.status = await this.deviceStatusService.readLatest(entity);
 
-			this.logger.debug(`Loaded device status from InfluxDB id=${entity.id}, value=${entity.status.status}`);
+			this.logger.debug(`Loaded device status from InfluxDB id=${entity.id}, value=${entity.status.status}`, {
+				resource: entity.id,
+			});
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Failed to load device status from InfluxDB id=${entity.id}, error=${err.message}`, {
+				resource: entity.id,
 				stack: err.stack,
 			});
 		}
@@ -51,15 +54,16 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<DeviceE
 		const deviceId = event.entity.id;
 
 		try {
-			this.logger.debug(`Deleting stored statuses for id=${deviceId}`);
+			this.logger.debug(`Deleting stored statuses for id=${deviceId}`, { resource: deviceId });
 
 			await this.deviceStatusService.delete(event.entity);
 
-			this.logger.log(`Successfully removed all stored statuses for id=${deviceId}`);
+			this.logger.log(`Successfully removed all stored statuses for id=${deviceId}`, { resource: deviceId });
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Failed to remove device statuses from InfluxDB id=${deviceId} error=${err.message}`, {
+				resource: deviceId,
 				stack: err.stack,
 			});
 		}

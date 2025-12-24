@@ -76,6 +76,7 @@ export class SystemLoggerService implements LoggerService {
 			ingestedAt: now.toISOString(),
 			seq: this.seq++,
 			source: entry.source,
+			resource: entry.resource,
 			...entry,
 		});
 
@@ -123,8 +124,23 @@ export class SystemLoggerService implements LoggerService {
 				typeof contextOrTag.source === 'string'
 					? (contextOrTag.source as LogEntrySource)
 					: LogEntrySource.BACKEND,
+			resource:
+				contextOrTag !== null &&
+				typeof contextOrTag === 'object' &&
+				'resource' in contextOrTag &&
+				typeof contextOrTag.resource === 'string'
+					? contextOrTag.resource
+					: undefined,
 			message: String(message),
-			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
+			tag:
+				typeof contextOrTag === 'string'
+					? contextOrTag
+					: contextOrTag !== null &&
+						  typeof contextOrTag === 'object' &&
+						  'tag' in contextOrTag &&
+						  typeof contextOrTag.tag === 'string'
+						? contextOrTag.tag
+						: tagOrNothing,
 		});
 	}
 
@@ -144,14 +160,36 @@ export class SystemLoggerService implements LoggerService {
 						  typeof contextOrTag.source === 'string'
 						? (contextOrTag.source as LogEntrySource)
 						: LogEntrySource.BACKEND,
+			resource:
+				stackOrContext !== null &&
+				typeof stackOrContext === 'object' &&
+				'resource' in stackOrContext &&
+				typeof stackOrContext.resource === 'string'
+					? stackOrContext.resource
+					: contextOrTag !== null &&
+						  typeof contextOrTag === 'object' &&
+						  'resource' in contextOrTag &&
+						  typeof contextOrTag.resource === 'string'
+						? contextOrTag.resource
+						: undefined,
 			message: String(message),
 			args: stackOrContext ? [stackOrContext] : undefined,
 			tag:
 				typeof stackOrContext === 'string'
 					? stackOrContext
-					: typeof contextOrTag === 'string'
-						? contextOrTag
-						: tagOrNothing,
+					: stackOrContext !== null &&
+						  typeof stackOrContext === 'object' &&
+						  'tag' in stackOrContext &&
+						  typeof stackOrContext.tag === 'string'
+						? stackOrContext.tag
+						: typeof contextOrTag === 'string'
+							? contextOrTag
+							: contextOrTag !== null &&
+								  typeof contextOrTag === 'object' &&
+								  'tag' in contextOrTag &&
+								  typeof contextOrTag.tag === 'string'
+								? contextOrTag.tag
+								: tagOrNothing,
 		});
 	}
 
@@ -166,8 +204,23 @@ export class SystemLoggerService implements LoggerService {
 				typeof contextOrTag.source === 'string'
 					? (contextOrTag.source as LogEntrySource)
 					: LogEntrySource.BACKEND,
+			resource:
+				contextOrTag !== null &&
+				typeof contextOrTag === 'object' &&
+				'resource' in contextOrTag &&
+				typeof contextOrTag.resource === 'string'
+					? contextOrTag.resource
+					: undefined,
 			message: String(message),
-			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
+			tag:
+				typeof contextOrTag === 'string'
+					? contextOrTag
+					: contextOrTag !== null &&
+						  typeof contextOrTag === 'object' &&
+						  'tag' in contextOrTag &&
+						  typeof contextOrTag.tag === 'string'
+						? contextOrTag.tag
+						: tagOrNothing,
 		});
 	}
 
@@ -182,8 +235,23 @@ export class SystemLoggerService implements LoggerService {
 				typeof contextOrTag.source === 'string'
 					? (contextOrTag.source as LogEntrySource)
 					: LogEntrySource.BACKEND,
+			resource:
+				contextOrTag !== null &&
+				typeof contextOrTag === 'object' &&
+				'resource' in contextOrTag &&
+				typeof contextOrTag.resource === 'string'
+					? contextOrTag.resource
+					: undefined,
 			message: String(message),
-			tag: typeof contextOrTag === 'string' ? contextOrTag : tagOrNothing,
+			tag:
+				typeof contextOrTag === 'string'
+					? contextOrTag
+					: contextOrTag !== null &&
+						  typeof contextOrTag === 'object' &&
+						  'tag' in contextOrTag &&
+						  typeof contextOrTag.tag === 'string'
+						? contextOrTag.tag
+						: tagOrNothing,
 		});
 	}
 
@@ -195,18 +263,33 @@ export class SystemLoggerService implements LoggerService {
 				context !== null && typeof context === 'object' && 'source' in context && typeof context.source === 'string'
 					? (context.source as LogEntrySource)
 					: LogEntrySource.BACKEND,
+			resource:
+				context !== null && typeof context === 'object' && 'resource' in context && typeof context.resource === 'string'
+					? context.resource
+					: undefined,
 			message: String(message),
-			tag: typeof context === 'string' ? context : undefined,
+			tag:
+				typeof context === 'string'
+					? context
+					: context !== null && typeof context === 'object' && 'tag' in context && typeof context.tag === 'string'
+						? context.tag
+						: undefined,
 		});
 	}
 
-	getLatest(afterId?: string, limit = 50, tags?: string[]): LogEntryModel[] {
+	getLatest(afterId?: string, limit = 50, tags?: string[], resources?: string[]): LogEntryModel[] {
 		let all = this.rb.toArrayNewestFirst();
 
 		// Filter by tags if provided (case-insensitive)
 		if (tags && tags.length > 0) {
 			const lowerTags = tags.map((t) => t.toLowerCase());
 			all = all.filter((e) => e.tag && lowerTags.includes(e.tag.toLowerCase()));
+		}
+
+		// Filter by resource IDs if provided (case-insensitive)
+		if (resources && resources.length > 0) {
+			const lowerResources = resources.map((r) => r.toLowerCase());
+			all = all.filter((e) => e.resource && lowerResources.includes(e.resource.toLowerCase()));
 		}
 
 		const start = afterId ? all.findIndex((e) => e.id === afterId) : -1;

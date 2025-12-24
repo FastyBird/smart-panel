@@ -194,7 +194,14 @@
       "alerts": "Alerts",
       "status": "Status",
       "validation": "Validation",
-      "noControllableProperties": "This device has no controllable properties. Properties must have read-write or write-only permissions to be controlled."
+      "noControllableProperties": "This device has no controllable properties. Properties must have read-write or write-only permissions to be controlled.",
+      "logs": {
+        "title": "Device Logs",
+        "noLogs": "No logs available",
+        "noLogsDescription": "No logs have been recorded for this device yet",
+        "noMessage": "(no message)",
+        "noMoreEntries": "No more log entries"
+      }
     },
     "channels": {
       "noChannels": "You don't have configured any device channel",
@@ -605,7 +612,19 @@
     },
     "control": {
       "title": "Control"
+    },
+    "refresh": {
+      "title": "Refresh"
+    },
+    "loadMore": {
+      "title": "Load more"
+    },
+    "viewLogs": {
+      "title": "View logs"
     }
+  },
+  "labels": {
+    "live": "Live"
   },
   "states": {
     "online": "Online",

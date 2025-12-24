@@ -16,7 +16,9 @@ export class DeviceConnectionStateService {
 
 	async write(device: DeviceEntity, property: ChannelPropertyEntity, status: ConnectionState): Promise<void> {
 		if (property.category !== PropertyCategory.STATUS) {
-			this.logger.error(`Failed to write device provided property if=${property.id} is not device status property`);
+			this.logger.error(`Failed to write device provided property if=${property.id} is not device status property`, {
+				resource: device.id,
+			});
 
 			return;
 		}
@@ -33,7 +35,9 @@ export class DeviceConnectionStateService {
 		this.statusPropertyMap.set(device.id, property.id);
 
 		if (!this.influxDbService.isConnected()) {
-			this.logger.debug(`InfluxDB not connected, skipping status write for id=${device.id}`);
+			this.logger.debug(`InfluxDB not connected, skipping status write for id=${device.id}`, {
+				resource: device.id,
+			});
 
 			return;
 		}
@@ -52,11 +56,14 @@ export class DeviceConnectionStateService {
 				},
 			]);
 
-			this.logger.debug(`Status saved id=${device.id} status=${status}`);
+			this.logger.debug(`Status saved id=${device.id} status=${status}`, { resource: device.id });
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to write status to InfluxDB id=${device.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to write status to InfluxDB id=${device.id} error=${err.message}`, {
+				resource: device.id,
+				stack: err.stack,
+			});
 		}
 	}
 
@@ -65,6 +72,7 @@ export class DeviceConnectionStateService {
 		if (this.statusMap.has(device.id)) {
 			this.logger.debug(
 				`Loaded cached status for device id=${device.id}, status=${this.statusMap.get(device.id)?.status}`,
+				{ resource: device.id },
 			);
 
 			return this.statusMap.get(device.id);
@@ -86,7 +94,7 @@ export class DeviceConnectionStateService {
         LIMIT 1
       `;
 
-			this.logger.debug(`Fetching latest status id=${device.id}`);
+			this.logger.debug(`Fetching latest status id=${device.id}`, { resource: device.id });
 
 			const result = await this.influxDbService.query<{
 				online: boolean;
@@ -97,7 +105,7 @@ export class DeviceConnectionStateService {
 			}>(query);
 
 			if (!result.length) {
-				this.logger.debug(`No stored status found for id=${device.id}`);
+				this.logger.debug(`No stored status found for id=${device.id}`, { resource: device.id });
 
 				return {
 					online: false,
@@ -107,7 +115,7 @@ export class DeviceConnectionStateService {
 
 			const latest = result[0];
 
-			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`);
+			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`, { resource: device.id });
 
 			this.statusMap.set(device.id, { online: latest.online, status: latest.status });
 			this.statusPropertyMap.set(device.id, latest.propertyId);
@@ -116,7 +124,10 @@ export class DeviceConnectionStateService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to read latest status from InfluxDB id=${device.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to read latest status from InfluxDB id=${device.id} error=${err.message}`, {
+				resource: device.id,
+				stack: err.stack,
+			});
 
 			return {
 				online: false,
@@ -168,11 +179,14 @@ export class DeviceConnectionStateService {
 
 			await this.influxDbService.query(query);
 
-			this.logger.log(`Deleted device status for id=${device.id}`);
+			this.logger.log(`Deleted device status for id=${device.id}`, { resource: device.id });
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`Failed to delete device status from InfluxDB id=${device.id} error=${err.message}`, err.stack);
+			this.logger.error(`Failed to delete device status from InfluxDB id=${device.id} error=${err.message}`, {
+				resource: device.id,
+				stack: err.stack,
+			});
 		}
 	}
 
@@ -194,14 +208,17 @@ export class DeviceConnectionStateService {
 
 			await this.influxDbService.query(query);
 
-			this.logger.log(`Deleted device status for id=${deviceId}`);
+			this.logger.log(
+				`Deleted device status for propertyId=${property.id}${deviceId ? ` deviceId=${deviceId}` : ''}`,
+				deviceId ? { resource: deviceId } : {},
+			);
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(
-				`Failed to delete device status from InfluxDB propertyId=${property.id} error=${err.message}`,
-				err.stack,
-			);
+			this.logger.error(`Failed to delete device status from InfluxDB propertyId=${property.id} error=${err.message}`, {
+				...(deviceId ? { resource: deviceId } : {}),
+				stack: err.stack,
+			});
 		}
 	}
 }

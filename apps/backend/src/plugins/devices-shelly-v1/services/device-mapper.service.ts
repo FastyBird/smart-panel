@@ -115,7 +115,7 @@ export class DeviceMapperService {
 		);
 
 		if (!device) {
-			this.logger.log(`Creating new device: ${event.id} with name: ${deviceName}`);
+			this.logger.debug(`Creating new device: ${event.id} with name: ${deviceName}`);
 
 			const createDto: CreateShellyV1DeviceDto = {
 				type: DEVICES_SHELLY_V1_TYPE,
@@ -127,10 +127,14 @@ export class DeviceMapperService {
 			};
 
 			device = await this.devicesService.create<ShellyV1DeviceEntity, CreateShellyV1DeviceDto>(createDto);
+
+			this.logger.log(`Creating new device: ${event.id} with name: ${deviceName}`, { resource: device.id });
 		} else {
 			// If a device is disabled, set to UNKNOWN and skip updates
 			if (!device.enabled) {
-				this.logger.debug(`Device ${event.id} is disabled, setting to UNKNOWN and skipping updates`);
+				this.logger.debug(`Device ${event.id} is disabled, setting to UNKNOWN and skipping updates`, {
+					resource: device.id,
+				});
 
 				// Update registry to mark a device as disabled
 				this.shelliesAdapter.updateDeviceEnabledStatus(event.id, false);
@@ -143,14 +147,14 @@ export class DeviceMapperService {
 				return device;
 			}
 
-			this.logger.debug(`Device already exists: ${event.id}, updating hostname if changed`);
+			this.logger.debug(`Device already exists: ${event.id}, updating hostname if changed`, { resource: device.id });
 
 			// Update the registry to ensure a device is marked as enabled
 			this.shelliesAdapter.updateDeviceEnabledStatus(event.id, true);
 
 			// Set auth credentials if the password is configured
 			if (device.password) {
-				this.logger.debug(`Fetching username from login settings for device ${event.id}`);
+				this.logger.debug(`Fetching username from login settings for device ${event.id}`, { resource: device.id });
 
 				try {
 					// Get the real username from the login endpoint
@@ -158,11 +162,14 @@ export class DeviceMapperService {
 					username = loginSettings.username || SHELLY_AUTH_USERNAME;
 					password = device.password;
 
-					this.logger.debug(`Setting auth credentials for device ${event.id} (username: ${username})`);
+					this.logger.debug(`Setting auth credentials for device ${event.id} (username: ${username})`, {
+						resource: device.id,
+					});
 					this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, username, password);
 				} catch (error) {
 					this.logger.warn(`Failed to fetch login settings from ${shellyDevice.host}, using default username`, {
 						message: error instanceof Error ? error.message : String(error),
+						resource: device.id,
 					});
 
 					// Fallback to default username if login endpoint fails
@@ -174,7 +181,9 @@ export class DeviceMapperService {
 
 			// Update hostname if it changed (a device might have a new IP address)
 			if (device.hostname !== event.host) {
-				this.logger.log(`Updating hostname for device ${event.id}: ${device.hostname} -> ${event.host}`);
+				this.logger.log(`Updating hostname for device ${event.id}: ${device.hostname} -> ${event.host}`, {
+					resource: device.id,
+				});
 
 				const updateDto: UpdateShellyV1DeviceDto = {
 					type: DEVICES_SHELLY_V1_TYPE,
@@ -197,15 +206,18 @@ export class DeviceMapperService {
 
 			this.logger.debug(
 				`Device ${event.id} has mode property: ${descriptor.instance.modeProperty} = ${String(modeValue)}`,
+				{ resource: device.id },
 			);
 
 			const modeProfile = descriptor.modes.find((mode) => mode.modeValue === modeValue);
 
 			if (modeProfile) {
 				bindings = modeProfile.bindings;
-				this.logger.debug(`Using mode profile: ${String(modeValue)}`);
+				this.logger.debug(`Using mode profile: ${String(modeValue)}`, { resource: device.id });
 			} else {
-				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)}, device will have no channels`);
+				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)}, device will have no channels`, {
+					resource: device.id,
+				});
 			}
 		} else if (descriptor.bindings) {
 			// Device has static bindings
@@ -220,7 +232,7 @@ export class DeviceMapperService {
 			state: ConnectionState.CONNECTED,
 		});
 
-		this.logger.log(`Device ${device.identifier} discovery completed and set to CONNECTED`);
+		this.logger.log(`Device ${device.identifier} discovery completed and set to CONNECTED`, { resource: device.id });
 
 		return device;
 	}
@@ -236,7 +248,7 @@ export class DeviceMapperService {
 	): Promise<void> {
 		const channelIdentifier = SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION;
 
-		this.logger.debug(`Fetching additional device info from ${shellyDevice.host}`);
+		this.logger.debug(`Fetching additional device info from ${shellyDevice.host}`, { resource: device.id });
 
 		// Fetch additional device information from HTTP API
 		let deviceInfo: ShellyInfoResponse | undefined;
@@ -248,10 +260,13 @@ export class DeviceMapperService {
 				this.httpClient.getDeviceStatus(shellyDevice.host, undefined, username, password),
 			]);
 
-			this.logger.debug(`Fetched device info: fw=${deviceInfo.fw}, rssi=${deviceStatus.wifi_sta?.rssi}`);
+			this.logger.debug(`Fetched device info: fw=${deviceInfo.fw}, rssi=${deviceStatus.wifi_sta?.rssi}`, {
+				resource: device.id,
+			});
 		} catch (error) {
 			this.logger.warn(`Failed to fetch device info from ${shellyDevice.host}`, {
 				message: error instanceof Error ? error.message : String(error),
+				resource: device.id,
 			});
 			// Continue with discovery even if HTTP requests fail
 			deviceInfo = null;
@@ -267,7 +282,7 @@ export class DeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`Creating device_information channel for device ${device.identifier}`);
+			this.logger.debug(`Creating device_information channel for device ${device.identifier}`, { resource: device.id });
 
 			const createChannelDto: CreateShellyV1ChannelDto = {
 				type: DEVICES_SHELLY_V1_TYPE,
@@ -397,7 +412,9 @@ export class DeviceMapperService {
 		);
 
 		if (!channel) {
-			this.logger.debug(`Creating channel: ${channelIdentifier} for device ${device.identifier}`);
+			this.logger.debug(`Creating channel: ${channelIdentifier} for device ${device.identifier}`, {
+				resource: device.id,
+			});
 
 			const channelCategory = this.inferChannelCategory(channelIdentifier, bindings);
 			const channelName = this.formatChannelName(channelIdentifier);
@@ -443,16 +460,21 @@ export class DeviceMapperService {
 							// Invalid mapped value, skip setting it
 							this.logger.warn(
 								`Mapped value "${mappedValue}" for ${binding.propertyIdentifier} is not in format, skipping`,
+								{ resource: device.id },
 							);
 							initialValue = null;
 						}
 					} else {
 						// Unknown raw value, skip setting it
-						this.logger.warn(`Unknown raw value "${String(rawValue)}" for ${binding.propertyIdentifier}, skipping`);
+						this.logger.warn(`Unknown raw value "${String(rawValue)}" for ${binding.propertyIdentifier}, skipping`, {
+							resource: device.id,
+						});
 						initialValue = null;
 					}
 				} else {
-					this.logger.warn(`Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`);
+					this.logger.warn(`Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`, {
+						resource: device.id,
+					});
 				}
 			}
 
@@ -464,7 +486,9 @@ export class DeviceMapperService {
 				initialValue !== null
 			) {
 				if (!validateEnumValue(initialValue, binding.format, binding.propertyIdentifier)) {
-					this.logger.warn(`Value "${initialValue}" for ${binding.propertyIdentifier} is not in format, skipping`);
+					this.logger.warn(`Value "${initialValue}" for ${binding.propertyIdentifier} is not in format, skipping`, {
+						resource: device.id,
+					});
 					initialValue = null;
 				}
 			}
@@ -636,6 +660,13 @@ export class DeviceMapperService {
 			value?: string | number | boolean | null;
 		},
 	): Promise<void> {
+		// Get device ID for logging context
+		const deviceId = channel.device
+			? typeof channel.device === 'string'
+				? channel.device
+				: channel.device.id
+			: undefined;
+
 		// Check if a property already exists
 		const existingProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
 			'identifier',
@@ -645,7 +676,10 @@ export class DeviceMapperService {
 		);
 
 		if (!existingProperty) {
-			this.logger.debug(`Creating property: ${propDef.identifier} for channel ${channel.identifier}`);
+			this.logger.debug(
+				`Creating property: ${propDef.identifier} for channel ${channel.identifier}`,
+				deviceId ? { resource: deviceId } : {},
+			);
 
 			const createPropertyDto: CreateShellyV1ChannelPropertyDto = {
 				type: DEVICES_SHELLY_V1_TYPE,
@@ -665,7 +699,10 @@ export class DeviceMapperService {
 			);
 		} else {
 			// Update existing property metadata and value (preserve name and description)
-			this.logger.debug(`Updating property metadata: ${propDef.identifier} for channel ${channel.identifier}`);
+			this.logger.debug(
+				`Updating property metadata: ${propDef.identifier} for channel ${channel.identifier}`,
+				deviceId ? { resource: deviceId } : {},
+			);
 
 			await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
 				existingProperty.id,

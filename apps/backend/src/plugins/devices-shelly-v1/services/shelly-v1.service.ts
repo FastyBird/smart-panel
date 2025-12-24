@@ -255,7 +255,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			// Map and create the device with its channels and properties
 			const device = await this.deviceMapper.mapDevice(event);
 
-			this.logger.log(`Device mapped successfully: ${device.identifier} (${device.id})`);
+			this.logger.log(`Device mapped successfully: ${device.identifier} (${device.id})`, { resource: device.id });
 		} catch (error) {
 			this.logger.error(`Failed to map device ${event.id}:`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -298,7 +298,9 @@ export class ShellyV1Service implements IManagedPluginService {
 			const binding = await this.findPropertyBinding(device, event.property);
 
 			if (!binding) {
-				this.logger.debug(`No binding found for property: ${event.property} on device ${device.identifier}, skipping`);
+				this.logger.debug(`No binding found for property: ${event.property} on device ${device.identifier}, skipping`, {
+					resource: device.id,
+				});
 
 				return;
 			}
@@ -317,6 +319,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			if (!channel) {
 				this.logger.debug(
 					`Channel not found: ${channelIdentifier} for device ${device.identifier}, skipping property update`,
+					{ resource: device.id },
 				);
 				return;
 			}
@@ -332,6 +335,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			if (!property) {
 				this.logger.debug(
 					`Property not found: ${propertyIdentifier} for channel ${channel.identifier}, skipping property update`,
+					{ resource: device.id },
 				);
 				return;
 			}
@@ -347,6 +351,7 @@ export class ShellyV1Service implements IManagedPluginService {
 
 			this.logger.debug(
 				`Updated property ${property.identifier} for channel ${channel.identifier} to ${JSON.stringify(event.newValue)}`,
+				{ resource: device.id },
 			);
 		} catch (error) {
 			this.logger.error(`Failed to update property for device ${event.id}:`, {
@@ -391,7 +396,7 @@ export class ShellyV1Service implements IManagedPluginService {
 				state: ConnectionState.DISCONNECTED,
 			});
 
-			this.logger.debug(`Device ${device.identifier} marked as offline`);
+			this.logger.debug(`Device ${device.identifier} marked as offline`, { resource: device.id });
 		} catch (error) {
 			this.logger.error(`Failed to mark device ${event.id} as offline:`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -435,7 +440,7 @@ export class ShellyV1Service implements IManagedPluginService {
 				state: ConnectionState.CONNECTED,
 			});
 
-			this.logger.debug(`Device ${device.identifier} marked as online`);
+			this.logger.debug(`Device ${device.identifier} marked as online`, { resource: device.id });
 		} catch (error) {
 			this.logger.error(`Failed to mark device ${event.id} as online:`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -457,7 +462,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		const descriptor = await this.findDescriptor(device);
 
 		if (!descriptor) {
-			this.logger.warn(`No descriptor found for device: ${device.identifier}`);
+			this.logger.warn(`No descriptor found for device: ${device.identifier}`, { resource: device.id });
 
 			return null;
 		}
@@ -472,7 +477,9 @@ export class ShellyV1Service implements IManagedPluginService {
 			const shellyDevice = this.shelliesAdapter.getDevice(deviceModel, device.identifier);
 
 			if (!shellyDevice) {
-				this.logger.warn(`Device ${device.identifier} not found in adapter, cannot determine mode`);
+				this.logger.warn(`Device ${device.identifier} not found in adapter, cannot determine mode`, {
+					resource: device.id,
+				});
 
 				return null;
 			}
@@ -483,7 +490,9 @@ export class ShellyV1Service implements IManagedPluginService {
 			if (modeProfile) {
 				bindings = modeProfile.bindings;
 			} else {
-				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)} on device ${device.identifier}`);
+				this.logger.warn(`No mode profile found for mode value: ${String(modeValue)} on device ${device.identifier}`, {
+					resource: device.id,
+				});
 
 				return null;
 			}
@@ -496,7 +505,9 @@ export class ShellyV1Service implements IManagedPluginService {
 		const binding = bindings.find((b) => b.shelliesProperty === shelliesProperty);
 
 		if (!binding) {
-			this.logger.debug(`No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`);
+			this.logger.debug(`No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`, {
+				resource: device.id,
+			});
 
 			return null;
 		}
@@ -519,7 +530,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		);
 
 		if (!deviceInfoChannel) {
-			this.logger.warn(`No device_information channel found for device: ${device.identifier}`);
+			this.logger.warn(`No device_information channel found for device: ${device.identifier}`, { resource: device.id });
 
 			return null;
 		}
@@ -533,7 +544,7 @@ export class ShellyV1Service implements IManagedPluginService {
 		);
 
 		if (!modelProperty || !modelProperty.value) {
-			this.logger.warn(`No model property found for device: ${device.identifier}`);
+			this.logger.warn(`No model property found for device: ${device.identifier}`, { resource: device.id });
 
 			return null;
 		}
@@ -729,7 +740,9 @@ export class ShellyV1Service implements IManagedPluginService {
 								value: status.wifi_sta.rssi,
 							});
 
-							this.logger.debug(`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`);
+							this.logger.debug(`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`, {
+								resource: device.id,
+							});
 						}
 					}
 
@@ -751,7 +764,9 @@ export class ShellyV1Service implements IManagedPluginService {
 								value: info.fw,
 							});
 
-							this.logger.debug(`Updated firmware version for ${registeredDevice.id}: ${info.fw}`);
+							this.logger.debug(`Updated firmware version for ${registeredDevice.id}: ${info.fw}`, {
+								resource: device.id,
+							});
 						}
 					}
 				} catch (error) {
