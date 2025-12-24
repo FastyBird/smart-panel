@@ -155,13 +155,23 @@ export class DeviceAdoptionService {
 		} catch (error) {
 			// If channel creation fails, we should clean up the device
 			// This should rarely happen now since we pre-validate, but keep as safety net
+			const err = error as Error;
+
 			this.logger.error(`[DEVICE ADOPTION] Failed to create channels, cleaning up device: ${device.id}`, {
 				resource: device.id,
+				message: err.message,
+				stack: err.stack,
 			});
 			try {
 				await this.devicesService.remove(device.id);
-			} catch {
-				this.logger.error(`[DEVICE ADOPTION] Failed to cleanup device: ${device.id}`, { resource: device.id });
+			} catch (cleanupError) {
+				const cleanupErr = cleanupError as Error;
+
+				this.logger.error(`[DEVICE ADOPTION] Failed to cleanup device: ${device.id}`, {
+					resource: device.id,
+					message: cleanupErr.message,
+					stack: cleanupErr.stack,
+				});
 			}
 			throw error;
 		}
