@@ -169,6 +169,7 @@ export class DeviceMapperService {
 				} catch (error) {
 					this.logger.warn(`Failed to fetch login settings from ${shellyDevice.host}, using default username`, {
 						message: error instanceof Error ? error.message : String(error),
+						resource: device.id,
 					});
 
 					// Fallback to default username if login endpoint fails
@@ -259,10 +260,13 @@ export class DeviceMapperService {
 				this.httpClient.getDeviceStatus(shellyDevice.host, undefined, username, password),
 			]);
 
-			this.logger.debug(`Fetched device info: fw=${deviceInfo.fw}, rssi=${deviceStatus.wifi_sta?.rssi}`);
+			this.logger.debug(`Fetched device info: fw=${deviceInfo.fw}, rssi=${deviceStatus.wifi_sta?.rssi}`, {
+				resource: device.id,
+			});
 		} catch (error) {
 			this.logger.warn(`Failed to fetch device info from ${shellyDevice.host}`, {
 				message: error instanceof Error ? error.message : String(error),
+				resource: device.id,
 			});
 			// Continue with discovery even if HTTP requests fail
 			deviceInfo = null;
@@ -456,16 +460,21 @@ export class DeviceMapperService {
 							// Invalid mapped value, skip setting it
 							this.logger.warn(
 								`Mapped value "${mappedValue}" for ${binding.propertyIdentifier} is not in format, skipping`,
+								{ resource: device.id },
 							);
 							initialValue = null;
 						}
 					} else {
 						// Unknown raw value, skip setting it
-						this.logger.warn(`Unknown raw value "${String(rawValue)}" for ${binding.propertyIdentifier}, skipping`);
+						this.logger.warn(`Unknown raw value "${String(rawValue)}" for ${binding.propertyIdentifier}, skipping`, {
+							resource: device.id,
+						});
 						initialValue = null;
 					}
 				} else {
-					this.logger.warn(`Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`);
+					this.logger.warn(`Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`, {
+						resource: device.id,
+					});
 				}
 			}
 
@@ -477,7 +486,9 @@ export class DeviceMapperService {
 				initialValue !== null
 			) {
 				if (!validateEnumValue(initialValue, binding.format, binding.propertyIdentifier)) {
-					this.logger.warn(`Value "${initialValue}" for ${binding.propertyIdentifier} is not in format, skipping`);
+					this.logger.warn(`Value "${initialValue}" for ${binding.propertyIdentifier} is not in format, skipping`, {
+						resource: device.id,
+					});
 					initialValue = null;
 				}
 			}

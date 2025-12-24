@@ -334,6 +334,7 @@ export class ShellyNgService implements IManagedPluginService {
 						})
 						.catch((err: Error): void => {
 							this.logger.error(`Failed to re-create Shelly device delegate for device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -342,10 +343,13 @@ export class ShellyNgService implements IManagedPluginService {
 					this.delegatesRegistryService
 						.insert(device)
 						.then((): void => {
-							this.logger.debug(`New device=${device.id} was added to delegates registry`);
+							this.logger.debug(`New device=${device.id} was added to delegates registry`, {
+								resource: device.id,
+							});
 						})
 						.catch((err: Error): void => {
 							this.logger.error(`Failed to create new Shelly device delegate for device=${device.id}`, {
+								resource: device.id,
 								message: err.message,
 								stack: err.stack,
 							});
@@ -354,6 +358,7 @@ export class ShellyNgService implements IManagedPluginService {
 			})
 			.catch((err: Error): void => {
 				this.logger.error(`Failed to find Shelly device in database device=${device.id}`, {
+					resource: device.id,
 					message: err.message,
 					stack: err.stack,
 				});
@@ -366,7 +371,7 @@ export class ShellyNgService implements IManagedPluginService {
 	protected handleRemovedDevice = (device: Device): void => {
 		this.delegatesRegistryService.remove(device.id);
 
-		this.logger.debug(`Device=${device.id} was removed from delegates registry`);
+		this.logger.debug(`Device=${device.id} was removed from delegates registry`, { resource: device.id });
 	};
 
 	/**
@@ -375,14 +380,16 @@ export class ShellyNgService implements IManagedPluginService {
 	protected handleExcludedDevice = (deviceId: DeviceId): void => {
 		this.delegatesRegistryService.remove(deviceId);
 
-		this.logger.debug(`Device=${deviceId} was set as excluded and removed from delegates registry`);
+		this.logger.debug(`Device=${deviceId} was set as excluded and removed from delegates registry`, {
+			resource: deviceId,
+		});
 	};
 
 	/**
 	 * Handles 'unknown' events from the shellies-ng library
 	 */
 	protected handleUnknownDevice = (deviceId: DeviceId, model: string): void => {
-		this.logger.log(`Discovered device=${deviceId} with unknown model=${model}`);
+		this.logger.log(`Discovered device=${deviceId} with unknown model=${model}`, { resource: deviceId });
 	};
 
 	/**
@@ -390,6 +397,7 @@ export class ShellyNgService implements IManagedPluginService {
 	 */
 	protected handleError = (deviceId: DeviceId, error: Error): void => {
 		this.logger.error(`An error occurred for device=${deviceId}`, {
+			resource: deviceId,
 			message: error.message,
 			stack: error.stack,
 		});

@@ -221,6 +221,7 @@ export class DeviceAdoptionService {
 		if (!rawSchema || typeof rawSchema !== 'object') {
 			this.logger.warn(
 				`[DEVICE ADOPTION] Missing or invalid schema for channel category ${ChannelCategory.DEVICE_INFORMATION}`,
+				{ resource: device.id },
 			);
 			return;
 		}
@@ -239,7 +240,9 @@ export class DeviceAdoptionService {
 		const specValidationErrors = await validate(categorySpec);
 
 		if (specValidationErrors.length) {
-			this.logger.error(`[DEVICE ADOPTION] Channel spec validation failed: ${JSON.stringify(specValidationErrors)}`);
+			this.logger.error(`[DEVICE ADOPTION] Channel spec validation failed: ${JSON.stringify(specValidationErrors)}`, {
+				resource: device.id,
+			});
 			return;
 		}
 
@@ -324,10 +327,12 @@ export class DeviceAdoptionService {
 		for (const mappingChannel of mappingDeviceInfoChannels) {
 			this.logger.debug(
 				`[DEVICE ADOPTION] Processing mapping device_information channel: ${mappingChannel.entityId} with ${mappingChannel.properties.length} properties`,
+				{ resource: device.id },
 			);
 			for (const propDef of mappingChannel.properties) {
 				this.logger.debug(
 					`[DEVICE ADOPTION] Processing property: category=${propDef.category}, dataType=${propDef.dataType}, haAttribute=${propDef.haAttribute}`,
+					{ resource: device.id },
 				);
 
 				const spec = categorySpec.properties.find((p) => p.category === propDef.category);
@@ -340,12 +345,14 @@ export class DeviceAdoptionService {
 				if (!isValidPropertyCategory) {
 					this.logger.warn(
 						`[DEVICE ADOPTION] Property ${propDef.category} from mapping channel ${mappingChannel.entityId} is not a valid property category (valid values: ${propertyCategoryValues.slice(0, 5).join(', ')}...), skipping`,
+						{ resource: device.id },
 					);
 					continue;
 				}
 
 				this.logger.debug(
 					`[DEVICE ADOPTION] Property ${propDef.category} is valid, spec found: ${spec ? 'yes' : 'no'}`,
+					{ resource: device.id },
 				);
 
 				// Use spec if available, otherwise use defaults
@@ -369,10 +376,12 @@ export class DeviceAdoptionService {
 				if (spec) {
 					this.logger.debug(
 						`[DEVICE ADOPTION] Merged property ${propDef.category} from mapping channel ${mappingChannel.entityId} with HA entity binding (from spec)`,
+						{ resource: device.id },
 					);
 				} else {
 					this.logger.debug(
 						`[DEVICE ADOPTION] Merged property ${propDef.category} from mapping channel ${mappingChannel.entityId} with HA entity binding (not in spec, using defaults)`,
+						{ resource: device.id },
 					);
 				}
 			}
@@ -588,7 +597,9 @@ export class DeviceAdoptionService {
 		const rawSchema = channelsSchema[channelDef.category as keyof typeof channelsSchema] as object | undefined;
 
 		if (!rawSchema || typeof rawSchema !== 'object') {
-			this.logger.warn(`[DEVICE ADOPTION] Missing or invalid schema for channel category ${channelDef.category}`);
+			this.logger.warn(`[DEVICE ADOPTION] Missing or invalid schema for channel category ${channelDef.category}`, {
+				resource: device.id,
+			});
 			// Continue anyway - the channel might still be valid
 		}
 

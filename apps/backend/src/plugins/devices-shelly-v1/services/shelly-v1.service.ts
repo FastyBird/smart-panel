@@ -298,7 +298,9 @@ export class ShellyV1Service implements IManagedPluginService {
 			const binding = await this.findPropertyBinding(device, event.property);
 
 			if (!binding) {
-				this.logger.debug(`No binding found for property: ${event.property} on device ${device.identifier}, skipping`);
+				this.logger.debug(`No binding found for property: ${event.property} on device ${device.identifier}, skipping`, {
+					resource: device.id,
+				});
 
 				return;
 			}
@@ -317,6 +319,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			if (!channel) {
 				this.logger.debug(
 					`Channel not found: ${channelIdentifier} for device ${device.identifier}, skipping property update`,
+					{ resource: device.id },
 				);
 				return;
 			}
@@ -332,6 +335,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			if (!property) {
 				this.logger.debug(
 					`Property not found: ${propertyIdentifier} for channel ${channel.identifier}, skipping property update`,
+					{ resource: device.id },
 				);
 				return;
 			}
@@ -347,6 +351,7 @@ export class ShellyV1Service implements IManagedPluginService {
 
 			this.logger.debug(
 				`Updated property ${property.identifier} for channel ${channel.identifier} to ${JSON.stringify(event.newValue)}`,
+				{ resource: device.id },
 			);
 		} catch (error) {
 			this.logger.error(`Failed to update property for device ${event.id}:`, {
@@ -500,7 +505,9 @@ export class ShellyV1Service implements IManagedPluginService {
 		const binding = bindings.find((b) => b.shelliesProperty === shelliesProperty);
 
 		if (!binding) {
-			this.logger.debug(`No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`);
+			this.logger.debug(`No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`, {
+				resource: device.id,
+			});
 
 			return null;
 		}

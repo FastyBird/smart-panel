@@ -770,7 +770,11 @@ export class DeviceManagerService {
 						});
 
 						// TODO: To be implemented in the future
-						this.logger.debug(`Received device input status for input=${key}`, { inputConfig, inputStatus });
+						this.logger.debug(`Received device input status for input=${key}`, {
+							resource: device.id,
+							inputConfig,
+							inputStatus,
+						});
 					}),
 				);
 
@@ -972,7 +976,9 @@ export class DeviceManagerService {
 			if (!channelsIds.includes(channel.id)) {
 				await this.channelsService.remove(channel.id);
 
-				this.logger.debug(`Remove channel=${channel.id} because this channel is not specified for current device`);
+				this.logger.debug(`Remove channel=${channel.id} because this channel is not specified for current device`, {
+					resource: device.id,
+				});
 			}
 		}
 
@@ -1000,7 +1006,12 @@ export class DeviceManagerService {
 			const channelSpec = channelsSchema[category] as ChannelDefinition | undefined;
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
-				this.logger.warn(`Missing or invalid schema for channel category=${category}. Falling back to minimal channel`);
+				this.logger.warn(
+					`Missing or invalid schema for channel category=${category}. Falling back to minimal channel`,
+					{
+						resource: device.id,
+					},
+				);
 
 				if (this.strictSchema) {
 					throw new DevicesShellyNgException('Failed to load specification for channel category');
