@@ -377,7 +377,7 @@ export const useDeviceAddFormMultiStep = ({ id }: IUseDeviceAddFormMultiStepProp
 								dataType: prop.dataType,
 								permissions: prop.permissions,
 								unit: prop.unit ?? null,
-								format: prop.format ?? null,
+								format: (prop.format ?? null) as string[] | number[] | null,
 							});
 						}
 					}
