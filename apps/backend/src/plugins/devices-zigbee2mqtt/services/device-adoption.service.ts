@@ -387,6 +387,16 @@ export class Z2mDeviceAdoptionService {
 							this.logger.debug(`[DEVICE ADOPTION] Extracted ${propDef.category} from color object = ${initialValue}`);
 						}
 					} else if (
+						propDef.z2mProperty === 'color_temp' &&
+						propDef.category === PropertyCategory.COLOR_TEMPERATURE &&
+						typeof cachedValue === 'number' &&
+						cachedValue > 0
+					) {
+						// Convert mired to Kelvin for color temperature
+						const kelvin = Math.round(1000000 / cachedValue);
+						initialValue = Math.max(2000, Math.min(10000, kelvin));
+						this.logger.debug(`[DEVICE ADOPTION] Converted color_temp: ${cachedValue} mired -> ${initialValue} K`);
+					} else if (
 						typeof cachedValue === 'boolean' ||
 						typeof cachedValue === 'number' ||
 						typeof cachedValue === 'string'
@@ -404,10 +414,17 @@ export class Z2mDeviceAdoptionService {
 				}
 			}
 
+			// For properties that share z2mProperty (like hue/saturation both using "color"),
+			// use the category for the name instead of z2mProperty
+			const isColorProperty =
+				propDef.z2mProperty === 'color' &&
+				(propDef.category === PropertyCategory.HUE || propDef.category === PropertyCategory.SATURATION);
+			const propertyName = isVirtualProperty || isColorProperty ? propDef.category : propDef.z2mProperty;
+
 			const createPropertyDto = toInstance(CreateZigbee2mqttChannelPropertyDto, {
 				type: DEVICES_ZIGBEE2MQTT_TYPE,
 				identifier,
-				name: this.formatPropertyName(isVirtualProperty ? propDef.category : propDef.z2mProperty),
+				name: this.formatPropertyName(propertyName),
 				category: propDef.category,
 				data_type: propDef.dataType,
 				permissions: propDef.permissions,

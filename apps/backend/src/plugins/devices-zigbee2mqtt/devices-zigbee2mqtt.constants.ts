@@ -153,9 +153,11 @@ export const COMMON_PROPERTY_MAPPINGS: Record<string, Partial<Z2mPropertyBinding
 		propertyIdentifier: 'color_temperature',
 		channelCategory: ChannelCategory.LIGHT,
 		category: PropertyCategory.COLOR_TEMPERATURE,
-		dataType: DataTypeType.UINT,
+		dataType: DataTypeType.USHORT,
 		name: 'Color Temperature',
-		unit: 'mired',
+		unit: 'K',
+		min: 2000,
+		max: 10000,
 	},
 	temperature: {
 		propertyIdentifier: 'temperature',

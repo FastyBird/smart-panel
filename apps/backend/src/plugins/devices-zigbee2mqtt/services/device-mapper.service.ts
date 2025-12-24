@@ -278,6 +278,11 @@ export class Z2mDeviceMapperService {
 					continue;
 				}
 
+				// Skip color_temp - handled separately with mired to Kelvin conversion
+				if (channel.category === ChannelCategory.LIGHT && property.category === PropertyCategory.COLOR_TEMPERATURE) {
+					continue;
+				}
+
 				const value = state[propertyIdentifier];
 
 				// Convert value to appropriate type based on property's data type
@@ -423,6 +428,35 @@ export class Z2mDeviceMapperService {
 								}),
 							);
 						}
+					}
+				}
+			}
+
+			// Handle color temperature conversion for light channels
+			// Z2M uses mired (158-500), spec uses Kelvin (2000-10000)
+			// Conversion: Kelvin = 1,000,000 / mired
+			if (channel.category === ChannelCategory.LIGHT && 'color_temp' in state) {
+				const colorTempProp = properties.find((p) => p.category === PropertyCategory.COLOR_TEMPERATURE);
+
+				if (colorTempProp) {
+					const z2mColorTemp = state.color_temp;
+					if (typeof z2mColorTemp === 'number' && z2mColorTemp > 0) {
+						// Convert mired to Kelvin and clamp to spec range
+						const kelvin = Math.round(1000000 / z2mColorTemp);
+						const clampedKelvin = Math.max(2000, Math.min(10000, kelvin));
+
+						this.logger.debug(`Updating color_temp: ${z2mColorTemp} mired -> ${clampedKelvin} K`);
+
+						await this.channelsPropertiesService.update<
+							Zigbee2mqttChannelPropertyEntity,
+							UpdateZigbee2mqttChannelPropertyDto
+						>(
+							colorTempProp.id,
+							toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+								type: DEVICES_ZIGBEE2MQTT_TYPE,
+								value: clampedKelvin,
+							}),
+						);
 					}
 				}
 			}

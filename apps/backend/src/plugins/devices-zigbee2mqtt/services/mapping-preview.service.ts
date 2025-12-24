@@ -466,6 +466,13 @@ export class Z2mMappingPreviewService {
 		if (value === undefined || value === null) {
 			return null;
 		}
+
+		// Handle color temperature conversion (mired -> Kelvin)
+		if (propertyCategory === PropertyCategory.COLOR_TEMPERATURE && typeof value === 'number' && value > 0) {
+			const kelvin = Math.round(1000000 / value);
+			return Math.max(2000, Math.min(10000, kelvin));
+		}
+
 		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 			return value;
 		}

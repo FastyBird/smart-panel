@@ -246,6 +246,17 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			return z2mValue;
 		}
 
+		// Color temperature: convert from spec Kelvin (2000-10000) to Z2M mired
+		// Conversion: mired = 1,000,000 / Kelvin
+		if (property.category === PropertyCategory.COLOR_TEMPERATURE) {
+			const kelvin = this.coerceNumber(value, 2000, 10000);
+			const mired = Math.round(1000000 / kelvin);
+			// Clamp to typical Z2M mired range (153-500)
+			const clampedMired = Math.max(153, Math.min(500, mired));
+			this.logger.debug(`Converting color_temp: ${kelvin} K -> ${clampedMired} mired`);
+			return clampedMired;
+		}
+
 		// Check if property has special format (e.g., ON/OFF values for binary, or [min, max] for numeric)
 		const format = property.format;
 
@@ -268,11 +279,6 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 			// Convert boolean to ON/OFF
 			const boolValue = this.coerceBoolean(value);
 			return boolValue ? 'ON' : 'OFF';
-		}
-
-		if (z2mProperty === 'color_temp') {
-			// Color temperature with default range (device-specific range handled above via format)
-			return this.coerceNumber(value, 150, 500);
 		}
 
 		if (z2mProperty?.startsWith('color')) {
