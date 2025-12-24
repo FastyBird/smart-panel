@@ -152,7 +152,7 @@
     }
   },
   "headings": {
-    "aboutConnectionSettings": "Home Assistant Connection",
+    "aboutConnectionSettings": "Home Assistant connection",
     "device": {
       "deviceSelection": "Select device",
       "deviceInformation": "Device information",
@@ -162,9 +162,9 @@
       "deviceConfiguration": "Device configuration"
     },
     "mapping": {
-      "entityMappings": "Entity Mappings",
+      "entityMappings": "Entity mappings",
       "warnings": "Warnings",
-      "summary": "Mapping Summary"
+      "summary": "Mapping summary"
     }
   },
   "messages": {
@@ -197,14 +197,14 @@
     }
   },
   "buttons": {
-    "loadPreview": "Load Preview",
-    "updatePreview": "Update Preview",
-    "adoptDevice": "Adopt Device",
+    "loadPreview": "Load preview",
+    "updatePreview": "Update preview",
+    "adoptDevice": "Adopt device",
     "next": "Next",
     "previous": "Previous",
     "skip": "Skip",
     "use": "Use",
-    "applyChanges": "Apply Changes",
+    "applyChanges": "Apply changes",
     "refreshDiscovery": "Refresh discovery"
   },
   "labels": {
