@@ -14,14 +14,20 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../device
 import { IDevicePlatform, IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
+import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { SpaceEntity } from '../entities/space.entity';
 import {
 	BRIGHTNESS_DELTA_STEPS,
 	BrightnessDelta,
+	ClimateIntentType,
+	DEFAULT_MAX_SETPOINT,
+	DEFAULT_MIN_SETPOINT,
 	LIGHTING_MODE_BRIGHTNESS,
 	LightingIntentType,
 	LightingMode,
+	SETPOINT_DELTA_STEPS,
+	SetpointDelta,
 } from '../spaces.constants';
 
 import { SpaceIntentService } from './space-intent.service';
@@ -510,6 +516,571 @@ describe('SpaceIntentService', () => {
 				const calls = mockPlatform.processBatch.mock.calls[0][0] as IDevicePropertyData[];
 				// Default is 50, +10 = 60
 				expect(calls[0].value).toBe(50 + BRIGHTNESS_DELTA_STEPS[BrightnessDelta.SMALL]);
+			});
+		});
+	});
+
+	// =====================
+	// Climate Intent Tests
+	// =====================
+
+	const createMockThermostat = (
+		deviceId: string,
+		name: string,
+		currentTemp: number,
+		setpoint: number | null,
+		format?: [number, number],
+	): DeviceEntity => {
+		// Temperature reading property (from TEMPERATURE channel)
+		const temperatureProperty = {
+			id: `${deviceId}-temp-prop`,
+			category: PropertyCategory.TEMPERATURE,
+			value: currentTemp,
+		} as ChannelPropertyEntity;
+
+		// Heater channel with setpoint property
+		const heaterProperties: ChannelPropertyEntity[] = [];
+
+		if (setpoint !== null) {
+			const setpointProperty = {
+				id: `${deviceId}-setpoint-prop`,
+				category: PropertyCategory.TEMPERATURE,
+				value: setpoint,
+				format: format as unknown,
+			} as ChannelPropertyEntity;
+
+			heaterProperties.push(setpointProperty);
+		}
+
+		const temperatureChannel = {
+			id: `${deviceId}-temp-channel`,
+			category: ChannelCategory.TEMPERATURE,
+			properties: [temperatureProperty],
+		} as ChannelEntity;
+
+		const heaterChannel = {
+			id: `${deviceId}-heater-channel`,
+			category: ChannelCategory.HEATER,
+			properties: heaterProperties,
+		} as ChannelEntity;
+
+		return {
+			id: deviceId,
+			name,
+			type: 'mock-platform',
+			category: DeviceCategory.THERMOSTAT,
+			channels: [temperatureChannel, heaterChannel],
+		} as DeviceEntity;
+	};
+
+	const createMockSensor = (deviceId: string, name: string, currentTemp: number): DeviceEntity => {
+		const temperatureProperty: ChannelPropertyEntity = {
+			id: `${deviceId}-temp-prop`,
+			category: PropertyCategory.TEMPERATURE,
+			value: currentTemp,
+		} as ChannelPropertyEntity;
+
+		const temperatureChannel: ChannelEntity = {
+			id: `${deviceId}-temp-channel`,
+			category: ChannelCategory.TEMPERATURE,
+			properties: [temperatureProperty],
+		} as ChannelEntity;
+
+		return {
+			id: deviceId,
+			name,
+			type: 'mock-platform',
+			category: DeviceCategory.SENSOR,
+			channels: [temperatureChannel],
+		} as DeviceEntity;
+	};
+
+	describe('getClimateState', () => {
+		describe('when space does not exist', () => {
+			it('should return default state with hasClimate=false', async () => {
+				mockSpacesService.findOne.mockResolvedValue(null);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				expect(result).toEqual({
+					hasClimate: false,
+					currentTemperature: null,
+					targetTemperature: null,
+					minSetpoint: DEFAULT_MIN_SETPOINT,
+					maxSetpoint: DEFAULT_MAX_SETPOINT,
+					canSetSetpoint: false,
+					primaryThermostatId: null,
+					primarySensorId: null,
+				});
+			});
+		});
+
+		describe('when space has no climate devices', () => {
+			it('should return hasClimate=false', async () => {
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				expect(result.hasClimate).toBe(false);
+				expect(result.canSetSetpoint).toBe(false);
+			});
+
+			it('should return hasClimate=false for non-climate devices', async () => {
+				const genericDevice = createNonLightDevice('device-1');
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([genericDevice]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				expect(result.hasClimate).toBe(false);
+			});
+		});
+
+		describe('space with sensor only (read-only)', () => {
+			it('should return current temperature but no setpoint capability', async () => {
+				const sensor = createMockSensor('sensor-1', 'Living Room Sensor', 22.5);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([sensor]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				expect(result).toEqual({
+					hasClimate: true,
+					currentTemperature: 22.5,
+					targetTemperature: null,
+					minSetpoint: DEFAULT_MIN_SETPOINT,
+					maxSetpoint: DEFAULT_MAX_SETPOINT,
+					canSetSetpoint: false,
+					primaryThermostatId: null,
+					primarySensorId: 'sensor-1',
+				});
+			});
+
+			it('should select first sensor deterministically by name', async () => {
+				const sensorA = createMockSensor('sensor-a', 'Bedroom Sensor', 20.0);
+				const sensorB = createMockSensor('sensor-b', 'Attic Sensor', 25.0);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([sensorA, sensorB]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				// 'Attic Sensor' comes before 'Bedroom Sensor' alphabetically
+				expect(result.primarySensorId).toBe('sensor-b');
+				expect(result.currentTemperature).toBe(25.0);
+			});
+		});
+
+		describe('space with thermostat only', () => {
+			it('should return both current and target temperature with setpoint capability', async () => {
+				const thermostat = createMockThermostat('thermo-1', 'Living Room Thermostat', 21.0, 22.0);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				expect(result).toEqual({
+					hasClimate: true,
+					currentTemperature: 21.0,
+					targetTemperature: 22.0,
+					minSetpoint: DEFAULT_MIN_SETPOINT,
+					maxSetpoint: DEFAULT_MAX_SETPOINT,
+					canSetSetpoint: true,
+					primaryThermostatId: 'thermo-1',
+					primarySensorId: 'thermo-1', // Uses thermostat for temp reading
+				});
+			});
+
+			it('should use property format for min/max setpoint', async () => {
+				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 21.0, 22.0, [10, 30]);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				expect(result.minSetpoint).toBe(10);
+				expect(result.maxSetpoint).toBe(30);
+			});
+		});
+
+		describe('space with both sensor and thermostat', () => {
+			it('should use admin override to select sensor for temperature reading', async () => {
+				// Thermostat with both temp and setpoint
+				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 22.0);
+				const sensor = createMockSensor('sensor-1', 'Temperature Sensor', 21.5);
+
+				// Configure admin override to use sensor for temperature
+				const spaceWithOverride = {
+					...mockSpace,
+					primaryTemperatureSensorId: 'sensor-1',
+				} as SpaceEntity;
+
+				mockSpacesService.findOne.mockResolvedValue(spaceWithOverride);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat, sensor]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				expect(result.hasClimate).toBe(true);
+				expect(result.canSetSetpoint).toBe(true);
+				expect(result.primaryThermostatId).toBe('thermo-1');
+				expect(result.primarySensorId).toBe('sensor-1');
+				expect(result.targetTemperature).toBe(22.0);
+				expect(result.currentTemperature).toBe(21.5);
+			});
+
+			it('should prefer thermostat temperature over separate sensor by default', async () => {
+				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 21.0, 22.0);
+				const sensor = createMockSensor('sensor-1', 'Sensor', 23.0);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat, sensor]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				// Should use thermostat's temperature reading
+				expect(result.primarySensorId).toBe('thermo-1');
+				expect(result.currentTemperature).toBe(21.0);
+			});
+		});
+
+		describe('multiple thermostats selection + admin override', () => {
+			it('should select first thermostat deterministically by name', async () => {
+				const thermoA = createMockThermostat('thermo-a', 'Zone B Thermostat', 20.0, 21.0);
+				const thermoB = createMockThermostat('thermo-b', 'Zone A Thermostat', 22.0, 23.0);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermoA, thermoB]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				// 'Zone A Thermostat' comes before 'Zone B Thermostat' alphabetically
+				expect(result.primaryThermostatId).toBe('thermo-b');
+				expect(result.targetTemperature).toBe(23.0);
+			});
+
+			it('should use admin-configured primary thermostat override', async () => {
+				const thermoA = createMockThermostat('thermo-a', 'Zone A Thermostat', 20.0, 21.0);
+				const thermoB = createMockThermostat('thermo-b', 'Zone B Thermostat', 22.0, 23.0);
+
+				// Configure admin override for thermoB
+				const spaceWithOverride = {
+					...mockSpace,
+					primaryThermostatId: 'thermo-b',
+				} as SpaceEntity;
+
+				mockSpacesService.findOne.mockResolvedValue(spaceWithOverride);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermoA, thermoB]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				// Should use admin override even though Zone A comes first alphabetically
+				expect(result.primaryThermostatId).toBe('thermo-b');
+				expect(result.targetTemperature).toBe(23.0);
+			});
+
+			it('should use admin-configured primary temperature sensor override', async () => {
+				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 21.0);
+				const sensor = createMockSensor('sensor-1', 'Separate Sensor', 24.0);
+
+				// Configure admin override to use separate sensor
+				const spaceWithOverride = {
+					...mockSpace,
+					primaryTemperatureSensorId: 'sensor-1',
+				} as SpaceEntity;
+
+				mockSpacesService.findOne.mockResolvedValue(spaceWithOverride);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat, sensor]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				// Should use sensor for temperature even though thermostat has temp reading
+				expect(result.primarySensorId).toBe('sensor-1');
+				expect(result.currentTemperature).toBe(24.0);
+			});
+
+			it('should fallback to default if admin override device not found', async () => {
+				const thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 21.0);
+
+				// Configure admin override for non-existent device
+				const spaceWithOverride = {
+					...mockSpace,
+					primaryThermostatId: 'non-existent-device',
+				} as SpaceEntity;
+
+				mockSpacesService.findOne.mockResolvedValue(spaceWithOverride);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+
+				const result = await service.getClimateState(mockSpaceId);
+
+				// Should fallback to first thermostat
+				expect(result.primaryThermostatId).toBe('thermo-1');
+			});
+		});
+	});
+
+	describe('executeClimateIntent', () => {
+		beforeEach(() => {
+			mockDevicesService.getOneOrThrow = jest.fn();
+		});
+
+		describe('when space has no climate devices', () => {
+			it('should return success with zero affected devices', async () => {
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([]);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.SMALL,
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result).toEqual({
+					success: true,
+					affectedDevices: 0,
+					failedDevices: 0,
+					newSetpoint: null,
+				});
+			});
+		});
+
+		describe('setpoint delta intents', () => {
+			let thermostat: DeviceEntity;
+
+			beforeEach(() => {
+				thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 21.0);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+				(mockDevicesService.getOneOrThrow as jest.Mock).mockResolvedValue(thermostat);
+			});
+
+			it('should increase setpoint by SMALL delta (0.5°C)', async () => {
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.SMALL,
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+				expect(result.newSetpoint).toBe(21.0 + SETPOINT_DELTA_STEPS[SetpointDelta.SMALL]);
+				expect(mockPlatform.processBatch).toHaveBeenCalledWith(
+					expect.arrayContaining([
+						expect.objectContaining({
+							value: 21.5,
+						}),
+					]),
+				);
+			});
+
+			it('should decrease setpoint by MEDIUM delta (1.0°C)', async () => {
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.MEDIUM,
+					increase: false,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+				expect(result.newSetpoint).toBe(21.0 - SETPOINT_DELTA_STEPS[SetpointDelta.MEDIUM]);
+			});
+
+			it('should clamp setpoint to max value', async () => {
+				const hotThermostat = createMockThermostat('thermo-1', 'Thermostat', 30.0, 34.0, [5, 35]);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([hotThermostat]);
+				(mockDevicesService.getOneOrThrow as jest.Mock).mockResolvedValue(hotThermostat);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.LARGE,
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+				expect(result.newSetpoint).toBe(35); // Clamped to max
+			});
+
+			it('should clamp setpoint to min value', async () => {
+				const coldThermostat = createMockThermostat('thermo-1', 'Thermostat', 10.0, 6.0, [5, 35]);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([coldThermostat]);
+				(mockDevicesService.getOneOrThrow as jest.Mock).mockResolvedValue(coldThermostat);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.LARGE,
+					increase: false,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+				expect(result.newSetpoint).toBe(5); // Clamped to min
+			});
+
+			it('should round setpoint to 0.5 degree precision', async () => {
+				// Create thermostat with setpoint that when modified gives a non-.5 value
+				const thermostatWith22 = createMockThermostat('thermo-1', 'Thermostat', 20.0, 22.3);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostatWith22]);
+				(mockDevicesService.getOneOrThrow as jest.Mock).mockResolvedValue(thermostatWith22);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.SMALL, // +0.5
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				// 22.3 + 0.5 = 22.8, rounded to 23.0
+				expect(result.newSetpoint).toBe(23.0);
+			});
+		});
+
+		describe('setpoint set intents', () => {
+			let thermostat: DeviceEntity;
+
+			beforeEach(() => {
+				thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 21.0);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+				(mockDevicesService.getOneOrThrow as jest.Mock).mockResolvedValue(thermostat);
+			});
+
+			it('should set exact setpoint value', async () => {
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_SET,
+					value: 23.0,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+				expect(result.newSetpoint).toBe(23.0);
+				expect(mockPlatform.processBatch).toHaveBeenCalledWith(
+					expect.arrayContaining([
+						expect.objectContaining({
+							value: 23.0,
+						}),
+					]),
+				);
+			});
+
+			it('should clamp set value to min/max', async () => {
+				const thermostatWithLimits = createMockThermostat('thermo-1', 'Thermostat', 20.0, 21.0, [15, 25]);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostatWithLimits]);
+				(mockDevicesService.getOneOrThrow as jest.Mock).mockResolvedValue(thermostatWithLimits);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_SET,
+					value: 30.0, // Above max
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+				expect(result.newSetpoint).toBe(25.0); // Clamped to max
+			});
+		});
+
+		describe('error handling', () => {
+			let thermostat: DeviceEntity;
+
+			beforeEach(() => {
+				thermostat = createMockThermostat('thermo-1', 'Thermostat', 20.0, 21.0);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+				(mockDevicesService.getOneOrThrow as jest.Mock).mockResolvedValue(thermostat);
+			});
+
+			it('should handle platform not found', async () => {
+				mockPlatformRegistryService.get.mockReturnValue(null);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.SMALL,
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result).toEqual({
+					success: false,
+					affectedDevices: 0,
+					failedDevices: 0,
+					newSetpoint: null,
+				});
+			});
+
+			it('should handle platform execution failure', async () => {
+				mockPlatform.processBatch.mockResolvedValue(false);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.SMALL,
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result).toEqual({
+					success: false,
+					affectedDevices: 0,
+					failedDevices: 1,
+					newSetpoint: null,
+				});
+			});
+
+			it('should handle platform execution error', async () => {
+				mockPlatform.processBatch.mockRejectedValue(new Error('Platform error'));
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.SMALL,
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result).toEqual({
+					success: false,
+					affectedDevices: 0,
+					failedDevices: 1,
+					newSetpoint: null,
+				});
+			});
+
+			it('should return failure for SETPOINT_DELTA without delta parameter', async () => {
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					increase: true,
+				} as ClimateIntentDto;
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(false);
+			});
+
+			it('should return failure for SETPOINT_SET without value parameter', async () => {
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_SET,
+				} as ClimateIntentDto;
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(false);
+			});
+		});
+
+		describe('sensor-only space', () => {
+			it('should return success but not set setpoint (read-only)', async () => {
+				const sensor = createMockSensor('sensor-1', 'Temperature Sensor', 22.5);
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([sensor]);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.SMALL,
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result).toEqual({
+					success: true,
+					affectedDevices: 0,
+					failedDevices: 0,
+					newSetpoint: null,
+				});
+				expect(mockPlatform.processBatch).not.toHaveBeenCalled();
 			});
 		});
 	});
