@@ -6,7 +6,7 @@ export class AddSpacesModule1735049600000 implements MigrationInterface {
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// Create spaces table
 		await queryRunner.query(`
-			CREATE TABLE "spaces_module_spaces" (
+			CREATE TABLE IF NOT EXISTS "spaces_module_spaces" (
 				"id" varchar PRIMARY KEY NOT NULL,
 				"createdAt" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP),
 				"updatedAt" datetime,
@@ -18,24 +18,34 @@ export class AddSpacesModule1735049600000 implements MigrationInterface {
 			)
 		`);
 
-		// Add spaceId column to devices table
+		// Add spaceId column to devices table (if not exists)
+		const devicesColumns = await queryRunner.query(`PRAGMA table_info("devices_module_devices")`);
+		const devicesHasSpaceId = devicesColumns.some((col: { name: string }) => col.name === 'spaceId');
+
+		if (!devicesHasSpaceId) {
+			await queryRunner.query(`
+				ALTER TABLE "devices_module_devices" ADD COLUMN "spaceId" varchar
+			`);
+		}
+
+		// Create index on devices.spaceId (if not exists)
 		await queryRunner.query(`
-			ALTER TABLE "devices_module_devices" ADD COLUMN "spaceId" varchar
+			CREATE INDEX IF NOT EXISTS "IDX_devices_spaceId" ON "devices_module_devices" ("spaceId")
 		`);
 
-		// Create index on devices.spaceId
-		await queryRunner.query(`
-			CREATE INDEX "IDX_devices_spaceId" ON "devices_module_devices" ("spaceId")
-		`);
+		// Add spaceId column to displays table (if not exists)
+		const displaysColumns = await queryRunner.query(`PRAGMA table_info("displays_module_displays")`);
+		const displaysHasSpaceId = displaysColumns.some((col: { name: string }) => col.name === 'spaceId');
 
-		// Add spaceId column to displays table
-		await queryRunner.query(`
-			ALTER TABLE "displays_module_displays" ADD COLUMN "spaceId" varchar
-		`);
+		if (!displaysHasSpaceId) {
+			await queryRunner.query(`
+				ALTER TABLE "displays_module_displays" ADD COLUMN "spaceId" varchar
+			`);
+		}
 
-		// Create index on displays.spaceId
+		// Create index on displays.spaceId (if not exists)
 		await queryRunner.query(`
-			CREATE INDEX "IDX_displays_spaceId" ON "displays_module_displays" ("spaceId")
+			CREATE INDEX IF NOT EXISTS "IDX_displays_spaceId" ON "displays_module_displays" ("spaceId")
 		`);
 	}
 

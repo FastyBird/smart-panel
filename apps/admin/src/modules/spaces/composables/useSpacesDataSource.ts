@@ -120,11 +120,11 @@ export const useSpacesDataSource = (): IUseSpacesDataSource => {
 			return true;
 		}
 
-		if (firstLoad.value) {
-			return false;
+		if (!firstLoad.value) {
+			return true;
 		}
 
-		return semaphore.value.fetching.items;
+		return false;
 	});
 
 	const loaded = computed<boolean>((): boolean => {
