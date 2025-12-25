@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel
 Size: medium
 Parent: FEATURE-DASHBOARD-SPACE-PAGE
-Status: planned
+Status: completed
 
 ## 1. Business goal
 
@@ -58,15 +58,15 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] Backend provides a stable API to trigger lighting intents for a space.
-- [ ] Backend applies commands only to devices in the target space.
-- [ ] Brightness delta is applied only when supported; otherwise no-op.
-- [ ] Panel provides the intent controls in SpacePage Lights section.
-- [ ] System is deterministic and safe: no unhandled exceptions if a space has no lights.
-- [ ] Unit tests for backend intent service covering:
-  - no lights in space
-  - on/off only lights
-  - dimmable lights
+- [x] Backend provides a stable API to trigger lighting intents for a space.
+- [x] Backend applies commands only to devices in the target space.
+- [x] Brightness delta is applied only when supported; otherwise no-op.
+- [x] Panel provides the intent controls in SpacePage Lights section.
+- [x] System is deterministic and safe: no unhandled exceptions if a space has no lights.
+- [x] Unit tests for backend intent service covering:
+  - [x] no lights in space
+  - [x] on/off only lights
+  - [x] dimmable lights
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

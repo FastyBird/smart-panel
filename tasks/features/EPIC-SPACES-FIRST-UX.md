@@ -4,7 +4,7 @@ Type: chore
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -50,21 +50,21 @@ I want a Spaces-first experience that requires minimal configuration and provide
 ## 4. Acceptance criteria
 
 - [ ] Child tasks are completed and meet their acceptance criteria:
-  - [ ] FEATURE-SPACES-MODULE
-  - [ ] TECH-SPACES-ONBOARDING-WIZARD
-  - [ ] FEATURE-DASHBOARD-SPACE-PAGE
-  - [ ] FEATURE-SPACE-INTENTS-LIGHTING-MVP
+  - [x] FEATURE-SPACES-MODULE
+  - [ ] TECH-SPACES-ONBOARDING-WIZARD (not yet implemented)
+  - [x] FEATURE-DASHBOARD-SPACE-PAGE
+  - [x] FEATURE-SPACE-INTENTS-LIGHTING-MVP
 - [ ] An admin can complete an end-to-end setup in under ~10 minutes for a typical home:
-  - create/confirm spaces
-  - assign devices/displays to spaces
-  - generate/create SpacePage(s)
-  - set SpacePage as Home for each display
-- [ ] A wall panel user can:
-  - see a Space-first home screen
-  - control lighting via intent controls (On/Off, Work/Relax/Night, Brightness +/-)
-  - swipe to other existing pages (tiles/buttons) if configured
-- [ ] All changes remain backward compatible (no forced migration of existing dashboards).
-- [ ] Tests are present for new backend logic and critical UI rendering paths.
+  - [x] create/confirm spaces
+  - [x] assign devices/displays to spaces
+  - [x] generate/create SpacePage(s)
+  - [x] set SpacePage as Home for each display
+- [x] A wall panel user can:
+  - [x] see a Space-first home screen
+  - [x] control lighting via intent controls (On/Off, Work/Relax/Night, Brightness +/-)
+  - [x] swipe to other existing pages (tiles/buttons) if configured
+- [x] All changes remain backward compatible (no forced migration of existing dashboards).
+- [x] Tests are present for new backend logic and critical UI rendering paths.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
