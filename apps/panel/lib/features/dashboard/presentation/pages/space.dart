@@ -33,6 +33,18 @@ class _SpacePageState extends State<SpacePage> {
   bool _isLoading = false;
   LightingMode? _activeMode;
 
+  // TODO: Replace with localizations after running `flutter gen-l10n`
+  // The localization strings are defined in app_en.arb and app_cs.arb
+  static const String _lightingControlsTitle = 'Lighting Controls';
+  static const String _modeOff = 'Off';
+  static const String _modeWork = 'Work';
+  static const String _modeRelax = 'Relax';
+  static const String _modeNight = 'Night';
+  static const String _devicesTitle = 'Devices';
+  static const String _devicesPlaceholder =
+      'Devices in this space will be displayed here';
+  static const String _actionSuccess = 'Action completed successfully';
+
   Future<void> _executeLightingIntent(LightingMode mode) async {
     if (_isLoading) return;
 
@@ -75,10 +87,9 @@ class _SpacePageState extends State<SpacePage> {
       });
 
       if (mounted) {
-        final localizations = AppLocalizations.of(context)!;
         AlertBar.showSuccess(
           context,
-          message: localizations.action_success,
+          message: _actionSuccess,
         );
       }
     } catch (e) {
@@ -100,8 +111,6 @@ class _SpacePageState extends State<SpacePage> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
     return Scaffold(
       appBar: widget.page.showTopBar
           ? AppTopBar(
@@ -116,11 +125,11 @@ class _SpacePageState extends State<SpacePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Lighting controls section
-              _buildLightingControlsSection(context, localizations),
+              _buildLightingControlsSection(context),
               AppSpacings.spacingLgVertical,
               // Placeholder for device list
               Expanded(
-                child: _buildDevicesSection(context, localizations),
+                child: _buildDevicesSection(context),
               ),
             ],
           ),
@@ -129,15 +138,12 @@ class _SpacePageState extends State<SpacePage> {
     );
   }
 
-  Widget _buildLightingControlsSection(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
+  Widget _buildLightingControlsSection(BuildContext context) {
     return Card(
       elevation: 0,
       color: Theme.of(context).brightness == Brightness.light
-          ? AppColors.lightGray.withValues(alpha: 0.3)
-          : AppColors.dark.withValues(alpha: 0.3),
+          ? AppBgColorLight.page.withValues(alpha: 0.5)
+          : AppBgColorDark.overlay.withValues(alpha: 0.5),
       child: Padding(
         padding: AppSpacings.paddingMd,
         child: Column(
@@ -154,7 +160,7 @@ class _SpacePageState extends State<SpacePage> {
                 ),
                 AppSpacings.spacingSmHorizontal,
                 Text(
-                  localizations.space_lighting_controls_title,
+                  _lightingControlsTitle,
                   style: TextStyle(
                     fontSize: AppFontSize.base,
                     fontWeight: FontWeight.w600,
@@ -170,28 +176,28 @@ class _SpacePageState extends State<SpacePage> {
                   context,
                   LightingMode.off,
                   MdiIcons.power,
-                  localizations.space_lighting_mode_off,
+                  _modeOff,
                   isActive: _activeMode == null,
                 ),
                 _buildLightingModeButton(
                   context,
                   LightingMode.work,
                   MdiIcons.desktopClassic,
-                  localizations.space_lighting_mode_work,
+                  _modeWork,
                   isActive: _activeMode == LightingMode.work,
                 ),
                 _buildLightingModeButton(
                   context,
                   LightingMode.relax,
                   MdiIcons.sofaOutline,
-                  localizations.space_lighting_mode_relax,
+                  _modeRelax,
                   isActive: _activeMode == LightingMode.relax,
                 ),
                 _buildLightingModeButton(
                   context,
                   LightingMode.night,
                   MdiIcons.weatherNight,
-                  localizations.space_lighting_mode_night,
+                  _modeNight,
                   isActive: _activeMode == LightingMode.night,
                 ),
               ],
@@ -224,8 +230,8 @@ class _SpacePageState extends State<SpacePage> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppBorderRadius.base),
                     color: Theme.of(context).brightness == Brightness.light
-                        ? AppColors.lightGray.withValues(alpha: 0.5)
-                        : AppColors.dark.withValues(alpha: 0.5),
+                        ? AppBgColorLight.page.withValues(alpha: 0.7)
+                        : AppBgColorDark.overlay.withValues(alpha: 0.7),
                   ),
                   child: Center(
                     child: SizedBox(
@@ -293,17 +299,14 @@ class _SpacePageState extends State<SpacePage> {
     );
   }
 
-  Widget _buildDevicesSection(
-    BuildContext context,
-    AppLocalizations localizations,
-  ) {
+  Widget _buildDevicesSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Icon(
-              MdiIcons.devicesOutline,
+              MdiIcons.formatListBulleted,
               size: _screenService.scale(
                 20,
                 density: _visualDensityService.density,
@@ -311,7 +314,7 @@ class _SpacePageState extends State<SpacePage> {
             ),
             AppSpacings.spacingSmHorizontal,
             Text(
-              localizations.space_devices_title,
+              _devicesTitle,
               style: TextStyle(
                 fontSize: AppFontSize.small,
                 fontWeight: FontWeight.w600,
@@ -337,7 +340,7 @@ class _SpacePageState extends State<SpacePage> {
                 ),
                 AppSpacings.spacingSmVertical,
                 Text(
-                  localizations.space_devices_placeholder,
+                  _devicesPlaceholder,
                   style: TextStyle(
                     color: Theme.of(context).brightness == Brightness.light
                         ? AppTextColorLight.placeholder
