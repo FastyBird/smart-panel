@@ -148,6 +148,7 @@ export class SpacesService {
 
 		const devices = await this.deviceRepository.find({
 			where: { spaceId },
+			relations: ['channels', 'channels.properties'],
 			order: { name: 'ASC' },
 		});
 

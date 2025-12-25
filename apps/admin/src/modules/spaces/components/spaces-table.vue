@@ -35,37 +35,6 @@
 			</div>
 
 			<div
-				v-else-if="noResults && !props.loading"
-				class="h-full w-full leading-normal"
-			>
-				<el-result class="h-full w-full">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:home-group" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:information" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						{{ t('spacesModule.texts.noSpaces') }}
-					</template>
-
-					<template #sub-title>
-						<el-button
-							type="primary"
-							@click="emit('add')"
-						>
-							{{ t('spacesModule.buttons.add.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</div>
-
-			<div
 				v-else-if="props.filtersActive && !props.loading"
 				class="h-full w-full leading-normal"
 			>
@@ -97,6 +66,37 @@
 							</template>
 
 							{{ t('spacesModule.buttons.resetFilters.title') }}
+						</el-button>
+					</template>
+				</el-result>
+			</div>
+
+			<div
+				v-else-if="noResults && !props.loading"
+				class="h-full w-full leading-normal"
+			>
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child :size="80">
+							<template #primary>
+								<icon icon="mdi:home-group" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:information" />
+							</template>
+						</icon-with-child>
+					</template>
+
+					<template #title>
+						{{ t('spacesModule.texts.noSpaces') }}
+					</template>
+
+					<template #sub-title>
+						<el-button
+							type="primary"
+							@click="emit('add')"
+						>
+							{{ t('spacesModule.buttons.add.title') }}
 						</el-button>
 					</template>
 				</el-result>

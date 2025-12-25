@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsEnum, IsOptional, ValidateIf, ValidateNested } from 'class-validator';
+import { IsDefined, IsEnum, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -22,8 +22,8 @@ export class LightingIntentDto {
 		example: LightingMode.RELAX,
 	})
 	@Expose()
-	@IsOptional()
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.SET_MODE)
+	@IsDefined({ message: '[{"field":"mode","reason":"Mode is required when type is SET_MODE."}]' })
 	@IsEnum(LightingMode, { message: '[{"field":"mode","reason":"Mode must be a valid lighting mode."}]' })
 	mode?: LightingMode;
 
@@ -33,8 +33,8 @@ export class LightingIntentDto {
 		example: BrightnessDelta.MEDIUM,
 	})
 	@Expose()
-	@IsOptional()
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.BRIGHTNESS_DELTA)
+	@IsDefined({ message: '[{"field":"delta","reason":"Delta is required when type is BRIGHTNESS_DELTA."}]' })
 	@IsEnum(BrightnessDelta, { message: '[{"field":"delta","reason":"Delta must be a valid brightness delta."}]' })
 	delta?: BrightnessDelta;
 
@@ -45,8 +45,8 @@ export class LightingIntentDto {
 		example: true,
 	})
 	@Expose()
-	@IsOptional()
 	@ValidateIf((o: LightingIntentDto) => o.type === LightingIntentType.BRIGHTNESS_DELTA)
+	@IsDefined({ message: '[{"field":"increase","reason":"Increase direction is required for brightness delta."}]' })
 	increase?: boolean;
 }
 
