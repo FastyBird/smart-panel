@@ -45,8 +45,8 @@ class _SpacePageState extends State<SpacePage> {
   ClimateState _climateState = ClimateState.loading;
   double? _currentTemperature;
   double? _targetTemperature;
-  double _minSetpoint = 5.0;
-  double _maxSetpoint = 35.0;
+  final double _minSetpoint = 5.0;
+  final double _maxSetpoint = 35.0;
 
   // TODO: Replace with localizations after running `flutter gen-l10n`
   // The localization strings are defined in app_en.arb and app_cs.arb
@@ -442,7 +442,7 @@ class _SpacePageState extends State<SpacePage> {
         Text(
           tempText,
           style: TextStyle(
-            fontSize: AppFontSize.extraLarge,
+            fontSize: AppFontSize.large,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -515,7 +515,7 @@ class _SpacePageState extends State<SpacePage> {
                 Text(
                   targetText,
                   style: TextStyle(
-                    fontSize: AppFontSize.extraLarge,
+                    fontSize: AppFontSize.large,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
