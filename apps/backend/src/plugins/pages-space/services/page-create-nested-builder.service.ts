@@ -6,6 +6,7 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { toInstance } from '../../../common/utils/transform.utils';
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { IPageNestedCreateBuilder } from '../../../modules/dashboard/entities/dashboard.relations';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { CreateSpacePageDto } from '../dto/create-page.dto';
 import { SpacePageEntity } from '../entities/pages-space.entity';
 import { PAGES_SPACE_PLUGIN_NAME, PAGES_SPACE_TYPE } from '../pages-space.constants';
@@ -18,12 +19,21 @@ export class SpacePageNestedBuilderService implements IPageNestedCreateBuilder {
 		'SpacePageNestedBuilderService',
 	);
 
+	constructor(private readonly spacesService: SpacesService) {}
+
 	supports(dto: CreatePageDto): boolean {
 		return dto.type === PAGES_SPACE_TYPE;
 	}
 
 	async build(dto: CreateSpacePageDto, page: SpacePageEntity): Promise<void> {
 		const dtoInstance = await this.validateDto<CreateSpacePageDto>(CreateSpacePageDto, dto);
+
+		// Verify the space exists before setting it
+		const space = await this.spacesService.findOne(dtoInstance.space_id);
+
+		if (!space) {
+			throw new PagesSpaceValidationException(`Space with id '${dtoInstance.space_id}' does not exist.`);
+		}
 
 		// Set the space ID on the page entity
 		page.spaceId = dtoInstance.space_id;

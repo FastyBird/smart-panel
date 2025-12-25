@@ -115,23 +115,25 @@ export class SpacesService {
 
 		const space = await this.getOneOrThrow(id);
 
-		// Set spaceId to null for all devices in this space
-		await this.deviceRepository
-			.createQueryBuilder()
-			.update()
-			.set({ spaceId: null })
-			.where('spaceId = :id', { id })
-			.execute();
+		await this.dataSource.transaction(async (manager) => {
+			// Set spaceId to null for all devices in this space
+			await manager
+				.createQueryBuilder()
+				.update(DeviceEntity)
+				.set({ spaceId: null })
+				.where('spaceId = :id', { id })
+				.execute();
 
-		// Set spaceId to null for all displays in this space
-		await this.displayRepository
-			.createQueryBuilder()
-			.update()
-			.set({ spaceId: null })
-			.where('spaceId = :id', { id })
-			.execute();
+			// Set spaceId to null for all displays in this space
+			await manager
+				.createQueryBuilder()
+				.update(DisplayEntity)
+				.set({ spaceId: null })
+				.where('spaceId = :id', { id })
+				.execute();
 
-		await this.repository.remove(space);
+			await manager.remove(space);
+		});
 
 		this.logger.debug(`Successfully removed space with id=${id}`);
 

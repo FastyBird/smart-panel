@@ -206,7 +206,6 @@ import { useRouter } from 'vue-router';
 import { AppBar } from '../../../common';
 import { useSpacesOnboarding, type DeviceInfo, type DisplayInfo } from '../composables';
 import { RouteNames } from '../spaces.constants';
-import type { ISpace } from '../store';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -214,6 +213,7 @@ const router = useRouter();
 const {
 	isLoading,
 	currentStep,
+	existingSpaces,
 	spaces,
 	proposedSpaces,
 	deviceAssignments,
@@ -238,7 +238,6 @@ const {
 const newSpaceName = ref('');
 const devices = ref<DeviceInfo[]>([]);
 const displays = ref<DisplayInfo[]>([]);
-const existingSpaces = ref<ISpace[]>([]);
 
 const breadcrumbs = computed(() => [
 	{ label: t('spacesModule.headings.spaces'), route: RouteNames.SPACES },
@@ -260,7 +259,7 @@ const spaceSummaryData = computed(() =>
 onMounted(async () => {
 	try {
 		// Fetch existing data
-		existingSpaces.value = await fetchExistingSpaces();
+		await fetchExistingSpaces();
 		devices.value = await fetchDevices();
 		displays.value = await fetchDisplays();
 

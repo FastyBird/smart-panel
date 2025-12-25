@@ -27,6 +27,7 @@ export interface DisplayInfo {
 
 interface WizardState {
 	currentStep: number;
+	existingSpaces: ISpace[];
 	spaces: ISpace[];
 	proposedSpaces: ProposedSpace[];
 	deviceAssignments: Record<string, string | null>; // deviceId -> spaceId
@@ -62,6 +63,7 @@ export const useSpacesOnboarding = () => {
 
 	const state = reactive<WizardState>({
 		currentStep: 0,
+		existingSpaces: [],
 		spaces: [],
 		proposedSpaces: [],
 		deviceAssignments: {},
@@ -73,6 +75,7 @@ export const useSpacesOnboarding = () => {
 	const isLoading = computed(() => state.isLoading);
 	const error = computed(() => state.error);
 	const currentStep = computed(() => state.currentStep);
+	const existingSpaces = computed(() => state.existingSpaces);
 	const spaces = computed(() => state.spaces);
 	const proposedSpaces = computed(() => state.proposedSpaces);
 	const deviceAssignments = computed(() => state.deviceAssignments);
@@ -144,9 +147,12 @@ export const useSpacesOnboarding = () => {
 				for (const deviceId of proposal.deviceIds) {
 					state.deviceAssignments[deviceId] = space.id;
 				}
+
+				// Mark proposal as no longer selected to prevent duplicate creation on back/next
+				proposal.selected = false;
 			}
 
-			state.spaces = createdSpaces;
+			state.spaces = [...state.spaces, ...createdSpaces];
 
 			return createdSpaces;
 		} catch (err) {
@@ -302,8 +308,8 @@ export const useSpacesOnboarding = () => {
 		state.proposedSpaces.splice(index, 1);
 	};
 
-	const initializeFromExistingSpaces = (existingSpaces: ISpace[]): void => {
-		state.spaces = [...existingSpaces];
+	const initializeFromExistingSpaces = (existingSpacesData: ISpace[]): void => {
+		state.existingSpaces = [...existingSpacesData];
 	};
 
 	const initializeDeviceAssignments = (devices: DeviceInfo[]): void => {
@@ -389,7 +395,7 @@ export const useSpacesOnboarding = () => {
 				draft: false,
 			}));
 
-			state.spaces = spaces;
+			state.existingSpaces = spaces;
 
 			return spaces;
 		} catch (err) {
@@ -401,7 +407,7 @@ export const useSpacesOnboarding = () => {
 	};
 
 	const getSummary = () => {
-		const spaceCount = state.spaces.length;
+		const spaceCount = state.existingSpaces.length + state.spaces.length;
 		const assignedDevices = Object.values(state.deviceAssignments).filter((v) => v !== null).length;
 		const assignedDisplays = Object.values(state.displayAssignments).filter((v) => v !== null).length;
 		const unassignedDevices = Object.values(state.deviceAssignments).filter((v) => v === null).length;
@@ -438,6 +444,7 @@ export const useSpacesOnboarding = () => {
 		isLoading,
 		error,
 		currentStep,
+		existingSpaces,
 		spaces,
 		proposedSpaces,
 		deviceAssignments,
