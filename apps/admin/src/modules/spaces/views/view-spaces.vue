@@ -324,13 +324,19 @@ onBeforeMount((): void => {
 		throw new SpacesApiException('Something went wrong', null, err);
 	});
 
-	showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.SPACES_EDIT || matched.name === RouteNames.SPACE_EDIT) !== undefined;
+	showDrawer.value =
+		route.matched.find(
+			(matched) => matched.name === RouteNames.SPACES_EDIT || matched.name === RouteNames.SPACE_EDIT || matched.name === RouteNames.SPACE
+		) !== undefined;
 });
 
 watch(
 	(): string => route.path,
 	(): void => {
-		showDrawer.value = route.matched.find((matched) => matched.name === RouteNames.SPACES_EDIT || matched.name === RouteNames.SPACE_EDIT) !== undefined;
+		showDrawer.value =
+			route.matched.find(
+				(matched) => matched.name === RouteNames.SPACES_EDIT || matched.name === RouteNames.SPACE_EDIT || matched.name === RouteNames.SPACE
+			) !== undefined;
 	}
 );
 </script>

@@ -100,7 +100,7 @@ export const useSpacesDataSource = (): IUseSpacesDataSource => {
 					}
 				},
 			],
-			[sortDir.value === 'asc' ? 'asc' : 'desc']
+			[sortDir.value ?? 'asc']
 		);
 	});
 
