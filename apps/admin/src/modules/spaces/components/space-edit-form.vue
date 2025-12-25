@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import { ElButton, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
@@ -63,6 +63,7 @@ interface IProps {
 interface IEmits {
 	(e: 'saved', space: ISpace): void;
 	(e: 'cancel'): void;
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }
 
 const props = withDefaults(defineProps<IProps>(), {
@@ -79,17 +80,37 @@ const spacesStore = storesManager.getStore(spacesStoreKey);
 const formRef = ref<FormInstance>();
 const saving = ref(false);
 
-const formData = reactive({
+const initialValues = {
 	name: props.space?.name ?? '',
 	type: props.space?.type ?? SpaceType.ROOM,
 	description: props.space?.description ?? '',
 	icon: props.space?.icon ?? '',
 	displayOrder: props.space?.displayOrder ?? 0,
-});
+};
+
+const formData = reactive({ ...initialValues });
 
 const rules: FormRules = {
 	name: [{ required: true, message: t('spacesModule.fields.spaces.name.validation.required'), trigger: 'blur' }],
 };
+
+const formChanged = computed<boolean>((): boolean => {
+	return (
+		formData.name !== initialValues.name ||
+		formData.type !== initialValues.type ||
+		formData.description !== initialValues.description ||
+		formData.icon !== initialValues.icon ||
+		formData.displayOrder !== initialValues.displayOrder
+	);
+});
+
+watch(
+	(): boolean => formChanged.value,
+	(val: boolean): void => {
+		emit('update:remote-form-changed', val);
+	},
+	{ immediate: true }
+);
 
 watch(
 	() => props.space,
@@ -100,6 +121,12 @@ watch(
 			formData.description = space.description ?? '';
 			formData.icon = space.icon ?? '';
 			formData.displayOrder = space.displayOrder;
+			// Update initial values when space prop changes
+			initialValues.name = space.name;
+			initialValues.type = space.type;
+			initialValues.description = space.description ?? '';
+			initialValues.icon = space.icon ?? '';
+			initialValues.displayOrder = space.displayOrder;
 		}
 	}
 );

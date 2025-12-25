@@ -3,7 +3,11 @@
 	<template v-if="isLGDevice">
 		<div class="p-4">
 			<h3 class="text-lg font-semibold mb-4">{{ t('spacesModule.headings.add') }}</h3>
-			<space-edit-form @saved="onSaved" @cancel="onCancel" />
+			<space-edit-form
+				v-model:remote-form-changed="remoteFormChanged"
+				@saved="onSaved"
+				@cancel="onCancel"
+			/>
 		</div>
 	</template>
 
@@ -16,12 +20,16 @@
 		size="500px"
 		@closed="onDrawerClosed"
 	>
-		<space-edit-form @saved="onSaved" @cancel="onCancel" />
+		<space-edit-form
+			v-model:remote-form-changed="remoteFormChanged"
+			@saved="onSaved"
+			@cancel="onCancel"
+		/>
 	</el-drawer>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 import { ElDrawer, ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -32,12 +40,28 @@ import { SpaceEditForm } from '../components/components';
 import { RouteNames } from '../spaces.constants';
 import type { ISpace } from '../store';
 
+const emit = defineEmits<{
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
+}>();
+
 const { t } = useI18n();
 const router = useRouter();
 
 const { isLGDevice } = useBreakpoints();
 
 const isOpen = ref(true);
+const remoteFormChanged = ref(false);
+
+onMounted((): void => {
+	emit('update:remote-form-changed', remoteFormChanged.value);
+});
+
+watch(
+	(): boolean => remoteFormChanged.value,
+	(val: boolean): void => {
+		emit('update:remote-form-changed', val);
+	}
+);
 
 const onDrawerClosed = (): void => {
 	router.push({ name: RouteNames.SPACES });
