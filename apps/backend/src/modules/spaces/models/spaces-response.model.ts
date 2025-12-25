@@ -196,3 +196,157 @@ export class LightingIntentResponseModel extends BaseSuccessResponseModel<Lighti
 	@Type(() => LightingIntentResultDataModel)
 	declare data: LightingIntentResultDataModel;
 }
+
+/**
+ * Climate state data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataClimateState' })
+export class ClimateStateDataModel {
+	@ApiProperty({
+		name: 'has_climate',
+		description: 'Whether the space has climate-capable devices',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_climate' })
+	hasClimate: boolean;
+
+	@ApiProperty({
+		name: 'current_temperature',
+		description: 'Current temperature reading in degrees Celsius',
+		type: 'number',
+		nullable: true,
+		example: 22.5,
+	})
+	@Expose({ name: 'current_temperature' })
+	currentTemperature: number | null;
+
+	@ApiProperty({
+		name: 'target_temperature',
+		description: 'Current target/setpoint temperature in degrees Celsius',
+		type: 'number',
+		nullable: true,
+		example: 21.0,
+	})
+	@Expose({ name: 'target_temperature' })
+	targetTemperature: number | null;
+
+	@ApiProperty({
+		name: 'min_setpoint',
+		description: 'Minimum allowed setpoint temperature',
+		type: 'number',
+		example: 5,
+	})
+	@Expose({ name: 'min_setpoint' })
+	minSetpoint: number;
+
+	@ApiProperty({
+		name: 'max_setpoint',
+		description: 'Maximum allowed setpoint temperature',
+		type: 'number',
+		example: 35,
+	})
+	@Expose({ name: 'max_setpoint' })
+	maxSetpoint: number;
+
+	@ApiProperty({
+		name: 'can_set_setpoint',
+		description: 'Whether the space has a thermostat that can adjust setpoint',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'can_set_setpoint' })
+	canSetSetpoint: boolean;
+
+	@ApiProperty({
+		name: 'primary_thermostat_id',
+		description: 'ID of the primary thermostat device',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'primary_thermostat_id' })
+	primaryThermostatId: string | null;
+
+	@ApiProperty({
+		name: 'primary_sensor_id',
+		description: 'ID of the primary temperature sensor device',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'primary_sensor_id' })
+	primarySensorId: string | null;
+}
+
+/**
+ * Response wrapper for climate state
+ */
+@ApiSchema({ name: 'SpacesModuleResClimateState' })
+export class ClimateStateResponseModel extends BaseSuccessResponseModel<ClimateStateDataModel> {
+	@ApiProperty({
+		description: 'The climate state data for the space',
+		type: () => ClimateStateDataModel,
+	})
+	@Expose()
+	@Type(() => ClimateStateDataModel)
+	declare data: ClimateStateDataModel;
+}
+
+/**
+ * Climate intent result data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataClimateIntentResult' })
+export class ClimateIntentResultDataModel {
+	@ApiProperty({
+		description: 'Whether the intent was successfully executed',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'affected_devices',
+		description: 'Number of devices affected by the intent',
+		type: 'integer',
+		example: 1,
+	})
+	@Expose({ name: 'affected_devices' })
+	affectedDevices: number;
+
+	@ApiProperty({
+		name: 'failed_devices',
+		description: 'Number of devices that failed to respond',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failed_devices' })
+	failedDevices: number;
+
+	@ApiProperty({
+		name: 'new_setpoint',
+		description: 'The new setpoint value after the intent was executed',
+		type: 'number',
+		nullable: true,
+		example: 21.5,
+	})
+	@Expose({ name: 'new_setpoint' })
+	newSetpoint: number | null;
+}
+
+/**
+ * Response wrapper for climate intent result
+ */
+@ApiSchema({ name: 'SpacesModuleResClimateIntent' })
+export class ClimateIntentResponseModel extends BaseSuccessResponseModel<ClimateIntentResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the climate intent execution',
+		type: () => ClimateIntentResultDataModel,
+	})
+	@Expose()
+	@Type(() => ClimateIntentResultDataModel)
+	declare data: ClimateIntentResultDataModel;
+}

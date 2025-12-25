@@ -13,12 +13,17 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
+import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	ClimateIntentResponseModel,
+	ClimateIntentResultDataModel,
+	ClimateStateDataModel,
+	ClimateStateResponseModel,
 	LightingIntentResponseModel,
 	LightingIntentResultDataModel,
 	ProposedSpaceDataModel,
@@ -281,6 +286,75 @@ export class SpacesController {
 		resultData.failedDevices = result.failedDevices;
 
 		const response = new LightingIntentResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Get(':id/climate')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-climate',
+		summary: 'Get climate state for space',
+		description:
+			'Retrieves the current climate state for a space, including temperature readings, ' +
+			'target setpoint, and information about available climate control capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ClimateStateResponseModel, 'Returns the climate state')
+	@ApiNotFoundResponse('Space not found')
+	async getClimateState(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ClimateStateResponseModel> {
+		this.logger.debug(`Fetching climate state for space with id=${id}`);
+
+		const state = await this.spaceIntentService.getClimateState(id);
+
+		const stateData = new ClimateStateDataModel();
+		stateData.hasClimate = state.hasClimate;
+		stateData.currentTemperature = state.currentTemperature;
+		stateData.targetTemperature = state.targetTemperature;
+		stateData.minSetpoint = state.minSetpoint;
+		stateData.maxSetpoint = state.maxSetpoint;
+		stateData.canSetSetpoint = state.canSetSetpoint;
+		stateData.primaryThermostatId = state.primaryThermostatId;
+		stateData.primarySensorId = state.primarySensorId;
+
+		const response = new ClimateStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Post(':id/intents/climate')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-climate-intent',
+		summary: 'Execute climate intent for space',
+		description:
+			'Executes a climate intent command for the primary thermostat in the space. ' +
+			'Supports setpoint delta (+/- adjustments) and direct setpoint set operations. ' +
+			'The target setpoint is clamped to safe min/max limits.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ClimateIntentResponseModel, 'Returns the intent execution result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiUnprocessableEntityResponse('Invalid intent data')
+	async executeClimateIntent(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqClimateIntentDto,
+	): Promise<ClimateIntentResponseModel> {
+		this.logger.debug(`Executing climate intent for space with id=${id}`);
+
+		const result = await this.spaceIntentService.executeClimateIntent(id, body.data);
+
+		const resultData = new ClimateIntentResultDataModel();
+		resultData.success = result.success;
+		resultData.affectedDevices = result.affectedDevices;
+		resultData.failedDevices = result.failedDevices;
+		resultData.newSetpoint = result.newSetpoint;
+
+		const response = new ClimateIntentResponseModel();
 		response.data = resultData;
 
 		return response;

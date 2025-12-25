@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { Column, Entity } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -72,4 +72,42 @@ export class SpaceEntity extends BaseEntity {
 	)
 	@Column({ type: 'int', default: 0 })
 	displayOrder: number;
+
+	@ApiPropertyOptional({
+		name: 'primary_thermostat_id',
+		description: 'ID of the primary thermostat device for this space (optional admin override)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'primary_thermostat_id' })
+	@IsOptional()
+	@IsUUID('4')
+	@Transform(
+		({ obj }: { obj: { primary_thermostat_id?: string | null; primaryThermostatId?: string | null } }) =>
+			obj.primary_thermostat_id ?? obj.primaryThermostatId,
+		{ toClassOnly: true },
+	)
+	@Column({ nullable: true, default: null })
+	primaryThermostatId: string | null;
+
+	@ApiPropertyOptional({
+		name: 'primary_temperature_sensor_id',
+		description: 'ID of the primary temperature sensor device for this space (optional admin override)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'primary_temperature_sensor_id' })
+	@IsOptional()
+	@IsUUID('4')
+	@Transform(
+		({ obj }: { obj: { primary_temperature_sensor_id?: string | null; primaryTemperatureSensorId?: string | null } }) =>
+			obj.primary_temperature_sensor_id ?? obj.primaryTemperatureSensorId,
+		{ toClassOnly: true },
+	)
+	@Column({ nullable: true, default: null })
+	primaryTemperatureSensorId: string | null;
 }

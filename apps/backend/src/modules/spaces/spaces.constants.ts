@@ -49,3 +49,27 @@ export const BRIGHTNESS_DELTA_STEPS: Record<BrightnessDelta, number> = {
 	[BrightnessDelta.MEDIUM]: 25,
 	[BrightnessDelta.LARGE]: 50,
 };
+
+// Climate Intent Types
+export enum ClimateIntentType {
+	SETPOINT_DELTA = 'setpoint_delta',
+	SETPOINT_SET = 'setpoint_set',
+}
+
+// Climate setpoint step sizes (in degrees)
+export enum SetpointDelta {
+	SMALL = 'small',
+	MEDIUM = 'medium',
+	LARGE = 'large',
+}
+
+// Setpoint delta steps (degrees)
+export const SETPOINT_DELTA_STEPS: Record<SetpointDelta, number> = {
+	[SetpointDelta.SMALL]: 0.5,
+	[SetpointDelta.MEDIUM]: 1.0,
+	[SetpointDelta.LARGE]: 2.0,
+};
+
+// Default safe temperature limits (Celsius)
+export const DEFAULT_MIN_SETPOINT = 5;
+export const DEFAULT_MAX_SETPOINT = 35;

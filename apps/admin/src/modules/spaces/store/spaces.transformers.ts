@@ -40,6 +40,8 @@ export const transformSpaceResponse = (response: ApiSpace): ISpace => {
 		type: apiTypeToSpaceType(response.type),
 		icon: response.icon ?? null,
 		displayOrder: response.display_order ?? 0,
+		primaryThermostatId: response.primary_thermostat_id ?? null,
+		primaryTemperatureSensorId: response.primary_temperature_sensor_id ?? null,
 		createdAt: new Date(response.created_at),
 		updatedAt: response.updated_at ? new Date(response.updated_at) : null,
 		draft: false,
@@ -53,6 +55,8 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 		type: spaceTypeToApiType(data.type),
 		icon: data.icon ?? undefined,
 		display_order: data.displayOrder,
+		primary_thermostat_id: data.primaryThermostatId ?? undefined,
+		primary_temperature_sensor_id: data.primaryTemperatureSensorId ?? undefined,
 	};
 };
 
@@ -63,5 +67,7 @@ export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate 
 		type: spaceTypeToApiType(data.type),
 		icon: data.icon,
 		display_order: data.displayOrder,
+		primary_thermostat_id: data.primaryThermostatId,
+		primary_temperature_sensor_id: data.primaryTemperatureSensorId,
 	};
 };

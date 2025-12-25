@@ -2,6 +2,7 @@
  * OpenAPI extra models for Spaces module
  */
 import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
+import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
 import { LightingIntentDto, ReqLightingIntentDto } from './dto/lighting-intent.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
@@ -10,6 +11,10 @@ import {
 	BulkAssignmentDataModel,
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	ClimateIntentResponseModel,
+	ClimateIntentResultDataModel,
+	ClimateStateDataModel,
+	ClimateStateResponseModel,
 	LightingIntentResponseModel,
 	LightingIntentResultDataModel,
 	ProposedSpaceDataModel,
@@ -28,6 +33,8 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqBulkAssignDto,
 	LightingIntentDto,
 	ReqLightingIntentDto,
+	ClimateIntentDto,
+	ReqClimateIntentDto,
 	// Response models
 	SpaceResponseModel,
 	SpacesResponseModel,
@@ -38,6 +45,10 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ProposedSpacesResponseModel,
 	LightingIntentResultDataModel,
 	LightingIntentResponseModel,
+	ClimateStateDataModel,
+	ClimateStateResponseModel,
+	ClimateIntentResultDataModel,
+	ClimateIntentResponseModel,
 	// Entities
 	SpaceEntity,
 ];
