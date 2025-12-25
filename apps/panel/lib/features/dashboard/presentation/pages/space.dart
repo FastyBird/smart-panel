@@ -41,9 +41,33 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      // TODO: Implement actual API call to execute lighting intent
-      // The API endpoint is: POST /api/v1/modules/spaces/spaces/{id}/intents/lighting
-      // For now, we simulate the action with a delay
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example implementation:
+      //
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final request = switch (mode) {
+      //   LightingMode.off => SpacesModuleCreateSpaceLightingIntentReq(
+      //       data: SpacesModuleCreateSpaceLightingIntentReqDataUnion.spacesModuleLightingIntentOff(
+      //         SpacesModuleLightingIntentOff(type: SpacesModuleLightingIntentType.off),
+      //       ),
+      //     ),
+      //   LightingMode.work => SpacesModuleCreateSpaceLightingIntentReq(
+      //       data: SpacesModuleCreateSpaceLightingIntentReqDataUnion.spacesModuleLightingIntentSetMode(
+      //         SpacesModuleLightingIntentSetMode(
+      //           type: SpacesModuleLightingIntentType.setMode,
+      //           mode: SpacesModuleLightingMode.work,
+      //         ),
+      //       ),
+      //     ),
+      //   LightingMode.relax => ... (mode: SpacesModuleLightingMode.relax),
+      //   LightingMode.night => ... (mode: SpacesModuleLightingMode.night),
+      // };
+      // await spacesApi.createSpacesModuleSpaceLightingIntent(
+      //   id: widget.page.spaceId,
+      //   spacesModuleCreateSpaceLightingIntentReq: request,
+      // );
+      //
+      // For now, simulate the action with a delay
       await Future.delayed(const Duration(milliseconds: 500));
 
       setState(() {
