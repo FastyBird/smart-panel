@@ -540,7 +540,7 @@ export class SpaceIntentService {
 
 		const command: IDevicePropertyData = {
 			device: thermostatDevice,
-			channel: climateDeviceInfo.setpointChannel!,
+			channel: climateDeviceInfo.setpointChannel,
 			property: climateDeviceInfo.setpointProperty,
 			value: newSetpoint,
 		};
