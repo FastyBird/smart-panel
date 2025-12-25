@@ -27,6 +27,8 @@ describe('SpacesService', () => {
 		type: SpaceType.ROOM,
 		icon: 'mdi:sofa',
 		displayOrder: 0,
+		primaryThermostatId: null,
+		primaryTemperatureSensorId: null,
 		createdAt: new Date(),
 		updatedAt: null,
 	};
