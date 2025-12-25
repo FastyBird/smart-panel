@@ -1,9 +1,6 @@
-/*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-assignment
-*/
-import { v4 as uuid } from 'uuid';
+/* eslint-disable @typescript-eslint/unbound-method */
 import { DataSource, Repository, UpdateQueryBuilder, UpdateResult } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
