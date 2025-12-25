@@ -255,6 +255,107 @@ export class SpacesService {
 		return unassigned;
 	}
 
+	async proposeSpaces(): Promise<{ name: string; deviceIds: string[]; deviceCount: number }[]> {
+		this.logger.debug('Proposing spaces based on device names');
+
+		// Common room/space tokens to look for in device names
+		const roomTokens = [
+			'living room',
+			'bedroom',
+			'master bedroom',
+			'guest bedroom',
+			'kids bedroom',
+			'children bedroom',
+			'kitchen',
+			'bathroom',
+			'master bathroom',
+			'guest bathroom',
+			'hallway',
+			'corridor',
+			'entrance',
+			'entry',
+			'foyer',
+			'garage',
+			'basement',
+			'attic',
+			'office',
+			'home office',
+			'study',
+			'dining room',
+			'laundry',
+			'utility room',
+			'patio',
+			'balcony',
+			'terrace',
+			'garden',
+			'backyard',
+			'front yard',
+			'porch',
+			'nursery',
+			'playroom',
+			'game room',
+			'media room',
+			'theater',
+			'gym',
+			'workshop',
+			'closet',
+			'pantry',
+			'mudroom',
+			'sunroom',
+			'pool',
+			'spa',
+			'sauna',
+		];
+
+		// Get all devices (including those already assigned, for completeness)
+		const devices = await this.deviceRepository.find({
+			select: ['id', 'name'],
+		});
+
+		// Map to store space name -> device IDs
+		const spaceMap = new Map<string, string[]>();
+
+		for (const device of devices) {
+			const deviceNameLower = device.name.toLowerCase();
+
+			// Try to match room tokens in device name
+			let matchedRoom: string | null = null;
+			let matchLength = 0;
+
+			for (const token of roomTokens) {
+				if (deviceNameLower.includes(token) && token.length > matchLength) {
+					matchedRoom = token;
+					matchLength = token.length;
+				}
+			}
+
+			if (matchedRoom) {
+				// Capitalize the matched room name properly
+				const spaceName = matchedRoom
+					.split(' ')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' ');
+
+				const existingDevices = spaceMap.get(spaceName) ?? [];
+				existingDevices.push(device.id);
+				spaceMap.set(spaceName, existingDevices);
+			}
+		}
+
+		// Convert map to array and sort by device count (descending)
+		const proposals = Array.from(spaceMap.entries())
+			.map(([name, deviceIds]) => ({
+				name,
+				deviceIds,
+				deviceCount: deviceIds.length,
+			}))
+			.sort((a, b) => b.deviceCount - a.deviceCount);
+
+		this.logger.debug(`Proposed ${proposals.length} spaces from device names`);
+
+		return proposals;
+	}
+
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,

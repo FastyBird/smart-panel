@@ -3,6 +3,7 @@
 	"description": "Manage your spaces (rooms and zones)",
 	"headings": {
 		"list": "Spaces",
+		"spaces": "Spaces",
 		"detail": "Space Detail",
 		"add": "Add Space",
 		"edit": "Edit Space",
@@ -132,6 +133,18 @@
 		},
 		"delete": {
 			"title": "Delete"
+		},
+		"previous": {
+			"title": "Previous"
+		},
+		"next": {
+			"title": "Next"
+		},
+		"finish": {
+			"title": "Finish"
+		},
+		"onboarding": {
+			"title": "Setup Wizard"
 		}
 	},
 	"detail": {
@@ -161,6 +174,51 @@
 		"types": {
 			"room": "Room",
 			"zone": "Zone"
+		}
+	},
+	"onboarding": {
+		"title": "Spaces Setup Wizard",
+		"devices": "devices",
+		"displays": "displays",
+		"selectSpace": "Select space",
+		"deviceName": "Device Name",
+		"assignedSpace": "Assigned Space",
+		"spaceName": "Space Name",
+		"steps": {
+			"spaces": {
+				"title": "Create Spaces",
+				"description": "Review the proposed spaces based on your device names, or add your own custom spaces.",
+				"proposed": "Proposed Spaces",
+				"existing": "Existing Spaces",
+				"addManual": "Add Custom Space",
+				"placeholder": "Enter space name (e.g., Living Room)",
+				"noProposals": "No spaces could be detected from your device names. Add spaces manually below."
+			},
+			"displays": {
+				"title": "Assign Displays",
+				"description": "Assign each display to a space. This determines which space the display will show by default.",
+				"noDisplays": "No displays registered yet."
+			},
+			"devices": {
+				"title": "Assign Devices",
+				"description": "Assign devices to spaces. Devices will be pre-assigned based on their names if detected.",
+				"noDevices": "No devices found."
+			},
+			"summary": {
+				"title": "Summary",
+				"description": "Review your configuration before applying changes."
+			}
+		},
+		"summary": {
+			"totalSpaces": "Total Spaces",
+			"assignedDevices": "Assigned Devices",
+			"unassignedDevices": "Unassigned Devices",
+			"assignedDisplays": "Assigned Displays",
+			"bySpace": "Assignments by Space"
+		},
+		"messages": {
+			"spacesCreated": "{count} space(s) created successfully",
+			"completed": "Onboarding complete! {devices} device(s) and {displays} display(s) assigned."
 		}
 	}
 }

@@ -24,6 +24,15 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'onboarding',
+				name: RouteNames.SPACES_ONBOARDING,
+				component: () => import('../views/view-spaces-onboarding.vue'),
+				meta: {
+					guards: { authenticated: true },
+					title: 'Spaces Onboarding',
+				},
+			},
+			{
 				path: ':id',
 				name: RouteNames.SPACE,
 				component: () => import('../views/view-space.vue'),

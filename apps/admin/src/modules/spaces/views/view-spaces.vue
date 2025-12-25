@@ -43,12 +43,18 @@
 		icon="mdi:home-group"
 	>
 		<template #extra>
-			<el-button
-				type="primary"
-				@click="onAddSpace"
-			>
-				{{ t('spacesModule.buttons.add.title') }}
-			</el-button>
+			<div class="flex gap-2">
+				<el-button @click="onOnboarding">
+					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
+					{{ t('spacesModule.buttons.onboarding.title') }}
+				</el-button>
+				<el-button
+					type="primary"
+					@click="onAddSpace"
+				>
+					{{ t('spacesModule.buttons.add.title') }}
+				</el-button>
+			</div>
 		</template>
 	</view-header>
 
@@ -303,6 +309,12 @@ const onResetFilters = (): void => {
 const onAdjustList = (): void => {
 	showDrawer.value = true;
 	adjustList.value = true;
+};
+
+const onOnboarding = (): void => {
+	router.push({
+		name: RouteNames.SPACES_ONBOARDING,
+	});
 };
 
 onBeforeMount((): void => {

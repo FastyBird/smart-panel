@@ -103,3 +103,50 @@ export class BulkAssignmentResponseModel extends BaseSuccessResponseModel<BulkAs
 	@Type(() => BulkAssignmentResultDataModel)
 	declare data: BulkAssignmentResultDataModel;
 }
+
+/**
+ * Proposed space data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataProposedSpace' })
+export class ProposedSpaceDataModel {
+	@ApiProperty({
+		description: 'Proposed space name',
+		type: 'string',
+		example: 'Living Room',
+	})
+	@Expose()
+	name: string;
+
+	@ApiProperty({
+		name: 'device_ids',
+		description: 'Array of device IDs that match this space',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6'],
+	})
+	@Expose({ name: 'device_ids' })
+	deviceIds: string[];
+
+	@ApiProperty({
+		name: 'device_count',
+		description: 'Number of devices matching this space',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'device_count' })
+	deviceCount: number;
+}
+
+/**
+ * Response wrapper for proposed spaces
+ */
+@ApiSchema({ name: 'SpacesModuleResProposedSpaces' })
+export class ProposedSpacesResponseModel extends BaseSuccessResponseModel<ProposedSpaceDataModel[]> {
+	@ApiProperty({
+		description: 'Array of proposed spaces based on device names',
+		type: () => [ProposedSpaceDataModel],
+	})
+	@Expose()
+	@Type(() => ProposedSpaceDataModel)
+	declare data: ProposedSpaceDataModel[];
+}

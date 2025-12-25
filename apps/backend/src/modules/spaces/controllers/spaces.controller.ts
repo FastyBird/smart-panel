@@ -18,6 +18,8 @@ import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	ProposedSpaceDataModel,
+	ProposedSpacesResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 } from '../models/spaces-response.model';
@@ -47,6 +49,34 @@ export class SpacesController {
 		const response = new SpacesResponseModel();
 
 		response.data = spaces;
+
+		return response;
+	}
+
+	@Get('propose')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'get-spaces-module-propose',
+		summary: 'Propose spaces from device names',
+		description:
+			'Analyzes device names and proposes space (room) names based on common patterns. ' +
+			'Returns a list of proposed spaces with matching device IDs. Requires owner or admin role.',
+	})
+	@ApiSuccessResponse(ProposedSpacesResponseModel, 'Returns proposed spaces')
+	async proposeSpaces(): Promise<ProposedSpacesResponseModel> {
+		this.logger.debug('Proposing spaces from device names');
+
+		const proposals = await this.spacesService.proposeSpaces();
+
+		const response = new ProposedSpacesResponseModel();
+
+		response.data = proposals.map((p) => {
+			const model = new ProposedSpaceDataModel();
+			model.name = p.name;
+			model.deviceIds = p.deviceIds;
+			model.deviceCount = p.deviceCount;
+			return model;
+		});
 
 		return response;
 	}

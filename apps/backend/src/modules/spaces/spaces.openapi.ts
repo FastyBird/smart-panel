@@ -9,6 +9,8 @@ import {
 	BulkAssignmentDataModel,
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	ProposedSpaceDataModel,
+	ProposedSpacesResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 } from './models/spaces-response.model';
@@ -27,6 +29,8 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	BulkAssignmentDataModel,
 	BulkAssignmentResultDataModel,
 	BulkAssignmentResponseModel,
+	ProposedSpaceDataModel,
+	ProposedSpacesResponseModel,
 	// Entities
 	SpaceEntity,
 ];

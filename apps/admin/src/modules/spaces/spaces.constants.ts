@@ -16,6 +16,7 @@ export const RouteNames = {
 	SPACES_EDIT: 'spaces_module-spaces_edit',
 	SPACE: 'spaces_module-space',
 	SPACE_EDIT: 'spaces_module-space_edit',
+	SPACES_ONBOARDING: 'spaces_module-onboarding',
 };
 
 export enum SpaceType {
