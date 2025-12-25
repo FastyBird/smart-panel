@@ -226,10 +226,8 @@ import { useI18n } from 'vue-i18n';
 import { ElButton, ElIcon, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
-import { useVModel } from '@vueuse/core';
 
 import { IconWithChild } from '../../../common';
-import type { ISpacesFilter } from '../composables/types';
 import type { ISpace } from '../store/spaces.store.types';
 
 import type { ISpacesTableProps } from './spaces-table.types';
@@ -246,7 +244,6 @@ const emit = defineEmits<{
 	(e: 'remove', id: ISpace['id']): void;
 	(e: 'add'): void;
 	(e: 'reset-filters'): void;
-	(e: 'update:filters', filters: ISpacesFilter): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'displayOrder' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
@@ -256,8 +253,6 @@ const { t } = useI18n();
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
 const tableHeight = computed<number>((): number => props.tableHeight ?? 400);
-
-const innerFilters = useVModel(props, 'filters', emit);
 
 const onSortData = ({
 	prop,

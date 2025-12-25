@@ -77,7 +77,7 @@ interface ICategorySelectionStepProps {
 }
 
 // Props are used in template
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 defineProps<ICategorySelectionStepProps>();
 
 const { t } = useI18n();

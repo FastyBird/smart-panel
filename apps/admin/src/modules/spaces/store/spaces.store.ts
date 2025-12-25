@@ -8,7 +8,7 @@ import { useBackend } from '../../../common';
 import { SpacesApiException } from '../spaces.exceptions';
 
 import type { ISpace, ISpaceCreateData, ISpaceEditData, ISpacesFetching, ISpacesStore, ISpacesStoreActions, ISpacesStoreState } from './spaces.store.types';
-import { transformSpaceCreateRequest, transformSpaceEditRequest, transformSpaceResponse } from './spaces.transformers';
+import { type ApiSpace, transformSpaceCreateRequest, transformSpaceEditRequest, transformSpaceResponse } from './spaces.transformers';
 
 const defaultSemaphore = {
 	fetching: {
@@ -235,7 +235,7 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', ISpacesStore>(
 	};
 
 	const onEvent = (payload: { id: ISpace['id']; data: Record<string, unknown> }): void => {
-		const space = transformSpaceResponse(payload.data as any);
+		const space = transformSpaceResponse(payload.data as unknown as ApiSpace);
 		data.value[space.id] = space;
 	};
 

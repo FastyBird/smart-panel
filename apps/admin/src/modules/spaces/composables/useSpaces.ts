@@ -16,7 +16,7 @@ export const useSpaces = (): IUseSpaces => {
 	const storesManager = injectStoresManager();
 	const spacesStore = storesManager.getStore<ISpacesStore>(spacesStoreKey);
 
-	const { data, semaphore, firstLoad } = storeToRefs(spacesStore);
+	const { firstLoad } = storeToRefs(spacesStore);
 
 	const spaces = computed<ISpace[]>(() => spacesStore.findAll());
 

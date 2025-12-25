@@ -13,9 +13,14 @@ import {
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
-import { CreateSpaceDto, ReqCreateSpaceDto } from '../dto/create-space.dto';
+import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
-import { BulkAssignmentResponseModel, BulkAssignmentResultDataModel, SpaceResponseModel, SpacesResponseModel } from '../models/spaces-response.model';
+import {
+	BulkAssignmentResponseModel,
+	BulkAssignmentResultDataModel,
+	SpaceResponseModel,
+	SpacesResponseModel,
+} from '../models/spaces-response.model';
 import { SpacesService } from '../services/spaces.service';
 import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.constants';
 
@@ -121,7 +126,8 @@ export class SpacesController {
 	@ApiOperation({
 		operationId: 'delete-spaces-module-space',
 		summary: 'Delete space',
-		description: 'Removes a space from the system. Devices and displays in this space will be unassigned. Requires owner or admin role.',
+		description:
+			'Removes a space from the system. Devices and displays in this space will be unassigned. Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiNoContentResponse({ description: 'Space deleted successfully' })
@@ -184,7 +190,8 @@ export class SpacesController {
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-assign',
 		summary: 'Bulk assign devices/displays to space',
-		description: 'Assigns multiple devices and/or displays to a space in a single operation. Requires owner or admin role.',
+		description:
+			'Assigns multiple devices and/or displays to a space in a single operation. Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(BulkAssignmentResponseModel, 'Returns the assignment result')

@@ -1,5 +1,16 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsMACAddress, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import {
+	IsBoolean,
+	IsEnum,
+	IsInt,
+	IsMACAddress,
+	IsNumber,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Max,
+	Min,
+} from 'class-validator';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';

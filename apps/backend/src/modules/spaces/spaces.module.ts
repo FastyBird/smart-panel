@@ -20,10 +20,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 	description: SPACES_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [
-		TypeOrmModule.forFeature([SpaceEntity, DeviceEntity, DisplayEntity]),
-		forwardRef(() => ExtensionsModule),
-	],
+	imports: [TypeOrmModule.forFeature([SpaceEntity, DeviceEntity, DisplayEntity]), forwardRef(() => ExtensionsModule)],
 	controllers: [SpacesController],
 	providers: [SpacesService],
 	exports: [SpacesService],

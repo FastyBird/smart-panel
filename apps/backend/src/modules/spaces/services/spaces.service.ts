@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -170,7 +170,10 @@ export class SpacesService {
 		return displays;
 	}
 
-	async bulkAssign(spaceId: string, bulkAssignDto: BulkAssignDto): Promise<{ devicesAssigned: number; displaysAssigned: number }> {
+	async bulkAssign(
+		spaceId: string,
+		bulkAssignDto: BulkAssignDto,
+	): Promise<{ devicesAssigned: number; displaysAssigned: number }> {
 		this.logger.debug(`Bulk assigning to space with id=${spaceId}`);
 
 		// Verify space exists
