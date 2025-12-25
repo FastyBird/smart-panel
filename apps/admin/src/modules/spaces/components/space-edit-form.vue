@@ -34,6 +34,57 @@
 			<el-input-number v-model="formData.displayOrder" :min="0" style="width: 100%" />
 		</el-form-item>
 
+		<!-- Climate Device Overrides Section -->
+		<template v-if="props.space && climateDevices.length > 0">
+			<el-divider>{{ t('spacesModule.fields.spaces.climateOverrides.title') }}</el-divider>
+
+			<el-form-item
+				:label="t('spacesModule.fields.spaces.primaryThermostat.title')"
+				prop="primaryThermostatId"
+			>
+				<el-select
+					v-model="formData.primaryThermostatId"
+					:placeholder="t('spacesModule.fields.spaces.primaryThermostat.placeholder')"
+					clearable
+					style="width: 100%"
+					:loading="loadingDevices"
+				>
+					<el-option
+						v-for="device in thermostatDevices"
+						:key="device.id"
+						:label="device.name"
+						:value="device.id"
+					/>
+				</el-select>
+				<div class="text-xs text-gray-500 mt-1">
+					{{ t('spacesModule.fields.spaces.primaryThermostat.hint') }}
+				</div>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('spacesModule.fields.spaces.primaryTemperatureSensor.title')"
+				prop="primaryTemperatureSensorId"
+			>
+				<el-select
+					v-model="formData.primaryTemperatureSensorId"
+					:placeholder="t('spacesModule.fields.spaces.primaryTemperatureSensor.placeholder')"
+					clearable
+					style="width: 100%"
+					:loading="loadingDevices"
+				>
+					<el-option
+						v-for="device in temperatureSensorDevices"
+						:key="device.id"
+						:label="device.name"
+						:value="device.id"
+					/>
+				</el-select>
+				<div class="text-xs text-gray-500 mt-1">
+					{{ t('spacesModule.fields.spaces.primaryTemperatureSensor.hint') }}
+				</div>
+			</el-form-item>
+		</template>
+
 		<div class="flex gap-2 justify-end mt-4">
 			<el-button @click="onCancel">
 				{{ t('spacesModule.buttons.cancel.title') }}
@@ -46,14 +97,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElButton, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
+import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager } from '../../../common';
-import { SpaceType } from '../spaces.constants';
+import { injectStoresManager, useBackend } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { SpaceType, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import { spacesStoreKey, type ISpace, type ISpaceCreateData } from '../store';
 
 interface IProps {
@@ -66,6 +119,12 @@ interface IEmits {
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }
 
+interface ISpaceDevice {
+	id: string;
+	name: string;
+	category: DevicesModuleDeviceCategory;
+}
+
 const props = withDefaults(defineProps<IProps>(), {
 	space: undefined,
 });
@@ -74,11 +133,14 @@ const emit = defineEmits<IEmits>();
 
 const { t } = useI18n();
 
+const backend = useBackend();
 const storesManager = injectStoresManager();
 const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const formRef = ref<FormInstance>();
 const saving = ref(false);
+const loadingDevices = ref(false);
+const spaceDevices = ref<ISpaceDevice[]>([]);
 
 const initialValues = {
 	name: props.space?.name ?? '',
@@ -86,6 +148,8 @@ const initialValues = {
 	description: props.space?.description ?? '',
 	icon: props.space?.icon ?? '',
 	displayOrder: props.space?.displayOrder ?? 0,
+	primaryThermostatId: props.space?.primaryThermostatId ?? null,
+	primaryTemperatureSensorId: props.space?.primaryTemperatureSensorId ?? null,
 };
 
 const formData = reactive({ ...initialValues });
@@ -94,13 +158,37 @@ const rules: FormRules = {
 	name: [{ required: true, message: t('spacesModule.fields.spaces.name.validation.required'), trigger: 'blur' }],
 };
 
+// Filter devices by category
+const thermostatDevices = computed(() =>
+	spaceDevices.value.filter(d => d.category === DevicesModuleDeviceCategory.thermostat)
+);
+
+const sensorDevices = computed(() =>
+	spaceDevices.value.filter(d => d.category === DevicesModuleDeviceCategory.sensor)
+);
+
+// Temperature sensor options include both thermostats (which have temp sensors) and standalone sensors
+const temperatureSensorDevices = computed(() =>
+	spaceDevices.value.filter(d =>
+		d.category === DevicesModuleDeviceCategory.thermostat ||
+		d.category === DevicesModuleDeviceCategory.sensor
+	)
+);
+
+// All climate-capable devices (for showing/hiding the section)
+const climateDevices = computed(() =>
+	[...thermostatDevices.value, ...sensorDevices.value]
+);
+
 const formChanged = computed<boolean>((): boolean => {
 	return (
 		formData.name !== initialValues.name ||
 		formData.type !== initialValues.type ||
 		formData.description !== initialValues.description ||
 		formData.icon !== initialValues.icon ||
-		formData.displayOrder !== initialValues.displayOrder
+		formData.displayOrder !== initialValues.displayOrder ||
+		formData.primaryThermostatId !== initialValues.primaryThermostatId ||
+		formData.primaryTemperatureSensorId !== initialValues.primaryTemperatureSensorId
 	);
 });
 
@@ -121,15 +209,55 @@ watch(
 			formData.description = space.description ?? '';
 			formData.icon = space.icon ?? '';
 			formData.displayOrder = space.displayOrder;
+			formData.primaryThermostatId = space.primaryThermostatId ?? null;
+			formData.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
 			// Update initial values when space prop changes
 			initialValues.name = space.name;
 			initialValues.type = space.type;
 			initialValues.description = space.description ?? '';
 			initialValues.icon = space.icon ?? '';
 			initialValues.displayOrder = space.displayOrder;
+			initialValues.primaryThermostatId = space.primaryThermostatId ?? null;
+			initialValues.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
+			// Reload devices for the new space
+			loadSpaceDevices();
 		}
 	}
 );
+
+// Load devices for the space when editing
+const loadSpaceDevices = async (): Promise<void> => {
+	if (!props.space) {
+		return;
+	}
+
+	loadingDevices.value = true;
+
+	try {
+		const { data: responseData, error } = await backend.client.GET(
+			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/devices`,
+			{ params: { path: { id: props.space.id } } }
+		);
+
+		if (error || !responseData) {
+			return;
+		}
+
+		spaceDevices.value = (responseData.data ?? []).map((device) => ({
+			id: device.id,
+			name: device.name,
+			category: device.category as DevicesModuleDeviceCategory,
+		}));
+	} finally {
+		loadingDevices.value = false;
+	}
+};
+
+onMounted(() => {
+	if (props.space) {
+		loadSpaceDevices();
+	}
+});
 
 const onSubmit = async (): Promise<void> => {
 	const valid = await formRef.value?.validate().catch(() => false);
@@ -147,6 +275,8 @@ const onSubmit = async (): Promise<void> => {
 			description: formData.description || null,
 			icon: formData.icon || null,
 			displayOrder: formData.displayOrder,
+			primaryThermostatId: formData.primaryThermostatId || null,
+			primaryTemperatureSensorId: formData.primaryTemperatureSensorId || null,
 		};
 
 		let savedSpace: ISpace;

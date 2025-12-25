@@ -136,6 +136,8 @@ export const useSpacesOnboarding = () => {
 					type: apiTypeToSpaceType(response.data.data.type),
 					icon: response.data.data.icon ?? null,
 					displayOrder: response.data.data.display_order ?? 0,
+					primaryThermostatId: response.data.data.primary_thermostat_id ?? null,
+					primaryTemperatureSensorId: response.data.data.primary_temperature_sensor_id ?? null,
 					createdAt: new Date(response.data.data.created_at),
 					updatedAt: response.data.data.updated_at ? new Date(response.data.data.updated_at) : null,
 					draft: false,
@@ -192,6 +194,8 @@ export const useSpacesOnboarding = () => {
 				type: apiTypeToSpaceType(response.data.data.type),
 				icon: response.data.data.icon ?? null,
 				displayOrder: response.data.data.display_order ?? 0,
+				primaryThermostatId: response.data.data.primary_thermostat_id ?? null,
+				primaryTemperatureSensorId: response.data.data.primary_temperature_sensor_id ?? null,
 				createdAt: new Date(response.data.data.created_at),
 				updatedAt: response.data.data.updated_at ? new Date(response.data.data.updated_at) : null,
 				draft: false,
@@ -384,13 +388,15 @@ export const useSpacesOnboarding = () => {
 				throw new SpacesApiException('Failed to fetch spaces');
 			}
 
-			const spaces = response.data.data.map((s) => ({
+			const spaces: ISpace[] = response.data.data.map((s) => ({
 				id: s.id,
 				name: s.name,
 				description: s.description ?? null,
 				type: apiTypeToSpaceType(s.type),
 				icon: s.icon ?? null,
 				displayOrder: s.display_order ?? 0,
+				primaryThermostatId: s.primary_thermostat_id ?? null,
+				primaryTemperatureSensorId: s.primary_temperature_sensor_id ?? null,
 				createdAt: new Date(s.created_at),
 				updatedAt: s.updated_at ? new Date(s.updated_at) : null,
 				draft: false,

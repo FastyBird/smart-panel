@@ -81,6 +81,19 @@
 			"displayOrder": {
 				"title": "Display order",
 				"placeholder": "Order in lists"
+			},
+			"climateOverrides": {
+				"title": "Climate Device Overrides"
+			},
+			"primaryThermostat": {
+				"title": "Primary Thermostat",
+				"placeholder": "Auto-detect (first available)",
+				"hint": "Override the default thermostat selection for this space"
+			},
+			"primaryTemperatureSensor": {
+				"title": "Primary Temperature Sensor",
+				"placeholder": "Auto-detect (thermostat or first sensor)",
+				"hint": "Override the temperature reading source for this space"
 			}
 		}
 	},

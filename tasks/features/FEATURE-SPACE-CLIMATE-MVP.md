@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel, admin
 Size: medium
 Parent: EPIC-SPACES-FIRST-UX
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -60,12 +60,12 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] SpacePage shows Climate section when temperature data exists in the space.
-- [ ] If a thermostat exists with setpoint capability, SpacePage allows adjusting setpoint via +/-.
-- [ ] If only sensors exist, SpacePage shows read-only temperature.
-- [ ] Primary thermostat/sensor selection is deterministic with optional admin override.
-- [ ] Backend validates setpoint updates and clamps to safe min/max if available (otherwise basic validation).
-- [ ] Unit tests cover:
+- [x] SpacePage shows Climate section when temperature data exists in the space.
+- [x] If a thermostat exists with setpoint capability, SpacePage allows adjusting setpoint via +/-.
+- [x] If only sensors exist, SpacePage shows read-only temperature.
+- [x] Primary thermostat/sensor selection is deterministic with optional admin override.
+- [x] Backend validates setpoint updates and clamps to safe min/max if available (otherwise basic validation).
+- [x] Unit tests cover:
   - space with sensor only
   - space with thermostat only
   - space with both

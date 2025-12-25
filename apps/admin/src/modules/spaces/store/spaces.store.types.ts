@@ -9,6 +9,8 @@ export interface ISpace {
 	type: SpaceType;
 	icon: string | null;
 	displayOrder: number;
+	primaryThermostatId: string | null;
+	primaryTemperatureSensorId: string | null;
 	createdAt: Date;
 	updatedAt: Date | null;
 
@@ -21,6 +23,8 @@ export interface ISpaceEditData {
 	type?: SpaceType;
 	icon?: string | null;
 	displayOrder?: number;
+	primaryThermostatId?: string | null;
+	primaryTemperatureSensorId?: string | null;
 }
 
 export interface ISpaceCreateData {
@@ -29,6 +33,8 @@ export interface ISpaceCreateData {
 	type?: SpaceType;
 	icon?: string | null;
 	displayOrder?: number;
+	primaryThermostatId?: string | null;
+	primaryTemperatureSensorId?: string | null;
 }
 
 export interface ISpacesStoreState {
