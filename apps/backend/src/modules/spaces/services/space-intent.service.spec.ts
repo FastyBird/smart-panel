@@ -821,6 +821,27 @@ describe('SpaceIntentService', () => {
 			mockDevicesService.getOneOrThrow = jest.fn();
 		});
 
+		describe('when space does not exist', () => {
+			it('should return failure result', async () => {
+				mockSpacesService.findOne.mockResolvedValue(null);
+
+				const intent: ClimateIntentDto = {
+					type: ClimateIntentType.SETPOINT_DELTA,
+					delta: SetpointDelta.SMALL,
+					increase: true,
+				};
+				const result = await service.executeClimateIntent(mockSpaceId, intent);
+
+				expect(result).toEqual({
+					success: false,
+					affectedDevices: 0,
+					failedDevices: 0,
+					newSetpoint: null,
+				});
+				expect(mockSpacesService.findDevicesBySpace).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('when space has no climate devices', () => {
 			it('should return success with zero affected devices', async () => {
 				mockSpacesService.findOne.mockResolvedValue(mockSpace);

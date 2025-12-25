@@ -219,6 +219,8 @@ watch(
 			initialValues.displayOrder = space.displayOrder;
 			initialValues.primaryThermostatId = space.primaryThermostatId ?? null;
 			initialValues.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
+			// Reload devices for the new space
+			loadSpaceDevices();
 		}
 	}
 );

@@ -452,6 +452,15 @@ export class SpaceIntentService {
 			newSetpoint: null,
 		};
 
+		// Verify space exists
+		const space = await this.spacesService.findOne(spaceId);
+
+		if (!space) {
+			this.logger.warn(`Space not found id=${spaceId}`);
+
+			return defaultResult;
+		}
+
 		// Get climate state (includes primary device selection)
 		const climateState = await this.getClimateState(spaceId);
 
@@ -632,10 +641,9 @@ export class SpaceIntentService {
 			if (tempProp || setpointProp) {
 				bestChannel = channel;
 
-				// Prefer temperature reading from TEMPERATURE channel
+				// Only use temperature reading from TEMPERATURE channel
+				// (HEATER/COOLER/THERMOSTAT channels have setpoint, not current temperature)
 				if (channelCategory === ChannelCategory.TEMPERATURE && tempProp) {
-					temperatureProperty = tempProp;
-				} else if (!temperatureProperty && tempProp) {
 					temperatureProperty = tempProp;
 				}
 
