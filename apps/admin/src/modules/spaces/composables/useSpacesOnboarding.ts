@@ -1,6 +1,7 @@
 import { computed, reactive } from 'vue';
 
 import { injectBackendClient } from '../../../common';
+import { SpacesModuleCreateSpaceType } from '../../../openapi';
 import { SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import type { ISpace, ISpaceCreateData } from '../store';
@@ -33,6 +34,28 @@ interface WizardState {
 	isLoading: boolean;
 	error: string | null;
 }
+
+const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
+	switch (apiType) {
+		case SpacesModuleCreateSpaceType.room:
+			return SpaceType.ROOM;
+		case SpacesModuleCreateSpaceType.zone:
+			return SpaceType.ZONE;
+		default:
+			return SpaceType.ROOM;
+	}
+};
+
+const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
+	switch (spaceType) {
+		case SpaceType.ROOM:
+			return SpacesModuleCreateSpaceType.room;
+		case SpaceType.ZONE:
+			return SpacesModuleCreateSpaceType.zone;
+		default:
+			return SpacesModuleCreateSpaceType.room;
+	}
+};
 
 export const useSpacesOnboarding = () => {
 	const backendClient = injectBackendClient();
@@ -94,7 +117,7 @@ export const useSpacesOnboarding = () => {
 					body: {
 						data: {
 							name: proposal.name,
-							type: SpaceType.ROOM,
+							type: SpacesModuleCreateSpaceType.room,
 						},
 					},
 				});
@@ -107,7 +130,7 @@ export const useSpacesOnboarding = () => {
 					id: response.data.data.id,
 					name: response.data.data.name,
 					description: response.data.data.description ?? null,
-					type: (response.data.data.type as SpaceType) ?? SpaceType.ROOM,
+					type: apiTypeToSpaceType(response.data.data.type),
 					icon: response.data.data.icon ?? null,
 					displayOrder: response.data.data.display_order ?? 0,
 					createdAt: new Date(response.data.data.created_at),
@@ -144,7 +167,7 @@ export const useSpacesOnboarding = () => {
 					data: {
 						name: data.name,
 						description: data.description,
-						type: data.type ?? SpaceType.ROOM,
+						type: spaceTypeToApiType(data.type),
 						icon: data.icon,
 						display_order: data.displayOrder,
 					},
@@ -159,7 +182,7 @@ export const useSpacesOnboarding = () => {
 				id: response.data.data.id,
 				name: response.data.data.name,
 				description: response.data.data.description ?? null,
-				type: (response.data.data.type as SpaceType) ?? SpaceType.ROOM,
+				type: apiTypeToSpaceType(response.data.data.type),
 				icon: response.data.data.icon ?? null,
 				displayOrder: response.data.data.display_order ?? 0,
 				createdAt: new Date(response.data.data.created_at),
@@ -358,7 +381,7 @@ export const useSpacesOnboarding = () => {
 				id: s.id,
 				name: s.name,
 				description: s.description ?? null,
-				type: (s.type as SpaceType) ?? SpaceType.ROOM,
+				type: apiTypeToSpaceType(s.type),
 				icon: s.icon ?? null,
 				displayOrder: s.display_order ?? 0,
 				createdAt: new Date(s.created_at),

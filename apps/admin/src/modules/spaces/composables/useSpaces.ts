@@ -3,7 +3,7 @@ import { computed, type ComputedRef } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { spacesStoreKey, type ISpace, type ISpacesStore } from '../store';
+import { spacesStoreKey, type ISpace } from '../store';
 
 interface IUseSpaces {
 	spaces: ComputedRef<ISpace[]>;
@@ -14,7 +14,7 @@ interface IUseSpaces {
 
 export const useSpaces = (): IUseSpaces => {
 	const storesManager = injectStoresManager();
-	const spacesStore = storesManager.getStore<ISpacesStore>(spacesStoreKey);
+	const spacesStore = storesManager.getStore(spacesStoreKey);
 
 	const { firstLoad } = storeToRefs(spacesStore);
 

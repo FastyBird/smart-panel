@@ -54,7 +54,7 @@ import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager } from '../../../common';
 import { SpaceType } from '../spaces.constants';
-import { spacesStoreKey, type ISpace, type ISpaceCreateData, type ISpacesStore } from '../store';
+import { spacesStoreKey, type ISpace, type ISpaceCreateData } from '../store';
 
 interface IProps {
 	space?: ISpace;
@@ -74,7 +74,7 @@ const emit = defineEmits<IEmits>();
 const { t } = useI18n();
 
 const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore<ISpacesStore>(spacesStoreKey);
+const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const formRef = ref<FormInstance>();
 const saving = ref(false);

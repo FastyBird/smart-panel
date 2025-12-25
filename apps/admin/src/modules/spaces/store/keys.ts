@@ -1,5 +1,7 @@
-import type { InjectionKey } from 'vue';
+import type { StoreInjectionKey } from '../../../common';
 
-import type { ISpacesStore } from './spaces.store.types';
+import type { ISpacesStoreActions, ISpacesStoreState } from './spaces.store.types';
 
-export const spacesStoreKey: InjectionKey<ISpacesStore> = Symbol('spacesStore');
+export const spacesStoreKey: StoreInjectionKey<string, ISpacesStoreState, object, ISpacesStoreActions> = Symbol(
+	'FB-Module-Spaces-SpacesStore'
+);

@@ -65,13 +65,13 @@ import { injectStoresManager } from '../../../common';
 import { useSpaces } from '../composables';
 import { RouteNames } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
-import { spacesStoreKey, type ISpace, type ISpacesStore } from '../store';
+import { spacesStoreKey, type ISpace } from '../store';
 
 const { t } = useI18n();
 const router = useRouter();
 
 const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore<ISpacesStore>(spacesStoreKey);
+const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const { spaces, fetching } = useSpaces();
 

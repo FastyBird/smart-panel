@@ -1,7 +1,9 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
 
+import { storeToRefs } from 'pinia';
+
 import { injectStoresManager } from '../../../common';
-import { spacesStoreKey, type ISpace, type ISpaceEditData, type ISpacesStore } from '../store';
+import { spacesStoreKey, type ISpace, type ISpaceEditData } from '../store';
 
 interface IUseSpace {
 	space: ComputedRef<ISpace | null>;
@@ -13,16 +15,18 @@ interface IUseSpace {
 
 export const useSpace = (id: Ref<ISpace['id'] | undefined>): IUseSpace => {
 	const storesManager = injectStoresManager();
-	const spacesStore = storesManager.getStore<ISpacesStore>(spacesStoreKey);
+	const spacesStore = storesManager.getStore(spacesStoreKey);
+
+	const { data, semaphore } = storeToRefs(spacesStore);
 
 	const space = computed<ISpace | null>(() => {
 		if (!id.value) return null;
-		return spacesStore.findById(id.value);
+		return id.value in data.value ? data.value[id.value] : null;
 	});
 
 	const fetching = computed<boolean>(() => {
 		if (!id.value) return false;
-		return spacesStore.semaphore.value.fetching.item.includes(id.value);
+		return semaphore.value.fetching.item.includes(id.value);
 	});
 
 	const fetchSpace = async (): Promise<ISpace | null> => {

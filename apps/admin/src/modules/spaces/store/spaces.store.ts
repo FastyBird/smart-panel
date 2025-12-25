@@ -4,23 +4,27 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 
 import { useBackend } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
+import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 
 import { SpacesApiException } from '../spaces.exceptions';
 
-import type { ISpace, ISpaceCreateData, ISpaceEditData, ISpacesFetching, ISpacesStore, ISpacesStoreActions, ISpacesStoreState } from './spaces.store.types';
+import type { ISpace, ISpaceCreateData, ISpaceEditData, ISpacesStateSemaphore, ISpacesStoreActions, ISpacesStoreState } from './spaces.store.types';
 import { type ApiSpace, transformSpaceCreateRequest, transformSpaceEditRequest, transformSpaceResponse } from './spaces.transformers';
 
-const defaultSemaphore = {
+type SpacesStoreSetup = ISpacesStoreState & ISpacesStoreActions;
+
+const defaultSemaphore: ISpacesStateSemaphore = {
 	fetching: {
 		items: false,
 		item: [],
-	} as ISpacesFetching,
+	},
 	creating: [],
 	updating: [],
 	deleting: [],
 };
 
-export const useSpacesStore = defineStore<'spaces_module-spaces', ISpacesStore>('spaces_module-spaces', (): ISpacesStore => {
+export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSetup>('spaces_module-spaces', (): SpacesStoreSetup => {
 	const backend = useBackend();
 
 	const data = ref<{ [key: ISpace['id']]: ISpace }>({});
@@ -47,15 +51,15 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', ISpacesStore>(
 		semaphore.value.fetching.items = true;
 
 		try {
-			const response = await backend.client.GET('/api/v1/modules/spaces/spaces');
+			const { data: responseData, error } = await backend.client.GET(`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces`);
 
-			if (response.error || !response.data) {
+			if (error || !responseData) {
 				throw new SpacesApiException('Failed to fetch spaces');
 			}
 
 			const spaces: ISpace[] = [];
 
-			for (const spaceData of response.data.data ?? []) {
+			for (const spaceData of responseData.data ?? []) {
 				const space = transformSpaceResponse(spaceData);
 				data.value[space.id] = space;
 				spaces.push(space);
@@ -83,15 +87,15 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', ISpacesStore>(
 		semaphore.value.fetching.item.push(payload.id);
 
 		try {
-			const response = await backend.client.GET('/api/v1/modules/spaces/spaces/{id}', {
+			const { data: responseData, error } = await backend.client.GET(`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}`, {
 				params: { path: { id: payload.id } },
 			});
 
-			if (response.error || !response.data) {
+			if (error || !responseData) {
 				throw new SpacesApiException('Space not found');
 			}
 
-			const space = transformSpaceResponse(response.data.data);
+			const space = transformSpaceResponse(responseData.data);
 			data.value[space.id] = space;
 
 			return space;
@@ -106,17 +110,17 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', ISpacesStore>(
 		semaphore.value.creating.push(id);
 
 		try {
-			const response = await backend.client.POST('/api/v1/modules/spaces/spaces', {
+			const { data: responseData, error } = await backend.client.POST(`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces`, {
 				body: {
 					data: transformSpaceCreateRequest(payload.data),
 				},
 			});
 
-			if (response.error || !response.data) {
+			if (error || !responseData) {
 				throw new SpacesApiException('Failed to create space');
 			}
 
-			const space = transformSpaceResponse(response.data.data);
+			const space = transformSpaceResponse(responseData.data);
 			data.value[space.id] = space;
 
 			return space;
@@ -139,18 +143,18 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', ISpacesStore>(
 		semaphore.value.updating.push(payload.id);
 
 		try {
-			const response = await backend.client.PATCH('/api/v1/modules/spaces/spaces/{id}', {
+			const { data: responseData, error } = await backend.client.PATCH(`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}`, {
 				params: { path: { id: payload.id } },
 				body: {
 					data: transformSpaceEditRequest(payload.data),
 				},
 			});
 
-			if (response.error || !response.data) {
+			if (error || !responseData) {
 				throw new SpacesApiException('Failed to update space');
 			}
 
-			const space = transformSpaceResponse(response.data.data);
+			const space = transformSpaceResponse(responseData.data);
 			data.value[space.id] = space;
 
 			return space;
@@ -206,11 +210,11 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', ISpacesStore>(
 
 		try {
 			if (!existing.draft) {
-				const response = await backend.client.DELETE('/api/v1/modules/spaces/spaces/{id}', {
+				const { error } = await backend.client.DELETE(`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}`, {
 					params: { path: { id: payload.id } },
 				});
 
-				if (response.error) {
+				if (error) {
 					throw new SpacesApiException('Failed to delete space');
 				}
 			}

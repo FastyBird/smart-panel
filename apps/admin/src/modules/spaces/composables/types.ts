@@ -4,7 +4,7 @@ import type { SpaceType } from '../spaces.constants';
 import type { ISpace, ISpaceEditData } from '../store/spaces.store.types';
 
 export interface ISpacesFilter {
-	search: string | undefined;
+	search?: string | undefined;
 	type: SpaceType | 'all';
 }
 
