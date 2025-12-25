@@ -2,6 +2,9 @@ export const SPACES_MODULE_PREFIX = 'spaces';
 export const SPACES_MODULE_NAME = 'spaces-module';
 export const SPACES_MODULE_EVENT_PREFIX = 'SpacesModule.';
 
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_PAGE_SIZE = 25;
+
 export enum EventType {
 	SPACE_CREATED = 'SpacesModule.Space.Created',
 	SPACE_UPDATED = 'SpacesModule.Space.Updated',

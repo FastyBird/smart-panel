@@ -1,29 +1,44 @@
 {
 	"title": "Spaces",
+	"description": "Manage your spaces (rooms and zones)",
 	"headings": {
 		"list": "Spaces",
-		"detail": "Space detail",
-		"add": "Add space",
-		"edit": "Edit space"
+		"detail": "Space Detail",
+		"add": "Add Space",
+		"edit": "Edit Space",
+		"removeSpace": "Remove Space",
+		"discard": "Discard Changes",
+		"adjustFilters": "Filter Spaces"
 	},
-	"messages": {
-		"notFound": "Requested space was not found",
-		"confirmDelete": "Are you sure you want to delete this space?",
-		"deleted": "Space was successfully deleted",
-		"saved": "Space was successfully saved"
+	"subHeadings": {
+		"list": "Organize devices and displays by rooms or zones"
 	},
-	"buttons": {
-		"add": "Add space",
-		"edit": "Edit",
-		"delete": "Delete",
-		"save": "Save",
-		"cancel": "Cancel"
+	"breadcrumbs": {
+		"spaces": {
+			"list": "spaces",
+			"detail": "space: {space}",
+			"edit": "edit space"
+		}
+	},
+	"meta": {
+		"spaces": {
+			"list": {
+				"title": "List spaces"
+			},
+			"edit": {
+				"title": "Edit space: {space}"
+			},
+			"detail": {
+				"title": "Space: {space}"
+			}
+		}
 	},
 	"table": {
 		"columns": {
 			"name": "Name",
 			"type": "Type",
 			"description": "Description",
+			"order": "Order",
 			"devices": "Devices",
 			"displays": "Displays",
 			"actions": "Actions"
@@ -31,10 +46,21 @@
 		"empty": "No spaces found. Create your first space to get started."
 	},
 	"fields": {
+		"search": {
+			"placeholder": "Search spaces..."
+		},
 		"spaces": {
+			"id": {
+				"title": "Internal identifier",
+				"placeholder": "Space id"
+			},
 			"name": {
 				"title": "Name",
-				"placeholder": "Enter space name (e.g., Living Room)"
+				"placeholder": "Enter space name (e.g., Living Room)",
+				"validation": {
+					"required": "Name is required",
+					"maxLength": "Name must be less than 100 characters"
+				}
 			},
 			"description": {
 				"title": "Description",
@@ -56,6 +82,80 @@
 				"placeholder": "Order in lists"
 			}
 		}
+	},
+	"filters": {
+		"type": {
+			"title": "Type",
+			"all": "All"
+		}
+	},
+	"texts": {
+		"loadingSpaces": "Loading spaces...",
+		"loadingSpace": "Loading space...",
+		"noSpaces": "No spaces created yet",
+		"noFilteredSpaces": "No spaces match your filter criteria",
+		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+	},
+	"buttons": {
+		"add": {
+			"title": "Add Space"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"adjust": {
+			"title": "Filter"
+		},
+		"resetFilters": {
+			"title": "Reset Filters"
+		},
+		"yes": {
+			"title": "Yes"
+		},
+		"no": {
+			"title": "No"
+		},
+		"save": {
+			"title": "Save"
+		},
+		"cancel": {
+			"title": "Cancel"
+		},
+		"close": {
+			"title": "Close"
+		},
+		"discard": {
+			"title": "Discard"
+		},
+		"edit": {
+			"title": "Edit"
+		},
+		"delete": {
+			"title": "Delete"
+		}
+	},
+	"detail": {
+		"title": "Space Detail",
+		"info": {
+			"title": "Space Information",
+			"name": "Name",
+			"description": "Description",
+			"type": "Type",
+			"icon": "Icon",
+			"displayOrder": "Display Order"
+		}
+	},
+	"messages": {
+		"notFound": "Space not found",
+		"loadError": "Failed to load spaces",
+		"confirmRemove": "Are you sure you want to remove space \"{name}\"? This action cannot be undone.",
+		"confirmDelete": "Are you sure you want to delete this space?",
+		"removed": "Space removed successfully",
+		"deleted": "Space was successfully deleted",
+		"saved": "Space was successfully saved",
+		"edited": "Space {space} has been updated",
+		"notEdited": "Space {space} was not updated",
+		"deletedWhileEditing": "This space was deleted and is no longer available."
 	},
 	"misc": {
 		"types": {
