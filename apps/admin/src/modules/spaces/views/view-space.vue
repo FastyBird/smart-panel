@@ -28,10 +28,10 @@
 
 				<div class="mt-4 flex gap-2">
 					<el-button type="primary" @click="onEdit">
-						{{ t('spacesModule.buttons.edit') }}
+						{{ t('spacesModule.buttons.edit.title') }}
 					</el-button>
 					<el-button type="danger" @click="onDelete">
-						{{ t('spacesModule.buttons.delete') }}
+						{{ t('spacesModule.buttons.delete.title') }}
 					</el-button>
 				</div>
 			</template>

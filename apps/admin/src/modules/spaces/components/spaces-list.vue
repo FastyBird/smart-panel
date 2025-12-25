@@ -47,7 +47,7 @@
 			<template #empty>
 				<el-empty :description="t('spacesModule.table.empty')">
 					<el-button type="primary" @click="onAdd">
-						{{ t('spacesModule.buttons.add') }}
+						{{ t('spacesModule.buttons.add.title') }}
 					</el-button>
 				</el-empty>
 			</template>

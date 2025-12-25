@@ -36,10 +36,10 @@
 
 		<div class="flex gap-2 justify-end mt-4">
 			<el-button @click="onCancel">
-				{{ t('spacesModule.buttons.cancel') }}
+				{{ t('spacesModule.buttons.cancel.title') }}
 			</el-button>
 			<el-button type="primary" :loading="saving" @click="onSubmit">
-				{{ t('spacesModule.buttons.save') }}
+				{{ t('spacesModule.buttons.save.title') }}
 			</el-button>
 		</div>
 	</el-form>
