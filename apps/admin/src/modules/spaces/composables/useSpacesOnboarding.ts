@@ -141,6 +141,9 @@ export const useSpacesOnboarding = () => {
 					draft: false,
 				};
 
+				// Update state incrementally after each successful creation
+				// This ensures we don't lose track of spaces if a later creation fails
+				state.spaces = [...state.spaces, space];
 				createdSpaces.push(space);
 
 				// Pre-populate device assignments based on proposal
@@ -151,8 +154,6 @@ export const useSpacesOnboarding = () => {
 				// Mark proposal as no longer selected to prevent duplicate creation on back/next
 				proposal.selected = false;
 			}
-
-			state.spaces = [...state.spaces, ...createdSpaces];
 
 			return createdSpaces;
 		} catch (err) {
