@@ -4,7 +4,7 @@ Type: technical
 Scope: admin, backend
 Size: medium
 Parent: FEATURE-SPACES-MODULE
-Status: planned
+Status: completed
 
 ## 1. Business goal
 
@@ -48,15 +48,15 @@ Backend:
 
 ## 4. Acceptance criteria
 
-- [ ] Wizard can create Spaces and persist them via backend.
-- [ ] Wizard supports bulk assignment of devices to spaces.
-- [ ] Wizard supports assignment of each display to exactly one space.
-- [ ] Wizard includes a “review” step showing:
-  - spaces
-  - #devices per space
-  - #displays per space
-- [ ] Wizard can be completed without any external integrations (works on a clean install).
-- [ ] Backend has tests for bulk assignment endpoints and proposal logic (if implemented).
+- [x] Wizard can create Spaces and persist them via backend.
+- [x] Wizard supports bulk assignment of devices to spaces.
+- [x] Wizard supports assignment of each display to exactly one space.
+- [x] Wizard includes a "review" step showing:
+  - [x] spaces
+  - [x] #devices per space
+  - [x] #displays per space
+- [x] Wizard can be completed without any external integrations (works on a clean install).
+- [x] Backend has tests for bulk assignment endpoints and proposal logic (if implemented).
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

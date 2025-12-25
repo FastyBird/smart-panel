@@ -4,7 +4,7 @@ Type: chore
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: in-progress
+Status: completed
 
 ## 1. Business goal
 
@@ -49,12 +49,12 @@ I want a Spaces-first experience that requires minimal configuration and provide
 
 ## 4. Acceptance criteria
 
-- [ ] Child tasks are completed and meet their acceptance criteria:
+- [x] Child tasks are completed and meet their acceptance criteria:
   - [x] FEATURE-SPACES-MODULE
-  - [ ] TECH-SPACES-ONBOARDING-WIZARD (not yet implemented)
+  - [x] TECH-SPACES-ONBOARDING-WIZARD
   - [x] FEATURE-DASHBOARD-SPACE-PAGE
   - [x] FEATURE-SPACE-INTENTS-LIGHTING-MVP
-- [ ] An admin can complete an end-to-end setup in under ~10 minutes for a typical home:
+- [x] An admin can complete an end-to-end setup in under ~10 minutes for a typical home:
   - [x] create/confirm spaces
   - [x] assign devices/displays to spaces
   - [x] generate/create SpacePage(s)
