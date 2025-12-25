@@ -70,6 +70,11 @@ export const SETPOINT_DELTA_STEPS: Record<SetpointDelta, number> = {
 	[SetpointDelta.LARGE]: 2.0,
 };
 
-// Default safe temperature limits (Celsius)
+// Default safe temperature limits when device doesn't specify (Celsius)
 export const DEFAULT_MIN_SETPOINT = 5;
 export const DEFAULT_MAX_SETPOINT = 35;
+
+// Absolute validation limits for API input (covers all reasonable HVAC systems)
+// Device-specific limits are enforced at the service layer
+export const ABSOLUTE_MIN_SETPOINT = -10;
+export const ABSOLUTE_MAX_SETPOINT = 50;

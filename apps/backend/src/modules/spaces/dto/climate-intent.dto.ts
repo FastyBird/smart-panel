@@ -3,7 +3,7 @@ import { IsDefined, IsEnum, IsNumber, Max, Min, ValidateIf, ValidateNested } fro
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { ClimateIntentType, DEFAULT_MAX_SETPOINT, DEFAULT_MIN_SETPOINT, SetpointDelta } from '../spaces.constants';
+import { ABSOLUTE_MAX_SETPOINT, ABSOLUTE_MIN_SETPOINT, ClimateIntentType, SetpointDelta } from '../spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleClimateIntent' })
 export class ClimateIntentDto {
@@ -39,7 +39,9 @@ export class ClimateIntentDto {
 	increase?: boolean;
 
 	@ApiPropertyOptional({
-		description: `Target setpoint value in degrees (required when type is SETPOINT_SET). Must be between ${DEFAULT_MIN_SETPOINT} and ${DEFAULT_MAX_SETPOINT}.`,
+		description:
+			'Target setpoint value in degrees Celsius (required when type is SETPOINT_SET). ' +
+			'The value will be clamped to the device-specific min/max range returned by the climate state endpoint.',
 		type: 'number',
 		example: 21.5,
 	})
@@ -47,11 +49,11 @@ export class ClimateIntentDto {
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_SET)
 	@IsDefined({ message: '[{"field":"value","reason":"Value is required when type is SETPOINT_SET."}]' })
 	@IsNumber({}, { message: '[{"field":"value","reason":"Value must be a number."}]' })
-	@Min(DEFAULT_MIN_SETPOINT, {
-		message: `[{"field":"value","reason":"Value must be at least ${DEFAULT_MIN_SETPOINT} degrees."}]`,
+	@Min(ABSOLUTE_MIN_SETPOINT, {
+		message: `[{"field":"value","reason":"Value must be at least ${ABSOLUTE_MIN_SETPOINT} degrees."}]`,
 	})
-	@Max(DEFAULT_MAX_SETPOINT, {
-		message: `[{"field":"value","reason":"Value must be at most ${DEFAULT_MAX_SETPOINT} degrees."}]`,
+	@Max(ABSOLUTE_MAX_SETPOINT, {
+		message: `[{"field":"value","reason":"Value must be at most ${ABSOLUTE_MAX_SETPOINT} degrees."}]`,
 	})
 	value?: number;
 }
