@@ -93,7 +93,7 @@ export class CreateSpaceDto {
 	@ValidateIf((_, value) => value !== null)
 	@Transform(
 		({ obj }: { obj: { primary_thermostat_id?: string | null; primaryThermostatId?: string | null } }) =>
-			obj.primary_thermostat_id ?? obj.primaryThermostatId,
+			obj.primary_thermostat_id !== undefined ? obj.primary_thermostat_id : obj.primaryThermostatId,
 		{ toClassOnly: true },
 	)
 	primaryThermostatId?: string | null;
@@ -114,8 +114,14 @@ export class CreateSpaceDto {
 	})
 	@ValidateIf((_, value) => value !== null)
 	@Transform(
-		({ obj }: { obj: { primary_temperature_sensor_id?: string | null; primaryTemperatureSensorId?: string | null } }) =>
-			obj.primary_temperature_sensor_id ?? obj.primaryTemperatureSensorId,
+		({
+			obj,
+		}: {
+			obj: { primary_temperature_sensor_id?: string | null; primaryTemperatureSensorId?: string | null };
+		}) =>
+			obj.primary_temperature_sensor_id !== undefined
+				? obj.primary_temperature_sensor_id
+				: obj.primaryTemperatureSensorId,
 		{ toClassOnly: true },
 	)
 	primaryTemperatureSensorId?: string | null;

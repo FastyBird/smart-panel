@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsDefined, IsEnum, IsNumber, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { IsBoolean, IsDefined, IsEnum, IsNumber, Max, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -36,6 +36,7 @@ export class ClimateIntentDto {
 	@Expose()
 	@ValidateIf((o: ClimateIntentDto) => o.type === ClimateIntentType.SETPOINT_DELTA)
 	@IsDefined({ message: '[{"field":"increase","reason":"Increase direction is required for setpoint delta."}]' })
+	@IsBoolean({ message: '[{"field":"increase","reason":"Increase must be a boolean value."}]' })
 	increase?: boolean;
 
 	@ApiPropertyOptional({
