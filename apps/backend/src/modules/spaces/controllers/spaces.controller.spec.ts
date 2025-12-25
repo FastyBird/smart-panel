@@ -7,7 +7,6 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -309,7 +308,9 @@ describe('SpacesController', () => {
 		});
 
 		it('should throw NotFoundException when space not found', async () => {
-			jest.spyOn(spaceIntentService, 'executeLightingIntent').mockRejectedValue(new SpacesNotFoundException('Not found'));
+			jest
+				.spyOn(spaceIntentService, 'executeLightingIntent')
+				.mockRejectedValue(new SpacesNotFoundException('Not found'));
 
 			const intentDto = {
 				data: {

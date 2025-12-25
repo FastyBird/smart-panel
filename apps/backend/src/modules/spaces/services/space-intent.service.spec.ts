@@ -1,5 +1,7 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-assignment,
+@typescript-eslint/no-unnecessary-type-assertion
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -68,11 +70,7 @@ describe('SpaceIntentService', () => {
 		jest.clearAllMocks();
 	});
 
-	const createMockLight = (
-		deviceId: string,
-		hasBrightness: boolean,
-		currentBrightness: number = 50,
-	): DeviceEntity => {
+	const createMockLight = (deviceId: string, hasBrightness: boolean, currentBrightness: number = 50): DeviceEntity => {
 		const onProperty: ChannelPropertyEntity = {
 			id: `${deviceId}-on-prop`,
 			category: PropertyCategory.ON,
