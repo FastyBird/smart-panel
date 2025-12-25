@@ -43,7 +43,8 @@ enum DataSourceType {
 enum PageType {
   tiles('pages-tiles'),
   cards('pages-cards'),
-  deviceDetail('pages-device-detail');
+  deviceDetail('pages-device-detail'),
+  space('pages-space');
 
   final String value;
 

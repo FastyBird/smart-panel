@@ -14,15 +14,19 @@ import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
+import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	LightingIntentResponseModel,
+	LightingIntentResultDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 } from '../models/spaces-response.model';
+import { SpaceIntentService } from '../services/space-intent.service';
 import { SpacesService } from '../services/spaces.service';
 import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.constants';
 
@@ -31,7 +35,10 @@ import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.consta
 export class SpacesController {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpacesController');
 
-	constructor(private readonly spacesService: SpacesService) {}
+	constructor(
+		private readonly spacesService: SpacesService,
+		private readonly spaceIntentService: SpaceIntentService,
+	) {}
 
 	@Get()
 	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
@@ -241,6 +248,39 @@ export class SpacesController {
 		resultData.displaysAssigned = result.displaysAssigned;
 
 		const response = new BulkAssignmentResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/intents/lighting')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-lighting-intent',
+		summary: 'Execute lighting intent for space',
+		description:
+			'Executes a lighting intent command for all lights in the space. ' +
+			'Supports off, on, mode (work/relax/night), and brightness delta operations. ' +
+			'Commands are applied only to lighting devices with supported capabilities.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightingIntentResponseModel, 'Returns the intent execution result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiUnprocessableEntityResponse('Invalid intent data')
+	async executeLightingIntent(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqLightingIntentDto,
+	): Promise<LightingIntentResponseModel> {
+		this.logger.debug(`Executing lighting intent for space with id=${id}`);
+
+		const result = await this.spaceIntentService.executeLightingIntent(id, body.data);
+
+		const resultData = new LightingIntentResultDataModel();
+		resultData.success = result.success;
+		resultData.affectedDevices = result.affectedDevices;
+		resultData.failedDevices = result.failedDevices;
+
+		const response = new LightingIntentResponseModel();
 		response.data = resultData;
 
 		return response;

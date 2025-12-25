@@ -1,6 +1,7 @@
 import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { DevicesModule } from '../devices/devices.module';
 import { DeviceEntity } from '../devices/entities/devices.entity';
 import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
@@ -10,6 +11,7 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 
 import { SpacesController } from './controllers/spaces.controller';
 import { SpaceEntity } from './entities/space.entity';
+import { SpaceIntentService } from './services/space-intent.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
@@ -20,10 +22,14 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 	description: SPACES_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([SpaceEntity, DeviceEntity, DisplayEntity]), forwardRef(() => ExtensionsModule)],
+	imports: [
+		TypeOrmModule.forFeature([SpaceEntity, DeviceEntity, DisplayEntity]),
+		forwardRef(() => DevicesModule),
+		forwardRef(() => ExtensionsModule),
+	],
 	controllers: [SpacesController],
-	providers: [SpacesService],
-	exports: [SpacesService],
+	providers: [SpacesService, SpaceIntentService],
+	exports: [SpacesService, SpaceIntentService],
 })
 export class SpacesModule implements OnModuleInit {
 	constructor(

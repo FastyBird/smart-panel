@@ -15,3 +15,37 @@ export enum SpaceType {
 	ROOM = 'room',
 	ZONE = 'zone',
 }
+
+// Lighting Intent Types
+export enum LightingIntentType {
+	OFF = 'off',
+	ON = 'on',
+	SET_MODE = 'set_mode',
+	BRIGHTNESS_DELTA = 'brightness_delta',
+}
+
+export enum LightingMode {
+	WORK = 'work',
+	RELAX = 'relax',
+	NIGHT = 'night',
+}
+
+export enum BrightnessDelta {
+	SMALL = 'small',
+	MEDIUM = 'medium',
+	LARGE = 'large',
+}
+
+// Brightness mappings for modes (percentage 0-100)
+export const LIGHTING_MODE_BRIGHTNESS: Record<LightingMode, number> = {
+	[LightingMode.WORK]: 100,
+	[LightingMode.RELAX]: 50,
+	[LightingMode.NIGHT]: 20,
+};
+
+// Brightness delta steps (percentage points)
+export const BRIGHTNESS_DELTA_STEPS: Record<BrightnessDelta, number> = {
+	[BrightnessDelta.SMALL]: 10,
+	[BrightnessDelta.MEDIUM]: 25,
+	[BrightnessDelta.LARGE]: 50,
+};

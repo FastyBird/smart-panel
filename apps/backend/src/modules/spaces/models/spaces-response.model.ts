@@ -150,3 +150,49 @@ export class ProposedSpacesResponseModel extends BaseSuccessResponseModel<Propos
 	@Type(() => ProposedSpaceDataModel)
 	declare data: ProposedSpaceDataModel[];
 }
+
+/**
+ * Lighting intent result data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingIntentResult' })
+export class LightingIntentResultDataModel {
+	@ApiProperty({
+		description: 'Whether the intent was successfully executed',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'affected_devices',
+		description: 'Number of devices affected by the intent',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'affected_devices' })
+	affectedDevices: number;
+
+	@ApiProperty({
+		name: 'failed_devices',
+		description: 'Number of devices that failed to respond',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failed_devices' })
+	failedDevices: number;
+}
+
+/**
+ * Response wrapper for lighting intent result
+ */
+@ApiSchema({ name: 'SpacesModuleResLightingIntent' })
+export class LightingIntentResponseModel extends BaseSuccessResponseModel<LightingIntentResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the lighting intent execution',
+		type: () => LightingIntentResultDataModel,
+	})
+	@Expose()
+	@Type(() => LightingIntentResultDataModel)
+	declare data: LightingIntentResultDataModel;
+}

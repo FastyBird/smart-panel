@@ -3,12 +3,15 @@
  */
 import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
+import { LightingIntentDto, ReqLightingIntentDto } from './dto/lighting-intent.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceEntity } from './entities/space.entity';
 import {
 	BulkAssignmentDataModel,
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	LightingIntentResponseModel,
+	LightingIntentResultDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	SpaceResponseModel,
@@ -23,6 +26,8 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqUpdateSpaceDto,
 	BulkAssignDto,
 	ReqBulkAssignDto,
+	LightingIntentDto,
+	ReqLightingIntentDto,
 	// Response models
 	SpaceResponseModel,
 	SpacesResponseModel,
@@ -31,6 +36,8 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	BulkAssignmentResponseModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
+	LightingIntentResultDataModel,
+	LightingIntentResponseModel,
 	// Entities
 	SpaceEntity,
 ];
