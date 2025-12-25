@@ -39,6 +39,7 @@ interface IntentExecutionResult {
 interface ClimateDevice {
 	device: DeviceEntity;
 	channel: ChannelEntity;
+	setpointChannel: ChannelEntity | null;
 	temperatureProperty: ChannelPropertyEntity | null;
 	setpointProperty: ChannelPropertyEntity | null;
 }
@@ -480,8 +481,8 @@ export class SpaceIntentService {
 		const thermostatDevice = await this.devicesService.getOneOrThrow(climateState.primaryThermostatId);
 		const climateDeviceInfo = this.extractClimateDevice(thermostatDevice);
 
-		if (!climateDeviceInfo?.setpointProperty) {
-			this.logger.error(`Primary thermostat has no setpoint property id=${climateState.primaryThermostatId}`);
+		if (!climateDeviceInfo?.setpointProperty || !climateDeviceInfo.setpointChannel) {
+			this.logger.error(`Primary thermostat has no setpoint property/channel id=${climateState.primaryThermostatId}`);
 
 			return defaultResult;
 		}
@@ -539,7 +540,7 @@ export class SpaceIntentService {
 
 		const command: IDevicePropertyData = {
 			device: thermostatDevice,
-			channel: climateDeviceInfo.channel,
+			channel: climateDeviceInfo.setpointChannel!,
 			property: climateDeviceInfo.setpointProperty,
 			value: newSetpoint,
 		};
@@ -618,6 +619,7 @@ export class SpaceIntentService {
 
 		// Find the best channel for climate control
 		let bestChannel: ChannelEntity | null = null;
+		let setpointChannel: ChannelEntity | null = null;
 		let temperatureProperty: ChannelPropertyEntity | null = null;
 		let setpointProperty: ChannelPropertyEntity | null = null;
 
@@ -647,9 +649,10 @@ export class SpaceIntentService {
 					temperatureProperty = tempProp;
 				}
 
-				// Prefer setpoint from HEATER/COOLER/THERMOSTAT channels
+				// Capture setpoint and its channel from HEATER/COOLER/THERMOSTAT channels
 				if (channelCategory !== ChannelCategory.TEMPERATURE && setpointProp) {
 					setpointProperty = setpointProp;
+					setpointChannel = channel;
 				}
 			}
 		}
@@ -661,6 +664,7 @@ export class SpaceIntentService {
 		return {
 			device,
 			channel: bestChannel,
+			setpointChannel,
 			temperatureProperty,
 			setpointProperty,
 		};
