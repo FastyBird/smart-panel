@@ -152,7 +152,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessage, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -161,7 +161,6 @@ import { ListSpaces } from '../components/components';
 import ListSpacesAdjust from '../components/list-spaces-adjust.vue';
 import { useSpacesActions, useSpacesDataSource } from '../composables';
 import { RouteNames } from '../spaces.constants';
-import { SpacesApiException } from '../spaces.exceptions';
 import type { ISpace } from '../store/spaces.store.types';
 
 defineOptions({
@@ -318,10 +317,8 @@ const onOnboarding = (): void => {
 };
 
 onBeforeMount((): void => {
-	fetchSpaces().catch((error: unknown): void => {
-		const err = error as Error;
-
-		throw new SpacesApiException('Something went wrong', null, err);
+	fetchSpaces().catch((): void => {
+		ElMessage.error(t('spacesModule.messages.loadError'));
 	});
 
 	showDrawer.value =
