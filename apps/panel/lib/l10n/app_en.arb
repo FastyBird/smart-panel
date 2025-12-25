@@ -980,5 +980,38 @@
   "discovery_button_manual": "Manual",
   "@discovery_button_manual": {
     "description": "Manual entry button text"
+  },
+
+  "action_success": "Action completed successfully",
+  "@action_success": {
+    "description": "Success message when an action completes"
+  },
+  "space_lighting_controls_title": "Lighting Controls",
+  "@space_lighting_controls_title": {
+    "description": "Title for the lighting controls section on space page"
+  },
+  "space_lighting_mode_off": "Off",
+  "@space_lighting_mode_off": {
+    "description": "Label for the off lighting mode button"
+  },
+  "space_lighting_mode_work": "Work",
+  "@space_lighting_mode_work": {
+    "description": "Label for the work lighting mode button"
+  },
+  "space_lighting_mode_relax": "Relax",
+  "@space_lighting_mode_relax": {
+    "description": "Label for the relax lighting mode button"
+  },
+  "space_lighting_mode_night": "Night",
+  "@space_lighting_mode_night": {
+    "description": "Label for the night lighting mode button"
+  },
+  "space_devices_title": "Devices",
+  "@space_devices_title": {
+    "description": "Title for the devices section on space page"
+  },
+  "space_devices_placeholder": "Devices in this space will be displayed here",
+  "@space_devices_placeholder": {
+    "description": "Placeholder text when no devices are displayed"
   }
 }

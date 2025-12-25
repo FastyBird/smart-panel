@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/cards_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/device_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/pages/space_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/tiles_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
@@ -9,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/cards.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/space.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/tiles.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
@@ -22,6 +24,9 @@ Map<String, PageModel Function(Map<String, dynamic>)> pageModelMappers = {
   },
   PageType.deviceDetail.value: (data) {
     return DeviceDetailPageModel.fromJson(data);
+  },
+  PageType.space.value: (data) {
+    return SpacePageModel.fromJson(data);
   },
 };
 
@@ -102,6 +107,17 @@ Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
     }
 
     return DeviceDetailPageView(
+      pageModel: page,
+    );
+  },
+  PageType.space: (page) {
+    if (page is! SpacePageModel) {
+      throw ArgumentError(
+        'Page model is not valid for Space page view.',
+      );
+    }
+
+    return SpacePageView(
       pageModel: page,
     );
   },

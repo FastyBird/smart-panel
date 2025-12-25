@@ -238,5 +238,14 @@
   "discovery_button_connect": "Připojit",
   "discovery_button_connect_selected": "Připojit k vybrané bráně",
   "discovery_button_rescan": "Znovu vyhledat",
-  "discovery_button_manual": "Ručně"
+  "discovery_button_manual": "Ručně",
+
+  "action_success": "Akce byla úspěšně dokončena",
+  "space_lighting_controls_title": "Ovládání osvětlení",
+  "space_lighting_mode_off": "Vyp",
+  "space_lighting_mode_work": "Práce",
+  "space_lighting_mode_relax": "Relax",
+  "space_lighting_mode_night": "Noc",
+  "space_devices_title": "Zařízení",
+  "space_devices_placeholder": "Zařízení v této místnosti se zobrazí zde"
 }

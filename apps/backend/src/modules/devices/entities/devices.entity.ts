@@ -13,12 +13,13 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
-import { Column, Entity, Index, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -93,6 +94,28 @@ export class DeviceEntity extends BaseEntity {
 	@Index()
 	@Column({ nullable: false, default: true })
 	enabled: boolean = true;
+
+	@ApiPropertyOptional({
+		name: 'space_id',
+		description: 'Space (room/zone) this device belongs to',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'space_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
+		toClassOnly: true,
+	})
+	@Index()
+	@Column({ nullable: true, default: null })
+	spaceId: string | null;
+
+	@ManyToOne(() => SpaceEntity, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'spaceId' })
+	space: SpaceEntity | null;
 
 	@ApiProperty({
 		description: 'Device controls',

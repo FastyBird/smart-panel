@@ -27,6 +27,8 @@ import { ExtensionsModule } from './modules/extensions/extensions.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SeedModule } from './modules/seed/seeding.module';
+import { SPACES_MODULE_PREFIX } from './modules/spaces/spaces.constants';
+import { SpacesModule } from './modules/spaces/spaces.module';
 import { STATS_MODULE_PREFIX } from './modules/stats/stats.constants';
 import { StatsModule } from './modules/stats/stats.module';
 import { SwaggerModule } from './modules/swagger/swagger.module';
@@ -55,6 +57,7 @@ import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';
+import { PagesSpacePlugin } from './plugins/pages-space/pages-space.plugin';
 import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
@@ -148,6 +151,10 @@ export class AppModule {
 								module: ExtensionsModule,
 							},
 							{
+								path: SPACES_MODULE_PREFIX,
+								module: SpacesModule,
+							},
+							{
 								path: SYSTEM_MODULE_PREFIX,
 								module: SystemModule,
 							},
@@ -221,6 +228,7 @@ export class AppModule {
 				DisplaysModule,
 				ExtensionsModule,
 				PlatformModule,
+				SpacesModule,
 				SeedModule,
 				StatsModule,
 				SystemModule,
@@ -238,6 +246,7 @@ export class AppModule {
 				PagesCardsPlugin,
 				PagesDeviceDetailPlugin,
 				PagesTilesPlugin,
+				PagesSpacePlugin,
 				TilesDevicePreviewPlugin,
 				TilesTimePlugin,
 				TilesWeatherPlugin,

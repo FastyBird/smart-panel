@@ -137,6 +137,8 @@ jobs:
 
       - name: "TS Code Check"
         run: "pnpm --filter @fastybird/smart-panel-admin type-check"
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
 
   admin-tests:
     needs: "check-skip"

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: completed
 
 ## 1. Business goal
 
@@ -51,12 +51,12 @@ Admin UI:
 
 ## 4. Acceptance criteria
 
-- [ ] Backend `spaces` module exists with `Space` entity/table and CRUD endpoints.
-- [ ] `Device` and `Display` can store an optional `spaceId` and expose it via API.
-- [ ] Admin UI allows creating/editing/deleting Spaces.
-- [ ] Admin UI allows assigning devices/displays to a Space (bulk assign for devices).
-- [ ] Migrations are added and backward compatibility is preserved (existing data still works).
-- [ ] Unit tests are added for new backend services/controllers (at minimum CRUD + assignment paths).
+- [x] Backend `spaces` module exists with `Space` entity/table and CRUD endpoints.
+- [x] `Device` and `Display` can store an optional `spaceId` and expose it via API.
+- [x] Admin UI allows creating/editing/deleting Spaces.
+- [x] Admin UI allows assigning devices/displays to a Space (bulk assign for devices).
+- [x] Migrations are added and backward compatibility is preserved (existing data still works).
+- [x] Unit tests are added for new backend services/controllers (at minimum CRUD + assignment paths).
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

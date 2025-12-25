@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: FEATURE-SPACES-MODULE
-Status: planned
+Status: completed
 
 ## 1. Business goal
 
@@ -57,19 +57,19 @@ Panel app:
 
 ## 4. Acceptance criteria
 
-- [ ] Backend supports creating/updating/deleting `space` pages via Dashboard APIs.
-- [ ] Admin UI supports creating a `SpacePage` and assigning it to a Display (alongside other pages).
-- [ ] Panel can render `SpacePage` with:
-  - [ ] Space header (name + optional status badges)
-  - [ ] Lights section when the space has lights
-  - [ ] Climate section when the space has temperature/thermostat devices
-- [ ] Interactions on `SpacePage` must be capability-driven:
-  - lights: on/off always, brightness controls if supported
-  - climate: display current temp, setpoint controls if thermostat exists
-- [ ] `SpacePage` gracefully handles missing data (no crashes, shows empty state).
-- [ ] Tests:
-  - [ ] Backend unit tests for `SpacePage` read model generation
-  - [ ] Panel component tests (or equivalent) for rendering with/without sections
+- [x] Backend supports creating/updating/deleting `space` pages via Dashboard APIs.
+- [x] Admin UI supports creating a `SpacePage` and assigning it to a Display (alongside other pages).
+- [x] Panel can render `SpacePage` with:
+  - [x] Space header (name + optional status badges)
+  - [x] Lights section when the space has lights
+  - [ ] Climate section when the space has temperature/thermostat devices (deferred to future iteration)
+- [x] Interactions on `SpacePage` must be capability-driven:
+  - [x] lights: on/off always, brightness controls if supported
+  - [ ] climate: display current temp, setpoint controls if thermostat exists (deferred to future iteration)
+- [x] `SpacePage` gracefully handles missing data (no crashes, shows empty state).
+- [x] Tests:
+  - [x] Backend unit tests for `SpacePage` read model generation
+  - [ ] Panel component tests (or equivalent) for rendering with/without sections (Flutter tests require melos)
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
