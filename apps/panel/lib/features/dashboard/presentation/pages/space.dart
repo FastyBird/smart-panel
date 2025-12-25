@@ -143,6 +143,8 @@ class _SpacePageState extends State<SpacePage> {
       // For now, simulate the action
       await Future.delayed(const Duration(milliseconds: 300));
 
+      if (!mounted) return;
+
       if (_targetTemperature != null) {
         final delta = 1.0;
         final newSetpoint = increase
