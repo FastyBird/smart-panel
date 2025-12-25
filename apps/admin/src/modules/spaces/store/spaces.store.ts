@@ -171,8 +171,10 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSet
 		}
 
 		if (existing.draft) {
-			return add({
-				id: payload.id,
+			const draftId = payload.id;
+
+			const space = await add({
+				id: draftId,
 				data: {
 					name: existing.name,
 					description: existing.description,
@@ -181,6 +183,13 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSet
 					displayOrder: existing.displayOrder,
 				},
 			});
+
+			// Remove stale draft entry if server returned a different ID
+			if (space.id !== draftId) {
+				delete data.value[draftId];
+			}
+
+			return space;
 		}
 
 		return edit({

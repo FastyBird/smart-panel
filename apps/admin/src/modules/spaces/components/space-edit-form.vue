@@ -88,7 +88,7 @@ const formData = reactive({
 });
 
 const rules: FormRules = {
-	name: [{ required: true, message: 'Name is required', trigger: 'blur' }],
+	name: [{ required: true, message: t('spacesModule.fields.spaces.name.validation.required'), trigger: 'blur' }],
 };
 
 watch(
