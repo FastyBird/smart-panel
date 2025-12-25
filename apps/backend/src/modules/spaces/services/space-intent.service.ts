@@ -527,6 +527,9 @@ export class SpaceIntentService {
 		// Round to 0.5 degree precision
 		newSetpoint = Math.round(newSetpoint * 2) / 2;
 
+		// Re-clamp after rounding (rounding can push value outside range)
+		newSetpoint = Math.max(climateState.minSetpoint, Math.min(climateState.maxSetpoint, newSetpoint));
+
 		this.logger.debug(`Setting thermostat setpoint to ${newSetpoint}°C deviceId=${thermostatDevice.id}`);
 
 		// Execute command
