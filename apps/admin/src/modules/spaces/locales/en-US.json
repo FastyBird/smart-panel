@@ -168,7 +168,9 @@
 		"saved": "Space was successfully saved",
 		"edited": "Space {space} has been updated",
 		"notEdited": "Space {space} was not updated",
-		"deletedWhileEditing": "This space was deleted and is no longer available."
+		"deletedWhileEditing": "This space was deleted and is no longer available.",
+		"createError": "Failed to create space. Please try again.",
+		"saveError": "Failed to save changes. Please try again."
 	},
 	"misc": {
 		"types": {

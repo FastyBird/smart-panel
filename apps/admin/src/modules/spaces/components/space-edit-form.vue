@@ -49,7 +49,7 @@
 import { reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElButton, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
+import { ElButton, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager } from '../../../common';
@@ -131,6 +131,8 @@ const onSubmit = async (): Promise<void> => {
 		}
 
 		emit('saved', savedSpace);
+	} catch {
+		ElMessage.error(t('spacesModule.messages.saveError'));
 	} finally {
 		saving.value = false;
 	}
