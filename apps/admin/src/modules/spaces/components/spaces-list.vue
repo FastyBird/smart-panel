@@ -64,6 +64,7 @@ import { useRouter } from 'vue-router';
 import { injectStoresManager } from '../../../common';
 import { useSpaces } from '../composables';
 import { RouteNames } from '../spaces.constants';
+import { SpacesApiException } from '../spaces.exceptions';
 import { spacesStoreKey, type ISpace, type ISpacesStore } from '../store';
 
 const { t } = useI18n();
@@ -94,8 +95,11 @@ const onDelete = async (space: ISpace): Promise<void> => {
 
 		await spacesStore.remove({ id: space.id });
 		ElMessage.success(t('spacesModule.messages.deleted'));
-	} catch {
-		// User cancelled
+	} catch (error: unknown) {
+		if (error instanceof SpacesApiException) {
+			ElMessage.error(error.message);
+		}
+		// Otherwise user cancelled - ignore
 	}
 };
 </script>

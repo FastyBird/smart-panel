@@ -54,6 +54,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { useSpace } from '../composables';
 import { RouteNames } from '../spaces.constants';
+import { SpacesApiException } from '../spaces.exceptions';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -92,8 +93,11 @@ const onDelete = async (): Promise<void> => {
 		await removeSpace();
 		ElMessage.success(t('spacesModule.messages.deleted'));
 		router.push({ name: RouteNames.SPACES });
-	} catch {
-		// User cancelled
+	} catch (error: unknown) {
+		if (error instanceof SpacesApiException) {
+			ElMessage.error(error.message);
+		}
+		// Otherwise user cancelled - ignore
 	}
 };
 </script>
