@@ -48,7 +48,12 @@ import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpacesService } from '../services/spaces.service';
-import { SPACE_CATEGORY_TEMPLATES, SpaceCategory, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	SPACES_MODULE_API_TAG_NAME,
+	SPACES_MODULE_NAME,
+	SPACE_CATEGORY_TEMPLATES,
+	SpaceCategory,
+} from '../spaces.constants';
 
 @ApiTags(SPACES_MODULE_API_TAG_NAME)
 @Controller('spaces')
