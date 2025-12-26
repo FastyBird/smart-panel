@@ -1227,17 +1227,7 @@ class _SpacePageState extends State<SpacePage> {
   Widget _buildQuickActionsRow(BuildContext context) {
     final quickActions = widget.page.quickActions;
 
-    // Filter to only lighting-related quick actions
-    final lightingActions = quickActions.where((action) {
-      return action == QuickActionType.lightingOff ||
-          action == QuickActionType.lightingWork ||
-          action == QuickActionType.lightingRelax ||
-          action == QuickActionType.lightingNight ||
-          action == QuickActionType.brightnessUp ||
-          action == QuickActionType.brightnessDown;
-    }).toList();
-
-    if (lightingActions.isEmpty) {
+    if (quickActions.isEmpty) {
       // Fallback to default lighting controls
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1276,7 +1266,7 @@ class _SpacePageState extends State<SpacePage> {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: lightingActions.map((action) {
+      children: quickActions.map((action) {
         return _buildQuickActionButton(context, action);
       }).toList(),
     );
@@ -1292,6 +1282,11 @@ class _SpacePageState extends State<SpacePage> {
       return _buildBrightnessButton(context, action, info);
     }
 
+    if (action == QuickActionType.climateUp ||
+        action == QuickActionType.climateDown) {
+      return _buildClimateButton(context, action, info);
+    }
+
     // For lighting mode buttons, use the existing lighting mode button builder
     final mode = _quickActionToLightingMode(action);
     if (mode != null) {
@@ -1304,7 +1299,7 @@ class _SpacePageState extends State<SpacePage> {
       );
     }
 
-    // Fallback: generic button (shouldn't happen for lighting actions)
+    // Fallback: generic button (shouldn't happen for known actions)
     return _buildLightingModeButton(
       context,
       LightingMode.off,
@@ -1506,6 +1501,96 @@ class _SpacePageState extends State<SpacePage> {
         });
       }
     }
+  }
+
+  /// Builds a climate control button (temperature up/down).
+  Widget _buildClimateButton(
+    BuildContext context,
+    QuickActionType action,
+    ({IconData icon, String label}) info,
+  ) {
+    final buttonSize = _screenService.scale(
+      60,
+      density: _visualDensityService.density,
+    );
+    final isIncrease = action == QuickActionType.climateUp;
+
+    return Column(
+      children: [
+        SizedBox(
+          width: buttonSize,
+          height: buttonSize,
+          child: _isClimateLoading
+              ? Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppBgColorLight.page.withValues(alpha: 0.7)
+                        : AppBgColorDark.overlay.withValues(alpha: 0.7),
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      width: _screenService.scale(
+                        20,
+                        density: _visualDensityService.density,
+                      ),
+                      height: _screenService.scale(
+                        20,
+                        density: _visualDensityService.density,
+                      ),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                )
+              : Theme(
+                  data: ThemeData(
+                    filledButtonTheme:
+                        Theme.of(context).brightness == Brightness.light
+                            ? AppFilledButtonsLightThemes.info
+                            : AppFilledButtonsDarkThemes.info,
+                  ),
+                  child: FilledButton(
+                    onPressed: () => _executeClimateQuickAction(isIncrease),
+                    style: ButtonStyle(
+                      padding: WidgetStateProperty.all(EdgeInsets.zero),
+                      shape: WidgetStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppBorderRadius.base),
+                        ),
+                      ),
+                    ),
+                    child: Icon(
+                      info.icon,
+                      size: _screenService.scale(
+                        28,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+        AppSpacings.spacingXsVertical,
+        Text(
+          info.label,
+          style: TextStyle(
+            fontSize: AppFontSize.extraSmall,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.regular
+                : AppTextColorDark.regular,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Executes a climate setpoint adjustment via quick action.
+  Future<void> _executeClimateQuickAction(bool increase) async {
+    // Delegate to existing setpoint adjustment logic
+    await _adjustSetpoint(increase);
   }
 
   Widget _buildDevicesSection(BuildContext context) {

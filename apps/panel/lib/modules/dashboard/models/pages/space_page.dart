@@ -36,10 +36,10 @@ enum QuickActionType {
 
   static QuickActionType? fromValue(String? value) {
     if (value == null) return null;
-    return QuickActionType.values.firstWhere(
-      (e) => e.value == value,
-      orElse: () => QuickActionType.lightingOff,
-    );
+    for (final type in QuickActionType.values) {
+      if (type.value == value) return type;
+    }
+    return null; // Unknown value, skip it
   }
 
   static List<QuickActionType> fromList(List<dynamic>? list) {
