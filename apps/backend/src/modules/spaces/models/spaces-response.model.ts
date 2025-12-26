@@ -469,6 +469,7 @@ export class LightingRoleResponseModel extends BaseSuccessResponseModel<SpaceLig
 		type: () => SpaceLightingRoleEntity,
 	})
 	@Expose()
+	@Type(() => SpaceLightingRoleEntity)
 	declare data: SpaceLightingRoleEntity;
 }
 
@@ -483,6 +484,7 @@ export class LightingRolesResponseModel extends BaseSuccessResponseModel<SpaceLi
 		items: { $ref: getSchemaPath(SpaceLightingRoleEntity) },
 	})
 	@Expose()
+	@Type(() => SpaceLightingRoleEntity)
 	declare data: SpaceLightingRoleEntity[];
 }
 

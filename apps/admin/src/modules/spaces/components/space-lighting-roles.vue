@@ -160,9 +160,12 @@ const onRoleChange = async (target: ILightTarget, newRole: string): Promise<void
 				}
 			);
 
-			if (!error) {
-				target.role = null;
+			if (error) {
+				ElMessage.error('Failed to clear lighting role');
+				return;
 			}
+
+			target.role = null;
 		} else {
 			// Set role
 			const { error } = await backend.client.POST(
@@ -180,9 +183,12 @@ const onRoleChange = async (target: ILightTarget, newRole: string): Promise<void
 				}
 			);
 
-			if (!error) {
-				target.role = newRole as LightingRole;
+			if (error) {
+				ElMessage.error('Failed to update lighting role');
+				return;
 			}
+
+			target.role = newRole as LightingRole;
 		}
 	} catch {
 		ElMessage.error('Failed to update lighting role');
