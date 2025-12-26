@@ -1,8 +1,8 @@
 import { computed, reactive } from 'vue';
 
 import { injectBackendClient } from '../../../common';
-import { SpacesModuleCreateSpaceType } from '../../../openapi';
-import { SpaceType } from '../spaces.constants';
+import { SpacesModuleCreateSpaceCategory, SpacesModuleCreateSpaceType } from '../../../openapi';
+import { SpaceCategory, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import type { ISpace, ISpaceCreateData } from '../store';
 
@@ -56,6 +56,11 @@ const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreat
 		default:
 			return SpacesModuleCreateSpaceType.room;
 	}
+};
+
+const apiCategoryToSpaceCategory = (apiCategory: SpacesModuleCreateSpaceCategory | null | undefined): SpaceCategory | null => {
+	if (!apiCategory) return null;
+	return apiCategory as unknown as SpaceCategory;
 };
 
 export const useSpacesOnboarding = () => {
@@ -134,6 +139,7 @@ export const useSpacesOnboarding = () => {
 					name: response.data.data.name,
 					description: response.data.data.description ?? null,
 					type: apiTypeToSpaceType(response.data.data.type),
+					category: apiCategoryToSpaceCategory(response.data.data.category),
 					icon: response.data.data.icon ?? null,
 					displayOrder: response.data.data.display_order ?? 0,
 					primaryThermostatId: response.data.data.primary_thermostat_id ?? null,
@@ -193,6 +199,7 @@ export const useSpacesOnboarding = () => {
 				name: response.data.data.name,
 				description: response.data.data.description ?? null,
 				type: apiTypeToSpaceType(response.data.data.type),
+				category: apiCategoryToSpaceCategory(response.data.data.category),
 				icon: response.data.data.icon ?? null,
 				displayOrder: response.data.data.display_order ?? 0,
 				primaryThermostatId: response.data.data.primary_thermostat_id ?? null,
@@ -395,6 +402,7 @@ export const useSpacesOnboarding = () => {
 				name: s.name,
 				description: s.description ?? null,
 				type: apiTypeToSpaceType(s.type),
+				category: apiCategoryToSpaceCategory(s.category),
 				icon: s.icon ?? null,
 				displayOrder: s.display_order ?? 0,
 				primaryThermostatId: s.primary_thermostat_id ?? null,
