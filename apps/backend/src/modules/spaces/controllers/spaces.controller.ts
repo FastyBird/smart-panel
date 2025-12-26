@@ -27,11 +27,11 @@ import {
 	ClimateIntentResultDataModel,
 	ClimateStateDataModel,
 	ClimateStateResponseModel,
+	LightTargetDataModel,
+	LightTargetsResponseModel,
 	LightingIntentResponseModel,
 	LightingIntentResultDataModel,
 	LightingRoleResponseModel,
-	LightTargetDataModel,
-	LightTargetsResponseModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	SpaceResponseModel,
@@ -415,8 +415,7 @@ export class SpacesController {
 		operationId: 'create-spaces-module-space-lighting-role',
 		summary: 'Set lighting role for a light target',
 		description:
-			'Sets or updates the lighting role for a specific device/channel in a space. ' +
-			'Requires owner or admin role.',
+			'Sets or updates the lighting role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(LightingRoleResponseModel, 'Returns the created/updated lighting role assignment')

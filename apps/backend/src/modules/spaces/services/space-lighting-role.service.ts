@@ -9,7 +9,7 @@ import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { SetLightingRoleDto } from '../dto/lighting-role.dto';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { LightingRole, SPACES_MODULE_NAME } from '../spaces.constants';
-import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
+import { SpacesValidationException } from '../spaces.exceptions';
 
 import { SpacesService } from './spaces.service';
 
@@ -92,9 +92,7 @@ export class SpaceLightingRoleService {
 		const channel = device.channels?.find((ch) => ch.id === dto.channelId);
 
 		if (!channel) {
-			throw new SpacesValidationException(
-				`Channel with id=${dto.channelId} not found on device ${dto.deviceId}`,
-			);
+			throw new SpacesValidationException(`Channel with id=${dto.channelId} not found on device ${dto.deviceId}`);
 		}
 
 		// Check for existing role assignment

@@ -34,23 +34,23 @@ describe('SpaceLightingRoleService', () => {
 		updatedAt: null,
 	};
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel = {
 		id: uuid(),
 		name: 'Light',
 		category: ChannelCategory.LIGHT,
 		deviceId: '',
-		device: null as any,
+		device: undefined,
 		properties: [],
 		createdAt: new Date(),
 		updatedAt: null,
-	};
+	} as ChannelEntity;
 
-	const mockOnProperty: ChannelPropertyEntity = {
+	const mockOnProperty = {
 		id: uuid(),
 		name: 'On',
 		category: PropertyCategory.ON,
 		channelId: mockChannel.id,
-		channel: null as any,
+		channel: undefined,
 		value: true,
 		dataType: 'boolean',
 		format: null,
@@ -60,14 +60,14 @@ describe('SpaceLightingRoleService', () => {
 		queryable: true,
 		createdAt: new Date(),
 		updatedAt: null,
-	};
+	} as ChannelPropertyEntity;
 
-	const mockBrightnessProperty: ChannelPropertyEntity = {
+	const mockBrightnessProperty = {
 		id: uuid(),
 		name: 'Brightness',
 		category: PropertyCategory.BRIGHTNESS,
 		channelId: mockChannel.id,
-		channel: null as any,
+		channel: undefined,
 		value: 100,
 		dataType: 'number',
 		format: [0, 100],
@@ -77,7 +77,7 @@ describe('SpaceLightingRoleService', () => {
 		queryable: true,
 		createdAt: new Date(),
 		updatedAt: null,
-	};
+	} as ChannelPropertyEntity;
 
 	const mockDevice: DeviceEntity = {
 		id: uuid(),
@@ -114,8 +114,8 @@ describe('SpaceLightingRoleService', () => {
 					useValue: {
 						find: jest.fn().mockResolvedValue([mockRole]),
 						findOne: jest.fn().mockResolvedValue(null),
-						create: jest.fn().mockImplementation((data) => ({ ...data, id: uuid() })),
-						save: jest.fn().mockImplementation((entity) => entity),
+						create: jest.fn().mockImplementation((data: Partial<SpaceLightingRoleEntity>) => ({ ...data, id: uuid() })),
+						save: jest.fn().mockImplementation((entity: SpaceLightingRoleEntity) => entity),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -274,9 +274,7 @@ describe('SpaceLightingRoleService', () => {
 		it('should not throw when role does not exist', async () => {
 			roleRepository.findOne.mockResolvedValue(null);
 
-			await expect(
-				service.deleteRole(mockSpace.id, mockDevice.id, mockChannel.id),
-			).resolves.not.toThrow();
+			await expect(service.deleteRole(mockSpace.id, mockDevice.id, mockChannel.id)).resolves.not.toThrow();
 		});
 	});
 

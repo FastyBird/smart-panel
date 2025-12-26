@@ -8,7 +8,7 @@
 
 		<div v-if="loading" class="flex justify-center py-4">
 			<el-icon class="animate-spin" :size="24">
-				<loading />
+				<Loading />
 			</el-icon>
 		</div>
 
@@ -53,7 +53,7 @@
 			</el-table>
 
 			<div class="flex justify-between items-center mt-4">
-				<el-button size="small" @click="onApplyDefaults" :loading="applyingDefaults">
+				<el-button size="small" :loading="applyingDefaults" @click="onApplyDefaults">
 					{{ t('spacesModule.fields.spaces.lightingRoles.applyDefaults') }}
 				</el-button>
 				<div class="text-xs text-gray-400">
