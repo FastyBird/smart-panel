@@ -16,8 +16,8 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
-import { SpaceEntity } from '../entities/space.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
+import { SpaceEntity } from '../entities/space.entity';
 import {
 	BRIGHTNESS_DELTA_STEPS,
 	BrightnessDelta,
@@ -33,7 +33,7 @@ import {
 	SetpointDelta,
 } from '../spaces.constants';
 
-import { selectLightsForMode, SpaceIntentService } from './space-intent.service';
+import { SpaceIntentService, selectLightsForMode } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
 
@@ -1194,9 +1194,7 @@ describe('SpaceIntentService', () => {
 			});
 
 			it('should turn all lights ON with mode brightness for RELAX', () => {
-				const lights = [
-					createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null }),
-				];
+				const lights = [createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null })];
 
 				const selections = selectLightsForMode(lights, LightingMode.RELAX);
 
@@ -1207,9 +1205,7 @@ describe('SpaceIntentService', () => {
 			});
 
 			it('should turn all lights ON with mode brightness for NIGHT', () => {
-				const lights = [
-					createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null }),
-				];
+				const lights = [createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null })];
 
 				const selections = selectLightsForMode(lights, LightingMode.NIGHT);
 
