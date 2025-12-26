@@ -1202,7 +1202,7 @@ class _SpacePageState extends State<SpacePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              MdiIcons.devicesOutline,
+              MdiIcons.formatListBulleted,
               size: _screenService.scale(
                 48,
                 density: _visualDensityService.density,
