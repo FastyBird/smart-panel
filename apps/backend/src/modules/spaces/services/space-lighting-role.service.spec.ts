@@ -26,6 +26,7 @@ describe('SpaceLightingRoleService', () => {
 		name: 'Living Room',
 		description: 'Main living area',
 		type: SpaceType.ROOM,
+		category: null,
 		icon: 'mdi:sofa',
 		displayOrder: 0,
 		primaryThermostatId: null,

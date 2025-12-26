@@ -74,6 +74,32 @@
 					"zone": "Zone"
 				}
 			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Select a category (optional)",
+				"hint": "Selecting a category will auto-fill the icon and description with suggested defaults",
+				"options": {
+					"living_room": "Living Room",
+					"bedroom": "Bedroom",
+					"bathroom": "Bathroom",
+					"kitchen": "Kitchen",
+					"dining_room": "Dining Room",
+					"office": "Office",
+					"garage": "Garage",
+					"hallway": "Hallway",
+					"laundry": "Laundry",
+					"storage": "Storage",
+					"outdoor": "Outdoor",
+					"basement": "Basement",
+					"attic": "Attic",
+					"nursery": "Nursery",
+					"guest_room": "Guest Room",
+					"gym": "Gym",
+					"media_room": "Media Room",
+					"workshop": "Workshop",
+					"other": "Other"
+				}
+			},
 			"icon": {
 				"title": "Icon",
 				"placeholder": "mdi:home (Iconify icon name)"

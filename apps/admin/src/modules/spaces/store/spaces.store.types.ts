@@ -1,12 +1,13 @@
 import type { Ref } from 'vue';
 
-import type { SpaceType } from '../spaces.constants';
+import type { SpaceCategory, SpaceType } from '../spaces.constants';
 
 export interface ISpace {
 	id: string;
 	name: string;
 	description: string | null;
 	type: SpaceType;
+	category: SpaceCategory | null;
 	icon: string | null;
 	displayOrder: number;
 	primaryThermostatId: string | null;
@@ -22,6 +23,7 @@ export interface ISpaceEditData {
 	name: string;
 	description?: string | null;
 	type?: SpaceType;
+	category?: SpaceCategory | null;
 	icon?: string | null;
 	displayOrder?: number;
 	primaryThermostatId?: string | null;
@@ -33,6 +35,7 @@ export interface ISpaceCreateData {
 	name: string;
 	description?: string | null;
 	type?: SpaceType;
+	category?: SpaceCategory | null;
 	icon?: string | null;
 	displayOrder?: number;
 	primaryThermostatId?: string | null;

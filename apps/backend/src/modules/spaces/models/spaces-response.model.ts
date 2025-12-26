@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
-import { LightingMode, LightingRole, SuggestionType } from '../spaces.constants';
+import { LightingMode, LightingRole, SpaceCategory, SuggestionType } from '../spaces.constants';
 
 /**
  * Response wrapper for SpaceEntity
@@ -620,4 +620,53 @@ export class SuggestionFeedbackResponseModel extends BaseSuccessResponseModel<Su
 	@Expose()
 	@Type(() => SuggestionFeedbackResultDataModel)
 	declare data: SuggestionFeedbackResultDataModel;
+}
+
+// ================================
+// Category Template Response Models
+// ================================
+
+/**
+ * Space category template data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataCategoryTemplate' })
+export class CategoryTemplateDataModel {
+	@ApiProperty({
+		description: 'Category identifier',
+		enum: SpaceCategory,
+		example: SpaceCategory.LIVING_ROOM,
+	})
+	@Expose()
+	category: SpaceCategory;
+
+	@ApiProperty({
+		description: 'Suggested icon for the category',
+		type: 'string',
+		example: 'mdi:sofa',
+	})
+	@Expose()
+	icon: string;
+
+	@ApiProperty({
+		description: 'Default description for the category',
+		type: 'string',
+		example: 'Main living and entertainment area',
+	})
+	@Expose()
+	description: string;
+}
+
+/**
+ * Response wrapper for category templates
+ */
+@ApiSchema({ name: 'SpacesModuleResCategoryTemplates' })
+export class CategoryTemplatesResponseModel extends BaseSuccessResponseModel<CategoryTemplateDataModel[]> {
+	@ApiProperty({
+		description: 'Array of category templates with default values',
+		type: 'array',
+		items: { $ref: getSchemaPath(CategoryTemplateDataModel) },
+	})
+	@Expose()
+	@Type(() => CategoryTemplateDataModel)
+	declare data: CategoryTemplateDataModel[];
 }

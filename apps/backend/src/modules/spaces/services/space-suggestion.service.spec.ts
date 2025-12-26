@@ -113,6 +113,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 			name,
 			description: null,
 			type: SpaceType.ROOM,
+			category: null,
 			icon: null,
 			displayOrder: 0,
 			primaryThermostatId: null,

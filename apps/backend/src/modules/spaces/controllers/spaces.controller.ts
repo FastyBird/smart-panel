@@ -24,6 +24,8 @@ import {
 	BulkAssignmentResultDataModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
+	CategoryTemplateDataModel,
+	CategoryTemplatesResponseModel,
 	ClimateIntentResponseModel,
 	ClimateIntentResultDataModel,
 	ClimateStateDataModel,
@@ -46,7 +48,12 @@ import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpacesService } from '../services/spaces.service';
-import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	SPACES_MODULE_API_TAG_NAME,
+	SPACES_MODULE_NAME,
+	SPACE_CATEGORY_TEMPLATES,
+	SpaceCategory,
+} from '../spaces.constants';
 
 @ApiTags(SPACES_MODULE_API_TAG_NAME)
 @Controller('spaces')
@@ -104,6 +111,33 @@ export class SpacesController {
 			model.deviceCount = p.deviceCount;
 			return model;
 		});
+
+		return response;
+	}
+
+	@Get('categories/templates')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'get-spaces-module-category-templates',
+		summary: 'List space category templates',
+		description:
+			'Retrieves all available space category templates with their default icons and descriptions. ' +
+			'Templates provide suggested values when creating spaces of common room types.',
+	})
+	@ApiSuccessResponse(CategoryTemplatesResponseModel, 'Returns category templates')
+	getCategoryTemplates(): CategoryTemplatesResponseModel {
+		this.logger.debug('Fetching category templates');
+
+		const templates = Object.entries(SPACE_CATEGORY_TEMPLATES).map(([category, template]) => {
+			const model = new CategoryTemplateDataModel();
+			model.category = category as SpaceCategory;
+			model.icon = template.icon;
+			model.description = template.description;
+			return model;
+		});
+
+		const response = new CategoryTemplatesResponseModel();
+		response.data = templates;
 
 		return response;
 	}
