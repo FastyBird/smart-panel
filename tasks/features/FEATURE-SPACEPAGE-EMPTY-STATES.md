@@ -4,7 +4,7 @@ Type: feature
 Scope: panel, backend
 Size: tiny
 Parent: EPIC-SPACES-FIRST-UX
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -28,5 +28,5 @@ I want clear and calm empty states when a Space has no devices or limited capabi
 
 ## 4. Acceptance criteria
 
-- [ ] SpacePage shows a clear empty state when no sections are available.
-- [ ] Each missing section degrades gracefully.
+- [x] SpacePage shows a clear empty state when no sections are available.
+- [x] Each missing section degrades gracefully.

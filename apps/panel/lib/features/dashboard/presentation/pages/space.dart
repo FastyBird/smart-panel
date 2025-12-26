@@ -23,6 +23,19 @@ enum ClimateState {
   controllable,
 }
 
+enum LightingState {
+  loading,
+  noLighting,
+  available,
+}
+
+enum DevicesState {
+  loading,
+  noDevices,
+  sensorsOnly,
+  available,
+}
+
 /// Represents a suggestion for the space
 class SpaceSuggestion {
   final String type;
@@ -55,6 +68,9 @@ class _SpacePageState extends State<SpacePage> {
   bool _isLoading = false;
   LightingMode? _activeMode;
 
+  // Lighting state
+  LightingState _lightingState = LightingState.loading;
+
   // Climate state
   bool _isClimateLoading = false;
   ClimateState _climateState = ClimateState.loading;
@@ -62,6 +78,9 @@ class _SpacePageState extends State<SpacePage> {
   double? _targetTemperature;
   double _minSetpoint = 5.0;
   double _maxSetpoint = 35.0;
+
+  // Devices state
+  DevicesState _devicesState = DevicesState.loading;
 
   // Suggestion state
   SpaceSuggestion? _suggestion;
@@ -84,11 +103,61 @@ class _SpacePageState extends State<SpacePage> {
   static const String _suggestionApplied = 'Suggestion applied';
   static const String _suggestionDismissed = 'Suggestion dismissed';
 
+  // Empty state messages
+  static const String _emptyStateTitle = 'No Controls Available';
+  static const String _emptyStateDescription =
+      'This space has no controllable devices configured yet';
+  static const String _sensorsOnlyTitle = 'Sensors Only';
+  static const String _sensorsOnlyDescription =
+      'This space only has sensors — no controllable devices';
+  static const String _noLightingDescription =
+      'No lighting devices in this space';
+
   @override
   void initState() {
     super.initState();
+    _loadLightingState();
     _loadClimateState();
+    _loadDevicesState();
     _loadSuggestion();
+  }
+
+  Future<void> _loadLightingState() async {
+    setState(() {
+      _lightingState = LightingState.loading;
+    });
+
+    try {
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example:
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final response = await spacesApi.getSpacesModuleSpaceLighting(
+      //   id: widget.page.spaceId,
+      // );
+      // final data = response.data;
+      //
+      // setState(() {
+      //   _lightingState = data.hasLighting
+      //       ? LightingState.available
+      //       : LightingState.noLighting;
+      // });
+      //
+      // For now, simulate lighting available (most spaces will have lights)
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      setState(() {
+        // Default to available for now - when API is integrated this will check actual data
+        _lightingState = LightingState.available;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _lightingState = LightingState.noLighting;
+      });
+    }
   }
 
   Future<void> _loadClimateState() async {
@@ -129,6 +198,46 @@ class _SpacePageState extends State<SpacePage> {
 
       setState(() {
         _climateState = ClimateState.noClimate;
+      });
+    }
+  }
+
+  Future<void> _loadDevicesState() async {
+    setState(() {
+      _devicesState = DevicesState.loading;
+    });
+
+    try {
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example:
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final response = await spacesApi.getSpacesModuleSpaceDevices(
+      //   id: widget.page.spaceId,
+      // );
+      // final data = response.data;
+      //
+      // setState(() {
+      //   _devicesState = data.devices.isEmpty
+      //       ? DevicesState.noDevices
+      //       : data.hasControllableDevices
+      //           ? DevicesState.available
+      //           : DevicesState.sensorsOnly;
+      // });
+      //
+      // For now, simulate no devices (placeholder)
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      setState(() {
+        // Default to noDevices for now - when API is integrated this will check actual data
+        _devicesState = DevicesState.noDevices;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _devicesState = DevicesState.noDevices;
       });
     }
   }
@@ -423,6 +532,22 @@ class _SpacePageState extends State<SpacePage> {
     }
   }
 
+  /// Returns true if we're still loading space capabilities
+  bool get _isLoadingCapabilities =>
+      _lightingState == LightingState.loading ||
+      _climateState == ClimateState.loading;
+
+  /// Returns true if space has lighting controls available
+  bool get _hasLighting => _lightingState == LightingState.available;
+
+  /// Returns true if space has climate controls available
+  bool get _hasClimate =>
+      _climateState == ClimateState.readOnly ||
+      _climateState == ClimateState.controllable;
+
+  /// Returns true if space has no controllable sections (empty state)
+  bool get _hasNoControls => !_hasLighting && !_hasClimate;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -435,30 +560,120 @@ class _SpacePageState extends State<SpacePage> {
       body: SafeArea(
         child: Padding(
           padding: AppSpacings.paddingMd,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Suggestion banner (shown when there's a suggestion)
-              if (_suggestion != null) ...[
-                _buildSuggestionBanner(context),
-                AppSpacings.spacingMdVertical,
-              ],
-              // Lighting controls section
-              _buildLightingControlsSection(context),
-              // Climate controls section (only shown if space has climate devices)
-              if (_climateState != ClimateState.noClimate) ...[
-                AppSpacings.spacingMdVertical,
-                _buildClimateControlsSection(context),
-              ],
-              AppSpacings.spacingLgVertical,
-              // Placeholder for device list
-              Expanded(
-                child: _buildDevicesSection(context),
-              ),
-            ],
-          ),
+          child: _isLoadingCapabilities
+              ? _buildLoadingState(context)
+              : _hasNoControls
+                  ? _buildEmptyState(context)
+                  : _buildContent(context),
         ),
       ),
+    );
+  }
+
+  Widget _buildLoadingState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: _screenService.scale(
+              32,
+              density: _visualDensityService.density,
+            ),
+            height: _screenService.scale(
+              32,
+              density: _visualDensityService.density,
+            ),
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Suggestion banner (shown when there's a suggestion)
+        if (_suggestion != null) ...[
+          _buildSuggestionBanner(context),
+          AppSpacings.spacingMdVertical,
+        ],
+        // Empty state card
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  MdiIcons.homeOffOutline,
+                  size: _screenService.scale(
+                    64,
+                    density: _visualDensityService.density,
+                  ),
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.placeholder
+                      : AppTextColorDark.placeholder,
+                ),
+                AppSpacings.spacingMdVertical,
+                Text(
+                  _emptyStateTitle,
+                  style: TextStyle(
+                    fontSize: AppFontSize.large,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTextColorLight.regular
+                        : AppTextColorDark.regular,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                AppSpacings.spacingSmVertical,
+                Text(
+                  _emptyStateDescription,
+                  style: TextStyle(
+                    fontSize: AppFontSize.small,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTextColorLight.placeholder
+                        : AppTextColorDark.placeholder,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Suggestion banner (shown when there's a suggestion)
+        if (_suggestion != null) ...[
+          _buildSuggestionBanner(context),
+          AppSpacings.spacingMdVertical,
+        ],
+        // Lighting controls section (only shown if space has lighting devices)
+        if (_hasLighting) ...[
+          _buildLightingControlsSection(context),
+        ],
+        // Climate controls section (only shown if space has climate devices)
+        if (_hasClimate) ...[
+          if (_hasLighting) AppSpacings.spacingMdVertical,
+          _buildClimateControlsSection(context),
+        ],
+        AppSpacings.spacingLgVertical,
+        // Placeholder for device list
+        Expanded(
+          child: _buildDevicesSection(context),
+        ),
+      ],
     );
   }
 
@@ -905,35 +1120,104 @@ class _SpacePageState extends State<SpacePage> {
         ),
         AppSpacings.spacingSmVertical,
         Expanded(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  MdiIcons.homeOutline,
-                  size: _screenService.scale(
-                    48,
-                    density: _visualDensityService.density,
-                  ),
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.placeholder
-                      : AppTextColorDark.placeholder,
-                ),
-                AppSpacings.spacingSmVertical,
-                Text(
-                  _devicesPlaceholder,
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppTextColorLight.placeholder
-                        : AppTextColorDark.placeholder,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
+          child: _buildDevicesSectionContent(context),
         ),
       ],
+    );
+  }
+
+  Widget _buildDevicesSectionContent(BuildContext context) {
+    // Loading state
+    if (_devicesState == DevicesState.loading) {
+      return Center(
+        child: SizedBox(
+          width: _screenService.scale(
+            24,
+            density: _visualDensityService.density,
+          ),
+          height: _screenService.scale(
+            24,
+            density: _visualDensityService.density,
+          ),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      );
+    }
+
+    // Sensors only state
+    if (_devicesState == DevicesState.sensorsOnly) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              MdiIcons.eyeOutline,
+              size: _screenService.scale(
+                48,
+                density: _visualDensityService.density,
+              ),
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.placeholder
+                  : AppTextColorDark.placeholder,
+            ),
+            AppSpacings.spacingSmVertical,
+            Text(
+              _sensorsOnlyTitle,
+              style: TextStyle(
+                fontSize: AppFontSize.small,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.regular
+                    : AppTextColorDark.regular,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            AppSpacings.spacingXsVertical,
+            Text(
+              _sensorsOnlyDescription,
+              style: TextStyle(
+                fontSize: AppFontSize.extraSmall,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.placeholder
+                    : AppTextColorDark.placeholder,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // No devices / placeholder state
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            MdiIcons.homeOutline,
+            size: _screenService.scale(
+              48,
+              density: _visualDensityService.density,
+            ),
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.placeholder
+                : AppTextColorDark.placeholder,
+          ),
+          AppSpacings.spacingSmVertical,
+          Text(
+            _devicesPlaceholder,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.placeholder
+                  : AppTextColorDark.placeholder,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
