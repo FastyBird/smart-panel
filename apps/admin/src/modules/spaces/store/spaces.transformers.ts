@@ -38,8 +38,11 @@ const apiCategoryToSpaceCategory = (apiCategory: SpacesModuleCreateSpaceCategory
 	return apiCategory as unknown as SpaceCategory;
 };
 
-const spaceCategoryToApiCategory = (category: SpaceCategory | null | undefined): SpacesModuleCreateSpaceCategory | undefined => {
-	if (!category) return undefined;
+const spaceCategoryToApiCategory = (
+	category: SpaceCategory | null | undefined
+): SpacesModuleCreateSpaceCategory | null | undefined => {
+	if (category === undefined) return undefined;
+	if (category === null) return null;
 	// SpaceCategory values match API category values (both are snake_case strings)
 	return category as unknown as SpacesModuleCreateSpaceCategory;
 };
@@ -67,7 +70,7 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 		name: data.name,
 		description: data.description ?? undefined,
 		type: spaceTypeToApiType(data.type),
-		category: spaceCategoryToApiCategory(data.category),
+		category: spaceCategoryToApiCategory(data.category) ?? undefined,
 		icon: data.icon ?? undefined,
 		display_order: data.displayOrder,
 		primary_thermostat_id: data.primaryThermostatId ?? undefined,
@@ -81,7 +84,8 @@ export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate 
 		name: data.name,
 		description: data.description,
 		type: spaceTypeToApiType(data.type),
-		category: spaceCategoryToApiCategory(data.category),
+		// Category supports null to clear the value - cast needed as OpenAPI types don't reflect this
+		category: spaceCategoryToApiCategory(data.category) as SpacesModuleCreateSpaceCategory | undefined,
 		icon: data.icon,
 		display_order: data.displayOrder,
 		primary_thermostat_id: data.primaryThermostatId,

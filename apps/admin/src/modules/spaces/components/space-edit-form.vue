@@ -306,6 +306,9 @@ watch(
 			initialValues.primaryThermostatId = space.primaryThermostatId ?? null;
 			initialValues.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
 			initialValues.suggestionsEnabled = space.suggestionsEnabled ?? true;
+			// Reset auto-populated tracking for the new space
+			autoPopulatedValues.icon = null;
+			autoPopulatedValues.description = null;
 			// Reload devices for the new space
 			loadSpaceDevices();
 		}
