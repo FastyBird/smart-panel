@@ -126,7 +126,8 @@ export function evaluateSuggestionRules(context: SuggestionContext): SpaceSugges
 	}
 
 	// Rule 2: Evening (after 17:00) with high brightness -> Relax mode
-	if (currentHour >= 17 && currentHour < 22 && lightsOn && averageBrightness !== null && averageBrightness >= 70) {
+	// For non-bedrooms, extends until 23:00 when Lights Off rule takes over
+	if (currentHour >= 17 && currentHour < 23 && lightsOn && averageBrightness !== null && averageBrightness >= 70) {
 		return {
 			type: SuggestionType.LIGHTING_RELAX,
 			title: 'Relax lighting',

@@ -209,6 +209,11 @@ class _SpacePageState extends State<SpacePage> {
         setState(() {
           _activeMode = _suggestion!.lightingMode;
         });
+      } else if (_suggestion?.type == 'lighting_off') {
+        // Handle LIGHTING_OFF suggestion type which has null lightingMode
+        setState(() {
+          _activeMode = LightingMode.off;
+        });
       }
 
       setState(() {
