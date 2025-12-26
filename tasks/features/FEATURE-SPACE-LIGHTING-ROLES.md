@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: EPIC-SPACES-FIRST-UX
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -54,11 +54,11 @@ Admin UI:
 
 ## 4. Acceptance criteria
 
-- [ ] Backend stores lighting role per controllable target in a Space.
-- [ ] Admin UI allows assigning/changing lighting roles for lights in a Space.
-- [ ] If no roles are set, the system behaves as before (no regression).
-- [ ] SpacePage read model includes role metadata for the lights section.
-- [ ] Unit tests cover:
+- [x] Backend stores lighting role per controllable target in a Space.
+- [x] Admin UI allows assigning/changing lighting roles for lights in a Space.
+- [x] If no roles are set, the system behaves as before (no regression).
+- [x] SpacePage read model includes role metadata for the lights section.
+- [x] Unit tests cover:
   - role assignment persistence and retrieval
   - role enum validation
   - fallback behavior when roles are missing

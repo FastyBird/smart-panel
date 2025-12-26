@@ -16,22 +16,29 @@ import { ReqBulkAssignDto } from '../dto/bulk-assign.dto';
 import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
+import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	BulkLightingRolesResponseModel,
+	BulkLightingRolesResultDataModel,
 	ClimateIntentResponseModel,
 	ClimateIntentResultDataModel,
 	ClimateStateDataModel,
 	ClimateStateResponseModel,
+	LightTargetDataModel,
+	LightTargetsResponseModel,
 	LightingIntentResponseModel,
 	LightingIntentResultDataModel,
+	LightingRoleResponseModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 } from '../models/spaces-response.model';
 import { SpaceIntentService } from '../services/space-intent.service';
+import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpacesService } from '../services/spaces.service';
 import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.constants';
 
@@ -43,6 +50,7 @@ export class SpacesController {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
+		private readonly spaceLightingRoleService: SpaceLightingRoleService,
 	) {}
 
 	@Get()
@@ -358,5 +366,162 @@ export class SpacesController {
 		response.data = resultData;
 
 		return response;
+	}
+
+	// ================================
+	// Lighting Role Endpoints
+	// ================================
+
+	@Get(':id/lighting/targets')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-lighting-targets',
+		summary: 'List light targets in space',
+		description:
+			'Retrieves all controllable light targets (device/channel pairs) in a space ' +
+			'along with their current role assignments and capabilities. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightTargetsResponseModel, 'Returns the list of light targets with role assignments')
+	@ApiNotFoundResponse('Space not found')
+	async getLightTargets(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<LightTargetsResponseModel> {
+		this.logger.debug(`Fetching light targets for space with id=${id}`);
+
+		const targets = await this.spaceLightingRoleService.getLightTargetsInSpace(id);
+
+		const response = new LightTargetsResponseModel();
+		response.data = targets.map((t) => {
+			const model = new LightTargetDataModel();
+			model.deviceId = t.deviceId;
+			model.deviceName = t.deviceName;
+			model.channelId = t.channelId;
+			model.channelName = t.channelName;
+			model.role = t.role;
+			model.priority = t.priority;
+			model.hasBrightness = t.hasBrightness;
+			model.hasColorTemp = t.hasColorTemp;
+			model.hasColor = t.hasColor;
+			return model;
+		});
+
+		return response;
+	}
+
+	@Post(':id/lighting/roles')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-lighting-role',
+		summary: 'Set lighting role for a light target',
+		description:
+			'Sets or updates the lighting role for a specific device/channel in a space. ' + 'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(LightingRoleResponseModel, 'Returns the created/updated lighting role assignment')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async setLightingRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSetLightingRoleDto,
+	): Promise<LightingRoleResponseModel> {
+		this.logger.debug(`Setting lighting role for space with id=${id}`);
+
+		const role = await this.spaceLightingRoleService.setRole(id, body.data);
+
+		const response = new LightingRoleResponseModel();
+		response.data = role;
+
+		return response;
+	}
+
+	@Post(':id/lighting/roles/bulk')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-lighting-roles-bulk',
+		summary: 'Bulk set lighting roles for light targets',
+		description:
+			'Sets or updates lighting roles for multiple device/channels in a space in a single operation. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkLightingRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid role data')
+	@ApiUnprocessableEntityResponse('Role assignment validation failed')
+	async bulkSetLightingRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqBulkSetLightingRolesDto,
+	): Promise<BulkLightingRolesResponseModel> {
+		this.logger.debug(`Bulk setting lighting roles for space with id=${id}`);
+
+		const updatedCount = await this.spaceLightingRoleService.bulkSetRoles(id, body.data.roles);
+
+		const resultData = new BulkLightingRolesResultDataModel();
+		resultData.success = true;
+		resultData.rolesUpdated = updatedCount;
+
+		const response = new BulkLightingRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Post(':id/lighting/roles/defaults')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-lighting-roles-defaults',
+		summary: 'Apply default lighting roles',
+		description:
+			'Infers and applies default lighting roles for all lights in the space. ' +
+			'First light becomes MAIN, remaining lights become AMBIENT. Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(BulkLightingRolesResponseModel, 'Returns the bulk update result')
+	@ApiNotFoundResponse('Space not found')
+	async applyDefaultLightingRoles(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<BulkLightingRolesResponseModel> {
+		this.logger.debug(`Applying default lighting roles for space with id=${id}`);
+
+		const defaultRoles = await this.spaceLightingRoleService.inferDefaultLightingRoles(id);
+		const updatedCount = await this.spaceLightingRoleService.bulkSetRoles(id, defaultRoles);
+
+		const resultData = new BulkLightingRolesResultDataModel();
+		resultData.success = true;
+		resultData.rolesUpdated = updatedCount;
+
+		const response = new BulkLightingRolesResponseModel();
+		response.data = resultData;
+
+		return response;
+	}
+
+	@Delete(':id/lighting/roles/:deviceId/:channelId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	@ApiOperation({
+		operationId: 'delete-spaces-module-space-lighting-role',
+		summary: 'Delete lighting role assignment',
+		description:
+			'Removes the lighting role assignment for a specific device/channel in a space. ' +
+			'Requires owner or admin role.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'channelId', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiNoContentResponse({ description: 'Lighting role deleted successfully' })
+	@ApiNotFoundResponse('Space not found')
+	@HttpCode(204)
+	async deleteLightingRole(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+	): Promise<void> {
+		this.logger.debug(`Deleting lighting role for space=${id} device=${deviceId} channel=${channelId}`);
+
+		await this.spaceLightingRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted lighting role for device=${deviceId} channel=${channelId}`);
 	}
 }

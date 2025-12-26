@@ -94,8 +94,28 @@
 				"title": "Primary Temperature Sensor",
 				"placeholder": "Auto-detect (thermostat or first sensor)",
 				"hint": "Override the temperature reading source for this space"
+			},
+			"lightingRoles": {
+				"title": "Lighting Roles",
+				"description": "Assign roles to lights for smart intent-based control (Work/Relax/Night modes)",
+				"noLights": "No lights found in this space",
+				"role": {
+					"title": "Role",
+					"placeholder": "Select a role"
+				},
+				"applyDefaults": "Apply Defaults",
+				"applyDefaultsHint": "Sets first light as Main, others as Ambient"
 			}
 		}
+	},
+	"lightingRoles": {
+		"main": "Main",
+		"task": "Task",
+		"ambient": "Ambient",
+		"accent": "Accent",
+		"night": "Night",
+		"other": "Other",
+		"unassigned": "Unassigned"
 	},
 	"filters": {
 		"type": {

@@ -78,3 +78,13 @@ export const DEFAULT_MAX_SETPOINT = 35;
 // Device-specific limits are enforced at the service layer
 export const ABSOLUTE_MIN_SETPOINT = -10;
 export const ABSOLUTE_MAX_SETPOINT = 50;
+
+// Lighting Roles - classify lights within a space for intent-based control
+export enum LightingRole {
+	MAIN = 'main', // Primary/main lights (e.g., ceiling lights)
+	TASK = 'task', // Task/work lights (e.g., desk lamps)
+	AMBIENT = 'ambient', // Ambient/mood lights (e.g., accent strips)
+	ACCENT = 'accent', // Accent/decorative lights (e.g., wall sconces)
+	NIGHT = 'night', // Night/minimal lights (e.g., night lights)
+	OTHER = 'other', // Unclassified lights
+}
