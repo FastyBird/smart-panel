@@ -174,8 +174,8 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
-						responseData.data.map((display) => {
-							const transformedDisplay = transformDisplayResponse(display as IDisplayRes);
+						responseData.data.map((display: IDisplayRes) => {
+							const transformedDisplay = transformDisplayResponse(display);
 
 							return [transformedDisplay.id, transformedDisplay];
 						})

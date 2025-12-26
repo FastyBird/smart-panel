@@ -251,7 +251,8 @@ export class DisplayEntity extends BaseEntity {
 
 	@ApiPropertyOptional({
 		name: 'home_mode',
-		description: 'Home page resolution mode (auto_space: use space page if available, explicit: use configured home page, first_page: use first assigned page)',
+		description:
+			'Home page resolution mode (auto_space: use space page if available, explicit: use configured home page, first_page: use first assigned page)',
 		type: 'string',
 		enum: HomeMode,
 		nullable: false,
@@ -260,7 +261,9 @@ export class DisplayEntity extends BaseEntity {
 	})
 	@Expose({ name: 'home_mode' })
 	@IsOptional()
-	@IsEnum(HomeMode, { message: '[{"field":"home_mode","reason":"Home mode must be one of: auto_space, explicit, first_page."}]' })
+	@IsEnum(HomeMode, {
+		message: '[{"field":"home_mode","reason":"Home mode must be one of: auto_space, explicit, first_page."}]',
+	})
 	@Transform(({ obj }: { obj: { home_mode?: HomeMode; homeMode?: HomeMode } }) => obj.home_mode ?? obj.homeMode, {
 		toClassOnly: true,
 	})

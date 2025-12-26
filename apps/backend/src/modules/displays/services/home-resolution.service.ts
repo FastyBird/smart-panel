@@ -4,8 +4,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { PAGES_SPACE_TYPE } from '../../../plugins/pages-space/pages-space.constants';
+import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { DISPLAYS_MODULE_NAME, HomeMode } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -129,7 +129,7 @@ export class HomeResolutionService {
 	private async findSpacePageForSpace(spaceId: string, visiblePages: PageEntity[]): Promise<PageEntity | null> {
 		// Query for SpacePage entities that match the spaceId
 		// We need to query the actual SpacePageEntity to get the spaceId field
-		const spacePageIds = await this.dataSource.query(
+		const spacePageIds: { id: string }[] = await this.dataSource.query(
 			`SELECT id FROM dashboard_module_pages WHERE type = ? AND spaceId = ?`,
 			[PAGES_SPACE_TYPE, spaceId],
 		);
@@ -138,7 +138,7 @@ export class HomeResolutionService {
 			return null;
 		}
 
-		const spacePageIdSet = new Set(spacePageIds.map((row: { id: string }) => row.id));
+		const spacePageIdSet = new Set(spacePageIds.map((row) => row.id));
 
 		// Find the first matching space page that is visible to this display
 		return visiblePages.find((page) => spacePageIdSet.has(page.id)) || null;

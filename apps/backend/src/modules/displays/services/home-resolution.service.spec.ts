@@ -1,11 +1,4 @@
-/*
-eslint-disable @typescript-eslint/unbound-method
-*/
-/*
-Reason: The mocking and test setup requires dynamic assignment and
-handling of Jest mocks, which ESLint rules flag unnecessarily.
-*/
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -81,7 +74,7 @@ describe('HomeResolutionService', () => {
 		}) as unknown as PageEntity;
 
 	beforeEach(async () => {
-		const mockQueryBuilder = {
+		const mockQueryBuilder: Partial<SelectQueryBuilder<PageEntity>> = {
 			leftJoinAndSelect: jest.fn().mockReturnThis(),
 			orderBy: jest.fn().mockReturnThis(),
 			addOrderBy: jest.fn().mockReturnThis(),
@@ -127,7 +120,7 @@ describe('HomeResolutionService', () => {
 			it('should return null with fallback mode', async () => {
 				const display = createMockDisplay();
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue([]);
 
 				const result = await service.resolveHomePage(display);
@@ -145,12 +138,9 @@ describe('HomeResolutionService', () => {
 					homePageId: pageId1,
 				});
 
-				const pages = [
-					createMockPage(pageId1, 0),
-					createMockPage(pageId2, 1),
-				];
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue(pages);
 
 				const result = await service.resolveHomePage(display);
@@ -168,7 +158,7 @@ describe('HomeResolutionService', () => {
 
 				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue(pages);
 
 				const result = await service.resolveHomePage(display);
@@ -185,12 +175,9 @@ describe('HomeResolutionService', () => {
 					spaceId: spaceId,
 				});
 
-				const pages = [
-					createMockPage(pageId1, 0),
-					createMockPage(spacePageId, 1),
-				];
+				const pages = [createMockPage(pageId1, 0), createMockPage(spacePageId, 1)];
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue(pages);
 
 				// Mock the space page query
@@ -211,7 +198,7 @@ describe('HomeResolutionService', () => {
 
 				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue(pages);
 
 				// Mock the space page query - no results
@@ -231,7 +218,7 @@ describe('HomeResolutionService', () => {
 
 				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue(pages);
 
 				const result = await service.resolveHomePage(display);
@@ -247,12 +234,9 @@ describe('HomeResolutionService', () => {
 					homeMode: HomeMode.FIRST_PAGE,
 				});
 
-				const pages = [
-					createMockPage(pageId2, 1),
-					createMockPage(pageId1, 0),
-				];
+				const pages = [createMockPage(pageId2, 1), createMockPage(pageId1, 0)];
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				// Simulate sorted result (by order)
 				mockQueryBuilder.getMany.mockResolvedValue([pages[1], pages[0]]);
 
@@ -275,7 +259,7 @@ describe('HomeResolutionService', () => {
 				// Page 2 is assigned to this display
 				const page2 = createMockPage(pageId2, 1, [displayEntity]);
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue([page1, page2]);
 
 				const result = await service.resolveHomePage(display);
@@ -290,7 +274,7 @@ describe('HomeResolutionService', () => {
 				const page1 = createMockPage(pageId1, 0, []); // Visible to all
 				const page2 = createMockPage(pageId2, 1, []); // Visible to all
 
-				const mockQueryBuilder = pagesRepository.createQueryBuilder() as any;
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue([page1, page2]);
 
 				const result = await service.resolveHomePage(display);

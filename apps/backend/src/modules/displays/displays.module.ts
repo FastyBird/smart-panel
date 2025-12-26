@@ -64,7 +64,13 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		WebsocketExchangeListener,
 		HomeResolutionService,
 	],
-	exports: [DisplaysService, DisplaysModuleResetService, DisplayExistsConstraint, PermitJoinService, HomeResolutionService],
+	exports: [
+		DisplaysService,
+		DisplaysModuleResetService,
+		DisplayExistsConstraint,
+		PermitJoinService,
+		HomeResolutionService,
+	],
 })
 export class DisplaysModule implements OnModuleInit {
 	constructor(
