@@ -174,8 +174,8 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
-						responseData.data.map((display: IDisplayRes) => {
-							const transformedDisplay = transformDisplayResponse(display);
+						responseData.data.map((display) => {
+							const transformedDisplay = transformDisplayResponse(display as IDisplayRes);
 
 							return [transformedDisplay.id, transformedDisplay];
 						})
@@ -319,7 +319,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 						},
 					},
 					body: {
-						data: transformDisplayUpdateRequest(parsedEditedDisplay.data),
+						data: transformDisplayUpdateRequest(parsedEditedDisplay.data) as Record<string, unknown>,
 					},
 				});
 
