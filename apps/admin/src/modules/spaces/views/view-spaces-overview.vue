@@ -92,7 +92,6 @@
 						:spaces="recentSpaces"
 						:loading="areLoading"
 						@detail="onSpaceDetail"
-						@edit="onSpaceEdit"
 					/>
 				</div>
 			</el-col>
@@ -169,13 +168,6 @@ const onAddSpace = (): void => {
 const onSpaceDetail = (id: ISpace['id']): void => {
 	router.push({
 		name: RouteNames.SPACE,
-		params: { id },
-	});
-};
-
-const onSpaceEdit = (id: ISpace['id']): void => {
-	router.push({
-		name: RouteNames.SPACE_EDIT,
 		params: { id },
 	});
 };

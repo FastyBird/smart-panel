@@ -101,7 +101,6 @@ withDefaults(defineProps<ISpacesOverviewRecentProps>(), {
 
 defineEmits<{
 	(e: 'detail', id: ISpace['id']): void;
-	(e: 'edit', id: ISpace['id']): void;
 }>();
 
 const { t } = useI18n();
