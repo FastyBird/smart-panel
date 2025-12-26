@@ -82,7 +82,10 @@ export class HomeResolutionService {
 	/**
 	 * Internal resolution logic that works with pre-fetched pages.
 	 */
-	private async resolveHomePageWithPages(display: DisplayEntity, visiblePages: PageEntity[]): Promise<ResolvedHomePage> {
+	private async resolveHomePageWithPages(
+		display: DisplayEntity,
+		visiblePages: PageEntity[],
+	): Promise<ResolvedHomePage> {
 		if (visiblePages.length === 0) {
 			this.logger.debug(`No pages visible to display id=${display.id}`);
 			return {
