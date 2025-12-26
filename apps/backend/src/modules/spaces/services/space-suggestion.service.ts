@@ -160,21 +160,17 @@ export class SpaceSuggestionService {
 	/**
 	 * Get a suggestion for a space.
 	 * Returns null if no suggestion is available or suggestions are disabled.
+	 * Throws SpacesNotFoundException if the space does not exist.
 	 *
 	 * @param spaceId - The space ID
 	 * @returns A suggestion or null
+	 * @throws SpacesNotFoundException if space not found
 	 */
 	async getSuggestion(spaceId: string): Promise<SpaceSuggestion | null> {
 		this.logger.debug(`Getting suggestion for space id=${spaceId}`);
 
-		// Get space
-		const space = await this.spacesService.findOne(spaceId);
-
-		if (!space) {
-			this.logger.warn(`Space not found id=${spaceId}`);
-
-			return null;
-		}
+		// Get space - throws if not found
+		const space = await this.spacesService.getOneOrThrow(spaceId);
 
 		// Check if suggestions are enabled
 		if (!space.suggestionsEnabled) {
@@ -217,11 +213,13 @@ export class SpaceSuggestionService {
 
 	/**
 	 * Record feedback for a suggestion and optionally execute the intent.
+	 * Throws SpacesNotFoundException if the space does not exist.
 	 *
 	 * @param spaceId - The space ID
 	 * @param suggestionType - The type of suggestion
 	 * @param feedback - The user feedback (applied or dismissed)
 	 * @returns Result with success status and optional intent execution status
+	 * @throws SpacesNotFoundException if space not found
 	 */
 	async recordFeedback(
 		spaceId: string,
@@ -230,19 +228,25 @@ export class SpaceSuggestionService {
 	): Promise<{ success: boolean; intentExecuted?: boolean }> {
 		this.logger.log(`Recording feedback for space id=${spaceId} type=${suggestionType} feedback=${feedback}`);
 
-		// Set cooldown regardless of feedback type
-		setCooldown(spaceId, suggestionType);
+		// Validate space exists - throws if not found
+		await this.spacesService.getOneOrThrow(spaceId);
 
-		// If dismissed, just record and return
+		// If dismissed, set cooldown and return
 		if (feedback === SuggestionFeedback.DISMISSED) {
+			setCooldown(spaceId, suggestionType);
 			this.logger.debug(`Suggestion dismissed for space id=${spaceId} type=${suggestionType}`);
 
 			return { success: true };
 		}
 
-		// If applied, execute the intent
+		// If applied, execute the intent and only set cooldown on success
 		if (feedback === SuggestionFeedback.APPLIED) {
 			const intentResult = await this.executeIntent(spaceId, suggestionType);
+
+			// Only set cooldown if intent execution succeeded
+			if (intentResult) {
+				setCooldown(spaceId, suggestionType);
+			}
 
 			return {
 				success: true,
