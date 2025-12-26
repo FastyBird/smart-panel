@@ -88,3 +88,86 @@ export enum LightingRole {
 	NIGHT = 'night', // Night/minimal lights (e.g., night lights)
 	OTHER = 'other', // Unclassified lights
 }
+
+/**
+ * Role-based lighting orchestration rules
+ *
+ * Each lighting mode targets specific roles with defined brightness levels.
+ * null = turn OFF, number = set brightness to that level.
+ *
+ * Rules:
+ * - WORK: main/task ON (high), ambient/accent OFF
+ * - RELAX: main/ambient ON (medium), task OFF
+ * - NIGHT: night lights ON (low), fallback to main if no night lights; all others OFF
+ */
+export interface RoleBrightnessRule {
+	/** Brightness level (0-100) or null to turn off */
+	brightness: number | null;
+	/** Whether to turn on the light (true=on, false=off) */
+	on: boolean;
+}
+
+/**
+ * Role-based orchestration rules per lighting mode.
+ * Keys are LightingRole values, values specify on/off and brightness.
+ */
+export type ModeOrchestrationRules = Partial<Record<LightingRole, RoleBrightnessRule>>;
+
+/**
+ * Complete role orchestration configuration per mode.
+ * - roles: Rules for each role
+ * - fallbackRoles: Roles to use if no matching roles are found (e.g., main for night mode)
+ */
+export interface ModeOrchestrationConfig {
+	roles: ModeOrchestrationRules;
+	/** Fallback roles if primary roles for the mode have no lights */
+	fallbackRoles?: LightingRole[];
+	/** Brightness to use for fallback (if different from normal) */
+	fallbackBrightness?: number;
+}
+
+/**
+ * Role-based orchestration rules for each lighting mode.
+ *
+ * Design decisions (documented per task requirements):
+ * - WORK mode: main/task at 100%, ambient/accent OFF (not low - cleaner behavior)
+ * - RELAX mode: main/ambient at 50%, task OFF (not low - cleaner behavior)
+ * - NIGHT mode: night lights at 20%, fallback to main at 20% if no night lights; others OFF
+ * - OTHER role is treated as ambient for relax mode, off for work mode
+ * - Brightness delta applies to all currently ON lights (active set approach)
+ */
+export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestrationConfig> = {
+	[LightingMode.WORK]: {
+		roles: {
+			[LightingRole.MAIN]: { on: true, brightness: 100 },
+			[LightingRole.TASK]: { on: true, brightness: 100 },
+			[LightingRole.AMBIENT]: { on: false, brightness: null },
+			[LightingRole.ACCENT]: { on: false, brightness: null },
+			[LightingRole.NIGHT]: { on: false, brightness: null },
+			[LightingRole.OTHER]: { on: false, brightness: null },
+		},
+	},
+	[LightingMode.RELAX]: {
+		roles: {
+			[LightingRole.MAIN]: { on: true, brightness: 50 },
+			[LightingRole.TASK]: { on: false, brightness: null },
+			[LightingRole.AMBIENT]: { on: true, brightness: 50 },
+			[LightingRole.ACCENT]: { on: true, brightness: 30 },
+			[LightingRole.NIGHT]: { on: false, brightness: null },
+			[LightingRole.OTHER]: { on: true, brightness: 50 },
+		},
+	},
+	[LightingMode.NIGHT]: {
+		roles: {
+			[LightingRole.MAIN]: { on: false, brightness: null },
+			[LightingRole.TASK]: { on: false, brightness: null },
+			[LightingRole.AMBIENT]: { on: false, brightness: null },
+			[LightingRole.ACCENT]: { on: false, brightness: null },
+			[LightingRole.NIGHT]: { on: true, brightness: 20 },
+			[LightingRole.OTHER]: { on: false, brightness: null },
+		},
+		// If no night lights exist, fallback to main at low brightness
+		fallbackRoles: [LightingRole.MAIN],
+		fallbackBrightness: 20,
+	},
+};

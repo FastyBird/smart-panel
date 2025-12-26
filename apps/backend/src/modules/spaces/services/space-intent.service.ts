@@ -15,12 +15,16 @@ import {
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
 	LIGHTING_MODE_BRIGHTNESS,
+	LIGHTING_MODE_ORCHESTRATION,
 	LightingIntentType,
 	LightingMode,
+	LightingRole,
+	RoleBrightnessRule,
 	SETPOINT_DELTA_STEPS,
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
 
+import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
 
 interface LightDevice {
@@ -28,6 +32,84 @@ interface LightDevice {
 	lightChannel: ChannelEntity;
 	onProperty: ChannelPropertyEntity;
 	brightnessProperty: ChannelPropertyEntity | null;
+	role: LightingRole | null;
+}
+
+/**
+ * Result of role-based light selection for a mode.
+ * Contains the rule to apply and whether it's from fallback.
+ */
+export interface LightModeSelection {
+	light: LightDevice;
+	rule: RoleBrightnessRule;
+	isFallback: boolean;
+}
+
+/**
+ * Pure function to select lights based on their roles for a given lighting mode.
+ * This function is deterministic and handles:
+ * - Full role configuration: Apply mode-specific rules per role
+ * - Partial role configuration: Apply rules to configured lights, treat unconfigured as fallback
+ * - No role configuration: Apply MVP behavior (all lights ON with mode brightness)
+ *
+ * @param lights - All lights in the space with their role assignments
+ * @param mode - The lighting mode to apply
+ * @returns Array of light selections with rules to apply
+ */
+export function selectLightsForMode(lights: LightDevice[], mode: LightingMode): LightModeSelection[] {
+	const config = LIGHTING_MODE_ORCHESTRATION[mode];
+	const selections: LightModeSelection[] = [];
+
+	// Check if any lights have roles configured
+	const hasAnyRoles = lights.some((light) => light.role !== null);
+
+	if (!hasAnyRoles) {
+		// MVP fallback: no roles configured, apply mode brightness to all lights
+		const mvpBrightness = LIGHTING_MODE_BRIGHTNESS[mode];
+
+		for (const light of lights) {
+			selections.push({
+				light,
+				rule: { on: true, brightness: mvpBrightness },
+				isFallback: true,
+			});
+		}
+
+		return selections;
+	}
+
+	// Check if we need fallback for night mode (no night lights exist)
+	let useFallback = false;
+
+	if (mode === LightingMode.NIGHT && config.fallbackRoles) {
+		const hasNightLights = lights.some((light) => light.role === LightingRole.NIGHT);
+
+		if (!hasNightLights) {
+			useFallback = true;
+		}
+	}
+
+	// Apply role-based rules
+	for (const light of lights) {
+		let rule: RoleBrightnessRule;
+		let isFallback = false;
+
+		if (light.role === null) {
+			// Light has no role assigned - treat as OTHER
+			rule = config.roles[LightingRole.OTHER] ?? { on: false, brightness: null };
+		} else if (useFallback && config.fallbackRoles?.includes(light.role)) {
+			// Night mode fallback: use main lights at low brightness
+			rule = { on: true, brightness: config.fallbackBrightness ?? 20 };
+			isFallback = true;
+		} else {
+			// Apply the rule for this role
+			rule = config.roles[light.role] ?? { on: false, brightness: null };
+		}
+
+		selections.push({ light, rule, isFallback });
+	}
+
+	return selections;
 }
 
 interface IntentExecutionResult {
@@ -67,6 +149,7 @@ export class SpaceIntentService {
 		private readonly spacesService: SpacesService,
 		private readonly devicesService: DevicesService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly lightingRoleService: SpaceLightingRoleService,
 	) {}
 
 	/**
@@ -95,7 +178,12 @@ export class SpaceIntentService {
 
 		this.logger.debug(`Found ${lights.length} lights in space id=${spaceId}`);
 
-		// Execute intent based on type
+		// For SET_MODE, use role-based orchestration
+		if (intent.type === LightingIntentType.SET_MODE && intent.mode) {
+			return this.executeModeIntent(spaceId, lights, intent.mode);
+		}
+
+		// For other intents (ON, OFF, BRIGHTNESS_DELTA), apply to all lights
 		let affectedDevices = 0;
 		let failedDevices = 0;
 
@@ -119,11 +207,123 @@ export class SpaceIntentService {
 	}
 
 	/**
-	 * Find all light devices in a space with their channels and properties
+	 * Execute a mode-based lighting intent using role-based orchestration.
+	 * This method applies different brightness/on-off rules based on each light's role.
+	 */
+	private async executeModeIntent(
+		spaceId: string,
+		lights: LightDevice[],
+		mode: LightingMode,
+	): Promise<IntentExecutionResult> {
+		// Use the pure function to determine what to do with each light
+		const selections = selectLightsForMode(lights, mode);
+
+		// Log telemetry for role-based selection
+		const onLights = selections.filter((s) => s.rule.on);
+		const offLights = selections.filter((s) => !s.rule.on);
+		const hasRoles = lights.some((l) => l.role !== null);
+		const usingFallback = selections.some((s) => s.isFallback);
+
+		this.logger.log(
+			`Mode intent spaceId=${spaceId} mode=${mode} ` +
+				`totalLights=${lights.length} onCount=${onLights.length} offCount=${offLights.length} ` +
+				`hasRoles=${hasRoles} usingFallback=${usingFallback}`,
+		);
+
+		// Log individual device selections for debugging/telemetry
+		for (const selection of selections) {
+			const deviceName = selection.light.device.name ?? selection.light.device.id;
+			const roleStr = selection.light.role ?? 'none';
+
+			this.logger.debug(
+				`Mode selection device="${deviceName}" role=${roleStr} ` +
+					`on=${selection.rule.on} brightness=${selection.rule.brightness ?? 'N/A'} ` +
+					`isFallback=${selection.isFallback}`,
+			);
+		}
+
+		let affectedDevices = 0;
+		let failedDevices = 0;
+
+		// Execute commands for each light based on its selection
+		for (const selection of selections) {
+			const success = await this.executeRuleForLight(selection.light, selection.rule);
+
+			if (success) {
+				affectedDevices++;
+			} else {
+				failedDevices++;
+			}
+		}
+
+		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+
+		this.logger.debug(
+			`Mode intent completed spaceId=${spaceId} mode=${mode} affected=${affectedDevices} failed=${failedDevices}`,
+		);
+
+		return { success: overallSuccess, affectedDevices, failedDevices };
+	}
+
+	/**
+	 * Execute a role-based rule for a single light.
+	 * Handles on/off state and brightness based on the rule.
+	 */
+	private async executeRuleForLight(light: LightDevice, rule: RoleBrightnessRule): Promise<boolean> {
+		const platform = this.platformRegistryService.get(light.device);
+
+		if (!platform) {
+			this.logger.warn(`No platform registered for device id=${light.device.id} type=${light.device.type}`);
+
+			return false;
+		}
+
+		const commands: IDevicePropertyData[] = [];
+
+		// Set on/off state
+		commands.push({
+			device: light.device,
+			channel: light.lightChannel,
+			property: light.onProperty,
+			value: rule.on,
+		});
+
+		// Set brightness if light is turning on and has brightness support
+		if (rule.on && rule.brightness !== null && light.brightnessProperty) {
+			commands.push({
+				device: light.device,
+				channel: light.lightChannel,
+				property: light.brightnessProperty,
+				value: rule.brightness,
+			});
+		}
+
+		try {
+			const success = await platform.processBatch(commands);
+
+			if (!success) {
+				this.logger.error(`Rule execution failed for device id=${light.device.id}`);
+
+				return false;
+			}
+
+			return true;
+		} catch (error) {
+			this.logger.error(`Error executing rule for device id=${light.device.id}: ${error}`);
+
+			return false;
+		}
+	}
+
+	/**
+	 * Find all light devices in a space with their channels, properties, and roles
 	 */
 	private async getLightsInSpace(spaceId: string): Promise<LightDevice[]> {
 		const devices = await this.spacesService.findDevicesBySpace(spaceId);
 		const lights: LightDevice[] = [];
+
+		// Get role map for this space
+		const roleMap = await this.lightingRoleService.getRoleMap(spaceId);
 
 		for (const device of devices) {
 			// Check if device is a lighting device
@@ -151,11 +351,17 @@ export class SpaceIntentService {
 			const brightnessProperty =
 				lightChannel.properties?.find((p) => p.category === PropertyCategory.BRIGHTNESS) ?? null;
 
+			// Get role assignment for this light
+			const roleKey = `${device.id}:${lightChannel.id}`;
+			const roleEntity = roleMap.get(roleKey);
+			const role = roleEntity?.role ?? null;
+
 			lights.push({
 				device,
 				lightChannel,
 				onProperty,
 				brightnessProperty,
+				role,
 			});
 		}
 
@@ -163,7 +369,8 @@ export class SpaceIntentService {
 	}
 
 	/**
-	 * Execute a lighting intent for a single light
+	 * Execute a lighting intent for a single light (ON, OFF, or BRIGHTNESS_DELTA).
+	 * SET_MODE is handled separately via executeModeIntent for role-based orchestration.
 	 */
 	private async executeIntentForLight(light: LightDevice, intent: LightingIntentDto): Promise<boolean> {
 		const platform = this.platformRegistryService.get(light.device);
@@ -195,15 +402,6 @@ export class SpaceIntentService {
 				});
 				break;
 
-			case LightingIntentType.SET_MODE:
-				if (!intent.mode) {
-					this.logger.warn('SET_MODE intent requires mode parameter');
-
-					return false;
-				}
-				commands.push(...this.buildModeCommands(light, intent.mode));
-				break;
-
 			case LightingIntentType.BRIGHTNESS_DELTA:
 				if (intent.delta === undefined || intent.increase === undefined) {
 					this.logger.warn('BRIGHTNESS_DELTA intent requires delta and increase parameters');
@@ -212,6 +410,12 @@ export class SpaceIntentService {
 				}
 				commands.push(...this.buildBrightnessDeltaCommands(light, intent.delta, intent.increase));
 				break;
+
+			case LightingIntentType.SET_MODE:
+				// SET_MODE is handled via executeModeIntent, not here
+				this.logger.warn('SET_MODE should be handled via executeModeIntent');
+
+				return false;
 
 			default:
 				this.logger.warn(`Unknown intent type: ${String(intent.type)}`);
@@ -245,36 +449,11 @@ export class SpaceIntentService {
 	}
 
 	/**
-	 * Build commands for a lighting mode
-	 */
-	private buildModeCommands(light: LightDevice, mode: LightingMode): IDevicePropertyData[] {
-		const commands: IDevicePropertyData[] = [];
-
-		// Always turn on the light
-		commands.push({
-			device: light.device,
-			channel: light.lightChannel,
-			property: light.onProperty,
-			value: true,
-		});
-
-		// Set brightness if supported
-		if (light.brightnessProperty) {
-			const brightness = LIGHTING_MODE_BRIGHTNESS[mode];
-
-			commands.push({
-				device: light.device,
-				channel: light.lightChannel,
-				property: light.brightnessProperty,
-				value: brightness,
-			});
-		}
-
-		return commands;
-	}
-
-	/**
-	 * Build commands for a brightness delta adjustment
+	 * Build commands for a brightness delta adjustment.
+	 *
+	 * Design decision: Brightness delta applies to all currently ON lights.
+	 * This is safer and more intuitive than tracking mode state, as users expect
+	 * brightness adjustments to only affect visible (on) lights.
 	 */
 	private buildBrightnessDeltaCommands(
 		light: LightDevice,
@@ -286,6 +465,16 @@ export class SpaceIntentService {
 		// If light doesn't support brightness, just ignore (no-op)
 		if (!light.brightnessProperty) {
 			this.logger.debug(`Device does not support brightness adjustment deviceId=${light.device.id}`);
+
+			return commands;
+		}
+
+		// Only adjust brightness for lights that are currently ON
+		const onValue = light.onProperty.value;
+		const isOn = onValue === true || onValue === 'true' || onValue === 1 || onValue === '1';
+
+		if (!isOn) {
+			this.logger.debug(`Skipping brightness delta for OFF device deviceId=${light.device.id}`);
 
 			return commands;
 		}

@@ -17,6 +17,7 @@ import { PlatformRegistryService } from '../../devices/services/platform.registr
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { SpaceEntity } from '../entities/space.entity';
+import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import {
 	BRIGHTNESS_DELTA_STEPS,
 	BrightnessDelta,
@@ -24,13 +25,16 @@ import {
 	DEFAULT_MAX_SETPOINT,
 	DEFAULT_MIN_SETPOINT,
 	LIGHTING_MODE_BRIGHTNESS,
+	LIGHTING_MODE_ORCHESTRATION,
 	LightingIntentType,
 	LightingMode,
+	LightingRole,
 	SETPOINT_DELTA_STEPS,
 	SetpointDelta,
 } from '../spaces.constants';
 
-import { SpaceIntentService } from './space-intent.service';
+import { selectLightsForMode, SpaceIntentService } from './space-intent.service';
+import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpaceIntentService', () => {
@@ -38,6 +42,7 @@ describe('SpaceIntentService', () => {
 	let mockSpacesService: jest.Mocked<SpacesService>;
 	let mockDevicesService: jest.Mocked<DevicesService>;
 	let mockPlatformRegistryService: jest.Mocked<PlatformRegistryService>;
+	let mockLightingRoleService: jest.Mocked<SpaceLightingRoleService>;
 	let mockPlatform: jest.Mocked<IDevicePlatform>;
 
 	const mockSpaceId = 'space-123';
@@ -64,12 +69,29 @@ describe('SpaceIntentService', () => {
 			get: jest.fn().mockReturnValue(mockPlatform),
 		} as unknown as jest.Mocked<PlatformRegistryService>;
 
-		service = new SpaceIntentService(mockSpacesService, mockDevicesService, mockPlatformRegistryService);
+		// Default: no roles configured (empty map)
+		mockLightingRoleService = {
+			getRoleMap: jest.fn().mockResolvedValue(new Map<string, SpaceLightingRoleEntity>()),
+		} as unknown as jest.Mocked<SpaceLightingRoleService>;
+
+		service = new SpaceIntentService(
+			mockSpacesService,
+			mockDevicesService,
+			mockPlatformRegistryService,
+			mockLightingRoleService,
+		);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation();
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation();
 		jest.spyOn(Logger.prototype, 'warn').mockImplementation();
 		jest.spyOn(Logger.prototype, 'error').mockImplementation();
+		jest.spyOn(Logger.prototype, 'verbose').mockImplementation();
+
+		// Extend mock to include custom logger methods
+		const mockLogger = {
+			info: jest.fn(),
+		};
+		jest.spyOn(console, 'info').mockImplementation(mockLogger.info);
 	});
 
 	afterEach(() => {
@@ -1103,6 +1125,584 @@ describe('SpaceIntentService', () => {
 				});
 				expect(mockPlatform.processBatch).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	// =====================
+	// Role-Based Orchestration Tests
+	// =====================
+
+	describe('selectLightsForMode (pure function)', () => {
+		// Helper to create mock light device structure for pure function testing
+		interface MockLightInput {
+			deviceId: string;
+			hasBrightness: boolean;
+			role: LightingRole | null;
+		}
+
+		const createMockLightDeviceForSelection = (input: MockLightInput) => {
+			const onProperty = {
+				id: `${input.deviceId}-on-prop`,
+				category: PropertyCategory.ON,
+				value: true,
+			} as ChannelPropertyEntity;
+
+			const brightnessProperty = input.hasBrightness
+				? ({
+						id: `${input.deviceId}-brightness-prop`,
+						category: PropertyCategory.BRIGHTNESS,
+						value: 50,
+					} as ChannelPropertyEntity)
+				: null;
+
+			const lightChannel = {
+				id: `${input.deviceId}-channel`,
+				category: ChannelCategory.LIGHT,
+				properties: input.hasBrightness ? [onProperty, brightnessProperty] : [onProperty],
+			} as ChannelEntity;
+
+			const device = {
+				id: input.deviceId,
+				name: input.deviceId,
+				type: 'mock-platform',
+				category: DeviceCategory.LIGHTING,
+				channels: [lightChannel],
+			} as DeviceEntity;
+
+			return {
+				device,
+				lightChannel,
+				onProperty,
+				brightnessProperty,
+				role: input.role,
+			};
+		};
+
+		describe('no roles configured (MVP fallback)', () => {
+			it('should turn all lights ON with mode brightness for WORK', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null }),
+					createMockLightDeviceForSelection({ deviceId: 'light-2', hasBrightness: true, role: null }),
+				];
+
+				const selections = selectLightsForMode(lights, LightingMode.WORK);
+
+				expect(selections).toHaveLength(2);
+				expect(selections.every((s) => s.rule.on === true)).toBe(true);
+				expect(selections.every((s) => s.rule.brightness === LIGHTING_MODE_BRIGHTNESS[LightingMode.WORK])).toBe(true);
+				expect(selections.every((s) => s.isFallback === true)).toBe(true);
+			});
+
+			it('should turn all lights ON with mode brightness for RELAX', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null }),
+				];
+
+				const selections = selectLightsForMode(lights, LightingMode.RELAX);
+
+				expect(selections).toHaveLength(1);
+				expect(selections[0].rule.on).toBe(true);
+				expect(selections[0].rule.brightness).toBe(LIGHTING_MODE_BRIGHTNESS[LightingMode.RELAX]);
+				expect(selections[0].isFallback).toBe(true);
+			});
+
+			it('should turn all lights ON with mode brightness for NIGHT', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'light-1', hasBrightness: true, role: null }),
+				];
+
+				const selections = selectLightsForMode(lights, LightingMode.NIGHT);
+
+				expect(selections).toHaveLength(1);
+				expect(selections[0].rule.on).toBe(true);
+				expect(selections[0].rule.brightness).toBe(LIGHTING_MODE_BRIGHTNESS[LightingMode.NIGHT]);
+				expect(selections[0].isFallback).toBe(true);
+			});
+		});
+
+		describe('full role configuration', () => {
+			it('WORK mode: main/task ON high, ambient/accent OFF', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'main-light', hasBrightness: true, role: LightingRole.MAIN }),
+					createMockLightDeviceForSelection({ deviceId: 'task-light', hasBrightness: true, role: LightingRole.TASK }),
+					createMockLightDeviceForSelection({
+						deviceId: 'ambient-light',
+						hasBrightness: true,
+						role: LightingRole.AMBIENT,
+					}),
+					createMockLightDeviceForSelection({
+						deviceId: 'accent-light',
+						hasBrightness: true,
+						role: LightingRole.ACCENT,
+					}),
+				];
+
+				const selections = selectLightsForMode(lights, LightingMode.WORK);
+
+				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
+				const taskSelection = selections.find((s) => s.light.device.id === 'task-light')!;
+				const ambientSelection = selections.find((s) => s.light.device.id === 'ambient-light')!;
+				const accentSelection = selections.find((s) => s.light.device.id === 'accent-light')!;
+
+				expect(mainSelection.rule.on).toBe(true);
+				expect(mainSelection.rule.brightness).toBe(100);
+				expect(taskSelection.rule.on).toBe(true);
+				expect(taskSelection.rule.brightness).toBe(100);
+				expect(ambientSelection.rule.on).toBe(false);
+				expect(accentSelection.rule.on).toBe(false);
+			});
+
+			it('RELAX mode: main/ambient ON medium, task OFF', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'main-light', hasBrightness: true, role: LightingRole.MAIN }),
+					createMockLightDeviceForSelection({ deviceId: 'task-light', hasBrightness: true, role: LightingRole.TASK }),
+					createMockLightDeviceForSelection({
+						deviceId: 'ambient-light',
+						hasBrightness: true,
+						role: LightingRole.AMBIENT,
+					}),
+				];
+
+				const selections = selectLightsForMode(lights, LightingMode.RELAX);
+
+				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
+				const taskSelection = selections.find((s) => s.light.device.id === 'task-light')!;
+				const ambientSelection = selections.find((s) => s.light.device.id === 'ambient-light')!;
+
+				expect(mainSelection.rule.on).toBe(true);
+				expect(mainSelection.rule.brightness).toBe(50);
+				expect(taskSelection.rule.on).toBe(false);
+				expect(ambientSelection.rule.on).toBe(true);
+				expect(ambientSelection.rule.brightness).toBe(50);
+			});
+
+			it('NIGHT mode: night lights ON low, others OFF', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'main-light', hasBrightness: true, role: LightingRole.MAIN }),
+					createMockLightDeviceForSelection({
+						deviceId: 'night-light',
+						hasBrightness: true,
+						role: LightingRole.NIGHT,
+					}),
+					createMockLightDeviceForSelection({
+						deviceId: 'ambient-light',
+						hasBrightness: true,
+						role: LightingRole.AMBIENT,
+					}),
+				];
+
+				const selections = selectLightsForMode(lights, LightingMode.NIGHT);
+
+				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
+				const nightSelection = selections.find((s) => s.light.device.id === 'night-light')!;
+				const ambientSelection = selections.find((s) => s.light.device.id === 'ambient-light')!;
+
+				expect(mainSelection.rule.on).toBe(false);
+				expect(nightSelection.rule.on).toBe(true);
+				expect(nightSelection.rule.brightness).toBe(20);
+				expect(ambientSelection.rule.on).toBe(false);
+			});
+
+			it('NIGHT mode fallback: uses main at low brightness when no night lights exist', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'main-light', hasBrightness: true, role: LightingRole.MAIN }),
+					createMockLightDeviceForSelection({ deviceId: 'task-light', hasBrightness: true, role: LightingRole.TASK }),
+					createMockLightDeviceForSelection({
+						deviceId: 'ambient-light',
+						hasBrightness: true,
+						role: LightingRole.AMBIENT,
+					}),
+				];
+
+				const selections = selectLightsForMode(lights, LightingMode.NIGHT);
+
+				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
+				const taskSelection = selections.find((s) => s.light.device.id === 'task-light')!;
+				const ambientSelection = selections.find((s) => s.light.device.id === 'ambient-light')!;
+
+				// Main light should be ON at fallback brightness
+				expect(mainSelection.rule.on).toBe(true);
+				expect(mainSelection.rule.brightness).toBe(LIGHTING_MODE_ORCHESTRATION[LightingMode.NIGHT].fallbackBrightness);
+				expect(mainSelection.isFallback).toBe(true);
+
+				// Others should be OFF
+				expect(taskSelection.rule.on).toBe(false);
+				expect(ambientSelection.rule.on).toBe(false);
+			});
+		});
+
+		describe('partial role configuration', () => {
+			it('should treat unassigned lights as OTHER role', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'main-light', hasBrightness: true, role: LightingRole.MAIN }),
+					createMockLightDeviceForSelection({ deviceId: 'unassigned-light', hasBrightness: true, role: null }),
+				];
+
+				// In WORK mode, OTHER lights are OFF
+				const workSelections = selectLightsForMode(lights, LightingMode.WORK);
+				const unassignedWork = workSelections.find((s) => s.light.device.id === 'unassigned-light')!;
+
+				expect(unassignedWork.rule.on).toBe(false);
+
+				// In RELAX mode, OTHER lights are ON at 50%
+				const relaxSelections = selectLightsForMode(lights, LightingMode.RELAX);
+				const unassignedRelax = relaxSelections.find((s) => s.light.device.id === 'unassigned-light')!;
+
+				expect(unassignedRelax.rule.on).toBe(true);
+				expect(unassignedRelax.rule.brightness).toBe(50);
+			});
+
+			it('should apply roles to configured lights while treating others as OTHER', () => {
+				const lights = [
+					createMockLightDeviceForSelection({ deviceId: 'main-light', hasBrightness: true, role: LightingRole.MAIN }),
+					createMockLightDeviceForSelection({ deviceId: 'unknown-light', hasBrightness: true, role: null }),
+				];
+
+				const selections = selectLightsForMode(lights, LightingMode.WORK);
+
+				const mainSelection = selections.find((s) => s.light.device.id === 'main-light')!;
+				const unknownSelection = selections.find((s) => s.light.device.id === 'unknown-light')!;
+
+				expect(mainSelection.rule.on).toBe(true);
+				expect(mainSelection.rule.brightness).toBe(100);
+				expect(unknownSelection.rule.on).toBe(false); // OTHER is OFF in WORK mode
+			});
+		});
+	});
+
+	describe('role-based mode execution (integration)', () => {
+		const createMockLightWithRole = (
+			deviceId: string,
+			hasBrightness: boolean,
+			currentBrightness: number = 50,
+		): DeviceEntity => {
+			const onProperty: ChannelPropertyEntity = {
+				id: `${deviceId}-on-prop`,
+				category: PropertyCategory.ON,
+				value: true,
+			} as ChannelPropertyEntity;
+
+			const properties: ChannelPropertyEntity[] = [onProperty];
+
+			if (hasBrightness) {
+				const brightnessProperty: ChannelPropertyEntity = {
+					id: `${deviceId}-brightness-prop`,
+					category: PropertyCategory.BRIGHTNESS,
+					value: currentBrightness,
+				} as ChannelPropertyEntity;
+
+				properties.push(brightnessProperty);
+			}
+
+			const lightChannel: ChannelEntity = {
+				id: `${deviceId}-light-channel`,
+				category: ChannelCategory.LIGHT,
+				properties,
+			} as ChannelEntity;
+
+			return {
+				id: deviceId,
+				name: deviceId,
+				type: 'mock-platform',
+				category: DeviceCategory.LIGHTING,
+				channels: [lightChannel],
+			} as DeviceEntity;
+		};
+
+		const createRoleMap = (
+			roles: Array<{ deviceId: string; channelId: string; role: LightingRole }>,
+		): Map<string, SpaceLightingRoleEntity> => {
+			const map = new Map<string, SpaceLightingRoleEntity>();
+
+			for (const r of roles) {
+				const entity = {
+					spaceId: mockSpaceId,
+					deviceId: r.deviceId,
+					channelId: r.channelId,
+					role: r.role,
+					priority: 0,
+				} as SpaceLightingRoleEntity;
+
+				map.set(`${r.deviceId}:${r.channelId}`, entity);
+			}
+
+			return map;
+		};
+
+		describe('with full role configuration', () => {
+			it('WORK mode should turn on main/task and turn off ambient', async () => {
+				const mainLight = createMockLightWithRole('main-light', true);
+				const taskLight = createMockLightWithRole('task-light', true);
+				const ambientLight = createMockLightWithRole('ambient-light', true);
+
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([mainLight, taskLight, ambientLight]);
+
+				const roleMap = createRoleMap([
+					{ deviceId: 'main-light', channelId: 'main-light-light-channel', role: LightingRole.MAIN },
+					{ deviceId: 'task-light', channelId: 'task-light-light-channel', role: LightingRole.TASK },
+					{ deviceId: 'ambient-light', channelId: 'ambient-light-light-channel', role: LightingRole.AMBIENT },
+				]);
+				mockLightingRoleService.getRoleMap.mockResolvedValue(roleMap);
+
+				const intent: LightingIntentDto = { type: LightingIntentType.SET_MODE, mode: LightingMode.WORK };
+				const result = await service.executeLightingIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+				expect(result.affectedDevices).toBe(3);
+
+				// Find calls for each light
+				const calls = mockPlatform.processBatch.mock.calls;
+
+				// Main light should be ON with brightness 100
+				const mainCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'main-light');
+
+				expect(mainCall).toBeDefined();
+
+				const mainCommands = mainCall![0] as IDevicePropertyData[];
+				const mainOnCmd = mainCommands.find((cmd) => cmd.property.category === PropertyCategory.ON);
+				const mainBrightnessCmd = mainCommands.find((cmd) => cmd.property.category === PropertyCategory.BRIGHTNESS);
+
+				expect(mainOnCmd?.value).toBe(true);
+				expect(mainBrightnessCmd?.value).toBe(100);
+
+				// Ambient light should be OFF
+				const ambientCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'ambient-light');
+
+				expect(ambientCall).toBeDefined();
+
+				const ambientCommands = ambientCall![0] as IDevicePropertyData[];
+				const ambientOnCmd = ambientCommands.find((cmd) => cmd.property.category === PropertyCategory.ON);
+
+				expect(ambientOnCmd?.value).toBe(false);
+			});
+
+			it('RELAX mode should set different brightness levels per role', async () => {
+				const mainLight = createMockLightWithRole('main-light', true);
+				const ambientLight = createMockLightWithRole('ambient-light', true);
+
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([mainLight, ambientLight]);
+
+				const roleMap = createRoleMap([
+					{ deviceId: 'main-light', channelId: 'main-light-light-channel', role: LightingRole.MAIN },
+					{ deviceId: 'ambient-light', channelId: 'ambient-light-light-channel', role: LightingRole.AMBIENT },
+				]);
+				mockLightingRoleService.getRoleMap.mockResolvedValue(roleMap);
+
+				const intent: LightingIntentDto = { type: LightingIntentType.SET_MODE, mode: LightingMode.RELAX };
+				const result = await service.executeLightingIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+
+				const calls = mockPlatform.processBatch.mock.calls;
+
+				// Both should be ON with appropriate brightness
+				const mainCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'main-light');
+				const ambientCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'ambient-light');
+
+				const mainBrightness = (mainCall![0] as IDevicePropertyData[]).find(
+					(cmd) => cmd.property.category === PropertyCategory.BRIGHTNESS,
+				);
+				const ambientBrightness = (ambientCall![0] as IDevicePropertyData[]).find(
+					(cmd) => cmd.property.category === PropertyCategory.BRIGHTNESS,
+				);
+
+				expect(mainBrightness?.value).toBe(50);
+				expect(ambientBrightness?.value).toBe(50);
+			});
+		});
+
+		describe('with no role configuration (MVP fallback)', () => {
+			it('should turn all lights ON with mode brightness', async () => {
+				const light1 = createMockLightWithRole('light-1', true);
+				const light2 = createMockLightWithRole('light-2', true);
+
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([light1, light2]);
+				// Empty role map (default from beforeEach)
+
+				const intent: LightingIntentDto = { type: LightingIntentType.SET_MODE, mode: LightingMode.WORK };
+				const result = await service.executeLightingIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+				expect(result.affectedDevices).toBe(2);
+
+				// All lights should be ON with WORK brightness (100)
+				const calls = mockPlatform.processBatch.mock.calls;
+
+				for (const call of calls) {
+					const commands = call[0] as IDevicePropertyData[];
+					const onCmd = commands.find((cmd) => cmd.property.category === PropertyCategory.ON);
+					const brightnessCmd = commands.find((cmd) => cmd.property.category === PropertyCategory.BRIGHTNESS);
+
+					expect(onCmd?.value).toBe(true);
+					expect(brightnessCmd?.value).toBe(LIGHTING_MODE_BRIGHTNESS[LightingMode.WORK]);
+				}
+			});
+		});
+
+		describe('with partial role configuration', () => {
+			it('should apply roles to configured lights and treat others as OTHER', async () => {
+				const mainLight = createMockLightWithRole('main-light', true);
+				const unassignedLight = createMockLightWithRole('unassigned-light', true);
+
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([mainLight, unassignedLight]);
+
+				// Only main light has a role
+				const roleMap = createRoleMap([
+					{ deviceId: 'main-light', channelId: 'main-light-light-channel', role: LightingRole.MAIN },
+				]);
+				mockLightingRoleService.getRoleMap.mockResolvedValue(roleMap);
+
+				const intent: LightingIntentDto = { type: LightingIntentType.SET_MODE, mode: LightingMode.WORK };
+				const result = await service.executeLightingIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+
+				const calls = mockPlatform.processBatch.mock.calls;
+
+				// Main light should be ON with 100%
+				const mainCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'main-light');
+				const mainOnCmd = (mainCall![0] as IDevicePropertyData[]).find(
+					(cmd) => cmd.property.category === PropertyCategory.ON,
+				);
+
+				expect(mainOnCmd?.value).toBe(true);
+
+				// Unassigned light (OTHER) should be OFF in WORK mode
+				const unassignedCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'unassigned-light');
+				const unassignedOnCmd = (unassignedCall![0] as IDevicePropertyData[]).find(
+					(cmd) => cmd.property.category === PropertyCategory.ON,
+				);
+
+				expect(unassignedOnCmd?.value).toBe(false);
+			});
+		});
+
+		describe('NIGHT mode fallback behavior', () => {
+			it('should use main lights when no night lights exist', async () => {
+				const mainLight = createMockLightWithRole('main-light', true);
+				const taskLight = createMockLightWithRole('task-light', true);
+
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([mainLight, taskLight]);
+
+				const roleMap = createRoleMap([
+					{ deviceId: 'main-light', channelId: 'main-light-light-channel', role: LightingRole.MAIN },
+					{ deviceId: 'task-light', channelId: 'task-light-light-channel', role: LightingRole.TASK },
+				]);
+				mockLightingRoleService.getRoleMap.mockResolvedValue(roleMap);
+
+				const intent: LightingIntentDto = { type: LightingIntentType.SET_MODE, mode: LightingMode.NIGHT };
+				const result = await service.executeLightingIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+
+				const calls = mockPlatform.processBatch.mock.calls;
+
+				// Main light should be ON at fallback brightness (20%)
+				const mainCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'main-light');
+				const mainCommands = mainCall![0] as IDevicePropertyData[];
+				const mainOnCmd = mainCommands.find((cmd) => cmd.property.category === PropertyCategory.ON);
+				const mainBrightness = mainCommands.find((cmd) => cmd.property.category === PropertyCategory.BRIGHTNESS);
+
+				expect(mainOnCmd?.value).toBe(true);
+				expect(mainBrightness?.value).toBe(20);
+
+				// Task light should be OFF
+				const taskCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'task-light');
+				const taskOnCmd = (taskCall![0] as IDevicePropertyData[]).find(
+					(cmd) => cmd.property.category === PropertyCategory.ON,
+				);
+
+				expect(taskOnCmd?.value).toBe(false);
+			});
+
+			it('should use night lights when they exist', async () => {
+				const mainLight = createMockLightWithRole('main-light', true);
+				const nightLight = createMockLightWithRole('night-light', true);
+
+				mockSpacesService.findOne.mockResolvedValue(mockSpace);
+				mockSpacesService.findDevicesBySpace.mockResolvedValue([mainLight, nightLight]);
+
+				const roleMap = createRoleMap([
+					{ deviceId: 'main-light', channelId: 'main-light-light-channel', role: LightingRole.MAIN },
+					{ deviceId: 'night-light', channelId: 'night-light-light-channel', role: LightingRole.NIGHT },
+				]);
+				mockLightingRoleService.getRoleMap.mockResolvedValue(roleMap);
+
+				const intent: LightingIntentDto = { type: LightingIntentType.SET_MODE, mode: LightingMode.NIGHT };
+				const result = await service.executeLightingIntent(mockSpaceId, intent);
+
+				expect(result.success).toBe(true);
+
+				const calls = mockPlatform.processBatch.mock.calls;
+
+				// Night light should be ON at 20%
+				const nightCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'night-light');
+				const nightCommands = nightCall![0] as IDevicePropertyData[];
+				const nightOnCmd = nightCommands.find((cmd) => cmd.property.category === PropertyCategory.ON);
+				const nightBrightness = nightCommands.find((cmd) => cmd.property.category === PropertyCategory.BRIGHTNESS);
+
+				expect(nightOnCmd?.value).toBe(true);
+				expect(nightBrightness?.value).toBe(20);
+
+				// Main light should be OFF
+				const mainCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'main-light');
+				const mainOnCmd = (mainCall![0] as IDevicePropertyData[]).find(
+					(cmd) => cmd.property.category === PropertyCategory.ON,
+				);
+
+				expect(mainOnCmd?.value).toBe(false);
+			});
+		});
+	});
+
+	describe('brightness delta for ON lights only', () => {
+		it('should only adjust brightness for lights that are currently ON', async () => {
+			// Light that is ON
+			const onLight = createMockLight('on-light', true, 50);
+
+			// Light that is OFF
+			const offLight = createMockLight('off-light', true, 50);
+			const offLightChannel = offLight.channels![0];
+			const offLightOnProp = offLightChannel.properties!.find((p) => p.category === PropertyCategory.ON);
+
+			if (offLightOnProp) {
+				(offLightOnProp as { value: unknown }).value = false;
+			}
+
+			mockSpacesService.findOne.mockResolvedValue(mockSpace);
+			mockSpacesService.findDevicesBySpace.mockResolvedValue([onLight, offLight]);
+
+			const intent: LightingIntentDto = {
+				type: LightingIntentType.BRIGHTNESS_DELTA,
+				delta: BrightnessDelta.MEDIUM,
+				increase: true,
+			};
+			const result = await service.executeLightingIntent(mockSpaceId, intent);
+
+			expect(result.success).toBe(true);
+			expect(result.affectedDevices).toBe(2);
+
+			// Only the ON light should have a brightness command
+			const calls = mockPlatform.processBatch.mock.calls;
+
+			// ON light should have brightness adjusted
+			const onLightCall = calls.find((c) => (c[0] as IDevicePropertyData[])[0]?.device.id === 'on-light');
+
+			expect(onLightCall).toBeDefined();
+
+			const onLightCommands = onLightCall![0] as IDevicePropertyData[];
+
+			expect(onLightCommands).toHaveLength(1);
+			expect(onLightCommands[0].value).toBe(50 + BRIGHTNESS_DELTA_STEPS[BrightnessDelta.MEDIUM]);
+
+			// OFF light should not have been processed (no brightness command)
+			// Note: The processBatch was called but with no commands, so it returns success
+			// but doesn't actually execute any brightness adjustment
 		});
 	});
 });
