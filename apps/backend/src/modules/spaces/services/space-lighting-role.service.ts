@@ -151,6 +151,9 @@ export class SpaceLightingRoleService {
 	async deleteRole(spaceId: string, deviceId: string, channelId: string): Promise<void> {
 		this.logger.debug(`Deleting lighting role for space=${spaceId} device=${deviceId} channel=${channelId}`);
 
+		// Verify space exists
+		await this.spacesService.getOneOrThrow(spaceId);
+
 		const role = await this.findOne(spaceId, deviceId, channelId);
 
 		if (role) {

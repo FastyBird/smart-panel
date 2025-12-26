@@ -272,6 +272,7 @@ describe('SpaceLightingRoleService', () => {
 
 			await service.deleteRole(mockSpace.id, mockDevice.id, mockChannel.id);
 
+			expect(spacesService.getOneOrThrow).toHaveBeenCalledWith(mockSpace.id);
 			expect(roleRepository.remove).toHaveBeenCalledWith(mockRole);
 		});
 
@@ -279,6 +280,7 @@ describe('SpaceLightingRoleService', () => {
 			roleRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteRole(mockSpace.id, mockDevice.id, mockChannel.id)).resolves.not.toThrow();
+			expect(spacesService.getOneOrThrow).toHaveBeenCalledWith(mockSpace.id);
 		});
 	});
 
