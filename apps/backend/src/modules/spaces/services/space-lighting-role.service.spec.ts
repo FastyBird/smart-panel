@@ -31,6 +31,7 @@ describe('SpaceLightingRoleService', () => {
 		primaryThermostatId: null,
 		primaryTemperatureSensorId: null,
 		suggestionsEnabled: true,
+		lastActivityAt: null,
 		createdAt: new Date(),
 		updatedAt: null,
 	};

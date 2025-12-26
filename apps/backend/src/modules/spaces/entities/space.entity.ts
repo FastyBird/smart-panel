@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { Column, Entity } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -125,4 +125,30 @@ export class SpaceEntity extends BaseEntity {
 	)
 	@Column({ type: 'boolean', default: true })
 	suggestionsEnabled: boolean;
+
+	@ApiPropertyOptional({
+		name: 'last_activity_at',
+		description: 'The timestamp of the last device activity in this space',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: '2025-01-25T12:00:00Z',
+		readOnly: true,
+	})
+	@Expose({ name: 'last_activity_at' })
+	@IsOptional()
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { last_activity_at?: string | Date; lastActivityAt?: string | Date } }) => {
+			const value: string | Date | undefined = obj.last_activity_at ?? obj.lastActivityAt;
+			if (!value) return null;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	@Column({ type: 'datetime', nullable: true, default: null })
+	lastActivityAt: Date | string | null;
 }

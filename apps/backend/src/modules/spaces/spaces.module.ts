@@ -12,6 +12,7 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SpacesController } from './controllers/spaces.controller';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
+import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
@@ -31,7 +32,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		forwardRef(() => ExtensionsModule),
 	],
 	controllers: [SpacesController],
-	providers: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService],
+	providers: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService, SpaceActivityListener],
 	exports: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService],
 })
 export class SpacesModule implements OnModuleInit {
