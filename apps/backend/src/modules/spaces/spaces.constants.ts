@@ -136,6 +136,37 @@ export interface ModeOrchestrationConfig {
  * - OTHER role is treated as ambient for relax mode, off for work mode
  * - Brightness delta applies to all currently ON lights (active set approach)
  */
+// ========================
+// Suggestion System Constants
+// ========================
+
+/**
+ * Suggestion types available in the system
+ */
+export enum SuggestionType {
+	LIGHTING_RELAX = 'lighting_relax',
+	LIGHTING_NIGHT = 'lighting_night',
+	LIGHTING_OFF = 'lighting_off',
+}
+
+/**
+ * Suggestion feedback types for tracking user interaction
+ */
+export enum SuggestionFeedback {
+	APPLIED = 'applied',
+	DISMISSED = 'dismissed',
+}
+
+/**
+ * Cooldown period for suggestions in milliseconds (30 minutes)
+ */
+export const SUGGESTION_COOLDOWN_MS = 30 * 60 * 1000;
+
+/**
+ * Space categories that support night mode suggestions
+ */
+export const BEDROOM_SPACE_PATTERNS = ['bedroom', 'schlafzimmer', 'ložnice', 'chambre'];
+
 export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestrationConfig> = {
 	[LightingMode.WORK]: {
 		roles: {

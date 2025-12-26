@@ -11,6 +11,7 @@ import {
 	ReqSetLightingRoleDto,
 	SetLightingRoleDto,
 } from './dto/lighting-role.dto';
+import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
@@ -34,6 +35,10 @@ import {
 	ProposedSpacesResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
+	SuggestionDataModel,
+	SuggestionFeedbackResponseModel,
+	SuggestionFeedbackResultDataModel,
+	SuggestionResponseModel,
 } from './models/spaces-response.model';
 
 export const SPACES_SWAGGER_EXTRA_MODELS = [
@@ -52,6 +57,8 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqSetLightingRoleDto,
 	BulkSetLightingRolesDto,
 	ReqBulkSetLightingRolesDto,
+	SuggestionFeedbackDto,
+	ReqSuggestionFeedbackDto,
 	// Response models
 	SpaceResponseModel,
 	SpacesResponseModel,
@@ -72,6 +79,10 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	LightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
 	BulkLightingRolesResponseModel,
+	SuggestionDataModel,
+	SuggestionResponseModel,
+	SuggestionFeedbackResultDataModel,
+	SuggestionFeedbackResponseModel,
 	// Entities
 	SpaceEntity,
 	SpaceLightingRoleEntity,

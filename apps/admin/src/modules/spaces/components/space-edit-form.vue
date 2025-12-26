@@ -88,6 +88,23 @@
 		<!-- Lighting Roles Section -->
 		<space-lighting-roles v-if="props.space && hasLightingDevices" :space="props.space" />
 
+		<!-- Suggestions Section -->
+		<template v-if="props.space">
+			<el-divider>{{ t('spacesModule.fields.spaces.suggestions.title') }}</el-divider>
+
+			<el-form-item prop="suggestionsEnabled">
+				<template #label>
+					<div class="flex items-center gap-2">
+						{{ t('spacesModule.fields.spaces.suggestionsEnabled.title') }}
+					</div>
+				</template>
+				<el-switch v-model="formData.suggestionsEnabled" />
+				<div class="text-xs text-gray-500 mt-1">
+					{{ t('spacesModule.fields.spaces.suggestionsEnabled.hint') }}
+				</div>
+			</el-form-item>
+		</template>
+
 		<div class="flex gap-2 justify-end mt-4">
 			<el-button @click="onCancel">
 				{{ t('spacesModule.buttons.cancel.title') }}
@@ -103,7 +120,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
+import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useBackend } from '../../../common';
@@ -155,6 +172,7 @@ const initialValues = {
 	displayOrder: props.space?.displayOrder ?? 0,
 	primaryThermostatId: props.space?.primaryThermostatId ?? null,
 	primaryTemperatureSensorId: props.space?.primaryTemperatureSensorId ?? null,
+	suggestionsEnabled: props.space?.suggestionsEnabled ?? true,
 };
 
 const formData = reactive({ ...initialValues });
@@ -198,7 +216,8 @@ const formChanged = computed<boolean>((): boolean => {
 		formData.icon !== initialValues.icon ||
 		formData.displayOrder !== initialValues.displayOrder ||
 		formData.primaryThermostatId !== initialValues.primaryThermostatId ||
-		formData.primaryTemperatureSensorId !== initialValues.primaryTemperatureSensorId
+		formData.primaryTemperatureSensorId !== initialValues.primaryTemperatureSensorId ||
+		formData.suggestionsEnabled !== initialValues.suggestionsEnabled
 	);
 });
 
@@ -221,6 +240,7 @@ watch(
 			formData.displayOrder = space.displayOrder;
 			formData.primaryThermostatId = space.primaryThermostatId ?? null;
 			formData.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
+			formData.suggestionsEnabled = space.suggestionsEnabled ?? true;
 			// Update initial values when space prop changes
 			initialValues.name = space.name;
 			initialValues.type = space.type;
@@ -229,6 +249,7 @@ watch(
 			initialValues.displayOrder = space.displayOrder;
 			initialValues.primaryThermostatId = space.primaryThermostatId ?? null;
 			initialValues.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
+			initialValues.suggestionsEnabled = space.suggestionsEnabled ?? true;
 			// Reload devices for the new space
 			loadSpaceDevices();
 		}
@@ -287,6 +308,7 @@ const onSubmit = async (): Promise<void> => {
 			displayOrder: formData.displayOrder,
 			primaryThermostatId: formData.primaryThermostatId || null,
 			primaryTemperatureSensorId: formData.primaryTemperatureSensorId || null,
+			suggestionsEnabled: formData.suggestionsEnabled,
 		};
 
 		let savedSpace: ISpace;

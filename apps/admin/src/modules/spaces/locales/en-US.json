@@ -105,6 +105,13 @@
 				},
 				"applyDefaults": "Apply Defaults",
 				"applyDefaultsHint": "Sets first light as Main, others as Ambient"
+			},
+			"suggestions": {
+				"title": "Smart Suggestions"
+			},
+			"suggestionsEnabled": {
+				"title": "Enable suggestions",
+				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state"
 			}
 		}
 	},

@@ -14,6 +14,7 @@ import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
+import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
@@ -30,8 +31,8 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		forwardRef(() => ExtensionsModule),
 	],
 	controllers: [SpacesController],
-	providers: [SpacesService, SpaceIntentService, SpaceLightingRoleService],
-	exports: [SpacesService, SpaceIntentService, SpaceLightingRoleService],
+	providers: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService],
+	exports: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService],
 })
 export class SpacesModule implements OnModuleInit {
 	constructor(

@@ -17,6 +17,7 @@ import { ReqClimateIntentDto } from '../dto/climate-intent.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
+import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import {
 	BulkAssignmentResponseModel,
@@ -36,9 +37,14 @@ import {
 	ProposedSpacesResponseModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
+	SuggestionDataModel,
+	SuggestionFeedbackResponseModel,
+	SuggestionFeedbackResultDataModel,
+	SuggestionResponseModel,
 } from '../models/spaces-response.model';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
+import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpacesService } from '../services/spaces.service';
 import { SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from '../spaces.constants';
 
@@ -51,6 +57,7 @@ export class SpacesController {
 		private readonly spacesService: SpacesService,
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly spaceLightingRoleService: SpaceLightingRoleService,
+		private readonly spaceSuggestionService: SpaceSuggestionService,
 	) {}
 
 	@Get()
@@ -523,5 +530,81 @@ export class SpacesController {
 		await this.spaceLightingRoleService.deleteRole(id, deviceId, channelId);
 
 		this.logger.debug(`Successfully deleted lighting role for device=${deviceId} channel=${channelId}`);
+	}
+
+	// ================================
+	// Suggestion Endpoints
+	// ================================
+
+	@Get(':id/suggestion')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-suggestion',
+		summary: 'Get suggestion for space',
+		description:
+			'Retrieves a single, non-intrusive suggestion for the space based on current time and lighting state. ' +
+			'Returns null if no suggestion is applicable or suggestions are disabled for this space. ' +
+			'Suggestions have a cooldown period to avoid repetition.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SuggestionResponseModel, 'Returns the suggestion or null')
+	@ApiNotFoundResponse('Space not found')
+	async getSuggestion(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<SuggestionResponseModel> {
+		this.logger.debug(`Getting suggestion for space with id=${id}`);
+
+		const suggestion = await this.spaceSuggestionService.getSuggestion(id);
+
+		const response = new SuggestionResponseModel();
+
+		if (suggestion) {
+			const suggestionData = new SuggestionDataModel();
+			suggestionData.type = suggestion.type;
+			suggestionData.title = suggestion.title;
+			suggestionData.reason = suggestion.reason;
+			suggestionData.lightingMode = suggestion.lightingMode;
+			response.data = suggestionData;
+		} else {
+			response.data = null;
+		}
+
+		return response;
+	}
+
+	@Post(':id/suggestion/feedback')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-suggestion-feedback',
+		summary: 'Submit suggestion feedback',
+		description:
+			'Records user feedback for a suggestion (applied or dismissed). ' +
+			'If applied, the corresponding lighting intent is executed. ' +
+			'A cooldown is set to prevent the same suggestion from reappearing immediately.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(SuggestionFeedbackResponseModel, 'Returns the feedback result')
+	@ApiNotFoundResponse('Space not found')
+	@ApiBadRequestResponse('Invalid feedback data')
+	async submitSuggestionFeedback(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Body() body: ReqSuggestionFeedbackDto,
+	): Promise<SuggestionFeedbackResponseModel> {
+		this.logger.debug(`Submitting suggestion feedback for space with id=${id}`);
+
+		const result = await this.spaceSuggestionService.recordFeedback(
+			id,
+			body.data.suggestionType,
+			body.data.feedback,
+		);
+
+		const resultData = new SuggestionFeedbackResultDataModel();
+		resultData.success = result.success;
+		resultData.intentExecuted = result.intentExecuted;
+
+		const response = new SuggestionFeedbackResponseModel();
+		response.data = resultData;
+
+		return response;
 	}
 }

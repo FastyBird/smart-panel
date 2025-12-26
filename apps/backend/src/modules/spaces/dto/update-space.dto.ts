@@ -1,5 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -115,6 +115,22 @@ export class UpdateSpaceDto {
 		{ toClassOnly: true },
 	)
 	primaryTemperatureSensorId?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'suggestions_enabled',
+		description: 'Whether suggestions are enabled for this space',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'suggestions_enabled' })
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"suggestions_enabled","reason":"Suggestions enabled must be a boolean."}]' })
+	@Transform(
+		({ obj }: { obj: { suggestions_enabled?: boolean; suggestionsEnabled?: boolean } }) =>
+			obj.suggestions_enabled !== undefined ? obj.suggestions_enabled : obj.suggestionsEnabled,
+		{ toClassOnly: true },
+	)
+	suggestionsEnabled?: boolean;
 }
 
 @ApiSchema({ name: 'SpacesModuleReqUpdateSpace' })

@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
-import { LightingRole } from '../spaces.constants';
+import { LightingMode, LightingRole, SuggestionType } from '../spaces.constants';
 
 /**
  * Response wrapper for SpaceEntity
@@ -523,4 +523,101 @@ export class BulkLightingRolesResponseModel extends BaseSuccessResponseModel<Bul
 	@Expose()
 	@Type(() => BulkLightingRolesResultDataModel)
 	declare data: BulkLightingRolesResultDataModel;
+}
+
+// ================================
+// Suggestion Response Models
+// ================================
+
+/**
+ * Space suggestion data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataSuggestion' })
+export class SuggestionDataModel {
+	@ApiProperty({
+		description: 'Type of the suggestion',
+		enum: SuggestionType,
+		example: SuggestionType.LIGHTING_RELAX,
+	})
+	@Expose()
+	type: SuggestionType;
+
+	@ApiProperty({
+		description: 'Short title for the suggestion',
+		type: 'string',
+		example: 'Relax lighting',
+	})
+	@Expose()
+	title: string;
+
+	@ApiPropertyOptional({
+		description: 'Optional reason/explanation for the suggestion',
+		type: 'string',
+		nullable: true,
+		example: 'Evening time - switch to a calmer lighting mode',
+	})
+	@Expose()
+	reason: string | null;
+
+	@ApiProperty({
+		name: 'lighting_mode',
+		description: 'The lighting mode this suggestion would apply',
+		enum: LightingMode,
+		nullable: true,
+		example: LightingMode.RELAX,
+	})
+	@Expose({ name: 'lighting_mode' })
+	lightingMode: LightingMode | null;
+}
+
+/**
+ * Response wrapper for space suggestion (nullable data)
+ */
+@ApiSchema({ name: 'SpacesModuleResSuggestion' })
+export class SuggestionResponseModel extends BaseSuccessResponseModel<SuggestionDataModel | null> {
+	@ApiProperty({
+		description: 'The suggestion data (null if no suggestion available)',
+		type: () => SuggestionDataModel,
+		nullable: true,
+	})
+	@Expose()
+	@Type(() => SuggestionDataModel)
+	declare data: SuggestionDataModel | null;
+}
+
+/**
+ * Suggestion feedback result data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataSuggestionFeedbackResult' })
+export class SuggestionFeedbackResultDataModel {
+	@ApiProperty({
+		description: 'Whether the feedback was recorded successfully',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiPropertyOptional({
+		name: 'intent_executed',
+		description: 'Whether the intent was executed (only for applied feedback)',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'intent_executed' })
+	intentExecuted?: boolean;
+}
+
+/**
+ * Response wrapper for suggestion feedback result
+ */
+@ApiSchema({ name: 'SpacesModuleResSuggestionFeedback' })
+export class SuggestionFeedbackResponseModel extends BaseSuccessResponseModel<SuggestionFeedbackResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the suggestion feedback',
+		type: () => SuggestionFeedbackResultDataModel,
+	})
+	@Expose()
+	@Type(() => SuggestionFeedbackResultDataModel)
+	declare data: SuggestionFeedbackResultDataModel;
 }

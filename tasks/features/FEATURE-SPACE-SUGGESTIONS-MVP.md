@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel, admin
 Size: medium
 Parent: EPIC-SPACES-FIRST-UX
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -62,12 +62,12 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] Panel shows at most one suggestion on SpacePage visibility/wake.
-- [ ] Suggestion can be applied with one tap and triggers an intent safely.
-- [ ] Suggestion can be dismissed and does not reappear immediately (cooldown).
-- [ ] Suggestions can be disabled via Admin setting.
-- [ ] Backend rules are deterministic and covered by unit tests.
-- [ ] System remains usable with suggestions disabled (no dependencies).
+- [x] Panel shows at most one suggestion on SpacePage visibility/wake.
+- [x] Suggestion can be applied with one tap and triggers an intent safely.
+- [x] Suggestion can be dismissed and does not reappear immediately (cooldown).
+- [x] Suggestions can be disabled via Admin setting.
+- [x] Backend rules are deterministic and covered by unit tests.
+- [x] System remains usable with suggestions disabled (no dependencies).
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
