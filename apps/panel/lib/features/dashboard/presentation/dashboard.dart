@@ -102,6 +102,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .map((entry) => buildPageWidget(entry.value))
           .toList();
 
+      // Clamp _currentPage to valid range in case pages were removed
+      final maxPageIndex = dashboardService.pages.length - 1;
+      if (_currentPage > maxPageIndex) {
+        _currentPage = maxPageIndex.clamp(0, maxPageIndex);
+        // Update the PageController to match the clamped page
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_pageController?.hasClients == true) {
+            _pageController?.jumpToPage(_currentPage);
+          }
+        });
+      }
+
       final DashboardPageView currentView =
           dashboardService.pages.entries.toList()[_currentPage].value;
 
