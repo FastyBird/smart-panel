@@ -15,7 +15,7 @@ import { DataSourcesTypeMapperService } from '../../../modules/dashboard/service
 import { TilesTypeMapperService } from '../../../modules/dashboard/services/tiles-type-mapper.service';
 import { DataSourceTypeConstraintValidator } from '../../../modules/dashboard/validators/data-source-type-constraint.validator';
 import { TileTypeConstraintValidator } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
-import { ConnectionState } from '../../../modules/displays/displays.constants';
+import { ConnectionState, HomeMode } from '../../../modules/displays/displays.constants';
 import { DisplayEntity } from '../../../modules/displays/entities/displays.entity';
 import { DisplaysService } from '../../../modules/displays/services/displays.service';
 import { DisplayExistsConstraint } from '../../../modules/displays/validators/display-exists-constraint.validator';
@@ -59,6 +59,9 @@ describe('CardsPageNestedBuilderService', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: undefined,
