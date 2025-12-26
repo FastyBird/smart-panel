@@ -317,15 +317,19 @@ class _SpacePageState extends State<SpacePage> {
 
       if (!mounted) return;
 
-      // Update the active mode based on the suggestion
+      // Update the active mode and lights count based on the suggestion
       if (_suggestion?.lightingMode != null) {
         setState(() {
           _activeMode = _suggestion!.lightingMode;
+          // Simulate lights on count - when API is integrated:
+          // _lightsOnCount = response.data.affectedDevices;
+          _lightsOnCount = 3;
         });
       } else if (_suggestion?.type == 'lighting_off') {
         // Handle LIGHTING_OFF suggestion type which has null lightingMode
         setState(() {
           _activeMode = LightingMode.off;
+          _lightsOnCount = 0;
         });
       }
 
