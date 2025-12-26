@@ -535,7 +535,8 @@ class _SpacePageState extends State<SpacePage> {
   /// Returns true if we're still loading space capabilities
   bool get _isLoadingCapabilities =>
       _lightingState == LightingState.loading ||
-      _climateState == ClimateState.loading;
+      _climateState == ClimateState.loading ||
+      _devicesState == DevicesState.loading;
 
   /// Returns true if space has lighting controls available
   bool get _hasLighting => _lightingState == LightingState.available;
@@ -545,8 +546,12 @@ class _SpacePageState extends State<SpacePage> {
       _climateState == ClimateState.readOnly ||
       _climateState == ClimateState.controllable;
 
+  /// Returns true if space has sensors (read-only devices)
+  bool get _hasSensors => _devicesState == DevicesState.sensorsOnly;
+
   /// Returns true if space has no controllable sections (empty state)
-  bool get _hasNoControls => !_hasLighting && !_hasClimate;
+  /// Note: Spaces with sensors should show content with "Sensors Only" message
+  bool get _hasNoControls => !_hasLighting && !_hasClimate && !_hasSensors;
 
   @override
   Widget build(BuildContext context) {
