@@ -5,18 +5,31 @@ import { BulkAssignDto, ReqBulkAssignDto } from './dto/bulk-assign.dto';
 import { ClimateIntentDto, ReqClimateIntentDto } from './dto/climate-intent.dto';
 import { CreateSpaceDto, ReqCreateSpaceDto } from './dto/create-space.dto';
 import { LightingIntentDto, ReqLightingIntentDto } from './dto/lighting-intent.dto';
+import {
+	BulkSetLightingRolesDto,
+	ReqBulkSetLightingRolesDto,
+	ReqSetLightingRoleDto,
+	SetLightingRoleDto,
+} from './dto/lighting-role.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
+import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import {
 	BulkAssignmentDataModel,
 	BulkAssignmentResponseModel,
 	BulkAssignmentResultDataModel,
+	BulkLightingRolesResponseModel,
+	BulkLightingRolesResultDataModel,
 	ClimateIntentResponseModel,
 	ClimateIntentResultDataModel,
 	ClimateStateDataModel,
 	ClimateStateResponseModel,
 	LightingIntentResponseModel,
 	LightingIntentResultDataModel,
+	LightingRoleResponseModel,
+	LightingRolesResponseModel,
+	LightTargetDataModel,
+	LightTargetsResponseModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	SpaceResponseModel,
@@ -35,6 +48,10 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ReqLightingIntentDto,
 	ClimateIntentDto,
 	ReqClimateIntentDto,
+	SetLightingRoleDto,
+	ReqSetLightingRoleDto,
+	BulkSetLightingRolesDto,
+	ReqBulkSetLightingRolesDto,
 	// Response models
 	SpaceResponseModel,
 	SpacesResponseModel,
@@ -49,6 +66,13 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	ClimateStateResponseModel,
 	ClimateIntentResultDataModel,
 	ClimateIntentResponseModel,
+	LightTargetDataModel,
+	LightTargetsResponseModel,
+	LightingRoleResponseModel,
+	LightingRolesResponseModel,
+	BulkLightingRolesResultDataModel,
+	BulkLightingRolesResponseModel,
 	// Entities
 	SpaceEntity,
+	SpaceLightingRoleEntity,
 ];

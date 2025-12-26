@@ -23,3 +23,12 @@ export enum SpaceType {
 	ROOM = 'room',
 	ZONE = 'zone',
 }
+
+export enum LightingRole {
+	MAIN = 'main',
+	TASK = 'task',
+	AMBIENT = 'ambient',
+	ACCENT = 'accent',
+	NIGHT = 'night',
+	OTHER = 'other',
+}

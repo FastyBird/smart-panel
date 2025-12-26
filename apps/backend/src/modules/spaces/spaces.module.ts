@@ -10,8 +10,10 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
 import { SpacesController } from './controllers/spaces.controller';
+import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceIntentService } from './services/space-intent.service';
+import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
@@ -23,13 +25,13 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([SpaceEntity, DeviceEntity, DisplayEntity]),
+		TypeOrmModule.forFeature([SpaceEntity, SpaceLightingRoleEntity, DeviceEntity, DisplayEntity]),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => ExtensionsModule),
 	],
 	controllers: [SpacesController],
-	providers: [SpacesService, SpaceIntentService],
-	exports: [SpacesService, SpaceIntentService],
+	providers: [SpacesService, SpaceIntentService, SpaceLightingRoleService],
+	exports: [SpacesService, SpaceIntentService, SpaceLightingRoleService],
 })
 export class SpacesModule implements OnModuleInit {
 	constructor(

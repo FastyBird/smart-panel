@@ -1,9 +1,11 @@
 import { Expose, Type } from 'class-transformer';
 
-import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
+import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
+import { LightingRole } from '../spaces.constants';
 
 /**
  * Response wrapper for SpaceEntity
@@ -349,4 +351,174 @@ export class ClimateIntentResponseModel extends BaseSuccessResponseModel<Climate
 	@Expose()
 	@Type(() => ClimateIntentResultDataModel)
 	declare data: ClimateIntentResultDataModel;
+}
+
+// ================================
+// Lighting Role Response Models
+// ================================
+
+/**
+ * Light target data model (a light device/channel in a space)
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightTarget' })
+export class LightTargetDataModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the lighting device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'device_name',
+		description: 'Name of the lighting device',
+		type: 'string',
+		example: 'Living Room Ceiling Light',
+	})
+	@Expose({ name: 'device_name' })
+	deviceName: string;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the light channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4gf-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		name: 'channel_name',
+		description: 'Name of the light channel',
+		type: 'string',
+		example: 'Light',
+	})
+	@Expose({ name: 'channel_name' })
+	channelName: string;
+
+	@ApiPropertyOptional({
+		description: 'The lighting role assigned to this target (null if not assigned)',
+		enum: LightingRole,
+		nullable: true,
+		example: LightingRole.MAIN,
+	})
+	@Expose()
+	role: LightingRole | null;
+
+	@ApiProperty({
+		description: 'Priority for selecting defaults within the same role',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose()
+	priority: number;
+
+	@ApiProperty({
+		name: 'has_brightness',
+		description: 'Whether this light supports brightness control',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_brightness' })
+	hasBrightness: boolean;
+
+	@ApiProperty({
+		name: 'has_color_temp',
+		description: 'Whether this light supports color temperature control',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_color_temp' })
+	hasColorTemp: boolean;
+
+	@ApiProperty({
+		name: 'has_color',
+		description: 'Whether this light supports color (RGB) control',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'has_color' })
+	hasColor: boolean;
+}
+
+/**
+ * Response wrapper for light targets in a space
+ */
+@ApiSchema({ name: 'SpacesModuleResLightTargets' })
+export class LightTargetsResponseModel extends BaseSuccessResponseModel<LightTargetDataModel[]> {
+	@ApiProperty({
+		description: 'Array of light targets in the space with their role assignments',
+		type: () => [LightTargetDataModel],
+	})
+	@Expose()
+	@Type(() => LightTargetDataModel)
+	declare data: LightTargetDataModel[];
+}
+
+/**
+ * Response wrapper for a single lighting role entity
+ */
+@ApiSchema({ name: 'SpacesModuleResLightingRole' })
+export class LightingRoleResponseModel extends BaseSuccessResponseModel<SpaceLightingRoleEntity> {
+	@ApiProperty({
+		description: 'The lighting role assignment',
+		type: () => SpaceLightingRoleEntity,
+	})
+	@Expose()
+	declare data: SpaceLightingRoleEntity;
+}
+
+/**
+ * Response wrapper for array of lighting role entities
+ */
+@ApiSchema({ name: 'SpacesModuleResLightingRoles' })
+export class LightingRolesResponseModel extends BaseSuccessResponseModel<SpaceLightingRoleEntity[]> {
+	@ApiProperty({
+		description: 'Array of lighting role assignments',
+		type: 'array',
+		items: { $ref: getSchemaPath(SpaceLightingRoleEntity) },
+	})
+	@Expose()
+	declare data: SpaceLightingRoleEntity[];
+}
+
+/**
+ * Bulk lighting role update result data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataBulkLightingRolesResult' })
+export class BulkLightingRolesResultDataModel {
+	@ApiProperty({
+		description: 'Whether the bulk update was successful',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'roles_updated',
+		description: 'Number of roles created or updated',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'roles_updated' })
+	rolesUpdated: number;
+}
+
+/**
+ * Response wrapper for bulk lighting role update result
+ */
+@ApiSchema({ name: 'SpacesModuleResBulkLightingRoles' })
+export class BulkLightingRolesResponseModel extends BaseSuccessResponseModel<BulkLightingRolesResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the bulk lighting role update',
+		type: () => BulkLightingRolesResultDataModel,
+	})
+	@Expose()
+	@Type(() => BulkLightingRolesResultDataModel)
+	declare data: BulkLightingRolesResultDataModel;
 }

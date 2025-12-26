@@ -85,6 +85,9 @@
 			</el-form-item>
 		</template>
 
+		<!-- Lighting Roles Section -->
+		<space-lighting-roles v-if="props.space && hasLightingDevices" :space="props.space" />
+
 		<div class="flex gap-2 justify-end mt-4">
 			<el-button @click="onCancel">
 				{{ t('spacesModule.buttons.cancel.title') }}
@@ -108,6 +111,8 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { SpaceType, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import { spacesStoreKey, type ISpace, type ISpaceCreateData } from '../store';
+
+import SpaceLightingRoles from './space-lighting-roles.vue';
 
 interface IProps {
 	space?: ISpace;
@@ -178,6 +183,11 @@ const temperatureSensorDevices = computed(() =>
 // All climate-capable devices (for showing/hiding the section)
 const climateDevices = computed(() =>
 	[...thermostatDevices.value, ...sensorDevices.value]
+);
+
+// Check if there are lighting devices in this space
+const hasLightingDevices = computed(() =>
+	spaceDevices.value.some(d => d.category === DevicesModuleDeviceCategory.lighting)
 );
 
 const formChanged = computed<boolean>((): boolean => {

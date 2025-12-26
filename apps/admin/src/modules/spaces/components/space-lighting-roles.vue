@@ -1,0 +1,234 @@
+<template>
+	<div class="space-lighting-roles">
+		<el-divider>{{ t('spacesModule.fields.spaces.lightingRoles.title') }}</el-divider>
+
+		<div class="text-sm text-gray-500 mb-4">
+			{{ t('spacesModule.fields.spaces.lightingRoles.description') }}
+		</div>
+
+		<div v-if="loading" class="flex justify-center py-4">
+			<el-icon class="animate-spin" :size="24">
+				<loading />
+			</el-icon>
+		</div>
+
+		<template v-else-if="lightTargets.length > 0">
+			<el-table :data="lightTargets" style="width: 100%" border>
+				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
+					<template #default="{ row }">
+						<div class="flex items-center gap-2">
+							<el-icon><bulb /></el-icon>
+							<span>{{ row.deviceName }}</span>
+						</div>
+					</template>
+				</el-table-column>
+
+				<el-table-column :label="t('spacesModule.fields.spaces.lightingRoles.role.title')" width="160">
+					<template #default="{ row }">
+						<el-select
+							:model-value="row.role ?? ''"
+							:placeholder="t('spacesModule.fields.spaces.lightingRoles.role.placeholder')"
+							clearable
+							style="width: 100%"
+							@update:model-value="onRoleChange(row, $event)"
+						>
+							<el-option
+								v-for="role in roleOptions"
+								:key="role.value"
+								:label="role.label"
+								:value="role.value"
+							/>
+						</el-select>
+					</template>
+				</el-table-column>
+
+				<el-table-column label="" width="100">
+					<template #default="{ row }">
+						<div class="flex gap-1">
+							<el-tag v-if="row.hasBrightness" type="info" size="small">Dim</el-tag>
+							<el-tag v-if="row.hasColor" type="success" size="small">RGB</el-tag>
+						</div>
+					</template>
+				</el-table-column>
+			</el-table>
+
+			<div class="flex justify-between items-center mt-4">
+				<el-button size="small" @click="onApplyDefaults" :loading="applyingDefaults">
+					{{ t('spacesModule.fields.spaces.lightingRoles.applyDefaults') }}
+				</el-button>
+				<div class="text-xs text-gray-400">
+					{{ t('spacesModule.fields.spaces.lightingRoles.applyDefaultsHint') }}
+				</div>
+			</div>
+		</template>
+
+		<el-empty
+			v-else
+			:description="t('spacesModule.fields.spaces.lightingRoles.noLights')"
+			:image-size="60"
+		/>
+	</div>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
+
+import { Icon as Bulb } from '@iconify/vue';
+import { Loading } from '@element-plus/icons-vue';
+import { ElButton, ElDivider, ElEmpty, ElIcon, ElMessage, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { useI18n } from 'vue-i18n';
+
+import { useBackend } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
+import { LightingRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import type { ISpace } from '../store';
+
+interface ILightTarget {
+	deviceId: string;
+	deviceName: string;
+	channelId: string;
+	channelName: string;
+	role: LightingRole | null;
+	priority: number;
+	hasBrightness: boolean;
+	hasColorTemp: boolean;
+	hasColor: boolean;
+}
+
+interface IProps {
+	space: ISpace;
+}
+
+const props = defineProps<IProps>();
+
+const { t } = useI18n();
+const backend = useBackend();
+
+const loading = ref(false);
+const applyingDefaults = ref(false);
+const lightTargets = ref<ILightTarget[]>([]);
+
+const roleOptions = computed(() => [
+	{ value: LightingRole.MAIN, label: t('spacesModule.lightingRoles.main') },
+	{ value: LightingRole.TASK, label: t('spacesModule.lightingRoles.task') },
+	{ value: LightingRole.AMBIENT, label: t('spacesModule.lightingRoles.ambient') },
+	{ value: LightingRole.ACCENT, label: t('spacesModule.lightingRoles.accent') },
+	{ value: LightingRole.NIGHT, label: t('spacesModule.lightingRoles.night') },
+	{ value: LightingRole.OTHER, label: t('spacesModule.lightingRoles.other') },
+]);
+
+const loadLightTargets = async (): Promise<void> => {
+	loading.value = true;
+
+	try {
+		const { data: responseData, error } = await backend.client.GET(
+			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/lighting/targets`,
+			{ params: { path: { id: props.space.id } } }
+		);
+
+		if (error || !responseData) {
+			return;
+		}
+
+		lightTargets.value = (responseData.data ?? []).map((target) => ({
+			deviceId: target.device_id,
+			deviceName: target.device_name,
+			channelId: target.channel_id,
+			channelName: target.channel_name,
+			role: (target.role as LightingRole) ?? null,
+			priority: target.priority ?? 0,
+			hasBrightness: target.has_brightness ?? false,
+			hasColorTemp: target.has_color_temp ?? false,
+			hasColor: target.has_color ?? false,
+		}));
+	} finally {
+		loading.value = false;
+	}
+};
+
+const onRoleChange = async (target: ILightTarget, newRole: string): Promise<void> => {
+	try {
+		if (newRole === '') {
+			// Clear role - delete the assignment
+			await backend.client.DELETE(
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/lighting/roles/{deviceId}/{channelId}`,
+				{
+					params: {
+						path: {
+							id: props.space.id,
+							deviceId: target.deviceId,
+							channelId: target.channelId,
+						},
+					},
+				}
+			);
+			target.role = null;
+		} else {
+			// Set role
+			const { error } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/lighting/roles`,
+				{
+					params: { path: { id: props.space.id } },
+					body: {
+						data: {
+							device_id: target.deviceId,
+							channel_id: target.channelId,
+							role: newRole as LightingRole,
+						},
+					},
+				}
+			);
+
+			if (!error) {
+				target.role = newRole as LightingRole;
+			}
+		}
+	} catch {
+		ElMessage.error('Failed to update lighting role');
+	}
+};
+
+const onApplyDefaults = async (): Promise<void> => {
+	applyingDefaults.value = true;
+
+	try {
+		const { data: responseData, error } = await backend.client.POST(
+			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/lighting/roles/defaults`,
+			{ params: { path: { id: props.space.id } } }
+		);
+
+		if (error || !responseData) {
+			ElMessage.error('Failed to apply default roles');
+			return;
+		}
+
+		// Reload the targets to reflect the new roles
+		await loadLightTargets();
+
+		ElMessage.success(`Applied ${responseData.data?.roles_updated ?? 0} default role(s)`);
+	} finally {
+		applyingDefaults.value = false;
+	}
+};
+
+watch(
+	() => props.space?.id,
+	(newId) => {
+		if (newId) {
+			loadLightTargets();
+		}
+	}
+);
+
+onMounted(() => {
+	if (props.space?.id) {
+		loadLightTargets();
+	}
+});
+</script>
+
+<style scoped>
+.space-lighting-roles {
+	margin-top: 1rem;
+}
+</style>
