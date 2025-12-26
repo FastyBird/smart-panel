@@ -43,7 +43,7 @@ describe('SpaceLightingRoleService', () => {
 		properties: [],
 		createdAt: new Date(),
 		updatedAt: null,
-	} as ChannelEntity;
+	} as unknown as ChannelEntity;
 
 	const mockOnProperty = {
 		id: uuid(),
@@ -60,7 +60,7 @@ describe('SpaceLightingRoleService', () => {
 		queryable: true,
 		createdAt: new Date(),
 		updatedAt: null,
-	} as ChannelPropertyEntity;
+	} as unknown as ChannelPropertyEntity;
 
 	const mockBrightnessProperty = {
 		id: uuid(),
@@ -77,9 +77,9 @@ describe('SpaceLightingRoleService', () => {
 		queryable: true,
 		createdAt: new Date(),
 		updatedAt: null,
-	} as ChannelPropertyEntity;
+	} as unknown as ChannelPropertyEntity;
 
-	const mockDevice: DeviceEntity = {
+	const mockDevice = {
 		id: uuid(),
 		name: 'Ceiling Light',
 		category: DeviceCategory.LIGHTING,
@@ -89,7 +89,7 @@ describe('SpaceLightingRoleService', () => {
 		channels: [{ ...mockChannel, properties: [mockOnProperty, mockBrightnessProperty] }],
 		createdAt: new Date(),
 		updatedAt: null,
-	};
+	} as unknown as DeviceEntity;
 
 	const mockRole: SpaceLightingRoleEntity = {
 		id: uuid(),
@@ -106,6 +106,10 @@ describe('SpaceLightingRoleService', () => {
 	};
 
 	beforeEach(async () => {
+		// Reset mockRole to initial state before each test
+		mockRole.role = LightingRole.MAIN;
+		mockRole.priority = 0;
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpaceLightingRoleService,
@@ -199,7 +203,7 @@ describe('SpaceLightingRoleService', () => {
 		});
 
 		it('should throw validation exception when device does not belong to space', async () => {
-			const otherDevice = { ...mockDevice, spaceId: uuid() };
+			const otherDevice = { ...mockDevice, spaceId: uuid() } as unknown as DeviceEntity;
 			deviceRepository.findOne.mockResolvedValue(otherDevice);
 
 			const dto = {
@@ -212,7 +216,7 @@ describe('SpaceLightingRoleService', () => {
 		});
 
 		it('should throw validation exception when channel not found on device', async () => {
-			const deviceWithoutChannel = { ...mockDevice, channels: [] };
+			const deviceWithoutChannel = { ...mockDevice, channels: [] } as unknown as DeviceEntity;
 			deviceRepository.findOne.mockResolvedValue(deviceWithoutChannel);
 
 			const dto = {
@@ -280,16 +284,16 @@ describe('SpaceLightingRoleService', () => {
 
 	describe('getLightTargetsInSpace', () => {
 		it('should return light targets with their role assignments', async () => {
-			const deviceWithLightChannel: DeviceEntity = {
+			const deviceWithLightChannel = {
 				...mockDevice,
 				channels: [
 					{
 						...mockChannel,
 						deviceId: mockDevice.id,
 						properties: [mockOnProperty, mockBrightnessProperty],
-					},
+					} as unknown as ChannelEntity,
 				],
-			};
+			} as unknown as DeviceEntity;
 			spacesService.findDevicesBySpace.mockResolvedValue([deviceWithLightChannel]);
 			roleRepository.find.mockResolvedValue([mockRole]);
 
@@ -303,16 +307,16 @@ describe('SpaceLightingRoleService', () => {
 		});
 
 		it('should return null role for lights without assignments', async () => {
-			const deviceWithLightChannel: DeviceEntity = {
+			const deviceWithLightChannel = {
 				...mockDevice,
 				channels: [
 					{
 						...mockChannel,
 						deviceId: mockDevice.id,
 						properties: [mockOnProperty],
-					},
+					} as unknown as ChannelEntity,
 				],
-			};
+			} as unknown as DeviceEntity;
 			spacesService.findDevicesBySpace.mockResolvedValue([deviceWithLightChannel]);
 			roleRepository.find.mockResolvedValue([]); // No role assignments
 
@@ -323,10 +327,10 @@ describe('SpaceLightingRoleService', () => {
 		});
 
 		it('should skip non-lighting devices', async () => {
-			const thermostatDevice: DeviceEntity = {
+			const thermostatDevice = {
 				...mockDevice,
 				category: DeviceCategory.THERMOSTAT,
-			};
+			} as unknown as DeviceEntity;
 			spacesService.findDevicesBySpace.mockResolvedValue([thermostatDevice]);
 
 			const result = await service.getLightTargetsInSpace(mockSpace.id);
@@ -335,15 +339,15 @@ describe('SpaceLightingRoleService', () => {
 		});
 
 		it('should skip channels without ON property', async () => {
-			const deviceWithoutOnProperty: DeviceEntity = {
+			const deviceWithoutOnProperty = {
 				...mockDevice,
 				channels: [
 					{
 						...mockChannel,
 						properties: [mockBrightnessProperty], // No ON property
-					},
+					} as unknown as ChannelEntity,
 				],
-			};
+			} as unknown as DeviceEntity;
 			spacesService.findDevicesBySpace.mockResolvedValue([deviceWithoutOnProperty]);
 
 			const result = await service.getLightTargetsInSpace(mockSpace.id);
@@ -354,7 +358,7 @@ describe('SpaceLightingRoleService', () => {
 
 	describe('inferDefaultLightingRoles', () => {
 		it('should set first light as MAIN and rest as AMBIENT', async () => {
-			const device1: DeviceEntity = {
+			const device1 = {
 				...mockDevice,
 				id: uuid(),
 				name: 'Light 1',
@@ -363,10 +367,10 @@ describe('SpaceLightingRoleService', () => {
 						...mockChannel,
 						id: uuid(),
 						properties: [mockOnProperty],
-					},
+					} as unknown as ChannelEntity,
 				],
-			};
-			const device2: DeviceEntity = {
+			} as unknown as DeviceEntity;
+			const device2 = {
 				...mockDevice,
 				id: uuid(),
 				name: 'Light 2',
@@ -375,9 +379,9 @@ describe('SpaceLightingRoleService', () => {
 						...mockChannel,
 						id: uuid(),
 						properties: [mockOnProperty],
-					},
+					} as unknown as ChannelEntity,
 				],
-			};
+			} as unknown as DeviceEntity;
 			spacesService.findDevicesBySpace.mockResolvedValue([device1, device2]);
 			roleRepository.find.mockResolvedValue([]);
 
@@ -433,16 +437,16 @@ describe('SpaceLightingRoleService', () => {
 
 	describe('fallback behavior when roles are missing', () => {
 		it('should return null role when no assignment exists', async () => {
-			const deviceWithLightChannel: DeviceEntity = {
+			const deviceWithLightChannel = {
 				...mockDevice,
 				channels: [
 					{
 						...mockChannel,
 						deviceId: mockDevice.id,
 						properties: [mockOnProperty],
-					},
+					} as unknown as ChannelEntity,
 				],
-			};
+			} as unknown as DeviceEntity;
 			spacesService.findDevicesBySpace.mockResolvedValue([deviceWithLightChannel]);
 			roleRepository.find.mockResolvedValue([]); // No role assignments
 
