@@ -11,6 +11,33 @@
 			</el-select>
 		</el-form-item>
 
+		<el-form-item :label="t('spacesModule.fields.spaces.category.title')" prop="category">
+			<el-select
+				v-model="formData.category"
+				:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
+				clearable
+				style="width: 100%"
+				@change="onCategoryChange"
+			>
+				<el-option
+					v-for="category in categoryOptions"
+					:key="category"
+					:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+					:value="category"
+				>
+					<span class="flex items-center gap-2">
+						<el-icon v-if="SPACE_CATEGORY_TEMPLATES[category]">
+							<icon :icon="SPACE_CATEGORY_TEMPLATES[category].icon" />
+						</el-icon>
+						{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+					</span>
+				</el-option>
+			</el-select>
+			<div class="text-xs text-gray-500 mt-1">
+				{{ t('spacesModule.fields.spaces.category.hint') }}
+			</div>
+		</el-form-item>
+
 		<el-form-item :label="t('spacesModule.fields.spaces.description.title')" prop="description">
 			<el-input
 				v-model="formData.description"
@@ -126,7 +153,7 @@ import { useI18n } from 'vue-i18n';
 import { injectStoresManager, useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { SpaceType, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import { SPACE_CATEGORY_TEMPLATES, SpaceCategory, SpaceType, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import { spacesStoreKey, type ISpace, type ISpaceCreateData } from '../store';
 
 import SpaceLightingRoles from './space-lighting-roles.vue';
@@ -167,6 +194,7 @@ const spaceDevices = ref<ISpaceDevice[]>([]);
 const initialValues = {
 	name: props.space?.name ?? '',
 	type: props.space?.type ?? SpaceType.ROOM,
+	category: props.space?.category ?? null as SpaceCategory | null,
 	description: props.space?.description ?? '',
 	icon: props.space?.icon ?? '',
 	displayOrder: props.space?.displayOrder ?? 0,
@@ -176,6 +204,23 @@ const initialValues = {
 };
 
 const formData = reactive({ ...initialValues });
+
+// List of available categories for the selector
+const categoryOptions = Object.values(SpaceCategory);
+
+// Handle category change - auto-populate icon and description from template
+const onCategoryChange = (category: SpaceCategory | null): void => {
+	if (category && SPACE_CATEGORY_TEMPLATES[category]) {
+		const template = SPACE_CATEGORY_TEMPLATES[category];
+		// Only auto-populate if the field is empty or was previously auto-populated from a template
+		if (!formData.icon || Object.values(SPACE_CATEGORY_TEMPLATES).some(t => t.icon === formData.icon)) {
+			formData.icon = template.icon;
+		}
+		if (!formData.description || Object.values(SPACE_CATEGORY_TEMPLATES).some(t => t.description === formData.description)) {
+			formData.description = template.description;
+		}
+	}
+};
 
 const rules: FormRules = {
 	name: [{ required: true, message: t('spacesModule.fields.spaces.name.validation.required'), trigger: 'blur' }],
@@ -212,6 +257,7 @@ const formChanged = computed<boolean>((): boolean => {
 	return (
 		formData.name !== initialValues.name ||
 		formData.type !== initialValues.type ||
+		formData.category !== initialValues.category ||
 		formData.description !== initialValues.description ||
 		formData.icon !== initialValues.icon ||
 		formData.displayOrder !== initialValues.displayOrder ||
@@ -235,6 +281,7 @@ watch(
 		if (space) {
 			formData.name = space.name;
 			formData.type = space.type;
+			formData.category = space.category ?? null;
 			formData.description = space.description ?? '';
 			formData.icon = space.icon ?? '';
 			formData.displayOrder = space.displayOrder;
@@ -244,6 +291,7 @@ watch(
 			// Update initial values when space prop changes
 			initialValues.name = space.name;
 			initialValues.type = space.type;
+			initialValues.category = space.category ?? null;
 			initialValues.description = space.description ?? '';
 			initialValues.icon = space.icon ?? '';
 			initialValues.displayOrder = space.displayOrder;
@@ -303,6 +351,7 @@ const onSubmit = async (): Promise<void> => {
 		const data: ISpaceCreateData = {
 			name: formData.name,
 			type: formData.type,
+			category: formData.category || null,
 			description: formData.description || null,
 			icon: formData.icon || null,
 			displayOrder: formData.displayOrder,

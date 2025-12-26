@@ -5,7 +5,7 @@ import { Column, Entity } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { SpaceType } from '../spaces.constants';
+import { SpaceCategory, SpaceType } from '../spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleDataSpace' })
 @Entity('spaces_module_spaces')
@@ -44,6 +44,22 @@ export class SpaceEntity extends BaseEntity {
 		default: SpaceType.ROOM,
 	})
 	type: SpaceType;
+
+	@ApiPropertyOptional({
+		description: 'Space category (room type template)',
+		enum: SpaceCategory,
+		nullable: true,
+		example: SpaceCategory.LIVING_ROOM,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(SpaceCategory)
+	@Column({
+		type: 'varchar',
+		nullable: true,
+		default: null,
+	})
+	category: SpaceCategory | null;
 
 	@ApiPropertyOptional({
 		description: 'Icon identifier for the space',

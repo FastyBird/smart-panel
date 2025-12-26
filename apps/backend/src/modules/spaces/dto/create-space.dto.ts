@@ -14,7 +14,7 @@ import {
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { SpaceType } from '../spaces.constants';
+import { SpaceCategory, SpaceType } from '../spaces.constants';
 
 @ApiSchema({ name: 'SpacesModuleCreateSpace' })
 export class CreateSpaceDto {
@@ -49,6 +49,18 @@ export class CreateSpaceDto {
 	@IsOptional()
 	@IsEnum(SpaceType, { message: '[{"field":"type","reason":"Type must be a valid space type."}]' })
 	type?: SpaceType;
+
+	@ApiPropertyOptional({
+		description: 'Space category (room type template)',
+		enum: SpaceCategory,
+		nullable: true,
+		example: SpaceCategory.LIVING_ROOM,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(SpaceCategory, { message: '[{"field":"category","reason":"Category must be a valid space category."}]' })
+	@ValidateIf((_, value) => value !== null)
+	category?: SpaceCategory | null;
 
 	@ApiPropertyOptional({
 		description: 'Icon identifier for the space',
