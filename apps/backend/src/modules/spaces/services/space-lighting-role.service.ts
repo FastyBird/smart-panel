@@ -95,25 +95,30 @@ export class SpaceLightingRoleService {
 			throw new SpacesValidationException(`Channel with id=${dto.channelId} not found on device ${dto.deviceId}`);
 		}
 
-		// Check for existing role assignment
-		let roleEntity = await this.findOne(spaceId, dto.deviceId, dto.channelId);
-
-		if (roleEntity) {
-			// Update existing
-			roleEntity.role = dto.role;
-			roleEntity.priority = dto.priority ?? 0;
-		} else {
-			// Create new
-			roleEntity = this.repository.create({
+		// Use upsert to atomically insert or update, avoiding race conditions
+		// that could cause unique constraint violations with concurrent requests
+		await this.repository.upsert(
+			{
 				spaceId,
 				deviceId: dto.deviceId,
 				channelId: dto.channelId,
 				role: dto.role,
 				priority: dto.priority ?? 0,
-			});
-		}
+			},
+			{
+				conflictPaths: ['spaceId', 'deviceId', 'channelId'],
+				skipUpdateIfNoValuesChanged: true,
+			},
+		);
 
-		await this.repository.save(roleEntity);
+		// Fetch the saved entity to return
+		const roleEntity = await this.findOne(spaceId, dto.deviceId, dto.channelId);
+
+		if (!roleEntity) {
+			throw new SpacesValidationException(
+				`Failed to save lighting role for device=${dto.deviceId} channel=${dto.channelId}`,
+			);
+		}
 
 		this.logger.debug(`Successfully set lighting role=${dto.role} for device=${dto.deviceId} channel=${dto.channelId}`);
 

@@ -116,6 +116,7 @@ const roleOptions = computed(() => [
 
 const loadLightTargets = async (): Promise<void> => {
 	loading.value = true;
+	lightTargets.value = [];
 
 	try {
 		const { data: responseData, error } = await backend.client.GET(

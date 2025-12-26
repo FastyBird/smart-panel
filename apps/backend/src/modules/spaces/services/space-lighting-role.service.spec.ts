@@ -120,6 +120,7 @@ describe('SpaceLightingRoleService', () => {
 						findOne: jest.fn().mockResolvedValue(null),
 						create: jest.fn().mockImplementation((data: Partial<SpaceLightingRoleEntity>) => ({ ...data, id: uuid() })),
 						save: jest.fn().mockImplementation((entity: SpaceLightingRoleEntity) => entity),
+						upsert: jest.fn().mockResolvedValue(undefined),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -160,6 +161,9 @@ describe('SpaceLightingRoleService', () => {
 
 	describe('setRole', () => {
 		it('should create a new role assignment', async () => {
+			// After upsert, findOne returns the created role
+			roleRepository.findOne.mockResolvedValue(mockRole);
+
 			const dto = {
 				deviceId: mockDevice.id,
 				channelId: mockChannel.id,
@@ -170,12 +174,24 @@ describe('SpaceLightingRoleService', () => {
 			const result = await service.setRole(mockSpace.id, dto);
 
 			expect(result.role).toBe(LightingRole.MAIN);
-			expect(roleRepository.create).toHaveBeenCalled();
-			expect(roleRepository.save).toHaveBeenCalled();
+			expect(roleRepository.upsert).toHaveBeenCalledWith(
+				{
+					spaceId: mockSpace.id,
+					deviceId: dto.deviceId,
+					channelId: dto.channelId,
+					role: dto.role,
+					priority: dto.priority,
+				},
+				{
+					conflictPaths: ['spaceId', 'deviceId', 'channelId'],
+					skipUpdateIfNoValuesChanged: true,
+				},
+			);
 		});
 
 		it('should update an existing role assignment', async () => {
-			roleRepository.findOne.mockResolvedValue(mockRole);
+			const updatedRole = { ...mockRole, role: LightingRole.AMBIENT, priority: 1 };
+			roleRepository.findOne.mockResolvedValue(updatedRole);
 
 			const dto = {
 				deviceId: mockDevice.id,
@@ -187,7 +203,7 @@ describe('SpaceLightingRoleService', () => {
 			const result = await service.setRole(mockSpace.id, dto);
 
 			expect(result.role).toBe(LightingRole.AMBIENT);
-			expect(roleRepository.save).toHaveBeenCalled();
+			expect(roleRepository.upsert).toHaveBeenCalled();
 		});
 
 		it('should throw validation exception when device not found', async () => {
@@ -231,6 +247,9 @@ describe('SpaceLightingRoleService', () => {
 
 	describe('bulkSetRoles', () => {
 		it('should set multiple roles at once', async () => {
+			// Mock findOne to return the role after upsert
+			roleRepository.findOne.mockResolvedValue(mockRole);
+
 			const roles = [
 				{
 					deviceId: mockDevice.id,
@@ -245,7 +264,10 @@ describe('SpaceLightingRoleService', () => {
 		});
 
 		it('should continue on errors and return count of successful updates', async () => {
+			// First call succeeds (device found, findOne returns role)
+			// Second call fails (device not found)
 			deviceRepository.findOne.mockResolvedValueOnce(mockDevice).mockResolvedValueOnce(null);
+			roleRepository.findOne.mockResolvedValue(mockRole);
 
 			const roles = [
 				{
@@ -425,6 +447,9 @@ describe('SpaceLightingRoleService', () => {
 			];
 
 			for (const role of validRoles) {
+				// Mock findOne to return a role with the current role value
+				roleRepository.findOne.mockResolvedValue({ ...mockRole, role });
+
 				const dto = {
 					deviceId: mockDevice.id,
 					channelId: mockChannel.id,
