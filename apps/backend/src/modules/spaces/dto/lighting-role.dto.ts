@@ -29,7 +29,7 @@ export class SetLightingRoleDto {
 		description: 'ID of the light channel within the device',
 		type: 'string',
 		format: 'uuid',
-		example: 'c3d29eb4-632f-5e8c-c4gf-ded8b9e6c0f8',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
 	})
 	@Expose({ name: 'channel_id' })
 	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID."}]' })

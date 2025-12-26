@@ -7,9 +7,7 @@
 		</div>
 
 		<div v-if="loading" class="flex justify-center py-4">
-			<el-icon class="animate-spin" :size="24">
-				<Loading />
-			</el-icon>
+			<icon icon="mdi:loading" class="animate-spin text-2xl" />
 		</div>
 
 		<template v-else-if="lightTargets.length > 0">
@@ -17,7 +15,7 @@
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
-							<el-icon><bulb /></el-icon>
+							<icon icon="mdi:lightbulb" />
 							<span>{{ row.deviceName }}</span>
 						</div>
 					</template>
@@ -73,9 +71,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 
-import { Icon as Bulb } from '@iconify/vue';
-import { Loading } from '@element-plus/icons-vue';
-import { ElButton, ElDivider, ElEmpty, ElIcon, ElMessage, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { Icon } from '@iconify/vue';
+import { ElButton, ElDivider, ElEmpty, ElMessage, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { useBackend } from '../../../common';
@@ -135,7 +132,7 @@ const loadLightTargets = async (): Promise<void> => {
 			deviceName: target.device_name,
 			channelId: target.channel_id,
 			channelName: target.channel_name,
-			role: (target.role as LightingRole) ?? null,
+			role: target.role ? (target.role as unknown as LightingRole) : null,
 			priority: target.priority ?? 0,
 			hasBrightness: target.has_brightness ?? false,
 			hasColorTemp: target.has_color_temp ?? false,
@@ -173,7 +170,9 @@ const onRoleChange = async (target: ILightTarget, newRole: string): Promise<void
 						data: {
 							device_id: target.deviceId,
 							channel_id: target.channelId,
-							role: newRole as LightingRole,
+							// The role value comes from roleOptions which uses LightingRole enum values
+							// These match the OpenAPI generated enum values at runtime
+							role: newRole as unknown as 'main' | 'task' | 'ambient' | 'accent' | 'night' | 'other',
 						},
 					},
 				}
