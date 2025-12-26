@@ -23,25 +23,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   final DisplayRepository _displayRepository = locator<DisplayRepository>();
+  final DashboardService _dashboardService = locator<DashboardService>();
 
   PageController? _pageController;
   int _currentPage = 0;
   bool _initialized = false;
 
-  /// Gets the initial page index based on the resolved home page ID
+  /// Gets the initial page index based on tracked current page or resolved home page.
+  /// For space-aware idle mode, this prioritizes:
+  /// 1. The page the user was viewing before idle (tracked in DashboardService)
+  /// 2. Falls back to the resolved home page from display settings
   int _getInitialPageIndex(Map<String, DashboardPageView> pages) {
-    final resolvedHomePageId = _displayRepository.resolvedHomePageId;
-
-    if (resolvedHomePageId == null || pages.isEmpty) {
+    if (pages.isEmpty) {
       return 0;
     }
 
-    // Find the index of the resolved home page in the pages map
     final pageIds = pages.keys.toList();
-    final index = pageIds.indexOf(resolvedHomePageId);
 
-    // If the resolved home page is found, use it; otherwise, default to 0
-    return index >= 0 ? index : 0;
+    // First, check if there's a tracked current page from before idle
+    final trackedPageId = _dashboardService.currentPageId;
+    if (trackedPageId != null) {
+      final trackedIndex = pageIds.indexOf(trackedPageId);
+      if (trackedIndex >= 0) {
+        return trackedIndex;
+      }
+    }
+
+    // Fall back to resolved home page from display settings
+    final resolvedHomePageId = _displayRepository.resolvedHomePageId;
+    if (resolvedHomePageId != null) {
+      final index = pageIds.indexOf(resolvedHomePageId);
+      if (index >= 0) {
+        return index;
+      }
+    }
+
+    return 0;
+  }
+
+  /// Updates the tracked page ID in DashboardService for space-aware idle mode
+  void _updateTrackedPage(Map<String, DashboardPageView> pages, int pageIndex) {
+    if (pages.isEmpty) return;
+
+    final pageIds = pages.keys.toList();
+    if (pageIndex >= 0 && pageIndex < pageIds.length) {
+      _dashboardService.setCurrentPageId(pageIds[pageIndex]);
+    }
   }
 
   @override
@@ -90,12 +117,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
 
-      // Initialize PageController with resolved home page on first build
+      // Initialize PageController with tracked page or resolved home page on first build
       if (!_initialized) {
         final initialPage = _getInitialPageIndex(dashboardService.pages);
         _pageController = PageController(initialPage: initialPage);
         _currentPage = initialPage;
         _initialized = true;
+        // Track the initial page for space-aware idle mode
+        _updateTrackedPage(dashboardService.pages, initialPage);
       }
 
       List<Widget> pages = dashboardService.pages.entries
@@ -106,6 +135,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final maxPageIndex = dashboardService.pages.length - 1;
       if (_currentPage > maxPageIndex) {
         _currentPage = maxPageIndex.clamp(0, maxPageIndex);
+        // Update the tracked page for space-aware idle mode
+        _updateTrackedPage(dashboardService.pages, _currentPage);
         // Update the PageController to match the clamped page
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_pageController?.hasClients == true) {
@@ -128,6 +159,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   setState(() {
                     _currentPage = index;
                   });
+                  // Track the current page for space-aware idle mode
+                  _updateTrackedPage(dashboardService.pages, index);
                 },
                 itemCount: pages.length,
                 itemBuilder: (context, index) {
