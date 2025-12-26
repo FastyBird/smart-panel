@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, panel
 Size: medium
 Parent: FEATURE-SPACE-LIGHTING-ROLES
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -54,11 +54,11 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] Work/Relax/Night intents select lights based on roles, per the documented rules.
-- [ ] If no roles are configured, behavior matches the previous MVP (no regression).
-- [ ] If some roles are missing (partial config), system still behaves sensibly and deterministically.
-- [ ] Brightness delta is safe: no-op for non-dimmable lights.
-- [ ] Unit tests cover:
+- [x] Work/Relax/Night intents select lights based on roles, per the documented rules.
+- [x] If no roles are configured, behavior matches the previous MVP (no regression).
+- [x] If some roles are missing (partial config), system still behaves sensibly and deterministically.
+- [x] Brightness delta is safe: no-op for non-dimmable lights.
+- [x] Unit tests cover:
   - all three modes with full role configuration
   - partial role configuration
   - no role configuration fallback
