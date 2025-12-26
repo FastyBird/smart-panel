@@ -82,6 +82,9 @@ class _SpacePageState extends State<SpacePage> {
   // Devices state
   DevicesState _devicesState = DevicesState.loading;
 
+  // Lighting status (for header badge)
+  int _lightsOnCount = 0;
+
   // Suggestion state
   SpaceSuggestion? _suggestion;
   bool _isSuggestionLoading = false;
@@ -148,6 +151,9 @@ class _SpacePageState extends State<SpacePage> {
       setState(() {
         // Default to available for now - when API is integrated this will check actual data
         _lightingState = LightingState.available;
+        // Simulated lights on count - when API is integrated:
+        // _lightsOnCount = data.lightsOn;
+        _lightsOnCount = 0;
       });
     } catch (e) {
       if (!mounted) return;
@@ -311,15 +317,19 @@ class _SpacePageState extends State<SpacePage> {
 
       if (!mounted) return;
 
-      // Update the active mode based on the suggestion
+      // Update the active mode and lights count based on the suggestion
       if (_suggestion?.lightingMode != null) {
         setState(() {
           _activeMode = _suggestion!.lightingMode;
+          // Simulate lights on count - when API is integrated:
+          // _lightsOnCount = response.data.affectedDevices;
+          _lightsOnCount = 3;
         });
       } else if (_suggestion?.type == 'lighting_off') {
         // Handle LIGHTING_OFF suggestion type which has null lightingMode
         setState(() {
           _activeMode = LightingMode.off;
+          _lightsOnCount = 0;
         });
       }
 
@@ -505,6 +515,9 @@ class _SpacePageState extends State<SpacePage> {
 
       setState(() {
         _activeMode = mode == LightingMode.off ? null : mode;
+        // Simulate lights on count - when API is integrated:
+        // _lightsOnCount = response.data.affectedDevices;
+        _lightsOnCount = mode == LightingMode.off ? 0 : 3;
       });
 
       if (mounted) {
@@ -551,6 +564,147 @@ class _SpacePageState extends State<SpacePage> {
   /// Note: Spaces with sensors should show content with "Sensors Only" message
   bool get _hasNoControls => !_hasLighting && !_hasClimate && !_hasSensors;
 
+  /// Builds the status badges for the header
+  List<Widget> _buildStatusBadges(BuildContext context) {
+    final badges = <Widget>[];
+
+    // Lighting status badge
+    if (_lightingState == LightingState.available) {
+      badges.add(_buildLightingBadge(context));
+    }
+
+    // Climate status badge (temperature)
+    if (_hasClimate && _currentTemperature != null) {
+      if (badges.isNotEmpty) {
+        badges.add(AppSpacings.spacingSmHorizontal);
+      }
+      badges.add(_buildClimateBadge(context));
+    }
+
+    return badges;
+  }
+
+  Widget _buildLightingBadge(BuildContext context) {
+    final isOn = _lightsOnCount > 0;
+    final iconSize = _screenService.scale(
+      14,
+      density: _visualDensityService.density,
+    );
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pSm,
+        vertical: AppSpacings.pXs,
+      ),
+      decoration: BoxDecoration(
+        color: isOn
+            ? (Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.warning.withValues(alpha: 0.15)
+                : AppColorsDark.warning.withValues(alpha: 0.2))
+            : (Theme.of(context).brightness == Brightness.light
+                ? AppFillColorLight.base
+                : AppFillColorDark.base),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        border: Border.all(
+          color: isOn
+              ? (Theme.of(context).brightness == Brightness.light
+                  ? AppColorsLight.warning.withValues(alpha: 0.3)
+                  : AppColorsDark.warning.withValues(alpha: 0.3))
+              : (Theme.of(context).brightness == Brightness.light
+                  ? AppBorderColorLight.light
+                  : AppBorderColorDark.light),
+          width: _screenService.scale(
+            1,
+            density: _visualDensityService.density,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+            size: iconSize,
+            color: isOn
+                ? (Theme.of(context).brightness == Brightness.light
+                    ? AppColorsLight.warning
+                    : AppColorsDark.warning)
+                : (Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.placeholder
+                    : AppTextColorDark.placeholder),
+          ),
+          SizedBox(width: AppSpacings.pXs),
+          Text(
+            isOn ? '$_lightsOnCount' : 'Off',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w500,
+              color: isOn
+                  ? (Theme.of(context).brightness == Brightness.light
+                      ? AppColorsLight.warningDark2
+                      : AppColorsDark.warningDark2)
+                  : (Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.placeholder
+                      : AppTextColorDark.placeholder),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClimateBadge(BuildContext context) {
+    final iconSize = _screenService.scale(
+      14,
+      density: _visualDensityService.density,
+    );
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pSm,
+        vertical: AppSpacings.pXs,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.light
+            ? AppColorsLight.secondaryLight9
+            : AppColorsDark.infoLight7,
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppColorsLight.secondaryLight5
+              : AppColorsDark.infoLight5,
+          width: _screenService.scale(
+            1,
+            density: _visualDensityService.density,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            MdiIcons.thermometer,
+            size: iconSize,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.secondary
+                : AppColorsDark.info,
+          ),
+          SizedBox(width: AppSpacings.pXs),
+          Text(
+            '${_currentTemperature!.toStringAsFixed(1)}°',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppColorsLight.secondaryDark2
+                  : AppTextColorDark.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -558,6 +712,7 @@ class _SpacePageState extends State<SpacePage> {
           ? AppTopBar(
               title: widget.page.title,
               icon: widget.page.icon ?? MdiIcons.homeOutline,
+              actions: _buildStatusBadges(context),
             )
           : null,
       body: SafeArea(
