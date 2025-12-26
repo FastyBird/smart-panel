@@ -138,6 +138,7 @@ const { fetchSpaces, spaces, areLoading } = useSpacesDataSource();
 
 const recentSpaces = computed<ISpace[]>((): ISpace[] => {
 	return [...spaces.value]
+		.filter((space) => !space.draft)
 		.sort((a, b) => {
 			const dateA = a.updatedAt ?? a.createdAt;
 			const dateB = b.updatedAt ?? b.createdAt;
