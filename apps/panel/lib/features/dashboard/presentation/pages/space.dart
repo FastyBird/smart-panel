@@ -1194,7 +1194,39 @@ class _SpacePageState extends State<SpacePage> {
       );
     }
 
-    // No devices / placeholder state
+    // Devices available state
+    // TODO: Replace with actual device list when API is integrated
+    if (_devicesState == DevicesState.available) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              MdiIcons.devicesOutline,
+              size: _screenService.scale(
+                48,
+                density: _visualDensityService.density,
+              ),
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.placeholder
+                  : AppTextColorDark.placeholder,
+            ),
+            AppSpacings.spacingSmVertical,
+            Text(
+              _devicesPlaceholder,
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.placeholder
+                    : AppTextColorDark.placeholder,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // No devices state
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
