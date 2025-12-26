@@ -170,9 +170,8 @@ const onRoleChange = async (target: ILightTarget, newRole: string): Promise<void
 						data: {
 							device_id: target.deviceId,
 							channel_id: target.channelId,
-							// The role value comes from roleOptions which uses LightingRole enum values
-							// These match the OpenAPI generated enum values at runtime
-							role: newRole as unknown as 'main' | 'task' | 'ambient' | 'accent' | 'night' | 'other',
+							// Type assertion needed: LightingRole values match OpenAPI generated enum at runtime
+							role: newRole as never,
 						},
 					},
 				}
