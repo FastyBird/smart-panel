@@ -42,6 +42,7 @@ import {
 	PermitJoinStatusResponseModel,
 } from '../models/displays-response.model';
 import { DisplaysService } from '../services/displays.service';
+import { HomeResolutionService } from '../services/home-resolution.service';
 import { PermitJoinService } from '../services/permit-join.service';
 import { RegistrationService } from '../services/registration.service';
 
@@ -55,6 +56,7 @@ export class DisplaysController {
 		private readonly tokensService: TokensService,
 		private readonly registrationService: RegistrationService,
 		private readonly permitJoinService: PermitJoinService,
+		private readonly homeResolutionService: HomeResolutionService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -78,6 +80,10 @@ export class DisplaysController {
 		this.logger.debug(`Fetching display data for id=${auth.ownerId}`);
 
 		const display = await this.displaysService.getOneOrThrow(auth.ownerId);
+
+		// Resolve home page for the display
+		const resolved = await this.homeResolutionService.resolveHomePage(display);
+		display.resolvedHomePageId = resolved.pageId;
 
 		const response = new DisplayResponseModel();
 
@@ -107,6 +113,10 @@ export class DisplaysController {
 		this.logger.debug(`Updating display with id=${auth.ownerId}`);
 
 		const display = await this.displaysService.update(auth.ownerId, body.data);
+
+		// Resolve home page for the display
+		const resolved = await this.homeResolutionService.resolveHomePage(display);
+		display.resolvedHomePageId = resolved.pageId;
 
 		const response = new DisplayResponseModel();
 
@@ -165,6 +175,13 @@ export class DisplaysController {
 
 		const displays = await this.displaysService.findAll();
 
+		// Batch resolve home pages for all displays (avoids N+1 queries)
+		const resolvedHomePages = await this.homeResolutionService.resolveHomePagesBatch(displays);
+		for (const display of displays) {
+			const resolved = resolvedHomePages.get(display.id);
+			display.resolvedHomePageId = resolved?.pageId ?? null;
+		}
+
 		const response = new DisplaysResponseModel();
 
 		response.data = displays;
@@ -186,6 +203,10 @@ export class DisplaysController {
 		this.logger.debug(`Fetching display with id=${id}`);
 
 		const display = await this.displaysService.getOneOrThrow(id);
+
+		// Resolve home page for the display
+		const resolved = await this.homeResolutionService.resolveHomePage(display);
+		display.resolvedHomePageId = resolved.pageId;
 
 		const response = new DisplayResponseModel();
 
@@ -212,6 +233,10 @@ export class DisplaysController {
 		this.logger.debug(`Updating display with id=${id}`);
 
 		const display = await this.displaysService.update(id, body.data);
+
+		// Resolve home page for the display
+		const resolved = await this.homeResolutionService.resolveHomePage(display);
+		display.resolvedHomePageId = resolved.pageId;
 
 		const response = new DisplayResponseModel();
 

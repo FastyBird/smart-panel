@@ -47,6 +47,8 @@ export interface IUseDisplaysActions {
 	remove: (id: IDisplay['id']) => Promise<void>;
 }
 
+export type HomeMode = 'auto_space' | 'explicit' | 'first_page';
+
 export interface IDisplayEditForm {
 	id: string;
 	name: string | null;
@@ -62,6 +64,9 @@ export interface IDisplayEditForm {
 	speakerVolume: number;
 	microphone: boolean;
 	microphoneVolume: number;
+	// Home page configuration
+	homeMode: HomeMode;
+	homePageId: string | null;
 }
 
 export interface IUseDisplayEditForm {

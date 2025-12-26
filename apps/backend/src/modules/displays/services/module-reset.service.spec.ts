@@ -16,7 +16,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { ConnectionState } from '../displays.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
 import { DisplaysModuleResetService } from './module-reset.service';
@@ -53,6 +53,9 @@ describe('DisplaysModuleResetService', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
@@ -85,6 +88,9 @@ describe('DisplaysModuleResetService', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,

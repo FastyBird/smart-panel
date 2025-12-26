@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/features/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
@@ -21,9 +22,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
-  final PageController _pageController = PageController(initialPage: 0);
+  final DisplayRepository _displayRepository = locator<DisplayRepository>();
 
+  PageController? _pageController;
   int _currentPage = 0;
+  bool _initialized = false;
+
+  /// Gets the initial page index based on the resolved home page ID
+  int _getInitialPageIndex(Map<String, DashboardPageView> pages) {
+    final resolvedHomePageId = _displayRepository.resolvedHomePageId;
+
+    if (resolvedHomePageId == null || pages.isEmpty) {
+      return 0;
+    }
+
+    // Find the index of the resolved home page in the pages map
+    final pageIds = pages.keys.toList();
+    final index = pageIds.indexOf(resolvedHomePageId);
+
+    // If the resolved home page is found, use it; otherwise, default to 0
+    return index >= 0 ? index : 0;
+  }
+
+  @override
+  void dispose() {
+    _pageController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +90,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
 
+      // Initialize PageController with resolved home page on first build
+      if (!_initialized) {
+        final initialPage = _getInitialPageIndex(dashboardService.pages);
+        _pageController = PageController(initialPage: initialPage);
+        _currentPage = initialPage;
+        _initialized = true;
+      }
+
       List<Widget> pages = dashboardService.pages.entries
           .map((entry) => buildPageWidget(entry.value))
           .toList();
+
+      // Clamp _currentPage to valid range in case pages were removed
+      final maxPageIndex = dashboardService.pages.length - 1;
+      if (_currentPage > maxPageIndex) {
+        _currentPage = maxPageIndex.clamp(0, maxPageIndex);
+        // Update the PageController to match the clamped page
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_pageController?.hasClients == true) {
+            _pageController?.jumpToPage(_currentPage);
+          }
+        });
+      }
 
       final DashboardPageView currentView =
           dashboardService.pages.entries.toList()[_currentPage].value;

@@ -14,7 +14,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState } from '../../displays/displays.constants';
+import { ConnectionState, HomeMode } from '../../displays/displays.constants';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { CreatePageDto } from '../dto/create-page.dto';
@@ -90,6 +90,9 @@ describe('PagesController', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: undefined,

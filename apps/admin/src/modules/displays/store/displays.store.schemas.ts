@@ -6,6 +6,8 @@ export const DisplayIdSchema = z.string().uuid();
 // STORE STATE
 // ===========
 
+export const HomeModeSchema = z.enum(['auto_space', 'explicit', 'first_page']);
+
 export const DisplaySchema = z.object({
 	id: DisplayIdSchema,
 	draft: z.boolean().default(false),
@@ -31,6 +33,10 @@ export const DisplaySchema = z.object({
 	speakerVolume: z.number().min(0).max(100).default(50),
 	microphone: z.boolean().default(false),
 	microphoneVolume: z.number().min(0).max(100).default(50),
+	// Home page configuration
+	homeMode: HomeModeSchema.default('auto_space'),
+	homePageId: z.string().uuid().nullable().default(null),
+	resolvedHomePageId: z.string().uuid().nullable().optional().default(null),
 	registeredFromIp: z.string().nullable().default(null),
 	currentIpAddress: z.string().nullable().default(null),
 	online: z.boolean().default(false),
@@ -132,6 +138,9 @@ export const DisplaysEditActionPayloadSchema = z.object({
 		speakerVolume: z.number().min(0).max(100).optional(),
 		microphone: z.boolean().optional(),
 		microphoneVolume: z.number().min(0).max(100).optional(),
+		// Home page configuration
+		homeMode: HomeModeSchema.optional(),
+		homePageId: z.string().uuid().nullable().optional(),
 	}),
 });
 
@@ -176,6 +185,9 @@ export const DisplayUpdateReqSchema = z.object({
 	speaker_volume: z.number().min(0).max(100).optional(),
 	microphone: z.boolean().optional(),
 	microphone_volume: z.number().min(0).max(100).optional(),
+	// Home page configuration
+	home_mode: HomeModeSchema.optional(),
+	home_page_id: z.string().uuid().nullable().optional(),
 });
 
 export const DisplayResSchema = z.object({
@@ -202,6 +214,10 @@ export const DisplayResSchema = z.object({
 	speaker_volume: z.number(),
 	microphone: z.boolean(),
 	microphone_volume: z.number(),
+	// Home page configuration
+	home_mode: HomeModeSchema.optional().default('auto_space'),
+	home_page_id: z.string().uuid().nullable().optional().default(null),
+	resolved_home_page_id: z.string().uuid().nullable().optional().default(null),
 	registered_from_ip: z.string().nullable().optional().default(null),
 	current_ip_address: z.string().nullable().optional().default(null),
 	online: z.boolean().optional().default(false),

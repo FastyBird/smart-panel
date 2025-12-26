@@ -34,6 +34,12 @@ export enum ConnectionState {
 	UNKNOWN = 'unknown',
 }
 
+export enum HomeMode {
+	AUTO_SPACE = 'auto_space',
+	EXPLICIT = 'explicit',
+	FIRST_PAGE = 'first_page',
+}
+
 export const OnlineDisplayState = [ConnectionState.CONNECTED];
 
 export const DisplayStatusInfluxDbSchema: ISchemaOptions = {

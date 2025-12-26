@@ -14,7 +14,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, EventType } from '../displays.constants';
+import { ConnectionState, EventType, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -52,6 +52,9 @@ describe('DisplaysService', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
@@ -84,6 +87,9 @@ describe('DisplaysService', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(Date.now() + 1000), // Created later
 		updatedAt: null,

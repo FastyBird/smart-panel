@@ -15,10 +15,11 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
-import { ConnectionState } from '../displays.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 import { DisplaysService } from '../services/displays.service';
+import { HomeResolutionService } from '../services/home-resolution.service';
 import { PermitJoinService } from '../services/permit-join.service';
 import { RegistrationService } from '../services/registration.service';
 
@@ -56,6 +57,9 @@ describe('DisplaysController', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
@@ -88,6 +92,9 @@ describe('DisplaysController', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,
@@ -129,6 +136,17 @@ describe('DisplaysController', () => {
 						getExpiresAt: jest.fn(),
 						getRemainingTime: jest.fn(),
 						getDeploymentMode: jest.fn(),
+					},
+				},
+				{
+					provide: HomeResolutionService,
+					useValue: {
+						resolveHomePage: jest.fn().mockResolvedValue({
+							pageId: null,
+							resolutionMode: 'fallback',
+							reason: 'No pages available',
+						}),
+						resolveHomePagesBatch: jest.fn().mockResolvedValue(new Map()),
 					},
 				},
 				{
@@ -187,7 +205,8 @@ describe('DisplaysController', () => {
 
 			const result = await controller.findOne(mockDisplay.id);
 
-			expect(result.data).toEqual(toInstance(DisplayEntity, mockDisplay));
+			expect(result.data).toMatchObject(toInstance(DisplayEntity, mockDisplay));
+			expect(result.data.resolvedHomePageId).toBeNull();
 			expect(service.getOneOrThrow).toHaveBeenCalledWith(mockDisplay.id);
 		});
 

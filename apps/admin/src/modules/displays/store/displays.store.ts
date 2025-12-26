@@ -319,7 +319,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 						},
 					},
 					body: {
-						data: transformDisplayUpdateRequest(parsedEditedDisplay.data),
+						data: transformDisplayUpdateRequest(parsedEditedDisplay.data) as Record<string, unknown>,
 					},
 				});
 

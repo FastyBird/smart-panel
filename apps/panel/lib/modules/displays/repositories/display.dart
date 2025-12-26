@@ -97,6 +97,13 @@ class DisplayRepository extends ChangeNotifier {
 
   double get unitSize => _display?.unitSize ?? 120.0;
 
+  // Home page settings getters
+  HomeMode get homeMode => _display?.homeMode ?? HomeMode.autoSpace;
+
+  String? get homePageId => _display?.homePageId;
+
+  String? get resolvedHomePageId => _display?.resolvedHomePageId;
+
   /// Set display data from registration response
   /// Pass null to clear the display model
   void setDisplay(DisplayModel? display) {

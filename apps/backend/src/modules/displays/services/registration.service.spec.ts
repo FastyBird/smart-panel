@@ -17,7 +17,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
 import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
-import { ConnectionState } from '../displays.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 import { RegisterDisplayDto } from '../dto/register-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -57,6 +57,9 @@ describe('RegistrationService', () => {
 		online: false,
 		spaceId: null,
 		space: null,
+		homeMode: HomeMode.AUTO_SPACE,
+		homePageId: null,
+		homePage: null,
 		status: ConnectionState.UNKNOWN,
 		createdAt: new Date(),
 		updatedAt: null,

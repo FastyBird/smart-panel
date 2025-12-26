@@ -155,6 +155,20 @@
 				"validation": {
 					"range": "Volume must be between 0 and 100"
 				}
+			},
+			"homeMode": {
+				"title": "Home Page Mode",
+				"description": "How the home page is determined when the display starts",
+				"options": {
+					"autoSpace": "Auto (Space Page)",
+					"explicit": "Explicit (Configured Page)",
+					"firstPage": "First Page"
+				}
+			},
+			"homePageId": {
+				"title": "Home Page",
+				"placeholder": "Select home page",
+				"description": "The page to show when the display starts (only used when Home Page Mode is Explicit)"
 			}
 		}
 	},
