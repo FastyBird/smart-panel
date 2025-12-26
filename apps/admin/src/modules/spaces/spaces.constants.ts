@@ -12,6 +12,7 @@ export enum EventType {
 }
 
 export const RouteNames = {
+	SPACES_OVERVIEW: 'spaces_module-overview',
 	SPACES: 'spaces_module-spaces',
 	SPACES_EDIT: 'spaces_module-spaces_edit',
 	SPACE: 'spaces_module-space',
