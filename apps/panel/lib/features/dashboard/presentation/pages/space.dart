@@ -1321,9 +1321,9 @@ class _SpacePageState extends State<SpacePage> {
       case QuickActionType.lightingNight:
         return (icon: MdiIcons.weatherNight, label: _modeNight);
       case QuickActionType.brightnessUp:
-        return (icon: MdiIcons.brightnessHigh, label: '+');
+        return (icon: MdiIcons.brightness7, label: '+');
       case QuickActionType.brightnessDown:
-        return (icon: MdiIcons.brightnessLow, label: '-');
+        return (icon: MdiIcons.brightness5, label: '-');
       case QuickActionType.climateUp:
         return (icon: MdiIcons.thermometerChevronUp, label: '+');
       case QuickActionType.climateDown:
