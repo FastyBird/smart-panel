@@ -54,7 +54,6 @@ import { ElCard, ElEmpty, ElIcon, vLoading } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { SPACE_CATEGORY_TEMPLATES, type SpaceCategory } from '../spaces.constants';
-import type { ISpace } from '../store/spaces.store.types';
 
 import type { ISpacesOverviewCategoriesProps } from './spaces-overview-categories.types';
 
