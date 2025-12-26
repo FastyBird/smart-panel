@@ -660,15 +660,15 @@ class _SpacePageState extends State<SpacePage> {
         // Suggestion banner (shown when there's a suggestion)
         if (_suggestion != null) ...[
           _buildSuggestionBanner(context),
-          AppSpacings.spacingMdVertical,
         ],
         // Lighting controls section (only shown if space has lighting devices)
         if (_hasLighting) ...[
+          if (_suggestion != null) AppSpacings.spacingMdVertical,
           _buildLightingControlsSection(context),
         ],
         // Climate controls section (only shown if space has climate devices)
         if (_hasClimate) ...[
-          if (_hasLighting) AppSpacings.spacingMdVertical,
+          if (_hasLighting || _suggestion != null) AppSpacings.spacingMdVertical,
           _buildClimateControlsSection(context),
         ],
         AppSpacings.spacingLgVertical,
