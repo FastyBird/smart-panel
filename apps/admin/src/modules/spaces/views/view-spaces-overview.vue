@@ -116,7 +116,7 @@ import {
 	SpacesOverviewRecent,
 	SpacesOverviewStats,
 } from '../components/components';
-import { useSpacesDataSource } from '../composables';
+import { useSpaces } from '../composables';
 import { RouteNames } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
@@ -133,7 +133,11 @@ useMeta({
 
 const { isMDDevice } = useBreakpoints();
 
-const { fetchSpaces, spaces, areLoading } = useSpacesDataSource();
+const { spaces, fetching, firstLoadFinished, fetchSpaces } = useSpaces();
+
+const areLoading = computed<boolean>((): boolean => {
+	return fetching.value || !firstLoadFinished.value;
+});
 
 const recentSpaces = computed<ISpace[]>((): ISpace[] => {
 	return [...spaces.value]
