@@ -205,6 +205,12 @@ const initialValues = {
 
 const formData = reactive({ ...initialValues });
 
+// Track values that were auto-populated from templates (not manually entered)
+const autoPopulatedValues = reactive({
+	icon: null as string | null,
+	description: null as string | null,
+});
+
 // List of available categories for the selector
 const categoryOptions = Object.values(SpaceCategory);
 
@@ -212,12 +218,14 @@ const categoryOptions = Object.values(SpaceCategory);
 const onCategoryChange = (category: SpaceCategory | null): void => {
 	if (category && SPACE_CATEGORY_TEMPLATES[category]) {
 		const template = SPACE_CATEGORY_TEMPLATES[category];
-		// Only auto-populate if the field is empty or was previously auto-populated from a template
-		if (!formData.icon || Object.values(SPACE_CATEGORY_TEMPLATES).some(t => t.icon === formData.icon)) {
+		// Only auto-populate if the field is empty or matches our tracked auto-populated value
+		if (!formData.icon || formData.icon === autoPopulatedValues.icon) {
 			formData.icon = template.icon;
+			autoPopulatedValues.icon = template.icon;
 		}
-		if (!formData.description || Object.values(SPACE_CATEGORY_TEMPLATES).some(t => t.description === formData.description)) {
+		if (!formData.description || formData.description === autoPopulatedValues.description) {
 			formData.description = template.description;
+			autoPopulatedValues.description = template.description;
 		}
 	}
 };

@@ -63,6 +63,11 @@ const apiCategoryToSpaceCategory = (apiCategory: SpacesModuleCreateSpaceCategory
 	return apiCategory as unknown as SpaceCategory;
 };
 
+const spaceCategoryToApiCategory = (category: SpaceCategory | null | undefined): SpacesModuleCreateSpaceCategory | undefined => {
+	if (!category) return undefined;
+	return category as unknown as SpacesModuleCreateSpaceCategory;
+};
+
 export const useSpacesOnboarding = () => {
 	const backendClient = injectBackendClient();
 
@@ -184,6 +189,7 @@ export const useSpacesOnboarding = () => {
 						name: data.name,
 						description: data.description,
 						type: spaceTypeToApiType(data.type),
+						category: spaceCategoryToApiCategory(data.category),
 						icon: data.icon,
 						display_order: data.displayOrder,
 					},
