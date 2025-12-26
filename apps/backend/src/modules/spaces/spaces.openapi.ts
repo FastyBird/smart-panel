@@ -21,6 +21,8 @@ import {
 	BulkAssignmentResultDataModel,
 	BulkLightingRolesResponseModel,
 	BulkLightingRolesResultDataModel,
+	CategoryTemplateDataModel,
+	CategoryTemplatesResponseModel,
 	ClimateIntentResponseModel,
 	ClimateIntentResultDataModel,
 	ClimateStateDataModel,
@@ -83,6 +85,8 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	SuggestionResponseModel,
 	SuggestionFeedbackResultDataModel,
 	SuggestionFeedbackResponseModel,
+	CategoryTemplateDataModel,
+	CategoryTemplatesResponseModel,
 	// Entities
 	SpaceEntity,
 	SpaceLightingRoleEntity,

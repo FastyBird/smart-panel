@@ -663,7 +663,8 @@ export class CategoryTemplateDataModel {
 export class CategoryTemplatesResponseModel extends BaseSuccessResponseModel<CategoryTemplateDataModel[]> {
 	@ApiProperty({
 		description: 'Array of category templates with default values',
-		type: () => [CategoryTemplateDataModel],
+		type: 'array',
+		items: { $ref: getSchemaPath(CategoryTemplateDataModel) },
 	})
 	@Expose()
 	@Type(() => CategoryTemplateDataModel)
