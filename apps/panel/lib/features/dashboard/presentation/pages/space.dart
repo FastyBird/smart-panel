@@ -671,7 +671,8 @@ class _SpacePageState extends State<SpacePage> {
           if (_hasLighting) AppSpacings.spacingMdVertical,
           _buildClimateControlsSection(context),
         ],
-        AppSpacings.spacingLgVertical,
+        // Add spacing before devices section only when control sections are displayed
+        if (_hasLighting || _hasClimate) AppSpacings.spacingLgVertical,
         // Placeholder for device list
         Expanded(
           child: _buildDevicesSection(context),
