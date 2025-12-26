@@ -23,6 +23,21 @@ enum ClimateState {
   controllable,
 }
 
+/// Represents a suggestion for the space
+class SpaceSuggestion {
+  final String type;
+  final String title;
+  final String? reason;
+  final LightingMode? lightingMode;
+
+  SpaceSuggestion({
+    required this.type,
+    required this.title,
+    this.reason,
+    this.lightingMode,
+  });
+}
+
 class SpacePage extends StatefulWidget {
   final SpacePageView page;
 
@@ -48,6 +63,10 @@ class _SpacePageState extends State<SpacePage> {
   double _minSetpoint = 5.0;
   double _maxSetpoint = 35.0;
 
+  // Suggestion state
+  SpaceSuggestion? _suggestion;
+  bool _isSuggestionLoading = false;
+
   // TODO: Replace with localizations after running `flutter gen-l10n`
   // The localization strings are defined in app_en.arb and app_cs.arb
   static const String _lightingControlsTitle = 'Lighting Controls';
@@ -62,11 +81,14 @@ class _SpacePageState extends State<SpacePage> {
   static const String _devicesPlaceholder =
       'Devices in this space will be displayed here';
   static const String _actionSuccess = 'Action completed successfully';
+  static const String _suggestionApplied = 'Suggestion applied';
+  static const String _suggestionDismissed = 'Suggestion dismissed';
 
   @override
   void initState() {
     super.initState();
     _loadClimateState();
+    _loadSuggestion();
   }
 
   Future<void> _loadClimateState() async {
@@ -107,6 +129,164 @@ class _SpacePageState extends State<SpacePage> {
 
       setState(() {
         _climateState = ClimateState.noClimate;
+      });
+    }
+  }
+
+  Future<void> _loadSuggestion() async {
+    setState(() {
+      _isSuggestionLoading = true;
+    });
+
+    try {
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example:
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final response = await spacesApi.getSpacesModuleSpaceSuggestion(
+      //   id: widget.page.spaceId,
+      // );
+      // final data = response.data;
+      //
+      // if (data != null) {
+      //   setState(() {
+      //     _suggestion = SpaceSuggestion(
+      //       type: data.type.name,
+      //       title: data.title,
+      //       reason: data.reason,
+      //       lightingMode: _parseMode(data.lightingMode),
+      //     );
+      //   });
+      // }
+      //
+      // For now, simulate no suggestion
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      setState(() {
+        _suggestion = null;
+        _isSuggestionLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _suggestion = null;
+        _isSuggestionLoading = false;
+      });
+    }
+  }
+
+  Future<void> _applySuggestion() async {
+    if (_suggestion == null || _isSuggestionLoading) return;
+
+    setState(() {
+      _isSuggestionLoading = true;
+    });
+
+    try {
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example:
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final request = SpacesModuleCreateSpaceSuggestionFeedbackReq(
+      //   data: SpacesModuleSuggestionFeedback(
+      //     suggestionType: SpacesModuleSuggestionType.values.byName(_suggestion!.type),
+      //     feedback: SpacesModuleSuggestionFeedbackType.applied,
+      //   ),
+      // );
+      // await spacesApi.createSpacesModuleSpaceSuggestionFeedback(
+      //   id: widget.page.spaceId,
+      //   spacesModuleCreateSpaceSuggestionFeedbackReq: request,
+      // );
+      //
+      // For now, simulate the action
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      // Update the active mode based on the suggestion
+      if (_suggestion?.lightingMode != null) {
+        setState(() {
+          _activeMode = _suggestion!.lightingMode;
+        });
+      } else if (_suggestion?.type == 'lighting_off') {
+        // Handle LIGHTING_OFF suggestion type which has null lightingMode
+        setState(() {
+          _activeMode = LightingMode.off;
+        });
+      }
+
+      setState(() {
+        _suggestion = null;
+        _isSuggestionLoading = false;
+      });
+
+      if (mounted) {
+        AlertBar.showSuccess(
+          context,
+          message: _suggestionApplied,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isSuggestionLoading = false;
+      });
+
+      if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
+        );
+      }
+    }
+  }
+
+  Future<void> _dismissSuggestion() async {
+    if (_suggestion == null || _isSuggestionLoading) return;
+
+    setState(() {
+      _isSuggestionLoading = true;
+    });
+
+    try {
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example:
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final request = SpacesModuleCreateSpaceSuggestionFeedbackReq(
+      //   data: SpacesModuleSuggestionFeedback(
+      //     suggestionType: SpacesModuleSuggestionType.values.byName(_suggestion!.type),
+      //     feedback: SpacesModuleSuggestionFeedbackType.dismissed,
+      //   ),
+      // );
+      // await spacesApi.createSpacesModuleSpaceSuggestionFeedback(
+      //   id: widget.page.spaceId,
+      //   spacesModuleCreateSpaceSuggestionFeedbackReq: request,
+      // );
+      //
+      // For now, simulate the action
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      if (!mounted) return;
+
+      setState(() {
+        _suggestion = null;
+        _isSuggestionLoading = false;
+      });
+
+      if (mounted) {
+        AlertBar.showInfo(
+          context,
+          message: _suggestionDismissed,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isSuggestionLoading = false;
       });
     }
   }
@@ -258,6 +438,11 @@ class _SpacePageState extends State<SpacePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Suggestion banner (shown when there's a suggestion)
+              if (_suggestion != null) ...[
+                _buildSuggestionBanner(context),
+                AppSpacings.spacingMdVertical,
+              ],
               // Lighting controls section
               _buildLightingControlsSection(context),
               // Climate controls section (only shown if space has climate devices)
@@ -749,6 +934,150 @@ class _SpacePageState extends State<SpacePage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSuggestionBanner(BuildContext context) {
+    final suggestion = _suggestion!;
+    final iconSize = _screenService.scale(
+      20,
+      density: _visualDensityService.density,
+    );
+    final buttonSize = _screenService.scale(
+      36,
+      density: _visualDensityService.density,
+    );
+
+    return Container(
+      padding: AppSpacings.paddingSm,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        color: Theme.of(context).brightness == Brightness.light
+            ? AppColorsLight.info.withValues(alpha: 0.15)
+            : AppColorsDark.info.withValues(alpha: 0.2),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppColorsLight.info.withValues(alpha: 0.3)
+              : AppColorsDark.info.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Suggestion icon
+          Icon(
+            MdiIcons.lightbulbOnOutline,
+            size: iconSize,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.info
+                : AppColorsDark.info,
+          ),
+          AppSpacings.spacingSmHorizontal,
+          // Suggestion content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  suggestion.title,
+                  style: TextStyle(
+                    fontSize: AppFontSize.small,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppTextColorLight.primary
+                        : AppTextColorDark.primary,
+                  ),
+                ),
+                if (suggestion.reason != null) ...[
+                  AppSpacings.spacingXsVertical,
+                  Text(
+                    suggestion.reason!,
+                    style: TextStyle(
+                      fontSize: AppFontSize.extraSmall,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTextColorLight.regular
+                          : AppTextColorDark.regular,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          AppSpacings.spacingSmHorizontal,
+          // Action buttons
+          if (_isSuggestionLoading)
+            SizedBox(
+              width: buttonSize,
+              height: buttonSize,
+              child: Center(
+                child: SizedBox(
+                  width: iconSize,
+                  height: iconSize,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppColorsLight.info
+                        : AppColorsDark.info,
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            // Apply button
+            SizedBox(
+              width: buttonSize,
+              height: buttonSize,
+              child: Theme(
+                data: ThemeData(
+                  filledButtonTheme:
+                      Theme.of(context).brightness == Brightness.light
+                          ? AppFilledButtonsLightThemes.primary
+                          : AppFilledButtonsDarkThemes.primary,
+                ),
+                child: FilledButton(
+                  onPressed: _applySuggestion,
+                  style: ButtonStyle(
+                    padding: WidgetStateProperty.all(EdgeInsets.zero),
+                    shape: WidgetStateProperty.all(
+                      RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppBorderRadius.small),
+                      ),
+                    ),
+                  ),
+                  child: Icon(
+                    MdiIcons.check,
+                    size: iconSize,
+                  ),
+                ),
+              ),
+            ),
+            AppSpacings.spacingXsHorizontal,
+            // Dismiss button
+            SizedBox(
+              width: buttonSize,
+              height: buttonSize,
+              child: IconButton(
+                onPressed: _dismissSuggestion,
+                icon: Icon(
+                  MdiIcons.close,
+                  size: iconSize,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(
+                  minWidth: buttonSize,
+                  minHeight: buttonSize,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

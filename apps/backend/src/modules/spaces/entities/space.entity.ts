@@ -110,4 +110,19 @@ export class SpaceEntity extends BaseEntity {
 	)
 	@Column({ nullable: true, default: null })
 	primaryTemperatureSensorId: string | null;
+
+	@ApiProperty({
+		name: 'suggestions_enabled',
+		description: 'Whether suggestions are enabled for this space',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'suggestions_enabled' })
+	@Transform(
+		({ obj }: { obj: { suggestions_enabled?: boolean; suggestionsEnabled?: boolean } }) =>
+			obj.suggestions_enabled ?? obj.suggestionsEnabled,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'boolean', default: true })
+	suggestionsEnabled: boolean;
 }

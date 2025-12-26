@@ -11,6 +11,7 @@ export interface ISpace {
 	displayOrder: number;
 	primaryThermostatId: string | null;
 	primaryTemperatureSensorId: string | null;
+	suggestionsEnabled: boolean;
 	createdAt: Date;
 	updatedAt: Date | null;
 
@@ -25,6 +26,7 @@ export interface ISpaceEditData {
 	displayOrder?: number;
 	primaryThermostatId?: string | null;
 	primaryTemperatureSensorId?: string | null;
+	suggestionsEnabled?: boolean;
 }
 
 export interface ISpaceCreateData {
@@ -35,6 +37,7 @@ export interface ISpaceCreateData {
 	displayOrder?: number;
 	primaryThermostatId?: string | null;
 	primaryTemperatureSensorId?: string | null;
+	suggestionsEnabled?: boolean;
 }
 
 export interface ISpacesStoreState {

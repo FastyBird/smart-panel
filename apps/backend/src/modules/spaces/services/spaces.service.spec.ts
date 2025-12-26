@@ -29,6 +29,7 @@ describe('SpacesService', () => {
 		displayOrder: 0,
 		primaryThermostatId: null,
 		primaryTemperatureSensorId: null,
+		suggestionsEnabled: true,
 		createdAt: new Date(),
 		updatedAt: null,
 	};

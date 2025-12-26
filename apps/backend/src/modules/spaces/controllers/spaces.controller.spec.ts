@@ -15,6 +15,7 @@ import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
+import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpacesService } from '../services/spaces.service';
 import { LightingIntentType, LightingMode, SpaceType } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
@@ -96,6 +97,13 @@ describe('SpacesController', () => {
 						getLightTargetsInSpace: jest.fn().mockResolvedValue([]),
 						inferDefaultLightingRoles: jest.fn().mockResolvedValue([]),
 						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+					},
+				},
+				{
+					provide: SpaceSuggestionService,
+					useValue: {
+						getSuggestion: jest.fn().mockResolvedValue(null),
+						recordFeedback: jest.fn().mockResolvedValue({ success: true }),
 					},
 				},
 			],
