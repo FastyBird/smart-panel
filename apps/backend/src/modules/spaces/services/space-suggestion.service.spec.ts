@@ -4,13 +4,13 @@ import { SpaceEntity } from '../entities/space.entity';
 import { LightingMode, SpaceType, SuggestionType } from '../spaces.constants';
 
 import {
+	SuggestionContext,
 	clearAllCooldowns,
 	clearCooldown,
 	evaluateSuggestionRules,
 	isBedroomSpace,
 	isOnCooldown,
 	setCooldown,
-	SuggestionContext,
 } from './space-suggestion.service';
 
 describe('SpaceSuggestionService - Pure Functions', () => {

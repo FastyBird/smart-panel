@@ -549,9 +549,7 @@ export class SpacesController {
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiSuccessResponse(SuggestionResponseModel, 'Returns the suggestion or null')
 	@ApiNotFoundResponse('Space not found')
-	async getSuggestion(
-		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-	): Promise<SuggestionResponseModel> {
+	async getSuggestion(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SuggestionResponseModel> {
 		this.logger.debug(`Getting suggestion for space with id=${id}`);
 
 		const suggestion = await this.spaceSuggestionService.getSuggestion(id);
@@ -592,11 +590,7 @@ export class SpacesController {
 	): Promise<SuggestionFeedbackResponseModel> {
 		this.logger.debug(`Submitting suggestion feedback for space with id=${id}`);
 
-		const result = await this.spaceSuggestionService.recordFeedback(
-			id,
-			body.data.suggestionType,
-			body.data.feedback,
-		);
+		const result = await this.spaceSuggestionService.recordFeedback(id, body.data.suggestionType, body.data.feedback);
 
 		const resultData = new SuggestionFeedbackResultDataModel();
 		resultData.success = result.success;
