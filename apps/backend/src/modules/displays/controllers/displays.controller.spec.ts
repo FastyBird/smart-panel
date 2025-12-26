@@ -146,6 +146,7 @@ describe('DisplaysController', () => {
 							resolutionMode: 'fallback',
 							reason: 'No pages available',
 						}),
+						resolveHomePagesBatch: jest.fn().mockResolvedValue(new Map()),
 					},
 				},
 				{

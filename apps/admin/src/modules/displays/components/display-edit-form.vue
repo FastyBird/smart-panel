@@ -264,8 +264,8 @@ const pagesStore = storesManager.getStore(pagesStoreKey);
 
 const { model, formEl, formChanged, submit, formResult } = useDisplayEditForm({ display: props.display });
 
-// Get pages for home page selection
-const pages = computed(() => pagesStore.findAll());
+// Get pages for home page selection (exclude drafts to prevent selecting unpublished pages)
+const pages = computed(() => pagesStore.findAll().filter((page) => !page.draft));
 
 const rules = reactive<FormRules<IDisplayEditForm>>({
 	name: [{ max: 100, message: t('displaysModule.fields.displays.name.validation.maxLength'), trigger: 'blur' }],

@@ -40,6 +40,49 @@ export class HomeResolutionService {
 		// Get pages visible to this display (empty displays array means visible to all)
 		const visiblePages = await this.getVisiblePages(display.id);
 
+		return this.resolveHomePageWithPages(display, visiblePages);
+	}
+
+	/**
+	 * Resolves home pages for multiple displays in a single batch operation.
+	 * This avoids N+1 queries by fetching all pages once and reusing them.
+	 */
+	async resolveHomePagesBatch(displays: DisplayEntity[]): Promise<Map<string, ResolvedHomePage>> {
+		if (displays.length === 0) {
+			return new Map();
+		}
+
+		this.logger.debug(`Batch resolving home pages for ${displays.length} displays`);
+
+		// Fetch all pages once with their display assignments
+		const allPages = await this.getAllPagesWithDisplays();
+
+		// Get all unique space IDs that need SpacePage lookup
+		const spaceIds = new Set<string>();
+		for (const display of displays) {
+			if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId) {
+				spaceIds.add(display.spaceId);
+			}
+		}
+
+		// Batch fetch all SpacePage mappings
+		const spacePageMap = await this.getSpacePagesForSpaces(Array.from(spaceIds));
+
+		// Resolve for each display using cached data
+		const results = new Map<string, ResolvedHomePage>();
+		for (const display of displays) {
+			const visiblePages = this.filterVisiblePages(allPages, display.id);
+			const resolved = this.resolveHomePageWithPagesAndSpaceMap(display, visiblePages, spacePageMap);
+			results.set(display.id, resolved);
+		}
+
+		return results;
+	}
+
+	/**
+	 * Internal resolution logic that works with pre-fetched pages.
+	 */
+	private async resolveHomePageWithPages(display: DisplayEntity, visiblePages: PageEntity[]): Promise<ResolvedHomePage> {
 		if (visiblePages.length === 0) {
 			this.logger.debug(`No pages visible to display id=${display.id}`);
 			return {
@@ -98,29 +141,126 @@ export class HomeResolutionService {
 	}
 
 	/**
+	 * Internal resolution logic for batch operations with pre-fetched space page map.
+	 */
+	private resolveHomePageWithPagesAndSpaceMap(
+		display: DisplayEntity,
+		visiblePages: PageEntity[],
+		spacePageMap: Map<string, string>,
+	): ResolvedHomePage {
+		if (visiblePages.length === 0) {
+			return {
+				pageId: null,
+				resolutionMode: 'fallback',
+				reason: 'No pages are assigned to or visible for this display',
+			};
+		}
+
+		// 1. Explicit mode - use configured home page
+		if (display.homeMode === HomeMode.EXPLICIT && display.homePageId) {
+			const explicitPage = visiblePages.find((p) => p.id === display.homePageId);
+			if (explicitPage) {
+				return {
+					pageId: display.homePageId,
+					resolutionMode: 'explicit',
+					reason: 'Using explicitly configured home page',
+				};
+			}
+		}
+
+		// 2. Auto-space mode - find SpacePage for display's space using pre-fetched map
+		if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId) {
+			const spacePageId = spacePageMap.get(display.spaceId);
+			if (spacePageId) {
+				const spacePage = visiblePages.find((p) => p.id === spacePageId);
+				if (spacePage) {
+					return {
+						pageId: spacePage.id,
+						resolutionMode: 'auto_space',
+						reason: `Using SpacePage for space ${display.spaceId}`,
+					};
+				}
+			}
+		}
+
+		// 3. First page mode or fallback - use first visible page by order
+		const firstPage = this.getFirstPage(visiblePages);
+		if (firstPage) {
+			const mode = display.homeMode === HomeMode.FIRST_PAGE ? 'first_page' : 'fallback';
+			return {
+				pageId: firstPage.id,
+				resolutionMode: mode,
+				reason: mode === 'first_page' ? 'Using first assigned page' : 'Fallback to first assigned page',
+			};
+		}
+
+		// 4. No pages available
+		return {
+			pageId: null,
+			resolutionMode: 'fallback',
+			reason: 'No pages available',
+		};
+	}
+
+	/**
+	 * Gets all pages with their display assignments (for batch operations).
+	 */
+	private async getAllPagesWithDisplays(): Promise<PageEntity[]> {
+		return this.pagesRepository
+			.createQueryBuilder('page')
+			.leftJoinAndSelect('page.displays', 'displays')
+			.orderBy('page.order', 'ASC')
+			.addOrderBy('page.createdAt', 'ASC')
+			.getMany();
+	}
+
+	/**
+	 * Filters pages to those visible to a specific display.
+	 */
+	private filterVisiblePages(allPages: PageEntity[], displayId: string): PageEntity[] {
+		return allPages.filter((page) => {
+			if (!page.displays || page.displays.length === 0) {
+				return true;
+			}
+			return page.displays.some((d) => d.id === displayId);
+		});
+	}
+
+	/**
 	 * Gets all pages visible to a specific display.
 	 * A page is visible if:
 	 * - Its displays array is empty (visible to all), OR
 	 * - The display ID is in the displays array
 	 */
 	private async getVisiblePages(displayId: string): Promise<PageEntity[]> {
-		// Get all pages with their display assignments
-		const allPages = await this.pagesRepository
-			.createQueryBuilder('page')
-			.leftJoinAndSelect('page.displays', 'displays')
-			.orderBy('page.order', 'ASC')
-			.addOrderBy('page.createdAt', 'ASC')
-			.getMany();
+		const allPages = await this.getAllPagesWithDisplays();
+		return this.filterVisiblePages(allPages, displayId);
+	}
 
-		// Filter to pages visible to this display
-		return allPages.filter((page) => {
-			// Empty displays array means visible to all
-			if (!page.displays || page.displays.length === 0) {
-				return true;
+	/**
+	 * Batch fetches SpacePage IDs for multiple space IDs.
+	 * Returns a map of spaceId -> pageId.
+	 */
+	private async getSpacePagesForSpaces(spaceIds: string[]): Promise<Map<string, string>> {
+		if (spaceIds.length === 0) {
+			return new Map();
+		}
+
+		const placeholders = spaceIds.map(() => '?').join(', ');
+		const spacePages: { id: string; spaceId: string }[] = await this.dataSource.query(
+			`SELECT id, spaceId FROM dashboard_module_pages WHERE type = ? AND spaceId IN (${placeholders})`,
+			[PAGES_SPACE_TYPE, ...spaceIds],
+		);
+
+		const result = new Map<string, string>();
+		for (const row of spacePages) {
+			// Only keep the first SpacePage per space (if there are multiple)
+			if (!result.has(row.spaceId)) {
+				result.set(row.spaceId, row.id);
 			}
-			// Check if this display is in the page's displays
-			return page.displays.some((d) => d.id === displayId);
-		});
+		}
+
+		return result;
 	}
 
 	/**

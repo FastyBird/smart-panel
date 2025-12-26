@@ -175,10 +175,11 @@ export class DisplaysController {
 
 		const displays = await this.displaysService.findAll();
 
-		// Resolve home page for each display
+		// Batch resolve home pages for all displays (avoids N+1 queries)
+		const resolvedHomePages = await this.homeResolutionService.resolveHomePagesBatch(displays);
 		for (const display of displays) {
-			const resolved = await this.homeResolutionService.resolveHomePage(display);
-			display.resolvedHomePageId = resolved.pageId;
+			const resolved = resolvedHomePages.get(display.id);
+			display.resolvedHomePageId = resolved?.pageId ?? null;
 		}
 
 		const response = new DisplaysResponseModel();
