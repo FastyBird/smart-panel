@@ -2,7 +2,7 @@ import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { DevicesModule } from '../devices/devices.module';
-import { DeviceEntity } from '../devices/entities/devices.entity';
+import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity';
 import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
@@ -12,6 +12,7 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SpacesController } from './controllers/spaces.controller';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
+import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
@@ -26,12 +27,18 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([SpaceEntity, SpaceLightingRoleEntity, DeviceEntity, DisplayEntity]),
+		TypeOrmModule.forFeature([SpaceEntity, SpaceLightingRoleEntity, DeviceEntity, ChannelEntity, DisplayEntity]),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => ExtensionsModule),
 	],
 	controllers: [SpacesController],
-	providers: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService],
+	providers: [
+		SpacesService,
+		SpaceIntentService,
+		SpaceLightingRoleService,
+		SpaceSuggestionService,
+		SpaceActivityListener,
+	],
 	exports: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService],
 })
 export class SpacesModule implements OnModuleInit {
