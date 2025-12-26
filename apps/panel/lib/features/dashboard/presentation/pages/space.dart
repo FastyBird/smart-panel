@@ -948,10 +948,12 @@ class _SpacePageState extends State<SpacePage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         color: Theme.of(context).brightness == Brightness.light
-            ? AppColors.info.withValues(alpha: 0.15)
-            : AppColors.info.withValues(alpha: 0.2),
+            ? AppColorsLight.info.withValues(alpha: 0.15)
+            : AppColorsDark.info.withValues(alpha: 0.2),
         border: Border.all(
-          color: AppColors.info.withValues(alpha: 0.3),
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppColorsLight.info.withValues(alpha: 0.3)
+              : AppColorsDark.info.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -961,7 +963,9 @@ class _SpacePageState extends State<SpacePage> {
           Icon(
             MdiIcons.lightbulbOnOutline,
             size: iconSize,
-            color: AppColors.info,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.info
+                : AppColorsDark.info,
           ),
           AppSpacings.spacingSmHorizontal,
           // Suggestion content
@@ -980,7 +984,7 @@ class _SpacePageState extends State<SpacePage> {
                   ),
                 ),
                 if (suggestion.reason != null) ...[
-                  AppSpacings.spacingXxsVertical,
+                  AppSpacings.spacingXsVertical,
                   Text(
                     suggestion.reason!,
                     style: TextStyle(
@@ -1008,7 +1012,9 @@ class _SpacePageState extends State<SpacePage> {
                   height: iconSize,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AppColors.info,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppColorsLight.info
+                        : AppColorsDark.info,
                   ),
                 ),
               ),
