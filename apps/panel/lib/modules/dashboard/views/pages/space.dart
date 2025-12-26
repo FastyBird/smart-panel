@@ -9,4 +9,6 @@ class SpacePageView extends DashboardPageView<SpacePageModel> {
   String get spaceId => pageModel.spaceId;
 
   SpaceViewMode get viewMode => pageModel.viewMode;
+
+  List<QuickActionType> get quickActions => pageModel.quickActions;
 }
