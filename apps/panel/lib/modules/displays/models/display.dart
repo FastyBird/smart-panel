@@ -1,3 +1,5 @@
+enum HomeMode { autoSpace, explicit, firstPage }
+
 class DisplayModel {
   final String id;
   final String macAddress;
@@ -20,6 +22,9 @@ class DisplayModel {
   final int speakerVolume;
   final bool microphone;
   final int microphoneVolume;
+  final HomeMode homeMode;
+  final String? homePageId;
+  final String? resolvedHomePageId;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -45,6 +50,9 @@ class DisplayModel {
     required this.speakerVolume,
     required this.microphone,
     required this.microphoneVolume,
+    this.homeMode = HomeMode.autoSpace,
+    this.homePageId,
+    this.resolvedHomePageId,
     required this.createdAt,
     this.updatedAt,
   });
@@ -72,11 +80,26 @@ class DisplayModel {
       speakerVolume: json['speaker_volume'] as int,
       microphone: json['microphone'] as bool,
       microphoneVolume: json['microphone_volume'] as int,
+      homeMode: _parseHomeMode(json['home_mode'] as String?),
+      homePageId: json['home_page_id'] as String?,
+      resolvedHomePageId: json['resolved_home_page_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
     );
+  }
+
+  static HomeMode _parseHomeMode(String? mode) {
+    switch (mode) {
+      case 'explicit':
+        return HomeMode.explicit;
+      case 'first_page':
+        return HomeMode.firstPage;
+      case 'auto_space':
+      default:
+        return HomeMode.autoSpace;
+    }
   }
 
   DisplayModel copyWith({
@@ -101,6 +124,9 @@ class DisplayModel {
     int? speakerVolume,
     bool? microphone,
     int? microphoneVolume,
+    HomeMode? homeMode,
+    String? homePageId,
+    String? resolvedHomePageId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -126,6 +152,9 @@ class DisplayModel {
       speakerVolume: speakerVolume ?? this.speakerVolume,
       microphone: microphone ?? this.microphone,
       microphoneVolume: microphoneVolume ?? this.microphoneVolume,
+      homeMode: homeMode ?? this.homeMode,
+      homePageId: homePageId ?? this.homePageId,
+      resolvedHomePageId: resolvedHomePageId ?? this.resolvedHomePageId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -155,7 +184,10 @@ class DisplayModel {
         other.speaker == speaker &&
         other.speakerVolume == speakerVolume &&
         other.microphone == microphone &&
-        other.microphoneVolume == microphoneVolume;
+        other.microphoneVolume == microphoneVolume &&
+        other.homeMode == homeMode &&
+        other.homePageId == homePageId &&
+        other.resolvedHomePageId == resolvedHomePageId;
   }
 
   @override
@@ -182,6 +214,9 @@ class DisplayModel {
       speakerVolume,
       microphone,
       microphoneVolume,
+      homeMode,
+      homePageId,
+      resolvedHomePageId,
     ]);
   }
 }

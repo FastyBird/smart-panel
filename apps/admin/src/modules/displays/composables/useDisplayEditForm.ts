@@ -45,6 +45,9 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		speakerVolume: display.speakerVolume,
 		microphone: display.microphone,
 		microphoneVolume: display.microphoneVolume,
+		// Home page configuration
+		homeMode: display.homeMode,
+		homePageId: display.homePageId,
 	});
 
 	let initialModel: Reactive<IDisplayEditForm> = deepClone<Reactive<IDisplayEditForm>>(toRaw(model));
@@ -83,6 +86,8 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				speakerVolume?: number;
 				microphone?: boolean;
 				microphoneVolume?: number;
+				homeMode: 'auto_space' | 'explicit' | 'first_page';
+				homePageId: string | null;
 			} = {
 				name: model.name || null,
 				unitSize: model.unitSize,
@@ -92,6 +97,8 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				screenLockDuration: model.screenLockDuration,
 				darkMode: model.darkMode,
 				screenSaver: model.screenSaver,
+				homeMode: model.homeMode,
+				homePageId: model.homePageId,
 			};
 
 			// Only include audio settings if the display supports them

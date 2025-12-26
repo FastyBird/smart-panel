@@ -114,6 +114,58 @@
 			/>
 		</el-form-item>
 
+		<!-- Home Page Configuration -->
+		<el-divider>{{ t('displaysModule.fields.displays.homeMode.title') }}</el-divider>
+
+		<el-form-item
+			:label="t('displaysModule.fields.displays.homeMode.title')"
+			:prop="['homeMode']"
+		>
+			<el-select
+				v-model="model.homeMode"
+				name="homeMode"
+			>
+				<el-option
+					value="auto_space"
+					:label="t('displaysModule.fields.displays.homeMode.options.autoSpace')"
+				/>
+				<el-option
+					value="explicit"
+					:label="t('displaysModule.fields.displays.homeMode.options.explicit')"
+				/>
+				<el-option
+					value="first_page"
+					:label="t('displaysModule.fields.displays.homeMode.options.firstPage')"
+				/>
+			</el-select>
+			<div class="text-gray-500 text-sm mt-1">
+				{{ t('displaysModule.fields.displays.homeMode.description') }}
+			</div>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.homeMode === 'explicit'"
+			:label="t('displaysModule.fields.displays.homePageId.title')"
+			:prop="['homePageId']"
+		>
+			<el-select
+				v-model="model.homePageId"
+				:placeholder="t('displaysModule.fields.displays.homePageId.placeholder')"
+				name="homePageId"
+				clearable
+			>
+				<el-option
+					v-for="page in pages"
+					:key="page.id"
+					:value="page.id"
+					:label="page.title"
+				/>
+			</el-select>
+			<div class="text-gray-500 text-sm mt-1">
+				{{ t('displaysModule.fields.displays.homePageId.description') }}
+			</div>
+		</el-form-item>
+
 		<!-- Audio Settings (Speaker) - Only shown if audio output is supported -->
 		<template v-if="display.audioOutputSupported">
 			<el-divider>{{ t('displaysModule.fields.displays.audio.speaker.title') }}</el-divider>
@@ -175,11 +227,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElSlider, ElSwitch, type FormRules } from 'element-plus';
+import { ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSlider, ElSwitch, type FormRules } from 'element-plus';
 
+import { injectStoresManager } from '../../../common';
+import { pagesStoreKey } from '../../dashboard/store/keys';
 import { useDisplayEditForm } from '../composables/useDisplayEditForm';
 import { FormResult, type FormResultType } from '../displays.constants';
 import type { IDisplayEditForm } from '../composables/types';
@@ -205,7 +259,13 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const storesManager = injectStoresManager();
+const pagesStore = storesManager.getStore(pagesStoreKey);
+
 const { model, formEl, formChanged, submit, formResult } = useDisplayEditForm({ display: props.display });
+
+// Get pages for home page selection
+const pages = computed(() => pagesStore.findAll());
 
 const rules = reactive<FormRules<IDisplayEditForm>>({
 	name: [{ max: 100, message: t('displaysModule.fields.displays.name.validation.maxLength'), trigger: 'blur' }],

@@ -28,6 +28,10 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		speakerVolume: response.speaker_volume ?? 50,
 		microphone: response.microphone ?? false,
 		microphoneVolume: response.microphone_volume ?? 50,
+		// Home page configuration
+		homeMode: response.home_mode ?? 'auto_space',
+		homePageId: response.home_page_id ?? null,
+		resolvedHomePageId: response.resolved_home_page_id ?? null,
 		registeredFromIp: response.registered_from_ip ?? null,
 		currentIpAddress: response.current_ip_address ?? null,
 		online: response.online ?? false,
@@ -87,6 +91,14 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 	}
 	if (display.microphoneVolume !== undefined) {
 		baseData.microphone_volume = display.microphoneVolume;
+	}
+
+	// Home page configuration
+	if (display.homeMode !== undefined) {
+		baseData.home_mode = display.homeMode;
+	}
+	if (display.homePageId !== undefined) {
+		baseData.home_page_id = display.homePageId;
 	}
 
 	const parsedRequest = DisplayUpdateReqSchema.safeParse(baseData);

@@ -1,6 +1,7 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsBoolean,
+	IsEnum,
 	IsInt,
 	IsNumber,
 	IsOptional,
@@ -13,6 +14,8 @@ import {
 } from 'class-validator';
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+import { HomeMode } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleUpdateDisplay' })
 export class UpdateDisplayDto {
@@ -213,6 +216,40 @@ export class UpdateDisplayDto {
 		toClassOnly: true,
 	})
 	spaceId?: string | null;
+
+	// === Home Page Configuration ===
+
+	@ApiPropertyOptional({
+		name: 'home_mode',
+		description: 'Home page resolution mode (auto_space: use space page if available, explicit: use configured home page, first_page: use first assigned page)',
+		type: 'string',
+		enum: HomeMode,
+		example: HomeMode.AUTO_SPACE,
+	})
+	@Expose({ name: 'home_mode' })
+	@IsOptional()
+	@IsEnum(HomeMode, { message: '[{"field":"home_mode","reason":"Home mode must be one of: auto_space, explicit, first_page."}]' })
+	@Transform(({ obj }: { obj: { home_mode?: HomeMode; homeMode?: HomeMode } }) => obj.home_mode ?? obj.homeMode, {
+		toClassOnly: true,
+	})
+	homeMode?: HomeMode;
+
+	@ApiPropertyOptional({
+		name: 'home_page_id',
+		description: 'Explicitly configured home page ID (used when home_mode is explicit)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'home_page_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"home_page_id","reason":"Home page ID must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => value !== null)
+	@Transform(({ obj }: { obj: { home_page_id?: string; homePageId?: string } }) => obj.home_page_id ?? obj.homePageId, {
+		toClassOnly: true,
+	})
+	homePageId?: string | null;
 
 	// === Audio Settings (only editable if the display supports the feature) ===
 

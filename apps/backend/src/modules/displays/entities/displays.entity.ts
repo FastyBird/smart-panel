@@ -16,8 +16,9 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { ConnectionState } from '../displays.constants';
+import { ConnectionState, HomeMode } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleDataDisplay' })
 @Entity('displays_module_displays')
@@ -246,6 +247,48 @@ export class DisplayEntity extends BaseEntity {
 	@JoinColumn({ name: 'spaceId' })
 	space: SpaceEntity | null;
 
+	// === Home Page Configuration ===
+
+	@ApiPropertyOptional({
+		name: 'home_mode',
+		description: 'Home page resolution mode (auto_space: use space page if available, explicit: use configured home page, first_page: use first assigned page)',
+		type: 'string',
+		enum: HomeMode,
+		nullable: false,
+		default: HomeMode.AUTO_SPACE,
+		example: HomeMode.AUTO_SPACE,
+	})
+	@Expose({ name: 'home_mode' })
+	@IsOptional()
+	@IsEnum(HomeMode, { message: '[{"field":"home_mode","reason":"Home mode must be one of: auto_space, explicit, first_page."}]' })
+	@Transform(({ obj }: { obj: { home_mode?: HomeMode; homeMode?: HomeMode } }) => obj.home_mode ?? obj.homeMode, {
+		toClassOnly: true,
+	})
+	@Column({ type: 'varchar', length: 20, default: HomeMode.AUTO_SPACE })
+	homeMode: HomeMode;
+
+	@ApiPropertyOptional({
+		name: 'home_page_id',
+		description: 'Explicitly configured home page ID (used when home_mode is explicit)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'home_page_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"home_page_id","reason":"Home page ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { home_page_id?: string; homePageId?: string } }) => obj.home_page_id ?? obj.homePageId, {
+		toClassOnly: true,
+	})
+	@Index()
+	@Column({ nullable: true, default: null })
+	homePageId: string | null;
+
+	@ManyToOne(() => PageEntity, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'homePageId' })
+	homePage: PageEntity | null;
+
 	// === Audio Capabilities (set during registration) ===
 
 	@ApiProperty({
@@ -386,4 +429,19 @@ export class DisplayEntity extends BaseEntity {
 	@Expose()
 	@IsEnum(ConnectionState)
 	status: ConnectionState = ConnectionState.UNKNOWN;
+
+	// === Resolved Home Page (computed, not persisted) ===
+
+	@ApiPropertyOptional({
+		name: 'resolved_home_page_id',
+		description: 'Resolved home page ID based on home_mode configuration. This is computed dynamically and not stored.',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'resolved_home_page_id' })
+	@IsOptional()
+	@IsUUID('4')
+	resolvedHomePageId?: string | null;
 }

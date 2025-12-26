@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { PageEntity } from '../dashboard/entities/dashboard.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
@@ -29,6 +30,7 @@ import { WebsocketExchangeListener } from './listeners/websocket-exchange.listen
 import { DisplaysConfigModel } from './models/config.model';
 import { DisplayConnectionStateService } from './services/display-connection-state.service';
 import { DisplaysService } from './services/displays.service';
+import { HomeResolutionService } from './services/home-resolution.service';
 import { DisplaysModuleResetService } from './services/module-reset.service';
 import { PermitJoinService } from './services/permit-join.service';
 import { RegistrationService } from './services/registration.service';
@@ -42,7 +44,7 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([DisplayEntity]),
+		TypeOrmModule.forFeature([DisplayEntity, PageEntity]),
 		AuthModule,
 		ConfigModule,
 		ExtensionsModule,
@@ -60,8 +62,9 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		DisplayConnectionStateService,
 		DisplayEntitySubscriber,
 		WebsocketExchangeListener,
+		HomeResolutionService,
 	],
-	exports: [DisplaysService, DisplaysModuleResetService, DisplayExistsConstraint, PermitJoinService],
+	exports: [DisplaysService, DisplaysModuleResetService, DisplayExistsConstraint, PermitJoinService, HomeResolutionService],
 })
 export class DisplaysModule implements OnModuleInit {
 	constructor(
