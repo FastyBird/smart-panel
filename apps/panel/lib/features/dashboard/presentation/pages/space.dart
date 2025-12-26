@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/pages/space_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/space.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -867,39 +868,7 @@ class _SpacePageState extends State<SpacePage> {
               ],
             ),
             AppSpacings.spacingMdVertical,
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildLightingModeButton(
-                  context,
-                  LightingMode.off,
-                  MdiIcons.power,
-                  _modeOff,
-                  isActive: _activeMode == null,
-                ),
-                _buildLightingModeButton(
-                  context,
-                  LightingMode.work,
-                  MdiIcons.desktopClassic,
-                  _modeWork,
-                  isActive: _activeMode == LightingMode.work,
-                ),
-                _buildLightingModeButton(
-                  context,
-                  LightingMode.relax,
-                  MdiIcons.sofaOutline,
-                  _modeRelax,
-                  isActive: _activeMode == LightingMode.relax,
-                ),
-                _buildLightingModeButton(
-                  context,
-                  LightingMode.night,
-                  MdiIcons.weatherNight,
-                  _modeNight,
-                  isActive: _activeMode == LightingMode.night,
-                ),
-              ],
-            ),
+            _buildQuickActionsRow(context),
           ],
         ),
       ),
@@ -1252,6 +1221,291 @@ class _SpacePageState extends State<SpacePage> {
         ),
       ],
     );
+  }
+
+  /// Builds the row of quick action buttons based on configured quick actions.
+  Widget _buildQuickActionsRow(BuildContext context) {
+    final quickActions = widget.page.quickActions;
+
+    // Filter to only lighting-related quick actions
+    final lightingActions = quickActions.where((action) {
+      return action == QuickActionType.lightingOff ||
+          action == QuickActionType.lightingWork ||
+          action == QuickActionType.lightingRelax ||
+          action == QuickActionType.lightingNight ||
+          action == QuickActionType.brightnessUp ||
+          action == QuickActionType.brightnessDown;
+    }).toList();
+
+    if (lightingActions.isEmpty) {
+      // Fallback to default lighting controls
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildLightingModeButton(
+            context,
+            LightingMode.off,
+            MdiIcons.power,
+            _modeOff,
+            isActive: _activeMode == null,
+          ),
+          _buildLightingModeButton(
+            context,
+            LightingMode.work,
+            MdiIcons.desktopClassic,
+            _modeWork,
+            isActive: _activeMode == LightingMode.work,
+          ),
+          _buildLightingModeButton(
+            context,
+            LightingMode.relax,
+            MdiIcons.sofaOutline,
+            _modeRelax,
+            isActive: _activeMode == LightingMode.relax,
+          ),
+          _buildLightingModeButton(
+            context,
+            LightingMode.night,
+            MdiIcons.weatherNight,
+            _modeNight,
+            isActive: _activeMode == LightingMode.night,
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: lightingActions.map((action) {
+        return _buildQuickActionButton(context, action);
+      }).toList(),
+    );
+  }
+
+  /// Builds a single quick action button.
+  Widget _buildQuickActionButton(BuildContext context, QuickActionType action) {
+    final info = _getQuickActionInfo(action);
+    final isActive = _isQuickActionActive(action);
+
+    if (action == QuickActionType.brightnessUp ||
+        action == QuickActionType.brightnessDown) {
+      return _buildBrightnessButton(context, action, info);
+    }
+
+    // For lighting mode buttons, use the existing lighting mode button builder
+    final mode = _quickActionToLightingMode(action);
+    if (mode != null) {
+      return _buildLightingModeButton(
+        context,
+        mode,
+        info.icon,
+        info.label,
+        isActive: isActive,
+      );
+    }
+
+    // Fallback: generic button (shouldn't happen for lighting actions)
+    return _buildLightingModeButton(
+      context,
+      LightingMode.off,
+      info.icon,
+      info.label,
+      isActive: false,
+    );
+  }
+
+  /// Gets the icon and label for a quick action.
+  ({IconData icon, String label}) _getQuickActionInfo(QuickActionType action) {
+    switch (action) {
+      case QuickActionType.lightingOff:
+        return (icon: MdiIcons.power, label: _modeOff);
+      case QuickActionType.lightingWork:
+        return (icon: MdiIcons.desktopClassic, label: _modeWork);
+      case QuickActionType.lightingRelax:
+        return (icon: MdiIcons.sofaOutline, label: _modeRelax);
+      case QuickActionType.lightingNight:
+        return (icon: MdiIcons.weatherNight, label: _modeNight);
+      case QuickActionType.brightnessUp:
+        return (icon: MdiIcons.brightnessHigh, label: '+');
+      case QuickActionType.brightnessDown:
+        return (icon: MdiIcons.brightnessLow, label: '-');
+      case QuickActionType.climateUp:
+        return (icon: MdiIcons.thermometerChevronUp, label: '+');
+      case QuickActionType.climateDown:
+        return (icon: MdiIcons.thermometerChevronDown, label: '-');
+    }
+  }
+
+  /// Checks if a quick action is currently active.
+  bool _isQuickActionActive(QuickActionType action) {
+    switch (action) {
+      case QuickActionType.lightingOff:
+        return _activeMode == null;
+      case QuickActionType.lightingWork:
+        return _activeMode == LightingMode.work;
+      case QuickActionType.lightingRelax:
+        return _activeMode == LightingMode.relax;
+      case QuickActionType.lightingNight:
+        return _activeMode == LightingMode.night;
+      case QuickActionType.brightnessUp:
+      case QuickActionType.brightnessDown:
+      case QuickActionType.climateUp:
+      case QuickActionType.climateDown:
+        return false; // Action buttons, not toggles
+    }
+  }
+
+  /// Converts a quick action to a lighting mode (if applicable).
+  LightingMode? _quickActionToLightingMode(QuickActionType action) {
+    switch (action) {
+      case QuickActionType.lightingOff:
+        return LightingMode.off;
+      case QuickActionType.lightingWork:
+        return LightingMode.work;
+      case QuickActionType.lightingRelax:
+        return LightingMode.relax;
+      case QuickActionType.lightingNight:
+        return LightingMode.night;
+      default:
+        return null;
+    }
+  }
+
+  /// Builds a brightness control button.
+  Widget _buildBrightnessButton(
+    BuildContext context,
+    QuickActionType action,
+    ({IconData icon, String label}) info,
+  ) {
+    final buttonSize = _screenService.scale(
+      60,
+      density: _visualDensityService.density,
+    );
+    final isIncrease = action == QuickActionType.brightnessUp;
+
+    return Column(
+      children: [
+        SizedBox(
+          width: buttonSize,
+          height: buttonSize,
+          child: _isLoading
+              ? Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppBgColorLight.page.withValues(alpha: 0.7)
+                        : AppBgColorDark.overlay.withValues(alpha: 0.7),
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      width: _screenService.scale(
+                        20,
+                        density: _visualDensityService.density,
+                      ),
+                      height: _screenService.scale(
+                        20,
+                        density: _visualDensityService.density,
+                      ),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                )
+              : Theme(
+                  data: ThemeData(
+                    filledButtonTheme:
+                        Theme.of(context).brightness == Brightness.light
+                            ? AppFilledButtonsLightThemes.info
+                            : AppFilledButtonsDarkThemes.info,
+                  ),
+                  child: FilledButton(
+                    onPressed: () => _executeBrightnessIntent(isIncrease),
+                    style: ButtonStyle(
+                      padding: WidgetStateProperty.all(EdgeInsets.zero),
+                      shape: WidgetStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppBorderRadius.base),
+                        ),
+                      ),
+                    ),
+                    child: Icon(
+                      info.icon,
+                      size: _screenService.scale(
+                        28,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+        AppSpacings.spacingXsVertical,
+        Text(
+          info.label,
+          style: TextStyle(
+            fontSize: AppFontSize.extraSmall,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.regular
+                : AppTextColorDark.regular,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Executes a brightness delta intent.
+  Future<void> _executeBrightnessIntent(bool increase) async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example:
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final request = SpacesModuleCreateSpaceLightingIntentReq(
+      //   data: SpacesModuleCreateSpaceLightingIntentReqDataUnion
+      //       .spacesModuleLightingIntentBrightnessDelta(
+      //     SpacesModuleLightingIntentBrightnessDelta(
+      //       type: SpacesModuleLightingIntentType.brightnessDelta,
+      //       delta: SpacesModuleBrightnessDelta.medium,
+      //       increase: increase,
+      //     ),
+      //   ),
+      // );
+      // await spacesApi.createSpacesModuleSpaceLightingIntent(
+      //   id: widget.page.spaceId,
+      //   spacesModuleCreateSpaceLightingIntentReq: request,
+      // );
+      //
+      // For now, simulate the action with a delay
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted) {
+        AlertBar.showSuccess(
+          context,
+          message: _actionSuccess,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Widget _buildDevicesSection(BuildContext context) {

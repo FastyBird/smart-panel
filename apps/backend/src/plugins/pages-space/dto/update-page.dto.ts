@@ -1,9 +1,10 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsIn, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { IsArray, IsEnum, IsIn, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePageDto } from '../../../modules/dashboard/dto/update-page.dto';
+import { QuickActionType } from '../../../modules/spaces/spaces.constants';
 
 @ApiSchema({ name: 'PagesSpacePluginUpdateSpacePage' })
 export class UpdateSpacePageDto extends UpdatePageDto {
@@ -39,4 +40,29 @@ export class UpdateSpacePageDto extends UpdatePageDto {
 		toClassOnly: true,
 	})
 	view_mode?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'quick_actions',
+		description:
+			'List of quick action types pinned to this space page. ' +
+			'If not set, defaults to standard lighting controls (off, work, relax, night).',
+		type: 'array',
+		items: { type: 'string', enum: Object.values(QuickActionType) },
+		nullable: true,
+		example: ['lighting_off', 'lighting_work', 'lighting_relax', 'lighting_night'],
+	})
+	@Expose({ name: 'quick_actions' })
+	@IsOptional()
+	@IsArray({ message: '[{"field":"quick_actions","reason":"Quick actions must be an array."}]' })
+	@IsEnum(QuickActionType, {
+		each: true,
+		message: '[{"field":"quick_actions","reason":"Each quick action must be a valid action type."}]',
+	})
+	@ValidateIf((_, value) => value !== null && value !== undefined)
+	@Transform(
+		({ obj }: { obj: { quick_actions?: QuickActionType[]; quickActions?: QuickActionType[] } }) =>
+			obj.quick_actions ?? obj.quickActions,
+		{ toClassOnly: true },
+	)
+	quick_actions?: QuickActionType[] | null;
 }

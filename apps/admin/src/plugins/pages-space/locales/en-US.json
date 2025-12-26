@@ -1,0 +1,36 @@
+{
+	"fields": {
+		"space": {
+			"title": "Space",
+			"placeholder": "Select a space",
+			"description": "The room or zone this page displays",
+			"validation": {
+				"required": "Please select a space"
+			}
+		},
+		"viewMode": {
+			"title": "View Mode",
+			"placeholder": "Select view mode",
+			"description": "Display mode for the space page",
+			"options": {
+				"simple": "Simple",
+				"advanced": "Advanced"
+			}
+		},
+		"quickActions": {
+			"title": "Quick Actions",
+			"placeholder": "Select quick actions",
+			"description": "Actions shown as buttons on the panel. If empty, defaults to lighting controls.",
+			"options": {
+				"lighting_off": "Lights Off",
+				"lighting_work": "Work Mode",
+				"lighting_relax": "Relax Mode",
+				"lighting_night": "Night Mode",
+				"brightness_up": "Brightness Up",
+				"brightness_down": "Brightness Down",
+				"climate_up": "Temperature Up",
+				"climate_down": "Temperature Down"
+			}
+		}
+	}
+}

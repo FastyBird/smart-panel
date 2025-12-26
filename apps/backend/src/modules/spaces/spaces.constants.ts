@@ -255,6 +255,42 @@ export interface ModeOrchestrationConfig {
  * - Brightness delta applies to all currently ON lights (active set approach)
  */
 // ========================
+// Quick Action Types
+// ========================
+
+/**
+ * Quick action types that can be pinned to a space page.
+ * These are the available actions that admins can configure
+ * to appear as quick action buttons on the panel.
+ */
+export enum QuickActionType {
+	LIGHTING_OFF = 'lighting_off',
+	LIGHTING_WORK = 'lighting_work',
+	LIGHTING_RELAX = 'lighting_relax',
+	LIGHTING_NIGHT = 'lighting_night',
+	BRIGHTNESS_UP = 'brightness_up',
+	BRIGHTNESS_DOWN = 'brightness_down',
+	CLIMATE_UP = 'climate_up',
+	CLIMATE_DOWN = 'climate_down',
+}
+
+/**
+ * Default quick actions shown when none are configured.
+ * Provides a sensible default set of lighting controls.
+ */
+export const DEFAULT_QUICK_ACTIONS: QuickActionType[] = [
+	QuickActionType.LIGHTING_OFF,
+	QuickActionType.LIGHTING_WORK,
+	QuickActionType.LIGHTING_RELAX,
+	QuickActionType.LIGHTING_NIGHT,
+];
+
+/**
+ * All available quick actions for validation
+ */
+export const ALL_QUICK_ACTION_TYPES = Object.values(QuickActionType);
+
+// ========================
 // Suggestion System Constants
 // ========================
 
