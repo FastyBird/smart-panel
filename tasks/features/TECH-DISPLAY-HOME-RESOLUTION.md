@@ -4,7 +4,7 @@ Type: technical
 Scope: backend, panel, admin
 Size: small
 Parent: EPIC-SPACES-FIRST-UX
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -50,12 +50,12 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] Display home resolution follows the documented precedence rules.
-- [ ] Existing installations using explicit home pages keep working.
-- [ ] AutoSpace mode opens SpacePage for the display’s assigned space when available.
-- [ ] Fallback is deterministic and stable.
-- [ ] Panel starts on the resolved home page and handles missing pages gracefully.
-- [ ] Unit tests cover precedence rules and fallback behaviors.
+- [x] Display home resolution follows the documented precedence rules.
+- [x] Existing installations using explicit home pages keep working.
+- [x] AutoSpace mode opens SpacePage for the display's assigned space when available.
+- [x] Fallback is deterministic and stable.
+- [x] Panel starts on the resolved home page and handles missing pages gracefully.
+- [x] Unit tests cover precedence rules and fallback behaviors.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
