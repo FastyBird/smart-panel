@@ -17,8 +17,8 @@ export class SpaceActivityListener implements OnModuleInit {
 	constructor(
 		@InjectRepository(SpaceEntity)
 		private readonly spaceRepository: Repository<SpaceEntity>,
-		@InjectRepository(DeviceEntity)
-		private readonly deviceRepository: Repository<DeviceEntity>,
+		@InjectRepository(ChannelEntity)
+		private readonly channelRepository: Repository<ChannelEntity>,
 	) {}
 
 	onModuleInit() {
@@ -44,16 +44,23 @@ export class SpaceActivityListener implements OnModuleInit {
 			return;
 		}
 
-		// Find the device for this channel
-		const device = await this.deviceRepository
-			.createQueryBuilder('device')
-			.innerJoin(ChannelEntity, 'channel', 'channel.device = device.id')
+		// Find the channel with its device using relation-based join
+		const channel = await this.channelRepository
+			.createQueryBuilder('channel')
+			.innerJoinAndSelect('channel.device', 'device')
 			.where('channel.id = :channelId', { channelId })
 			.andWhere('device.spaceId IS NOT NULL')
 			.getOne();
 
-		if (!device || !device.spaceId) {
-			this.logger.debug('Device not found or has no space, skipping activity update');
+		if (!channel) {
+			this.logger.debug('Channel not found or device has no space, skipping activity update');
+			return;
+		}
+
+		const device = channel.device as DeviceEntity;
+
+		if (!device.spaceId) {
+			this.logger.debug('Device has no space, skipping activity update');
 			return;
 		}
 

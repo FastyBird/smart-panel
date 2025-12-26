@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { SpaceType } from '../spaces.constants';
 
@@ -14,7 +14,7 @@ import { SpaceActivityListener } from './space-activity.listener';
 describe('SpaceActivityListener', () => {
 	let listener: SpaceActivityListener;
 	let spaceRepository: jest.Mocked<Repository<SpaceEntity>>;
-	let deviceRepository: jest.Mocked<Repository<DeviceEntity>>;
+	let channelRepository: jest.Mocked<Repository<ChannelEntity>>;
 
 	const mockSpace: SpaceEntity = {
 		id: uuid(),
@@ -37,13 +37,19 @@ describe('SpaceActivityListener', () => {
 		spaceId: mockSpace.id,
 	};
 
+	const mockChannel: Partial<ChannelEntity> = {
+		id: uuid(),
+		name: 'Test Channel',
+		device: mockDevice as DeviceEntity,
+	};
+
 	beforeEach(async () => {
-		const mockDeviceQueryBuilder = {
-			innerJoin: jest.fn().mockReturnThis(),
+		const mockChannelQueryBuilder = {
+			innerJoinAndSelect: jest.fn().mockReturnThis(),
 			where: jest.fn().mockReturnThis(),
 			andWhere: jest.fn().mockReturnThis(),
-			getOne: jest.fn().mockResolvedValue(mockDevice),
-		} as unknown as SelectQueryBuilder<DeviceEntity>;
+			getOne: jest.fn().mockResolvedValue(mockChannel),
+		} as unknown as SelectQueryBuilder<ChannelEntity>;
 
 		const mockSpaceUpdateQueryBuilder = {
 			update: jest.fn().mockReturnThis(),
@@ -62,9 +68,9 @@ describe('SpaceActivityListener', () => {
 					},
 				},
 				{
-					provide: getRepositoryToken(DeviceEntity),
+					provide: getRepositoryToken(ChannelEntity),
 					useValue: {
-						createQueryBuilder: jest.fn().mockReturnValue(mockDeviceQueryBuilder),
+						createQueryBuilder: jest.fn().mockReturnValue(mockChannelQueryBuilder),
 					},
 				},
 			],
@@ -72,7 +78,7 @@ describe('SpaceActivityListener', () => {
 
 		listener = module.get<SpaceActivityListener>(SpaceActivityListener);
 		spaceRepository = module.get(getRepositoryToken(SpaceEntity));
-		deviceRepository = module.get(getRepositoryToken(DeviceEntity));
+		channelRepository = module.get(getRepositoryToken(ChannelEntity));
 	});
 
 	describe('handlePropertyUpdated', () => {
@@ -85,30 +91,30 @@ describe('SpaceActivityListener', () => {
 
 			await listener.handlePropertyUpdated(property as ChannelPropertyEntity);
 
-			expect(deviceRepository.createQueryBuilder).toHaveBeenCalled();
+			expect(channelRepository.createQueryBuilder).toHaveBeenCalled();
 			expect(spaceRepository.createQueryBuilder).toHaveBeenCalled();
 		});
 
-		it('should not update when device has no space', async () => {
+		it('should not update when channel not found or device has no space', async () => {
 			const channelId = uuid();
 			const property: Partial<ChannelPropertyEntity> = {
 				id: uuid(),
 				channel: channelId,
 			};
 
-			// Mock device without space
-			const mockDeviceQueryBuilder = {
-				innerJoin: jest.fn().mockReturnThis(),
+			// Mock channel not found
+			const mockChannelQueryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getOne: jest.fn().mockResolvedValue(null),
-			} as unknown as SelectQueryBuilder<DeviceEntity>;
+			} as unknown as SelectQueryBuilder<ChannelEntity>;
 
-			deviceRepository.createQueryBuilder.mockReturnValue(mockDeviceQueryBuilder as any);
+			channelRepository.createQueryBuilder.mockReturnValue(mockChannelQueryBuilder as any);
 
 			await listener.handlePropertyUpdated(property as ChannelPropertyEntity);
 
-			expect(deviceRepository.createQueryBuilder).toHaveBeenCalled();
+			expect(channelRepository.createQueryBuilder).toHaveBeenCalled();
 			expect(spaceRepository.createQueryBuilder).not.toHaveBeenCalled();
 		});
 
@@ -120,7 +126,7 @@ describe('SpaceActivityListener', () => {
 
 			await listener.handlePropertyUpdated(property as ChannelPropertyEntity);
 
-			expect(deviceRepository.createQueryBuilder).not.toHaveBeenCalled();
+			expect(channelRepository.createQueryBuilder).not.toHaveBeenCalled();
 			expect(spaceRepository.createQueryBuilder).not.toHaveBeenCalled();
 		});
 
@@ -132,14 +138,14 @@ describe('SpaceActivityListener', () => {
 			};
 
 			// Mock an error
-			const mockDeviceQueryBuilder = {
-				innerJoin: jest.fn().mockReturnThis(),
+			const mockChannelQueryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getOne: jest.fn().mockRejectedValue(new Error('Database error')),
-			} as unknown as SelectQueryBuilder<DeviceEntity>;
+			} as unknown as SelectQueryBuilder<ChannelEntity>;
 
-			deviceRepository.createQueryBuilder.mockReturnValue(mockDeviceQueryBuilder as any);
+			channelRepository.createQueryBuilder.mockReturnValue(mockChannelQueryBuilder as any);
 
 			// Should not throw
 			await expect(listener.handlePropertyUpdated(property as ChannelPropertyEntity)).resolves.not.toThrow();
@@ -154,7 +160,7 @@ describe('SpaceActivityListener', () => {
 
 			await listener.handlePropertyUpdated(property as ChannelPropertyEntity);
 
-			expect(deviceRepository.createQueryBuilder).toHaveBeenCalled();
+			expect(channelRepository.createQueryBuilder).toHaveBeenCalled();
 		});
 	});
 

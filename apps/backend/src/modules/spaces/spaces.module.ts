@@ -2,7 +2,7 @@ import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { DevicesModule } from '../devices/devices.module';
-import { DeviceEntity } from '../devices/entities/devices.entity';
+import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity';
 import { DisplayEntity } from '../displays/entities/displays.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
@@ -27,7 +27,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([SpaceEntity, SpaceLightingRoleEntity, DeviceEntity, DisplayEntity]),
+		TypeOrmModule.forFeature([SpaceEntity, SpaceLightingRoleEntity, DeviceEntity, ChannelEntity, DisplayEntity]),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => ExtensionsModule),
 	],
