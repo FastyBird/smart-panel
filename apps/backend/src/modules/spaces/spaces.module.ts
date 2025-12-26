@@ -32,7 +32,13 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		forwardRef(() => ExtensionsModule),
 	],
 	controllers: [SpacesController],
-	providers: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService, SpaceActivityListener],
+	providers: [
+		SpacesService,
+		SpaceIntentService,
+		SpaceLightingRoleService,
+		SpaceSuggestionService,
+		SpaceActivityListener,
+	],
 	exports: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService],
 })
 export class SpacesModule implements OnModuleInit {

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import { Repository, SelectQueryBuilder, UpdateQueryBuilder, UpdateResult } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
