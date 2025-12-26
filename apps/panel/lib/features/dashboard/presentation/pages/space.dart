@@ -76,8 +76,8 @@ class _SpacePageState extends State<SpacePage> {
   ClimateState _climateState = ClimateState.loading;
   double? _currentTemperature;
   double? _targetTemperature;
-  double _minSetpoint = 5.0;
-  double _maxSetpoint = 35.0;
+  final double _minSetpoint = 5.0;
+  final double _maxSetpoint = 35.0;
 
   // Devices state
   DevicesState _devicesState = DevicesState.loading;
@@ -110,8 +110,6 @@ class _SpacePageState extends State<SpacePage> {
   static const String _sensorsOnlyTitle = 'Sensors Only';
   static const String _sensorsOnlyDescription =
       'This space only has sensors — no controllable devices';
-  static const String _noLightingDescription =
-      'No lighting devices in this space';
 
   @override
   void initState() {
