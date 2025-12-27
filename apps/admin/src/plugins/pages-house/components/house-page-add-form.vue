@@ -152,14 +152,6 @@ const { model, formEl, formChanged, submit, formResult } = usePageAddForm<IHouse
 	type: PAGES_HOUSE_TYPE,
 });
 
-// Set defaults for house-specific fields
-if (model.viewMode === undefined) {
-	model.viewMode = 'simple';
-}
-if (model.showWeather === undefined) {
-	model.showWeather = true;
-}
-
 const rules = reactive<FormRules<IHousePageAddForm>>({
 	title: [{ required: true, message: t('dashboardModule.fields.pages.title.validation.required'), trigger: 'change' }],
 });
