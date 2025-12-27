@@ -52,7 +52,8 @@
       "adjustFilters": "Filter logs"
     },
     "aboutLanguageSettings": "Language Settings",
-    "aboutSystemSettings": "System Settings"
+    "aboutSystemSettings": "System Settings",
+    "aboutHouseModeSettings": "House Mode"
   },
   "subHeadings": {
     "system": "Smart panel system status information",
@@ -103,7 +104,8 @@
       "noMoreEntries": "No more log entries"
     },
     "aboutLanguageSettings": "Configure the interface language, timezone, and time format for the Smart Panel. These settings affect how dates, times, and text are displayed throughout the system.",
-    "aboutSystemSettings": "Manage system-wide logging configuration. Select which log severity levels to monitor and display in the application logs."
+    "aboutSystemSettings": "Manage system-wide logging configuration. Select which log severity levels to monitor and display in the application logs.",
+    "aboutHouseModeSettings": "Set the current house mode to control how the Smart Panel and connected devices behave. Home mode is for normal occupancy, Away mode for when no one is home, and Night mode for sleeping hours."
   },
   "fields": {
     "config": {
@@ -159,6 +161,19 @@
         "validation": {
           "required": "At least one log level must be selected",
           "min": "At least one log level must be selected"
+        }
+      },
+      "houseMode": {
+        "title": "House Mode",
+        "description": "Current house mode setting",
+        "placeholder": "Select house mode",
+        "values": {
+          "home": "Home",
+          "away": "Away",
+          "night": "Night"
+        },
+        "validation": {
+          "required": "House mode is required"
         }
       }
     },

@@ -19,6 +19,7 @@ export const SystemConfigSchema = ConfigModuleSchema.extend({
 	timezone: z.string(),
 	timeFormat: z.enum(['12h', '24h']),
 	logLevels: z.array(z.enum(['silent', 'verbose', 'debug', 'trace', 'log', 'info', 'success', 'warn', 'error', 'fail', 'fatal'])),
+	houseMode: z.enum(['home', 'away', 'night']),
 });
 
 // BACKEND API
@@ -31,6 +32,7 @@ export const SystemConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Confi
 		timezone: z.string().optional(),
 		time_format: z.enum(['12h', '24h']).optional(),
 		log_levels: z.array(z.enum(['silent', 'verbose', 'debug', 'trace', 'log', 'info', 'success', 'warn', 'error', 'fail', 'fatal'])).optional(),
+		house_mode: z.enum(['home', 'away', 'night']).optional(),
 	})
 );
 
@@ -41,5 +43,6 @@ export const SystemConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSc
 		timezone: z.string(),
 		time_format: z.enum(['12h', '24h']),
 		log_levels: z.array(z.enum(['silent', 'verbose', 'debug', 'trace', 'log', 'info', 'success', 'warn', 'error', 'fail', 'fatal'])),
+		house_mode: z.enum(['home', 'away', 'night']),
 	})
 );

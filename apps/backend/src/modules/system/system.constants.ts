@@ -20,6 +20,8 @@ export enum EventType {
 	SYSTEM_REBOOT_SET = 'SystemModule.System.Reboot.Set',
 	SYSTEM_POWER_OFF_SET = 'SystemModule.System.PowerOff.Set',
 	SYSTEM_FACTORY_RESET_SET = 'SystemModule.System.FactoryReset.Set',
+
+	HOUSE_MODE_CHANGED = 'SystemModule.HouseMode.Changed',
 }
 
 export enum LogEntryType {
@@ -63,6 +65,12 @@ export enum LogLevelType {
 	ERROR = LogEntryType.ERROR,
 	FAIL = LogEntryType.FAIL,
 	FATAL = LogEntryType.FATAL,
+}
+
+export enum HouseMode {
+	HOME = 'home',
+	AWAY = 'away',
+	NIGHT = 'night',
 }
 
 export enum LogEntrySource {

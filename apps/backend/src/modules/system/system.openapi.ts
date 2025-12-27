@@ -1,6 +1,8 @@
 /**
  * OpenAPI extra models for System module
  */
+import { UpdateSystemConfigDto } from './dto/update-config.dto';
+import { SystemConfigModel } from './models/config.model';
 import {
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
@@ -32,6 +34,9 @@ import {
  * OpenAPI extra models for System module
  */
 export const SYSTEM_SWAGGER_EXTRA_MODELS = [
+	// Config models
+	SystemConfigModel,
+	UpdateSystemConfigDto,
 	// Response models
 	LogEntriesResponseModel,
 	LogEntryAcceptedResponseModel,
