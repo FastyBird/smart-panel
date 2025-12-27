@@ -717,61 +717,74 @@ class _SpacePageState extends State<SpacePage> {
       density: _visualDensityService.density,
     );
 
-    return GestureDetector(
-      onTap: _isUndoLoading ? null : _executeUndo,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pSm,
-          vertical: AppSpacings.pXs,
-        ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.light
-              ? AppColorsLight.info.withValues(alpha: 0.15)
-              : AppColorsDark.info.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
+    // Build tooltip message with description and/or expiry
+    String tooltipMessage = _undoButton;
+    if (_undoDescription != null) {
+      tooltipMessage = _undoDescription!;
+      if (_undoExpiresInSeconds != null && _undoExpiresInSeconds! > 0) {
+        final minutes = (_undoExpiresInSeconds! / 60).ceil();
+        tooltipMessage += ' (expires in ${minutes}m)';
+      }
+    }
+
+    return Tooltip(
+      message: tooltipMessage,
+      child: GestureDetector(
+        onTap: _isUndoLoading ? null : _executeUndo,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pSm,
+            vertical: AppSpacings.pXs,
+          ),
+          decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.light
-                ? AppColorsLight.info.withValues(alpha: 0.3)
-                : AppColorsDark.info.withValues(alpha: 0.3),
-            width: _screenService.scale(
-              1,
-              density: _visualDensityService.density,
+                ? AppColorsLight.info.withValues(alpha: 0.15)
+                : AppColorsDark.info.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppColorsLight.info.withValues(alpha: 0.3)
+                  : AppColorsDark.info.withValues(alpha: 0.3),
+              width: _screenService.scale(
+                1,
+                density: _visualDensityService.density,
+              ),
             ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _isUndoLoading
-                ? SizedBox(
-                    width: iconSize,
-                    height: iconSize,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _isUndoLoading
+                  ? SizedBox(
+                      width: iconSize,
+                      height: iconSize,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? AppColorsLight.info
+                            : AppColorsDark.info,
+                      ),
+                    )
+                  : Icon(
+                      MdiIcons.undo,
+                      size: iconSize,
                       color: Theme.of(context).brightness == Brightness.light
                           ? AppColorsLight.info
                           : AppColorsDark.info,
                     ),
-                  )
-                : Icon(
-                    MdiIcons.undo,
-                    size: iconSize,
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.info
-                        : AppColorsDark.info,
-                  ),
-            SizedBox(width: AppSpacings.pXs),
-            Text(
-              _undoButton,
-              style: TextStyle(
-                fontSize: AppFontSize.extraSmall,
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.infoDark2
-                    : AppColorsDark.infoDark2,
+              SizedBox(width: AppSpacings.pXs),
+              Text(
+                _undoButton,
+                style: TextStyle(
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppColorsLight.infoDark2
+                      : AppColorsDark.infoDark2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
