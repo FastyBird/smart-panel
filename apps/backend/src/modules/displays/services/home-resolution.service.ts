@@ -4,14 +4,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { PAGES_HOUSE_TYPE } from '../../../plugins/pages-house/pages-house.constants';
 import { PAGES_SPACE_TYPE } from '../../../plugins/pages-space/pages-space.constants';
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
-import { DISPLAYS_MODULE_NAME, HomeMode } from '../displays.constants';
+import { DISPLAYS_MODULE_NAME, DisplayRole, HomeMode } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
 export interface ResolvedHomePage {
 	pageId: string | null;
-	resolutionMode: 'explicit' | 'auto_space' | 'first_page' | 'fallback';
+	resolutionMode: 'explicit' | 'auto_space' | 'auto_role' | 'first_page' | 'fallback';
 	reason: string;
 }
 
@@ -28,14 +29,18 @@ export class HomeResolutionService {
 	/**
 	 * Resolves the home page for a display based on its configuration.
 	 *
-	 * Resolution precedence:
+	 * v2 Resolution precedence:
 	 * 1. If homeMode is 'explicit' and homePageId is set and page exists -> use it
-	 * 2. If homeMode is 'auto_space' and display has spaceId and a SpacePage exists for that space -> use it
-	 * 3. If homeMode is 'first_page' or fallback -> use first assigned page (by order)
-	 * 4. Final fallback -> null (no pages available)
+	 * 2. If role is 'room' and display has spaceId and a SpacePage exists for that space -> use it
+	 * 3. If role is 'master' and a House Overview page exists -> use it
+	 * 4. If role is 'entry' and a House Modes page exists -> use it (future)
+	 * 5. If homeMode is 'first_page' -> use first assigned page (by order)
+	 * 6. Final fallback -> first page or null
 	 */
 	async resolveHomePage(display: DisplayEntity): Promise<ResolvedHomePage> {
-		this.logger.debug(`Resolving home page for display id=${display.id}, homeMode=${display.homeMode}`);
+		this.logger.debug(
+			`Resolving home page for display id=${display.id}, role=${display.role}, homeMode=${display.homeMode}`,
+		);
 
 		// Get pages visible to this display (empty displays array means visible to all)
 		const visiblePages = await this.getVisiblePages(display.id);
@@ -57,22 +62,39 @@ export class HomeResolutionService {
 		// Fetch all pages once with their display assignments
 		const allPages = await this.getAllPagesWithDisplays();
 
-		// Get all unique space IDs that need SpacePage lookup
+		// Get all unique space IDs that need SpacePage lookup (for room role)
 		const spaceIds = new Set<string>();
+		let needsHouseOverview = false;
 		for (const display of displays) {
-			if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId) {
+			// Room role with spaceId needs SpacePage lookup
+			if (display.role === DisplayRole.ROOM && display.spaceId) {
 				spaceIds.add(display.spaceId);
+			}
+			// Master role needs House Overview page lookup
+			if (display.role === DisplayRole.MASTER) {
+				needsHouseOverview = true;
 			}
 		}
 
 		// Batch fetch all SpacePage mappings
 		const spacePageMap = await this.getSpacePagesForSpaces(Array.from(spaceIds));
 
+		// Find House Overview page if needed (first available)
+		let houseOverviewPageId: string | null = null;
+		if (needsHouseOverview) {
+			houseOverviewPageId = await this.findHouseOverviewPage(allPages);
+		}
+
 		// Resolve for each display using cached data
 		const results = new Map<string, ResolvedHomePage>();
 		for (const display of displays) {
 			const visiblePages = this.filterVisiblePages(allPages, display.id);
-			const resolved = this.resolveHomePageWithPagesAndSpaceMap(display, visiblePages, spacePageMap);
+			const resolved = this.resolveHomePageWithPagesAndSpaceMap(
+				display,
+				visiblePages,
+				spacePageMap,
+				houseOverviewPageId,
+			);
 			results.set(display.id, resolved);
 		}
 
@@ -81,6 +103,7 @@ export class HomeResolutionService {
 
 	/**
 	 * Internal resolution logic that works with pre-fetched pages.
+	 * Implements v2 precedence rules.
 	 */
 	private async resolveHomePageWithPages(
 		display: DisplayEntity,
@@ -95,7 +118,7 @@ export class HomeResolutionService {
 			};
 		}
 
-		// 1. Explicit mode - use configured home page
+		// 1. Explicit mode - use configured home page (highest priority, overrides role)
 		if (display.homeMode === HomeMode.EXPLICIT && display.homePageId) {
 			const explicitPage = visiblePages.find((p) => p.id === display.homePageId);
 			if (explicitPage) {
@@ -109,8 +132,40 @@ export class HomeResolutionService {
 			this.logger.warn(`Explicit home page id=${display.homePageId} not found or not visible, falling back`);
 		}
 
-		// 2. Auto-space mode - find SpacePage for display's space
-		if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId) {
+		// 2. Role-based resolution (v2 spec)
+		// 2a. Room role - find SpacePage for display's space
+		if (display.role === DisplayRole.ROOM && display.spaceId) {
+			const spacePage = await this.findSpacePageForSpace(display.spaceId, visiblePages);
+			if (spacePage) {
+				this.logger.debug(`Using SpacePage id=${spacePage.id} for room role, space id=${display.spaceId}`);
+				return {
+					pageId: spacePage.id,
+					resolutionMode: 'auto_role',
+					reason: `Using SpacePage for space ${display.spaceId} (room role)`,
+				};
+			}
+			this.logger.debug(`No SpacePage found for space id=${display.spaceId}`);
+		}
+
+		// 2b. Master role - find House Overview page
+		if (display.role === DisplayRole.MASTER) {
+			const houseOverviewPageId = await this.findHouseOverviewPageId(visiblePages);
+			if (houseOverviewPageId) {
+				this.logger.debug(`Using House Overview page id=${houseOverviewPageId} for master role`);
+				return {
+					pageId: houseOverviewPageId,
+					resolutionMode: 'auto_role',
+					reason: 'Using House Overview page (master role)',
+				};
+			}
+			this.logger.debug(`No House Overview page found for master role`);
+		}
+
+		// 2c. Entry role - find House Modes page (future: when page type exists)
+		// Currently no house_modes page type, will fall through to fallback
+
+		// 3. Legacy auto_space mode support (backward compatibility)
+		if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId && display.role !== DisplayRole.ROOM) {
 			const spacePage = await this.findSpacePageForSpace(display.spaceId, visiblePages);
 			if (spacePage) {
 				this.logger.debug(`Using auto-space home page id=${spacePage.id} for space id=${display.spaceId}`);
@@ -120,10 +175,9 @@ export class HomeResolutionService {
 					reason: `Using SpacePage for space ${display.spaceId}`,
 				};
 			}
-			this.logger.debug(`No SpacePage found for space id=${display.spaceId}, falling back to first page`);
 		}
 
-		// 3. First page mode or fallback - use first visible page by order
+		// 4. First page mode or fallback - use first visible page by order
 		const firstPage = this.getFirstPage(visiblePages);
 		if (firstPage) {
 			const mode = display.homeMode === HomeMode.FIRST_PAGE ? 'first_page' : 'fallback';
@@ -135,7 +189,7 @@ export class HomeResolutionService {
 			};
 		}
 
-		// 4. No pages available
+		// 5. No pages available
 		return {
 			pageId: null,
 			resolutionMode: 'fallback',
@@ -145,11 +199,13 @@ export class HomeResolutionService {
 
 	/**
 	 * Internal resolution logic for batch operations with pre-fetched space page map.
+	 * Implements v2 precedence rules.
 	 */
 	private resolveHomePageWithPagesAndSpaceMap(
 		display: DisplayEntity,
 		visiblePages: PageEntity[],
 		spacePageMap: Map<string, string>,
+		houseOverviewPageId: string | null,
 	): ResolvedHomePage {
 		if (visiblePages.length === 0) {
 			return {
@@ -159,7 +215,7 @@ export class HomeResolutionService {
 			};
 		}
 
-		// 1. Explicit mode - use configured home page
+		// 1. Explicit mode - use configured home page (highest priority, overrides role)
 		if (display.homeMode === HomeMode.EXPLICIT && display.homePageId) {
 			const explicitPage = visiblePages.find((p) => p.id === display.homePageId);
 			if (explicitPage) {
@@ -171,8 +227,39 @@ export class HomeResolutionService {
 			}
 		}
 
-		// 2. Auto-space mode - find SpacePage for display's space using pre-fetched map
-		if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId) {
+		// 2. Role-based resolution (v2 spec)
+		// 2a. Room role - find SpacePage for display's space
+		if (display.role === DisplayRole.ROOM && display.spaceId) {
+			const spacePageId = spacePageMap.get(display.spaceId);
+			if (spacePageId) {
+				const spacePage = visiblePages.find((p) => p.id === spacePageId);
+				if (spacePage) {
+					return {
+						pageId: spacePage.id,
+						resolutionMode: 'auto_role',
+						reason: `Using SpacePage for space ${display.spaceId} (room role)`,
+					};
+				}
+			}
+		}
+
+		// 2b. Master role - find House Overview page
+		if (display.role === DisplayRole.MASTER && houseOverviewPageId) {
+			const houseOverviewPage = visiblePages.find((p) => p.id === houseOverviewPageId);
+			if (houseOverviewPage) {
+				return {
+					pageId: houseOverviewPageId,
+					resolutionMode: 'auto_role',
+					reason: 'Using House Overview page (master role)',
+				};
+			}
+		}
+
+		// 2c. Entry role - find House Modes page (future: when page type exists)
+		// Currently no house_modes page type, will fall through to fallback
+
+		// 3. Legacy auto_space mode support (backward compatibility)
+		if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId && display.role !== DisplayRole.ROOM) {
 			const spacePageId = spacePageMap.get(display.spaceId);
 			if (spacePageId) {
 				const spacePage = visiblePages.find((p) => p.id === spacePageId);
@@ -186,7 +273,7 @@ export class HomeResolutionService {
 			}
 		}
 
-		// 3. First page mode or fallback - use first visible page by order
+		// 4. First page mode or fallback - use first visible page by order
 		const firstPage = this.getFirstPage(visiblePages);
 		if (firstPage) {
 			const mode = display.homeMode === HomeMode.FIRST_PAGE ? 'first_page' : 'fallback';
@@ -197,7 +284,7 @@ export class HomeResolutionService {
 			};
 		}
 
-		// 4. No pages available
+		// 5. No pages available
 		return {
 			pageId: null,
 			resolutionMode: 'fallback',
@@ -296,5 +383,46 @@ export class HomeResolutionService {
 		}
 		// Pages are already sorted by order and createdAt from the query
 		return pages[0];
+	}
+
+	/**
+	 * Finds a House Overview page ID among visible pages.
+	 * Returns the first matching house overview page.
+	 */
+	private async findHouseOverviewPageId(visiblePages: PageEntity[]): Promise<string | null> {
+		// Query for House Overview page entities
+		const housePageIds: { id: string }[] = await this.dataSource.query(
+			`SELECT id FROM dashboard_module_pages WHERE type = ?`,
+			[PAGES_HOUSE_TYPE],
+		);
+
+		if (!housePageIds || housePageIds.length === 0) {
+			return null;
+		}
+
+		const housePageIdSet = new Set(housePageIds.map((row) => row.id));
+
+		// Find the first matching house overview page that is visible to this display
+		const housePage = visiblePages.find((page) => housePageIdSet.has(page.id));
+		return housePage?.id || null;
+	}
+
+	/**
+	 * Finds a House Overview page ID from all pages (for batch operations).
+	 * Returns the first matching house overview page ID.
+	 */
+	private async findHouseOverviewPage(_allPages: PageEntity[]): Promise<string | null> {
+		// Query for House Overview page entities
+		const housePageIds: { id: string }[] = await this.dataSource.query(
+			`SELECT id FROM dashboard_module_pages WHERE type = ? ORDER BY "order" ASC, "createdAt" ASC LIMIT 1`,
+			[PAGES_HOUSE_TYPE],
+		);
+
+		if (!housePageIds || housePageIds.length === 0) {
+			return null;
+		}
+
+		// Return the first house overview page ID
+		return housePageIds[0].id;
 	}
 }
