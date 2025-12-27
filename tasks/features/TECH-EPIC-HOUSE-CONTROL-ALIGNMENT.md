@@ -4,7 +4,7 @@ Type: technical
 Scope: backend, admin, panel
 Size: small
 Parent: EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -32,11 +32,11 @@ I want the merged implementation to be audited and adjusted to match the v2 spec
 
 ## 4. Acceptance criteria
 
-- [ ] A gap report is posted in the PR description/comment.
-- [ ] Home resolution precedence matches v2 spec exactly.
-- [ ] House Overview behaves read-mostly and is robust to missing SpacePages.
-- [ ] House Modes match v2 semantics (Away/ Night actions, Home non-destructive).
-- [ ] Any accidental breaking changes are reverted or made backward compatible.
+- [x] A gap report is posted in the PR description/comment.
+- [x] Home resolution precedence matches v2 spec exactly.
+- [x] House Overview behaves read-mostly and is robust to missing SpacePages.
+- [x] House Modes match v2 semantics (Away/ Night actions, Home non-destructive).
+- [x] Any accidental breaking changes are reverted or made backward compatible.
 
 ## 8. AI instructions
 
