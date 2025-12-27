@@ -62,12 +62,17 @@ export class HomeResolutionService {
 		// Fetch all pages once with their display assignments
 		const allPages = await this.getAllPagesWithDisplays();
 
-		// Get all unique space IDs that need SpacePage lookup (for room role)
+		// Get all unique space IDs that need SpacePage lookup
+		// Include both: room role displays AND legacy auto_space mode displays (any role)
 		const spaceIds = new Set<string>();
 		let needsHouseOverview = false;
 		for (const display of displays) {
 			// Room role with spaceId needs SpacePage lookup
 			if (display.role === DisplayRole.ROOM && display.spaceId) {
+				spaceIds.add(display.spaceId);
+			}
+			// Legacy auto_space mode also needs SpacePage lookup (for any role)
+			if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId) {
 				spaceIds.add(display.spaceId);
 			}
 			// Master role needs House Overview page lookup
@@ -79,10 +84,10 @@ export class HomeResolutionService {
 		// Batch fetch all SpacePage mappings
 		const spacePageMap = await this.getSpacePagesForSpaces(Array.from(spaceIds));
 
-		// Find House Overview page if needed (first available)
-		let houseOverviewPageId: string | null = null;
+		// Batch fetch all House Overview page IDs if needed
+		let houseOverviewPageIds: Set<string> = new Set();
 		if (needsHouseOverview) {
-			houseOverviewPageId = await this.findHouseOverviewPage(allPages);
+			houseOverviewPageIds = await this.getHouseOverviewPageIds();
 		}
 
 		// Resolve for each display using cached data
@@ -93,7 +98,7 @@ export class HomeResolutionService {
 				display,
 				visiblePages,
 				spacePageMap,
-				houseOverviewPageId,
+				houseOverviewPageIds,
 			);
 			results.set(display.id, resolved);
 		}
@@ -205,7 +210,7 @@ export class HomeResolutionService {
 		display: DisplayEntity,
 		visiblePages: PageEntity[],
 		spacePageMap: Map<string, string>,
-		houseOverviewPageId: string | null,
+		houseOverviewPageIds: Set<string>,
 	): ResolvedHomePage {
 		if (visiblePages.length === 0) {
 			return {
@@ -243,12 +248,12 @@ export class HomeResolutionService {
 			}
 		}
 
-		// 2b. Master role - find House Overview page
-		if (display.role === DisplayRole.MASTER && houseOverviewPageId) {
-			const houseOverviewPage = visiblePages.find((p) => p.id === houseOverviewPageId);
+		// 2b. Master role - find House Overview page (first visible one)
+		if (display.role === DisplayRole.MASTER && houseOverviewPageIds.size > 0) {
+			const houseOverviewPage = visiblePages.find((p) => houseOverviewPageIds.has(p.id));
 			if (houseOverviewPage) {
 				return {
-					pageId: houseOverviewPageId,
+					pageId: houseOverviewPage.id,
 					resolutionMode: 'auto_role',
 					reason: 'Using House Overview page (master role)',
 				};
@@ -408,21 +413,16 @@ export class HomeResolutionService {
 	}
 
 	/**
-	 * Finds a House Overview page ID from all pages (for batch operations).
-	 * Returns the first matching house overview page ID.
+	 * Gets all House Overview page IDs (for batch operations).
+	 * Returns a Set of page IDs that are house overview pages.
+	 * Each display will filter this set to find visible ones.
 	 */
-	private async findHouseOverviewPage(_allPages: PageEntity[]): Promise<string | null> {
-		// Query for House Overview page entities
+	private async getHouseOverviewPageIds(): Promise<Set<string>> {
 		const housePageIds: { id: string }[] = await this.dataSource.query(
-			`SELECT id FROM dashboard_module_pages WHERE type = ? ORDER BY "order" ASC, "createdAt" ASC LIMIT 1`,
+			`SELECT id FROM dashboard_module_pages WHERE type = ? ORDER BY "order" ASC, "createdAt" ASC`,
 			[PAGES_HOUSE_TYPE],
 		);
 
-		if (!housePageIds || housePageIds.length === 0) {
-			return null;
-		}
-
-		// Return the first house overview page ID
-		return housePageIds[0].id;
+		return new Set(housePageIds.map((row) => row.id));
 	}
 }
