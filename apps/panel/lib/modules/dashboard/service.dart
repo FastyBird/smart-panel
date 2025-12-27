@@ -19,6 +19,11 @@ class DashboardService extends ChangeNotifier {
   Map<String, DataSourceView> _dataSources = {};
   Map<String, CardView> _cards = {};
 
+  /// Tracks the current page ID during the session for space-aware idle mode.
+  /// When the panel returns from idle (screensaver/lock), it will restore
+  /// to this page instead of always going to the home page.
+  String? _currentPageId;
+
   DashboardService({
     required PagesRepository pagesRepository,
     required TilesRepository tilesRepository,
@@ -63,6 +68,23 @@ class DashboardService extends ChangeNotifier {
   Map<String, DataSourceView> get dataSources => _dataSources;
 
   Map<String, CardView> get cards => _cards;
+
+  /// Returns the current page ID being viewed, if set.
+  String? get currentPageId => _currentPageId;
+
+  /// Sets the current page ID. Call this when the user navigates to a page.
+  /// This enables space-aware idle mode - when returning from screensaver/lock,
+  /// the dashboard will restore to this page.
+  void setCurrentPageId(String? pageId) {
+    if (_currentPageId != pageId) {
+      _currentPageId = pageId;
+    }
+  }
+
+  /// Clears the current page ID tracking. Call this when resetting to home.
+  void clearCurrentPageId() {
+    _currentPageId = null;
+  }
 
   DashboardPageView? getPage(String id) {
     if (!_pages.containsKey(id)) {
