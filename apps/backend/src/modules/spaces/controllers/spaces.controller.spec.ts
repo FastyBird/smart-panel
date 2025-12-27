@@ -13,6 +13,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
+import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
@@ -111,6 +112,21 @@ describe('SpacesController', () => {
 					useValue: {
 						getSuggestion: jest.fn().mockResolvedValue(null),
 						recordFeedback: jest.fn().mockResolvedValue({ success: true }),
+					},
+				},
+				{
+					provide: SpaceContextSnapshotService,
+					useValue: {
+						captureSnapshot: jest.fn().mockResolvedValue({
+							spaceId: uuid(),
+							spaceName: 'Test Space',
+							lighting: {
+								summary: { totalLights: 0, lightsOn: 0, averageBrightness: null },
+								lights: [],
+							},
+							climate: { hasClimate: false },
+							capturedAt: new Date(),
+						}),
 					},
 				},
 			],

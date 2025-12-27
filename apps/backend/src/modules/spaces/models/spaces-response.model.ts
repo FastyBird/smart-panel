@@ -1006,3 +1006,218 @@ export class IntentCatalogResponseModel extends BaseSuccessResponseModel<IntentC
 	@Type(() => IntentCatalogDataModel)
 	declare data: IntentCatalogDataModel;
 }
+
+// ================================
+// Context Snapshot Response Models
+// ================================
+
+/**
+ * State of a single light device at a point in time
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightStateSnapshot' })
+export class LightStateSnapshotDataModel {
+	@ApiProperty({
+		name: 'device_id',
+		description: 'ID of the lighting device',
+		type: 'string',
+		format: 'uuid',
+		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
+	})
+	@Expose({ name: 'device_id' })
+	deviceId: string;
+
+	@ApiProperty({
+		name: 'device_name',
+		description: 'Name of the lighting device',
+		type: 'string',
+		example: 'Living Room Ceiling Light',
+	})
+	@Expose({ name: 'device_name' })
+	deviceName: string;
+
+	@ApiProperty({
+		name: 'channel_id',
+		description: 'ID of the light channel',
+		type: 'string',
+		format: 'uuid',
+		example: 'c3d29eb4-632f-5e8c-c4af-ded8b9e6c0f8',
+	})
+	@Expose({ name: 'channel_id' })
+	channelId: string;
+
+	@ApiProperty({
+		name: 'channel_name',
+		description: 'Name of the light channel',
+		type: 'string',
+		example: 'Light',
+	})
+	@Expose({ name: 'channel_name' })
+	channelName: string;
+
+	@ApiPropertyOptional({
+		description: 'The lighting role assigned to this light (null if not assigned)',
+		enum: LightingRole,
+		nullable: true,
+		example: LightingRole.MAIN,
+	})
+	@Expose()
+	role: LightingRole | null;
+
+	@ApiProperty({
+		name: 'is_on',
+		description: 'Whether the light is currently on',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'is_on' })
+	isOn: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Current brightness level (0-100), null if not supported',
+		type: 'number',
+		nullable: true,
+		example: 75,
+	})
+	@Expose()
+	brightness: number | null;
+
+	@ApiPropertyOptional({
+		name: 'color_temperature',
+		description: 'Current color temperature in Kelvin, null if not supported',
+		type: 'number',
+		nullable: true,
+		example: 4000,
+	})
+	@Expose({ name: 'color_temperature' })
+	colorTemperature: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Current color value (hex or RGB string), null if not supported',
+		type: 'string',
+		nullable: true,
+		example: '#ff6b35',
+	})
+	@Expose()
+	color: string | null;
+}
+
+/**
+ * Summary of lighting state in the space
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingSummary' })
+export class LightingSummaryDataModel {
+	@ApiProperty({
+		name: 'total_lights',
+		description: 'Total number of lights in the space',
+		type: 'integer',
+		example: 5,
+	})
+	@Expose({ name: 'total_lights' })
+	totalLights: number;
+
+	@ApiProperty({
+		name: 'lights_on',
+		description: 'Number of lights currently on',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'lights_on' })
+	lightsOn: number;
+
+	@ApiPropertyOptional({
+		name: 'average_brightness',
+		description: 'Average brightness of lights that are on (0-100), null if no lights are on with brightness',
+		type: 'number',
+		nullable: true,
+		example: 65,
+	})
+	@Expose({ name: 'average_brightness' })
+	averageBrightness: number | null;
+}
+
+/**
+ * Complete lighting context snapshot
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingContext' })
+export class LightingContextDataModel {
+	@ApiProperty({
+		description: 'Summary of lighting state',
+		type: () => LightingSummaryDataModel,
+	})
+	@Expose()
+	@Type(() => LightingSummaryDataModel)
+	summary: LightingSummaryDataModel;
+
+	@ApiProperty({
+		description: 'State of each individual light',
+		type: () => [LightStateSnapshotDataModel],
+	})
+	@Expose()
+	@Type(() => LightStateSnapshotDataModel)
+	lights: LightStateSnapshotDataModel[];
+}
+
+/**
+ * Complete space context snapshot data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataContextSnapshot' })
+export class ContextSnapshotDataModel {
+	@ApiProperty({
+		name: 'space_id',
+		description: 'ID of the space',
+		type: 'string',
+		format: 'uuid',
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'space_id' })
+	spaceId: string;
+
+	@ApiProperty({
+		name: 'space_name',
+		description: 'Name of the space',
+		type: 'string',
+		example: 'Living Room',
+	})
+	@Expose({ name: 'space_name' })
+	spaceName: string;
+
+	@ApiProperty({
+		name: 'captured_at',
+		description: 'Timestamp when the snapshot was captured',
+		type: 'string',
+		format: 'date-time',
+		example: '2025-01-25T12:00:00Z',
+	})
+	@Expose({ name: 'captured_at' })
+	capturedAt: Date;
+
+	@ApiProperty({
+		description: 'Lighting context snapshot',
+		type: () => LightingContextDataModel,
+	})
+	@Expose()
+	@Type(() => LightingContextDataModel)
+	lighting: LightingContextDataModel;
+
+	@ApiProperty({
+		description: 'Climate state snapshot',
+		type: () => ClimateStateDataModel,
+	})
+	@Expose()
+	@Type(() => ClimateStateDataModel)
+	climate: ClimateStateDataModel;
+}
+
+/**
+ * Response wrapper for context snapshot
+ */
+@ApiSchema({ name: 'SpacesModuleResContextSnapshot' })
+export class ContextSnapshotResponseModel extends BaseSuccessResponseModel<ContextSnapshotDataModel> {
+	@ApiProperty({
+		description: 'The complete context snapshot for the space',
+		type: () => ContextSnapshotDataModel,
+	})
+	@Expose()
+	@Type(() => ContextSnapshotDataModel)
+	declare data: ContextSnapshotDataModel;
+}

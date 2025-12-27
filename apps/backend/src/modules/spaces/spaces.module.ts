@@ -13,6 +13,7 @@ import { SpacesController } from './controllers/spaces.controller';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
+import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
@@ -37,9 +38,16 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceIntentService,
 		SpaceLightingRoleService,
 		SpaceSuggestionService,
+		SpaceContextSnapshotService,
 		SpaceActivityListener,
 	],
-	exports: [SpacesService, SpaceIntentService, SpaceLightingRoleService, SpaceSuggestionService],
+	exports: [
+		SpacesService,
+		SpaceIntentService,
+		SpaceLightingRoleService,
+		SpaceSuggestionService,
+		SpaceContextSnapshotService,
+	],
 })
 export class SpacesModule implements OnModuleInit {
 	constructor(
