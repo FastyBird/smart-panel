@@ -152,12 +152,12 @@ const { model, formEl, formChanged, submit, formResult } = usePageAddForm<IHouse
 	type: PAGES_HOUSE_TYPE,
 });
 
-// Set defaults for house page
-if (model.value.viewMode === undefined) {
-	model.value.viewMode = 'simple';
+// Set defaults for house-specific fields
+if (model.viewMode === undefined) {
+	model.viewMode = 'simple';
 }
-if (model.value.showWeather === undefined) {
-	model.value.showWeather = true;
+if (model.showWeather === undefined) {
+	model.showWeather = true;
 }
 
 const rules = reactive<FormRules<IHousePageAddForm>>({
