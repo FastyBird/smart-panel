@@ -4,7 +4,7 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsOptional, IsString } from 'class-vali
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
-import { LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
+import { HouseMode, LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateSystem' })
@@ -70,4 +70,16 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		message: '[{"field":"log_levels","reason":"Each log level must be one of the predefined values."}]',
 	})
 	log_levels?: LogLevelType[];
+
+	@ApiPropertyOptional({
+		description: 'Sets the current house mode.',
+		enum: HouseMode,
+		example: HouseMode.HOME,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(HouseMode, {
+		message: '[{"field":"house_mode","reason":"House mode must be a valid value (home, away, night)."}]',
+	})
+	house_mode?: HouseMode;
 }

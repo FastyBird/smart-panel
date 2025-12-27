@@ -35,3 +35,22 @@ enum TimeFormat {
 
   static bool contains(String value) => utils.contains(value);
 }
+
+enum HouseMode {
+  home('home'),
+  away('away'),
+  night('night');
+
+  final String value;
+
+  const HouseMode(this.value);
+
+  static final utils = StringEnumUtils(
+    HouseMode.values,
+    (HouseMode payload) => payload.value,
+  );
+
+  static HouseMode? fromValue(String value) => utils.fromValue(value);
+
+  static bool contains(String value) => utils.contains(value);
+}

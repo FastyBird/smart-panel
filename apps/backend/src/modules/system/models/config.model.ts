@@ -4,7 +4,7 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsString } from 'class-validator';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ModuleConfigModel } from '../../config/models/config.model';
-import { LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
+import { HouseMode, LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataSystem' })
@@ -63,4 +63,14 @@ export class SystemConfigModel extends ModuleConfigModel {
 	@ArrayNotEmpty()
 	@IsEnum(LogLevelType, { each: true })
 	logLevels: LogLevelType[] = [LogLevelType.INFO, LogLevelType.WARN, LogLevelType.ERROR, LogLevelType.FATAL];
+
+	@ApiProperty({
+		name: 'house_mode',
+		description: 'Current house mode (home, away, night)',
+		enum: HouseMode,
+		example: HouseMode.HOME,
+	})
+	@Expose({ name: 'house_mode' })
+	@IsEnum(HouseMode)
+	houseMode: HouseMode = HouseMode.HOME;
 }
