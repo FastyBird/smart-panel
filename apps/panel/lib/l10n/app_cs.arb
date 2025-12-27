@@ -247,5 +247,16 @@
   "space_lighting_mode_relax": "Relax",
   "space_lighting_mode_night": "Noc",
   "space_devices_title": "Zařízení",
-  "space_devices_placeholder": "Zařízení v této místnosti se zobrazí zde"
+  "space_devices_placeholder": "Zařízení v této místnosti se zobrazí zde",
+  "space_climate_controls_title": "Klimatizace",
+  "space_climate_current_label": "Aktuální",
+  "space_climate_target_label": "Cílová",
+  "space_suggestion_applied": "Návrh byl aplikován",
+  "space_suggestion_dismissed": "Návrh byl zamítnut",
+  "space_undo_success": "Akce byla vrácena",
+  "space_undo_button": "Zpět",
+  "space_empty_state_title": "Žádná ovládání nejsou k dispozici",
+  "space_empty_state_description": "Tato místnost nemá nakonfigurovaná žádná ovladatelná zařízení",
+  "space_sensors_only_title": "Pouze senzory",
+  "space_sensors_only_description": "Tato místnost má pouze senzory — žádná ovladatelná zařízení"
 }

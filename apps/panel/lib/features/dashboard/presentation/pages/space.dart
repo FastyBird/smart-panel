@@ -1,3 +1,16 @@
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_delta.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_climate_intent_type.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent_mode.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent_type.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback_feedback.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback_suggestion_type.dart';
+import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -65,6 +78,7 @@ class _SpacePageState extends State<SpacePage> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  final SpacesModuleClient _spacesApi = locator<SpacesModuleClient>();
 
   bool _isLoading = false;
   LightingMode? _activeMode;
@@ -77,8 +91,8 @@ class _SpacePageState extends State<SpacePage> {
   ClimateState _climateState = ClimateState.loading;
   double? _currentTemperature;
   double? _targetTemperature;
-  final double _minSetpoint = 5.0;
-  final double _maxSetpoint = 35.0;
+  double _minSetpoint = 5.0;
+  double _maxSetpoint = 35.0;
 
   // Devices state
   DevicesState _devicesState = DevicesState.loading;
@@ -96,31 +110,48 @@ class _SpacePageState extends State<SpacePage> {
   int? _undoExpiresInSeconds;
   bool _isUndoLoading = false;
 
-  // TODO: Replace with localizations after running `flutter gen-l10n`
-  // The localization strings are defined in app_en.arb and app_cs.arb
-  static const String _lightingControlsTitle = 'Lighting Controls';
-  static const String _modeOff = 'Off';
-  static const String _modeWork = 'Work';
-  static const String _modeRelax = 'Relax';
-  static const String _modeNight = 'Night';
-  static const String _climateControlsTitle = 'Climate';
-  static const String _currentTempLabel = 'Current';
-  static const String _targetTempLabel = 'Target';
-  static const String _devicesTitle = 'Devices';
-  static const String _devicesPlaceholder =
+  // Localized strings - accessed via AppLocalizations
+  String get _lightingControlsTitle =>
+      AppLocalizations.of(context)?.space_lighting_controls_title ?? 'Lighting Controls';
+  String get _modeOff =>
+      AppLocalizations.of(context)?.space_lighting_mode_off ?? 'Off';
+  String get _modeWork =>
+      AppLocalizations.of(context)?.space_lighting_mode_work ?? 'Work';
+  String get _modeRelax =>
+      AppLocalizations.of(context)?.space_lighting_mode_relax ?? 'Relax';
+  String get _modeNight =>
+      AppLocalizations.of(context)?.space_lighting_mode_night ?? 'Night';
+  String get _climateControlsTitle =>
+      AppLocalizations.of(context)?.space_climate_controls_title ?? 'Climate';
+  String get _currentTempLabel =>
+      AppLocalizations.of(context)?.space_climate_current_label ?? 'Current';
+  String get _targetTempLabel =>
+      AppLocalizations.of(context)?.space_climate_target_label ?? 'Target';
+  String get _devicesTitle =>
+      AppLocalizations.of(context)?.space_devices_title ?? 'Devices';
+  String get _devicesPlaceholder =>
+      AppLocalizations.of(context)?.space_devices_placeholder ??
       'Devices in this space will be displayed here';
-  static const String _actionSuccess = 'Action completed successfully';
-  static const String _suggestionApplied = 'Suggestion applied';
-  static const String _suggestionDismissed = 'Suggestion dismissed';
-  static const String _undoSuccess = 'Action undone';
-  static const String _undoButton = 'Undo';
-
-  // Empty state messages
-  static const String _emptyStateTitle = 'No Controls Available';
-  static const String _emptyStateDescription =
+  String get _actionSuccess =>
+      AppLocalizations.of(context)?.action_success ??
+      'Action completed successfully';
+  String get _suggestionApplied =>
+      AppLocalizations.of(context)?.space_suggestion_applied ?? 'Suggestion applied';
+  String get _suggestionDismissed =>
+      AppLocalizations.of(context)?.space_suggestion_dismissed ?? 'Suggestion dismissed';
+  String get _undoSuccess =>
+      AppLocalizations.of(context)?.space_undo_success ?? 'Action undone';
+  String get _undoButton =>
+      AppLocalizations.of(context)?.space_undo_button ?? 'Undo';
+  String get _emptyStateTitle =>
+      AppLocalizations.of(context)?.space_empty_state_title ?? 'No Controls Available';
+  String get _emptyStateDescription =>
+      AppLocalizations.of(context)?.space_empty_state_description ??
       'This space has no controllable devices configured yet';
-  static const String _sensorsOnlyTitle = 'Sensors Only';
-  static const String _sensorsOnlyDescription =
+  String get _sensorsOnlyTitle =>
+      AppLocalizations.of(context)?.space_sensors_only_title ?? 'Sensors Only';
+  String get _sensorsOnlyDescription =>
+      AppLocalizations.of(context)?.space_sensors_only_description ??
       'This space only has sensors — no controllable devices';
 
   @override
@@ -180,32 +211,23 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      // TODO: Replace with actual API call after running `melos rebuild-api`
-      // Example:
-      // final spacesApi = locator<SpacesModuleSpacesApi>();
-      // final response = await spacesApi.getSpacesModuleSpaceClimate(
-      //   id: widget.page.spaceId,
-      // );
-      // final data = response.data;
-      //
-      // For now, simulate no climate devices
-      await Future.delayed(const Duration(milliseconds: 300));
+      final response = await _spacesApi.getSpacesModuleSpaceClimate(
+        id: widget.page.spaceId,
+      );
+      final data = response.data.data;
 
       if (!mounted) return;
 
       setState(() {
-        // Simulating no climate devices for now
-        // When API is integrated:
-        // _currentTemperature = data.currentTemperature;
-        // _targetTemperature = data.targetTemperature;
-        // _minSetpoint = data.minSetpoint;
-        // _maxSetpoint = data.maxSetpoint;
-        // _climateState = !data.hasClimate
-        //     ? ClimateState.noClimate
-        //     : data.canSetSetpoint
-        //         ? ClimateState.controllable
-        //         : ClimateState.readOnly;
-        _climateState = ClimateState.noClimate;
+        _currentTemperature = data.currentTemperature?.toDouble();
+        _targetTemperature = data.targetTemperature?.toDouble();
+        _minSetpoint = data.minSetpoint.toDouble();
+        _maxSetpoint = data.maxSetpoint.toDouble();
+        _climateState = !data.hasClimate
+            ? ClimateState.noClimate
+            : data.canSetSetpoint
+                ? ClimateState.controllable
+                : ClimateState.readOnly;
       });
     } catch (e) {
       if (!mounted) return;
@@ -308,22 +330,18 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      // TODO: Replace with actual API call after running `melos rebuild-api`
-      // Example:
-      // final spacesApi = locator<SpacesModuleSpacesApi>();
-      // final request = SpacesModuleCreateSpaceSuggestionFeedbackReq(
-      //   data: SpacesModuleSuggestionFeedback(
-      //     suggestionType: SpacesModuleSuggestionType.values.byName(_suggestion!.type),
-      //     feedback: SpacesModuleSuggestionFeedbackType.applied,
-      //   ),
-      // );
-      // await spacesApi.createSpacesModuleSpaceSuggestionFeedback(
-      //   id: widget.page.spaceId,
-      //   spacesModuleCreateSpaceSuggestionFeedbackReq: request,
-      // );
-      //
-      // For now, simulate the action
-      await Future.delayed(const Duration(milliseconds: 300));
+      final suggestionType = _parseSuggestionType(_suggestion!.type);
+      if (suggestionType != null) {
+        await _spacesApi.createSpacesModuleSpaceSuggestionFeedback(
+          id: widget.page.spaceId,
+          body: SpacesModuleReqSuggestionFeedback(
+            data: SpacesModuleSuggestionFeedback(
+              suggestionType: suggestionType,
+              feedback: SpacesModuleSuggestionFeedbackFeedback.applied,
+            ),
+          ),
+        );
+      }
 
       if (!mounted) return;
 
@@ -331,8 +349,6 @@ class _SpacePageState extends State<SpacePage> {
       if (_suggestion?.lightingMode != null) {
         setState(() {
           _activeMode = _suggestion!.lightingMode;
-          // Simulate lights on count - when API is integrated:
-          // _lightsOnCount = response.data.affectedDevices;
           _lightsOnCount = 3;
         });
       } else if (_suggestion?.type == 'lighting_off') {
@@ -347,6 +363,9 @@ class _SpacePageState extends State<SpacePage> {
         _suggestion = null;
         _isSuggestionLoading = false;
       });
+
+      // Refresh undo state after successful action
+      await _loadUndoState();
 
       if (mounted) {
         AlertBar.showSuccess(
@@ -371,6 +390,19 @@ class _SpacePageState extends State<SpacePage> {
     }
   }
 
+  SpacesModuleSuggestionFeedbackSuggestionType? _parseSuggestionType(String type) {
+    switch (type) {
+      case 'lighting_relax':
+        return SpacesModuleSuggestionFeedbackSuggestionType.lightingRelax;
+      case 'lighting_night':
+        return SpacesModuleSuggestionFeedbackSuggestionType.lightingNight;
+      case 'lighting_off':
+        return SpacesModuleSuggestionFeedbackSuggestionType.lightingOff;
+      default:
+        return null;
+    }
+  }
+
   Future<void> _dismissSuggestion() async {
     if (_suggestion == null || _isSuggestionLoading) return;
 
@@ -379,22 +411,18 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      // TODO: Replace with actual API call after running `melos rebuild-api`
-      // Example:
-      // final spacesApi = locator<SpacesModuleSpacesApi>();
-      // final request = SpacesModuleCreateSpaceSuggestionFeedbackReq(
-      //   data: SpacesModuleSuggestionFeedback(
-      //     suggestionType: SpacesModuleSuggestionType.values.byName(_suggestion!.type),
-      //     feedback: SpacesModuleSuggestionFeedbackType.dismissed,
-      //   ),
-      // );
-      // await spacesApi.createSpacesModuleSpaceSuggestionFeedback(
-      //   id: widget.page.spaceId,
-      //   spacesModuleCreateSpaceSuggestionFeedbackReq: request,
-      // );
-      //
-      // For now, simulate the action
-      await Future.delayed(const Duration(milliseconds: 200));
+      final suggestionType = _parseSuggestionType(_suggestion!.type);
+      if (suggestionType != null) {
+        await _spacesApi.createSpacesModuleSpaceSuggestionFeedback(
+          id: widget.page.spaceId,
+          body: SpacesModuleReqSuggestionFeedback(
+            data: SpacesModuleSuggestionFeedback(
+              suggestionType: suggestionType,
+              feedback: SpacesModuleSuggestionFeedbackFeedback.dismissed,
+            ),
+          ),
+        );
+      }
 
       if (!mounted) return;
 
@@ -420,29 +448,17 @@ class _SpacePageState extends State<SpacePage> {
 
   Future<void> _loadUndoState() async {
     try {
-      // TODO: Replace with actual API call after running `melos rebuild-api`
-      // Example:
-      // final spacesApi = locator<SpacesModuleSpacesApi>();
-      // final response = await spacesApi.getSpacesModuleSpaceUndoState(
-      //   id: widget.page.spaceId,
-      // );
-      // final data = response.data;
-      //
-      // if (mounted) {
-      //   setState(() {
-      //     _canUndo = data.canUndo;
-      //     _undoDescription = data.actionDescription;
-      //     _undoExpiresInSeconds = data.expiresInSeconds;
-      //   });
-      // }
-      //
-      // For now, simulate no undo available initially
+      final response = await _spacesApi.getSpacesModuleSpaceUndoState(
+        id: widget.page.spaceId,
+      );
+      final data = response.data.data;
+
       if (!mounted) return;
 
       setState(() {
-        _canUndo = false;
-        _undoDescription = null;
-        _undoExpiresInSeconds = null;
+        _canUndo = data.canUndo;
+        _undoDescription = data.actionDescription;
+        _undoExpiresInSeconds = data.expiresInSeconds;
       });
     } catch (e) {
       if (!mounted) return;
@@ -463,34 +479,20 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      // TODO: Replace with actual API call after running `melos rebuild-api`
-      // Example:
-      // final spacesApi = locator<SpacesModuleSpacesApi>();
-      // final response = await spacesApi.createSpacesModuleSpaceUndo(
-      //   id: widget.page.spaceId,
-      // );
-      //
-      // if (response.data?.success == true) {
-      //   // Refresh states after undo
-      //   await _loadLightingState();
-      //   await _loadUndoState();
-      // }
-      //
-      // For now, simulate the undo action
-      await Future.delayed(const Duration(milliseconds: 500));
+      await _spacesApi.createSpacesModuleSpaceUndo(
+        id: widget.page.spaceId,
+      );
 
       if (!mounted) return;
 
-      // Clear undo state after execution
+      // Refresh states after undo
+      await _loadLightingState();
+      await _loadClimateState();
+      await _loadUndoState();
+
       setState(() {
-        _canUndo = false;
-        _undoDescription = null;
-        _undoExpiresInSeconds = null;
         _isUndoLoading = false;
       });
-
-      // Refresh lighting state to reflect restored values
-      await _loadLightingState();
 
       if (mounted) {
         AlertBar.showSuccess(
@@ -523,42 +525,28 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      // TODO: Replace with actual API call after running `melos rebuild-api`
-      // Example:
-      // final spacesApi = locator<SpacesModuleSpacesApi>();
-      // final request = SpacesModuleCreateSpaceClimateIntentReq(
-      //   data: SpacesModuleClimateIntent(
-      //     type: SpacesModuleClimateIntentType.setpointDelta,
-      //     delta: SpacesModuleSetpointDelta.medium,
-      //     increase: increase,
-      //   ),
-      // );
-      // final response = await spacesApi.createSpacesModuleSpaceClimateIntent(
-      //   id: widget.page.spaceId,
-      //   spacesModuleCreateSpaceClimateIntentReq: request,
-      // );
-      //
-      // if (response.data?.newSetpoint != null) {
-      //   setState(() {
-      //     _targetTemperature = response.data!.newSetpoint;
-      //   });
-      // }
-      //
-      // For now, simulate the action
-      await Future.delayed(const Duration(milliseconds: 300));
+      final response = await _spacesApi.createSpacesModuleSpaceClimateIntent(
+        id: widget.page.spaceId,
+        body: SpacesModuleReqClimateIntent(
+          data: SpacesModuleClimateIntent(
+            type: SpacesModuleClimateIntentType.setpointDelta,
+            delta: SpacesModuleClimateIntentDelta.medium,
+            increase: increase,
+          ),
+        ),
+      );
 
       if (!mounted) return;
 
-      if (_targetTemperature != null) {
-        final delta = 1.0;
-        final newSetpoint = increase
-            ? _targetTemperature! + delta
-            : _targetTemperature! - delta;
+      final newSetpoint = response.data.data.newSetpoint?.toDouble();
+      if (newSetpoint != null) {
         setState(() {
-          _targetTemperature =
-              newSetpoint.clamp(_minSetpoint, _maxSetpoint);
+          _targetTemperature = newSetpoint;
         });
       }
+
+      // Refresh undo state after successful action
+      await _loadUndoState();
 
       if (mounted) {
         AlertBar.showSuccess(
@@ -591,53 +579,48 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      // TODO: Replace with actual API call after running `melos rebuild-api`
-      // Example implementation:
-      //
-      // final spacesApi = locator<SpacesModuleSpacesApi>();
-      // final request = switch (mode) {
-      //   LightingMode.off => SpacesModuleCreateSpaceLightingIntentReq(
-      //       data: SpacesModuleCreateSpaceLightingIntentReqDataUnion.spacesModuleLightingIntentOff(
-      //         SpacesModuleLightingIntentOff(type: SpacesModuleLightingIntentType.off),
-      //       ),
-      //     ),
-      //   LightingMode.work => SpacesModuleCreateSpaceLightingIntentReq(
-      //       data: SpacesModuleCreateSpaceLightingIntentReqDataUnion.spacesModuleLightingIntentSetMode(
-      //         SpacesModuleLightingIntentSetMode(
-      //           type: SpacesModuleLightingIntentType.setMode,
-      //           mode: SpacesModuleLightingMode.work,
-      //         ),
-      //       ),
-      //     ),
-      //   LightingMode.relax => ... (mode: SpacesModuleLightingMode.relax),
-      //   LightingMode.night => ... (mode: SpacesModuleLightingMode.night),
-      // };
-      // await spacesApi.createSpacesModuleSpaceLightingIntent(
-      //   id: widget.page.spaceId,
-      //   spacesModuleCreateSpaceLightingIntentReq: request,
-      // );
-      //
-      // For now, simulate the action with a delay
-      await Future.delayed(const Duration(milliseconds: 500));
+      final SpacesModuleLightingIntent intent;
+
+      switch (mode) {
+        case LightingMode.off:
+          intent = SpacesModuleLightingIntent(
+            type: SpacesModuleLightingIntentType.off,
+          );
+          break;
+        case LightingMode.work:
+          intent = SpacesModuleLightingIntent(
+            type: SpacesModuleLightingIntentType.setMode,
+            mode: SpacesModuleLightingIntentMode.work,
+          );
+          break;
+        case LightingMode.relax:
+          intent = SpacesModuleLightingIntent(
+            type: SpacesModuleLightingIntentType.setMode,
+            mode: SpacesModuleLightingIntentMode.relax,
+          );
+          break;
+        case LightingMode.night:
+          intent = SpacesModuleLightingIntent(
+            type: SpacesModuleLightingIntentType.setMode,
+            mode: SpacesModuleLightingIntentMode.night,
+          );
+          break;
+      }
+
+      final response = await _spacesApi.createSpacesModuleSpaceLightingIntent(
+        id: widget.page.spaceId,
+        body: SpacesModuleReqLightingIntent(data: intent),
+      );
+
+      if (!mounted) return;
 
       setState(() {
         _activeMode = mode == LightingMode.off ? null : mode;
-        // Simulate lights on count - when API is integrated:
-        // _lightsOnCount = response.data.affectedDevices;
-        _lightsOnCount = mode == LightingMode.off ? 0 : 3;
+        _lightsOnCount = response.data.data.affectedDevices;
       });
 
       // Refresh undo state after successful intent execution
-      // TODO: Replace with actual API call when integrated
-      // await _loadUndoState();
-      // Simulate undo becoming available after lighting intent
-      setState(() {
-        _canUndo = true;
-        _undoDescription = mode == LightingMode.off
-            ? 'Turn lights off'
-            : 'Set lighting mode to ${mode.name}';
-        _undoExpiresInSeconds = 300; // 5 minutes
-      });
+      await _loadUndoState();
 
       if (mounted) {
         AlertBar.showSuccess(

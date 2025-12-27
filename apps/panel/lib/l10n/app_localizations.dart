@@ -1528,6 +1528,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manual'**
   String get discovery_button_manual;
+
+  /// Success message when an action completes
+  ///
+  /// In en, this message translates to:
+  /// **'Action completed successfully'**
+  String get action_success;
+
+  /// Title for the lighting controls section on space page
+  ///
+  /// In en, this message translates to:
+  /// **'Lighting Controls'**
+  String get space_lighting_controls_title;
+
+  /// Label for the off lighting mode button
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get space_lighting_mode_off;
+
+  /// Label for the work lighting mode button
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get space_lighting_mode_work;
+
+  /// Label for the relax lighting mode button
+  ///
+  /// In en, this message translates to:
+  /// **'Relax'**
+  String get space_lighting_mode_relax;
+
+  /// Label for the night lighting mode button
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get space_lighting_mode_night;
+
+  /// Title for the devices section on space page
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get space_devices_title;
+
+  /// Placeholder text when no devices are displayed
+  ///
+  /// In en, this message translates to:
+  /// **'Devices in this space will be displayed here'**
+  String get space_devices_placeholder;
+
+  /// Title for the climate controls section on space page
+  ///
+  /// In en, this message translates to:
+  /// **'Climate'**
+  String get space_climate_controls_title;
+
+  /// Label for current temperature display
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get space_climate_current_label;
+
+  /// Label for target temperature display
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get space_climate_target_label;
+
+  /// Message shown when a suggestion is applied
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion applied'**
+  String get space_suggestion_applied;
+
+  /// Message shown when a suggestion is dismissed
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion dismissed'**
+  String get space_suggestion_dismissed;
+
+  /// Message shown when an action is undone
+  ///
+  /// In en, this message translates to:
+  /// **'Action undone'**
+  String get space_undo_success;
+
+  /// Label for the undo button
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get space_undo_button;
+
+  /// Title shown when space has no controllable devices
+  ///
+  /// In en, this message translates to:
+  /// **'No Controls Available'**
+  String get space_empty_state_title;
+
+  /// Description shown when space has no controllable devices
+  ///
+  /// In en, this message translates to:
+  /// **'This space has no controllable devices configured yet'**
+  String get space_empty_state_description;
+
+  /// Title shown when space only has sensors
+  ///
+  /// In en, this message translates to:
+  /// **'Sensors Only'**
+  String get space_sensors_only_title;
+
+  /// Description shown when space only has sensors
+  ///
+  /// In en, this message translates to:
+  /// **'This space only has sensors — no controllable devices'**
+  String get space_sensors_only_description;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

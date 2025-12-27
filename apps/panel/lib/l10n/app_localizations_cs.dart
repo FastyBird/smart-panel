@@ -730,4 +730,61 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get discovery_button_manual => 'Ručně';
+
+  @override
+  String get action_success => 'Akce byla úspěšně dokončena';
+
+  @override
+  String get space_lighting_controls_title => 'Ovládání osvětlení';
+
+  @override
+  String get space_lighting_mode_off => 'Vyp';
+
+  @override
+  String get space_lighting_mode_work => 'Práce';
+
+  @override
+  String get space_lighting_mode_relax => 'Relax';
+
+  @override
+  String get space_lighting_mode_night => 'Noc';
+
+  @override
+  String get space_devices_title => 'Zařízení';
+
+  @override
+  String get space_devices_placeholder => 'Zařízení v této místnosti se zobrazí zde';
+
+  @override
+  String get space_climate_controls_title => 'Klimatizace';
+
+  @override
+  String get space_climate_current_label => 'Aktuální';
+
+  @override
+  String get space_climate_target_label => 'Cílová';
+
+  @override
+  String get space_suggestion_applied => 'Návrh byl aplikován';
+
+  @override
+  String get space_suggestion_dismissed => 'Návrh byl zamítnut';
+
+  @override
+  String get space_undo_success => 'Akce byla vrácena';
+
+  @override
+  String get space_undo_button => 'Zpět';
+
+  @override
+  String get space_empty_state_title => 'Žádná ovládání nejsou k dispozici';
+
+  @override
+  String get space_empty_state_description => 'Tato místnost nemá nakonfigurovaná žádná ovladatelná zařízení';
+
+  @override
+  String get space_sensors_only_title => 'Pouze senzory';
+
+  @override
+  String get space_sensors_only_description => 'Tato místnost má pouze senzory — žádná ovladatelná zařízení';
 }

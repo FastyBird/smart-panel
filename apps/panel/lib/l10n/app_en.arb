@@ -1013,5 +1013,49 @@
   "space_devices_placeholder": "Devices in this space will be displayed here",
   "@space_devices_placeholder": {
     "description": "Placeholder text when no devices are displayed"
+  },
+  "space_climate_controls_title": "Climate",
+  "@space_climate_controls_title": {
+    "description": "Title for the climate controls section on space page"
+  },
+  "space_climate_current_label": "Current",
+  "@space_climate_current_label": {
+    "description": "Label for current temperature display"
+  },
+  "space_climate_target_label": "Target",
+  "@space_climate_target_label": {
+    "description": "Label for target temperature display"
+  },
+  "space_suggestion_applied": "Suggestion applied",
+  "@space_suggestion_applied": {
+    "description": "Message shown when a suggestion is applied"
+  },
+  "space_suggestion_dismissed": "Suggestion dismissed",
+  "@space_suggestion_dismissed": {
+    "description": "Message shown when a suggestion is dismissed"
+  },
+  "space_undo_success": "Action undone",
+  "@space_undo_success": {
+    "description": "Message shown when an action is undone"
+  },
+  "space_undo_button": "Undo",
+  "@space_undo_button": {
+    "description": "Label for the undo button"
+  },
+  "space_empty_state_title": "No Controls Available",
+  "@space_empty_state_title": {
+    "description": "Title shown when space has no controllable devices"
+  },
+  "space_empty_state_description": "This space has no controllable devices configured yet",
+  "@space_empty_state_description": {
+    "description": "Description shown when space has no controllable devices"
+  },
+  "space_sensors_only_title": "Sensors Only",
+  "@space_sensors_only_title": {
+    "description": "Title shown when space only has sensors"
+  },
+  "space_sensors_only_description": "This space only has sensors — no controllable devices",
+  "@space_sensors_only_description": {
+    "description": "Description shown when space only has sensors"
   }
 }
