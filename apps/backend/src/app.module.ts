@@ -57,6 +57,7 @@ import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';
+import { PagesHousePlugin } from './plugins/pages-house/pages-house.plugin';
 import { PagesSpacePlugin } from './plugins/pages-space/pages-space.plugin';
 import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
@@ -245,6 +246,7 @@ export class AppModule {
 				DevicesZigbee2mqttPlugin,
 				PagesCardsPlugin,
 				PagesDeviceDetailPlugin,
+				PagesHousePlugin,
 				PagesTilesPlugin,
 				PagesSpacePlugin,
 				TilesDevicePreviewPlugin,

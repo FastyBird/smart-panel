@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/cards_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/device_page.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/pages/house_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/space_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/tiles_page.dart';
@@ -10,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/cards.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/house.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/space.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/tiles.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
@@ -27,6 +29,9 @@ Map<String, PageModel Function(Map<String, dynamic>)> pageModelMappers = {
   },
   PageType.space.value: (data) {
     return SpacePageModel.fromJson(data);
+  },
+  PageType.house.value: (data) {
+    return HousePageModel.fromJson(data);
   },
 };
 
@@ -118,6 +123,17 @@ Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
     }
 
     return SpacePageView(
+      pageModel: page,
+    );
+  },
+  PageType.house: (page) {
+    if (page is! HousePageModel) {
+      throw ArgumentError(
+        'Page model is not valid for House page view.',
+      );
+    }
+
+    return HousePageView(
       pageModel: page,
     );
   },
