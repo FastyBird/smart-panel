@@ -327,23 +327,30 @@ class _SpacePageState extends State<SpacePage> {
   Future<void> _applySuggestion() async {
     if (_suggestion == null || _isSuggestionLoading) return;
 
+    final suggestionType = _parseSuggestionType(_suggestion!.type);
+    if (suggestionType == null) {
+      // Unknown suggestion type - log warning and clear without misleading success message
+      debugPrint('Warning: Unknown suggestion type "${_suggestion!.type}" - cannot send feedback to backend');
+      setState(() {
+        _suggestion = null;
+      });
+      return;
+    }
+
     setState(() {
       _isSuggestionLoading = true;
     });
 
     try {
-      final suggestionType = _parseSuggestionType(_suggestion!.type);
-      if (suggestionType != null) {
-        await _spacesApi.createSpacesModuleSpaceSuggestionFeedback(
-          id: widget.page.spaceId,
-          body: SpacesModuleReqSuggestionFeedback(
-            data: SpacesModuleSuggestionFeedback(
-              suggestionType: suggestionType,
-              feedback: SpacesModuleSuggestionFeedbackFeedback.applied,
-            ),
+      await _spacesApi.createSpacesModuleSpaceSuggestionFeedback(
+        id: widget.page.spaceId,
+        body: SpacesModuleReqSuggestionFeedback(
+          data: SpacesModuleSuggestionFeedback(
+            suggestionType: suggestionType,
+            feedback: SpacesModuleSuggestionFeedbackFeedback.applied,
           ),
-        );
-      }
+        ),
+      );
 
       if (!mounted) return;
 
@@ -408,23 +415,30 @@ class _SpacePageState extends State<SpacePage> {
   Future<void> _dismissSuggestion() async {
     if (_suggestion == null || _isSuggestionLoading) return;
 
+    final suggestionType = _parseSuggestionType(_suggestion!.type);
+    if (suggestionType == null) {
+      // Unknown suggestion type - log warning and clear without misleading success message
+      debugPrint('Warning: Unknown suggestion type "${_suggestion!.type}" - cannot send feedback to backend');
+      setState(() {
+        _suggestion = null;
+      });
+      return;
+    }
+
     setState(() {
       _isSuggestionLoading = true;
     });
 
     try {
-      final suggestionType = _parseSuggestionType(_suggestion!.type);
-      if (suggestionType != null) {
-        await _spacesApi.createSpacesModuleSpaceSuggestionFeedback(
-          id: widget.page.spaceId,
-          body: SpacesModuleReqSuggestionFeedback(
-            data: SpacesModuleSuggestionFeedback(
-              suggestionType: suggestionType,
-              feedback: SpacesModuleSuggestionFeedbackFeedback.dismissed,
-            ),
+      await _spacesApi.createSpacesModuleSpaceSuggestionFeedback(
+        id: widget.page.spaceId,
+        body: SpacesModuleReqSuggestionFeedback(
+          data: SpacesModuleSuggestionFeedback(
+            suggestionType: suggestionType,
+            feedback: SpacesModuleSuggestionFeedbackFeedback.dismissed,
           ),
-        );
-      }
+        ),
+      );
 
       if (!mounted) return;
 
@@ -491,6 +505,8 @@ class _SpacePageState extends State<SpacePage> {
       await _loadLightingState();
       await _loadClimateState();
       await _loadUndoState();
+
+      if (!mounted) return;
 
       setState(() {
         _isUndoLoading = false;
