@@ -376,6 +376,21 @@ class _SpacePageState extends State<SpacePage> {
 
       if (!mounted) return;
 
+      // Update active mode based on the suggestion
+      // Note: _loadLightingState() is currently a stub that doesn't update _activeMode,
+      // so we must explicitly set it here based on the suggestion
+      if (_suggestion?.lightingMode != null) {
+        setState(() {
+          _activeMode = _suggestion!.lightingMode;
+          _lightsOnCount = 3; // Placeholder until _loadLightingState integrates with API
+        });
+      } else if (_suggestion?.type == 'lighting_off') {
+        setState(() {
+          _activeMode = LightingMode.off;
+          _lightsOnCount = 0;
+        });
+      }
+
       setState(() {
         _suggestion = null;
         _isSuggestionLoading = false;
