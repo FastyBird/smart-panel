@@ -238,11 +238,11 @@ All in `apps/panel/lib/features/dashboard/presentation/pages/space.dart`:
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| 1. Backend Climate Undo | planned | Prerequisite for Panel integration |
-| 2. Admin Route Handling | planned | 7 locations |
-| 3. Admin Device Controls | planned | 1 location |
-| 4. Admin Auth Features | planned | 2 handlers |
-| 5. Admin Event Handling | planned | 1 handler |
-| 6. Panel API Integration | planned | 12 methods, requires API rebuild |
-| 7. Panel Localization | planned | After gen-l10n |
-| 8. Future Items | deferred | Shelly-NG input processing |
+| 1. Backend Climate Undo | ✅ done | Implemented climate state restoration and enabled snapshot capture |
+| 2. Admin Route Handling | ✅ done | Fixed 7 locations with channels list fallback |
+| 3. Admin Device Controls | ✅ done | Implemented controls loading via store |
+| 4. Admin Auth Features | ✅ done | Implemented edit and register handlers |
+| 5. Admin Event Handling | ✅ done | Implemented CHANNEL_PROPERTY_SET event handling |
+| 6. Panel API Integration | ⏸️ skipped | APIs not generated - requires `melos rebuild-api` |
+| 7. Panel Localization | ⏸️ skipped | L10n not generated - requires `flutter gen-l10n` |
+| 8. Future Items | ✅ done | Documented Shelly-NG input processing |

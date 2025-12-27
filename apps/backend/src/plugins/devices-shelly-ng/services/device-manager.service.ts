@@ -769,7 +769,18 @@ export class DeviceManagerService {
 							throw err;
 						});
 
-						// TODO: To be implemented in the future
+						/**
+						 * NOTE: Input processing is not yet implemented.
+						 *
+						 * Future implementation should:
+						 * 1. Create or update input channels based on inputConfig
+						 * 2. Map input types (button, switch, analog) to appropriate channel properties
+						 * 3. Store input state (pressed, released, long-press) based on inputStatus
+						 * 4. Handle input events (single press, double press, long press) via WebSocket
+						 *
+						 * Reference: Shelly Gen2 API Input component documentation
+						 * @see https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Input
+						 */
 						this.logger.debug(`Received device input status for input=${key}`, {
 							resource: device.id,
 							inputConfig,

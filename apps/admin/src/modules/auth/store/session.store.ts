@@ -10,8 +10,9 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import type {
 	AuthModuleGetProfileOperation,
 	AuthModuleRegisterOperation,
+	UsersModuleUpdateUserOperation,
 } from '../../../openapi.constants';
-import { type IUser, transformUserResponse } from '../../users';
+import { type IUser, transformUserResponse, USERS_MODULE_PREFIX } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthApiException, AuthException } from '../auth.exceptions';
 
@@ -218,15 +219,118 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 	};
 
 	const edit = async (payload: ISessionEditActionPayload): Promise<boolean> => {
-		// TODO: Handle edit
-		logger.log(JSON.stringify(payload));
-		return true;
+		if (semaphore.value.updating) {
+			throw new AuthException('Profile is already being updated.');
+		}
+
+		// Verify the user being edited is the current profile
+		if (profile.value === null || profile.value.id !== payload.id) {
+			throw new AuthException('Cannot edit profile for a different user.');
+		}
+
+		semaphore.value.updating = true;
+
+		try {
+			// Build the update request body
+			const updateData: Record<string, unknown> = {};
+
+			if (typeof payload.data.firstName !== 'undefined') {
+				updateData.first_name = payload.data.firstName;
+			}
+
+			if (typeof payload.data.lastName !== 'undefined') {
+				updateData.last_name = payload.data.lastName;
+			}
+
+			if (typeof payload.data.email !== 'undefined') {
+				updateData.email = payload.data.email;
+			}
+
+			// Handle password change
+			if (typeof payload.data.password !== 'undefined') {
+				updateData.password = {
+					current: payload.data.password.current,
+					new: payload.data.password.new,
+				};
+			}
+
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.PATCH(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users/{id}`, {
+				params: {
+					path: { id: payload.id },
+				},
+				body: {
+					data: updateData,
+				},
+			});
+
+			if (typeof responseData !== 'undefined') {
+				// Update the local profile with the response
+				profile.value = transformUserResponse(responseData.data);
+
+				return true;
+			}
+
+			let errorReason: string | null = 'Failed to update profile.';
+
+			if (error) {
+				errorReason = getErrorReason<UsersModuleUpdateUserOperation>(error, errorReason);
+			}
+
+			throw new AuthApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.updating = false;
+		}
 	};
 
 	const register = async (payload: ISessionRegisterActionPayload): Promise<boolean> => {
-		// TODO: Handle registration
-		logger.log(JSON.stringify(payload));
-		return true;
+		if (semaphore.value.creating) {
+			throw new AuthException('Registration is already in progress.');
+		}
+
+		semaphore.value.creating = true;
+
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/register`, {
+				body: {
+					data: {
+						username: payload.data.username,
+						password: payload.data.password,
+						first_name: payload.data.firstName ?? null,
+						last_name: payload.data.lastName ?? null,
+						email: payload.data.email ?? null,
+					},
+				},
+			});
+
+			if (typeof responseData !== 'undefined') {
+				// Store the tokens from registration
+				writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
+				writeCookie(REFRESH_TOKEN_COOKIE_NAME, responseData.data.refresh_token);
+
+				// Fetch the profile for the newly registered user
+				await get();
+
+				return true;
+			}
+
+			let errorReason: string | null = 'Failed to register user.';
+
+			if (error) {
+				errorReason = getErrorReason<AuthModuleRegisterOperation>(error, errorReason);
+			}
+
+			throw new AuthApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.creating = false;
+		}
 	};
 
 	const refresh = async (): Promise<boolean> => {

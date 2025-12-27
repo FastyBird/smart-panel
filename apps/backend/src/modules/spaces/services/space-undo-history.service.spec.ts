@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { PropertyCategory } from '../../devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePlatform } from '../../devices/platforms/device.platform';
 import { DevicesService } from '../../devices/services/devices.service';
@@ -91,6 +91,56 @@ describe('SpaceUndoHistoryService', () => {
 			channels: [channel],
 		} as DeviceEntity;
 	};
+
+	const createMockThermostat = (deviceId: string, channelId: string): DeviceEntity => {
+		const channel: ChannelEntity = {
+			id: channelId,
+			name: 'Thermostat',
+			category: ChannelCategory.THERMOSTAT,
+			properties: [
+				{
+					id: uuid(),
+					category: PropertyCategory.TEMPERATURE,
+					name: 'Setpoint',
+				} as ChannelPropertyEntity,
+			],
+		} as ChannelEntity;
+
+		return {
+			id: deviceId,
+			name: 'Test Thermostat',
+			channels: [channel],
+		} as DeviceEntity;
+	};
+
+	const createClimateSnapshot = (
+		spaceId: string,
+		thermostatId: string | null,
+		targetTemperature: number | null,
+		lights: LightStateSnapshot[] = [],
+	): SpaceContextSnapshot => ({
+		spaceId,
+		spaceName: 'Test Space',
+		capturedAt: new Date(),
+		lighting: {
+			summary: {
+				totalLights: lights.length,
+				lightsOn: lights.filter((l) => l.isOn).length,
+				averageBrightness: null,
+			},
+			lights,
+		},
+		climate: {
+			hasClimate: thermostatId !== null,
+			currentTemperature: 22,
+			targetTemperature,
+			minSetpoint: 5,
+			maxSetpoint: 35,
+			canSetSetpoint: thermostatId !== null,
+			primaryThermostatId: thermostatId,
+			primarySensorId: null,
+		} as ClimateState,
+	});
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -480,6 +530,175 @@ describe('SpaceUndoHistoryService', () => {
 				(c: { property: { category: string } }) => c.property.category === PropertyCategory.BRIGHTNESS,
 			);
 			expect(brightnessCommand).toBeUndefined();
+		});
+	});
+
+	describe('restoreClimateState', () => {
+		it('should restore thermostat setpoint successfully', async () => {
+			const spaceId = uuid();
+			const thermostatId = uuid();
+			const channelId = uuid();
+
+			const snapshot = createClimateSnapshot(spaceId, thermostatId, 21.5);
+
+			service.pushSnapshot(snapshot, 'Set temperature', 'climate');
+
+			const mockThermostat = createMockThermostat(thermostatId, channelId);
+			devicesService.getOneOrThrow.mockResolvedValue(mockThermostat);
+
+			const mockPlatform: jest.Mocked<IDevicePlatform> = {
+				processBatch: jest.fn().mockResolvedValue(true),
+			} as unknown as jest.Mocked<IDevicePlatform>;
+			platformRegistryService.get.mockReturnValue(mockPlatform);
+
+			const result = await service.executeUndo(spaceId);
+
+			expect(result.success).toBe(true);
+			expect(result.restoredDevices).toBe(1);
+			expect(result.failedDevices).toBe(0);
+			expect(mockPlatform.processBatch).toHaveBeenCalledTimes(1);
+
+			// Verify the setpoint value was sent
+			const commands = mockPlatform.processBatch.mock.calls[0][0];
+			expect(commands).toHaveLength(1);
+			expect(commands[0].value).toBe(21.5);
+			expect(commands[0].property.category).toBe(PropertyCategory.TEMPERATURE);
+		});
+
+		it('should skip climate restoration when no thermostat in snapshot', async () => {
+			const spaceId = uuid();
+
+			// Create snapshot with no thermostat
+			const snapshot = createClimateSnapshot(spaceId, null, null);
+
+			service.pushSnapshot(snapshot, 'Test action', 'lighting');
+
+			const result = await service.executeUndo(spaceId);
+
+			// No devices to restore (no lights, no climate)
+			expect(result.success).toBe(true);
+			expect(result.restoredDevices).toBe(0);
+			expect(result.failedDevices).toBe(0);
+			expect(devicesService.getOneOrThrow).not.toHaveBeenCalled();
+		});
+
+		it('should skip climate restoration when no target temperature in snapshot', async () => {
+			const spaceId = uuid();
+			const thermostatId = uuid();
+
+			// Create snapshot with thermostat but no target temperature
+			const snapshot = createClimateSnapshot(spaceId, thermostatId, null);
+
+			service.pushSnapshot(snapshot, 'Test action', 'climate');
+
+			const result = await service.executeUndo(spaceId);
+
+			// No devices to restore
+			expect(result.success).toBe(true);
+			expect(result.restoredDevices).toBe(0);
+			expect(result.failedDevices).toBe(0);
+			expect(devicesService.getOneOrThrow).not.toHaveBeenCalled();
+		});
+
+		it('should handle platform failure for climate restoration', async () => {
+			const spaceId = uuid();
+			const thermostatId = uuid();
+			const channelId = uuid();
+
+			const snapshot = createClimateSnapshot(spaceId, thermostatId, 22);
+
+			service.pushSnapshot(snapshot, 'Set temperature', 'climate');
+
+			const mockThermostat = createMockThermostat(thermostatId, channelId);
+			devicesService.getOneOrThrow.mockResolvedValue(mockThermostat);
+
+			const mockPlatform: jest.Mocked<IDevicePlatform> = {
+				processBatch: jest.fn().mockResolvedValue(false),
+			} as unknown as jest.Mocked<IDevicePlatform>;
+			platformRegistryService.get.mockReturnValue(mockPlatform);
+
+			const result = await service.executeUndo(spaceId);
+
+			expect(result.failedDevices).toBe(1);
+			expect(result.restoredDevices).toBe(0);
+		});
+
+		it('should handle missing thermostat device', async () => {
+			const spaceId = uuid();
+			const thermostatId = uuid();
+
+			const snapshot = createClimateSnapshot(spaceId, thermostatId, 22);
+
+			service.pushSnapshot(snapshot, 'Set temperature', 'climate');
+
+			devicesService.getOneOrThrow.mockRejectedValue(new Error('Device not found'));
+
+			const result = await service.executeUndo(spaceId);
+
+			expect(result.failedDevices).toBe(1);
+			expect(result.restoredDevices).toBe(0);
+		});
+
+		it('should restore both lighting and climate state together', async () => {
+			const spaceId = uuid();
+			const lightDeviceId = uuid();
+			const lightChannelId = uuid();
+			const thermostatId = uuid();
+			const thermostatChannelId = uuid();
+
+			const lightSnapshot = createLightSnapshot(lightDeviceId, lightChannelId, true, 80);
+			const snapshot = createClimateSnapshot(spaceId, thermostatId, 20, [lightSnapshot]);
+
+			service.pushSnapshot(snapshot, 'Combined action', 'lighting');
+
+			const mockLight = createMockDevice(lightDeviceId, lightChannelId);
+			const mockThermostat = createMockThermostat(thermostatId, thermostatChannelId);
+
+			devicesService.getOneOrThrow.mockResolvedValueOnce(mockLight).mockResolvedValueOnce(mockThermostat);
+
+			const mockPlatform: jest.Mocked<IDevicePlatform> = {
+				processBatch: jest.fn().mockResolvedValue(true),
+			} as unknown as jest.Mocked<IDevicePlatform>;
+			platformRegistryService.get.mockReturnValue(mockPlatform);
+
+			const result = await service.executeUndo(spaceId);
+
+			expect(result.success).toBe(true);
+			expect(result.restoredDevices).toBe(2); // 1 light + 1 thermostat
+			expect(result.failedDevices).toBe(0);
+			expect(mockPlatform.processBatch).toHaveBeenCalledTimes(2);
+		});
+
+		it('should handle partial failure in combined restoration', async () => {
+			const spaceId = uuid();
+			const lightDeviceId = uuid();
+			const lightChannelId = uuid();
+			const thermostatId = uuid();
+			const thermostatChannelId = uuid();
+
+			const lightSnapshot = createLightSnapshot(lightDeviceId, lightChannelId, true, 80);
+			const snapshot = createClimateSnapshot(spaceId, thermostatId, 20, [lightSnapshot]);
+
+			service.pushSnapshot(snapshot, 'Combined action', 'lighting');
+
+			const mockLight = createMockDevice(lightDeviceId, lightChannelId);
+			const mockThermostat = createMockThermostat(thermostatId, thermostatChannelId);
+
+			devicesService.getOneOrThrow.mockResolvedValueOnce(mockLight).mockResolvedValueOnce(mockThermostat);
+
+			const mockPlatform: jest.Mocked<IDevicePlatform> = {
+				processBatch: jest
+					.fn()
+					.mockResolvedValueOnce(true) // Light succeeds
+					.mockResolvedValueOnce(false), // Thermostat fails
+			} as unknown as jest.Mocked<IDevicePlatform>;
+			platformRegistryService.get.mockReturnValue(mockPlatform);
+
+			const result = await service.executeUndo(spaceId);
+
+			expect(result.success).toBe(true); // At least one device succeeded
+			expect(result.restoredDevices).toBe(1);
+			expect(result.failedDevices).toBe(1);
 		});
 	});
 });
