@@ -850,8 +850,9 @@ export class SpacesController {
 		const stateData = new UndoStateDataModel();
 
 		if (undoEntry) {
-			// Calculate expiration time (5 minutes from capture)
-			const expiresAt = new Date(undoEntry.capturedAt.getTime() + 5 * 60 * 1000);
+			// Calculate expiration time using the service's configured TTL
+			const ttlMs = this.spaceUndoHistoryService.getEntryTtlMs();
+			const expiresAt = new Date(undoEntry.capturedAt.getTime() + ttlMs);
 			const expiresInMs = expiresAt.getTime() - Date.now();
 			const expiresInSeconds = Math.max(0, Math.floor(expiresInMs / 1000));
 

@@ -140,6 +140,7 @@ describe('SpacesController', () => {
 							failedDevices: 0,
 							message: '',
 						}),
+						getEntryTtlMs: jest.fn().mockReturnValue(5 * 60 * 1000),
 					},
 				},
 			],

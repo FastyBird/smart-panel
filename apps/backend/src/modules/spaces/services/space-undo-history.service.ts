@@ -101,6 +101,14 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 	}
 
 	/**
+	 * Get the configured TTL for undo entries in milliseconds.
+	 * Use this to calculate expiration times consistently.
+	 */
+	getEntryTtlMs(): number {
+		return this.config.entryTtlMs;
+	}
+
+	/**
 	 * Push a snapshot onto the undo stack for a space.
 	 * Call this BEFORE executing an intent to capture the "before" state.
 	 *
