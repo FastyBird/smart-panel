@@ -342,7 +342,7 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      await _spacesApi.createSpacesModuleSpaceSuggestionFeedback(
+      final response = await _spacesApi.createSpacesModuleSpaceSuggestionFeedback(
         id: widget.page.spaceId,
         body: SpacesModuleReqSuggestionFeedback(
           data: SpacesModuleSuggestionFeedback(
@@ -354,19 +354,27 @@ class _SpacePageState extends State<SpacePage> {
 
       if (!mounted) return;
 
-      // Update the active mode and lights count based on the suggestion
-      if (_suggestion?.lightingMode != null) {
+      final result = response.data.data;
+      if (!result.success || result.intentExecuted != true) {
+        // Backend failed to execute the intent - show error instead of success
         setState(() {
-          _activeMode = _suggestion!.lightingMode;
-          _lightsOnCount = 3;
+          _isSuggestionLoading = false;
         });
-      } else if (_suggestion?.type == 'lighting_off') {
-        // Handle LIGHTING_OFF suggestion type which has null lightingMode
-        setState(() {
-          _activeMode = LightingMode.off;
-          _lightsOnCount = 0;
-        });
+
+        if (mounted) {
+          final localizations = AppLocalizations.of(context)!;
+          AlertBar.showError(
+            context,
+            message: localizations.action_failed,
+          );
+        }
+        return;
       }
+
+      // Refresh actual lighting state from backend instead of assuming values
+      await _loadLightingState();
+
+      if (!mounted) return;
 
       setState(() {
         _suggestion = null;
