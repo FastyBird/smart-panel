@@ -33,8 +33,10 @@ import {
 	SetpointDelta,
 } from '../spaces.constants';
 
+import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { SpaceIntentService, selectLightsForMode } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
+import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpaceIntentService', () => {
@@ -43,6 +45,8 @@ describe('SpaceIntentService', () => {
 	let mockDevicesService: jest.Mocked<DevicesService>;
 	let mockPlatformRegistryService: jest.Mocked<PlatformRegistryService>;
 	let mockLightingRoleService: jest.Mocked<SpaceLightingRoleService>;
+	let mockContextSnapshotService: jest.Mocked<SpaceContextSnapshotService>;
+	let mockUndoHistoryService: jest.Mocked<SpaceUndoHistoryService>;
 	let mockPlatform: jest.Mocked<IDevicePlatform>;
 
 	const mockSpaceId = 'space-123';
@@ -74,11 +78,34 @@ describe('SpaceIntentService', () => {
 			getRoleMap: jest.fn().mockResolvedValue(new Map<string, SpaceLightingRoleEntity>()),
 		} as unknown as jest.Mocked<SpaceLightingRoleService>;
 
+		mockContextSnapshotService = {
+			captureSnapshot: jest.fn().mockResolvedValue({
+				spaceId: mockSpaceId,
+				spaceName: 'Test Space',
+				lighting: { summary: { totalLights: 0, lightsOn: 0, averageBrightness: null }, lights: [] },
+				climate: { hasClimate: false },
+				capturedAt: new Date(),
+			}),
+		} as unknown as jest.Mocked<SpaceContextSnapshotService>;
+
+		mockUndoHistoryService = {
+			pushSnapshot: jest.fn().mockReturnValue({
+				id: 'undo-123',
+				spaceId: mockSpaceId,
+				capturedAt: new Date(),
+				snapshot: {},
+				actionDescription: 'Test action',
+				intentCategory: 'lighting',
+			}),
+		} as unknown as jest.Mocked<SpaceUndoHistoryService>;
+
 		service = new SpaceIntentService(
 			mockSpacesService,
 			mockDevicesService,
 			mockPlatformRegistryService,
 			mockLightingRoleService,
+			mockContextSnapshotService,
+			mockUndoHistoryService,
 		);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation();

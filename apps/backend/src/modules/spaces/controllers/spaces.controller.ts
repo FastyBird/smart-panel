@@ -56,11 +56,16 @@ import {
 	SuggestionFeedbackResponseModel,
 	SuggestionFeedbackResultDataModel,
 	SuggestionResponseModel,
+	UndoResultDataModel,
+	UndoResultResponseModel,
+	UndoStateDataModel,
+	UndoStateResponseModel,
 } from '../models/spaces-response.model';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
+import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
 	INTENT_CATEGORY_CATALOG,
@@ -85,6 +90,7 @@ export class SpacesController {
 		private readonly spaceLightingRoleService: SpaceLightingRoleService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
 		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
+		private readonly spaceUndoHistoryService: SpaceUndoHistoryService,
 	) {}
 
 	@Get()
@@ -813,6 +819,91 @@ export class SpacesController {
 
 		const response = new ContextSnapshotResponseModel();
 		response.data = snapshotData;
+
+		return response;
+	}
+
+	// ================================
+	// Undo History Endpoints
+	// ================================
+
+	@Get(':id/undo')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-undo-state',
+		summary: 'Get undo state for space',
+		description:
+			'Retrieves the current undo state for a space, indicating whether an undo action is available. ' +
+			'The undo entry expires after 5 minutes and only the most recent intent can be undone.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(UndoStateResponseModel, 'Returns the undo state')
+	@ApiNotFoundResponse('Space not found')
+	async getUndoState(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UndoStateResponseModel> {
+		this.logger.debug(`Fetching undo state for space with id=${id}`);
+
+		// Verify space exists
+		await this.spacesService.getOneOrThrow(id);
+
+		const undoEntry = this.spaceUndoHistoryService.peekUndoEntry(id);
+
+		const stateData = new UndoStateDataModel();
+
+		if (undoEntry) {
+			// Calculate expiration time using the service's configured TTL
+			const ttlMs = this.spaceUndoHistoryService.getEntryTtlMs();
+			const expiresAt = new Date(undoEntry.capturedAt.getTime() + ttlMs);
+			const expiresInMs = expiresAt.getTime() - Date.now();
+			const expiresInSeconds = Math.max(0, Math.floor(expiresInMs / 1000));
+
+			stateData.canUndo = true;
+			stateData.actionDescription = undoEntry.actionDescription;
+			stateData.intentCategory = undoEntry.intentCategory;
+			stateData.capturedAt = undoEntry.capturedAt;
+			stateData.expiresInSeconds = expiresInSeconds;
+		} else {
+			stateData.canUndo = false;
+			stateData.actionDescription = null;
+			stateData.intentCategory = null;
+			stateData.capturedAt = null;
+			stateData.expiresInSeconds = null;
+		}
+
+		const response = new UndoStateResponseModel();
+		response.data = stateData;
+
+		return response;
+	}
+
+	@Post(':id/intents/undo')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'create-spaces-module-space-undo',
+		summary: 'Undo the last intent for space',
+		description:
+			'Reverts the most recent lighting or climate intent by restoring device states to their ' +
+			'values before the intent was executed. Only the most recent intent can be undone, and ' +
+			'the undo entry expires after 5 minutes.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(UndoResultResponseModel, 'Returns the undo result')
+	@ApiNotFoundResponse('Space not found')
+	async executeUndo(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UndoResultResponseModel> {
+		this.logger.debug(`Executing undo for space with id=${id}`);
+
+		// Verify space exists
+		await this.spacesService.getOneOrThrow(id);
+
+		const result = await this.spaceUndoHistoryService.executeUndo(id);
+
+		const resultData = new UndoResultDataModel();
+		resultData.success = result.success;
+		resultData.restoredDevices = result.restoredDevices;
+		resultData.failedDevices = result.failedDevices;
+		resultData.message = result.message;
+
+		const response = new UndoResultResponseModel();
+		response.data = resultData;
 
 		return response;
 	}

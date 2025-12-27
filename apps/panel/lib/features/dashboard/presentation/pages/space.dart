@@ -90,6 +90,12 @@ class _SpacePageState extends State<SpacePage> {
   SpaceSuggestion? _suggestion;
   bool _isSuggestionLoading = false;
 
+  // Undo state
+  bool _canUndo = false;
+  String? _undoDescription;
+  int? _undoExpiresInSeconds;
+  bool _isUndoLoading = false;
+
   // TODO: Replace with localizations after running `flutter gen-l10n`
   // The localization strings are defined in app_en.arb and app_cs.arb
   static const String _lightingControlsTitle = 'Lighting Controls';
@@ -106,6 +112,8 @@ class _SpacePageState extends State<SpacePage> {
   static const String _actionSuccess = 'Action completed successfully';
   static const String _suggestionApplied = 'Suggestion applied';
   static const String _suggestionDismissed = 'Suggestion dismissed';
+  static const String _undoSuccess = 'Action undone';
+  static const String _undoButton = 'Undo';
 
   // Empty state messages
   static const String _emptyStateTitle = 'No Controls Available';
@@ -122,6 +130,7 @@ class _SpacePageState extends State<SpacePage> {
     _loadClimateState();
     _loadDevicesState();
     _loadSuggestion();
+    _loadUndoState();
   }
 
   Future<void> _loadLightingState() async {
@@ -409,6 +418,103 @@ class _SpacePageState extends State<SpacePage> {
     }
   }
 
+  Future<void> _loadUndoState() async {
+    try {
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example:
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final response = await spacesApi.getSpacesModuleSpaceUndoState(
+      //   id: widget.page.spaceId,
+      // );
+      // final data = response.data;
+      //
+      // if (mounted) {
+      //   setState(() {
+      //     _canUndo = data.canUndo;
+      //     _undoDescription = data.actionDescription;
+      //     _undoExpiresInSeconds = data.expiresInSeconds;
+      //   });
+      // }
+      //
+      // For now, simulate no undo available initially
+      if (!mounted) return;
+
+      setState(() {
+        _canUndo = false;
+        _undoDescription = null;
+        _undoExpiresInSeconds = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _canUndo = false;
+        _undoDescription = null;
+        _undoExpiresInSeconds = null;
+      });
+    }
+  }
+
+  Future<void> _executeUndo() async {
+    if (!_canUndo || _isUndoLoading) return;
+
+    setState(() {
+      _isUndoLoading = true;
+    });
+
+    try {
+      // TODO: Replace with actual API call after running `melos rebuild-api`
+      // Example:
+      // final spacesApi = locator<SpacesModuleSpacesApi>();
+      // final response = await spacesApi.createSpacesModuleSpaceUndo(
+      //   id: widget.page.spaceId,
+      // );
+      //
+      // if (response.data?.success == true) {
+      //   // Refresh states after undo
+      //   await _loadLightingState();
+      //   await _loadUndoState();
+      // }
+      //
+      // For now, simulate the undo action
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (!mounted) return;
+
+      // Clear undo state after execution
+      setState(() {
+        _canUndo = false;
+        _undoDescription = null;
+        _undoExpiresInSeconds = null;
+        _isUndoLoading = false;
+      });
+
+      // Refresh lighting state to reflect restored values
+      await _loadLightingState();
+
+      if (mounted) {
+        AlertBar.showSuccess(
+          context,
+          message: _undoSuccess,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isUndoLoading = false;
+      });
+
+      if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
+        );
+      }
+    }
+  }
+
   Future<void> _adjustSetpoint(bool increase) async {
     if (_isClimateLoading || _climateState != ClimateState.controllable) return;
 
@@ -521,6 +627,18 @@ class _SpacePageState extends State<SpacePage> {
         _lightsOnCount = mode == LightingMode.off ? 0 : 3;
       });
 
+      // Refresh undo state after successful intent execution
+      // TODO: Replace with actual API call when integrated
+      // await _loadUndoState();
+      // Simulate undo becoming available after lighting intent
+      setState(() {
+        _canUndo = true;
+        _undoDescription = mode == LightingMode.off
+            ? 'Turn lights off'
+            : 'Set lighting mode to ${mode.name}';
+        _undoExpiresInSeconds = 300; // 5 minutes
+      });
+
       if (mounted) {
         AlertBar.showSuccess(
           context,
@@ -569,8 +687,16 @@ class _SpacePageState extends State<SpacePage> {
   List<Widget> _buildStatusBadges(BuildContext context) {
     final badges = <Widget>[];
 
+    // Undo button (shown when undo is available)
+    if (_canUndo) {
+      badges.add(_buildUndoButton(context));
+    }
+
     // Lighting status badge
     if (_lightingState == LightingState.available) {
+      if (badges.isNotEmpty) {
+        badges.add(AppSpacings.spacingSmHorizontal);
+      }
       badges.add(_buildLightingBadge(context));
     }
 
@@ -583,6 +709,85 @@ class _SpacePageState extends State<SpacePage> {
     }
 
     return badges;
+  }
+
+  Widget _buildUndoButton(BuildContext context) {
+    final iconSize = _screenService.scale(
+      14,
+      density: _visualDensityService.density,
+    );
+
+    // Build tooltip message with description and/or expiry
+    String tooltipMessage = _undoButton;
+    if (_undoDescription != null) {
+      tooltipMessage = _undoDescription!;
+      if (_undoExpiresInSeconds != null && _undoExpiresInSeconds! > 0) {
+        final minutes = (_undoExpiresInSeconds! / 60).ceil();
+        tooltipMessage += ' (expires in ${minutes}m)';
+      }
+    }
+
+    return Tooltip(
+      message: tooltipMessage,
+      child: GestureDetector(
+        onTap: _isUndoLoading ? null : _executeUndo,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pSm,
+            vertical: AppSpacings.pXs,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.info.withValues(alpha: 0.15)
+                : AppColorsDark.info.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppColorsLight.info.withValues(alpha: 0.3)
+                  : AppColorsDark.info.withValues(alpha: 0.3),
+              width: _screenService.scale(
+                1,
+                density: _visualDensityService.density,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _isUndoLoading
+                  ? SizedBox(
+                      width: iconSize,
+                      height: iconSize,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? AppColorsLight.info
+                            : AppColorsDark.info,
+                      ),
+                    )
+                  : Icon(
+                      MdiIcons.undo,
+                      size: iconSize,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppColorsLight.info
+                          : AppColorsDark.info,
+                    ),
+              SizedBox(width: AppSpacings.pXs),
+              Text(
+                _undoButton,
+                style: TextStyle(
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppColorsLight.infoDark2
+                      : AppColorsDark.infoDark2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLightingBadge(BuildContext context) {

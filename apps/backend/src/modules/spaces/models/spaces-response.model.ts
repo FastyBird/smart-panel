@@ -1221,3 +1221,132 @@ export class ContextSnapshotResponseModel extends BaseSuccessResponseModel<Conte
 	@Type(() => ContextSnapshotDataModel)
 	declare data: ContextSnapshotDataModel;
 }
+
+// ================================
+// Undo History Response Models
+// ================================
+
+/**
+ * Undo state data model - indicates whether undo is available
+ */
+@ApiSchema({ name: 'SpacesModuleDataUndoState' })
+export class UndoStateDataModel {
+	@ApiProperty({
+		name: 'can_undo',
+		description: 'Whether an undo action is available for this space',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'can_undo' })
+	canUndo: boolean;
+
+	@ApiPropertyOptional({
+		name: 'action_description',
+		description: 'Description of the action that can be undone (null if no undo available)',
+		type: 'string',
+		nullable: true,
+		example: 'Set lighting mode to Work',
+	})
+	@Expose({ name: 'action_description' })
+	actionDescription: string | null;
+
+	@ApiPropertyOptional({
+		name: 'intent_category',
+		description: 'Category of the intent that can be undone (lighting or climate)',
+		type: 'string',
+		enum: ['lighting', 'climate'],
+		nullable: true,
+		example: 'lighting',
+	})
+	@Expose({ name: 'intent_category' })
+	intentCategory: 'lighting' | 'climate' | null;
+
+	@ApiPropertyOptional({
+		name: 'captured_at',
+		description: 'When the undo snapshot was captured',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: '2025-01-25T12:00:00Z',
+	})
+	@Expose({ name: 'captured_at' })
+	capturedAt: Date | null;
+
+	@ApiPropertyOptional({
+		name: 'expires_in_seconds',
+		description: 'Seconds until this undo entry expires (null if no undo available)',
+		type: 'integer',
+		nullable: true,
+		example: 240,
+	})
+	@Expose({ name: 'expires_in_seconds' })
+	expiresInSeconds: number | null;
+}
+
+/**
+ * Response wrapper for undo state
+ */
+@ApiSchema({ name: 'SpacesModuleResUndoState' })
+export class UndoStateResponseModel extends BaseSuccessResponseModel<UndoStateDataModel> {
+	@ApiProperty({
+		description: 'The undo state for the space',
+		type: () => UndoStateDataModel,
+	})
+	@Expose()
+	@Type(() => UndoStateDataModel)
+	declare data: UndoStateDataModel;
+}
+
+/**
+ * Undo result data model - result of an undo operation
+ */
+@ApiSchema({ name: 'SpacesModuleDataUndoResult' })
+export class UndoResultDataModel {
+	@ApiProperty({
+		description: 'Whether the undo operation was successful',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	success: boolean;
+
+	@ApiProperty({
+		name: 'restored_devices',
+		description: 'Number of devices that were restored to their previous state',
+		type: 'integer',
+		example: 3,
+	})
+	@Expose({ name: 'restored_devices' })
+	restoredDevices: number;
+
+	@ApiProperty({
+		name: 'failed_devices',
+		description: 'Number of devices that failed to restore',
+		type: 'integer',
+		example: 0,
+	})
+	@Expose({ name: 'failed_devices' })
+	failedDevices: number;
+
+	@ApiProperty({
+		description: 'Human-readable message about the undo result',
+		type: 'string',
+		example: 'Restored 3 device(s)',
+	})
+	@Expose()
+	message: string;
+}
+
+/**
+ * Response wrapper for undo result
+ */
+@ApiSchema({ name: 'SpacesModuleResUndoResult' })
+export class UndoResultResponseModel extends BaseSuccessResponseModel<UndoResultDataModel> {
+	@ApiProperty({
+		description: 'The result of the undo operation',
+		type: () => UndoResultDataModel,
+	})
+	@Expose()
+	@Type(() => UndoResultDataModel)
+	declare data: UndoResultDataModel;
+}

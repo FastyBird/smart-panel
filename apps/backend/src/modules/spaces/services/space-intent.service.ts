@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
@@ -24,7 +24,9 @@ import {
 	SPACES_MODULE_NAME,
 } from '../spaces.constants';
 
+import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
+import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
 
 interface LightDevice {
@@ -150,6 +152,10 @@ export class SpaceIntentService {
 		private readonly devicesService: DevicesService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly lightingRoleService: SpaceLightingRoleService,
+		@Inject(forwardRef(() => SpaceContextSnapshotService))
+		private readonly contextSnapshotService: SpaceContextSnapshotService,
+		@Inject(forwardRef(() => SpaceUndoHistoryService))
+		private readonly undoHistoryService: SpaceUndoHistoryService,
 	) {}
 
 	/**
@@ -177,6 +183,9 @@ export class SpaceIntentService {
 		}
 
 		this.logger.debug(`Found ${lights.length} lights in space id=${spaceId}`);
+
+		// Capture snapshot for undo BEFORE executing the intent
+		await this.captureUndoSnapshot(spaceId, intent);
 
 		// For SET_MODE, use role-based orchestration
 		if (intent.type === LightingIntentType.SET_MODE && intent.mode) {
@@ -666,6 +675,10 @@ export class SpaceIntentService {
 			return { ...defaultResult, success: true };
 		}
 
+		// NOTE: Climate undo is not captured because restoreSnapshot() only restores lighting.
+		// TODO: Enable this once SpaceUndoHistoryService.restoreSnapshot() supports climate restoration.
+		// await this.captureClimateUndoSnapshot(spaceId, intent);
+
 		// Get the primary thermostat device with full relations
 		const thermostatDevice = await this.devicesService.getOneOrThrow(climateState.primaryThermostatId);
 		const climateDeviceInfo = this.extractClimateDevice(thermostatDevice);
@@ -883,5 +896,91 @@ export class SpaceIntentService {
 		}
 
 		return null;
+	}
+
+	// ================================
+	// Undo History Helper Methods
+	// ================================
+
+	/**
+	 * Capture a snapshot for undo before executing a lighting intent.
+	 */
+	private async captureUndoSnapshot(spaceId: string, intent: LightingIntentDto): Promise<void> {
+		try {
+			const snapshot = await this.contextSnapshotService.captureSnapshot(spaceId);
+
+			if (!snapshot) {
+				this.logger.debug(`Could not capture snapshot for undo spaceId=${spaceId}`);
+
+				return;
+			}
+
+			// Build a description of the action
+			const actionDescription = this.buildLightingIntentDescription(intent);
+
+			this.undoHistoryService.pushSnapshot(snapshot, actionDescription, 'lighting');
+
+			this.logger.debug(`Undo snapshot captured spaceId=${spaceId} action="${actionDescription}"`);
+		} catch (error) {
+			// Log but don't fail the intent execution if snapshot capture fails
+			this.logger.error(`Error capturing undo snapshot spaceId=${spaceId}: ${error}`);
+		}
+	}
+
+	/**
+	 * Capture a snapshot for undo before executing a climate intent.
+	 */
+	private async captureClimateUndoSnapshot(spaceId: string, intent: ClimateIntentDto): Promise<void> {
+		try {
+			const snapshot = await this.contextSnapshotService.captureSnapshot(spaceId);
+
+			if (!snapshot) {
+				this.logger.debug(`Could not capture snapshot for undo spaceId=${spaceId}`);
+
+				return;
+			}
+
+			// Build a description of the action
+			const actionDescription = this.buildClimateIntentDescription(intent);
+
+			this.undoHistoryService.pushSnapshot(snapshot, actionDescription, 'climate');
+
+			this.logger.debug(`Undo snapshot captured spaceId=${spaceId} action="${actionDescription}"`);
+		} catch (error) {
+			// Log but don't fail the intent execution if snapshot capture fails
+			this.logger.error(`Error capturing undo snapshot spaceId=${spaceId}: ${error}`);
+		}
+	}
+
+	/**
+	 * Build a human-readable description of a lighting intent.
+	 */
+	private buildLightingIntentDescription(intent: LightingIntentDto): string {
+		switch (intent.type) {
+			case LightingIntentType.OFF:
+				return 'Turn lights off';
+			case LightingIntentType.ON:
+				return 'Turn lights on';
+			case LightingIntentType.SET_MODE:
+				return `Set lighting mode to ${intent.mode ?? 'unknown'}`;
+			case LightingIntentType.BRIGHTNESS_DELTA:
+				return intent.increase ? 'Increase brightness' : 'Decrease brightness';
+			default:
+				return 'Lighting intent';
+		}
+	}
+
+	/**
+	 * Build a human-readable description of a climate intent.
+	 */
+	private buildClimateIntentDescription(intent: ClimateIntentDto): string {
+		switch (intent.type) {
+			case ClimateIntentType.SETPOINT_DELTA:
+				return intent.increase ? 'Increase temperature' : 'Decrease temperature';
+			case ClimateIntentType.SETPOINT_SET:
+				return `Set temperature to ${intent.value ?? 'unknown'}°C`;
+			default:
+				return 'Climate intent';
+		}
 	}
 }
