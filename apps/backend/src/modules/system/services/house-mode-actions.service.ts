@@ -26,6 +26,7 @@ import { EventType, HouseMode, SYSTEM_MODULE_NAME } from '../system.constants';
 export class HouseModeActionsService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'HouseModeActionsService');
 	private previousMode: HouseMode | null = null;
+	private pendingAction: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -43,7 +44,7 @@ export class HouseModeActionsService implements OnModuleInit {
 			this.previousMode = config.houseMode;
 			this.logger.log(`Initialized house mode tracking, current mode=${this.previousMode}`);
 		} catch {
-			this.logger.warn('Could not read initial house mode, will detect on first change');
+			this.logger.warn('Could not read initial house mode, will execute actions on first detection');
 			this.previousMode = null;
 		}
 	}
@@ -52,9 +53,10 @@ export class HouseModeActionsService implements OnModuleInit {
 	 * Listen for config updates and detect house mode changes.
 	 * When house mode changes, emit the specific event and execute actions.
 	 *
-	 * Note: previousMode is updated immediately after detecting a change
-	 * (before awaiting actions) to prevent race conditions when multiple
-	 * CONFIG_UPDATED events fire rapidly.
+	 * Handles two edge cases:
+	 * 1. First detection after init failure: executes actions for the detected mode
+	 * 2. Rapid mode changes: serializes action execution via pendingAction chain
+	 *    to prevent concurrent/interleaved lighting commands
 	 */
 	@OnEvent(ConfigEventType.CONFIG_UPDATED)
 	async onConfigUpdated(): Promise<void> {
@@ -62,23 +64,35 @@ export class HouseModeActionsService implements OnModuleInit {
 			const config = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
 			const newMode = config.houseMode;
 
-			if (this.previousMode !== null && newMode !== this.previousMode) {
+			const isFirstDetection = this.previousMode === null;
+			const modeChanged = this.previousMode !== null && newMode !== this.previousMode;
+
+			if (isFirstDetection || modeChanged) {
 				const oldMode = this.previousMode;
-				// Update immediately to prevent race conditions with concurrent events
+				// Update immediately to prevent duplicate detection from concurrent events
 				this.previousMode = newMode;
 
-				this.logger.log(`House mode changed from=${oldMode} to=${newMode}`);
+				if (modeChanged) {
+					this.logger.log(`House mode changed from=${oldMode} to=${newMode}`);
 
-				// Emit the specific house mode changed event
-				this.eventEmitter.emit(EventType.HOUSE_MODE_CHANGED, {
-					previousMode: oldMode,
-					newMode: newMode,
-				});
+					// Emit the specific house mode changed event
+					this.eventEmitter.emit(EventType.HOUSE_MODE_CHANGED, {
+						previousMode: oldMode,
+						newMode: newMode,
+					});
+				} else {
+					this.logger.log(`First house mode detection: mode=${newMode}`);
+				}
 
-				// Execute deterministic actions for the new mode
-				await this.executeHouseModeActions(newMode);
-			} else {
-				this.previousMode = newMode;
+				// Queue actions to serialize execution and prevent interleaving
+				// Each action waits for previous to complete before starting
+				this.pendingAction = this.pendingAction
+					.catch(() => {
+						// Ignore previous errors to continue chain
+					})
+					.then(() => this.executeHouseModeActions(newMode));
+
+				await this.pendingAction;
 			}
 		} catch (error) {
 			// Config may not have system module yet, or other issue - log and continue

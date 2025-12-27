@@ -212,5 +212,77 @@ describe('HouseModeActionsService', () => {
 			// Should not throw
 			await expect(service.onConfigUpdated()).resolves.not.toThrow();
 		});
+
+		describe('first detection after init failure', () => {
+			it('should execute actions on first detection when init failed', async () => {
+				// Simulate init failure
+				configService.getModuleConfig.mockImplementationOnce(() => {
+					throw new Error('Config not ready');
+				});
+				service.onModuleInit();
+
+				// First config update with AWAY mode
+				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
+
+				await service.onConfigUpdated();
+
+				// Should execute lighting actions even though this is "first detection"
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledTimes(2);
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				expect(spaceIntentService.executeLightingIntent).toHaveBeenCalledWith(spaceId1, {
+					type: LightingIntentType.OFF,
+				});
+			});
+
+			it('should not emit HOUSE_MODE_CHANGED event on first detection (no previous mode)', async () => {
+				// Simulate init failure
+				configService.getModuleConfig.mockImplementationOnce(() => {
+					throw new Error('Config not ready');
+				});
+				service.onModuleInit();
+
+				// First config update with AWAY mode
+				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
+
+				await service.onConfigUpdated();
+
+				// Should NOT emit event since there's no previousMode to report
+				// eslint-disable-next-line @typescript-eslint/unbound-method
+				expect(eventEmitter.emit).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('rapid mode changes serialization', () => {
+			it('should serialize action execution for rapid mode changes', async () => {
+				service.onModuleInit();
+
+				const executionOrder: string[] = [];
+
+				// Track execution order with delays
+				spaceIntentService.executeLightingIntent.mockImplementation(async (_spaceId, intent) => {
+					const mode = intent.type === LightingIntentType.OFF ? 'away' : 'night';
+					executionOrder.push(`${mode}-start`);
+					await new Promise((resolve) => setTimeout(resolve, 10));
+					executionOrder.push(`${mode}-end`);
+					return { success: true, affectedDevices: 1, failedDevices: 0 };
+				});
+
+				// Trigger rapid mode changes
+				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.AWAY) as SystemConfigModel);
+				const awayPromise = service.onConfigUpdated();
+
+				configService.getModuleConfig.mockReturnValue(createMockConfig(HouseMode.NIGHT) as SystemConfigModel);
+				const nightPromise = service.onConfigUpdated();
+
+				await Promise.all([awayPromise, nightPromise]);
+
+				// All "away" actions should complete before any "night" actions start
+				const awayEndIndex = executionOrder.lastIndexOf('away-end');
+				const nightStartIndex = executionOrder.indexOf('night-start');
+
+				expect(awayEndIndex).toBeLessThan(nightStartIndex);
+			});
+		});
 	});
 });
