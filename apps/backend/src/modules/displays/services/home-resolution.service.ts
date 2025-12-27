@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { PAGES_HOUSE_MODES_TYPE } from '../../../plugins/pages-house-modes/pages-house-modes.constants';
 import { PAGES_HOUSE_TYPE } from '../../../plugins/pages-house/pages-house.constants';
 import { PAGES_SPACE_TYPE } from '../../../plugins/pages-space/pages-space.constants';
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
@@ -66,6 +67,7 @@ export class HomeResolutionService {
 		// Include both: room role displays AND legacy auto_space mode displays (any role)
 		const spaceIds = new Set<string>();
 		let needsHouseOverview = false;
+		let needsHouseModes = false;
 		for (const display of displays) {
 			// Room role with spaceId needs SpacePage lookup
 			if (display.role === DisplayRole.ROOM && display.spaceId) {
@@ -79,6 +81,10 @@ export class HomeResolutionService {
 			if (display.role === DisplayRole.MASTER) {
 				needsHouseOverview = true;
 			}
+			// Entry role needs House Modes page lookup
+			if (display.role === DisplayRole.ENTRY) {
+				needsHouseModes = true;
+			}
 		}
 
 		// Batch fetch all SpacePage mappings
@@ -90,6 +96,12 @@ export class HomeResolutionService {
 			houseOverviewPageIds = await this.getHouseOverviewPageIds();
 		}
 
+		// Batch fetch all House Modes page IDs if needed
+		let houseModesPageIds: Set<string> = new Set();
+		if (needsHouseModes) {
+			houseModesPageIds = await this.getHouseModesPageIds();
+		}
+
 		// Resolve for each display using cached data
 		const results = new Map<string, ResolvedHomePage>();
 		for (const display of displays) {
@@ -99,6 +111,7 @@ export class HomeResolutionService {
 				visiblePages,
 				spacePageMap,
 				houseOverviewPageIds,
+				houseModesPageIds,
 			);
 			results.set(display.id, resolved);
 		}
@@ -166,8 +179,19 @@ export class HomeResolutionService {
 			this.logger.debug(`No House Overview page found for master role`);
 		}
 
-		// 2c. Entry role - find House Modes page (future: when page type exists)
-		// Currently no house_modes page type, will fall through to fallback
+		// 2c. Entry role - find House Modes page
+		if (display.role === DisplayRole.ENTRY) {
+			const houseModesPageId = await this.findHouseModesPageId(visiblePages);
+			if (houseModesPageId) {
+				this.logger.debug(`Using House Modes page id=${houseModesPageId} for entry role`);
+				return {
+					pageId: houseModesPageId,
+					resolutionMode: 'auto_role',
+					reason: 'Using House Modes page (entry role)',
+				};
+			}
+			this.logger.debug(`No House Modes page found for entry role`);
+		}
 
 		// 3. Legacy auto_space mode support (backward compatibility)
 		if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId && display.role !== DisplayRole.ROOM) {
@@ -211,6 +235,7 @@ export class HomeResolutionService {
 		visiblePages: PageEntity[],
 		spacePageMap: Map<string, Set<string>>,
 		houseOverviewPageIds: Set<string>,
+		houseModesPageIds: Set<string>,
 	): ResolvedHomePage {
 		if (visiblePages.length === 0) {
 			return {
@@ -261,8 +286,17 @@ export class HomeResolutionService {
 			}
 		}
 
-		// 2c. Entry role - find House Modes page (future: when page type exists)
-		// Currently no house_modes page type, will fall through to fallback
+		// 2c. Entry role - find House Modes page (first visible one)
+		if (display.role === DisplayRole.ENTRY && houseModesPageIds.size > 0) {
+			const houseModesPage = visiblePages.find((p) => houseModesPageIds.has(p.id));
+			if (houseModesPage) {
+				return {
+					pageId: houseModesPage.id,
+					resolutionMode: 'auto_role',
+					reason: 'Using House Modes page (entry role)',
+				};
+			}
+		}
 
 		// 3. Legacy auto_space mode support (backward compatibility)
 		if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId && display.role !== DisplayRole.ROOM) {
@@ -430,5 +464,41 @@ export class HomeResolutionService {
 		);
 
 		return new Set(housePageIds.map((row) => row.id));
+	}
+
+	/**
+	 * Finds a House Modes page ID among visible pages.
+	 * Returns the first matching house modes page.
+	 */
+	private async findHouseModesPageId(visiblePages: PageEntity[]): Promise<string | null> {
+		// Query for House Modes page entities
+		const houseModesPageIds: { id: string }[] = await this.dataSource.query(
+			`SELECT id FROM dashboard_module_pages WHERE type = ?`,
+			[PAGES_HOUSE_MODES_TYPE],
+		);
+
+		if (!houseModesPageIds || houseModesPageIds.length === 0) {
+			return null;
+		}
+
+		const houseModesPageIdSet = new Set(houseModesPageIds.map((row) => row.id));
+
+		// Find the first matching house modes page that is visible to this display
+		const houseModesPage = visiblePages.find((page) => houseModesPageIdSet.has(page.id));
+		return houseModesPage?.id || null;
+	}
+
+	/**
+	 * Gets all House Modes page IDs (for batch operations).
+	 * Returns a Set of page IDs that are house modes pages.
+	 * Each display will filter this set to find visible ones.
+	 */
+	private async getHouseModesPageIds(): Promise<Set<string>> {
+		const houseModesPageIds: { id: string }[] = await this.dataSource.query(
+			`SELECT id FROM dashboard_module_pages WHERE type = ? ORDER BY "order" ASC, "createdAt" ASC`,
+			[PAGES_HOUSE_MODES_TYPE],
+		);
+
+		return new Set(houseModesPageIds.map((row) => row.id));
 	}
 }

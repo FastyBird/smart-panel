@@ -1,0 +1,12 @@
+{
+	"fields": {
+		"confirmOnAway": {
+			"title": "Confirm on Away",
+			"description": "Require confirmation when switching to Away mode"
+		},
+		"showLastChanged": {
+			"title": "Show Last Changed",
+			"description": "Display when the house mode was last changed"
+		}
+	}
+}
