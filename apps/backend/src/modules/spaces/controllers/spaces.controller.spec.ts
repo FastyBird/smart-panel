@@ -394,40 +394,60 @@ describe('SpacesController', () => {
 			const result = controller.getIntentCatalog();
 
 			const lightingCategory = result.data.categories.find((c) => c.category === IntentCategory.LIGHTING);
-			expect(lightingCategory).toBeDefined();
-			expect(lightingCategory!.intents.length).toBeGreaterThan(0);
+
+			if (!lightingCategory) {
+				throw new Error('Lighting category not found');
+			}
+
+			expect(lightingCategory.intents.length).toBeGreaterThan(0);
 
 			// Check that off intent exists and has no params
-			const offIntent = lightingCategory!.intents.find((i) => i.type === 'off');
-			expect(offIntent).toBeDefined();
-			expect(offIntent!.label).toBe('Turn Off');
-			expect(offIntent!.params).toEqual([]);
+			const offIntent = lightingCategory.intents.find((i) => i.type === 'off');
+
+			if (!offIntent) {
+				throw new Error('Off intent not found');
+			}
+
+			expect(offIntent.label).toBe('Turn Off');
+			expect(offIntent.params).toEqual([]);
 
 			// Check that set_mode intent has mode param with enum values
-			const setModeIntent = lightingCategory!.intents.find((i) => i.type === 'set_mode');
-			expect(setModeIntent).toBeDefined();
-			expect(setModeIntent!.params.length).toBe(1);
-			expect(setModeIntent!.params[0].name).toBe('mode');
-			expect(setModeIntent!.params[0].type).toBe('enum');
-			expect(setModeIntent!.params[0].enumValues).toBeDefined();
-			expect(setModeIntent!.params[0].enumValues!.length).toBe(3); // work, relax, night
+			const setModeIntent = lightingCategory.intents.find((i) => i.type === 'set_mode');
+
+			if (!setModeIntent) {
+				throw new Error('Set mode intent not found');
+			}
+
+			expect(setModeIntent.params.length).toBe(1);
+			expect(setModeIntent.params[0].name).toBe('mode');
+			expect(setModeIntent.params[0].type).toBe('enum');
+			expect(setModeIntent.params[0].enumValues).toBeDefined();
+			expect(setModeIntent.params[0].enumValues?.length).toBe(3); // work, relax, night
 		});
 
 		it('should include climate intents with proper structure', () => {
 			const result = controller.getIntentCatalog();
 
 			const climateCategory = result.data.categories.find((c) => c.category === IntentCategory.CLIMATE);
-			expect(climateCategory).toBeDefined();
-			expect(climateCategory!.intents.length).toBeGreaterThan(0);
+
+			if (!climateCategory) {
+				throw new Error('Climate category not found');
+			}
+
+			expect(climateCategory.intents.length).toBeGreaterThan(0);
 
 			// Check that setpoint_set intent has value param with min/max
-			const setpointSetIntent = climateCategory!.intents.find((i) => i.type === 'setpoint_set');
-			expect(setpointSetIntent).toBeDefined();
-			expect(setpointSetIntent!.params.length).toBe(1);
-			expect(setpointSetIntent!.params[0].name).toBe('value');
-			expect(setpointSetIntent!.params[0].type).toBe('number');
-			expect(setpointSetIntent!.params[0].minValue).toBeDefined();
-			expect(setpointSetIntent!.params[0].maxValue).toBeDefined();
+			const setpointSetIntent = climateCategory.intents.find((i) => i.type === 'setpoint_set');
+
+			if (!setpointSetIntent) {
+				throw new Error('Setpoint set intent not found');
+			}
+
+			expect(setpointSetIntent.params.length).toBe(1);
+			expect(setpointSetIntent.params[0].name).toBe('value');
+			expect(setpointSetIntent.params[0].type).toBe('number');
+			expect(setpointSetIntent.params[0].minValue).toBeDefined();
+			expect(setpointSetIntent.params[0].maxValue).toBeDefined();
 		});
 
 		it('should include all quick action types', () => {
