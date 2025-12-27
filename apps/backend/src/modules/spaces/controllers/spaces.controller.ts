@@ -170,61 +170,61 @@ export class SpacesController {
 
 		// Transform intent categories
 		const categories = INTENT_CATEGORY_CATALOG.map((cat) => {
-			const categoryModel = new IntentCategoryDataModel();
-			categoryModel.category = cat.category;
-			categoryModel.label = cat.label;
-			categoryModel.description = cat.description;
-			categoryModel.icon = cat.icon;
-			categoryModel.intents = cat.intents.map((intent) => {
-				const intentModel = new IntentTypeDataModel();
-				intentModel.type = intent.type;
-				intentModel.label = intent.label;
-				intentModel.description = intent.description;
-				intentModel.icon = intent.icon;
-				intentModel.params = intent.params.map((param) => {
-					const paramModel = new IntentParamDataModel();
-					paramModel.name = param.name;
-					paramModel.type = param.type;
-					paramModel.required = param.required;
-					paramModel.description = param.description;
-					paramModel.minValue = param.minValue;
-					paramModel.maxValue = param.maxValue;
+			const categoryData = new IntentCategoryDataModel();
+			categoryData.category = cat.category;
+			categoryData.label = cat.label;
+			categoryData.description = cat.description;
+			categoryData.icon = cat.icon;
+			categoryData.intents = cat.intents.map((intent) => {
+				const intentData = new IntentTypeDataModel();
+				intentData.type = intent.type;
+				intentData.label = intent.label;
+				intentData.description = intent.description;
+				intentData.icon = intent.icon;
+				intentData.params = intent.params.map((param) => {
+					const paramData = new IntentParamDataModel();
+					paramData.name = param.name;
+					paramData.type = param.type;
+					paramData.required = param.required;
+					paramData.description = param.description;
+					paramData.minValue = param.minValue;
+					paramData.maxValue = param.maxValue;
 					if (param.enumValues) {
-						paramModel.enumValues = param.enumValues.map((ev) => {
-							const evModel = new IntentEnumValueDataModel();
-							evModel.value = ev.value;
-							evModel.label = ev.label;
-							evModel.description = ev.description;
-							evModel.icon = ev.icon;
-							return evModel;
+						paramData.enumValues = param.enumValues.map((ev) => {
+							const enumData = new IntentEnumValueDataModel();
+							enumData.value = ev.value;
+							enumData.label = ev.label;
+							enumData.description = ev.description;
+							enumData.icon = ev.icon;
+							return enumData;
 						});
 					}
-					return paramModel;
+					return paramData;
 				});
-				return intentModel;
+				return intentData;
 			});
-			return categoryModel;
+			return categoryData;
 		});
 
 		// Transform quick actions
 		const quickActions = QUICK_ACTION_CATALOG.map((qa) => {
-			const qaModel = new QuickActionDataModel();
-			qaModel.type = qa.type;
-			qaModel.label = qa.label;
-			qaModel.description = qa.description;
-			qaModel.icon = qa.icon;
-			qaModel.category = qa.category;
-			return qaModel;
+			const actionData = new QuickActionDataModel();
+			actionData.type = qa.type;
+			actionData.label = qa.label;
+			actionData.description = qa.description;
+			actionData.icon = qa.icon;
+			actionData.category = qa.category;
+			return actionData;
 		});
 
 		// Transform lighting roles
 		const lightingRoles = Object.values(LIGHTING_ROLE_META).map((role) => {
-			const roleModel = new LightingRoleMetaDataModel();
-			roleModel.value = role.value as LightingRole;
-			roleModel.label = role.label;
-			roleModel.description = role.description;
-			roleModel.icon = role.icon;
-			return roleModel;
+			const roleData = new LightingRoleMetaDataModel();
+			roleData.value = role.value as LightingRole;
+			roleData.label = role.label;
+			roleData.description = role.description;
+			roleData.icon = role.icon;
+			return roleData;
 		});
 
 		const catalogData = new IntentCatalogDataModel();
