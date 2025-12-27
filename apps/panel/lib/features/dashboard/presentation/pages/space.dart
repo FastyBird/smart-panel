@@ -91,7 +91,9 @@ class _SpacePageState extends State<SpacePage> {
   ClimateState _climateState = ClimateState.loading;
   double? _currentTemperature;
   double? _targetTemperature;
+  // ignore: unused_field - populated from API, reserved for future UI slider bounds
   double _minSetpoint = 5.0;
+  // ignore: unused_field - populated from API, reserved for future UI slider bounds
   double _maxSetpoint = 35.0;
 
   // Devices state
