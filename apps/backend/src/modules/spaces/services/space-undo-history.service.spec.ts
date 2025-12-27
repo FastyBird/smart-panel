@@ -1,3 +1,11 @@
+/*
+eslint-disable @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-enum-comparison
+*/
+/*
+Reason: The mocking and test setup requires dynamic assignment and
+handling of Jest mocks, which ESLint rules flag unnecessarily.
+*/
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -7,11 +15,10 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../device
 import { IDevicePlatform } from '../../devices/platforms/device.platform';
 import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
-import { LightingRole } from '../spaces.constants';
 
 import { LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
 import { ClimateState } from './space-intent.service';
-import { SpaceUndoHistoryService, UndoEntry } from './space-undo-history.service';
+import { SpaceUndoHistoryService } from './space-undo-history.service';
 import { SpacesService } from './spaces.service';
 
 describe('SpaceUndoHistoryService', () => {
@@ -43,7 +50,12 @@ describe('SpaceUndoHistoryService', () => {
 		} as ClimateState,
 	});
 
-	const createLightSnapshot = (deviceId: string, channelId: string, isOn: boolean, brightness: number | null = null): LightStateSnapshot => ({
+	const createLightSnapshot = (
+		deviceId: string,
+		channelId: string,
+		isOn: boolean,
+		brightness: number | null = null,
+	): LightStateSnapshot => ({
 		deviceId,
 		deviceName: 'Test Light',
 		channelId,
@@ -148,7 +160,7 @@ describe('SpaceUndoHistoryService', () => {
 			const entry = service.peekUndoEntry(spaceId);
 
 			expect(entry).not.toBeNull();
-			expect(entry!.actionDescription).toBe('Second action');
+			expect(entry.actionDescription).toBe('Second action');
 		});
 
 		it('should maintain separate stacks for different spaces', () => {
@@ -162,12 +174,12 @@ describe('SpaceUndoHistoryService', () => {
 			const entry2 = service.peekUndoEntry(spaceId2);
 
 			expect(entry1).not.toBeNull();
-			expect(entry1!.actionDescription).toBe('Action for space 1');
-			expect(entry1!.intentCategory).toBe('lighting');
+			expect(entry1.actionDescription).toBe('Action for space 1');
+			expect(entry1.intentCategory).toBe('lighting');
 
 			expect(entry2).not.toBeNull();
-			expect(entry2!.actionDescription).toBe('Action for space 2');
-			expect(entry2!.intentCategory).toBe('climate');
+			expect(entry2.actionDescription).toBe('Action for space 2');
+			expect(entry2.intentCategory).toBe('climate');
 		});
 	});
 
@@ -189,7 +201,7 @@ describe('SpaceUndoHistoryService', () => {
 
 			expect(entry1).not.toBeNull();
 			expect(entry2).not.toBeNull();
-			expect(entry1!.id).toBe(entry2!.id);
+			expect(entry1.id).toBe(entry2.id);
 		});
 
 		it('should return null for expired entries', () => {
@@ -404,7 +416,9 @@ describe('SpaceUndoHistoryService', () => {
 			const commands = mockPlatform.processBatch.mock.calls[0][0];
 
 			// Should include on command
-			const onCommand = commands.find((c: { property: { category: string } }) => c.property.category === PropertyCategory.ON);
+			const onCommand = commands.find(
+				(c: { property: { category: string } }) => c.property.category === PropertyCategory.ON,
+			);
 			expect(onCommand).toBeDefined();
 			expect(onCommand.value).toBe(true);
 		});
@@ -432,7 +446,9 @@ describe('SpaceUndoHistoryService', () => {
 			const commands = mockPlatform.processBatch.mock.calls[0][0];
 
 			// Should include brightness command
-			const brightnessCommand = commands.find((c: { property: { category: string } }) => c.property.category === PropertyCategory.BRIGHTNESS);
+			const brightnessCommand = commands.find(
+				(c: { property: { category: string } }) => c.property.category === PropertyCategory.BRIGHTNESS,
+			);
 			expect(brightnessCommand).toBeDefined();
 			expect(brightnessCommand.value).toBe(75);
 		});
@@ -460,7 +476,9 @@ describe('SpaceUndoHistoryService', () => {
 			const commands = mockPlatform.processBatch.mock.calls[0][0];
 
 			// Should NOT include brightness command when light is off
-			const brightnessCommand = commands.find((c: { property: { category: string } }) => c.property.category === PropertyCategory.BRIGHTNESS);
+			const brightnessCommand = commands.find(
+				(c: { property: { category: string } }) => c.property.category === PropertyCategory.BRIGHTNESS,
+			);
 			expect(brightnessCommand).toBeUndefined();
 		});
 	});
