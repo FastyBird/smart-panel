@@ -17,6 +17,7 @@ import { SpaceContextSnapshotService } from '../services/space-context-snapshot.
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
+import { SpaceUndoHistoryService } from '../services/space-undo-history.service';
 import { SpacesService } from '../services/spaces.service';
 import {
 	IntentCategory,
@@ -126,6 +127,18 @@ describe('SpacesController', () => {
 							},
 							climate: { hasClimate: false },
 							capturedAt: new Date(),
+						}),
+					},
+				},
+				{
+					provide: SpaceUndoHistoryService,
+					useValue: {
+						peekUndoEntry: jest.fn().mockReturnValue(null),
+						executeUndo: jest.fn().mockResolvedValue({
+							success: true,
+							restoredDevices: 0,
+							failedDevices: 0,
+							message: '',
 						}),
 					},
 				},
