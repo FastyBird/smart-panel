@@ -4,7 +4,7 @@ Type: technical
 Scope: backend
 Size: small
 Parent: EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -32,9 +32,9 @@ I want automated tests that lock down precedence rules and best-effort house-mod
 
 ## 4. Acceptance criteria
 
-- [ ] Tests cover all precedence branches.
-- [ ] Tests cover Away + Night semantics and persistence.
-- [ ] Tests are deterministic in CI.
+- [x] Tests cover all precedence branches.
+- [x] Tests cover Away + Night semantics and persistence.
+- [x] Tests are deterministic in CI.
 
 ## 6. Technical constraints
 

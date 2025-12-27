@@ -364,5 +364,310 @@ describe('HomeResolutionService', () => {
 				expect(result.pageId).toBe(pageId1);
 			});
 		});
+
+		describe('legacy auto_space mode (backward compatibility)', () => {
+			it('should use auto_space mode for master role display with spaceId', async () => {
+				const display = createMockDisplay({
+					role: DisplayRole.MASTER,
+					homeMode: HomeMode.AUTO_SPACE,
+					spaceId: spaceId,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(spacePageId, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				// First query for house overview (master role) returns nothing
+				// Second query for space page returns the space page
+				jest
+					.spyOn(dataSource, 'query')
+					.mockResolvedValueOnce([]) // No house overview page
+					.mockResolvedValueOnce([{ id: spacePageId }]); // Space page exists
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(spacePageId);
+				expect(result.resolutionMode).toBe('auto_space');
+				expect(result.reason).toContain('SpacePage');
+			});
+
+			it('should use auto_space mode for entry role display with spaceId', async () => {
+				const display = createMockDisplay({
+					role: DisplayRole.ENTRY,
+					homeMode: HomeMode.AUTO_SPACE,
+					spaceId: spaceId,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(spacePageId, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				// Query for space page returns the space page
+				jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: spacePageId }]);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(spacePageId);
+				expect(result.resolutionMode).toBe('auto_space');
+			});
+
+			it('should not use auto_space mode for room role (handled by role resolution)', async () => {
+				// Room role with auto_space should use auto_role, not auto_space
+				const display = createMockDisplay({
+					role: DisplayRole.ROOM,
+					homeMode: HomeMode.AUTO_SPACE,
+					spaceId: spaceId,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(spacePageId, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				// Query for space page returns the space page
+				jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: spacePageId }]);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(spacePageId);
+				// Should be auto_role (room role), not auto_space
+				expect(result.resolutionMode).toBe('auto_role');
+			});
+		});
+
+		describe('default values (backward compatibility)', () => {
+			it('should work with default role (ROOM) and default homeMode (AUTO_SPACE)', async () => {
+				// Display with default values should resolve correctly
+				const display = createMockDisplay({
+					// Using defaults from entity: role = ROOM, homeMode = AUTO_SPACE
+					spaceId: spaceId,
+				});
+
+				expect(display.role).toBe(DisplayRole.ROOM);
+				expect(display.homeMode).toBe(HomeMode.AUTO_SPACE);
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(spacePageId, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: spacePageId }]);
+
+				const result = await service.resolveHomePage(display);
+
+				// Should use room role resolution (auto_role)
+				expect(result.pageId).toBe(spacePageId);
+				expect(result.resolutionMode).toBe('auto_role');
+			});
+
+			it('should fallback gracefully for display with no spaceId (legacy scenario)', async () => {
+				const display = createMockDisplay({
+					// Default role and homeMode, no spaceId
+					spaceId: null,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				const result = await service.resolveHomePage(display);
+
+				// Should fallback to first page
+				expect(result.pageId).toBe(pageId1);
+				expect(result.resolutionMode).toBe('fallback');
+			});
+		});
+	});
+
+	describe('resolveHomePagesBatch', () => {
+		const displayId2 = uuid();
+		const spaceId2 = uuid();
+		const spacePageId2 = uuid();
+		const houseOverviewPageId = uuid();
+
+		it('should return empty map for empty displays array', async () => {
+			const result = await service.resolveHomePagesBatch([]);
+
+			expect(result.size).toBe(0);
+		});
+
+		it('should resolve home pages for multiple displays in batch', async () => {
+			const display1 = createMockDisplay({
+				id: displayId,
+				role: DisplayRole.ROOM,
+				spaceId: spaceId,
+			});
+
+			const display2 = createMockDisplay({
+				id: displayId2,
+				role: DisplayRole.ROOM,
+				spaceId: spaceId2,
+			});
+
+			const pages = [createMockPage(pageId1, 0), createMockPage(spacePageId, 1), createMockPage(spacePageId2, 2)];
+
+			const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+			mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+			// Mock space pages query - returns pages for both spaces
+			jest.spyOn(dataSource, 'query').mockResolvedValue([
+				{ id: spacePageId, spaceId: spaceId },
+				{ id: spacePageId2, spaceId: spaceId2 },
+			]);
+
+			const result = await service.resolveHomePagesBatch([display1, display2]);
+
+			expect(result.size).toBe(2);
+			expect(result.get(displayId)?.pageId).toBe(spacePageId);
+			expect(result.get(displayId)?.resolutionMode).toBe('auto_role');
+			expect(result.get(displayId2)?.pageId).toBe(spacePageId2);
+			expect(result.get(displayId2)?.resolutionMode).toBe('auto_role');
+		});
+
+		it('should handle mixed roles in batch (room + master)', async () => {
+			const roomDisplay = createMockDisplay({
+				id: displayId,
+				role: DisplayRole.ROOM,
+				spaceId: spaceId,
+			});
+
+			const masterDisplay = createMockDisplay({
+				id: displayId2,
+				role: DisplayRole.MASTER,
+			});
+
+			const pages = [
+				createMockPage(pageId1, 0),
+				createMockPage(spacePageId, 1),
+				createMockPage(houseOverviewPageId, 2),
+			];
+
+			const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+			mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+			// Mock queries - first for space pages, second for house overview
+			jest
+				.spyOn(dataSource, 'query')
+				.mockResolvedValueOnce([{ id: spacePageId, spaceId: spaceId }]) // Space pages
+				.mockResolvedValueOnce([{ id: houseOverviewPageId }]); // House overview
+
+			const result = await service.resolveHomePagesBatch([roomDisplay, masterDisplay]);
+
+			expect(result.size).toBe(2);
+			expect(result.get(displayId)?.pageId).toBe(spacePageId);
+			expect(result.get(displayId)?.resolutionMode).toBe('auto_role');
+			expect(result.get(displayId2)?.pageId).toBe(houseOverviewPageId);
+			expect(result.get(displayId2)?.resolutionMode).toBe('auto_role');
+		});
+
+		it('should handle explicit home mode in batch', async () => {
+			const explicitDisplay = createMockDisplay({
+				id: displayId,
+				homeMode: HomeMode.EXPLICIT,
+				homePageId: pageId1,
+			});
+
+			const roomDisplay = createMockDisplay({
+				id: displayId2,
+				role: DisplayRole.ROOM,
+				spaceId: spaceId,
+			});
+
+			const pages = [createMockPage(pageId1, 0), createMockPage(spacePageId, 1)];
+
+			const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+			mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+			jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: spacePageId, spaceId: spaceId }]);
+
+			const result = await service.resolveHomePagesBatch([explicitDisplay, roomDisplay]);
+
+			expect(result.size).toBe(2);
+			expect(result.get(displayId)?.pageId).toBe(pageId1);
+			expect(result.get(displayId)?.resolutionMode).toBe('explicit');
+			expect(result.get(displayId2)?.pageId).toBe(spacePageId);
+			expect(result.get(displayId2)?.resolutionMode).toBe('auto_role');
+		});
+
+		it('should handle legacy auto_space mode in batch for non-room roles', async () => {
+			const masterWithAutoSpace = createMockDisplay({
+				id: displayId,
+				role: DisplayRole.MASTER,
+				homeMode: HomeMode.AUTO_SPACE,
+				spaceId: spaceId,
+			});
+
+			const pages = [createMockPage(pageId1, 0), createMockPage(spacePageId, 1)];
+
+			const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+			mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+			// First call for space pages (for auto_space mode), second for house overview (for master role)
+			jest
+				.spyOn(dataSource, 'query')
+				.mockResolvedValueOnce([{ id: spacePageId, spaceId: spaceId }]) // Space pages
+				.mockResolvedValueOnce([]); // No house overview
+
+			const result = await service.resolveHomePagesBatch([masterWithAutoSpace]);
+
+			expect(result.size).toBe(1);
+			// Should fall back to auto_space since no house overview exists
+			expect(result.get(displayId)?.pageId).toBe(spacePageId);
+			expect(result.get(displayId)?.resolutionMode).toBe('auto_space');
+		});
+
+		it('should fallback gracefully when no matching pages exist', async () => {
+			const display = createMockDisplay({
+				id: displayId,
+				role: DisplayRole.ROOM,
+				spaceId: spaceId,
+			});
+
+			// Only generic pages, no space pages
+			const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+			const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+			mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+			// No space pages found
+			jest.spyOn(dataSource, 'query').mockResolvedValue([]);
+
+			const result = await service.resolveHomePagesBatch([display]);
+
+			expect(result.size).toBe(1);
+			expect(result.get(displayId)?.pageId).toBe(pageId1);
+			expect(result.get(displayId)?.resolutionMode).toBe('fallback');
+		});
+
+		it('should respect page visibility in batch operations', async () => {
+			const displayEntity1 = { id: displayId } as DisplayEntity;
+			const displayEntity2 = { id: displayId2 } as DisplayEntity;
+
+			const display1 = createMockDisplay({
+				id: displayId,
+				role: DisplayRole.ROOM,
+			});
+
+			const display2 = createMockDisplay({
+				id: displayId2,
+				role: DisplayRole.ROOM,
+			});
+
+			// Page 1 visible only to display1, page 2 visible only to display2
+			const page1 = createMockPage(pageId1, 0, [displayEntity1]);
+			const page2 = createMockPage(pageId2, 1, [displayEntity2]);
+
+			const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+			mockQueryBuilder.getMany.mockResolvedValue([page1, page2]);
+
+			const result = await service.resolveHomePagesBatch([display1, display2]);
+
+			expect(result.size).toBe(2);
+			expect(result.get(displayId)?.pageId).toBe(pageId1);
+			expect(result.get(displayId2)?.pageId).toBe(pageId2);
+		});
 	});
 });
