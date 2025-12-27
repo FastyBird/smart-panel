@@ -6,9 +6,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 38 |
+| Done | 43 |
 | Planned | 6 |
-| **Total** | **44** |
+| **Total** | **49** |
 
 ---
 
@@ -18,6 +18,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Title | Scope | Size |
 |----|-------|-------|------|
+| EPIC-DISPLAY-ROLES-HOUSE-CONTROL | Display roles & House control | backend, admin, panel | large |
 | EPIC-SPACES-FIRST-UX | Spaces-first UX (Spaces module + Space pages + onboarding + MVP intents) | backend, admin, panel | large |
 
 ---
@@ -32,6 +33,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-CONFIG-CONSOLIDATION | Configuration Module Consolidation | backend, admin, panel | large |
 | FEATURE-DASHBOARD-SPACE-PAGE | Add Space page type to Dashboard (space-first home screen) | backend, admin, panel | large |
 | FEATURE-DEVICE-VALIDATION-CONSTRAINTS | Device Validation Constraints | backend, admin, panel | medium |
+| FEATURE-DISPLAY-ROLES-MVP | Introduce display roles (room / master / entry) | backend, admin, panel | medium |
+| FEATURE-HOUSE-MODES-MVP | Add House Modes (Home / Away / Night) for entry panels | backend, admin, panel | medium |
+| FEATURE-HOUSE-OVERVIEW-PAGE | Add House Overview page for master panels | backend, admin, panel | medium |
 | FEATURE-LINUX-DEVICE-INSTALLATION | Linux Device Installation | backend, admin | large |
 | FEATURE-MDNS-BACKEND-DISCOVERY | mDNS Backend Discovery | backend, panel | medium |
 | FEATURE-MODULE-CONFIG | Module Configuration Support | backend, admin | large |
@@ -98,6 +102,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Title | Scope |
 |----|-------|-------|
+| CHORE-CODEBASE-TODO-CLEANUP | Codebase TODO Cleanup | backend, admin, panel |
 | CHORE-EXTENSIONS-CORE-CONTROL | Extensions Core Control Implementation | backend, admin |
 
 ### Planned
@@ -118,10 +123,14 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Type | Status |
 |----|------|--------|
+| EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
 | FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
+| FEATURE-DISPLAY-ROLES-MVP | feature | done |
+| FEATURE-HOUSE-MODES-MVP | feature | done |
+| FEATURE-HOUSE-OVERVIEW-PAGE | feature | done |
 | FEATURE-LINUX-DEVICE-INSTALLATION | feature | done |
 | FEATURE-MDNS-BACKEND-DISCOVERY | feature | done |
 | FEATURE-MODULE-CONFIG | feature | done |
@@ -149,6 +158,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECH-SPACES-ONBOARDING-WIZARD | technical | done |
 | TECHNICAL-OPENAPI-SPECIFICATION | technical | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
+| CHORE-CODEBASE-TODO-CLEANUP | chore | done |
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
@@ -159,11 +169,15 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Type | Status |
 |----|------|--------|
+| EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
 | FEATURE-ADMIN-PLUGIN-SERVICES | feature | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
 | FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
+| FEATURE-DISPLAY-ROLES-MVP | feature | done |
+| FEATURE-HOUSE-MODES-MVP | feature | done |
+| FEATURE-HOUSE-OVERVIEW-PAGE | feature | done |
 | FEATURE-LINUX-DEVICE-INSTALLATION | feature | done |
 | FEATURE-MODULE-CONFIG | feature | done |
 | FEATURE-MULTI-LOCATION-WEATHER | feature | done |
@@ -178,6 +192,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECH-ADMIN-SPACE-OVERVIEW | technical | done |
 | TECH-SPACES-ONBOARDING-WIZARD | technical | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
+| CHORE-CODEBASE-TODO-CLEANUP | chore | done |
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
@@ -187,10 +202,14 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Type | Status |
 |----|------|--------|
+| EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
 | FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
+| FEATURE-DISPLAY-ROLES-MVP | feature | done |
+| FEATURE-HOUSE-MODES-MVP | feature | done |
+| FEATURE-HOUSE-OVERVIEW-PAGE | feature | done |
 | FEATURE-MDNS-BACKEND-DISCOVERY | feature | done |
 | FEATURE-MULTI-LOCATION-WEATHER | feature | done |
 | FEATURE-PANEL-IDLE-MODE-SPACE-AWARE | feature | done |
@@ -205,6 +224,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-WLED-PLUGIN | feature | done |
 | TECH-DISPLAY-HOME-RESOLUTION | technical | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
+| CHORE-CODEBASE-TODO-CLEANUP | chore | done |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | feature | planned |
 | FEATURE-WINDOW-COVERING-DEVICE-PAGE | feature | planned |
 
@@ -213,6 +233,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 ## Task Dependencies
 
 ```
+EPIC-DISPLAY-ROLES-HOUSE-CONTROL (done)
+├── FEATURE-DISPLAY-ROLES-MVP (done)
+├── FEATURE-HOUSE-MODES-MVP (done)
+└── FEATURE-HOUSE-OVERVIEW-PAGE (done)
+
 EPIC-SPACES-FIRST-UX (done)
 ├── FEATURE-SPACES-MODULE (done)
 ├── TECH-SPACES-ONBOARDING-WIZARD (done)
@@ -258,14 +283,19 @@ tasks/
 ├── _template.md            # Template for new tasks
 ├── bugs/                   # Bug reports
 ├── chores/                 # Maintenance tasks
+│   ├── CHORE-CODEBASE-TODO-CLEANUP.md
 │   └── CHORE-EXTENSIONS-CORE-CONTROL.md
 ├── features/               # Feature implementations
+│   ├── EPIC-DISPLAY-ROLES-HOUSE-CONTROL.md
 │   ├── EPIC-SPACES-FIRST-UX.md
 │   ├── FEATURE-ADMIN-PLUGIN-SERVICES.md
 │   ├── FEATURE-APP-UPDATES.md
 │   ├── FEATURE-CONFIG-CONSOLIDATION.md
 │   ├── FEATURE-DASHBOARD-SPACE-PAGE.md
 │   ├── FEATURE-DEVICE-VALIDATION-CONSTRAINTS.md
+│   ├── FEATURE-DISPLAY-ROLES-MVP.md
+│   ├── FEATURE-HOUSE-MODES-MVP.md
+│   ├── FEATURE-HOUSE-OVERVIEW-PAGE.md
 │   ├── FEATURE-LINUX-DEVICE-INSTALLATION.md
 │   ├── FEATURE-LINUX-INSTALL-ENHANCEMENTS.md
 │   ├── FEATURE-MDNS-BACKEND-DISCOVERY.md
