@@ -17,7 +17,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, HomeMode } from '../../displays/displays.constants';
+import { ConnectionState, DisplayRole, HomeMode } from '../../displays/displays.constants';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { DisplaysService } from '../../displays/services/displays.service';
 import { DisplayExistsConstraint } from '../../displays/validators/display-exists-constraint.validator';
@@ -74,6 +74,7 @@ describe('PagesService', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
+		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: 'test',
 		screenWidth: 1280,

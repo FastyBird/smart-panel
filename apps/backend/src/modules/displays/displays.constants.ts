@@ -40,6 +40,12 @@ export enum HomeMode {
 	FIRST_PAGE = 'first_page',
 }
 
+export enum DisplayRole {
+	ROOM = 'room',
+	MASTER = 'master',
+	ENTRY = 'entry',
+}
+
 export const OnlineDisplayState = [ConnectionState.CONNECTED];
 
 export const DisplayStatusInfluxDbSchema: ISchemaOptions = {

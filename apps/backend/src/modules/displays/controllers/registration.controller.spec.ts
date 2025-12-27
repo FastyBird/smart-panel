@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, HomeMode } from '../displays.constants';
+import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 import { RegistrationGuard } from '../guards/registration.guard';
@@ -29,6 +29,7 @@ describe('RegistrationController', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
+		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1920,

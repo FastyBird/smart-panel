@@ -33,6 +33,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 	const model = reactive<IDisplayEditForm>({
 		id: display.id,
 		name: display.name,
+		role: display.role,
 		unitSize: display.unitSize,
 		rows: display.rows,
 		cols: display.cols,
@@ -75,6 +76,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		try {
 			const updateData: {
 				name: string | null;
+				role: 'room' | 'master' | 'entry';
 				unitSize?: number;
 				rows?: number;
 				cols?: number;
@@ -90,6 +92,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				homePageId: string | null;
 			} = {
 				name: model.name || null,
+				role: model.role,
 				unitSize: model.unitSize,
 				rows: model.rows,
 				cols: model.cols,

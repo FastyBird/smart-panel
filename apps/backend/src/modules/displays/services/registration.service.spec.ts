@@ -17,7 +17,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType, TokenType } from '../../auth/auth.constants';
 import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
-import { ConnectionState, HomeMode } from '../displays.constants';
+import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
 import { RegisterDisplayDto } from '../dto/register-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
 
@@ -34,6 +34,7 @@ describe('RegistrationService', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
+		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1920,

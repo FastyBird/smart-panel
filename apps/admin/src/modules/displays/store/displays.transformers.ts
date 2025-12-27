@@ -8,6 +8,7 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		id: response.id,
 		macAddress: response.mac_address,
 		name: response.name ?? null, // Handle undefined by converting to null
+		role: response.role ?? 'room',
 		version: response.version,
 		build: response.build ?? null,
 		screenWidth: response.screen_width ?? 0,
@@ -70,6 +71,7 @@ export const transformDisplayCreateRequest = (display: IDisplaysAddActionPayload
 export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayload['data']): IDisplayUpdateReq => {
 	const baseData: Record<string, unknown> = {
 		name: display.name,
+		role: display.role,
 		unit_size: display.unitSize,
 		rows: display.rows,
 		cols: display.cols,

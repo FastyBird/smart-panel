@@ -39,6 +39,7 @@
 	"table": {
 		"columns": {
 			"name": "Name",
+			"role": "Role",
 			"macAddress": "MAC Address",
 			"version": "Version",
 			"resolution": "Resolution",
@@ -90,6 +91,15 @@
 				"placeholder": "Enter display name",
 				"validation": {
 					"maxLength": "Name must be less than 100 characters"
+				}
+			},
+			"role": {
+				"title": "Display Role",
+				"description": "The purpose of this display in your smart home setup",
+				"options": {
+					"room": "Room (Single room control)",
+					"master": "Master (Whole-house overview)",
+					"entry": "Entry (House modes and security)"
 				}
 			},
 			"unitSize": {
@@ -202,6 +212,11 @@
 		"lost": "Lost",
 		"unknown": "Unknown"
 	},
+	"roles": {
+		"room": "Room",
+		"master": "Master",
+		"entry": "Entry"
+	},
 	"texts": {
 		"loadingDisplays": "Loading displays...",
 		"loadingDisplay": "Loading display...",
@@ -250,6 +265,7 @@
 		"title": "Display Detail",
 		"info": {
 			"title": "Display Information",
+			"role": "Role",
 			"macAddress": "MAC Address",
 			"version": "Version",
 			"build": "Build",
