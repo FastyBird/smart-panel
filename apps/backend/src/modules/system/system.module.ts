@@ -8,6 +8,7 @@ import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
+import { SpacesModule } from '../spaces/spaces.module';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
@@ -22,6 +23,7 @@ import { UpdateSystemConfigDto } from './dto/update-config.dto';
 import { SystemConfigModel } from './models/config.model';
 import { SystemStatsProvider } from './providers/system-stats.provider';
 import { FactoryResetRegistryService } from './services/factory-reset-registry.service';
+import { HouseModeActionsService } from './services/house-mode-actions.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
 import { SystemService } from './services/system.service';
@@ -49,6 +51,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		StatsModule,
 		forwardRef(() => ConfigModule),
 		forwardRef(() => ExtensionsModule),
+		forwardRef(() => SpacesModule),
 	],
 	providers: [
 		SystemService,
@@ -56,6 +59,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		FactoryResetRegistryService,
 		SystemLoggerService,
 		SystemStatsProvider,
+		HouseModeActionsService,
 	],
 	controllers: [SystemController, LogsController],
 	exports: [SystemService, FactoryResetRegistryService, SystemLoggerService],

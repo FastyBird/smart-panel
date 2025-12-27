@@ -169,10 +169,10 @@ describe('HomeResolutionService', () => {
 			});
 		});
 
-		describe('when homeMode is auto_space', () => {
+		describe('when role is room (v2 spec)', () => {
 			it('should return space page if display has spaceId and SpacePage exists', async () => {
 				const display = createMockDisplay({
-					homeMode: HomeMode.AUTO_SPACE,
+					role: DisplayRole.ROOM,
 					spaceId: spaceId,
 				});
 
@@ -187,13 +187,13 @@ describe('HomeResolutionService', () => {
 				const result = await service.resolveHomePage(display);
 
 				expect(result.pageId).toBe(spacePageId);
-				expect(result.resolutionMode).toBe('auto_space');
-				expect(result.reason).toContain('SpacePage');
+				expect(result.resolutionMode).toBe('auto_role');
+				expect(result.reason).toContain('room role');
 			});
 
 			it('should fallback to first page if no SpacePage exists for space', async () => {
 				const display = createMockDisplay({
-					homeMode: HomeMode.AUTO_SPACE,
+					role: DisplayRole.ROOM,
 					spaceId: spaceId,
 				});
 
@@ -213,7 +213,7 @@ describe('HomeResolutionService', () => {
 
 			it('should fallback to first page if display has no spaceId', async () => {
 				const display = createMockDisplay({
-					homeMode: HomeMode.AUTO_SPACE,
+					role: DisplayRole.ROOM,
 					spaceId: null,
 				});
 
@@ -226,6 +226,87 @@ describe('HomeResolutionService', () => {
 
 				expect(result.pageId).toBe(pageId1);
 				expect(result.resolutionMode).toBe('fallback');
+			});
+		});
+
+		describe('when role is master (v2 spec)', () => {
+			const houseOverviewPageId = uuid();
+
+			it('should return House Overview page if one exists', async () => {
+				const display = createMockDisplay({
+					role: DisplayRole.MASTER,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(houseOverviewPageId, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				// Mock the house overview page query
+				jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: houseOverviewPageId }]);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(houseOverviewPageId);
+				expect(result.resolutionMode).toBe('auto_role');
+				expect(result.reason).toContain('master role');
+			});
+
+			it('should fallback to first page if no House Overview page exists', async () => {
+				const display = createMockDisplay({
+					role: DisplayRole.MASTER,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				// Mock the house overview page query - no results
+				jest.spyOn(dataSource, 'query').mockResolvedValue([]);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(pageId1);
+				expect(result.resolutionMode).toBe('fallback');
+			});
+		});
+
+		describe('when role is entry (v2 spec)', () => {
+			it('should fallback to first page as house modes page type not yet implemented', async () => {
+				const display = createMockDisplay({
+					role: DisplayRole.ENTRY,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(pageId1);
+				expect(result.resolutionMode).toBe('fallback');
+			});
+		});
+
+		describe('explicit home overrides role (v2 spec)', () => {
+			it('should use explicit home page even for master role', async () => {
+				const display = createMockDisplay({
+					role: DisplayRole.MASTER,
+					homeMode: HomeMode.EXPLICIT,
+					homePageId: pageId1,
+				});
+
+				const pages = [createMockPage(pageId1, 0), createMockPage(pageId2, 1)];
+
+				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
+				mockQueryBuilder.getMany.mockResolvedValue(pages);
+
+				const result = await service.resolveHomePage(display);
+
+				expect(result.pageId).toBe(pageId1);
+				expect(result.resolutionMode).toBe('explicit');
 			});
 		});
 
