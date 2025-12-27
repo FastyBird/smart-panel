@@ -356,3 +356,369 @@ export const LIGHTING_MODE_ORCHESTRATION: Record<LightingMode, ModeOrchestration
 		fallbackBrightness: 20,
 	},
 };
+
+// ========================
+// Intent Catalog Types
+// ========================
+
+/**
+ * Intent category - the domain of control
+ */
+export enum IntentCategory {
+	LIGHTING = 'lighting',
+	CLIMATE = 'climate',
+}
+
+/**
+ * Metadata for an enum value used in intent parameters
+ */
+export interface IntentEnumValueMeta {
+	value: string;
+	label: string;
+	description?: string;
+	icon?: string;
+}
+
+/**
+ * Parameter type for intent catalog
+ */
+export type IntentParamType = 'enum' | 'boolean' | 'number';
+
+/**
+ * Metadata for an intent parameter
+ */
+export interface IntentParamMeta {
+	name: string;
+	type: IntentParamType;
+	required: boolean;
+	description: string;
+	enumValues?: IntentEnumValueMeta[];
+	minValue?: number;
+	maxValue?: number;
+}
+
+/**
+ * Metadata for an intent type
+ */
+export interface IntentTypeMeta {
+	type: string;
+	label: string;
+	description: string;
+	icon: string;
+	params: IntentParamMeta[];
+}
+
+/**
+ * Metadata for an intent category
+ */
+export interface IntentCategoryMeta {
+	category: IntentCategory;
+	label: string;
+	description: string;
+	icon: string;
+	intents: IntentTypeMeta[];
+}
+
+/**
+ * Metadata for a quick action
+ */
+export interface QuickActionMeta {
+	type: QuickActionType;
+	label: string;
+	description: string;
+	icon: string;
+	category: IntentCategory;
+}
+
+// ========================
+// Intent Catalog Data
+// ========================
+
+/**
+ * Metadata for lighting modes
+ */
+export const LIGHTING_MODE_META: Record<LightingMode, IntentEnumValueMeta> = {
+	[LightingMode.WORK]: {
+		value: LightingMode.WORK,
+		label: 'Work',
+		description: 'Bright lighting for focus and productivity',
+		icon: 'mdi:briefcase',
+	},
+	[LightingMode.RELAX]: {
+		value: LightingMode.RELAX,
+		label: 'Relax',
+		description: 'Soft ambient lighting for relaxation',
+		icon: 'mdi:sofa',
+	},
+	[LightingMode.NIGHT]: {
+		value: LightingMode.NIGHT,
+		label: 'Night',
+		description: 'Minimal lighting for nighttime',
+		icon: 'mdi:weather-night',
+	},
+};
+
+/**
+ * Metadata for brightness delta values
+ */
+export const BRIGHTNESS_DELTA_META: Record<BrightnessDelta, IntentEnumValueMeta> = {
+	[BrightnessDelta.SMALL]: {
+		value: BrightnessDelta.SMALL,
+		label: 'Small',
+		description: `Adjust brightness by ${BRIGHTNESS_DELTA_STEPS[BrightnessDelta.SMALL]}%`,
+	},
+	[BrightnessDelta.MEDIUM]: {
+		value: BrightnessDelta.MEDIUM,
+		label: 'Medium',
+		description: `Adjust brightness by ${BRIGHTNESS_DELTA_STEPS[BrightnessDelta.MEDIUM]}%`,
+	},
+	[BrightnessDelta.LARGE]: {
+		value: BrightnessDelta.LARGE,
+		label: 'Large',
+		description: `Adjust brightness by ${BRIGHTNESS_DELTA_STEPS[BrightnessDelta.LARGE]}%`,
+	},
+};
+
+/**
+ * Metadata for setpoint delta values
+ */
+export const SETPOINT_DELTA_META: Record<SetpointDelta, IntentEnumValueMeta> = {
+	[SetpointDelta.SMALL]: {
+		value: SetpointDelta.SMALL,
+		label: 'Small',
+		description: `Adjust temperature by ${SETPOINT_DELTA_STEPS[SetpointDelta.SMALL]}°`,
+	},
+	[SetpointDelta.MEDIUM]: {
+		value: SetpointDelta.MEDIUM,
+		label: 'Medium',
+		description: `Adjust temperature by ${SETPOINT_DELTA_STEPS[SetpointDelta.MEDIUM]}°`,
+	},
+	[SetpointDelta.LARGE]: {
+		value: SetpointDelta.LARGE,
+		label: 'Large',
+		description: `Adjust temperature by ${SETPOINT_DELTA_STEPS[SetpointDelta.LARGE]}°`,
+	},
+};
+
+/**
+ * Metadata for lighting role values
+ */
+export const LIGHTING_ROLE_META: Record<LightingRole, IntentEnumValueMeta> = {
+	[LightingRole.MAIN]: {
+		value: LightingRole.MAIN,
+		label: 'Main',
+		description: 'Primary/ceiling lights',
+		icon: 'mdi:ceiling-light',
+	},
+	[LightingRole.TASK]: {
+		value: LightingRole.TASK,
+		label: 'Task',
+		description: 'Task/work lights (e.g., desk lamps)',
+		icon: 'mdi:desk-lamp',
+	},
+	[LightingRole.AMBIENT]: {
+		value: LightingRole.AMBIENT,
+		label: 'Ambient',
+		description: 'Ambient/mood lights (e.g., accent strips)',
+		icon: 'mdi:led-strip-variant',
+	},
+	[LightingRole.ACCENT]: {
+		value: LightingRole.ACCENT,
+		label: 'Accent',
+		description: 'Accent/decorative lights (e.g., wall sconces)',
+		icon: 'mdi:wall-sconce',
+	},
+	[LightingRole.NIGHT]: {
+		value: LightingRole.NIGHT,
+		label: 'Night',
+		description: 'Night/minimal lights',
+		icon: 'mdi:lightbulb-night',
+	},
+	[LightingRole.OTHER]: {
+		value: LightingRole.OTHER,
+		label: 'Other',
+		description: 'Unclassified lights',
+		icon: 'mdi:lightbulb',
+	},
+};
+
+/**
+ * Complete lighting intent catalog
+ */
+export const LIGHTING_INTENT_CATALOG: IntentTypeMeta[] = [
+	{
+		type: LightingIntentType.OFF,
+		label: 'Turn Off',
+		description: 'Turn off all lights in the space',
+		icon: 'mdi:lightbulb-off',
+		params: [],
+	},
+	{
+		type: LightingIntentType.ON,
+		label: 'Turn On',
+		description: 'Turn on all lights in the space',
+		icon: 'mdi:lightbulb-on',
+		params: [],
+	},
+	{
+		type: LightingIntentType.SET_MODE,
+		label: 'Set Mode',
+		description: 'Set a lighting mode (work/relax/night) with role-based brightness levels',
+		icon: 'mdi:lightbulb-group',
+		params: [
+			{
+				name: 'mode',
+				type: 'enum',
+				required: true,
+				description: 'The lighting mode to apply',
+				enumValues: Object.values(LIGHTING_MODE_META),
+			},
+		],
+	},
+	{
+		type: LightingIntentType.BRIGHTNESS_DELTA,
+		label: 'Adjust Brightness',
+		description: 'Increase or decrease brightness of currently on lights',
+		icon: 'mdi:brightness-6',
+		params: [
+			{
+				name: 'delta',
+				type: 'enum',
+				required: true,
+				description: 'The step size for brightness adjustment',
+				enumValues: Object.values(BRIGHTNESS_DELTA_META),
+			},
+			{
+				name: 'increase',
+				type: 'boolean',
+				required: true,
+				description: 'True to increase brightness, false to decrease',
+			},
+		],
+	},
+];
+
+/**
+ * Complete climate intent catalog
+ */
+export const CLIMATE_INTENT_CATALOG: IntentTypeMeta[] = [
+	{
+		type: ClimateIntentType.SETPOINT_DELTA,
+		label: 'Adjust Temperature',
+		description: 'Increase or decrease the target temperature',
+		icon: 'mdi:thermometer',
+		params: [
+			{
+				name: 'delta',
+				type: 'enum',
+				required: true,
+				description: 'The step size for temperature adjustment',
+				enumValues: Object.values(SETPOINT_DELTA_META),
+			},
+			{
+				name: 'increase',
+				type: 'boolean',
+				required: true,
+				description: 'True to increase temperature, false to decrease',
+			},
+		],
+	},
+	{
+		type: ClimateIntentType.SETPOINT_SET,
+		label: 'Set Temperature',
+		description: 'Set the target temperature to a specific value',
+		icon: 'mdi:thermometer-check',
+		params: [
+			{
+				name: 'value',
+				type: 'number',
+				required: true,
+				description: 'The target temperature in degrees Celsius',
+				minValue: ABSOLUTE_MIN_SETPOINT,
+				maxValue: ABSOLUTE_MAX_SETPOINT,
+			},
+		],
+	},
+];
+
+/**
+ * Complete intent category catalog
+ */
+export const INTENT_CATEGORY_CATALOG: IntentCategoryMeta[] = [
+	{
+		category: IntentCategory.LIGHTING,
+		label: 'Lighting',
+		description: 'Control lights in the space with modes and brightness adjustments',
+		icon: 'mdi:lightbulb-group',
+		intents: LIGHTING_INTENT_CATALOG,
+	},
+	{
+		category: IntentCategory.CLIMATE,
+		label: 'Climate',
+		description: 'Control temperature and climate settings in the space',
+		icon: 'mdi:thermostat',
+		intents: CLIMATE_INTENT_CATALOG,
+	},
+];
+
+/**
+ * Quick action metadata catalog
+ */
+export const QUICK_ACTION_CATALOG: QuickActionMeta[] = [
+	{
+		type: QuickActionType.LIGHTING_OFF,
+		label: 'Lights Off',
+		description: 'Turn off all lights',
+		icon: 'mdi:lightbulb-off',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.LIGHTING_WORK,
+		label: 'Work Mode',
+		description: 'Bright lighting for focus',
+		icon: 'mdi:briefcase',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.LIGHTING_RELAX,
+		label: 'Relax Mode',
+		description: 'Soft ambient lighting',
+		icon: 'mdi:sofa',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.LIGHTING_NIGHT,
+		label: 'Night Mode',
+		description: 'Minimal lighting',
+		icon: 'mdi:weather-night',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.BRIGHTNESS_UP,
+		label: 'Brighter',
+		description: 'Increase brightness',
+		icon: 'mdi:brightness-5',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.BRIGHTNESS_DOWN,
+		label: 'Dimmer',
+		description: 'Decrease brightness',
+		icon: 'mdi:brightness-4',
+		category: IntentCategory.LIGHTING,
+	},
+	{
+		type: QuickActionType.CLIMATE_UP,
+		label: 'Warmer',
+		description: 'Increase temperature',
+		icon: 'mdi:thermometer-plus',
+		category: IntentCategory.CLIMATE,
+	},
+	{
+		type: QuickActionType.CLIMATE_DOWN,
+		label: 'Cooler',
+		description: 'Decrease temperature',
+		icon: 'mdi:thermometer-minus',
+		category: IntentCategory.CLIMATE,
+	},
+];

@@ -5,7 +5,14 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nes
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
-import { LightingMode, LightingRole, SpaceCategory, SuggestionType } from '../spaces.constants';
+import {
+	IntentCategory,
+	LightingMode,
+	LightingRole,
+	QuickActionType,
+	SpaceCategory,
+	SuggestionType,
+} from '../spaces.constants';
 
 /**
  * Response wrapper for SpaceEntity
@@ -669,4 +676,333 @@ export class CategoryTemplatesResponseModel extends BaseSuccessResponseModel<Cat
 	@Expose()
 	@Type(() => CategoryTemplateDataModel)
 	declare data: CategoryTemplateDataModel[];
+}
+
+// ================================
+// Intent Catalog Response Models
+// ================================
+
+/**
+ * Intent enum value metadata data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataIntentEnumValue' })
+export class IntentEnumValueDataModel {
+	@ApiProperty({
+		description: 'The enum value identifier',
+		type: 'string',
+		example: 'work',
+	})
+	@Expose()
+	value: string;
+
+	@ApiProperty({
+		description: 'Human-readable label for the value',
+		type: 'string',
+		example: 'Work',
+	})
+	@Expose()
+	label: string;
+
+	@ApiPropertyOptional({
+		description: 'Description of what this value does',
+		type: 'string',
+		example: 'Bright lighting for focus and productivity',
+	})
+	@Expose()
+	description?: string;
+
+	@ApiPropertyOptional({
+		description: 'Icon identifier for this value',
+		type: 'string',
+		example: 'mdi:briefcase',
+	})
+	@Expose()
+	icon?: string;
+}
+
+/**
+ * Intent parameter metadata data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataIntentParam' })
+export class IntentParamDataModel {
+	@ApiProperty({
+		description: 'Parameter name',
+		type: 'string',
+		example: 'mode',
+	})
+	@Expose()
+	name: string;
+
+	@ApiProperty({
+		description: 'Parameter type',
+		enum: ['enum', 'boolean', 'number'],
+		example: 'enum',
+	})
+	@Expose()
+	type: string;
+
+	@ApiProperty({
+		description: 'Whether the parameter is required',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	required: boolean;
+
+	@ApiProperty({
+		description: 'Description of the parameter',
+		type: 'string',
+		example: 'The lighting mode to apply',
+	})
+	@Expose()
+	description: string;
+
+	@ApiPropertyOptional({
+		name: 'enum_values',
+		description: 'Available values for enum type parameters',
+		type: () => [IntentEnumValueDataModel],
+	})
+	@Expose({ name: 'enum_values' })
+	@Type(() => IntentEnumValueDataModel)
+	enumValues?: IntentEnumValueDataModel[];
+
+	@ApiPropertyOptional({
+		name: 'min_value',
+		description: 'Minimum value for number type parameters',
+		type: 'number',
+		example: -10,
+	})
+	@Expose({ name: 'min_value' })
+	minValue?: number;
+
+	@ApiPropertyOptional({
+		name: 'max_value',
+		description: 'Maximum value for number type parameters',
+		type: 'number',
+		example: 50,
+	})
+	@Expose({ name: 'max_value' })
+	maxValue?: number;
+}
+
+/**
+ * Intent type metadata data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataIntentType' })
+export class IntentTypeDataModel {
+	@ApiProperty({
+		description: 'Intent type identifier',
+		type: 'string',
+		example: 'set_mode',
+	})
+	@Expose()
+	type: string;
+
+	@ApiProperty({
+		description: 'Human-readable label for the intent',
+		type: 'string',
+		example: 'Set Mode',
+	})
+	@Expose()
+	label: string;
+
+	@ApiProperty({
+		description: 'Description of what the intent does',
+		type: 'string',
+		example: 'Set a lighting mode (work/relax/night) with role-based brightness levels',
+	})
+	@Expose()
+	description: string;
+
+	@ApiProperty({
+		description: 'Icon identifier for the intent',
+		type: 'string',
+		example: 'mdi:lightbulb-group',
+	})
+	@Expose()
+	icon: string;
+
+	@ApiProperty({
+		description: 'Parameters for this intent',
+		type: () => [IntentParamDataModel],
+	})
+	@Expose()
+	@Type(() => IntentParamDataModel)
+	params: IntentParamDataModel[];
+}
+
+/**
+ * Intent category metadata data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataIntentCategory' })
+export class IntentCategoryDataModel {
+	@ApiProperty({
+		description: 'Category identifier',
+		enum: IntentCategory,
+		example: IntentCategory.LIGHTING,
+	})
+	@Expose()
+	category: IntentCategory;
+
+	@ApiProperty({
+		description: 'Human-readable label for the category',
+		type: 'string',
+		example: 'Lighting',
+	})
+	@Expose()
+	label: string;
+
+	@ApiProperty({
+		description: 'Description of the category',
+		type: 'string',
+		example: 'Control lights in the space with modes and brightness adjustments',
+	})
+	@Expose()
+	description: string;
+
+	@ApiProperty({
+		description: 'Icon identifier for the category',
+		type: 'string',
+		example: 'mdi:lightbulb-group',
+	})
+	@Expose()
+	icon: string;
+
+	@ApiProperty({
+		description: 'Available intents in this category',
+		type: () => [IntentTypeDataModel],
+	})
+	@Expose()
+	@Type(() => IntentTypeDataModel)
+	intents: IntentTypeDataModel[];
+}
+
+/**
+ * Quick action metadata data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataQuickAction' })
+export class QuickActionDataModel {
+	@ApiProperty({
+		description: 'Quick action type identifier',
+		enum: QuickActionType,
+		example: QuickActionType.LIGHTING_WORK,
+	})
+	@Expose()
+	type: QuickActionType;
+
+	@ApiProperty({
+		description: 'Human-readable label for the action',
+		type: 'string',
+		example: 'Work Mode',
+	})
+	@Expose()
+	label: string;
+
+	@ApiProperty({
+		description: 'Description of the action',
+		type: 'string',
+		example: 'Bright lighting for focus',
+	})
+	@Expose()
+	description: string;
+
+	@ApiProperty({
+		description: 'Icon identifier for the action',
+		type: 'string',
+		example: 'mdi:briefcase',
+	})
+	@Expose()
+	icon: string;
+
+	@ApiProperty({
+		description: 'The intent category this action belongs to',
+		enum: IntentCategory,
+		example: IntentCategory.LIGHTING,
+	})
+	@Expose()
+	category: IntentCategory;
+}
+
+/**
+ * Lighting role metadata data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataLightingRoleMeta' })
+export class LightingRoleMetaDataModel {
+	@ApiProperty({
+		description: 'Role identifier',
+		enum: LightingRole,
+		example: LightingRole.MAIN,
+	})
+	@Expose()
+	value: LightingRole;
+
+	@ApiProperty({
+		description: 'Human-readable label for the role',
+		type: 'string',
+		example: 'Main',
+	})
+	@Expose()
+	label: string;
+
+	@ApiProperty({
+		description: 'Description of the role',
+		type: 'string',
+		example: 'Primary/ceiling lights',
+	})
+	@Expose()
+	description: string;
+
+	@ApiPropertyOptional({
+		description: 'Icon identifier for the role',
+		type: 'string',
+		example: 'mdi:ceiling-light',
+	})
+	@Expose()
+	icon?: string;
+}
+
+/**
+ * Complete intent catalog data model
+ */
+@ApiSchema({ name: 'SpacesModuleDataIntentCatalog' })
+export class IntentCatalogDataModel {
+	@ApiProperty({
+		description: 'Available intent categories with their intents',
+		type: () => [IntentCategoryDataModel],
+	})
+	@Expose()
+	@Type(() => IntentCategoryDataModel)
+	categories: IntentCategoryDataModel[];
+
+	@ApiProperty({
+		name: 'quick_actions',
+		description: 'Available quick actions',
+		type: () => [QuickActionDataModel],
+	})
+	@Expose({ name: 'quick_actions' })
+	@Type(() => QuickActionDataModel)
+	quickActions: QuickActionDataModel[];
+
+	@ApiProperty({
+		name: 'lighting_roles',
+		description: 'Available lighting roles',
+		type: () => [LightingRoleMetaDataModel],
+	})
+	@Expose({ name: 'lighting_roles' })
+	@Type(() => LightingRoleMetaDataModel)
+	lightingRoles: LightingRoleMetaDataModel[];
+}
+
+/**
+ * Response wrapper for intent catalog
+ */
+@ApiSchema({ name: 'SpacesModuleResIntentCatalog' })
+export class IntentCatalogResponseModel extends BaseSuccessResponseModel<IntentCatalogDataModel> {
+	@ApiProperty({
+		description: 'The intent catalog with all available intents, quick actions, and roles',
+		type: () => IntentCatalogDataModel,
+	})
+	@Expose()
+	@Type(() => IntentCatalogDataModel)
+	declare data: IntentCatalogDataModel;
 }

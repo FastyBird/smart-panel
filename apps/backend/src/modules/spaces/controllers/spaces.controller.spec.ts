@@ -17,7 +17,14 @@ import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpacesService } from '../services/spaces.service';
-import { LightingIntentType, LightingMode, SpaceType } from '../spaces.constants';
+import {
+	IntentCategory,
+	LightingIntentType,
+	LightingMode,
+	LightingRole,
+	QuickActionType,
+	SpaceType,
+} from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
 import { SpacesController } from './spaces.controller';
@@ -362,6 +369,137 @@ describe('SpacesController', () => {
 
 			expect(result.data.affectedDevices).toBe(1);
 			expect(result.data.failedDevices).toBe(1);
+		});
+	});
+
+	describe('getIntentCatalog', () => {
+		it('should return the complete intent catalog', () => {
+			const result = controller.getIntentCatalog();
+
+			expect(result.data).toBeDefined();
+			expect(result.data.categories).toBeDefined();
+			expect(result.data.quickActions).toBeDefined();
+			expect(result.data.lightingRoles).toBeDefined();
+		});
+
+		it('should include lighting and climate categories', () => {
+			const result = controller.getIntentCatalog();
+
+			const categoryValues = result.data.categories.map((c) => c.category);
+			expect(categoryValues).toContain(IntentCategory.LIGHTING);
+			expect(categoryValues).toContain(IntentCategory.CLIMATE);
+		});
+
+		it('should include lighting intents with proper structure', () => {
+			const result = controller.getIntentCatalog();
+
+			const lightingCategory = result.data.categories.find((c) => c.category === IntentCategory.LIGHTING);
+
+			if (!lightingCategory) {
+				throw new Error('Lighting category not found');
+			}
+
+			expect(lightingCategory.intents.length).toBeGreaterThan(0);
+
+			// Check that off intent exists and has no params
+			const offIntent = lightingCategory.intents.find((i) => i.type === 'off');
+
+			if (!offIntent) {
+				throw new Error('Off intent not found');
+			}
+
+			expect(offIntent.label).toBe('Turn Off');
+			expect(offIntent.params).toEqual([]);
+
+			// Check that set_mode intent has mode param with enum values
+			const setModeIntent = lightingCategory.intents.find((i) => i.type === 'set_mode');
+
+			if (!setModeIntent) {
+				throw new Error('Set mode intent not found');
+			}
+
+			expect(setModeIntent.params.length).toBe(1);
+			expect(setModeIntent.params[0].name).toBe('mode');
+			expect(setModeIntent.params[0].type).toBe('enum');
+			expect(setModeIntent.params[0].enumValues).toBeDefined();
+			expect(setModeIntent.params[0].enumValues?.length).toBe(3); // work, relax, night
+		});
+
+		it('should include climate intents with proper structure', () => {
+			const result = controller.getIntentCatalog();
+
+			const climateCategory = result.data.categories.find((c) => c.category === IntentCategory.CLIMATE);
+
+			if (!climateCategory) {
+				throw new Error('Climate category not found');
+			}
+
+			expect(climateCategory.intents.length).toBeGreaterThan(0);
+
+			// Check that setpoint_set intent has value param with min/max
+			const setpointSetIntent = climateCategory.intents.find((i) => i.type === 'setpoint_set');
+
+			if (!setpointSetIntent) {
+				throw new Error('Setpoint set intent not found');
+			}
+
+			expect(setpointSetIntent.params.length).toBe(1);
+			expect(setpointSetIntent.params[0].name).toBe('value');
+			expect(setpointSetIntent.params[0].type).toBe('number');
+			expect(setpointSetIntent.params[0].minValue).toBeDefined();
+			expect(setpointSetIntent.params[0].maxValue).toBeDefined();
+		});
+
+		it('should include all quick action types', () => {
+			const result = controller.getIntentCatalog();
+
+			const quickActionTypes = result.data.quickActions.map((qa) => qa.type);
+			expect(quickActionTypes).toContain(QuickActionType.LIGHTING_OFF);
+			expect(quickActionTypes).toContain(QuickActionType.LIGHTING_WORK);
+			expect(quickActionTypes).toContain(QuickActionType.LIGHTING_RELAX);
+			expect(quickActionTypes).toContain(QuickActionType.LIGHTING_NIGHT);
+			expect(quickActionTypes).toContain(QuickActionType.BRIGHTNESS_UP);
+			expect(quickActionTypes).toContain(QuickActionType.BRIGHTNESS_DOWN);
+			expect(quickActionTypes).toContain(QuickActionType.CLIMATE_UP);
+			expect(quickActionTypes).toContain(QuickActionType.CLIMATE_DOWN);
+		});
+
+		it('should include all lighting roles', () => {
+			const result = controller.getIntentCatalog();
+
+			const roleValues = result.data.lightingRoles.map((r) => r.value);
+			expect(roleValues).toContain(LightingRole.MAIN);
+			expect(roleValues).toContain(LightingRole.TASK);
+			expect(roleValues).toContain(LightingRole.AMBIENT);
+			expect(roleValues).toContain(LightingRole.ACCENT);
+			expect(roleValues).toContain(LightingRole.NIGHT);
+			expect(roleValues).toContain(LightingRole.OTHER);
+		});
+
+		it('should include labels and icons for all items', () => {
+			const result = controller.getIntentCatalog();
+
+			// Check categories have labels and icons
+			result.data.categories.forEach((cat) => {
+				expect(cat.label).toBeDefined();
+				expect(cat.label.length).toBeGreaterThan(0);
+				expect(cat.icon).toBeDefined();
+				expect(cat.icon.length).toBeGreaterThan(0);
+			});
+
+			// Check quick actions have labels and icons
+			result.data.quickActions.forEach((qa) => {
+				expect(qa.label).toBeDefined();
+				expect(qa.label.length).toBeGreaterThan(0);
+				expect(qa.icon).toBeDefined();
+				expect(qa.icon.length).toBeGreaterThan(0);
+			});
+
+			// Check lighting roles have labels
+			result.data.lightingRoles.forEach((role) => {
+				expect(role.label).toBeDefined();
+				expect(role.label.length).toBeGreaterThan(0);
+			});
 		});
 	});
 });
