@@ -54,6 +54,10 @@ import {
 	SuggestionFeedbackResponseModel,
 	SuggestionFeedbackResultDataModel,
 	SuggestionResponseModel,
+	UndoResultDataModel,
+	UndoResultResponseModel,
+	UndoStateDataModel,
+	UndoStateResponseModel,
 } from './models/spaces-response.model';
 
 export const SPACES_SWAGGER_EXTRA_MODELS = [
@@ -115,6 +119,11 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	LightingContextDataModel,
 	ContextSnapshotDataModel,
 	ContextSnapshotResponseModel,
+	// Undo History models
+	UndoStateDataModel,
+	UndoStateResponseModel,
+	UndoResultDataModel,
+	UndoResultResponseModel,
 	// Entities
 	SpaceEntity,
 	SpaceLightingRoleEntity,

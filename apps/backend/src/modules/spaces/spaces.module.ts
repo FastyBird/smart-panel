@@ -17,6 +17,7 @@ import { SpaceContextSnapshotService } from './services/space-context-snapshot.s
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
+import { SpaceUndoHistoryService } from './services/space-undo-history.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
@@ -39,6 +40,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceLightingRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
+		SpaceUndoHistoryService,
 		SpaceActivityListener,
 	],
 	exports: [
@@ -47,6 +49,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		SpaceLightingRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,
+		SpaceUndoHistoryService,
 	],
 })
 export class SpacesModule implements OnModuleInit {
