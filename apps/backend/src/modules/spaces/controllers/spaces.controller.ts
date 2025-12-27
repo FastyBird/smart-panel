@@ -72,6 +72,7 @@ import {
 	SPACE_CATEGORY_TEMPLATES,
 	SpaceCategory,
 } from '../spaces.constants';
+import { SpacesNotFoundException } from '../spaces.exceptions';
 
 @ApiTags(SPACES_MODULE_API_TAG_NAME)
 @Controller('spaces')
@@ -765,7 +766,7 @@ export class SpacesController {
 		const snapshot = await this.spaceContextSnapshotService.captureSnapshot(id);
 
 		if (!snapshot) {
-			throw new Error('Space not found');
+			throw new SpacesNotFoundException('Space not found');
 		}
 
 		// Transform lighting snapshot to response model
