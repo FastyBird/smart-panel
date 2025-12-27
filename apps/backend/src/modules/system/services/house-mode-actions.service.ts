@@ -51,6 +51,10 @@ export class HouseModeActionsService implements OnModuleInit {
 	/**
 	 * Listen for config updates and detect house mode changes.
 	 * When house mode changes, emit the specific event and execute actions.
+	 *
+	 * Note: previousMode is updated immediately after detecting a change
+	 * (before awaiting actions) to prevent race conditions when multiple
+	 * CONFIG_UPDATED events fire rapidly.
 	 */
 	@OnEvent(ConfigEventType.CONFIG_UPDATED)
 	async onConfigUpdated(): Promise<void> {
@@ -59,19 +63,23 @@ export class HouseModeActionsService implements OnModuleInit {
 			const newMode = config.houseMode;
 
 			if (this.previousMode !== null && newMode !== this.previousMode) {
-				this.logger.log(`House mode changed from=${this.previousMode} to=${newMode}`);
+				const oldMode = this.previousMode;
+				// Update immediately to prevent race conditions with concurrent events
+				this.previousMode = newMode;
+
+				this.logger.log(`House mode changed from=${oldMode} to=${newMode}`);
 
 				// Emit the specific house mode changed event
 				this.eventEmitter.emit(EventType.HOUSE_MODE_CHANGED, {
-					previousMode: this.previousMode,
+					previousMode: oldMode,
 					newMode: newMode,
 				});
 
 				// Execute deterministic actions for the new mode
 				await this.executeHouseModeActions(newMode);
+			} else {
+				this.previousMode = newMode;
 			}
-
-			this.previousMode = newMode;
 		} catch (error) {
 			// Config may not have system module yet, or other issue - log and continue
 			this.logger.debug(`Could not process config update for house mode: ${error}`);
