@@ -6,8 +6,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 44 |
-| Planned | 11 |
+| Done | 45 |
+| Planned | 10 |
 | **Total** | **55** |
 
 ---
@@ -99,12 +99,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECH-SPACES-ONBOARDING-WIZARD | Spaces onboarding and assignment wizard | admin, backend | medium |
 | TECHNICAL-OPENAPI-SPECIFICATION | Backend as Source of Truth for OpenAPI | backend | large |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | Display Token Revocation & Multi-Backend | backend, admin, panel | large |
+| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | Align implementation to v2 specification | backend, admin, panel | small |
 
 ### Planned
 
-| ID | Title | Scope | Size | Parent |
-|----|-------|-------|------|--------|
-| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | Align implementation to v2 specification | backend, admin, panel | small | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 |
+*No planned technical tasks.*
 
 ---
 
@@ -173,6 +172,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | CHORE-CODEBASE-TODO-CLEANUP | chore | done |
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
+| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | planned |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-DISPLAY-ROLES-MVP-V2 | feature | planned |
@@ -181,7 +181,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
 | FEATURE-PLUGIN-MATTER | feature | planned |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
-| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | planned |
 
 ### Admin
 
@@ -212,6 +211,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
 | CHORE-CODEBASE-TODO-CLEANUP | chore | done |
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
+| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | planned |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-DISPLAY-ROLES-MVP-V2 | feature | planned |
@@ -219,7 +219,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
-| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | planned |
 
 ### Panel
 
@@ -249,13 +248,13 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
 | TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
 | CHORE-CODEBASE-TODO-CLEANUP | chore | done |
+| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | planned |
 | FEATURE-DISPLAY-ROLES-MVP-V2 | feature | planned |
 | FEATURE-HOUSE-MODES-MVP-V2 | feature | planned |
 | FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | planned |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | feature | planned |
 | FEATURE-WINDOW-COVERING-DEVICE-PAGE | feature | planned |
-| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | planned |
 
 ---
 
@@ -273,7 +272,7 @@ EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 (planned)
 ├── FEATURE-HOUSE-MODES-MVP-V2 (planned)
 ├── FEATURE-HOUSE-OVERVIEW-PAGE-V2 (planned)
 ├── TECH-HOUSE-CONTROL-SMOKE-TESTS (done)
-└── TECH-EPIC-HOUSE-CONTROL-ALIGNMENT (planned)
+└── TECH-EPIC-HOUSE-CONTROL-ALIGNMENT (done)
 
 EPIC-SPACES-FIRST-UX (done)
 ├── FEATURE-SPACES-MODULE (done)
