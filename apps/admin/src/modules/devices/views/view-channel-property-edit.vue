@@ -290,7 +290,12 @@ const onDiscard = (): void => {
 					router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 				}
 			} else {
-				// TODO: Handle invalid route
+				// Fallback to channels list for invalid route context
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.CHANNELS });
+				} else {
+					router.push({ name: RouteNames.CHANNELS });
+				}
 			}
 		})
 		.catch((): void => {
@@ -316,7 +321,12 @@ const onClose = (): void => {
 			router.push({ name: RouteNames.DEVICE, params: { id: channel.value?.device } });
 		}
 	} else {
-		// TODO: Handle invalid route
+		// Fallback to channels list for invalid route context
+		if (isLGDevice.value) {
+			router.replace({ name: RouteNames.CHANNELS });
+		} else {
+			router.push({ name: RouteNames.CHANNELS });
+		}
 	}
 };
 

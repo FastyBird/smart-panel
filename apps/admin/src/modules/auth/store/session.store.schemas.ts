@@ -31,6 +31,7 @@ export const TokenPairSchema = z.object({
 export const SessionStateSemaphoreSchema = z.object({
 	fetching: z.boolean().default(false),
 	creating: z.boolean().default(false),
+	registering: z.boolean().default(false),
 	updating: z.boolean().default(false),
 });
 

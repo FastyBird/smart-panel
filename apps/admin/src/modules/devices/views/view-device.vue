@@ -306,6 +306,7 @@ import {
 	IconWithChild,
 	ViewError,
 	ViewHeader,
+	injectStoresManager,
 	useBreakpoints,
 	useFlashMessage,
 	useUuid,
@@ -320,6 +321,7 @@ import type { IChannelProperty } from '../store/channels.properties.store.types'
 import type { IChannel } from '../store/channels.store.types';
 import type { IDeviceControl } from '../store/devices.controls.store.types';
 import type { IDevice } from '../store/devices.store.types';
+import { devicesControlsStoreKey } from '../store/keys';
 
 import type { IViewDeviceProps } from './view-device.types';
 
@@ -340,6 +342,9 @@ const ns = useNamespace('view-device');
 const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
+
+const storesManager = injectStoresManager();
+const devicesControlsStore = storesManager.getStore(devicesControlsStoreKey);
 
 const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
 const { fetchValidation } = useDeviceValidation({ id: props.id });
@@ -405,8 +410,7 @@ const sortedChannels = computed<IChannel[]>((): IChannel[] => {
 });
 
 const controls = computed<IDeviceControl[]>((): IDeviceControl[] => {
-	// TODO: Load controls
-	return [];
+	return devicesControlsStore.findForDevice(props.id);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -630,6 +634,11 @@ onBeforeMount((): void => {
 			// Fetch validation data for this device
 			fetchValidation().catch((): void => {
 				// Silently ignore validation fetch errors - validation is non-critical
+			});
+
+			// Fetch device controls
+			devicesControlsStore.fetch({ deviceId: props.id }).catch((): void => {
+				// Silently ignore controls fetch errors - controls are optional
 			});
 		})
 		.catch((error: unknown): void => {

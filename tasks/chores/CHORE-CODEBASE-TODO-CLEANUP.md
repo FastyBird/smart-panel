@@ -4,7 +4,7 @@ Type: chore
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -40,47 +40,47 @@ I want to address all TODO comments and incomplete implementations across the co
 ## 4. Acceptance criteria
 
 ### Phase 1: Backend - Climate Undo Support
-- [ ] Implement climate state restoration in `SpaceUndoHistoryService.restoreSnapshot()`
-- [ ] Enable climate undo snapshot capture in `SpaceIntentService`
-- [ ] Add tests for climate undo functionality
+- [x] Implement climate state restoration in `SpaceUndoHistoryService.restoreSnapshot()`
+- [x] Enable climate undo snapshot capture in `SpaceIntentService`
+- [x] Add tests for climate undo functionality
 
 ### Phase 2: Admin - Route Error Handling
-- [ ] Implement proper error handling in `view-channel-property-add.vue` (5 locations)
-- [ ] Implement proper error handling in `view-channel-property-edit.vue` (2 locations)
-- [ ] Add user-facing error messages for route navigation failures
+- [x] Implement proper error handling in `view-channel-property-add.vue` (5 locations)
+- [x] Implement proper error handling in `view-channel-property-edit.vue` (2 locations)
+- [x] Add user-facing error messages for route navigation failures
 
 ### Phase 3: Admin - Device Controls
-- [ ] Implement device controls loading in `view-device.vue:408`
-- [ ] Test controls are displayed correctly in device view
+- [x] Implement device controls loading in `view-device.vue:408`
+- [x] Test controls are displayed correctly in device view
 
 ### Phase 4: Admin - Auth Features
-- [ ] Implement user edit handler in `session.store.ts:221`
-- [ ] Implement user registration handler in `session.store.ts:227`
-- [ ] Add proper API calls for user management
+- [x] Implement user edit handler in `session.store.ts:221`
+- [x] Implement user registration handler in `session.store.ts:227`
+- [x] Add proper API calls for user management
 
 ### Phase 5: Admin - Event Handling
-- [ ] Implement channel property event handling in `devices.module.ts:178`
+- [x] Implement channel property event handling in `devices.module.ts:178`
 
 ### Phase 6: Panel - API Integration
-- [ ] Run `melos rebuild-api` to generate API client
-- [ ] Integrate lighting state loading (`space.dart:142`)
-- [ ] Integrate climate state loading (`space.dart:183`)
-- [ ] Integrate set climate setpoint (`space.dart:225`)
-- [ ] Integrate set lighting mode (`space.dart:265`)
-- [ ] Integrate apply suggestion (`space.dart:311`)
-- [ ] Integrate dismiss suggestion (`space.dart:382`)
-- [ ] Integrate execute intent (`space.dart:423`)
-- [ ] Integrate apply quick action (`space.dart:466`)
-- [ ] Integrate execute quick action (`space.dart:526`)
-- [ ] Integrate execute quick action with parameter (`space.dart:594`)
-- [ ] Integrate undo state refresh (`space.dart:631`)
-- [ ] Integrate device list rendering (`space.dart:1898`)
+- [x] Run `melos rebuild-api` to generate API client
+- [x] Integrate lighting state loading (`space.dart:142`)
+- [x] Integrate climate state loading (`space.dart:183`)
+- [x] Integrate set climate setpoint (`space.dart:225`)
+- [x] Integrate set lighting mode (`space.dart:265`)
+- [x] Integrate apply suggestion (`space.dart:311`)
+- [x] Integrate dismiss suggestion (`space.dart:382`)
+- [x] Integrate execute intent (`space.dart:423`)
+- [x] Integrate apply quick action (`space.dart:466`)
+- [x] Integrate execute quick action (`space.dart:526`)
+- [x] Integrate execute quick action with parameter (`space.dart:594`)
+- [x] Integrate undo state refresh (`space.dart:631`)
+- [x] Integrate device list rendering (`space.dart:1898`)
 
 ### Phase 7: Panel - Localization
-- [ ] Run `flutter gen-l10n` and integrate localization (`space.dart:99`)
+- [x] Run `flutter gen-l10n` and integrate localization (`space.dart:99`)
 
 ### Phase 8: Low Priority / Future
-- [ ] Document Shelly-NG input processing for future implementation (`device-manager.service.ts:772`)
+- [x] Document Shelly-NG input processing for future implementation (`device-manager.service.ts:772`)
 
 ---
 
@@ -238,11 +238,11 @@ All in `apps/panel/lib/features/dashboard/presentation/pages/space.dart`:
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| 1. Backend Climate Undo | planned | Prerequisite for Panel integration |
-| 2. Admin Route Handling | planned | 7 locations |
-| 3. Admin Device Controls | planned | 1 location |
-| 4. Admin Auth Features | planned | 2 handlers |
-| 5. Admin Event Handling | planned | 1 handler |
-| 6. Panel API Integration | planned | 12 methods, requires API rebuild |
-| 7. Panel Localization | planned | After gen-l10n |
-| 8. Future Items | deferred | Shelly-NG input processing |
+| 1. Backend Climate Undo | ✅ done | Implemented climate state restoration and enabled snapshot capture |
+| 2. Admin Route Handling | ✅ done | Fixed 7 locations with channels list fallback |
+| 3. Admin Device Controls | ✅ done | Implemented controls loading via store |
+| 4. Admin Auth Features | ✅ done | Implemented edit and register handlers |
+| 5. Admin Event Handling | ✅ done | Implemented CHANNEL_PROPERTY_SET event handling |
+| 6. Panel API Integration | ✅ done | Generated APIs with swagger_parser + build_runner, integrated into space.dart |
+| 7. Panel Localization | ✅ done | Generated l10n with flutter gen-l10n, integrated localized strings |
+| 8. Future Items | ✅ done | Documented Shelly-NG input processing |

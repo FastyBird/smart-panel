@@ -675,9 +675,8 @@ export class SpaceIntentService {
 			return { ...defaultResult, success: true };
 		}
 
-		// NOTE: Climate undo is not captured because restoreSnapshot() only restores lighting.
-		// TODO: Enable this once SpaceUndoHistoryService.restoreSnapshot() supports climate restoration.
-		// await this.captureClimateUndoSnapshot(spaceId, intent);
+		// Capture snapshot for undo BEFORE executing the climate intent
+		await this.captureClimateUndoSnapshot(spaceId, intent);
 
 		// Get the primary thermostat device with full relations
 		const thermostatDevice = await this.devicesService.getOneOrThrow(climateState.primaryThermostatId);

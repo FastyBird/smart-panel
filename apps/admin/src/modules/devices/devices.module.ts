@@ -175,7 +175,12 @@ export default {
 					break;
 
 				case EventType.CHANNEL_PROPERTY_SET:
-					// TODO: handle property event
+					// Update property value in store when a set command response is received
+					channelsPropertiesStore.onEvent({
+						id: data.payload.id,
+						type: get(data.payload, 'type', 'unknown'),
+						data: data.payload,
+					});
 					break;
 
 				default:

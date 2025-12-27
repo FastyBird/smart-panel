@@ -1,7 +1,7 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { PropertyCategory } from '../../devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { DevicesService } from '../../devices/services/devices.service';
@@ -9,6 +9,7 @@ import { PlatformRegistryService } from '../../devices/services/platform.registr
 import { SPACES_MODULE_NAME } from '../spaces.constants';
 
 import { LightStateSnapshot, SpaceContextSnapshot } from './space-context-snapshot.service';
+import { ClimateState } from './space-intent.service';
 import { SpacesService } from './spaces.service';
 
 /**
@@ -239,7 +240,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 
 	/**
 	 * Restore device states from a snapshot.
-	 * Only restores lighting state (climate TBD).
+	 * Restores both lighting and climate state.
 	 */
 	private async restoreSnapshot(snapshot: SpaceContextSnapshot): Promise<UndoResult> {
 		let restoredDevices = 0;
@@ -256,8 +257,15 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 			}
 		}
 
-		// TODO: Restore climate state when supported
-		// For now, only lighting is supported
+		// Restore climate state
+		const climateResult = await this.restoreClimateState(snapshot.climate);
+
+		if (climateResult.restored) {
+			restoredDevices++;
+		} else if (climateResult.failed) {
+			failedDevices++;
+		}
+		// If neither restored nor failed, climate was not applicable (no thermostat/no setpoint change)
 
 		return {
 			success: failedDevices === 0 || restoredDevices > 0,
@@ -311,6 +319,86 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 			this.logger.error(`Error restoring light state deviceId=${lightState.deviceId}: ${error}`);
 
 			return false;
+		}
+	}
+
+	/**
+	 * Restore climate state from a snapshot.
+	 * Returns { restored: true } if setpoint was restored,
+	 * { failed: true } if restoration failed,
+	 * { restored: false, failed: false } if no restoration was needed.
+	 */
+	private async restoreClimateState(climate: ClimateState): Promise<{ restored: boolean; failed: boolean }> {
+		// Skip if no climate devices or no setpoint capability
+		if (!climate.hasClimate || !climate.canSetSetpoint || !climate.primaryThermostatId) {
+			this.logger.debug('No climate restoration needed - no thermostat or setpoint capability');
+
+			return { restored: false, failed: false };
+		}
+
+		// Skip if no target temperature was captured
+		if (climate.targetTemperature === null) {
+			this.logger.debug('No climate restoration needed - no target temperature in snapshot');
+
+			return { restored: false, failed: false };
+		}
+
+		try {
+			// Get the thermostat device with full relations
+			const device = await this.devicesService.getOneOrThrow(climate.primaryThermostatId);
+
+			// Find the setpoint channel and property
+			const setpointChannel = device.channels?.find(
+				(ch) =>
+					ch.category === ChannelCategory.THERMOSTAT ||
+					ch.category === ChannelCategory.HEATER ||
+					ch.category === ChannelCategory.COOLER,
+			);
+
+			if (!setpointChannel) {
+				this.logger.warn(`No setpoint channel found for thermostat deviceId=${device.id}`);
+
+				return { restored: false, failed: true };
+			}
+
+			const setpointProperty = setpointChannel.properties?.find((p) => p.category === PropertyCategory.TEMPERATURE);
+
+			if (!setpointProperty) {
+				this.logger.warn(`No setpoint property found for thermostat deviceId=${device.id}`);
+
+				return { restored: false, failed: true };
+			}
+
+			const platform = this.platformRegistryService.get(device);
+
+			if (!platform) {
+				this.logger.warn(`No platform for thermostat device id=${device.id}`);
+
+				return { restored: false, failed: true };
+			}
+
+			const command: IDevicePropertyData = {
+				device,
+				channel: setpointChannel,
+				property: setpointProperty,
+				value: climate.targetTemperature,
+			};
+
+			const success = await platform.processBatch([command]);
+
+			if (!success) {
+				this.logger.error(`Failed to restore climate state deviceId=${device.id}`);
+
+				return { restored: false, failed: true };
+			}
+
+			this.logger.debug(`Restored thermostat setpoint to ${climate.targetTemperature}°C deviceId=${device.id}`);
+
+			return { restored: true, failed: false };
+		} catch (error) {
+			this.logger.error(`Error restoring climate state thermostatId=${climate.primaryThermostatId}: ${error}`);
+
+			return { restored: false, failed: true };
 		}
 	}
 

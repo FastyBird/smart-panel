@@ -730,4 +730,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get discovery_button_manual => 'Manual';
+
+  @override
+  String get action_success => 'Action completed successfully';
+
+  @override
+  String get space_lighting_controls_title => 'Lighting Controls';
+
+  @override
+  String get space_lighting_mode_off => 'Off';
+
+  @override
+  String get space_lighting_mode_work => 'Work';
+
+  @override
+  String get space_lighting_mode_relax => 'Relax';
+
+  @override
+  String get space_lighting_mode_night => 'Night';
+
+  @override
+  String get space_devices_title => 'Devices';
+
+  @override
+  String get space_devices_placeholder => 'Devices in this space will be displayed here';
+
+  @override
+  String get space_climate_controls_title => 'Climate';
+
+  @override
+  String get space_climate_current_label => 'Current';
+
+  @override
+  String get space_climate_target_label => 'Target';
+
+  @override
+  String get space_suggestion_applied => 'Suggestion applied';
+
+  @override
+  String get space_suggestion_dismissed => 'Suggestion dismissed';
+
+  @override
+  String get space_undo_success => 'Action undone';
+
+  @override
+  String get space_undo_button => 'Undo';
+
+  @override
+  String get space_empty_state_title => 'No Controls Available';
+
+  @override
+  String get space_empty_state_description => 'This space has no controllable devices configured yet';
+
+  @override
+  String get space_sensors_only_title => 'Sensors Only';
+
+  @override
+  String get space_sensors_only_description => 'This space only has sensors — no controllable devices';
 }
