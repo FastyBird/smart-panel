@@ -257,7 +257,6 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			const {
 				data: responseData,
 				error,
-				response,
 			} = await backend.client.PATCH(`/${MODULES_PREFIX}/${USERS_MODULE_PREFIX}/users/{id}`, {
 				params: {
 					path: { id: payload.id },
@@ -280,7 +279,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 				errorReason = getErrorReason<UsersModuleUpdateUserOperation>(error, errorReason);
 			}
 
-			throw new AuthApiException(errorReason, response.status);
+			throw new AuthApiException(errorReason);
 		} finally {
 			semaphore.value.updating = false;
 		}
@@ -294,30 +293,20 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		semaphore.value.creating = true;
 
 		try {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/register`, {
+			const { error, response } = await backend.client.POST(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/register`, {
 				body: {
 					data: {
 						username: payload.data.username,
 						password: payload.data.password,
-						first_name: payload.data.firstName ?? null,
-						last_name: payload.data.lastName ?? null,
-						email: payload.data.email ?? null,
+						first_name: payload.data.firstName ?? undefined,
+						last_name: payload.data.lastName ?? undefined,
+						email: payload.data.email ?? undefined,
 					},
 				},
 			});
 
-			if (typeof responseData !== 'undefined') {
-				// Store the tokens from registration
-				writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
-				writeCookie(REFRESH_TOKEN_COOKIE_NAME, responseData.data.refresh_token);
-
-				// Fetch the profile for the newly registered user
-				await get();
-
+			// Register endpoint returns 204 No Content on success
+			if (response.ok) {
 				return true;
 			}
 
@@ -327,7 +316,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 				errorReason = getErrorReason<AuthModuleRegisterOperation>(error, errorReason);
 			}
 
-			throw new AuthApiException(errorReason, response.status);
+			throw new AuthApiException(errorReason);
 		} finally {
 			semaphore.value.creating = false;
 		}
