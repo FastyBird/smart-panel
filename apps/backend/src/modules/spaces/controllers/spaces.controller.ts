@@ -30,18 +30,23 @@ import {
 	ClimateIntentResultDataModel,
 	ClimateStateDataModel,
 	ClimateStateResponseModel,
+	ContextSnapshotDataModel,
+	ContextSnapshotResponseModel,
 	IntentCatalogDataModel,
 	IntentCatalogResponseModel,
 	IntentCategoryDataModel,
 	IntentEnumValueDataModel,
 	IntentParamDataModel,
 	IntentTypeDataModel,
+	LightStateSnapshotDataModel,
 	LightTargetDataModel,
 	LightTargetsResponseModel,
+	LightingContextDataModel,
 	LightingIntentResponseModel,
 	LightingIntentResultDataModel,
 	LightingRoleMetaDataModel,
 	LightingRoleResponseModel,
+	LightingSummaryDataModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
 	QuickActionDataModel,
@@ -52,6 +57,7 @@ import {
 	SuggestionFeedbackResultDataModel,
 	SuggestionResponseModel,
 } from '../models/spaces-response.model';
+import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
@@ -77,6 +83,7 @@ export class SpacesController {
 		private readonly spaceIntentService: SpaceIntentService,
 		private readonly spaceLightingRoleService: SpaceLightingRoleService,
 		private readonly spaceSuggestionService: SpaceSuggestionService,
+		private readonly spaceContextSnapshotService: SpaceContextSnapshotService,
 	) {}
 
 	@Get()
@@ -728,6 +735,83 @@ export class SpacesController {
 
 		const response = new SuggestionFeedbackResponseModel();
 		response.data = resultData;
+
+		return response;
+	}
+
+	// ================================
+	// Context Snapshot Endpoints
+	// ================================
+
+	@Get(':id/context/snapshot')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-context-snapshot',
+		summary: 'Capture context snapshot for space',
+		description:
+			'Captures a complete context snapshot of the current state of a space, including ' +
+			'lighting state (on/off, brightness, color) for all lights and climate state ' +
+			'(current temperature, setpoint). Useful for undo functionality, scene saving, ' +
+			'and providing context for automation decisions.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ContextSnapshotResponseModel, 'Returns the context snapshot')
+	@ApiNotFoundResponse('Space not found')
+	async captureContextSnapshot(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ContextSnapshotResponseModel> {
+		this.logger.debug(`Capturing context snapshot for space with id=${id}`);
+
+		const snapshot = await this.spaceContextSnapshotService.captureSnapshot(id);
+
+		if (!snapshot) {
+			throw new Error('Space not found');
+		}
+
+		// Transform lighting snapshot to response model
+		const lightingSummary = new LightingSummaryDataModel();
+		lightingSummary.totalLights = snapshot.lighting.summary.totalLights;
+		lightingSummary.lightsOn = snapshot.lighting.summary.lightsOn;
+		lightingSummary.averageBrightness = snapshot.lighting.summary.averageBrightness;
+
+		const lights = snapshot.lighting.lights.map((light) => {
+			const lightData = new LightStateSnapshotDataModel();
+			lightData.deviceId = light.deviceId;
+			lightData.deviceName = light.deviceName;
+			lightData.channelId = light.channelId;
+			lightData.channelName = light.channelName;
+			lightData.role = light.role;
+			lightData.isOn = light.isOn;
+			lightData.brightness = light.brightness;
+			lightData.colorTemperature = light.colorTemperature;
+			lightData.color = light.color;
+			return lightData;
+		});
+
+		const lightingContext = new LightingContextDataModel();
+		lightingContext.summary = lightingSummary;
+		lightingContext.lights = lights;
+
+		// Transform climate state to response model
+		const climateState = new ClimateStateDataModel();
+		climateState.hasClimate = snapshot.climate.hasClimate;
+		climateState.currentTemperature = snapshot.climate.currentTemperature;
+		climateState.targetTemperature = snapshot.climate.targetTemperature;
+		climateState.minSetpoint = snapshot.climate.minSetpoint;
+		climateState.maxSetpoint = snapshot.climate.maxSetpoint;
+		climateState.canSetSetpoint = snapshot.climate.canSetSetpoint;
+		climateState.primaryThermostatId = snapshot.climate.primaryThermostatId;
+		climateState.primarySensorId = snapshot.climate.primarySensorId;
+
+		const snapshotData = new ContextSnapshotDataModel();
+		snapshotData.spaceId = snapshot.spaceId;
+		snapshotData.spaceName = snapshot.spaceName;
+		snapshotData.capturedAt = snapshot.capturedAt;
+		snapshotData.lighting = lightingContext;
+		snapshotData.climate = climateState;
+
+		const response = new ContextSnapshotResponseModel();
+		response.data = snapshotData;
 
 		return response;
 	}
