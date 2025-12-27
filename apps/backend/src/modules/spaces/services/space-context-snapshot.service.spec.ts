@@ -445,5 +445,83 @@ describe('SpaceContextSnapshotService', () => {
 			expect(result).not.toBeNull();
 			expect(result.lighting.lights[0].brightness).toBe(75);
 		});
+
+		it('should capture all light channels from multi-channel devices', async () => {
+			const spaceId = uuid();
+			const space = createSpace(spaceId, 'Living Room');
+
+			// Create a device with multiple light channels (e.g., RGB+CCT light fixture)
+			const channel1Id = uuid();
+			const channel2Id = uuid();
+			const channel1: ChannelEntity = {
+				id: channel1Id,
+				category: ChannelCategory.LIGHT,
+				name: 'Main Light',
+				properties: [
+					{
+						id: uuid(),
+						category: PropertyCategory.ON,
+						name: 'On',
+						dataType: 'boolean',
+						value: true,
+					} as unknown as ChannelPropertyEntity,
+					{
+						id: uuid(),
+						category: PropertyCategory.BRIGHTNESS,
+						name: 'Brightness',
+						dataType: 'number',
+						value: 100,
+					} as unknown as ChannelPropertyEntity,
+				],
+			} as unknown as ChannelEntity;
+
+			const channel2: ChannelEntity = {
+				id: channel2Id,
+				category: ChannelCategory.LIGHT,
+				name: 'Accent Light',
+				properties: [
+					{
+						id: uuid(),
+						category: PropertyCategory.ON,
+						name: 'On',
+						dataType: 'boolean',
+						value: true,
+					} as unknown as ChannelPropertyEntity,
+					{
+						id: uuid(),
+						category: PropertyCategory.BRIGHTNESS,
+						name: 'Brightness',
+						dataType: 'number',
+						value: 50,
+					} as unknown as ChannelPropertyEntity,
+				],
+			} as unknown as ChannelEntity;
+
+			const multiChannelDevice: DeviceEntity = {
+				id: uuid(),
+				name: 'Multi-Channel Light Fixture',
+				category: DeviceCategory.LIGHTING,
+				channels: [channel1, channel2],
+			} as unknown as DeviceEntity;
+
+			spacesService.findOne.mockResolvedValue(space);
+			spacesService.findDevicesBySpace.mockResolvedValue([multiChannelDevice]);
+			lightingRoleService.getRoleMap.mockResolvedValue(new Map());
+			spaceIntentService.getClimateState.mockResolvedValue(createDefaultClimateState());
+
+			const result = await service.captureSnapshot(spaceId);
+
+			expect(result).not.toBeNull();
+			// Should capture both light channels
+			expect(result.lighting.summary.totalLights).toBe(2);
+			expect(result.lighting.summary.lightsOn).toBe(2);
+			// Average brightness should be (100 + 50) / 2 = 75
+			expect(result.lighting.summary.averageBrightness).toBe(75);
+			expect(result.lighting.lights).toHaveLength(2);
+			expect(result.lighting.lights[0].channelName).toBe('Main Light');
+			expect(result.lighting.lights[0].brightness).toBe(100);
+			expect(result.lighting.lights[1].channelName).toBe('Accent Light');
+			expect(result.lighting.lights[1].brightness).toBe(50);
+		});
 	});
 });

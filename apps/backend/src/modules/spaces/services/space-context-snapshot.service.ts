@@ -117,23 +117,21 @@ export class SpaceContextSnapshotService {
 				continue;
 			}
 
-			// Find the light channel
-			const lightChannel = device.channels?.find((ch) => ch.category === ChannelCategory.LIGHT);
+			// Find all light channels (devices can have multiple light channels)
+			const lightChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.LIGHT) ?? [];
 
-			if (!lightChannel) {
-				continue;
-			}
+			for (const lightChannel of lightChannels) {
+				// Get the light state
+				const lightState = this.extractLightState(device, lightChannel, roleMap);
 
-			// Get the light state
-			const lightState = this.extractLightState(device, lightChannel, roleMap);
+				if (lightState) {
+					lights.push(lightState);
 
-			if (lightState) {
-				lights.push(lightState);
-
-				// Track brightness for averaging
-				if (lightState.isOn && lightState.brightness !== null) {
-					totalBrightness += lightState.brightness;
-					brightnessCount++;
+					// Track brightness for averaging
+					if (lightState.isOn && lightState.brightness !== null) {
+						totalBrightness += lightState.brightness;
+						brightnessCount++;
+					}
 				}
 			}
 		}
