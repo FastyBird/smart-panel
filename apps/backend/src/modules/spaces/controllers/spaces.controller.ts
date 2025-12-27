@@ -30,13 +30,21 @@ import {
 	ClimateIntentResultDataModel,
 	ClimateStateDataModel,
 	ClimateStateResponseModel,
+	IntentCatalogDataModel,
+	IntentCatalogResponseModel,
+	IntentCategoryDataModel,
+	IntentEnumValueDataModel,
+	IntentParamDataModel,
+	IntentTypeDataModel,
 	LightTargetDataModel,
 	LightTargetsResponseModel,
 	LightingIntentResponseModel,
 	LightingIntentResultDataModel,
+	LightingRoleMetaDataModel,
 	LightingRoleResponseModel,
 	ProposedSpaceDataModel,
 	ProposedSpacesResponseModel,
+	QuickActionDataModel,
 	SpaceResponseModel,
 	SpacesResponseModel,
 	SuggestionDataModel,
@@ -49,6 +57,10 @@ import { SpaceLightingRoleService } from '../services/space-lighting-role.servic
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
 import { SpacesService } from '../services/spaces.service';
 import {
+	INTENT_CATEGORY_CATALOG,
+	LIGHTING_ROLE_META,
+	LightingRole,
+	QUICK_ACTION_CATALOG,
 	SPACES_MODULE_API_TAG_NAME,
 	SPACES_MODULE_NAME,
 	SPACE_CATEGORY_TEMPLATES,
@@ -138,6 +150,90 @@ export class SpacesController {
 
 		const response = new CategoryTemplatesResponseModel();
 		response.data = templates;
+
+		return response;
+	}
+
+	@Get('intents/catalog')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
+	@ApiOperation({
+		operationId: 'get-spaces-module-intent-catalog',
+		summary: 'Get intent catalog',
+		description:
+			'Retrieves the complete intent catalog with all available intent categories, intent types, ' +
+			'quick actions, and lighting roles. This provides metadata for building UI controls ' +
+			'and discovering available space control capabilities.',
+	})
+	@ApiSuccessResponse(IntentCatalogResponseModel, 'Returns the intent catalog')
+	getIntentCatalog(): IntentCatalogResponseModel {
+		this.logger.debug('Fetching intent catalog');
+
+		// Transform intent categories
+		const categories = INTENT_CATEGORY_CATALOG.map((cat) => {
+			const categoryModel = new IntentCategoryDataModel();
+			categoryModel.category = cat.category;
+			categoryModel.label = cat.label;
+			categoryModel.description = cat.description;
+			categoryModel.icon = cat.icon;
+			categoryModel.intents = cat.intents.map((intent) => {
+				const intentModel = new IntentTypeDataModel();
+				intentModel.type = intent.type;
+				intentModel.label = intent.label;
+				intentModel.description = intent.description;
+				intentModel.icon = intent.icon;
+				intentModel.params = intent.params.map((param) => {
+					const paramModel = new IntentParamDataModel();
+					paramModel.name = param.name;
+					paramModel.type = param.type;
+					paramModel.required = param.required;
+					paramModel.description = param.description;
+					paramModel.minValue = param.minValue;
+					paramModel.maxValue = param.maxValue;
+					if (param.enumValues) {
+						paramModel.enumValues = param.enumValues.map((ev) => {
+							const evModel = new IntentEnumValueDataModel();
+							evModel.value = ev.value;
+							evModel.label = ev.label;
+							evModel.description = ev.description;
+							evModel.icon = ev.icon;
+							return evModel;
+						});
+					}
+					return paramModel;
+				});
+				return intentModel;
+			});
+			return categoryModel;
+		});
+
+		// Transform quick actions
+		const quickActions = QUICK_ACTION_CATALOG.map((qa) => {
+			const qaModel = new QuickActionDataModel();
+			qaModel.type = qa.type;
+			qaModel.label = qa.label;
+			qaModel.description = qa.description;
+			qaModel.icon = qa.icon;
+			qaModel.category = qa.category;
+			return qaModel;
+		});
+
+		// Transform lighting roles
+		const lightingRoles = Object.values(LIGHTING_ROLE_META).map((role) => {
+			const roleModel = new LightingRoleMetaDataModel();
+			roleModel.value = role.value as LightingRole;
+			roleModel.label = role.label;
+			roleModel.description = role.description;
+			roleModel.icon = role.icon;
+			return roleModel;
+		});
+
+		const catalogData = new IntentCatalogDataModel();
+		catalogData.categories = categories;
+		catalogData.quickActions = quickActions;
+		catalogData.lightingRoles = lightingRoles;
+
+		const response = new IntentCatalogResponseModel();
+		response.data = catalogData;
 
 		return response;
 	}
