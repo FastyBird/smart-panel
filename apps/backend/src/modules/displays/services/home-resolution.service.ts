@@ -209,7 +209,7 @@ export class HomeResolutionService {
 	private resolveHomePageWithPagesAndSpaceMap(
 		display: DisplayEntity,
 		visiblePages: PageEntity[],
-		spacePageMap: Map<string, string>,
+		spacePageMap: Map<string, Set<string>>,
 		houseOverviewPageIds: Set<string>,
 	): ResolvedHomePage {
 		if (visiblePages.length === 0) {
@@ -235,9 +235,10 @@ export class HomeResolutionService {
 		// 2. Role-based resolution (v2 spec)
 		// 2a. Room role - find SpacePage for display's space
 		if (display.role === DisplayRole.ROOM && display.spaceId) {
-			const spacePageId = spacePageMap.get(display.spaceId);
-			if (spacePageId) {
-				const spacePage = visiblePages.find((p) => p.id === spacePageId);
+			const spacePageIds = spacePageMap.get(display.spaceId);
+			if (spacePageIds && spacePageIds.size > 0) {
+				// Find the first visible SpacePage (matching single-display behavior)
+				const spacePage = visiblePages.find((p) => spacePageIds.has(p.id));
 				if (spacePage) {
 					return {
 						pageId: spacePage.id,
@@ -265,9 +266,10 @@ export class HomeResolutionService {
 
 		// 3. Legacy auto_space mode support (backward compatibility)
 		if (display.homeMode === HomeMode.AUTO_SPACE && display.spaceId && display.role !== DisplayRole.ROOM) {
-			const spacePageId = spacePageMap.get(display.spaceId);
-			if (spacePageId) {
-				const spacePage = visiblePages.find((p) => p.id === spacePageId);
+			const spacePageIds = spacePageMap.get(display.spaceId);
+			if (spacePageIds && spacePageIds.size > 0) {
+				// Find the first visible SpacePage (matching single-display behavior)
+				const spacePage = visiblePages.find((p) => spacePageIds.has(p.id));
 				if (spacePage) {
 					return {
 						pageId: spacePage.id,
@@ -334,9 +336,11 @@ export class HomeResolutionService {
 
 	/**
 	 * Batch fetches SpacePage IDs for multiple space IDs.
-	 * Returns a map of spaceId -> pageId.
+	 * Returns a map of spaceId -> Set of all pageIds for that space.
+	 * This allows batch resolution to check visibility for all SpacePages,
+	 * matching the behavior of single-display resolution.
 	 */
-	private async getSpacePagesForSpaces(spaceIds: string[]): Promise<Map<string, string>> {
+	private async getSpacePagesForSpaces(spaceIds: string[]): Promise<Map<string, Set<string>>> {
 		if (spaceIds.length === 0) {
 			return new Map();
 		}
@@ -347,12 +351,14 @@ export class HomeResolutionService {
 			[PAGES_SPACE_TYPE, ...spaceIds],
 		);
 
-		const result = new Map<string, string>();
+		const result = new Map<string, Set<string>>();
 		for (const row of spacePages) {
-			// Only keep the first SpacePage per space (if there are multiple)
-			if (!result.has(row.spaceId)) {
-				result.set(row.spaceId, row.id);
+			let spacePageIds = result.get(row.spaceId);
+			if (!spacePageIds) {
+				spacePageIds = new Set();
+				result.set(row.spaceId, spacePageIds);
 			}
+			spacePageIds.add(row.id);
 		}
 
 		return result;
