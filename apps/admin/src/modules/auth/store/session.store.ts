@@ -32,6 +32,7 @@ import { transformTokenPairResponse } from './session.transformers';
 const defaultSemaphore: ISessionStateSemaphore = {
 	fetching: false,
 	creating: false,
+	registering: false,
 	updating: false,
 };
 
@@ -286,11 +287,11 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 	};
 
 	const register = async (payload: ISessionRegisterActionPayload): Promise<boolean> => {
-		if (semaphore.value.creating) {
+		if (semaphore.value.registering) {
 			throw new AuthException('Registration is already in progress.');
 		}
 
-		semaphore.value.creating = true;
+		semaphore.value.registering = true;
 
 		try {
 			const { error, response } = await backend.client.POST(`/${MODULES_PREFIX}/${AUTH_MODULE_PREFIX}/auth/register`, {
@@ -318,7 +319,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 			throw new AuthApiException(errorReason);
 		} finally {
-			semaphore.value.creating = false;
+			semaphore.value.registering = false;
 		}
 	};
 
