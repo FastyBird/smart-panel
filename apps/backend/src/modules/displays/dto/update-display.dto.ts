@@ -15,7 +15,7 @@ import {
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { HomeMode } from '../displays.constants';
+import { DisplayRole, HomeMode } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleUpdateDisplay' })
 export class UpdateDisplayDto {
@@ -197,6 +197,20 @@ export class UpdateDisplayDto {
 	@IsString({ message: '[{"field":"name","reason":"Name must be a string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	name?: string | null;
+
+	@ApiPropertyOptional({
+		description:
+			'Display role defining its purpose (room: single room control, master: whole-house overview, entry: house modes and security)',
+		type: 'string',
+		enum: DisplayRole,
+		example: DisplayRole.ROOM,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(DisplayRole, {
+		message: '[{"field":"role","reason":"Role must be one of: room, master, entry."}]',
+	})
+	role?: DisplayRole;
 
 	// === Space Assignment ===
 

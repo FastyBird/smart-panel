@@ -6,7 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
-import { ConnectionState, HomeMode } from '../displays.constants';
+import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
 import { DisplayEntity } from '../entities/displays.entity';
 
 import { HomeResolutionService } from './home-resolution.service';
@@ -27,6 +27,7 @@ describe('HomeResolutionService', () => {
 			id: displayId,
 			macAddress: 'AA:BB:CC:DD:EE:FF',
 			name: 'Test Display',
+			role: DisplayRole.ROOM,
 			version: '1.0.0',
 			build: '42',
 			screenWidth: 1920,

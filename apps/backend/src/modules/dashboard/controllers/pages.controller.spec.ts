@@ -14,7 +14,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, HomeMode } from '../../displays/displays.constants';
+import { ConnectionState, DisplayRole, HomeMode } from '../../displays/displays.constants';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { CreatePageDto } from '../dto/create-page.dto';
@@ -67,6 +67,7 @@ describe('PagesController', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
+		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: 'test',
 		screenWidth: 1280,

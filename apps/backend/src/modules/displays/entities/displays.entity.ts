@@ -18,7 +18,7 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { ConnectionState, HomeMode } from '../displays.constants';
+import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleDataDisplay' })
 @Entity('displays_module_displays')
@@ -222,6 +222,23 @@ export class DisplayEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true, default: null })
 	name: string | null;
+
+	@ApiPropertyOptional({
+		description:
+			'Display role defining its purpose (room: single room control, master: whole-house overview, entry: house modes and security)',
+		type: 'string',
+		enum: DisplayRole,
+		nullable: false,
+		default: DisplayRole.ROOM,
+		example: DisplayRole.ROOM,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(DisplayRole, {
+		message: '[{"field":"role","reason":"Role must be one of: room, master, entry."}]',
+	})
+	@Column({ type: 'varchar', length: 20, default: DisplayRole.ROOM })
+	role: DisplayRole;
 
 	// === Space Assignment ===
 

@@ -49,9 +49,12 @@ export interface IUseDisplaysActions {
 
 export type HomeMode = 'auto_space' | 'explicit' | 'first_page';
 
+export type DisplayRole = 'room' | 'master' | 'entry';
+
 export interface IDisplayEditForm {
 	id: string;
 	name: string | null;
+	role: DisplayRole;
 	unitSize: number;
 	rows: number;
 	cols: number;

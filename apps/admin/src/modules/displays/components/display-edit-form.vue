@@ -30,6 +30,32 @@
 			/>
 		</el-form-item>
 
+		<el-form-item
+			:label="t('displaysModule.fields.displays.role.title')"
+			:prop="['role']"
+		>
+			<el-select
+				v-model="model.role"
+				name="role"
+			>
+				<el-option
+					value="room"
+					:label="t('displaysModule.fields.displays.role.options.room')"
+				/>
+				<el-option
+					value="master"
+					:label="t('displaysModule.fields.displays.role.options.master')"
+				/>
+				<el-option
+					value="entry"
+					:label="t('displaysModule.fields.displays.role.options.entry')"
+				/>
+			</el-select>
+			<div class="text-gray-500 text-sm mt-1">
+				{{ t('displaysModule.fields.displays.role.description') }}
+			</div>
+		</el-form-item>
+
 		<el-divider />
 
 		<el-form-item

@@ -15,7 +15,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
-import { ConnectionState, HomeMode } from '../displays.constants';
+import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
 import { DisplaysService } from '../services/displays.service';
@@ -34,6 +34,7 @@ describe('DisplaysController', () => {
 		id: uuid().toString(),
 		macAddress: 'AA:BB:CC:DD:EE:FF',
 		name: 'Test Display',
+		role: DisplayRole.ROOM,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1920,
@@ -69,6 +70,7 @@ describe('DisplaysController', () => {
 		id: uuid().toString(),
 		macAddress: '11:22:33:44:55:66',
 		name: 'Second Display',
+		role: DisplayRole.MASTER,
 		version: '1.0.0',
 		build: '42',
 		screenWidth: 1280,

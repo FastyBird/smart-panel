@@ -8,11 +8,14 @@ export const DisplayIdSchema = z.string().uuid();
 
 export const HomeModeSchema = z.enum(['auto_space', 'explicit', 'first_page']);
 
+export const DisplayRoleSchema = z.enum(['room', 'master', 'entry']);
+
 export const DisplaySchema = z.object({
 	id: DisplayIdSchema,
 	draft: z.boolean().default(false),
 	macAddress: z.string().trim().nonempty(),
 	name: z.string().nullable().default(null),
+	role: DisplayRoleSchema.default('room'),
 	version: z.string().trim().nonempty(),
 	build: z.string().trim().nullable().default(null),
 	screenWidth: z.number().default(0),
@@ -75,6 +78,7 @@ export const DisplaysSetActionPayloadSchema = z.object({
 	data: z.object({
 		macAddress: z.string().trim().nonempty().optional(),
 		name: z.string().nullable().optional(),
+		role: DisplayRoleSchema.optional(),
 		version: z.string().trim().nonempty().optional(),
 		build: z.string().trim().nullable().optional(),
 		screenWidth: z.number().optional(),
@@ -126,6 +130,7 @@ export const DisplaysEditActionPayloadSchema = z.object({
 	id: DisplayIdSchema,
 	data: z.object({
 		name: z.string().nullable().optional(),
+		role: DisplayRoleSchema.optional(),
 		unitSize: z.number().min(1).optional(),
 		rows: z.number().min(1).optional(),
 		cols: z.number().min(1).optional(),
@@ -173,6 +178,7 @@ export const DisplayCreateReqSchema = z.object({
 
 export const DisplayUpdateReqSchema = z.object({
 	name: z.string().nullable().optional(),
+	role: DisplayRoleSchema.optional(),
 	unit_size: z.number().min(1).optional(),
 	rows: z.number().min(1).optional(),
 	cols: z.number().min(1).optional(),
@@ -194,6 +200,7 @@ export const DisplayResSchema = z.object({
 	id: z.string().uuid(),
 	mac_address: z.string().trim().nonempty(),
 	name: z.string().nullable().optional().default(null),
+	role: DisplayRoleSchema.optional().default('room'),
 	version: z.string().trim().nonempty(),
 	build: z.string().trim().nullable().optional().default(null),
 	screen_width: z.number(),
