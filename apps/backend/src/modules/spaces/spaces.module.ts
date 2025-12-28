@@ -1,6 +1,8 @@
 import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ConfigModule } from '../config/config.module';
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity, DeviceEntity } from '../devices/entities/devices.entity';
 import { DisplayEntity } from '../displays/entities/displays.entity';
@@ -10,9 +12,11 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 
 import { SpacesController } from './controllers/spaces.controller';
+import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
+import { SpacesConfigModel } from './models/config.model';
 import { SpaceContextSnapshotService } from './services/space-context-snapshot.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
@@ -32,6 +36,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 		TypeOrmModule.forFeature([SpaceEntity, SpaceLightingRoleEntity, DeviceEntity, ChannelEntity, DisplayEntity]),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => ExtensionsModule),
+		forwardRef(() => ConfigModule),
 	],
 	controllers: [SpacesController],
 	providers: [
@@ -56,9 +61,16 @@ export class SpacesModule implements OnModuleInit {
 	constructor(
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
 	) {}
 
 	onModuleInit() {
+		this.modulesMapperService.registerMapping<SpacesConfigModel, UpdateSpacesConfigDto>({
+			type: SPACES_MODULE_NAME,
+			class: SpacesConfigModel,
+			configDto: UpdateSpacesConfigDto,
+		});
+
 		for (const model of SPACES_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
