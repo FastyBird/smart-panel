@@ -1,9 +1,4 @@
-import {
-	ChannelCategory,
-	DataTypeType,
-	PermissionType,
-	PropertyCategory,
-} from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import {
 	Z2mExpose,
@@ -43,7 +38,7 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
 		const lightExpose = expose as Z2mExposeSpecific;
 		const features = lightExpose.features || [];
 		const endpoint = lightExpose.endpoint;
@@ -219,7 +214,7 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 
 				// Handle nested color_hs inside color composite
 				if (featureName === 'color_hs' && feature.type === 'composite') {
-					const nestedProps = this.convertColorComposite(feature as Z2mExposeComposite);
+					const nestedProps = this.convertColorComposite(feature);
 					properties.push(...nestedProps);
 				}
 			}

@@ -15,31 +15,26 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import {
+	ActionConverter,
+	BatterySensorConverter,
+	ClimateConverter,
+	ContactSensorConverter,
 	ConversionContext,
 	ConverterRegistry,
-	// Device converters
-	LightConverter,
-	SwitchConverter,
 	CoverConverter,
-	ClimateConverter,
-	LockConverter,
-	FanConverter,
-	// Sensor converters
-	TemperatureSensorConverter,
-	HumiditySensorConverter,
-	OccupancySensorConverter,
-	ContactSensorConverter,
-	LeakSensorConverter,
-	SmokeSensorConverter,
-	IlluminanceSensorConverter,
-	PressureSensorConverter,
-	MotionSensorConverter,
-	BatterySensorConverter,
-	// Special converters
-	ActionConverter,
 	ElectricalConverter,
-	MappedChannel as ConverterMappedChannel,
-	MappedProperty as ConverterMappedProperty,
+	FanConverter,
+	HumiditySensorConverter,
+	IlluminanceSensorConverter,
+	LeakSensorConverter,
+	LightConverter,
+	LockConverter,
+	MotionSensorConverter,
+	OccupancySensorConverter,
+	PressureSensorConverter,
+	SmokeSensorConverter,
+	SwitchConverter,
+	TemperatureSensorConverter,
 } from '../converters';
 import {
 	COMMON_PROPERTY_MAPPINGS,
@@ -166,10 +161,7 @@ export class Z2mExposesMapperService implements OnModuleInit {
 	 * @param exposes - Array of Z2M exposes to convert
 	 * @param deviceInfo - Optional device info for context
 	 */
-	mapExposes(
-		exposes: Z2mExpose[],
-		deviceInfo?: { ieeeAddress?: string; friendlyName?: string },
-	): MappedChannel[] {
+	mapExposes(exposes: Z2mExpose[], deviceInfo?: { ieeeAddress?: string; friendlyName?: string }): MappedChannel[] {
 		// Use new converter architecture if enabled
 		if (this.useConverterRegistry && this.converterRegistry.isInitialized()) {
 			return this.mapExposesWithRegistry(exposes, deviceInfo);

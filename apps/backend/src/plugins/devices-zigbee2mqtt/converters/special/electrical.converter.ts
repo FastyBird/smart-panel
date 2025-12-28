@@ -2,13 +2,7 @@ import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../mod
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeNumeric } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
-import {
-	CanHandleResult,
-	ConversionContext,
-	ConverterPriority,
-	MappedChannel,
-	MappedProperty,
-} from '../converter.interface';
+import { CanHandleResult, ConversionContext, ConverterPriority, MappedChannel } from '../converter.interface';
 
 /**
  * Electrical property configuration
@@ -94,7 +88,7 @@ export class ElectricalConverter extends BaseConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
 		const numericExpose = expose as Z2mExposeNumeric;
 		const propertyName = this.getPropertyName(expose);
 
@@ -120,7 +114,8 @@ export class ElectricalConverter extends BaseConverter {
 		});
 
 		// Determine channel based on property type
-		const channelId = config.channelCategory === ChannelCategory.ELECTRICAL_ENERGY ? 'electrical_energy' : 'electrical_power';
+		const channelId =
+			config.channelCategory === ChannelCategory.ELECTRICAL_ENERGY ? 'electrical_energy' : 'electrical_power';
 
 		const channelName =
 			config.channelCategory === ChannelCategory.ELECTRICAL_ENERGY ? 'Electrical Energy' : 'Electrical Power';

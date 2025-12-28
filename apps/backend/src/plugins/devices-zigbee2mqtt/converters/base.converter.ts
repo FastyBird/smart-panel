@@ -1,21 +1,13 @@
-import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../devices-zigbee2mqtt.constants';
-import {
-	Z2mExpose,
-	Z2mExposeBinary,
-	Z2mExposeComposite,
-	Z2mExposeEnum,
-	Z2mExposeNumeric,
-} from '../interfaces/zigbee2mqtt.interface';
+import { Z2mExpose, Z2mExposeBinary, Z2mExposeEnum, Z2mExposeNumeric } from '../interfaces/zigbee2mqtt.interface';
 
-import {
-	CanHandleResult,
-	ConversionContext,
-	ConverterPriority,
-	IConverter,
-	MappedChannel,
-	MappedProperty,
-} from './converter.interface';
+import { CanHandleResult, ConversionContext, IConverter, MappedChannel, MappedProperty } from './converter.interface';
 
 /**
  * Abstract base class for all converters
@@ -58,9 +50,8 @@ export abstract class BaseConverter implements IConverter {
 			case 'binary':
 				return DataTypeType.BOOL;
 			case 'numeric': {
-				const numericExpose = expose as Z2mExposeNumeric;
-				const min = numericExpose.value_min;
-				const max = numericExpose.value_max;
+				const min = expose.value_min;
+				const max = expose.value_max;
 
 				if (min !== undefined && max !== undefined) {
 					if (min < 0) {
@@ -183,7 +174,12 @@ export abstract class BaseConverter implements IConverter {
 	/**
 	 * Extract numeric range from expose
 	 */
-	protected extractNumericRange(expose: Z2mExposeNumeric): { min?: number; max?: number; step?: number; unit?: string } {
+	protected extractNumericRange(expose: Z2mExposeNumeric): {
+		min?: number;
+		max?: number;
+		step?: number;
+		unit?: string;
+	} {
 		return {
 			min: expose.value_min,
 			max: expose.value_max,

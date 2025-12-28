@@ -30,7 +30,7 @@ export class SwitchConverter extends BaseConverter implements IDeviceConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
 		const switchExpose = expose as Z2mExposeSpecific;
 		const features = switchExpose.features || [];
 		const endpoint = switchExpose.endpoint;
@@ -38,9 +38,9 @@ export class SwitchConverter extends BaseConverter implements IDeviceConverter {
 		const properties: MappedProperty[] = [];
 
 		// Find the state feature
-		const stateFeature = features.find(
-			(f) => f.property === 'state' || f.name === 'state',
-		) as Z2mExposeBinary | undefined;
+		const stateFeature = features.find((f) => f.property === 'state' || f.name === 'state') as
+			| Z2mExposeBinary
+			| undefined;
 
 		if (stateFeature) {
 			properties.push(this.convertState(stateFeature));

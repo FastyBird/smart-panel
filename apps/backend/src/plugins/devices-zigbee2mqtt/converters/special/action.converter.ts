@@ -2,13 +2,7 @@ import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../mod
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeEnum } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
-import {
-	CanHandleResult,
-	ConversionContext,
-	ConverterPriority,
-	MappedChannel,
-	MappedProperty,
-} from '../converter.interface';
+import { CanHandleResult, ConversionContext, ConverterPriority, MappedChannel } from '../converter.interface';
 
 /**
  * Button action pattern parsed from action string
@@ -77,7 +71,7 @@ export class ActionConverter extends BaseConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
 		const enumExpose = expose as Z2mExposeEnum;
 		const values = enumExpose.values || [];
 
@@ -107,10 +101,12 @@ export class ActionConverter extends BaseConverter {
 			const pattern = this.parseAction(value);
 			const buttonKey = pattern?.button ?? 'default';
 
-			if (!groups.has(buttonKey)) {
-				groups.set(buttonKey, []);
+			let list = groups.get(buttonKey);
+			if (!list) {
+				list = [];
+				groups.set(buttonKey, list);
 			}
-			groups.get(buttonKey)!.push(value);
+			list.push(value);
 		}
 
 		return groups;
@@ -162,10 +158,7 @@ export class ActionConverter extends BaseConverter {
 	/**
 	 * Create channels for multi-button remotes
 	 */
-	private createMultiButtonChannels(
-		buttonGroups: Map<string, string[]>,
-		expose: Z2mExposeEnum,
-	): MappedChannel[] {
+	private createMultiButtonChannels(buttonGroups: Map<string, string[]>, expose: Z2mExposeEnum): MappedChannel[] {
 		const channels: MappedChannel[] = [];
 
 		for (const [button, actions] of buttonGroups) {

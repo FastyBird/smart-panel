@@ -1,4 +1,9 @@
-import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { Z2mExpose, Z2mExposeSpecific } from '../interfaces/zigbee2mqtt.interface';
 
 /**

@@ -1,6 +1,12 @@
 import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
-import { Z2mExpose, Z2mExposeBinary, Z2mExposeEnum, Z2mExposeNumeric, Z2mExposeSpecific } from '../../interfaces/zigbee2mqtt.interface';
+import {
+	Z2mExpose,
+	Z2mExposeBinary,
+	Z2mExposeEnum,
+	Z2mExposeNumeric,
+	Z2mExposeSpecific,
+} from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
 import {
 	CanHandleResult,
@@ -30,7 +36,7 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
 		const fanExpose = expose as Z2mExposeSpecific;
 		const features = fanExpose.features || [];
 		const endpoint = fanExpose.endpoint;
@@ -49,13 +55,13 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 				case 'fan_mode':
 				case 'mode':
 					if (feature.type === 'enum') {
-						properties.push(this.convertFanMode(feature as Z2mExposeEnum));
+						properties.push(this.convertFanMode(feature));
 					}
 					break;
 				case 'fan_speed':
 				case 'speed':
 					if (feature.type === 'numeric') {
-						properties.push(this.convertFanSpeed(feature as Z2mExposeNumeric));
+						properties.push(this.convertFanSpeed(feature));
 					}
 					break;
 			}

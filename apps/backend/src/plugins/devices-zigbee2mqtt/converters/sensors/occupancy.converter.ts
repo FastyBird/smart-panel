@@ -1,6 +1,12 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2mExpose, Z2mExposeBinary, Z2mExposeNumeric } from '../../interfaces/zigbee2mqtt.interface';
-import { CanHandleResult, ConversionContext, ConverterPriority, MappedChannel, MappedProperty } from '../converter.interface';
+import {
+	CanHandleResult,
+	ConversionContext,
+	ConverterPriority,
+	MappedChannel,
+	MappedProperty,
+} from '../converter.interface';
 
 import { BaseSensorConverter } from './base-sensor.converter';
 

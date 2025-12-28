@@ -34,7 +34,7 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
 		const climateExpose = expose as Z2mExposeSpecific;
 		const features = climateExpose.features || [];
 		const endpoint = climateExpose.endpoint;
@@ -60,22 +60,22 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 					break;
 				case 'system_mode':
 					if (feature.type === 'enum') {
-						properties.push(this.convertSystemMode(feature as Z2mExposeEnum));
+						properties.push(this.convertSystemMode(feature));
 					}
 					break;
 				case 'running_state':
 					if (feature.type === 'enum') {
-						properties.push(this.convertRunningState(feature as Z2mExposeEnum));
+						properties.push(this.convertRunningState(feature));
 					}
 					break;
 				case 'preset':
 					if (feature.type === 'enum') {
-						properties.push(this.convertPreset(feature as Z2mExposeEnum));
+						properties.push(this.convertPreset(feature));
 					}
 					break;
 				case 'fan_mode':
 					if (feature.type === 'enum') {
-						properties.push(this.convertFanMode(feature as Z2mExposeEnum));
+						properties.push(this.convertFanMode(feature));
 					}
 					break;
 			}

@@ -1,6 +1,6 @@
 import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
-import { Z2mExpose, Z2mExposeBinary, Z2mExposeSpecific } from '../../interfaces/zigbee2mqtt.interface';
+import { Z2mExpose, Z2mExposeSpecific } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
 import {
 	CanHandleResult,
@@ -29,7 +29,7 @@ export class LockConverter extends BaseConverter implements IDeviceConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
 		const lockExpose = expose as Z2mExposeSpecific;
 		const features = lockExpose.features || [];
 		const endpoint = lockExpose.endpoint;

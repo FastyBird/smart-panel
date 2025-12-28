@@ -2,7 +2,7 @@ import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../mod
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeBinary, Z2mExposeNumeric } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
-import { ConversionContext, ISensorConverter, MappedChannel, MappedProperty } from '../converter.interface';
+import { ConversionContext, ISensorConverter, MappedProperty } from '../converter.interface';
 
 /**
  * Abstract Base Sensor Converter
@@ -26,18 +26,16 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 		const propertyName = this.getPropertyName(expose);
 		if (!propertyName) return false;
 
-		return this.propertyNames.some(
-			(name) => propertyName === name || propertyName.includes(name),
-		);
+		return this.propertyNames.some((name) => propertyName === name || propertyName.includes(name));
 	}
 
 	/**
 	 * Find optional tamper property in the device's exposes
 	 */
 	protected findTamperExpose(context: ConversionContext): Z2mExposeBinary | undefined {
-		return context.allExposes.find(
-			(e) => e.type === 'binary' && (e.property === 'tamper' || e.name === 'tamper'),
-		) as Z2mExposeBinary | undefined;
+		return context.allExposes.find((e) => e.type === 'binary' && (e.property === 'tamper' || e.name === 'tamper')) as
+			| Z2mExposeBinary
+			| undefined;
 	}
 
 	/**
@@ -46,7 +44,8 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 	protected findBatteryLowExpose(context: ConversionContext): Z2mExposeBinary | undefined {
 		return context.allExposes.find(
 			(e) =>
-				e.type === 'binary' && (e.property === 'battery_low' || e.name === 'battery_low' || e.property === 'low_battery'),
+				e.type === 'binary' &&
+				(e.property === 'battery_low' || e.name === 'battery_low' || e.property === 'low_battery'),
 		) as Z2mExposeBinary | undefined;
 	}
 
@@ -83,10 +82,7 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 	/**
 	 * Add optional characteristics (tamper, battery_low) to properties array
 	 */
-	protected addOptionalCharacteristics(
-		properties: MappedProperty[],
-		context: ConversionContext,
-	): void {
+	protected addOptionalCharacteristics(properties: MappedProperty[], context: ConversionContext): void {
 		// Add tamper if available and not already mapped
 		if (!context.mappedProperties.has('tamper')) {
 			const tamperExpose = this.findTamperExpose(context);

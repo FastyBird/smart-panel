@@ -39,7 +39,7 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 		return this.cannotHandle();
 	}
 
-	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
+	convert(expose: Z2mExpose, _context: ConversionContext): MappedChannel[] {
 		const coverExpose = expose as Z2mExposeSpecific;
 		const features = coverExpose.features || [];
 		const endpoint = coverExpose.endpoint;
@@ -61,7 +61,7 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 				case 'state':
 					// Cover state is an enum (OPEN/CLOSE/STOP) - map to status
 					if (feature.type === 'enum') {
-						const statusProp = this.convertState(feature as Z2mExposeEnum);
+						const statusProp = this.convertState(feature);
 						if (statusProp) {
 							properties.push(statusProp);
 						}
@@ -70,7 +70,7 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 				case 'moving':
 					// Motor state (opening/closing/stopped)
 					if (feature.type === 'enum') {
-						properties.push(this.convertMotorState(feature as Z2mExposeEnum));
+						properties.push(this.convertMotorState(feature));
 					}
 					break;
 			}
