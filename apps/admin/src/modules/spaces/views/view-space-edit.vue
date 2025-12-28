@@ -56,8 +56,8 @@
 		>
 			<space-edit-form
 				ref="formRef"
-				:hide-actions="isMDDevice"
 				v-model:remote-form-changed="remoteFormChanged"
+				:hide-actions="isMDDevice"
 				:space="space"
 				@saved="onSaved"
 				@cancel="onCancel"

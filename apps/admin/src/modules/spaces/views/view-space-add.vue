@@ -46,8 +46,8 @@
 		<el-scrollbar class="grow-1 p-2 md:px-4">
 			<space-edit-form
 				ref="formRef"
-				:hide-actions="isMDDevice"
 				v-model:remote-form-changed="remoteFormChanged"
+				:hide-actions="isMDDevice"
 				@saved="onSaved"
 				@cancel="onCancel"
 			/>
@@ -171,7 +171,8 @@ const onClose = (): void => {
 	}
 };
 
-const onSaved = (space: ISpace): void => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const onSaved = (_space: ISpace): void => {
 	if (isLGDevice.value) {
 		router.replace({ name: RouteNames.SPACES });
 	} else {
