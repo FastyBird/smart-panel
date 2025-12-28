@@ -114,6 +114,7 @@ export interface Z2mDevice {
 	ieee_address: string;
 	type: 'Coordinator' | 'Router' | 'EndDevice';
 	friendly_name: string;
+	description?: string; // User-defined description (set in Z2M config)
 	network_address: number;
 	supported: boolean;
 	disabled: boolean;
@@ -259,6 +260,7 @@ export interface Z2mOption {
 export interface Z2mRegisteredDevice {
 	ieeeAddress: string;
 	friendlyName: string;
+	description?: string; // User-defined description (set in Z2M config)
 	type: 'Router' | 'EndDevice';
 	supported: boolean;
 	disabled: boolean;
