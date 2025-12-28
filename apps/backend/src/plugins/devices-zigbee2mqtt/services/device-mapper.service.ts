@@ -136,10 +136,14 @@ export class Z2mDeviceMapperService {
 
 			this.logger.log(`Creating new device: ${identifier}`);
 
+			// Use user-defined description if available, otherwise format friendlyName
+			const userDescription = 'description' in z2mDevice ? z2mDevice.description : undefined;
+			const deviceName = userDescription || friendlyName.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
 			const createDto: CreateZigbee2mqttDeviceDto = {
 				type: DEVICES_ZIGBEE2MQTT_TYPE,
 				identifier,
-				name: friendlyName,
+				name: deviceName,
 				category: deviceCategory,
 				enabled: true,
 			};

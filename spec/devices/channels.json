@@ -1231,6 +1231,35 @@
           100
         ]
       },
+      "mode": {
+        "category": "mode",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "auto",
+          "manual",
+          "off",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "invalid": null,
+        "step": null
+      },
       "direction": {
         "category": "direction",
         "required": false,

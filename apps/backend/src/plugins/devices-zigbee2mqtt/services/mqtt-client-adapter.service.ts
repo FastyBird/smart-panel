@@ -490,6 +490,7 @@ export class Z2mMqttClientAdapterService {
 				const registeredDevice: Z2mRegisteredDevice = {
 					ieeeAddress: device.ieee_address,
 					friendlyName: device.friendly_name,
+					description: device.description,
 					type: device.type as 'Router' | 'EndDevice',
 					supported: device.supported,
 					disabled: device.disabled,

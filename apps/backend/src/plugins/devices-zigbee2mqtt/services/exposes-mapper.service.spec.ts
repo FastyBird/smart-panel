@@ -19,6 +19,9 @@ describe('Z2mExposesMapperService', () => {
 		}).compile();
 
 		service = module.get<Z2mExposesMapperService>(Z2mExposesMapperService);
+
+		// Initialize the converter registry
+		service.onModuleInit();
 	});
 
 	describe('mapExposes', () => {
@@ -92,7 +95,7 @@ describe('Z2mExposesMapperService', () => {
 			const result = service.mapExposes(exposes);
 
 			expect(result).toHaveLength(1);
-			expect(result[0].identifier).toBe('switch');
+			expect(result[0].identifier).toBe('switcher');
 			expect(result[0].category).toBe(ChannelCategory.SWITCHER);
 		});
 
@@ -183,7 +186,7 @@ describe('Z2mExposesMapperService', () => {
 						{
 							type: 'binary',
 							name: 'state',
-							property: 'state_l1',
+							property: 'state', // Features use base property name, endpoint is at expose level
 							access: 7,
 							value_on: 'ON',
 							value_off: 'OFF',
@@ -266,7 +269,7 @@ describe('Z2mExposesMapperService', () => {
 			const result = service.mapExposes(exposes);
 
 			expect(result).toHaveLength(1);
-			expect(result[0].identifier).toBe('climate');
+			expect(result[0].identifier).toBe('thermostat');
 			expect(result[0].category).toBe(ChannelCategory.THERMOSTAT);
 			expect(result[0].properties).toHaveLength(2);
 		});

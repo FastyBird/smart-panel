@@ -6,9 +6,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 49 |
+| Done | 50 |
 | Planned | 6 |
-| **Total** | **55** |
+| **Total** | **56** |
 
 ---
 
@@ -55,6 +55,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-SHELLY-V1-UI | Shelly Gen 1 Plugin UI | admin, panel | medium |
 | FEATURE-PLUGIN-WLED | WLED Plugin (superseded) | backend | medium |
 | FEATURE-PLUGIN-ZIGBEE2MQTT | Zigbee2MQTT Plugin | backend, admin | large |
+| FEATURE-Z2M-CONVERTER-ARCHITECTURE | Zigbee2MQTT Modular Converter Architecture | backend | large |
 | FEATURE-PROPERTY-TIMESERIES | Property Timeseries Endpoint | backend | medium |
 | FEATURE-SPACE-CLIMATE-MVP | MVP Climate controls for Space pages | backend, panel | medium |
 | FEATURE-SPACE-INTENTS-LIGHTING-MVP | MVP intent-based lighting for Space pages | backend, panel | medium |
@@ -149,6 +150,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-HA-AUTO-MAP | feature | done |
 | FEATURE-PLUGIN-SHELLY-V1 | feature | done |
 | FEATURE-PLUGIN-ZIGBEE2MQTT | feature | done |
+| FEATURE-Z2M-CONVERTER-ARCHITECTURE | feature | done |
 | FEATURE-PROPERTY-TIMESERIES | feature | done |
 | FEATURE-SPACE-CLIMATE-MVP | feature | done |
 | FEATURE-SPACE-INTENTS-LIGHTING-MVP | feature | done |
@@ -304,6 +306,7 @@ FEATURE-PLUGIN-SHELLY-V1 (done)
 └── FEATURE-PLUGIN-SHELLY-V1-UI (done)
 
 FEATURE-PLUGIN-ZIGBEE2MQTT (done)
+├── FEATURE-Z2M-CONVERTER-ARCHITECTURE (done)
 └── FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS (planned)
 ```
 
@@ -350,6 +353,7 @@ tasks/
 │   ├── FEATURE-PLUGIN-WLED.md
 │   ├── FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-ZIGBEE2MQTT.md
+│   ├── FEATURE-Z2M-CONVERTER-ARCHITECTURE.md
 │   ├── FEATURE-PROPERTY-TIMESERIES.md
 │   ├── FEATURE-SPACE-CLIMATE-MVP.md
 │   ├── FEATURE-SPACE-INTENTS-LIGHTING-MVP.md
