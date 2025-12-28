@@ -27,6 +27,7 @@ export * from './sensors/illuminance.converter';
 export * from './sensors/pressure.converter';
 export * from './sensors/motion.converter';
 export * from './sensors/battery.converter';
+export * from './sensors/air-particulate.converter';
 
 // Special converters
 export * from './special/action.converter';

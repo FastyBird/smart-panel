@@ -50,7 +50,10 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 
 			switch (propertyName) {
 				case 'state':
-					properties.push(this.convertState(feature as Z2mExposeBinary));
+				case 'fan_state':
+					if (feature.type === 'binary') {
+						properties.push(this.convertState(feature));
+					}
 					break;
 				case 'fan_mode':
 				case 'mode':
@@ -82,8 +85,9 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 		];
 	}
 
-	private convertState(feature: Z2mExposeBinary): MappedProperty {
-		const format = this.extractBinaryFormat(feature);
+	private convertState(feature: Z2mExpose): MappedProperty {
+		const binaryFeature = feature as Z2mExposeBinary;
+		const format = this.extractBinaryFormat(binaryFeature);
 
 		return this.createProperty({
 			identifier: 'on',
@@ -91,14 +95,15 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 			category: PropertyCategory.ON,
 			channelCategory: ChannelCategory.FAN,
 			dataType: this.getDataType(ChannelCategory.FAN, PropertyCategory.ON, feature),
-			z2mProperty: feature.property ?? 'state',
-			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
+			z2mProperty: binaryFeature.property ?? 'state',
+			access: binaryFeature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			format,
 		});
 	}
 
-	private convertFanMode(feature: Z2mExposeEnum): MappedProperty {
-		const values = feature.values || [];
+	private convertFanMode(feature: Z2mExpose): MappedProperty {
+		const enumFeature = feature as Z2mExposeEnum;
+		const values = enumFeature.values || [];
 
 		return this.createProperty({
 			identifier: 'mode',
@@ -106,15 +111,16 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 			category: PropertyCategory.MODE,
 			channelCategory: ChannelCategory.FAN,
 			dataType: this.getDataType(ChannelCategory.FAN, PropertyCategory.MODE, feature),
-			z2mProperty: feature.property ?? 'fan_mode',
-			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
+			z2mProperty: enumFeature.property ?? 'fan_mode',
+			access: enumFeature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			format: values,
 		});
 	}
 
-	private convertFanSpeed(feature: Z2mExposeNumeric): MappedProperty {
-		const min = feature.value_min ?? 0;
-		const max = feature.value_max ?? 100;
+	private convertFanSpeed(feature: Z2mExpose): MappedProperty {
+		const numericFeature = feature as Z2mExposeNumeric;
+		const min = numericFeature.value_min ?? 0;
+		const max = numericFeature.value_max ?? 100;
 
 		return this.createProperty({
 			identifier: 'speed',
@@ -122,13 +128,13 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 			category: PropertyCategory.SPEED,
 			channelCategory: ChannelCategory.FAN,
 			dataType: this.getDataType(ChannelCategory.FAN, PropertyCategory.SPEED, feature),
-			z2mProperty: feature.property ?? 'fan_speed',
-			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
+			z2mProperty: numericFeature.property ?? 'fan_speed',
+			access: numericFeature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			unit: '%',
 			min,
 			max,
 			format: [min, max],
-			step: feature.value_step,
+			step: numericFeature.value_step,
 		});
 	}
 }

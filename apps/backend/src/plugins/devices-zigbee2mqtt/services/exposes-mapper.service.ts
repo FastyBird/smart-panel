@@ -9,6 +9,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import {
 	ActionConverter,
+	AirParticulateSensorConverter,
 	BatterySensorConverter,
 	ClimateConverter,
 	ContactSensorConverter,
@@ -116,6 +117,7 @@ export class Z2mExposesMapperService implements OnModuleInit {
 		this.converterRegistry.register(new PressureSensorConverter());
 		this.converterRegistry.register(new MotionSensorConverter());
 		this.converterRegistry.register(new BatterySensorConverter());
+		this.converterRegistry.register(new AirParticulateSensorConverter());
 
 		// Special converters
 		this.converterRegistry.register(new ActionConverter());
