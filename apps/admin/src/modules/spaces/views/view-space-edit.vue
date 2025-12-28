@@ -145,12 +145,12 @@ const remoteFormChanged = ref(false);
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
 
-const isDetailRoute = computed<boolean>(
-	(): boolean =>
-		route.matched.find((matched) => {
-			return matched.name === RouteNames.SPACE;
-		}) !== undefined
-);
+const isDetailRoute = computed<boolean>((): boolean => {
+	// Check if we came from the detail view via navigation state
+	// Since SPACE and SPACE_EDIT are now separate routes, we can't use route.matched
+	const fromDetail = (window.history.state as { fromDetail?: boolean } | undefined)?.fromDetail;
+	return fromDetail === true;
+});
 
 const spaceIcon = computed<string>((): string => {
 	if (space.value?.icon) {

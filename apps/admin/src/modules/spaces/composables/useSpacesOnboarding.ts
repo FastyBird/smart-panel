@@ -222,9 +222,9 @@ export const useSpacesOnboarding = () => {
 			const selectedProposalNames = new Set(
 				state.proposedSpaces.filter((p) => p.selected).map((p) => p.name)
 			);
-			const selectedCustomSpaceNames = new Set(
-				state.customSpaces.filter((c) => c.selected).map((c) => c.name)
-			);
+			// Check all custom spaces (not just selected ones) because selected flag is set to false
+			// after draft creation to prevent duplicates, but we still want to preserve custom spaces
+			const customSpaceNames = new Set(state.customSpaces.map((c) => c.name));
 			const usedDraftSpaceIds = new Set(
 				[...Object.values(state.deviceAssignments), ...Object.values(state.displayAssignments)].filter(
 					(id): id is string => id !== null
@@ -233,12 +233,12 @@ export const useSpacesOnboarding = () => {
 
 			// Create spaces from draft spaces via API
 			for (const draftSpace of draftSpaces) {
-				// Only convert drafts that are still selected or have assignments
-				const isSelected =
-					selectedProposalNames.has(draftSpace.name) || selectedCustomSpaceNames.has(draftSpace.name);
+				// Only convert drafts that are still selected or have assignments or are custom spaces
+				const isSelected = selectedProposalNames.has(draftSpace.name);
+				const isCustomSpace = customSpaceNames.has(draftSpace.name);
 				const hasAssignments = usedDraftSpaceIds.has(draftSpace.id);
 
-				if (!isSelected && !hasAssignments) {
+				if (!isSelected && !isCustomSpace && !hasAssignments) {
 					// Remove unused draft space
 					state.spaces = state.spaces.filter((s) => s.id !== draftSpace.id);
 					continue;

@@ -309,12 +309,18 @@ const onEdit = (): void => {
 			params: {
 				id: spaceId.value,
 			},
+			state: {
+				fromDetail: true,
+			},
 		});
 	} else {
 		router.push({
 			name: RouteNames.SPACE_EDIT,
 			params: {
 				id: spaceId.value,
+			},
+			state: {
+				fromDetail: true,
 			},
 		});
 	}
