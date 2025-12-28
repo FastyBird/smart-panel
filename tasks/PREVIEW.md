@@ -6,8 +6,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 45 |
-| Planned | 10 |
+| Done | 49 |
+| Planned | 6 |
 | **Total** | **55** |
 
 ---
@@ -19,13 +19,12 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Title | Scope | Size |
 |----|-------|-------|------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | Display roles & House control | backend, admin, panel | large |
+| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | Display roles & House control v2 (refined specification) | backend, admin, panel | large |
 | EPIC-SPACES-FIRST-UX | Spaces-first UX (Spaces module + Space pages + onboarding + MVP intents) | backend, admin, panel | large |
 
 ### Planned
 
-| ID | Title | Scope | Size |
-|----|-------|-------|------|
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | Display roles & House control v2 (refined specification) | backend, admin, panel | medium |
+*No planned epics.*
 
 ---
 
@@ -40,8 +39,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-DASHBOARD-SPACE-PAGE | Add Space page type to Dashboard (space-first home screen) | backend, admin, panel | large |
 | FEATURE-DEVICE-VALIDATION-CONSTRAINTS | Device Validation Constraints | backend, admin, panel | medium |
 | FEATURE-DISPLAY-ROLES-MVP | Introduce display roles (room / master / entry) | backend, admin, panel | medium |
+| FEATURE-DISPLAY-ROLES-MVP-V2 | Display roles v2 (refined specification) | backend, admin, panel | medium |
 | FEATURE-HOUSE-MODES-MVP | Add House Modes (Home / Away / Night) for entry panels | backend, admin, panel | medium |
+| FEATURE-HOUSE-MODES-MVP-V2 | House Modes v2 (refined specification) | backend, admin, panel | medium |
 | FEATURE-HOUSE-OVERVIEW-PAGE | Add House Overview page for master panels | backend, admin, panel | medium |
+| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | House Overview v2 (refined specification) | backend, admin, panel | medium |
 | FEATURE-LINUX-DEVICE-INSTALLATION | Linux Device Installation | backend, admin | large |
 | FEATURE-MDNS-BACKEND-DISCOVERY | mDNS Backend Discovery | backend, panel | medium |
 | FEATURE-MODULE-CONFIG | Module Configuration Support | backend, admin | large |
@@ -73,9 +75,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Title | Scope | Size | Parent |
 |----|-------|-------|------|--------|
 | FEATURE-APP-UPDATES | Application Updates Mechanism | backend, admin | large | FEATURE-LINUX-DEVICE-INSTALLATION |
-| FEATURE-DISPLAY-ROLES-MVP-V2 | Display roles v2 (refined specification) | backend, admin, panel | medium | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 |
-| FEATURE-HOUSE-MODES-MVP-V2 | House Modes v2 (refined specification) | backend, admin, panel | medium | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 |
-| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | House Overview v2 (refined specification) | backend, admin, panel | medium | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | Linux Installation Enhancements | backend, admin | medium | FEATURE-LINUX-DEVICE-INSTALLATION |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | Sensor Device Detail Page | panel | large | - |
 | FEATURE-PLUGIN-MATTER | Matter Plugin | backend | large | - |
@@ -173,11 +172,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
 | TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | planned |
+| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
+| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
+| FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
+| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
 | FEATURE-APP-UPDATES | feature | planned |
-| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | planned |
-| FEATURE-HOUSE-MODES-MVP-V2 | feature | planned |
-| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
 | FEATURE-PLUGIN-MATTER | feature | planned |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
@@ -212,11 +211,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | CHORE-CODEBASE-TODO-CLEANUP | chore | done |
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
 | TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | planned |
+| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
+| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
+| FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
+| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
 | FEATURE-APP-UPDATES | feature | planned |
-| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | planned |
-| FEATURE-HOUSE-MODES-MVP-V2 | feature | planned |
-| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
 
@@ -249,10 +248,10 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
 | CHORE-CODEBASE-TODO-CLEANUP | chore | done |
 | TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | planned |
-| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | planned |
-| FEATURE-HOUSE-MODES-MVP-V2 | feature | planned |
-| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | planned |
+| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
+| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
+| FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
+| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | feature | planned |
 | FEATURE-WINDOW-COVERING-DEVICE-PAGE | feature | planned |
 
@@ -267,10 +266,10 @@ EPIC-DISPLAY-ROLES-HOUSE-CONTROL (done)
 ├── FEATURE-HOUSE-OVERVIEW-PAGE (done)
 └── TECH-DISPLAY-HOME-RESOLUTION (done)
 
-EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 (planned)
-├── FEATURE-DISPLAY-ROLES-MVP-V2 (planned)
-├── FEATURE-HOUSE-MODES-MVP-V2 (planned)
-├── FEATURE-HOUSE-OVERVIEW-PAGE-V2 (planned)
+EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 (done)
+├── FEATURE-DISPLAY-ROLES-MVP-V2 (done)
+├── FEATURE-HOUSE-MODES-MVP-V2 (done)
+├── FEATURE-HOUSE-OVERVIEW-PAGE-V2 (done)
 ├── TECH-HOUSE-CONTROL-SMOKE-TESTS (done)
 └── TECH-EPIC-HOUSE-CONTROL-ALIGNMENT (done)
 
@@ -382,4 +381,4 @@ tasks/
 
 ---
 
-*Last updated: 2025-12-27*
+*Last updated: 2025-12-28*

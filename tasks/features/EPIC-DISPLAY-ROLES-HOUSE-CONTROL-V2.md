@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -42,14 +42,14 @@ Constraints / legacy behavior:
 
 ## 4. Acceptance criteria
 
-- [ ] Child tasks in this epic are completed and meet their acceptance criteria:
-  - [ ] FEATURE-DISPLAY-ROLES-MVP-V2
-  - [ ] FEATURE-HOUSE-OVERVIEW-PAGE-V2
-  - [ ] FEATURE-HOUSE-MODES-MVP-V2
-  - [ ] TECH-EPIC-HOUSE-CONTROL-ALIGNMENT
-  - [ ] TECH-HOUSE-CONTROL-SMOKE-TESTS
-- [ ] Backward compatibility: existing displays/pages behave the same unless role/home mode is changed.
-- [ ] The system remains operable even if House Overview / House Modes pages are not configured.
+- [x] Child tasks in this epic are completed and meet their acceptance criteria:
+  - [x] FEATURE-DISPLAY-ROLES-MVP-V2
+  - [x] FEATURE-HOUSE-OVERVIEW-PAGE-V2
+  - [x] FEATURE-HOUSE-MODES-MVP-V2
+  - [x] TECH-EPIC-HOUSE-CONTROL-ALIGNMENT
+  - [x] TECH-HOUSE-CONTROL-SMOKE-TESTS
+- [x] Backward compatibility: existing displays/pages behave the same unless role/home mode is changed.
+- [x] The system remains operable even if House Overview / House Modes pages are not configured.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

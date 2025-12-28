@@ -392,7 +392,7 @@ describe('HomeResolutionService', () => {
 				expect(result.reason).toContain('SpacePage');
 			});
 
-			it('should use auto_space mode for entry role display with spaceId', async () => {
+			it('should use auto_space mode for entry role display with spaceId when no house modes page exists', async () => {
 				const display = createMockDisplay({
 					role: DisplayRole.ENTRY,
 					homeMode: HomeMode.AUTO_SPACE,
@@ -404,8 +404,11 @@ describe('HomeResolutionService', () => {
 				const mockQueryBuilder = pagesRepository.createQueryBuilder() as jest.Mocked<SelectQueryBuilder<PageEntity>>;
 				mockQueryBuilder.getMany.mockResolvedValue(pages);
 
-				// Query for space page returns the space page
-				jest.spyOn(dataSource, 'query').mockResolvedValue([{ id: spacePageId }]);
+				// Entry role first tries to find house modes page (returns empty), then falls through to auto_space
+				jest
+					.spyOn(dataSource, 'query')
+					.mockResolvedValueOnce([]) // No house modes page
+					.mockResolvedValueOnce([{ id: spacePageId }]); // Space page exists
 
 				const result = await service.resolveHomePage(display);
 

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -54,11 +54,11 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] Display role can be set and persisted.
-- [ ] Existing displays continue to work without manual migration.
-- [ ] Home resolution follows documented precedence rules.
-- [ ] Fallback behavior is deterministic.
-- [ ] Panel does not crash if pages are missing; it uses fallback.
+- [x] Display role can be set and persisted.
+- [x] Existing displays continue to work without manual migration.
+- [x] Home resolution follows documented precedence rules.
+- [x] Fallback behavior is deterministic.
+- [x] Panel does not crash if pages are missing; it uses fallback.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
