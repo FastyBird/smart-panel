@@ -262,5 +262,16 @@
   "house_overview_no_spaces_title": "Žádné místnosti nejsou nakonfigurovány",
   "house_overview_no_spaces_description": "Vytvořte místnosti v administrační aplikaci",
   "house_overview_no_space_page": "Pro tuto místnost není nakonfigurována stránka",
-  "house_overview_tap_to_view": "Klepnutím zobrazíte"
+  "house_overview_tap_to_view": "Klepnutím zobrazíte",
+
+  "house_modes_home": "Doma",
+  "house_modes_home_description": "Normální provoz doma",
+  "house_modes_away": "Pryč",
+  "house_modes_away_description": "Mimo domov",
+  "house_modes_night": "Noc",
+  "house_modes_night_description": "Noční nastavení",
+  "house_modes_changed_success": "Režim domu byl úspěšně změněn",
+  "house_modes_changed_error": "Změna režimu domu se nezdařila",
+  "house_modes_confirm_title": "Potvrdit změnu režimu",
+  "house_modes_confirm_away_description": "Opravdu chcete nastavit dům do režimu Pryč? To může ovlivnit pravidla automatizace a nastavení zabezpečení."
 }

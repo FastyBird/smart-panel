@@ -799,4 +799,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get house_overview_tap_to_view => 'Tap to view';
+
+  @override
+  String get house_modes_home => 'Home';
+
+  @override
+  String get house_modes_home_description => 'Normal home operation';
+
+  @override
+  String get house_modes_away => 'Away';
+
+  @override
+  String get house_modes_away_description => 'Away from home';
+
+  @override
+  String get house_modes_night => 'Night';
+
+  @override
+  String get house_modes_night_description => 'Night time settings';
+
+  @override
+  String get house_modes_changed_success => 'House mode changed successfully';
+
+  @override
+  String get house_modes_changed_error => 'Failed to change house mode';
+
+  @override
+  String get house_modes_confirm_title => 'Confirm Mode Change';
+
+  @override
+  String get house_modes_confirm_away_description => 'Are you sure you want to set the house to Away mode? This may affect automation rules and security settings.';
 }

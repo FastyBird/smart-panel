@@ -1666,6 +1666,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap to view'**
   String get house_overview_tap_to_view;
+
+  /// Label for home mode
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get house_modes_home;
+
+  /// Description for home mode
+  ///
+  /// In en, this message translates to:
+  /// **'Normal home operation'**
+  String get house_modes_home_description;
+
+  /// Label for away mode
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get house_modes_away;
+
+  /// Description for away mode
+  ///
+  /// In en, this message translates to:
+  /// **'Away from home'**
+  String get house_modes_away_description;
+
+  /// Label for night mode
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get house_modes_night;
+
+  /// Description for night mode
+  ///
+  /// In en, this message translates to:
+  /// **'Night time settings'**
+  String get house_modes_night_description;
+
+  /// Success message when house mode is changed
+  ///
+  /// In en, this message translates to:
+  /// **'House mode changed successfully'**
+  String get house_modes_changed_success;
+
+  /// Error message when house mode change fails
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to change house mode'**
+  String get house_modes_changed_error;
+
+  /// Title for confirmation dialog when changing to away mode
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Mode Change'**
+  String get house_modes_confirm_title;
+
+  /// Confirmation message for away mode
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to set the house to Away mode?'**
+  String get house_modes_confirm_away_description;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

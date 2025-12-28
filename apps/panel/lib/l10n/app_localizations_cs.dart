@@ -799,4 +799,34 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get house_overview_tap_to_view => 'Klepnutím zobrazíte';
+
+  @override
+  String get house_modes_home => 'Doma';
+
+  @override
+  String get house_modes_home_description => 'Normální provoz doma';
+
+  @override
+  String get house_modes_away => 'Pryč';
+
+  @override
+  String get house_modes_away_description => 'Mimo domov';
+
+  @override
+  String get house_modes_night => 'Noc';
+
+  @override
+  String get house_modes_night_description => 'Noční nastavení';
+
+  @override
+  String get house_modes_changed_success => 'Režim domu byl úspěšně změněn';
+
+  @override
+  String get house_modes_changed_error => 'Změna režimu domu se nezdařila';
+
+  @override
+  String get house_modes_confirm_title => 'Potvrdit změnu režimu';
+
+  @override
+  String get house_modes_confirm_away_description => 'Opravdu chcete nastavit dům do režimu Pryč? To může ovlivnit pravidla automatizace a nastavení zabezpečení.';
 }

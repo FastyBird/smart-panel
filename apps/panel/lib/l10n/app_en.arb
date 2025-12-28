@@ -1073,5 +1073,46 @@
   "house_overview_tap_to_view": "Tap to view",
   "@house_overview_tap_to_view": {
     "description": "Hint text on space cards in house overview"
+  },
+
+  "house_modes_home": "Home",
+  "@house_modes_home": {
+    "description": "Label for home mode"
+  },
+  "house_modes_home_description": "Normal home operation",
+  "@house_modes_home_description": {
+    "description": "Description for home mode"
+  },
+  "house_modes_away": "Away",
+  "@house_modes_away": {
+    "description": "Label for away mode"
+  },
+  "house_modes_away_description": "Away from home",
+  "@house_modes_away_description": {
+    "description": "Description for away mode"
+  },
+  "house_modes_night": "Night",
+  "@house_modes_night": {
+    "description": "Label for night mode"
+  },
+  "house_modes_night_description": "Night time settings",
+  "@house_modes_night_description": {
+    "description": "Description for night mode"
+  },
+  "house_modes_changed_success": "House mode changed successfully",
+  "@house_modes_changed_success": {
+    "description": "Success message when house mode is changed"
+  },
+  "house_modes_changed_error": "Failed to change house mode",
+  "@house_modes_changed_error": {
+    "description": "Error message when house mode change fails"
+  },
+  "house_modes_confirm_title": "Confirm Mode Change",
+  "@house_modes_confirm_title": {
+    "description": "Title for confirmation dialog when changing to away mode"
+  },
+  "house_modes_confirm_away_description": "Are you sure you want to set the house to Away mode? This may affect automation rules and security settings.",
+  "@house_modes_confirm_away_description": {
+    "description": "Confirmation message for away mode"
   }
 }
