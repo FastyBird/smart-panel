@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -42,9 +42,9 @@ Constraints / legacy behavior:
 
 ## 4. Acceptance criteria
 
-- [ ] Child tasks in this epic are completed and meet their acceptance criteria:
+- [x] Child tasks in this epic are completed and meet their acceptance criteria:
   - [x] FEATURE-DISPLAY-ROLES-MVP-V2
-  - [ ] FEATURE-HOUSE-OVERVIEW-PAGE-V2 (in-progress: page type created, space summaries not yet implemented)
+  - [x] FEATURE-HOUSE-OVERVIEW-PAGE-V2
   - [x] FEATURE-HOUSE-MODES-MVP-V2
   - [x] TECH-EPIC-HOUSE-CONTROL-ALIGNMENT
   - [x] TECH-HOUSE-CONTROL-SMOKE-TESTS
