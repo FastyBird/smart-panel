@@ -164,6 +164,7 @@
     "mapping": {
       "entityMappings": "Entity mappings",
       "warnings": "Warnings",
+      "errors": "Errors",
       "summary": "Mapping summary"
     }
   },
