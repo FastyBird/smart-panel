@@ -63,102 +63,13 @@
 			</div>
 		</div>
 	</el-card>
-
-	<!-- Validation Warnings -->
-	<el-card
-		v-if="hasWarnings"
-		shadow="never"
-		header-class="py-2! px-4!"
-		class="mt-4"
-	>
-		<template #header>
-			<div class="font-semibold text-yellow-600">
-				{{ t('devicesHomeAssistantPlugin.headings.mapping.warnings') }}
-			</div>
-		</template>
-
-		<div class="space-y-2">
-			<el-alert
-				v-if="preview.validation?.missingChannelsCount > 0"
-				type="warning"
-				:closable="false"
-				show-icon
-			>
-				<template #title>
-					{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.missingChannels') }}:
-					{{ preview.validation.missingChannels.join(', ') }}
-				</template>
-			</el-alert>
-		</div>
-	</el-card>
-
-	<!-- Validation Errors -->
-	<el-card
-		v-if="hasErrors"
-		shadow="never"
-		header-class="py-2! px-4!"
-		class="mt-4"
-	>
-		<template #header>
-			<div class="font-semibold text-red-600">
-				{{ t('devicesHomeAssistantPlugin.headings.mapping.errors') }}
-			</div>
-		</template>
-
-		<div class="space-y-2">
-			<el-alert
-				v-if="preview.validation?.unknownChannels?.length > 0"
-				type="error"
-				:closable="false"
-				show-icon
-			>
-				<template #title>
-					{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.unknownChannels') }}:
-					{{ preview.validation.unknownChannels.join(', ') }}
-				</template>
-			</el-alert>
-
-			<el-alert
-				v-if="preview.validation?.duplicateChannels?.length > 0"
-				type="error"
-				:closable="false"
-				show-icon
-			>
-				<template #title>
-					{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.duplicateChannels') }}:
-					{{ preview.validation.duplicateChannels.join(', ') }}
-				</template>
-			</el-alert>
-
-			<el-alert
-				v-if="preview.validation?.constraintViolations?.length > 0"
-				type="error"
-				:closable="false"
-				show-icon
-			>
-				<template #title>
-					{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.constraintViolations') }}
-				</template>
-				<template #default>
-					<ul class="list-disc pl-4 mt-1">
-						<li
-							v-for="(violation, index) in preview.validation.constraintViolations"
-							:key="index"
-						>
-							{{ violation }}
-						</li>
-					</ul>
-				</template>
-			</el-alert>
-		</div>
-	</el-card>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElCard, ElDivider, ElTag } from 'element-plus';
+import { ElCard, ElDivider, ElTag } from 'element-plus';
 
 import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
@@ -190,17 +101,5 @@ const confidenceType = computed(() => {
 		default:
 			return 'info';
 	}
-});
-
-const hasWarnings = computed(() => {
-	return (props.preview.validation?.missingChannelsCount ?? 0) > 0;
-});
-
-const hasErrors = computed(() => {
-	return (
-		(props.preview.validation?.unknownChannels?.length ?? 0) > 0 ||
-		(props.preview.validation?.duplicateChannels?.length ?? 0) > 0 ||
-		(props.preview.validation?.constraintViolations?.length ?? 0) > 0
-	);
 });
 </script>

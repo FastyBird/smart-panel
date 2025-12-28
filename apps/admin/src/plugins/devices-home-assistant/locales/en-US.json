@@ -163,7 +163,7 @@
     },
     "mapping": {
       "entityMappings": "Entity mappings",
-      "warnings": "Warnings",
+      "warnings": "Mapping warnings ({count})",
       "errors": "Errors",
       "summary": "Mapping summary"
     }
