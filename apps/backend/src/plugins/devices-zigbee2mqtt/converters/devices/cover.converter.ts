@@ -136,8 +136,10 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 	/**
 	 * Convert cover state enum to status property
 	 *
-	 * Z2M uses OPEN/CLOSE/STOP as commands, we normalize to
-	 * opened/closed/stopped for status representation.
+	 * Z2M uses OPEN/CLOSE/STOP as commands. We keep the original Z2M values
+	 * in the format to match the actual data received from the device.
+	 * Value normalization (e.g., OPEN→opened) should be done at runtime
+	 * in the data transformation layer if needed for UI display.
 	 */
 	private convertState(feature: Z2mExposeEnum): MappedProperty | null {
 		const values = feature.values || [];
@@ -147,9 +149,6 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 			return null;
 		}
 
-		// Normalize values to spec format
-		const normalizedFormat = this.normalizeCoverStateValues(values);
-
 		return {
 			identifier: 'status',
 			name: 'Status',
@@ -158,14 +157,15 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 			dataType: DataTypeType.ENUM,
 			permissions: [PermissionType.READ_ONLY],
 			z2mProperty: feature.property ?? 'state',
-			format: normalizedFormat,
+			format: values, // Keep original Z2M values to match actual data
 		};
 	}
 
 	/**
 	 * Convert motor state (moving) to status property
 	 *
-	 * This tracks whether the cover is currently moving (opening/closing/stopped)
+	 * This tracks whether the cover is currently moving (opening/closing/stopped).
+	 * We keep the original Z2M values to match the actual data received.
 	 */
 	private convertMotorState(feature: Z2mExposeEnum): MappedProperty {
 		const values = feature.values || [];
@@ -178,7 +178,7 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 			dataType: DataTypeType.ENUM,
 			permissions: [PermissionType.READ_ONLY],
 			z2mProperty: feature.property ?? 'moving',
-			format: values.map((v) => v.toLowerCase()),
+			format: values, // Keep original Z2M values to match actual data
 		};
 	}
 
@@ -197,28 +197,4 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 		return hasOpen && hasClose;
 	}
 
-	/**
-	 * Normalize Z2M cover state values to spec format
-	 *
-	 * Z2M uses: OPEN, CLOSE, STOP (uppercase, imperative)
-	 * Spec uses: opened, closed, stopped (lowercase, past tense)
-	 */
-	private normalizeCoverStateValues(values: string[]): string[] {
-		const normalized: string[] = [];
-
-		for (const value of values) {
-			const lower = value.toLowerCase();
-			if (lower === 'open') {
-				normalized.push('opened');
-			} else if (lower === 'close') {
-				normalized.push('closed');
-			} else if (lower === 'stop') {
-				normalized.push('stopped');
-			} else {
-				normalized.push(lower);
-			}
-		}
-
-		return normalized;
-	}
 }

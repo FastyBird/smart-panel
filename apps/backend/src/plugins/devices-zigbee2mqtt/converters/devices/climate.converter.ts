@@ -41,6 +41,11 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 
 		const properties: MappedProperty[] = [];
 
+		// Track which setpoint types have been added to avoid duplicate identifiers
+		// (some devices expose both current_heating_setpoint and occupied_heating_setpoint)
+		let hasHeatingSetpoint = false;
+		let hasCoolingSetpoint = false;
+
 		// Process each feature
 		for (const feature of features) {
 			const propertyName = this.getPropertyName(feature);
@@ -52,11 +57,19 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 					break;
 				case 'current_heating_setpoint':
 				case 'occupied_heating_setpoint':
-					properties.push(this.convertSetpoint(feature as Z2mExposeNumeric, propertyName));
+					// Only add one heating setpoint to avoid duplicate identifiers
+					if (!hasHeatingSetpoint) {
+						properties.push(this.convertHeatingSetpoint(feature as Z2mExposeNumeric, propertyName));
+						hasHeatingSetpoint = true;
+					}
 					break;
 				case 'current_cooling_setpoint':
 				case 'occupied_cooling_setpoint':
-					// Cooling setpoints - could be added if needed
+					// Only add one cooling setpoint to avoid duplicate identifiers
+					if (!hasCoolingSetpoint) {
+						properties.push(this.convertCoolingSetpoint(feature as Z2mExposeNumeric, propertyName));
+						hasCoolingSetpoint = true;
+					}
 					break;
 				case 'system_mode':
 					if (feature.type === 'enum') {
@@ -112,10 +125,27 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 		});
 	}
 
-	private convertSetpoint(feature: Z2mExposeNumeric, z2mProperty: string): MappedProperty {
+	private convertHeatingSetpoint(feature: Z2mExposeNumeric, z2mProperty: string): MappedProperty {
 		return this.createProperty({
-			identifier: 'target_temperature',
-			name: 'Target Temperature',
+			identifier: 'heating_setpoint',
+			name: 'Heating Setpoint',
+			category: PropertyCategory.TEMPERATURE,
+			channelCategory: ChannelCategory.THERMOSTAT,
+			dataType: DataTypeType.FLOAT,
+			z2mProperty,
+			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
+			unit: '°C',
+			min: feature.value_min ?? 5,
+			max: feature.value_max ?? 35,
+			step: feature.value_step ?? 0.5,
+			format: [feature.value_min ?? 5, feature.value_max ?? 35],
+		});
+	}
+
+	private convertCoolingSetpoint(feature: Z2mExposeNumeric, z2mProperty: string): MappedProperty {
+		return this.createProperty({
+			identifier: 'cooling_setpoint',
+			name: 'Cooling Setpoint',
 			category: PropertyCategory.TEMPERATURE,
 			channelCategory: ChannelCategory.THERMOSTAT,
 			dataType: DataTypeType.FLOAT,

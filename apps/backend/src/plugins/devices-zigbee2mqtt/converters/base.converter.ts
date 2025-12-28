@@ -134,10 +134,19 @@ export abstract class BaseConverter implements IConverter {
 	}
 
 	/**
-	 * Check if an expose should be skipped (config category)
+	 * Check if an expose should be skipped (config category or skip property)
 	 */
 	protected shouldSkipExpose(expose: Z2mExpose): boolean {
-		return expose.category === 'config';
+		if (expose.category === 'config') {
+			return true;
+		}
+
+		const propertyName = this.getPropertyName(expose);
+		if (propertyName && SKIP_PROPERTIES.includes(propertyName as (typeof SKIP_PROPERTIES)[number])) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**

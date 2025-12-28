@@ -21,12 +21,17 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 
 	/**
 	 * Check if this sensor can handle the expose by matching property name
+	 *
+	 * Uses exact matching to avoid false positives like 'temperature_calibration'
+	 * matching the temperature sensor converter.
 	 */
 	protected matchesProperty(expose: Z2mExpose): boolean {
 		const propertyName = this.getPropertyName(expose);
 		if (!propertyName) return false;
 
-		return this.propertyNames.some((name) => propertyName === name || propertyName.includes(name));
+		// Use exact matching only to avoid false positives
+		// e.g., 'temperature_calibration' should NOT match 'temperature'
+		return this.propertyNames.includes(propertyName);
 	}
 
 	/**

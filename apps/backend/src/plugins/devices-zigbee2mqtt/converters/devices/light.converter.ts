@@ -47,6 +47,22 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 
 		// Process each feature
 		for (const feature of features) {
+			const propertyName = this.getPropertyName(feature);
+
+			// Handle color composites separately - they produce multiple properties
+			if (propertyName === 'color' && feature.type === 'composite') {
+				const colorProps = this.convertColorComposite(feature as Z2mExposeComposite);
+				properties.push(...colorProps);
+				continue;
+			}
+
+			// Handle other composites (like nested color_hs)
+			if (feature.type === 'composite') {
+				const compositeProps = this.convertColorComposite(feature as Z2mExposeComposite);
+				properties.push(...compositeProps);
+				continue;
+			}
+
 			const property = this.convertFeature(feature);
 			if (property) {
 				properties.push(property);
@@ -79,15 +95,9 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 				return this.convertBrightness(feature as Z2mExposeNumeric);
 			case 'color_temp':
 				return this.convertColorTemp(feature as Z2mExposeNumeric);
-			case 'color':
-				// Color composites are handled separately
-				return null;
 			default:
-				// Check for color composite by type
-				if (feature.type === 'composite') {
-					// Process color composite - handled by convertColorComposite
-					return null;
-				}
+				// Color composites and other unhandled features are skipped here
+				// (color composites are handled in convert() method)
 				return null;
 		}
 	}
