@@ -258,5 +258,9 @@
   "space_empty_state_title": "Žádná ovládání nejsou k dispozici",
   "space_empty_state_description": "Tato místnost nemá nakonfigurovaná žádná ovladatelná zařízení",
   "space_sensors_only_title": "Pouze senzory",
-  "space_sensors_only_description": "Tato místnost má pouze senzory — žádná ovladatelná zařízení"
+  "space_sensors_only_description": "Tato místnost má pouze senzory — žádná ovladatelná zařízení",
+  "house_overview_no_spaces_title": "Žádné místnosti nejsou nakonfigurovány",
+  "house_overview_no_spaces_description": "Vytvořte místnosti v administrační aplikaci",
+  "house_overview_no_space_page": "Pro tuto místnost není nakonfigurována stránka",
+  "house_overview_tap_to_view": "Klepnutím zobrazíte"
 }

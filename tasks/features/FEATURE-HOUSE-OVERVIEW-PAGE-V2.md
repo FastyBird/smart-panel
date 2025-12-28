@@ -56,10 +56,12 @@ Panel:
 ## 4. Acceptance criteria
 
 - [x] House Overview page type can be created and assigned in admin.
-- [ ] Panel renders Space cards with at least lights + temperature summary when available.
-- [ ] Drill-down to SpacePage works when it exists.
-- [ ] Missing SpacePage does not break the page; user gets a gentle message.
-- [ ] Unit tests cover read model generation (empty list, missing data, basic summaries).
+- [~] Panel renders Space cards with at least lights + temperature summary when available.
+  - Space cards are rendered from SpacePageViews in the dashboard
+  - Summary data (lights/temperature) is placeholder - requires additional device state aggregation
+- [x] Drill-down to SpacePage works when it exists.
+- [x] Missing SpacePage does not break the page; user gets a gentle message.
+- [x] Unit tests cover read model generation (empty list, missing data, basic summaries).
 
 ## 6. Technical constraints
 

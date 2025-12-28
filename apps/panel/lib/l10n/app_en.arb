@@ -1057,5 +1057,21 @@
   "space_sensors_only_description": "This space only has sensors — no controllable devices",
   "@space_sensors_only_description": {
     "description": "Description shown when space only has sensors"
+  },
+  "house_overview_no_spaces_title": "No Spaces Configured",
+  "@house_overview_no_spaces_title": {
+    "description": "Title shown when house overview has no spaces"
+  },
+  "house_overview_no_spaces_description": "Create spaces in the admin app to see them here",
+  "@house_overview_no_spaces_description": {
+    "description": "Description shown when house overview has no spaces"
+  },
+  "house_overview_no_space_page": "No room page configured for this space",
+  "@house_overview_no_space_page": {
+    "description": "Message shown when trying to navigate to a space without a page"
+  },
+  "house_overview_tap_to_view": "Tap to view",
+  "@house_overview_tap_to_view": {
+    "description": "Hint text on space cards in house overview"
   }
 }

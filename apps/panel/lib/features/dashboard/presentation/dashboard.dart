@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/page.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/events/navigate_to_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
@@ -24,10 +28,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       locator<VisualDensityService>();
   final DisplayRepository _displayRepository = locator<DisplayRepository>();
   final DashboardService _dashboardService = locator<DashboardService>();
+  final EventBus _eventBus = locator<EventBus>();
 
   PageController? _pageController;
   int _currentPage = 0;
   bool _initialized = false;
+  StreamSubscription<NavigateToPageEvent>? _navigateSubscription;
 
   /// Gets the initial page index based on tracked current page or resolved home page.
   /// For space-aware idle mode, this prioritizes:
@@ -72,9 +78,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Listen for navigation events from other pages (e.g., HousePage)
+    _navigateSubscription = _eventBus.on<NavigateToPageEvent>().listen(_onNavigateToPage);
+  }
+
+  @override
   void dispose() {
+    _navigateSubscription?.cancel();
     _pageController?.dispose();
     super.dispose();
+  }
+
+  /// Handles navigation events fired by other pages (e.g., HousePage)
+  void _onNavigateToPage(NavigateToPageEvent event) {
+    final pageIds = _dashboardService.pages.keys.toList();
+    final targetIndex = pageIds.indexOf(event.pageId);
+
+    if (targetIndex >= 0 && _pageController?.hasClients == true) {
+      _pageController?.animateToPage(
+        targetIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   @override

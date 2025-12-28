@@ -1,10 +1,12 @@
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/cards.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/house.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/space.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/tiles.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/cards.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/house.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/space.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/tiles.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
@@ -22,6 +24,9 @@ Map<PageType, Widget Function(DashboardPageView)> pageWidgetMappers = {
   },
   PageType.space: (page) {
     return SpacePage(page: page as SpacePageView);
+  },
+  PageType.house: (page) {
+    return HousePage(page: page as HousePageView);
   },
 };
 
