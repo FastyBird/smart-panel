@@ -1642,6 +1642,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This space only has sensors — no controllable devices'**
   String get space_sensors_only_description;
+
+  /// Title shown when no spaces are configured in house overview
+  ///
+  /// In en, this message translates to:
+  /// **'No Spaces Configured'**
+  String get house_overview_no_spaces_title;
+
+  /// Description shown when no spaces are configured in house overview
+  ///
+  /// In en, this message translates to:
+  /// **'Create spaces in the admin app to see them here'**
+  String get house_overview_no_spaces_description;
+
+  /// Message shown when tapping a space without a configured page
+  ///
+  /// In en, this message translates to:
+  /// **'No room page configured for this space'**
+  String get house_overview_no_space_page;
+
+  /// Hint text shown on space cards to indicate tap action
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to view'**
+  String get house_overview_tap_to_view;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

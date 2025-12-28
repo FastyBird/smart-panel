@@ -6,7 +6,6 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/events/navigate_to_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
@@ -186,27 +185,6 @@ class _HousePageState extends State<HousePage> {
               ? AppTopBar(
                   icon: freshPage.icon,
                   title: freshPage.title,
-                  actions: [
-                    LayoutBuilder(builder: (context, constraints) {
-                      List<Widget> values = freshPage.dataSources
-                          .map(
-                            (dataSource) => buildDataSourceWidget(dataSource),
-                          )
-                          .toList();
-
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: values
-                            .expand((widget) => [
-                                  widget,
-                                  if (widget != values.last)
-                                    AppSpacings.spacingSmHorizontal,
-                                ])
-                            .toList(),
-                      );
-                    }),
-                  ],
                 )
               : null,
           body: Center(
@@ -245,27 +223,6 @@ class _HousePageState extends State<HousePage> {
             ? AppTopBar(
                 icon: freshPage.icon,
                 title: freshPage.title,
-                actions: [
-                  LayoutBuilder(builder: (context, constraints) {
-                    List<Widget> values = freshPage.dataSources
-                        .map(
-                          (dataSource) => buildDataSourceWidget(dataSource),
-                        )
-                        .toList();
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: values
-                          .expand((widget) => [
-                                widget,
-                                if (widget != values.last)
-                                  AppSpacings.spacingSmHorizontal,
-                              ])
-                          .toList(),
-                    );
-                  }),
-                ],
               )
             : null,
         body: SafeArea(

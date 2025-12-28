@@ -787,4 +787,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get space_sensors_only_description => 'This space only has sensors — no controllable devices';
+
+  @override
+  String get house_overview_no_spaces_title => 'No Spaces Configured';
+
+  @override
+  String get house_overview_no_spaces_description => 'Create spaces in the admin app to see them here';
+
+  @override
+  String get house_overview_no_space_page => 'No room page configured for this space';
+
+  @override
+  String get house_overview_tap_to_view => 'Tap to view';
 }

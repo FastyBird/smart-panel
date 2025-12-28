@@ -787,4 +787,16 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get space_sensors_only_description => 'Tato místnost má pouze senzory — žádná ovladatelná zařízení';
+
+  @override
+  String get house_overview_no_spaces_title => 'Žádné místnosti nejsou nakonfigurovány';
+
+  @override
+  String get house_overview_no_spaces_description => 'Vytvořte místnosti v administrační aplikaci';
+
+  @override
+  String get house_overview_no_space_page => 'Pro tuto místnost není nakonfigurována stránka';
+
+  @override
+  String get house_overview_tap_to_view => 'Klepnutím zobrazíte';
 }
