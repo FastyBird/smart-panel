@@ -97,8 +97,10 @@ class _HouseModesPageState extends State<HouseModesPage> {
         localizations,
         mode,
       );
-      if (!confirmed) return;
+      if (!confirmed || !mounted) return;
     }
+
+    if (!mounted) return;
 
     setState(() {
       _isUpdating = true;
