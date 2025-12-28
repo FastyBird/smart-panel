@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeEnum, Z2mExposeNumeric, Z2mExposeSpecific } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
@@ -115,7 +115,7 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 			name: 'Current Temperature',
 			category: PropertyCategory.TEMPERATURE,
 			channelCategory: ChannelCategory.THERMOSTAT,
-			dataType: DataTypeType.FLOAT,
+			dataType: this.getDataType(ChannelCategory.THERMOSTAT, PropertyCategory.TEMPERATURE, feature),
 			z2mProperty: 'local_temperature',
 			access: feature.access ?? Z2M_ACCESS.STATE,
 			unit: '°C',
@@ -131,7 +131,7 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 			name: 'Heating Setpoint',
 			category: PropertyCategory.TEMPERATURE,
 			channelCategory: ChannelCategory.THERMOSTAT,
-			dataType: DataTypeType.FLOAT,
+			dataType: this.getDataType(ChannelCategory.THERMOSTAT, PropertyCategory.TEMPERATURE, feature),
 			z2mProperty,
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			unit: '°C',
@@ -148,7 +148,7 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 			name: 'Cooling Setpoint',
 			category: PropertyCategory.TEMPERATURE,
 			channelCategory: ChannelCategory.THERMOSTAT,
-			dataType: DataTypeType.FLOAT,
+			dataType: this.getDataType(ChannelCategory.THERMOSTAT, PropertyCategory.TEMPERATURE, feature),
 			z2mProperty,
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			unit: '°C',
@@ -167,7 +167,7 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 			name: 'System Mode',
 			category: PropertyCategory.MODE,
 			channelCategory: ChannelCategory.THERMOSTAT,
-			dataType: DataTypeType.STRING,
+			dataType: this.getDataType(ChannelCategory.THERMOSTAT, PropertyCategory.MODE, feature),
 			z2mProperty: feature.property ?? 'system_mode',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			format: values,
@@ -182,7 +182,7 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 			name: 'Running State',
 			category: PropertyCategory.STATUS,
 			channelCategory: ChannelCategory.THERMOSTAT,
-			dataType: DataTypeType.STRING,
+			dataType: this.getDataType(ChannelCategory.THERMOSTAT, PropertyCategory.STATUS, feature),
 			z2mProperty: feature.property ?? 'running_state',
 			access: feature.access ?? Z2M_ACCESS.STATE,
 			format: values,
@@ -197,7 +197,7 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 			name: 'Preset',
 			category: PropertyCategory.MODE,
 			channelCategory: ChannelCategory.THERMOSTAT,
-			dataType: DataTypeType.STRING,
+			dataType: this.getDataType(ChannelCategory.THERMOSTAT, PropertyCategory.MODE, feature),
 			z2mProperty: feature.property ?? 'preset',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			format: values,
@@ -212,7 +212,7 @@ export class ClimateConverter extends BaseConverter implements IDeviceConverter 
 			name: 'Fan Mode',
 			category: PropertyCategory.MODE,
 			channelCategory: ChannelCategory.THERMOSTAT,
-			dataType: DataTypeType.STRING,
+			dataType: this.getDataType(ChannelCategory.THERMOSTAT, PropertyCategory.MODE, feature),
 			z2mProperty: feature.property ?? 'fan_mode',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			format: values,

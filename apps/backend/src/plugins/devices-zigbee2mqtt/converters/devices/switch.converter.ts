@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeBinary, Z2mExposeSpecific } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
@@ -70,7 +70,7 @@ export class SwitchConverter extends BaseConverter implements IDeviceConverter {
 			name: 'State',
 			category: PropertyCategory.ON,
 			channelCategory: ChannelCategory.SWITCHER,
-			dataType: DataTypeType.BOOL,
+			dataType: this.getDataType(ChannelCategory.SWITCHER, PropertyCategory.ON, feature),
 			z2mProperty: feature.property ?? 'state',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			format,

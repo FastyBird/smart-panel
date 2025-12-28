@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import {
 	Z2mExpose,
@@ -90,7 +90,7 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 			name: 'State',
 			category: PropertyCategory.ON,
 			channelCategory: ChannelCategory.FAN,
-			dataType: DataTypeType.BOOL,
+			dataType: this.getDataType(ChannelCategory.FAN, PropertyCategory.ON, feature),
 			z2mProperty: feature.property ?? 'state',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			format,
@@ -105,7 +105,7 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Fan Mode',
 			category: PropertyCategory.MODE,
 			channelCategory: ChannelCategory.FAN,
-			dataType: DataTypeType.STRING,
+			dataType: this.getDataType(ChannelCategory.FAN, PropertyCategory.MODE, feature),
 			z2mProperty: feature.property ?? 'fan_mode',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			format: values,
@@ -121,7 +121,7 @@ export class FanConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Fan Speed',
 			category: PropertyCategory.SPEED,
 			channelCategory: ChannelCategory.FAN,
-			dataType: DataTypeType.UCHAR,
+			dataType: this.getDataType(ChannelCategory.FAN, PropertyCategory.SPEED, feature),
 			z2mProperty: feature.property ?? 'fan_speed',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			unit: '%',

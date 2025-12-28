@@ -1,9 +1,4 @@
-import {
-	ChannelCategory,
-	DataTypeType,
-	PermissionType,
-	PropertyCategory,
-} from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PermissionType, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeEnum, Z2mExposeNumeric, Z2mExposeSpecific } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
@@ -101,7 +96,7 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Position',
 			category: PropertyCategory.POSITION,
 			channelCategory: ChannelCategory.WINDOW_COVERING,
-			dataType: DataTypeType.UCHAR,
+			dataType: this.getDataType(ChannelCategory.WINDOW_COVERING, PropertyCategory.POSITION, feature),
 			z2mProperty: 'position',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			unit: '%',
@@ -122,7 +117,7 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Tilt',
 			category: PropertyCategory.TILT,
 			channelCategory: ChannelCategory.WINDOW_COVERING,
-			dataType: DataTypeType.UCHAR,
+			dataType: this.getDataType(ChannelCategory.WINDOW_COVERING, PropertyCategory.TILT, feature),
 			z2mProperty: 'tilt',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			unit: '%',
@@ -154,7 +149,7 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Status',
 			category: PropertyCategory.STATUS,
 			channelCategory: ChannelCategory.WINDOW_COVERING,
-			dataType: DataTypeType.ENUM,
+			dataType: this.getDataType(ChannelCategory.WINDOW_COVERING, PropertyCategory.STATUS, feature),
 			permissions: [PermissionType.READ_ONLY],
 			z2mProperty: feature.property ?? 'state',
 			format: values, // Keep original Z2M values to match actual data
@@ -175,7 +170,7 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Motor State',
 			category: PropertyCategory.STATUS,
 			channelCategory: ChannelCategory.WINDOW_COVERING,
-			dataType: DataTypeType.ENUM,
+			dataType: this.getDataType(ChannelCategory.WINDOW_COVERING, PropertyCategory.STATUS, feature),
 			permissions: [PermissionType.READ_ONLY],
 			z2mProperty: feature.property ?? 'moving',
 			format: values, // Keep original Z2M values to match actual data

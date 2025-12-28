@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeEnum } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
@@ -170,7 +170,7 @@ export class ActionConverter extends BaseConverter {
 				name: 'Action',
 				category: PropertyCategory.EVENT,
 				channelCategory: ChannelCategory.DOORBELL,
-				dataType: DataTypeType.STRING,
+				dataType: this.getDataType(ChannelCategory.DOORBELL, PropertyCategory.EVENT, expose),
 				z2mProperty: expose.property ?? 'action',
 				access: expose.access ?? Z2M_ACCESS.STATE,
 				format: actions,
@@ -199,7 +199,7 @@ export class ActionConverter extends BaseConverter {
 			name: 'Action',
 			category: PropertyCategory.EVENT,
 			channelCategory: ChannelCategory.DOORBELL,
-			dataType: DataTypeType.STRING,
+			dataType: this.getDataType(ChannelCategory.DOORBELL, PropertyCategory.EVENT, expose),
 			z2mProperty: expose.property ?? 'action',
 			access: expose.access ?? Z2M_ACCESS.STATE,
 			format: values,

@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeNumeric } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
@@ -13,7 +13,6 @@ interface ElectricalPropertyConfig {
 	category: PropertyCategory;
 	channelCategory: ChannelCategory;
 	unit: string;
-	dataType: DataTypeType;
 }
 
 /**
@@ -40,7 +39,6 @@ export class ElectricalConverter extends BaseConverter {
 			category: PropertyCategory.VOLTAGE,
 			channelCategory: ChannelCategory.ELECTRICAL_POWER,
 			unit: 'V',
-			dataType: DataTypeType.FLOAT,
 		},
 		current: {
 			identifier: 'current',
@@ -48,7 +46,6 @@ export class ElectricalConverter extends BaseConverter {
 			category: PropertyCategory.CURRENT,
 			channelCategory: ChannelCategory.ELECTRICAL_POWER,
 			unit: 'A',
-			dataType: DataTypeType.FLOAT,
 		},
 		power: {
 			identifier: 'power',
@@ -56,7 +53,6 @@ export class ElectricalConverter extends BaseConverter {
 			category: PropertyCategory.POWER,
 			channelCategory: ChannelCategory.ELECTRICAL_POWER,
 			unit: 'W',
-			dataType: DataTypeType.FLOAT,
 		},
 		energy: {
 			identifier: 'consumption',
@@ -64,7 +60,6 @@ export class ElectricalConverter extends BaseConverter {
 			category: PropertyCategory.CONSUMPTION,
 			channelCategory: ChannelCategory.ELECTRICAL_ENERGY,
 			unit: 'kWh',
-			dataType: DataTypeType.FLOAT,
 		},
 	};
 
@@ -104,7 +99,7 @@ export class ElectricalConverter extends BaseConverter {
 			name: config.name,
 			category: config.category,
 			channelCategory: config.channelCategory,
-			dataType: config.dataType,
+			dataType: this.getDataType(config.channelCategory, config.category, expose),
 			z2mProperty: propertyName,
 			access: numericExpose.access ?? Z2M_ACCESS.STATE,
 			unit: range.unit ?? config.unit,

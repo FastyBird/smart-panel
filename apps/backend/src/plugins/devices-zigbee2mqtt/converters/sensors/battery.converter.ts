@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeNumeric } from '../../interfaces/zigbee2mqtt.interface';
 import {
@@ -47,7 +47,7 @@ export class BatterySensorConverter extends BaseSensorConverter {
 				name: 'Battery',
 				category: PropertyCategory.PERCENTAGE,
 				channelCategory: ChannelCategory.BATTERY,
-				dataType: DataTypeType.UCHAR,
+				dataType: this.getDataType(ChannelCategory.BATTERY, PropertyCategory.PERCENTAGE, expose),
 				z2mProperty: numericExpose.property ?? 'battery',
 				access: numericExpose.access ?? Z2M_ACCESS.STATE,
 				unit: '%',
@@ -68,7 +68,7 @@ export class BatterySensorConverter extends BaseSensorConverter {
 					name: 'Battery Low',
 					category: PropertyCategory.FAULT,
 					channelCategory: ChannelCategory.BATTERY,
-					dataType: DataTypeType.BOOL,
+					dataType: this.getDataType(ChannelCategory.BATTERY, PropertyCategory.FAULT, batteryLowExpose),
 					z2mProperty: batteryLowExpose.property ?? 'battery_low',
 					access: batteryLowExpose.access ?? Z2M_ACCESS.STATE,
 				}),

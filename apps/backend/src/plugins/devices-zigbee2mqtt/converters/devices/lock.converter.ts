@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeSpecific } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
@@ -66,7 +66,7 @@ export class LockConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Lock State',
 			category: PropertyCategory.LOCKED,
 			channelCategory: ChannelCategory.LOCK,
-			dataType: DataTypeType.BOOL,
+			dataType: this.getDataType(ChannelCategory.LOCK, PropertyCategory.LOCKED, feature),
 			z2mProperty: feature.property ?? 'state',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 		});

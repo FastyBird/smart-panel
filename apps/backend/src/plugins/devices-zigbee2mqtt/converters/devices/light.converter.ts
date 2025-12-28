@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import {
 	Z2mExpose,
@@ -108,7 +108,7 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 			name: 'State',
 			category: PropertyCategory.ON,
 			channelCategory: ChannelCategory.LIGHT,
-			dataType: DataTypeType.BOOL,
+			dataType: this.getDataType(ChannelCategory.LIGHT, PropertyCategory.ON, feature),
 			z2mProperty: 'state',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 		});
@@ -121,7 +121,7 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Brightness',
 			category: PropertyCategory.BRIGHTNESS,
 			channelCategory: ChannelCategory.LIGHT,
-			dataType: DataTypeType.UCHAR,
+			dataType: this.getDataType(ChannelCategory.LIGHT, PropertyCategory.BRIGHTNESS, feature),
 			z2mProperty: 'brightness',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			unit: '%',
@@ -146,7 +146,7 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 			name: 'Color Temperature',
 			category: PropertyCategory.COLOR_TEMPERATURE,
 			channelCategory: ChannelCategory.LIGHT,
-			dataType: DataTypeType.USHORT,
+			dataType: this.getDataType(ChannelCategory.LIGHT, PropertyCategory.COLOR_TEMPERATURE, feature),
 			z2mProperty: 'color_temp',
 			access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 			unit: 'K',
@@ -189,7 +189,7 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 							name: 'Hue',
 							category: PropertyCategory.HUE,
 							channelCategory: ChannelCategory.LIGHT,
-							dataType: DataTypeType.USHORT,
+							dataType: this.getDataType(ChannelCategory.LIGHT, PropertyCategory.HUE, feature),
 							z2mProperty: 'color',
 							access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 							unit: 'deg',
@@ -210,7 +210,7 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 							name: 'Saturation',
 							category: PropertyCategory.SATURATION,
 							channelCategory: ChannelCategory.LIGHT,
-							dataType: DataTypeType.UCHAR,
+							dataType: this.getDataType(ChannelCategory.LIGHT, PropertyCategory.SATURATION, feature),
 							z2mProperty: 'color',
 							access: feature.access ?? Z2M_ACCESS.STATE | Z2M_ACCESS.SET,
 							unit: '%',

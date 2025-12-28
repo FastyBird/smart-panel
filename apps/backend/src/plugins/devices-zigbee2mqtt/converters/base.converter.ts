@@ -4,6 +4,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { getPropertyMetadata } from '../../../modules/devices/utils/schema.utils';
 import { Z2M_ACCESS } from '../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeBinary, Z2mExposeEnum, Z2mExposeNumeric } from '../interfaces/zigbee2mqtt.interface';
 
@@ -43,7 +44,30 @@ export abstract class BaseConverter implements IConverter {
 	}
 
 	/**
-	 * Infer data type from Z2M expose
+	 * Get data type from spec for a channel/property category combination.
+	 * Falls back to inference from Z2M expose if spec doesn't define the type.
+	 *
+	 * @param channelCategory The channel category
+	 * @param propertyCategory The property category
+	 * @param expose The Z2M expose (used for fallback inference)
+	 */
+	protected getDataType(
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		expose: Z2mExpose,
+	): DataTypeType {
+		// First, try to get from spec
+		const metadata = getPropertyMetadata(channelCategory, propertyCategory);
+		if (metadata && metadata.data_type !== DataTypeType.UNKNOWN) {
+			return metadata.data_type;
+		}
+
+		// Fallback to inference from Z2M expose
+		return this.inferDataType(expose);
+	}
+
+	/**
+	 * Infer data type from Z2M expose (fallback when spec doesn't define it)
 	 */
 	protected inferDataType(expose: Z2mExpose): DataTypeType {
 		switch (expose.type) {
@@ -70,7 +94,7 @@ export abstract class BaseConverter implements IConverter {
 				return DataTypeType.FLOAT;
 			}
 			case 'enum':
-				return DataTypeType.STRING;
+				return DataTypeType.ENUM;
 			case 'text':
 				return DataTypeType.STRING;
 			default:

@@ -1,4 +1,4 @@
-import { ChannelCategory, DataTypeType, PropertyCategory } from '../../../../modules/devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
 import { Z2M_ACCESS } from '../../devices-zigbee2mqtt.constants';
 import { Z2mExpose, Z2mExposeBinary, Z2mExposeNumeric } from '../../interfaces/zigbee2mqtt.interface';
 import { BaseConverter } from '../base.converter';
@@ -63,7 +63,7 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 			name: 'Tamper',
 			category: PropertyCategory.TAMPERED,
 			channelCategory: this.channelCategory,
-			dataType: DataTypeType.BOOL,
+			dataType: this.getDataType(this.channelCategory, PropertyCategory.TAMPERED, tamperExpose),
 			z2mProperty: tamperExpose.property ?? 'tamper',
 			access: tamperExpose.access ?? Z2M_ACCESS.STATE,
 		});
@@ -78,7 +78,7 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 			name: 'Battery Low',
 			category: PropertyCategory.FAULT,
 			channelCategory: this.channelCategory,
-			dataType: DataTypeType.BOOL,
+			dataType: this.getDataType(this.channelCategory, PropertyCategory.FAULT, batteryLowExpose),
 			z2mProperty: batteryLowExpose.property ?? 'battery_low',
 			access: batteryLowExpose.access ?? Z2M_ACCESS.STATE,
 		});
@@ -121,7 +121,7 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 			name: params.name,
 			category: params.category,
 			channelCategory: this.channelCategory,
-			dataType: this.inferDataType(expose),
+			dataType: this.getDataType(this.channelCategory, params.category, expose),
 			z2mProperty: expose.property ?? expose.name ?? params.identifier,
 			access: expose.access ?? Z2M_ACCESS.STATE,
 			unit: range.unit ?? params.unit,
@@ -150,7 +150,7 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 			name: params.name,
 			category: params.category,
 			channelCategory: this.channelCategory,
-			dataType: DataTypeType.BOOL,
+			dataType: this.getDataType(this.channelCategory, params.category, expose),
 			z2mProperty: expose.property ?? expose.name ?? params.identifier,
 			access: expose.access ?? Z2M_ACCESS.STATE,
 			format,
