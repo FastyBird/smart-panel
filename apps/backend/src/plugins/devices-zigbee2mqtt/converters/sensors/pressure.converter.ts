@@ -49,8 +49,8 @@ export class PressureSensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'pressure',
-				name: 'Pressure',
+				identifier: this.createChannelIdentifier('pressure', expose.endpoint),
+				name: this.formatChannelName('Pressure', expose.endpoint),
 				category: ChannelCategory.PRESSURE,
 				endpoint: expose.endpoint,
 				properties,

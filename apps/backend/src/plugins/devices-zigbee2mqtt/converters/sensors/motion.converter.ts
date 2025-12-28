@@ -47,8 +47,8 @@ export class MotionSensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'motion',
-				name: 'Motion',
+				identifier: this.createChannelIdentifier('motion', expose.endpoint),
+				name: this.formatChannelName('Motion', expose.endpoint),
 				category: ChannelCategory.MOTION,
 				endpoint: expose.endpoint,
 				properties,

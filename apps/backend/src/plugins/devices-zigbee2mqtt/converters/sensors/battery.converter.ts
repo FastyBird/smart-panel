@@ -77,8 +77,8 @@ export class BatterySensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'battery',
-				name: 'Battery',
+				identifier: this.createChannelIdentifier('battery', expose.endpoint),
+				name: this.formatChannelName('Battery', expose.endpoint),
 				category: ChannelCategory.BATTERY,
 				endpoint: expose.endpoint,
 				properties,

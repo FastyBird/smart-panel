@@ -52,8 +52,8 @@ export class TemperatureSensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'temperature',
-				name: 'Temperature',
+				identifier: this.createChannelIdentifier('temperature', expose.endpoint),
+				name: this.formatChannelName('Temperature', expose.endpoint),
 				category: ChannelCategory.TEMPERATURE,
 				endpoint: expose.endpoint,
 				properties,

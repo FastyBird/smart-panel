@@ -48,8 +48,8 @@ export class LeakSensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'leak',
-				name: 'Leak',
+				identifier: this.createChannelIdentifier('leak', expose.endpoint),
+				name: this.formatChannelName('Leak', expose.endpoint),
 				category: ChannelCategory.LEAK,
 				endpoint: expose.endpoint,
 				properties,

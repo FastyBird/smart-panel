@@ -48,8 +48,8 @@ export class SmokeSensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'smoke',
-				name: 'Smoke',
+				identifier: this.createChannelIdentifier('smoke', expose.endpoint),
+				name: this.formatChannelName('Smoke', expose.endpoint),
 				category: ChannelCategory.SMOKE,
 				endpoint: expose.endpoint,
 				properties,

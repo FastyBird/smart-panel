@@ -50,8 +50,8 @@ export class IlluminanceSensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'illuminance',
-				name: 'Illuminance',
+				identifier: this.createChannelIdentifier('illuminance', expose.endpoint),
+				name: this.formatChannelName('Illuminance', expose.endpoint),
 				category: ChannelCategory.ILLUMINANCE,
 				endpoint: expose.endpoint,
 				properties,

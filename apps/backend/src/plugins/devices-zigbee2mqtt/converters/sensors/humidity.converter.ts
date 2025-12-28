@@ -51,8 +51,8 @@ export class HumiditySensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'humidity',
-				name: 'Humidity',
+				identifier: this.createChannelIdentifier('humidity', expose.endpoint),
+				name: this.formatChannelName('Humidity', expose.endpoint),
 				category: ChannelCategory.HUMIDITY,
 				endpoint: expose.endpoint,
 				properties,

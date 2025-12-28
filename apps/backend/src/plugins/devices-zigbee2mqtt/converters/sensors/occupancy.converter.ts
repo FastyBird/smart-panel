@@ -73,8 +73,8 @@ export class OccupancySensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'occupancy',
-				name: 'Occupancy',
+				identifier: this.createChannelIdentifier('occupancy', expose.endpoint),
+				name: this.formatChannelName('Occupancy', expose.endpoint),
 				category: ChannelCategory.OCCUPANCY,
 				endpoint: expose.endpoint,
 				properties,

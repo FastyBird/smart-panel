@@ -46,8 +46,8 @@ export class ContactSensorConverter extends BaseSensorConverter {
 
 		return [
 			this.createChannel({
-				identifier: 'contact',
-				name: 'Contact',
+				identifier: this.createChannelIdentifier('contact', expose.endpoint),
+				name: this.formatChannelName('Contact', expose.endpoint),
 				category: ChannelCategory.CONTACT,
 				endpoint: expose.endpoint,
 				properties,
