@@ -129,9 +129,14 @@ export class Z2mMappingPreviewService {
 		const suggestedCategory = request?.deviceCategory ?? mapZ2mCategoryToDeviceCategory(exposeTypes, propertyNames);
 
 		// Build suggested device
+		// Use description (product name) if available, otherwise format friendlyName
+		const suggestedName =
+			z2mDevice.definition.description ||
+			z2mDevice.friendlyName.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
 		const suggestedDevice: Z2mSuggestedDeviceModel = {
 			category: suggestedCategory,
-			name: z2mDevice.friendlyName.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+			name: suggestedName,
 			confidence: this.calculateDeviceConfidence(suggestedCategory, exposeTypes),
 		};
 
