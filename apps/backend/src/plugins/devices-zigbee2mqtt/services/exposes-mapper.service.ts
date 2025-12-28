@@ -5,7 +5,7 @@ eslint-disable @typescript-eslint/no-unnecessary-type-assertion
 Reason: Type assertions are needed to narrow Z2mExpose union type to
 specific expose types since TypeScript cannot narrow discriminated unions.
 */
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
@@ -14,6 +14,33 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import {
+	ConversionContext,
+	ConverterRegistry,
+	// Device converters
+	LightConverter,
+	SwitchConverter,
+	CoverConverter,
+	ClimateConverter,
+	LockConverter,
+	FanConverter,
+	// Sensor converters
+	TemperatureSensorConverter,
+	HumiditySensorConverter,
+	OccupancySensorConverter,
+	ContactSensorConverter,
+	LeakSensorConverter,
+	SmokeSensorConverter,
+	IlluminanceSensorConverter,
+	PressureSensorConverter,
+	MotionSensorConverter,
+	BatterySensorConverter,
+	// Special converters
+	ActionConverter,
+	ElectricalConverter,
+	MappedChannel as ConverterMappedChannel,
+	MappedProperty as ConverterMappedProperty,
+} from '../converters';
 import {
 	COMMON_PROPERTY_MAPPINGS,
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
@@ -66,18 +93,144 @@ export interface MappedProperty {
  * Exposes Mapper Service
  *
  * Maps Zigbee2MQTT exposes structure to Smart Panel channels and properties.
+ *
+ * This service now uses a modular converter architecture inspired by homebridge-z2m.
+ * Each device type has its own dedicated converter for specialized handling.
+ *
+ * Set useConverterRegistry=true to use the new converter architecture.
+ * The legacy mapping logic is preserved for backward compatibility.
  */
 @Injectable()
-export class Z2mExposesMapperService {
+export class Z2mExposesMapperService implements OnModuleInit {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 		'ExposesMapper',
 	);
 
+	private readonly converterRegistry: ConverterRegistry;
+
+	/**
+	 * Feature flag to switch between legacy and new converter architecture.
+	 * Set to true to use the new modular converters.
+	 */
+	private readonly useConverterRegistry = true;
+
+	constructor() {
+		this.converterRegistry = new ConverterRegistry();
+	}
+
+	/**
+	 * Initialize and register all converters
+	 */
+	onModuleInit(): void {
+		if (this.useConverterRegistry) {
+			this.registerConverters();
+		}
+	}
+
+	/**
+	 * Register all available converters with the registry
+	 */
+	private registerConverters(): void {
+		// Device converters (highest priority)
+		this.converterRegistry.register(new LightConverter());
+		this.converterRegistry.register(new SwitchConverter());
+		this.converterRegistry.register(new CoverConverter());
+		this.converterRegistry.register(new ClimateConverter());
+		this.converterRegistry.register(new LockConverter());
+		this.converterRegistry.register(new FanConverter());
+
+		// Sensor converters
+		this.converterRegistry.register(new TemperatureSensorConverter());
+		this.converterRegistry.register(new HumiditySensorConverter());
+		this.converterRegistry.register(new OccupancySensorConverter());
+		this.converterRegistry.register(new ContactSensorConverter());
+		this.converterRegistry.register(new LeakSensorConverter());
+		this.converterRegistry.register(new SmokeSensorConverter());
+		this.converterRegistry.register(new IlluminanceSensorConverter());
+		this.converterRegistry.register(new PressureSensorConverter());
+		this.converterRegistry.register(new MotionSensorConverter());
+		this.converterRegistry.register(new BatterySensorConverter());
+
+		// Special converters
+		this.converterRegistry.register(new ActionConverter());
+		this.converterRegistry.register(new ElectricalConverter());
+
+		this.converterRegistry.markInitialized();
+		this.logger.log('Converter registry initialized with modular converters');
+	}
+
 	/**
 	 * Map Z2M exposes to channels and properties
+	 *
+	 * @param exposes - Array of Z2M exposes to convert
+	 * @param deviceInfo - Optional device info for context
 	 */
-	mapExposes(exposes: Z2mExpose[]): MappedChannel[] {
+	mapExposes(
+		exposes: Z2mExpose[],
+		deviceInfo?: { ieeeAddress?: string; friendlyName?: string },
+	): MappedChannel[] {
+		// Use new converter architecture if enabled
+		if (this.useConverterRegistry && this.converterRegistry.isInitialized()) {
+			return this.mapExposesWithRegistry(exposes, deviceInfo);
+		}
+
+		// Fallback to legacy mapping
+		return this.mapExposesLegacy(exposes);
+	}
+
+	/**
+	 * Map exposes using the new converter registry
+	 */
+	private mapExposesWithRegistry(
+		exposes: Z2mExpose[],
+		deviceInfo?: { ieeeAddress?: string; friendlyName?: string },
+	): MappedChannel[] {
+		const context: ConversionContext = {
+			ieeeAddress: deviceInfo?.ieeeAddress ?? '',
+			friendlyName: deviceInfo?.friendlyName ?? '',
+			allExposes: exposes,
+			mappedProperties: new Set<string>(),
+		};
+
+		// First, handle specific exposes (light, switch, etc.) which have features
+		const specificExposes = exposes.filter((e) =>
+			Z2M_SPECIFIC_TYPES.includes(e.type as (typeof Z2M_SPECIFIC_TYPES)[number]),
+		);
+
+		// Then, handle generic exposes (binary, numeric, etc.)
+		const genericExposes = exposes.filter((e) =>
+			Z2M_GENERIC_TYPES.includes(e.type as (typeof Z2M_GENERIC_TYPES)[number]),
+		);
+
+		// Convert specific exposes first (they have higher priority)
+		const channels = this.converterRegistry.convertAll(specificExposes, context);
+
+		// Then convert generic exposes, which will merge into existing channels or create new ones
+		const genericChannels = this.converterRegistry.convertAll(genericExposes, context);
+
+		// Merge generic channels with specific channels
+		for (const channel of genericChannels) {
+			const existingChannel = channels.find((c) => c.identifier === channel.identifier);
+			if (existingChannel) {
+				// Add new properties to existing channel
+				for (const prop of channel.properties) {
+					if (!existingChannel.properties.some((p) => p.identifier === prop.identifier)) {
+						existingChannel.properties.push(prop);
+					}
+				}
+			} else {
+				channels.push(channel);
+			}
+		}
+
+		return channels;
+	}
+
+	/**
+	 * Legacy mapping logic (preserved for backward compatibility)
+	 */
+	private mapExposesLegacy(exposes: Z2mExpose[]): MappedChannel[] {
 		const channels: MappedChannel[] = [];
 
 		for (const expose of exposes) {
@@ -89,7 +242,7 @@ export class Z2mExposesMapperService {
 	}
 
 	/**
-	 * Map a single expose to one or more channels
+	 * Map a single expose to one or more channels (legacy)
 	 */
 	private mapExpose(expose: Z2mExpose): MappedChannel[] {
 		const type = expose.type;
