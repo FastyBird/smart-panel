@@ -86,11 +86,12 @@ class _HouseModesPageState extends State<HouseModesPage> {
   Future<void> _setHouseMode(
     HouseMode mode,
     AppLocalizations localizations,
+    HouseModesPageView freshPage,
   ) async {
     if (_isUpdating || mode == _currentMode) return;
 
     // Check if confirmation is required for away mode
-    if (mode == HouseMode.away && widget.page.confirmOnAway) {
+    if (mode == HouseMode.away && freshPage.confirmOnAway) {
       final confirmed = await _showConfirmationDialog(
         context,
         localizations,
@@ -240,6 +241,7 @@ class _HouseModesPageState extends State<HouseModesPage> {
                       _buildModeCard(
                         context,
                         localizations,
+                        freshPage,
                         mode: HouseMode.home,
                         icon: MdiIcons.home,
                         label: localizations.house_modes_home,
@@ -248,6 +250,7 @@ class _HouseModesPageState extends State<HouseModesPage> {
                       _buildModeCard(
                         context,
                         localizations,
+                        freshPage,
                         mode: HouseMode.away,
                         icon: MdiIcons.exitRun,
                         label: localizations.house_modes_away,
@@ -256,6 +259,7 @@ class _HouseModesPageState extends State<HouseModesPage> {
                       _buildModeCard(
                         context,
                         localizations,
+                        freshPage,
                         mode: HouseMode.night,
                         icon: MdiIcons.weatherNight,
                         label: localizations.house_modes_night,
@@ -275,7 +279,8 @@ class _HouseModesPageState extends State<HouseModesPage> {
 
   Widget _buildModeCard(
     BuildContext context,
-    AppLocalizations localizations, {
+    AppLocalizations localizations,
+    HouseModesPageView freshPage, {
     required HouseMode mode,
     required IconData icon,
     required String label,
@@ -287,7 +292,7 @@ class _HouseModesPageState extends State<HouseModesPage> {
     final cardColor = isSelected
         ? (Theme.of(context).brightness == Brightness.light
             ? AppColorsLight.primaryLight8
-            : AppColorsDark.primaryLight2)
+            : AppColorsDark.primaryLight8)
         : null;
 
     final borderColor = isSelected
@@ -312,15 +317,17 @@ class _HouseModesPageState extends State<HouseModesPage> {
         color: cardColor,
         elevation: isSelected ? 4 : 1,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppBorderRadius.large),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           side: BorderSide(
             color: borderColor,
             width: isSelected ? 2 : 1,
           ),
         ),
         child: InkWell(
-          onTap: isDisabled ? null : () => _setHouseMode(mode, localizations),
-          borderRadius: BorderRadius.circular(AppBorderRadius.large),
+          onTap: isDisabled
+              ? null
+              : () => _setHouseMode(mode, localizations, freshPage),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           child: Padding(
             padding: AppSpacings.paddingSm,
             child: Column(
