@@ -114,11 +114,17 @@ export class ElectricalConverter extends BaseConverter {
 		});
 
 		// Determine channel based on property type
-		const channelId =
+		// Include endpoint in channel identifier to support multi-endpoint devices
+		// (e.g., 3-phase power meters with L1, L2, L3 endpoints)
+		const baseChannelId =
 			config.channelCategory === ChannelCategory.ELECTRICAL_ENERGY ? 'electrical_energy' : 'electrical_power';
 
-		const channelName =
+		const channelId = this.createChannelIdentifier(baseChannelId, expose.endpoint);
+
+		const baseChannelName =
 			config.channelCategory === ChannelCategory.ELECTRICAL_ENERGY ? 'Electrical Energy' : 'Electrical Power';
+
+		const channelName = this.formatChannelName(baseChannelName, expose.endpoint);
 
 		return [
 			this.createChannel({

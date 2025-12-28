@@ -58,8 +58,10 @@ export class BatterySensorConverter extends BaseSensorConverter {
 		];
 
 		// Add battery_low if available
+		// Use actual property name for duplicate check (could be 'battery_low' or 'low_battery')
 		const batteryLowExpose = this.findBatteryLowExpose(context);
-		if (batteryLowExpose && !context.mappedProperties.has('battery_low')) {
+		const batteryLowPropertyName = batteryLowExpose?.property ?? 'battery_low';
+		if (batteryLowExpose && !context.mappedProperties.has(batteryLowPropertyName)) {
 			properties.push(
 				this.createProperty({
 					identifier: 'fault',
