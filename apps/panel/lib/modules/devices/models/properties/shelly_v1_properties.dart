@@ -63,10 +63,14 @@ class ShellyV1ChannelPropertyModel extends ChannelPropertyModel {
     ValueType? value,
     bool? clearValue,
   }) {
-    ValueType? setValue = value ?? value;
+    ValueType? setValue;
 
     if (clearValue == true) {
       setValue = null;
+    } else if (value != null) {
+      setValue = value;
+    } else {
+      setValue = this.value;
     }
 
     return ShellyV1ChannelPropertyModel(

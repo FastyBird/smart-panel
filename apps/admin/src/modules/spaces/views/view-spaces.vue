@@ -1,8 +1,11 @@
 <template>
-	<app-breadcrumbs :items="breadcrumbs" />
+	<app-breadcrumbs
+		v-if="!isOnboardingRoute"
+		:items="breadcrumbs"
+	/>
 
 	<app-bar-heading
-		v-if="!isMDDevice && isSpacesListRoute"
+		v-if="!isMDDevice && isSpacesListRoute && !isOnboardingRoute"
 		teleport
 	>
 		<template #icon>
@@ -22,7 +25,7 @@
 	</app-bar-heading>
 
 	<app-bar-button
-		v-if="!isMDDevice && isSpacesListRoute"
+		v-if="!isMDDevice && isSpacesListRoute && !isOnboardingRoute"
 		:align="AppBarButtonAlign.LEFT"
 		teleport
 		small
@@ -38,20 +41,30 @@
 	</app-bar-button>
 
 	<view-header
+		v-if="!isOnboardingRoute"
 		:heading="t('spacesModule.headings.list')"
 		:sub-heading="t('spacesModule.subHeadings.list')"
 		icon="mdi:home-group"
 	>
 		<template #extra>
-			<div class="flex gap-2">
-				<el-button @click="onOnboarding">
+			<div class="flex items-center">
+				<el-button
+					class="px-4!"
+					@click="onOnboarding"
+				>
 					<el-icon class="mr-1"><icon icon="mdi:wizard-hat" /></el-icon>
 					{{ t('spacesModule.buttons.onboarding.title') }}
 				</el-button>
 				<el-button
 					type="primary"
+					plain
+					class="px-4! ml-2!"
 					@click="onAddSpace"
 				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+
 					{{ t('spacesModule.buttons.add.title') }}
 				</el-button>
 			</div>
@@ -59,7 +72,7 @@
 	</view-header>
 
 	<div
-		v-if="isSpacesListRoute || isLGDevice"
+		v-if="(isSpacesListRoute || isLGDevice) && !isOnboardingRoute"
 		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
 	>
 		<list-spaces
@@ -83,7 +96,7 @@
 	</div>
 
 	<router-view
-		v-else
+		v-if="isOnboardingRoute || (!isSpacesListRoute && !isLGDevice)"
 		v-slot="{ Component }"
 	>
 		<component :is="Component" />
@@ -152,11 +165,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessage, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import { ListSpaces } from '../components/components';
 import ListSpacesAdjust from '../components/list-spaces-adjust.vue';
 import { useSpacesActions, useSpacesDataSource } from '../composables';
@@ -170,6 +183,7 @@ defineOptions({
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('spacesModule.meta.spaces.list.title'),
@@ -200,6 +214,10 @@ const remoteFormChanged = ref<boolean>(false);
 
 const isSpacesListRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACES;
+});
+
+const isOnboardingRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.SPACES_ONBOARDING;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -318,7 +336,7 @@ const onOnboarding = (): void => {
 
 onBeforeMount((): void => {
 	fetchSpaces().catch((): void => {
-		ElMessage.error(t('spacesModule.messages.loadError'));
+		flashMessage.error(t('spacesModule.messages.loadError'));
 	});
 
 	showDrawer.value =

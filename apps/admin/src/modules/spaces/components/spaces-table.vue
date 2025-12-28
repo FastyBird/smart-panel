@@ -90,36 +90,28 @@
 					<template #title>
 						{{ t('spacesModule.texts.noSpaces') }}
 					</template>
-
-					<template #sub-title>
-						<el-button
-							type="primary"
-							@click="emit('add')"
-						>
-							{{ t('spacesModule.buttons.add.title') }}
-						</el-button>
-					</template>
 				</el-result>
 			</div>
 		</template>
+
+		<el-table-column
+			v-if="isMDDevice"
+			type="selection"
+			fixed
+			:width="30"
+		/>
 
 		<el-table-column
 			:width="60"
 			align="center"
 		>
 			<template #default="scope">
-				<el-icon
-					v-if="scope.row.icon"
-					:size="24"
-				>
-					<icon :icon="scope.row.icon" />
-				</el-icon>
-				<el-icon
-					v-else
-					:size="24"
-				>
-					<icon :icon="scope.row.type === 'room' ? 'mdi:door' : 'mdi:home-floor-1'" />
-				</el-icon>
+				<el-avatar :size="32">
+					<icon
+						:icon="scope.row.icon || (scope.row.type === 'room' ? 'mdi:door' : 'mdi:home-floor-1')"
+						class="w[20px] h[20px]"
+					/>
+				</el-avatar>
 			</template>
 		</el-table-column>
 
@@ -223,11 +215,11 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild } from '../../../common';
+import { IconWithChild, useBreakpoints } from '../../../common';
 import type { ISpace } from '../store/spaces.store.types';
 
 import type { ISpacesTableProps } from './spaces-table.types';
@@ -249,6 +241,8 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const { isMDDevice } = useBreakpoints();
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 

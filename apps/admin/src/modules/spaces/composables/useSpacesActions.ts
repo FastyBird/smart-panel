@@ -24,29 +24,39 @@ export const useSpacesActions = (): IUseSpacesActions => {
 			return false;
 		}
 
-		try {
-			await ElMessageBox.confirm(
-				t('spacesModule.messages.confirmRemove', { name: space.name }),
-				t('spacesModule.headings.removeSpace'),
-				{
-					confirmButtonText: t('spacesModule.buttons.yes.title'),
-					cancelButtonText: t('spacesModule.buttons.no.title'),
-					type: 'warning',
-				}
-			);
-
-			await spacesStore.remove({ id });
-
-			flashMessage.success(t('spacesModule.messages.removed'));
-
-			return true;
-		} catch (error: unknown) {
-			if (error instanceof SpacesApiException) {
-				flashMessage.error(error.message);
+		return ElMessageBox.confirm(
+			t('spacesModule.messages.confirmRemove', { name: space.name }),
+			t('spacesModule.headings.removeSpace'),
+			{
+				confirmButtonText: t('spacesModule.buttons.yes.title'),
+				cancelButtonText: t('spacesModule.buttons.no.title'),
+				type: 'warning',
 			}
+		)
+			.then(async (): Promise<boolean> => {
+				try {
+					await spacesStore.remove({ id });
 
-			return false;
-		}
+					flashMessage.success(t('spacesModule.messages.removed', { space: space.name }));
+
+					return true;
+				} catch (error: unknown) {
+					if (error instanceof SpacesApiException) {
+						flashMessage.error(error.message);
+					}
+
+					return false;
+				}
+			})
+			.catch((): boolean => {
+				flashMessage.info(
+					t('spacesModule.messages.removeCanceled', {
+						space: space.name,
+					})
+				);
+
+				return false;
+			});
 	};
 
 	return {

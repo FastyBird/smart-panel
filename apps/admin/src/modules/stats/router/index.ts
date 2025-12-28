@@ -12,7 +12,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			guards: ['authenticated'],
 			title: 'Overview',
 			icon: 'mdi:monitor-dashboard',
-			menu: 10000,
+			menu: 15000,
 		},
 	},
 ];

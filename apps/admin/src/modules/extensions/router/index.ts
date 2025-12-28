@@ -16,7 +16,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Extensions',
 			icon: 'mdi:puzzle',
-			menu: 4000,
+			menu: 3000,
 		},
 	},
 	{

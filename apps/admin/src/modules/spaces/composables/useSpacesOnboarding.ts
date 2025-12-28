@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue';
 
-import { injectBackendClient } from '../../../common';
+import { injectBackendClient, useUuid } from '../../../common';
 import { SpacesModuleCreateSpaceCategory, SpacesModuleCreateSpaceType } from '../../../openapi';
 import { SpaceCategory, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
@@ -13,15 +13,23 @@ interface ProposedSpace {
 	selected: boolean;
 }
 
+interface CustomSpace {
+	name: string;
+	selected: boolean;
+}
+
 export interface DeviceInfo {
 	id: string;
 	name: string;
+	description: string | null;
 	spaceId: string | null;
 }
 
 export interface DisplayInfo {
 	id: string;
 	name: string | null;
+	macAddress: string;
+	role: string;
 	spaceId: string | null;
 }
 
@@ -30,6 +38,7 @@ interface WizardState {
 	existingSpaces: ISpace[];
 	spaces: ISpace[];
 	proposedSpaces: ProposedSpace[];
+	customSpaces: CustomSpace[];
 	deviceAssignments: Record<string, string | null>; // deviceId -> spaceId
 	displayAssignments: Record<string, string | null>; // displayId -> spaceId
 	isLoading: boolean;
@@ -70,12 +79,14 @@ const spaceCategoryToApiCategory = (category: SpaceCategory | null | undefined):
 
 export const useSpacesOnboarding = () => {
 	const backendClient = injectBackendClient();
+	const { generate: uuid } = useUuid();
 
 	const state = reactive<WizardState>({
 		currentStep: 0,
 		existingSpaces: [],
 		spaces: [],
 		proposedSpaces: [],
+		customSpaces: [],
 		deviceAssignments: {},
 		displayAssignments: {},
 		isLoading: false,
@@ -88,6 +99,7 @@ export const useSpacesOnboarding = () => {
 	const existingSpaces = computed(() => state.existingSpaces);
 	const spaces = computed(() => state.spaces);
 	const proposedSpaces = computed(() => state.proposedSpaces);
+	const customSpaces = computed(() => state.customSpaces);
 	const deviceAssignments = computed(() => state.deviceAssignments);
 	const displayAssignments = computed(() => state.displayAssignments);
 
@@ -116,6 +128,87 @@ export const useSpacesOnboarding = () => {
 		}
 	};
 
+	const createDraftSpacesFromProposals = (): ISpace[] => {
+		const createdSpaces: ISpace[] = [];
+		const selectedProposals = state.proposedSpaces.filter((p) => p.selected);
+		const selectedCustomSpaces = state.customSpaces.filter((c) => c.selected);
+
+		// Create draft spaces from proposed spaces
+		for (const proposal of selectedProposals) {
+			// Check if space already exists (to prevent duplicates when going back/forward)
+			const existingSpace = state.spaces.find((s) => s.name === proposal.name && s.draft);
+			if (existingSpace) {
+				// Pre-populate device assignments based on proposal
+				for (const deviceId of proposal.deviceIds) {
+					if (!state.deviceAssignments[deviceId]) {
+						state.deviceAssignments[deviceId] = existingSpace.id;
+					}
+				}
+				continue;
+			}
+
+			const space: ISpace = {
+				id: uuid(),
+				name: proposal.name,
+				description: null,
+				type: SpaceType.ROOM,
+				category: null,
+				icon: null,
+				displayOrder: 0,
+				primaryThermostatId: null,
+				primaryTemperatureSensorId: null,
+				suggestionsEnabled: true,
+				createdAt: new Date(),
+				updatedAt: null,
+				draft: true,
+			};
+
+			state.spaces = [...state.spaces, space];
+			createdSpaces.push(space);
+
+			// Pre-populate device assignments based on proposal
+			for (const deviceId of proposal.deviceIds) {
+				state.deviceAssignments[deviceId] = space.id;
+			}
+
+			// Mark proposal as no longer selected to prevent duplicate creation on back/next
+			proposal.selected = false;
+		}
+
+		// Create draft spaces from custom spaces
+		for (const customSpace of selectedCustomSpaces) {
+			// Check if space already exists (to prevent duplicates when going back/forward)
+			const existingSpace = state.spaces.find((s) => s.name === customSpace.name && s.draft);
+			if (existingSpace) {
+				continue;
+			}
+
+			const space: ISpace = {
+				id: uuid(),
+				name: customSpace.name,
+				description: null,
+				type: SpaceType.ROOM,
+				category: null,
+				icon: null,
+				displayOrder: 0,
+				primaryThermostatId: null,
+				primaryTemperatureSensorId: null,
+				suggestionsEnabled: true,
+				createdAt: new Date(),
+				updatedAt: null,
+				draft: true,
+			};
+
+			state.spaces = [...state.spaces, space];
+			createdSpaces.push(space);
+
+			// Mark custom space as no longer selected to prevent duplicate creation on back/next
+			customSpace.selected = false;
+		}
+
+		return createdSpaces;
+	};
+
 	const createSpacesFromProposals = async (): Promise<ISpace[]> => {
 		state.isLoading = true;
 		state.error = null;
@@ -123,20 +216,45 @@ export const useSpacesOnboarding = () => {
 		const createdSpaces: ISpace[] = [];
 
 		try {
-			const selectedProposals = state.proposedSpaces.filter((p) => p.selected);
+			// Get all draft spaces that need to be converted to real spaces
+			// Only convert drafts that are still in use (have assignments or are in selected proposals/custom spaces)
+			const draftSpaces = state.spaces.filter((s) => s.draft);
+			const selectedProposalNames = new Set(
+				state.proposedSpaces.filter((p) => p.selected).map((p) => p.name)
+			);
+			// Check all custom spaces (not just selected ones) because selected flag is set to false
+			// after draft creation to prevent duplicates, but we still want to preserve custom spaces
+			const customSpaceNames = new Set(state.customSpaces.map((c) => c.name));
+			const usedDraftSpaceIds = new Set(
+				[...Object.values(state.deviceAssignments), ...Object.values(state.displayAssignments)].filter(
+					(id): id is string => id !== null
+				)
+			);
 
-			for (const proposal of selectedProposals) {
+			// Create spaces from draft spaces via API
+			for (const draftSpace of draftSpaces) {
+				// Only convert drafts that are still selected or have assignments or are custom spaces
+				const isSelected = selectedProposalNames.has(draftSpace.name);
+				const isCustomSpace = customSpaceNames.has(draftSpace.name);
+				const hasAssignments = usedDraftSpaceIds.has(draftSpace.id);
+
+				if (!isSelected && !isCustomSpace && !hasAssignments) {
+					// Remove unused draft space
+					state.spaces = state.spaces.filter((s) => s.id !== draftSpace.id);
+					continue;
+				}
+
 				const response = await backendClient.POST('/modules/spaces/spaces', {
 					body: {
 						data: {
-							name: proposal.name,
-							type: SpacesModuleCreateSpaceType.room,
+							name: draftSpace.name,
+							type: spaceTypeToApiType(draftSpace.type),
 						},
 					},
 				});
 
 				if (response.error || !response.data?.data) {
-					throw new SpacesApiException(`Failed to create space: ${proposal.name}`);
+					throw new SpacesApiException(`Failed to create space: ${draftSpace.name}`);
 				}
 
 				const space: ISpace = {
@@ -155,18 +273,29 @@ export const useSpacesOnboarding = () => {
 					draft: false,
 				};
 
-				// Update state incrementally after each successful creation
-				// This ensures we don't lose track of spaces if a later creation fails
-				state.spaces = [...state.spaces, space];
-				createdSpaces.push(space);
-
-				// Pre-populate device assignments based on proposal
-				for (const deviceId of proposal.deviceIds) {
-					state.deviceAssignments[deviceId] = space.id;
+				// Update device assignments to use the new space ID
+				for (const [deviceId, spaceId] of Object.entries(state.deviceAssignments)) {
+					if (spaceId === draftSpace.id) {
+						state.deviceAssignments[deviceId] = space.id;
+					}
 				}
 
-				// Mark proposal as no longer selected to prevent duplicate creation on back/next
-				proposal.selected = false;
+				// Update display assignments to use the new space ID
+				for (const [displayId, spaceId] of Object.entries(state.displayAssignments)) {
+					if (spaceId === draftSpace.id) {
+						state.displayAssignments[displayId] = space.id;
+					}
+				}
+
+				// Replace draft space with real space
+				const draftIndex = state.spaces.findIndex((s) => s.id === draftSpace.id);
+				if (draftIndex !== -1) {
+					state.spaces[draftIndex] = space;
+				} else {
+					state.spaces = [...state.spaces, space];
+				}
+
+				createdSpaces.push(space);
 			}
 
 			return createdSpaces;
@@ -316,16 +445,18 @@ export const useSpacesOnboarding = () => {
 	};
 
 	const addManualSpace = (name: string): void => {
-		state.proposedSpaces.push({
+		state.customSpaces.push({
 			name,
-			deviceIds: [],
-			deviceCount: 0,
 			selected: true,
 		});
 	};
 
 	const removeProposedSpace = (index: number): void => {
 		state.proposedSpaces.splice(index, 1);
+	};
+
+	const removeCustomSpace = (index: number): void => {
+		state.customSpaces.splice(index, 1);
 	};
 
 	const initializeFromExistingSpaces = (existingSpacesData: ISpace[]): void => {
@@ -358,6 +489,7 @@ export const useSpacesOnboarding = () => {
 			return response.data.data.map((d) => ({
 				id: d.id,
 				name: d.name,
+				description: d.description ?? null,
 				spaceId: d.space_id ?? null,
 			}));
 		} catch (err) {
@@ -382,6 +514,8 @@ export const useSpacesOnboarding = () => {
 			return response.data.data.map((d) => ({
 				id: d.id,
 				name: d.name ?? null,
+				macAddress: d.mac_address ?? '',
+				role: d.role ?? 'room',
 				spaceId: d.space_id ?? null,
 			}));
 		} catch (err) {
@@ -471,6 +605,7 @@ export const useSpacesOnboarding = () => {
 		existingSpaces,
 		spaces,
 		proposedSpaces,
+		customSpaces,
 		deviceAssignments,
 		displayAssignments,
 		// Actions
@@ -478,6 +613,7 @@ export const useSpacesOnboarding = () => {
 		fetchDevices,
 		fetchDisplays,
 		fetchExistingSpaces,
+		createDraftSpacesFromProposals,
 		createSpacesFromProposals,
 		createSpace,
 		setDeviceAssignment,
@@ -489,6 +625,7 @@ export const useSpacesOnboarding = () => {
 		toggleProposedSpace,
 		addManualSpace,
 		removeProposedSpace,
+		removeCustomSpace,
 		initializeFromExistingSpaces,
 		initializeDeviceAssignments,
 		initializeDisplayAssignments,

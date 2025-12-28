@@ -16,28 +16,6 @@
 					<el-icon><icon icon="mdi:magnify" /></el-icon>
 				</template>
 			</el-input>
-
-			<el-divider direction="vertical" />
-
-			<el-form-item
-				:label="t('spacesModule.filters.type.title')"
-				class="p-1 m-0!"
-			>
-				<el-radio-group v-model="innerFilters.type">
-					<el-radio-button
-						:label="t('spacesModule.misc.types.room')"
-						value="room"
-					/>
-					<el-radio-button
-						:label="t('spacesModule.misc.types.zone')"
-						value="zone"
-					/>
-					<el-radio-button
-						:label="t('spacesModule.filters.type.all')"
-						value="all"
-					/>
-				</el-radio-group>
-			</el-form-item>
 		</el-form>
 
 		<el-button
@@ -63,7 +41,7 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElRadioButton, ElRadioGroup, type FormInstance } from 'element-plus';
+import { ElButton, ElForm, ElIcon, ElInput, type FormInstance } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';

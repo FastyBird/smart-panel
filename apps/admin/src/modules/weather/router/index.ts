@@ -15,7 +15,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Weather locations',
 			icon: 'mdi:map-marker-multiple',
-			menu: 6000,
+			menu: 5000,
 		},
 		children: [
 			{

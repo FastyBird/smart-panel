@@ -11,7 +11,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			guards: { authenticated: true },
 			title: 'Spaces Overview',
 			icon: 'mdi:view-dashboard',
-			menu: 5900,
+			menu: 6000,
 		},
 	},
 	{
@@ -22,7 +22,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			guards: { authenticated: true },
 			title: 'Spaces',
 			icon: 'mdi:home-group',
-			menu: 6000,
+			menu: 10000,
 		},
 		children: [
 			{
@@ -45,23 +45,21 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			{
 				path: ':id',
-				name: RouteNames.SPACE,
-				component: () => import('../views/view-space.vue'),
+				name: RouteNames.SPACE_EDIT,
+				component: () => import('../views/view-space-edit.vue'),
 				meta: {
 					guards: { authenticated: true },
+					title: 'Edit space',
 				},
-				children: [
-					{
-						path: 'edit',
-						name: RouteNames.SPACE_EDIT,
-						component: () => import('../views/view-space-edit.vue'),
-						meta: {
-							guards: { authenticated: true },
-							title: 'Edit space',
-						},
-					},
-				],
 			},
 		],
+	},
+	{
+		path: 'space/:id',
+		name: RouteNames.SPACE,
+		component: () => import('../views/view-space.vue'),
+		meta: {
+			guards: { authenticated: true },
+		},
 	},
 ];
