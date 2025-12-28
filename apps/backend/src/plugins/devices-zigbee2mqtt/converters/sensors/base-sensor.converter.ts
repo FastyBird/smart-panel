@@ -115,6 +115,9 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 		},
 	): MappedProperty {
 		const range = this.extractNumericRange(expose);
+		// Compute final min/max values first (applying defaults), then use them consistently
+		const min = range.min ?? params.defaultMin;
+		const max = range.max ?? params.defaultMax;
 
 		return this.createProperty({
 			identifier: params.identifier,
@@ -125,10 +128,10 @@ export abstract class BaseSensorConverter extends BaseConverter implements ISens
 			z2mProperty: expose.property ?? expose.name ?? params.identifier,
 			access: expose.access ?? Z2M_ACCESS.STATE,
 			unit: range.unit ?? params.unit,
-			min: range.min ?? params.defaultMin,
-			max: range.max ?? params.defaultMax,
+			min,
+			max,
 			step: range.step,
-			format: range.min !== undefined && range.max !== undefined ? [range.min, range.max] : undefined,
+			format: min !== undefined && max !== undefined ? [min, max] : undefined,
 		});
 	}
 
