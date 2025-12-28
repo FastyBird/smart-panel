@@ -405,7 +405,8 @@ describe('HomeResolutionService', () => {
 				mockQueryBuilder.getMany.mockResolvedValue(pages);
 
 				// Entry role first tries to find house modes page (returns empty), then falls through to auto_space
-				jest.spyOn(dataSource, 'query')
+				jest
+					.spyOn(dataSource, 'query')
 					.mockResolvedValueOnce([]) // No house modes page
 					.mockResolvedValueOnce([{ id: spacePageId }]); // Space page exists
 

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -55,7 +55,7 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] House Overview page type can be created and assigned in admin.
+- [x] House Overview page type can be created and assigned in admin.
 - [ ] Panel renders Space cards with at least lights + temperature summary when available.
 - [ ] Drill-down to SpacePage works when it exists.
 - [ ] Missing SpacePage does not break the page; user gets a gentle message.

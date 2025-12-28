@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -62,12 +62,12 @@ Panel:
 
 ## 4. Acceptance criteria
 
-- [ ] Modes can be activated from the panel page.
-- [ ] Active mode persists across restarts.
-- [ ] Away turns off all lights best-effort.
-- [ ] Night applies night intent when possible; else off.
-- [ ] Home sets mode without global restore.
-- [ ] Unit tests cover transitions, persistence, and action dispatch (mocked).
+- [x] Modes can be activated from the panel page.
+- [x] Active mode persists across restarts.
+- [x] Away turns off all lights best-effort.
+- [x] Night applies night intent when possible; else off.
+- [x] Home sets mode without global restore.
+- [x] Unit tests cover transitions, persistence, and action dispatch (mocked).
 
 ## 6. Technical constraints
 
