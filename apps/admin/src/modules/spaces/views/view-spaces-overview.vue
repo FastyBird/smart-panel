@@ -105,11 +105,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElCol, ElIcon, ElMessage, ElRow } from 'element-plus';
+import { ElButton, ElCol, ElIcon, ElRow } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
 import {
 	SpacesOverviewCategories,
 	SpacesOverviewQuickActions,
@@ -126,6 +126,7 @@ defineOptions({
 
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('spacesModule.meta.spaces.overview.title'),
@@ -178,7 +179,7 @@ const onSpaceDetail = (id: ISpace['id']): void => {
 
 onBeforeMount((): void => {
 	fetchSpaces().catch((): void => {
-		ElMessage.error(t('spacesModule.messages.loadError'));
+		flashMessage.error(t('spacesModule.messages.loadError'));
 	});
 });
 </script>

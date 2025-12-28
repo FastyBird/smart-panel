@@ -58,7 +58,10 @@
 		</el-form-item>
 
 		<el-form-item :label="t('spacesModule.fields.spaces.displayOrder.title')" prop="displayOrder">
-			<el-input-number v-model="formData.displayOrder" :min="0" style="width: 100%" />
+			<el-input-number
+				v-model="formData.displayOrder"
+				:min="0"
+			/>
 		</el-form-item>
 
 		<!-- Climate Device Overrides Section -->
@@ -119,24 +122,35 @@
 		<template v-if="props.space">
 			<el-divider>{{ t('spacesModule.fields.spaces.suggestions.title') }}</el-divider>
 
-			<el-form-item prop="suggestionsEnabled">
+			<el-form-item
+				prop="suggestionsEnabled"
+				label-position="left"
+			>
 				<template #label>
-					<div class="flex items-center gap-2">
-						{{ t('spacesModule.fields.spaces.suggestionsEnabled.title') }}
-					</div>
+					{{ t('spacesModule.fields.spaces.suggestionsEnabled.title') }}
 				</template>
 				<el-switch v-model="formData.suggestionsEnabled" />
-				<div class="text-xs text-gray-500 mt-1">
-					{{ t('spacesModule.fields.spaces.suggestionsEnabled.hint') }}
-				</div>
 			</el-form-item>
+			<el-alert
+				:title="t('spacesModule.fields.spaces.suggestionsEnabled.hint')"
+				type="info"
+				:closable="false"
+				show-icon
+			/>
 		</template>
 
-		<div class="flex gap-2 justify-end mt-4">
+		<div
+			v-if="!hideActions"
+			class="flex gap-2 justify-end mt-4"
+		>
 			<el-button @click="onCancel">
 				{{ t('spacesModule.buttons.cancel.title') }}
 			</el-button>
-			<el-button type="primary" :loading="saving" @click="onSubmit">
+			<el-button
+				type="primary"
+				:loading="saving"
+				@click="onSubmit"
+			>
 				{{ t('spacesModule.buttons.save.title') }}
 			</el-button>
 		</div>
@@ -147,10 +161,10 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElMessage, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useBackend } from '../../../common';
+import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { SPACE_CATEGORY_TEMPLATES, SpaceCategory, SpaceType, SPACES_MODULE_PREFIX } from '../spaces.constants';
@@ -160,6 +174,7 @@ import SpaceLightingRoles from './space-lighting-roles.vue';
 
 interface IProps {
 	space?: ISpace;
+	hideActions?: boolean;
 }
 
 interface IEmits {
@@ -176,11 +191,13 @@ interface ISpaceDevice {
 
 const props = withDefaults(defineProps<IProps>(), {
 	space: undefined,
+	hideActions: false,
 });
 
 const emit = defineEmits<IEmits>();
 
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 const backend = useBackend();
 const storesManager = injectStoresManager();
@@ -381,7 +398,7 @@ const onSubmit = async (): Promise<void> => {
 
 		emit('saved', savedSpace);
 	} catch {
-		ElMessage.error(t('spacesModule.messages.saveError'));
+		flashMessage.error(t('spacesModule.messages.saveError'));
 	} finally {
 		saving.value = false;
 	}
@@ -390,4 +407,8 @@ const onSubmit = async (): Promise<void> => {
 const onCancel = (): void => {
 	emit('cancel');
 };
+
+defineExpose({
+	submit: onSubmit,
+});
 </script>

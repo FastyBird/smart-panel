@@ -1,5 +1,5 @@
 <template>
-	<div class="space-lighting-roles">
+	<div class="mt-2">
 		<el-divider>{{ t('spacesModule.fields.spaces.lightingRoles.title') }}</el-divider>
 
 		<div class="text-sm text-gray-500 mb-4">
@@ -72,10 +72,10 @@
 import { computed, onMounted, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElButton, ElDivider, ElEmpty, ElMessage, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElButton, ElDivider, ElEmpty, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { useBackend } from '../../../common';
+import { useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { LightingRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
@@ -100,6 +100,7 @@ const props = defineProps<IProps>();
 
 const { t } = useI18n();
 const backend = useBackend();
+const flashMessage = useFlashMessage();
 
 const loading = ref(false);
 const applyingDefaults = ref(false);
@@ -162,7 +163,7 @@ const onRoleChange = async (target: ILightTarget, newRole: string): Promise<void
 			);
 
 			if (error) {
-				ElMessage.error('Failed to clear lighting role');
+				flashMessage.error('Failed to clear lighting role');
 				return;
 			}
 
@@ -185,14 +186,14 @@ const onRoleChange = async (target: ILightTarget, newRole: string): Promise<void
 			);
 
 			if (error) {
-				ElMessage.error('Failed to update lighting role');
+				flashMessage.error('Failed to update lighting role');
 				return;
 			}
 
 			target.role = newRole as LightingRole;
 		}
 	} catch {
-		ElMessage.error('Failed to update lighting role');
+		flashMessage.error('Failed to update lighting role');
 	}
 };
 
@@ -206,14 +207,14 @@ const onApplyDefaults = async (): Promise<void> => {
 		);
 
 		if (error || !responseData) {
-			ElMessage.error('Failed to apply default roles');
+			flashMessage.error('Failed to apply default roles');
 			return;
 		}
 
 		// Reload the targets to reflect the new roles
 		await loadLightTargets();
 
-		ElMessage.success(`Applied ${responseData.data?.roles_updated ?? 0} default role(s)`);
+		flashMessage.success(`Applied ${responseData.data?.roles_updated ?? 0} default role(s)`);
 	} finally {
 		applyingDefaults.value = false;
 	}
@@ -234,9 +235,3 @@ onMounted(() => {
 	}
 });
 </script>
-
-<style scoped>
-.space-lighting-roles {
-	margin-top: 1rem;
-}
-</style>

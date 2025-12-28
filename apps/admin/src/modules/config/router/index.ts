@@ -15,7 +15,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Configuration',
 			icon: 'mdi:cog',
-			menu: 3000,
+			menu: 2000,
 		},
 		redirect: () => ({ name: RouteNames.CONFIG_MODULES }),
 		children: [

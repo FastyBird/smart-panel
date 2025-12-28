@@ -2,32 +2,38 @@
 	"title": "Spaces",
 	"description": "Manage your spaces (rooms and zones)",
 	"headings": {
-		"overview": "Spaces Overview",
+		"overview": "Spaces overview",
 		"list": "Spaces",
 		"spaces": "Spaces",
-		"detail": "Space Detail",
-		"add": "Add Space",
-		"edit": "Edit Space",
-		"removeSpace": "Remove Space",
-		"discard": "Discard Changes",
-		"adjustFilters": "Filter Spaces"
+		"detail": "Space detail",
+		"add": "Add space",
+		"edit": "Edit space",
+		"removeSpace": "Remove space",
+		"discard": "Discard changes",
+		"adjustFilters": "Filter spaces"
 	},
 	"subHeadings": {
 		"overview": "Dashboard view of your spaces",
-		"list": "Organize devices and displays by rooms or zones"
+		"list": "Organize devices and displays by rooms or zones",
+		"adjustFilters": "Adjust display filters",
+		"add": "Add new space",
+		"detail": "Manage space: {space}",
+		"onboarding": "Setup wizard for spaces, devices and displays"
 	},
 	"breadcrumbs": {
 		"spaces": {
 			"overview": "spaces overview",
 			"list": "spaces",
 			"detail": "space: {space}",
-			"edit": "edit space"
+			"edit": "edit space",
+			"add": "add space",
+			"onboarding": "setup wizard"
 		}
 	},
 	"meta": {
 		"spaces": {
 			"overview": {
-				"title": "Spaces Overview"
+				"title": "Spaces overview"
 			},
 			"list": {
 				"title": "List spaces"
@@ -35,8 +41,14 @@
 			"edit": {
 				"title": "Edit space: {space}"
 			},
+			"add": {
+				"title": "Add space"
+			},
 			"detail": {
 				"title": "Space: {space}"
+			},
+			"onboarding": {
+				"title": "Spaces setup wizard"
 			}
 		}
 	},
@@ -115,31 +127,31 @@
 				"placeholder": "Order in lists"
 			},
 			"climateOverrides": {
-				"title": "Climate Device Overrides"
+				"title": "Climate device overrides"
 			},
 			"primaryThermostat": {
-				"title": "Primary Thermostat",
+				"title": "Primary thermostat",
 				"placeholder": "Auto-detect (first available)",
 				"hint": "Override the default thermostat selection for this space"
 			},
 			"primaryTemperatureSensor": {
-				"title": "Primary Temperature Sensor",
+				"title": "Primary temperature sensor",
 				"placeholder": "Auto-detect (thermostat or first sensor)",
 				"hint": "Override the temperature reading source for this space"
 			},
 			"lightingRoles": {
-				"title": "Lighting Roles",
+				"title": "Lighting roles",
 				"description": "Assign roles to lights for smart intent-based control (Work/Relax/Night modes)",
 				"noLights": "No lights found in this space",
 				"role": {
 					"title": "Role",
 					"placeholder": "Select a role"
 				},
-				"applyDefaults": "Apply Defaults",
+				"applyDefaults": "Apply defaults",
 				"applyDefaultsHint": "Sets first light as Main, others as Ambient"
 			},
 			"suggestions": {
-				"title": "Smart Suggestions"
+				"title": "Smart suggestions"
 			},
 			"suggestionsEnabled": {
 				"title": "Enable suggestions",
@@ -165,13 +177,13 @@
 	"texts": {
 		"loadingSpaces": "Loading spaces...",
 		"loadingSpace": "Loading space...",
-		"noSpaces": "No spaces created yet",
+		"noSpaces": "You don't have configured any space",
 		"noFilteredSpaces": "No spaces match your filter criteria",
 		"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
 	},
 	"buttons": {
 		"add": {
-			"title": "Add Space"
+			"title": "Add"
 		},
 		"detail": {
 			"title": "Detail"
@@ -180,7 +192,10 @@
 			"title": "Filter"
 		},
 		"resetFilters": {
-			"title": "Reset Filters"
+			"title": "Reset filters"
+		},
+		"reset": {
+			"title": "Reset"
 		},
 		"yes": {
 			"title": "Yes"
@@ -216,43 +231,43 @@
 			"title": "Finish"
 		},
 		"onboarding": {
-			"title": "Setup Wizard"
+			"title": "Setup wizard"
 		},
 		"viewAll": {
-			"title": "View All"
+			"title": "View all"
 		}
 	},
 	"overview": {
 		"stats": {
-			"title": "Space Statistics",
-			"total": "Total Spaces",
+			"title": "Space statistics",
+			"total": "Total spaces",
 			"rooms": "Rooms",
 			"zones": "Zones"
 		},
 		"categories": {
-			"title": "Spaces by Category",
+			"title": "Spaces by category",
 			"empty": "No spaces with categories"
 		},
 		"quickActions": {
-			"title": "Quick Actions",
-			"addSpace": "Add New Space",
-			"onboarding": "Setup Wizard",
-			"viewAll": "View All Spaces"
+			"title": "Quick actions",
+			"addSpace": "Add new space",
+			"onboarding": "Setup wizard",
+			"viewAll": "View all spaces"
 		},
 		"recent": {
-			"title": "Recently Updated",
+			"title": "Recently updated",
 			"empty": "No spaces yet"
 		}
 	},
 	"detail": {
-		"title": "Space Detail",
+		"title": "Space detail",
 		"info": {
-			"title": "Space Information",
+			"title": "Space information",
 			"name": "Name",
 			"description": "Description",
 			"type": "Type",
 			"icon": "Icon",
-			"displayOrder": "Display Order"
+			"displayOrder": "Display order"
 		}
 	},
 	"messages": {
@@ -260,11 +275,12 @@
 		"loadError": "Failed to load spaces",
 		"confirmRemove": "Are you sure you want to remove space \"{name}\"? This action cannot be undone.",
 		"confirmDelete": "Are you sure you want to delete this space?",
-		"removed": "Space removed successfully",
-		"deleted": "Space was successfully deleted",
-		"saved": "Space was successfully saved",
-		"edited": "Space {space} has been updated",
-		"notEdited": "Space {space} was not updated",
+		"created": "New space added successfully.",
+		"notCreated": "Something went wrong. Unable to create the space.",
+		"edited": "Changes saved! The space: {space} has been updated.",
+		"notEdited": "Something went wrong. Space update was not successful.",
+		"removed": "The space: {space} was successfully removed.",
+		"removeCanceled": "Space: {space} removal has been canceled.",
 		"deletedWhileEditing": "This space was deleted and is no longer available.",
 		"createError": "Failed to create space. Please try again.",
 		"saveError": "Failed to save changes. Please try again."
@@ -276,30 +292,32 @@
 		}
 	},
 	"onboarding": {
-		"title": "Spaces Setup Wizard",
+		"title": "Spaces setup wizard",
 		"devices": "devices",
 		"displays": "displays",
 		"selectSpace": "Select space",
-		"deviceName": "Device Name",
-		"assignedSpace": "Assigned Space",
-		"spaceName": "Space Name",
+		"deviceName": "Device name",
+		"displayName": "Display name",
+		"assignedSpace": "Assigned space",
+		"spaceName": "Space name",
 		"steps": {
 			"spaces": {
-				"title": "Create Spaces",
-				"description": "Review the proposed spaces based on your device names, or add your own custom spaces.",
-				"proposed": "Proposed Spaces",
-				"existing": "Existing Spaces",
-				"addManual": "Add Custom Space",
+				"title": "Create spaces",
+				"description": "Spaces help you organize your devices and displays by rooms or zones (e.g., Living Room, Kitchen, Bedroom). We've automatically detected some spaces from your device names - review and select the ones you want to create, or add your own custom spaces below.",
+				"proposed": "Proposed spaces",
+				"custom": "Custom spaces",
+				"existing": "Existing spaces",
+				"addManual": "Add custom space",
 				"placeholder": "Enter space name (e.g., Living Room)",
 				"noProposals": "No spaces could be detected from your device names. Add spaces manually below."
 			},
 			"displays": {
-				"title": "Assign Displays",
+				"title": "Assign displays",
 				"description": "Assign each display to a space. This determines which space the display will show by default.",
 				"noDisplays": "No displays registered yet."
 			},
 			"devices": {
-				"title": "Assign Devices",
+				"title": "Assign devices",
 				"description": "Assign devices to spaces. Devices will be pre-assigned based on their names if detected.",
 				"noDevices": "No devices found."
 			},
@@ -309,11 +327,13 @@
 			}
 		},
 		"summary": {
-			"totalSpaces": "Total Spaces",
-			"assignedDevices": "Assigned Devices",
-			"unassignedDevices": "Unassigned Devices",
-			"assignedDisplays": "Assigned Displays",
-			"bySpace": "Assignments by Space"
+			"overview": "Summary",
+			"totalSpaces": "Total spaces",
+			"assignedDevices": "Assigned devices",
+			"unassignedDevices": "Unassigned devices",
+			"assignedDisplays": "Assigned displays",
+			"unassignedDisplays": "Unassigned displays",
+			"bySpace": "Assignments by space"
 		},
 		"messages": {
 			"spacesCreated": "{count} space(s) created successfully",

@@ -47,7 +47,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'System',
 			icon: 'mdi:hammer',
-			menu: 5000,
+			menu: 4000,
 		},
 		redirect: () => ({ name: RouteNames.SYSTEM_INFO }),
 		children: [

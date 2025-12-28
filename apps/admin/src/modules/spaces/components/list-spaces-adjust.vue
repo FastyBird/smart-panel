@@ -1,69 +1,79 @@
 <template>
-	<div class="flex flex-col h-full p-4">
-		<view-header
-			:heading="t('spacesModule.headings.adjustFilters')"
-			icon="mdi:filter"
-		/>
+	<app-bar-heading teleport>
+		<template #icon>
+			<icon icon="mdi:filter" />
+		</template>
 
-		<el-form
-			label-position="top"
-			class="mt-4"
-		>
-			<el-form-item :label="t('spacesModule.fields.search.placeholder')">
-				<el-input
-					v-model="innerFilters.search"
-					clearable
+		<template #title>
+			{{ t('spacesModule.headings.adjustFilters') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('spacesModule.subHeadings.adjustFilters') }}
+		</template>
+	</app-bar-heading>
+
+	<div
+		:class="[ns.b()]"
+		class="flex flex-col h-full w-full overflow-hidden"
+	>
+		<el-scrollbar class="flex-grow">
+			<el-collapse v-model="activeBoxes">
+				<el-collapse-item
+					name="type"
+					:class="[ns.e('filter-item')]"
 				>
-					<template #suffix>
-						<el-icon><icon icon="mdi:magnify" /></el-icon>
+					<template #title>
+						<el-text class="!px-2">
+							{{ t('spacesModule.filters.type.title') }}
+						</el-text>
 					</template>
-				</el-input>
-			</el-form-item>
 
-			<el-form-item :label="t('spacesModule.filters.type.title')">
-				<el-radio-group v-model="innerFilters.type">
-					<el-radio-button
-						:label="t('spacesModule.misc.types.room')"
-						value="room"
-					/>
-					<el-radio-button
-						:label="t('spacesModule.misc.types.zone')"
-						value="zone"
-					/>
-					<el-radio-button
-						:label="t('spacesModule.filters.type.all')"
-						value="all"
-					/>
-				</el-radio-group>
-			</el-form-item>
-		</el-form>
+					<div class="px-2">
+						<el-radio-group v-model="innerFilters.type">
+							<el-radio-button
+								:label="t('spacesModule.misc.types.room')"
+								value="room"
+							/>
+							<el-radio-button
+								:label="t('spacesModule.misc.types.zone')"
+								value="zone"
+							/>
+							<el-radio-button
+								:label="t('spacesModule.filters.type.all')"
+								value="all"
+							/>
+						</el-radio-group>
+					</div>
+				</el-collapse-item>
+			</el-collapse>
+		</el-scrollbar>
 
-		<div class="mt-auto">
+		<div class="px-5 py-2 text-center">
 			<el-button
-				v-if="props.filtersActive"
-				type="primary"
-				plain
-				class="w-full"
+				:disabled="!props.filtersActive"
 				@click="emit('reset-filters')"
 			>
 				<template #icon>
-					<icon icon="mdi:filter-off" />
+					<icon icon="mdi:filter-remove" />
 				</template>
-				{{ t('spacesModule.buttons.resetFilters.title') }}
+
+				{{ t('spacesModule.buttons.reset.title') }}
 			</el-button>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElForm, ElFormItem, ElIcon, ElInput, ElRadioButton, ElRadioGroup } from 'element-plus';
+import { ElButton, ElCollapse, ElCollapseItem, ElRadioButton, ElRadioGroup, ElScrollbar, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { ViewHeader } from '../../../common';
+import { AppBarHeading } from '../../../common';
 import type { ISpacesFilter } from '../composables/types';
 
 interface IListSpacesAdjustProps {
@@ -82,7 +92,14 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 }>();
 
+const ns = useNamespace('list-spaces-adjust');
 const { t } = useI18n();
+
+const activeBoxes = ref<string[]>(['type']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'list-spaces-adjust.scss';
+</style>

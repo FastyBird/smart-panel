@@ -16,7 +16,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Devices',
 			icon: 'mdi:power-plug',
-			menu: 7000,
+			menu: 8000,
 		},
 		children: [
 			{
