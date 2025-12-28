@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -56,9 +56,10 @@ Panel:
 ## 4. Acceptance criteria
 
 - [x] House Overview page type can be created and assigned in admin.
-- [~] Panel renders Space cards with at least lights + temperature summary when available.
+- [x] Panel renders Space cards with at least lights + temperature summary when available.
   - Space cards are rendered from SpacePageViews in the dashboard
-  - Summary data (lights/temperature) is placeholder - requires additional device state aggregation
+  - Temperature data is fetched from the Spaces API (getSpacesModuleSpaceClimate)
+  - Lights summary is prepared (code ready) but requires the lighting API endpoint to be available
 - [x] Drill-down to SpacePage works when it exists.
 - [x] Missing SpacePage does not break the page; user gets a gentle message.
 - [x] Unit tests cover read model generation (empty list, missing data, basic summaries).
