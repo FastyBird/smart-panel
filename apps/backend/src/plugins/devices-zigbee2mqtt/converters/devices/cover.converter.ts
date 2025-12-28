@@ -196,5 +196,4 @@ export class CoverConverter extends BaseConverter implements IDeviceConverter {
 
 		return hasOpen && hasClose;
 	}
-
 }

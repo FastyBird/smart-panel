@@ -51,14 +51,14 @@ export class LightConverter extends BaseConverter implements IDeviceConverter {
 
 			// Handle color composites separately - they produce multiple properties
 			if (propertyName === 'color' && feature.type === 'composite') {
-				const colorProps = this.convertColorComposite(feature as Z2mExposeComposite);
+				const colorProps = this.convertColorComposite(feature);
 				properties.push(...colorProps);
 				continue;
 			}
 
 			// Handle other composites (like nested color_hs)
 			if (feature.type === 'composite') {
-				const compositeProps = this.convertColorComposite(feature as Z2mExposeComposite);
+				const compositeProps = this.convertColorComposite(feature);
 				properties.push(...compositeProps);
 				continue;
 			}
