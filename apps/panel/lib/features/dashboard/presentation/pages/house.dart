@@ -33,8 +33,6 @@ class _SpaceSummary {
     required this.title,
     this.icon,
     this.spacePageId,
-    this.temperature,
-    this.lightsOnCount,
     this.isLoading = true,
   });
 
