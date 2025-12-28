@@ -1,5 +1,5 @@
 import { ChannelCategory, PropertyCategory } from '../../../../modules/devices/devices.constants';
-import { Z2mExpose, Z2mExposeEnum, Z2mExposeNumeric } from '../../interfaces/zigbee2mqtt.interface';
+import { Z2mExpose, Z2mExposeNumeric } from '../../interfaces/zigbee2mqtt.interface';
 import {
 	CanHandleResult,
 	ConversionContext,
@@ -13,17 +13,20 @@ import { BaseSensorConverter } from './base-sensor.converter';
 /**
  * Air Particulate Sensor Converter
  *
- * Handles air quality and particulate matter sensors with properties like:
+ * Handles particulate matter sensors with properties like:
  * - pm25 (PM2.5 concentration in µg/m³)
  * - pm10 (PM10 concentration in µg/m³)
  * - pm1 (PM1 concentration in µg/m³)
- * - air_quality (calculated air quality level)
- * - voc (Volatile Organic Compounds)
- * - formaldehyde
+ * - voc (Volatile Organic Compounds in µg/m³)
+ * - formaldehyde (concentration in µg/m³)
+ *
+ * Note: The spec's 'mode' property defines sensor measurement type (pm1, pm2_5, pm10),
+ * not air quality levels. Z2M's air_quality expose (excellent/good/poor/etc.) is not
+ * mappable to the spec and is intentionally excluded.
  */
 export class AirParticulateSensorConverter extends BaseSensorConverter {
 	readonly type = 'air-particulate-sensor';
-	readonly propertyNames = ['pm25', 'pm10', 'pm1', 'voc', 'formaldehyde', 'air_quality'];
+	readonly propertyNames = ['pm25', 'pm10', 'pm1', 'voc', 'formaldehyde'];
 	readonly channelCategory = ChannelCategory.AIR_PARTICULATE;
 
 	canHandle(expose: Z2mExpose): CanHandleResult {
@@ -31,8 +34,9 @@ export class AirParticulateSensorConverter extends BaseSensorConverter {
 			return this.cannotHandle();
 		}
 
-		// Handle numeric (pm25, pm10, etc.) and enum (air_quality) exposes
-		if (expose.type !== 'numeric' && expose.type !== 'enum') {
+		// Only handle numeric exposes (pm25, pm10, voc, etc.)
+		// Enum exposes like air_quality are not mappable to the spec
+		if (expose.type !== 'numeric') {
 			return this.cannotHandle();
 		}
 
@@ -45,19 +49,9 @@ export class AirParticulateSensorConverter extends BaseSensorConverter {
 
 	convert(expose: Z2mExpose, context: ConversionContext): MappedChannel[] {
 		const propertyName = this.getPropertyName(expose);
-		if (!propertyName) return [];
+		if (!propertyName || expose.type !== 'numeric') return [];
 
-		const properties: MappedProperty[] = [];
-
-		if (expose.type === 'numeric') {
-			properties.push(this.convertNumericProperty(expose, propertyName));
-		} else if (expose.type === 'enum') {
-			properties.push(this.convertEnumProperty(expose, propertyName));
-		}
-
-		if (properties.length === 0) {
-			return [];
-		}
+		const properties: MappedProperty[] = [this.convertNumericProperty(expose, propertyName)];
 
 		// Add optional tamper characteristic
 		this.addOptionalCharacteristics(properties, context);
@@ -65,7 +59,7 @@ export class AirParticulateSensorConverter extends BaseSensorConverter {
 		return [
 			this.createChannel({
 				identifier: this.createChannelIdentifier('air_particulate', expose.endpoint),
-				name: this.formatChannelName('Air Quality', expose.endpoint),
+				name: this.formatChannelName('Air Particulate', expose.endpoint),
 				category: ChannelCategory.AIR_PARTICULATE,
 				endpoint: expose.endpoint,
 				properties,
@@ -87,25 +81,6 @@ export class AirParticulateSensorConverter extends BaseSensorConverter {
 			unit: numericExpose.unit ?? 'µg/m³',
 			defaultMin: 0,
 			defaultMax: 1000,
-		});
-	}
-
-	/**
-	 * Convert enum air quality properties (air_quality level)
-	 */
-	private convertEnumProperty(expose: Z2mExpose, propertyName: string): MappedProperty {
-		const enumExpose = expose as Z2mExposeEnum;
-		const values = enumExpose.values || [];
-
-		return this.createProperty({
-			identifier: propertyName,
-			name: this.formatName(propertyName),
-			category: PropertyCategory.MODE,
-			channelCategory: this.channelCategory,
-			dataType: this.getDataType(this.channelCategory, PropertyCategory.MODE, expose),
-			z2mProperty: enumExpose.property ?? propertyName,
-			access: enumExpose.access,
-			format: values,
 		});
 	}
 }
