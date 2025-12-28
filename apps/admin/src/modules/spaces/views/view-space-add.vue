@@ -103,6 +103,7 @@ import {
 	AppBarHeading,
 	AppBreadcrumbs,
 	useBreakpoints,
+	useFlashMessage,
 } from '../../../common';
 import { SpaceEditForm } from '../components/components';
 import { RouteNames } from '../spaces.constants';
@@ -114,6 +115,7 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('spacesModule.meta.spaces.add.title'),
@@ -172,7 +174,9 @@ const onClose = (): void => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const onSaved = (_space: ISpace): void => {
+const onSaved = (_savedSpace: ISpace): void => {
+	flashMessage.success(t('spacesModule.messages.created'));
+
 	if (isLGDevice.value) {
 		router.replace({ name: RouteNames.SPACES });
 	} else {

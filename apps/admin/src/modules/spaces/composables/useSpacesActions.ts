@@ -51,7 +51,7 @@ export const useSpacesActions = (): IUseSpacesActions => {
 			.catch((): boolean => {
 				flashMessage.info(
 					t('spacesModule.messages.removeCanceled', {
-						name: space.name,
+						space: space.name,
 					})
 				);
 
