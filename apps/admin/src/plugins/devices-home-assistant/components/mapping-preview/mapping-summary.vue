@@ -1,154 +1,65 @@
 <template>
-	<el-card>
+	<el-card shadow="never" header-class="py-2! px-4!" body-class="px-0!">
 		<template #header>
-			<div class="flex items-center justify-between">
-				<span class="font-semibold">{{ t('devicesHomeAssistantPlugin.headings.mapping.summary') }}</span>
-				<el-tag
-					:type="preview.readyToAdopt ? 'success' : 'warning'"
-					effect="dark"
-				>
-					{{ preview.readyToAdopt ? t('devicesHomeAssistantPlugin.messages.mapping.readyToAdopt') : t('devicesHomeAssistantPlugin.messages.mapping.notReadyToAdopt') }}
-				</el-tag>
+			<div class="font-semibold">
+				{{ t('devicesHomeAssistantPlugin.headings.mapping.summary') }}
 			</div>
 		</template>
 
-		<dl class="grid grid-cols-2 gap-x-4 gap-y-2">
-			<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.totalEntities') }}:</dt>
-			<dd class="m-0">{{ preview.entities.length }}</dd>
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+			<div>
+				<div class="text-2xl font-bold text-green-600">{{ mappedCount }}</div>
+				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}</div>
+			</div>
+			<div>
+				<div class="text-2xl font-bold text-yellow-600">{{ partialCount }}</div>
+				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.partial') }}</div>
+			</div>
+			<div>
+				<div class="text-2xl font-bold text-red-600">{{ unmappedCount }}</div>
+				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmapped') }}</div>
+			</div>
+			<div>
+				<div class="text-2xl font-bold text-gray-600">{{ skippedCount }}</div>
+				<div class="text-sm text-gray-500">{{ t('devicesHomeAssistantPlugin.fields.mapping.skipped') }}</div>
+			</div>
+		</div>
 
-			<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.mapped') }}:</dt>
-			<dd class="m-0">
-				<el-tag type="success" size="small">
-					{{ mappedCount }}
-				</el-tag>
-			</dd>
+		<el-divider />
 
-			<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.partial') }}:</dt>
-			<dd class="m-0">
-				<el-tag type="warning" size="small">
-					{{ partialCount }}
-				</el-tag>
-			</dd>
-
-			<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.unmapped') }}:</dt>
-			<dd class="m-0">
-				<el-tag type="danger" size="small">
-					{{ unmappedCount }}
-				</el-tag>
-			</dd>
-
-			<dt class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.skipped') }}:</dt>
-			<dd class="m-0">
-				<el-tag type="info" size="small">
-					{{ skippedCount }}
-				</el-tag>
-			</dd>
-		</dl>
-
-		<!-- Validation Summary -->
-		<div
-			v-if="preview.validation"
-			class="mt-4 pt-4 border-t"
-		>
-			<div class="flex items-center gap-2 mb-2">
-				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.valid') }}:</span>
+		<div class="grid grid-cols-1 gap-4 text-sm mx-4">
+			<div>
+				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.devices.name.title') }}:</span>
+				<span class="ml-2">{{ preview.haDevice.name }}</span>
+			</div>
+			<div>
+				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.suggestedCategory') }}:</span>
+				<span class="ml-2">{{ t(`devicesModule.categories.devices.${preview.suggestedDevice.category}`) }}</span>
 				<el-tag
-					:type="preview.validation.isValid ? 'success' : 'danger'"
+					:type="confidenceType"
 					size="small"
+					class="ml-2"
 				>
-					{{ preview.validation.isValid ? 'Yes' : 'No' }}
+					{{ preview.suggestedDevice.confidence }}
 				</el-tag>
 			</div>
-
-			<!-- Virtual properties auto-filled -->
-			<div
-				v-if="virtualPropertiesCount > 0"
-				class="flex items-center gap-2 text-sm text-gray-600 mb-2"
-			>
+			<div v-if="preview.haDevice.manufacturer">
+				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.devices.manufacturer.title') }}:</span>
+				<span class="ml-2">{{ preview.haDevice.manufacturer }}</span>
+			</div>
+			<div v-if="preview.haDevice.model">
+				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.devices.model.title') }}:</span>
+				<span class="ml-2">{{ preview.haDevice.model }}</span>
+			</div>
+			<div v-if="virtualPropertiesCount > 0">
+				<span class="font-medium">{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.autoFilled') }}:</span>
 				<el-tag
 					type="info"
 					size="small"
+					class="ml-2"
 				>
 					{{ virtualPropertiesCount }}
 				</el-tag>
-				<span>{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.autoFilled') }}</span>
-			</div>
-
-			<!-- Missing channels warning -->
-			<div
-				v-if="preview.validation.missingChannelsCount > 0"
-				class="mt-2"
-			>
-				<el-alert
-					type="warning"
-					:closable="false"
-					show-icon
-				>
-					<template #title>
-						{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.missingChannels') }}:
-						{{ preview.validation.missingChannels.join(', ') }}
-					</template>
-				</el-alert>
-			</div>
-
-			<!-- Unknown channels error -->
-			<div
-				v-if="preview.validation.unknownChannels?.length > 0"
-				class="mt-2"
-			>
-				<el-alert
-					type="error"
-					:closable="false"
-					show-icon
-				>
-					<template #title>
-						{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.unknownChannels') }}:
-						{{ preview.validation.unknownChannels.join(', ') }}
-					</template>
-				</el-alert>
-			</div>
-
-			<!-- Duplicate channels error -->
-			<div
-				v-if="preview.validation.duplicateChannels?.length > 0"
-				class="mt-2"
-			>
-				<el-alert
-					type="error"
-					:closable="false"
-					show-icon
-				>
-					<template #title>
-						{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.duplicateChannels') }}:
-						{{ preview.validation.duplicateChannels.join(', ') }}
-					</template>
-				</el-alert>
-			</div>
-
-			<!-- Constraint violations error -->
-			<div
-				v-if="preview.validation.constraintViolations?.length > 0"
-				class="mt-2"
-			>
-				<el-alert
-					type="error"
-					:closable="false"
-					show-icon
-				>
-					<template #title>
-						{{ t('devicesHomeAssistantPlugin.fields.mapping.validation.constraintViolations') }}
-					</template>
-					<template #default>
-						<ul class="list-disc pl-4 mt-1">
-							<li
-								v-for="(violation, index) in preview.validation.constraintViolations"
-								:key="index"
-							>
-								{{ violation }}
-							</li>
-						</ul>
-					</template>
-				</el-alert>
 			</div>
 		</div>
 	</el-card>
@@ -158,7 +69,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElCard, ElTag } from 'element-plus';
+import { ElCard, ElDivider, ElTag } from 'element-plus';
 
 import type { IMappingPreviewResponse } from '../../schemas/mapping-preview.types';
 
@@ -177,5 +88,18 @@ const skippedCount = computed(() => props.preview.entities.filter((e) => e.statu
 
 const virtualPropertiesCount = computed(() => {
 	return props.preview.validation?.fillableWithVirtualCount ?? 0;
+});
+
+const confidenceType = computed(() => {
+	switch (props.preview.suggestedDevice.confidence) {
+		case 'high':
+			return 'success';
+		case 'medium':
+			return 'warning';
+		case 'low':
+			return 'danger';
+		default:
+			return 'info';
+	}
 });
 </script>

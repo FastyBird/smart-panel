@@ -44,6 +44,9 @@
       },
       "model": {
         "title": "Model"
+      },
+      "entities": {
+        "title": "Entities"
       }
     },
     "channelsProperties": {
@@ -149,7 +152,7 @@
     }
   },
   "headings": {
-    "aboutConnectionSettings": "Home Assistant Connection",
+    "aboutConnectionSettings": "Home Assistant connection",
     "device": {
       "deviceSelection": "Select device",
       "deviceInformation": "Device information",
@@ -159,9 +162,10 @@
       "deviceConfiguration": "Device configuration"
     },
     "mapping": {
-      "entityMappings": "Entity Mappings",
-      "warnings": "Warnings",
-      "summary": "Mapping Summary"
+      "entityMappings": "Entity mappings",
+      "warnings": "Mapping warnings ({count})",
+      "errors": "Errors",
+      "summary": "Mapping summary"
     }
   },
   "messages": {
@@ -173,6 +177,8 @@
       "created": "New Home Assistant device added successfully.",
       "notCreated": "Something went wrong. Unable to create the Home Assistant device.",
       "exists": "Device is already adopted in the system.",
+      "alreadyAdopted": "This device is already adopted",
+      "alreadyAdoptedDescription": "Continuing will re-adopt the device with the new configuration. The existing device will be updated.",
       "noDiscoveredDevices": "No Home Assistant devices are available. Make sure your Home Assistant instance is connected and devices are discovered."
     },
     "mapping": {
@@ -192,14 +198,14 @@
     }
   },
   "buttons": {
-    "loadPreview": "Load Preview",
-    "updatePreview": "Update Preview",
-    "adoptDevice": "Adopt Device",
+    "loadPreview": "Load preview",
+    "updatePreview": "Update preview",
+    "adoptDevice": "Adopt device",
     "next": "Next",
     "previous": "Previous",
     "skip": "Skip",
     "use": "Use",
-    "applyChanges": "Apply Changes",
+    "applyChanges": "Apply changes",
     "refreshDiscovery": "Refresh discovery"
   },
   "labels": {

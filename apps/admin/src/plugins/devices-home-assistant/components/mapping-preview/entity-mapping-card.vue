@@ -1,5 +1,5 @@
 <template>
-	<el-card shadow="never" class="mb-2">
+	<el-card shadow="never" class="mb-2" header-class="py-2! px-4!" body-class="py-2! px-4!">
 		<template #header>
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
