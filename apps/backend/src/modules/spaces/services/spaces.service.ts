@@ -376,6 +376,8 @@ export class SpacesService {
 			bedroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
 			'master bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
 			'guest bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.GUEST_ROOM },
+			'guest room': { type: SpaceType.ROOM, category: SpaceRoomCategory.GUEST_ROOM },
+			'guests room': { type: SpaceType.ROOM, category: SpaceRoomCategory.GUEST_ROOM },
 			'kids bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
 			'children bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
 			kitchen: { type: SpaceType.ROOM, category: SpaceRoomCategory.KITCHEN },

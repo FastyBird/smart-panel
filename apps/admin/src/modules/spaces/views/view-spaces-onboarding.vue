@@ -255,7 +255,14 @@
 															:key="category"
 															:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
 															:value="category"
-														/>
+														>
+															<span class="flex items-center gap-2">
+																<el-icon v-if="getCategoryTemplates(matched.existingSpace.type)[category]">
+																	<icon :icon="getCategoryTemplates(matched.existingSpace.type)[category].icon" />
+																</el-icon>
+																{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+															</span>
+														</el-option>
 													</el-option-group>
 												</template>
 												<!-- Flat list for rooms -->
@@ -265,7 +272,14 @@
 														:key="category"
 														:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
 														:value="category"
-													/>
+													>
+														<span class="flex items-center gap-2">
+															<el-icon v-if="getCategoryTemplates(matched.existingSpace.type)[category]">
+																<icon :icon="getCategoryTemplates(matched.existingSpace.type)[category].icon" />
+															</el-icon>
+															{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+														</span>
+													</el-option>
 												</template>
 											</el-select>
 										</div>

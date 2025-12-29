@@ -55,7 +55,12 @@ interface UseSpaceCategoriesReturn {
 export function useSpaceCategories(spaceType?: MaybeRef<SpaceType>): UseSpaceCategoriesReturn {
 	// Static functions that work with any type parameter
 	const getCategoryOptions = (type: SpaceType): string[] => {
-		return getCategoriesForType(type);
+		const categories = getCategoriesForType(type);
+		// Sort room categories alphabetically (zones use grouped display)
+		if (type === SpaceType.ROOM) {
+			return [...categories].sort((a, b) => a.localeCompare(b));
+		}
+		return categories;
 	};
 
 	const getCategoryGroups = (type: SpaceType): CategoryGroup[] | null => {
@@ -70,7 +75,7 @@ export function useSpaceCategories(spaceType?: MaybeRef<SpaceType>): UseSpaceCat
 	// Reactive computed properties based on spaceType ref
 	const categoryOptions = computed<string[]>(() => {
 		const type = unref(spaceType) ?? SpaceType.ROOM;
-		return getCategoriesForType(type);
+		return getCategoryOptions(type); // Use the sorted version
 	});
 
 	const categoryGroups = computed<CategoryGroup[] | null>(() => {
