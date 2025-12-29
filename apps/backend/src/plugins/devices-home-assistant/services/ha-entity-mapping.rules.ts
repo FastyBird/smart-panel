@@ -775,18 +775,6 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 	},
 
 	// ============================================================================
-	// BUTTON ENTITIES (Generic Button)
-	// ============================================================================
-	{
-		domain: HomeAssistantDomain.BUTTON,
-		device_class: null,
-		channel_category: ChannelCategory.SWITCHER,
-		device_category_hint: DeviceCategory.SWITCHER,
-		priority: 10,
-		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON }],
-	},
-
-	// ============================================================================
 	// WATER HEATER ENTITIES
 	// ============================================================================
 	{
