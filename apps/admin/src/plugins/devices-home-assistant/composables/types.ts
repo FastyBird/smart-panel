@@ -41,6 +41,7 @@ export interface IUseDiscoveredDevices {
 export interface IUseDiscoveredHelpers {
 	helpers: ComputedRef<IHomeAssistantDiscoveredHelper[]>;
 	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
 	fetchDiscoveredHelpers: () => Promise<void>;
 }
 

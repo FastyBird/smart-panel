@@ -15,6 +15,8 @@ export const useDiscoveredHelpers = (): IUseDiscoveredHelpers => {
 
 	const areLoading = computed<boolean>((): boolean => helpersStore.fetching());
 
+	const loaded = computed<boolean>((): boolean => helpersStore.firstLoadFinished());
+
 	const fetchDiscoveredHelpers = async (): Promise<void> => {
 		await helpersStore.fetch();
 	};
@@ -22,6 +24,7 @@ export const useDiscoveredHelpers = (): IUseDiscoveredHelpers => {
 	return {
 		helpers,
 		areLoading,
+		loaded,
 		fetchDiscoveredHelpers,
 	};
 };

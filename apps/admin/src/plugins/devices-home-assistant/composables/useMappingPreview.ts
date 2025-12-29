@@ -54,9 +54,13 @@ export const useMappingPreview = (): IUseMappingPreview => {
 
 			if (currentType === 'helper') {
 				// Fetch helper mapping preview
+				// For helpers, extract channelCategory from the first entityOverride if present
+				// (helpers have only one entity, so only one override applies)
+				const helperChannelCategory = overrides?.entityOverrides?.[0]?.channelCategory;
 				const helperRequestBody = overrides
 					? {
 							device_category: overrides.deviceCategory,
+							channel_category: helperChannelCategory,
 						}
 					: undefined;
 
