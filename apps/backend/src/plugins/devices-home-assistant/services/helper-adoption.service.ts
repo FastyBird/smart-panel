@@ -144,11 +144,13 @@ export class HelperAdoptionService {
 		helper: { entityId: string; name: string; domain: string },
 	): Promise<void> {
 		const createChannelDto = toInstance(CreateHomeAssistantChannelDto, {
+			type: DEVICES_HOME_ASSISTANT_TYPE,
+			device: device.id,
 			category: ChannelCategory.DEVICE_INFORMATION,
 			name: 'Device Information',
 		});
 
-		const channel = await this.channelsService.create(device.id, createChannelDto);
+		const channel = await this.channelsService.create(createChannelDto);
 
 		// Create standard device information properties
 		const properties = [
@@ -219,11 +221,13 @@ export class HelperAdoptionService {
 		entityId: string,
 	): Promise<void> {
 		const createChannelDto = toInstance(CreateHomeAssistantChannelDto, {
+			type: DEVICES_HOME_ASSISTANT_TYPE,
+			device: device.id,
 			category: channelDef.category,
 			name: channelDef.name,
 		});
 
-		const channel = await this.channelsService.create(device.id, createChannelDto);
+		const channel = await this.channelsService.create(createChannelDto);
 
 		this.logger.debug(
 			`[HELPER ADOPTION] Created channel: ${channel.id} (${channelDef.category}) with ${channelDef.properties.length} properties`,
