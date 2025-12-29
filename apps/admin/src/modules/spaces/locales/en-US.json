@@ -57,6 +57,7 @@
 		"columns": {
 			"name": "Name",
 			"type": "Type",
+			"category": "Category",
 			"description": "Description",
 			"order": "Order",
 			"devices": "Devices",
@@ -99,7 +100,7 @@
 			"category": {
 				"title": "Category",
 				"placeholder": "Select a category",
-				"hint": "Selecting a category will auto-fill the icon and description with suggested defaults. Categories are filtered by the selected type.",
+				"hint": "Choosing a category will automatically suggest an icon and description for this space. Available categories depend on whether this is a room or zone.",
 				"validation": {
 					"requiredForZone": "Category is required for zones"
 				},
@@ -151,7 +152,7 @@
 			"parentZone": {
 				"title": "Parent zone",
 				"placeholder": "Select a parent zone (optional)",
-				"hint": "Optionally assign this room to a zone (e.g., Ground Floor, Upstairs)"
+				"hint": "You can organize this room by assigning it to a zone, like 'Ground Floor' or 'Upstairs'. This helps group related rooms together."
 			},
 			"climateOverrides": {
 				"title": "Climate device overrides"

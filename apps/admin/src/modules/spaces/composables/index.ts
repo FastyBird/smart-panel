@@ -1,4 +1,5 @@
 export * from './useSpace';
+export * from './useSpaceCategories';
 export * from './useSpaces';
 export * from './useSpacesActions';
 export * from './useSpacesDataSource';

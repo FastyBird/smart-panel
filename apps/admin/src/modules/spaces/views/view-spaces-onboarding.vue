@@ -121,15 +121,72 @@
 										:key="index"
 										class="flex items-center justify-between rounded border p-3"
 									>
-										<div class="flex items-center gap-3">
+										<div class="flex items-center gap-3 flex-1 flex-wrap">
 											<el-checkbox v-model="space.selected" />
-											<span>{{ space.name }}</span>
+											<span class="flex-1 min-w-0">{{ space.name }}</span>
+											<el-select
+												v-model="space.type"
+												size="small"
+												style="width: 120px"
+												@change="() => onSpaceTypeChange(space)"
+											>
+												<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
+												<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+											</el-select>
+											<el-select
+												v-model="space.category"
+												size="small"
+												:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
+												:clearable="space.type === SpaceType.ROOM"
+												:required="space.type === SpaceType.ZONE"
+												style="width: 180px"
+											>
+												<!-- Grouped categories for zones -->
+												<template v-if="space.type === SpaceType.ZONE">
+													<el-option-group
+														v-for="group in getCategoryGroups(space.type)"
+														:key="group.key"
+														:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
+													>
+														<el-option
+															v-for="category in group.categories"
+															:key="category"
+															:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+															:value="category"
+														>
+															<span class="flex items-center gap-2">
+																<el-icon v-if="getCategoryTemplates(space.type)[category]">
+																	<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+																</el-icon>
+																{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+															</span>
+														</el-option>
+													</el-option-group>
+												</template>
+												<!-- Flat list for rooms -->
+												<template v-else>
+													<el-option
+														v-for="category in getCategoryOptions(space.type)"
+														:key="category"
+														:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+														:value="category"
+													>
+														<span class="flex items-center gap-2">
+															<el-icon v-if="getCategoryTemplates(space.type)[category]">
+																<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+															</el-icon>
+															{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+														</span>
+													</el-option>
+												</template>
+											</el-select>
 											<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
 										</div>
 										<el-button
 											size="small"
 											type="warning"
 											plain
+											class="ml-2"
 											@click="removeProposedSpace(index)"
 										>
 											<template #icon>
@@ -167,14 +224,71 @@
 									:key="index"
 									class="flex items-center justify-between rounded border p-3"
 								>
-									<div class="flex items-center gap-3">
+									<div class="flex items-center gap-3 flex-1 flex-wrap">
 										<el-checkbox v-model="space.selected" />
-										<span>{{ space.name }}</span>
+										<span class="flex-1 min-w-0">{{ space.name }}</span>
+										<el-select
+											v-model="space.type"
+											size="small"
+											style="width: 120px"
+											@change="() => onSpaceTypeChange(space)"
+										>
+											<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
+											<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+										</el-select>
+										<el-select
+											v-model="space.category"
+											size="small"
+											:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
+											:clearable="space.type === SpaceType.ROOM"
+											:required="space.type === SpaceType.ZONE"
+											style="width: 180px"
+										>
+											<!-- Grouped categories for zones -->
+											<template v-if="space.type === SpaceType.ZONE">
+												<el-option-group
+													v-for="group in getCategoryGroups(space.type)"
+													:key="group.key"
+													:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
+												>
+													<el-option
+														v-for="category in group.categories"
+														:key="category"
+														:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+														:value="category"
+													>
+														<span class="flex items-center gap-2">
+															<el-icon v-if="getCategoryTemplates(space.type)[category]">
+																<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+															</el-icon>
+															{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+														</span>
+													</el-option>
+												</el-option-group>
+											</template>
+											<!-- Flat list for rooms -->
+											<template v-else>
+												<el-option
+													v-for="category in getCategoryOptions(space.type)"
+													:key="category"
+													:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+													:value="category"
+												>
+													<span class="flex items-center gap-2">
+														<el-icon v-if="getCategoryTemplates(space.type)[category]">
+															<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+														</el-icon>
+														{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+													</span>
+												</el-option>
+											</template>
+										</el-select>
 									</div>
 									<el-button
 										size="small"
 										type="warning"
 										plain
+										class="ml-2"
 										@click="removeCustomSpace(index)"
 									>
 										<template #icon>
@@ -408,6 +522,7 @@ import {
 	ElIcon,
 	ElInput,
 	ElOption,
+	ElOptionGroup,
 	ElResult,
 	ElSelect,
 	ElScrollbar,
@@ -432,8 +547,13 @@ import {
 	useBreakpoints,
 	useFlashMessage,
 } from '../../../common';
-import { useSpacesOnboarding, type DeviceInfo, type DisplayInfo } from '../composables';
-import { RouteNames } from '../spaces.constants';
+import { useSpaceCategories, useSpacesOnboarding, type DeviceInfo, type DisplayInfo } from '../composables';
+import {
+	RouteNames,
+	SpaceType,
+	isValidCategoryForType,
+	type SpaceCategory,
+} from '../spaces.constants';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -529,8 +649,42 @@ const handleAddSpace = (): void => {
 	}
 };
 
+// Category helpers from composable
+const { getCategoryOptions, getCategoryGroups, getCategoryTemplates } = useSpaceCategories();
+
+const onSpaceTypeChange = (space: { type: SpaceType; category: SpaceCategory | null }): void => {
+	// Clear category if it's no longer valid for the new type
+	if (space.category && !isValidCategoryForType(space.category, space.type)) {
+		space.category = null;
+	}
+};
+
+const validateSpaces = (): boolean => {
+	// Check all selected proposed spaces
+	for (const space of proposedSpaces.value) {
+		if (space.selected && space.type === SpaceType.ZONE && !space.category) {
+			flashMessage.error(t('spacesModule.fields.spaces.category.validation.requiredForZone'));
+			return false;
+		}
+	}
+	
+	// Check all selected custom spaces
+	for (const space of customSpaces.value) {
+		if (space.selected && space.type === SpaceType.ZONE && !space.category) {
+			flashMessage.error(t('spacesModule.fields.spaces.category.validation.requiredForZone'));
+			return false;
+		}
+	}
+	
+	return true;
+};
+
 const handleNext = (): void => {
 	if (currentStep.value === 0) {
+		// Validate that all zones have categories
+		if (!validateSpaces()) {
+			return;
+		}
 		// Create draft spaces when moving to step 2 (devices assignment)
 		createDraftSpacesFromProposals();
 	}

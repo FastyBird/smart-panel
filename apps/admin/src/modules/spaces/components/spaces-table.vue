@@ -155,6 +155,28 @@
 		</el-table-column>
 
 		<el-table-column
+			:label="t('spacesModule.table.columns.category')"
+			prop="category"
+			:width="150"
+		>
+			<template #default="scope">
+				<el-text
+					v-if="scope.row.category"
+					size="small"
+				>
+					{{ t(`spacesModule.fields.spaces.category.options.${scope.row.category}`) }}
+				</el-text>
+				<el-text
+					v-else
+					size="small"
+					type="info"
+				>
+					—
+				</el-text>
+			</template>
+		</el-table-column>
+
+		<el-table-column
 			:label="t('spacesModule.table.columns.order')"
 			prop="displayOrder"
 			sortable="custom"

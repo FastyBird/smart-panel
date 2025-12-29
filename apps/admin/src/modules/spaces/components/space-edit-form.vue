@@ -58,10 +58,15 @@
 					</el-option>
 				</template>
 			</el-select>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('spacesModule.fields.spaces.category.hint') }}
-			</div>
 		</el-form-item>
+
+		<el-alert
+			:title="t('spacesModule.fields.spaces.category.hint')"
+			type="info"
+			:closable="false"
+			show-icon
+			class="!my-2"
+		/>
 
 		<el-form-item :label="t('spacesModule.fields.spaces.description.title')" prop="description">
 			<el-input
@@ -116,10 +121,15 @@
 					</span>
 				</el-option>
 			</el-select>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('spacesModule.fields.spaces.parentZone.hint') }}
-			</div>
 		</el-form-item>
+
+		<el-alert
+			:title="t('spacesModule.fields.spaces.parentZone.hint')"
+			type="info"
+			:closable="false"
+			show-icon
+			class="!mt-2"
+		/>
 
 		<!-- Climate Device Overrides Section -->
 		<template v-if="props.space && climateDevices.length > 0">
@@ -224,10 +234,8 @@ import { useI18n } from 'vue-i18n';
 import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { useSpaceCategories } from '../composables';
 import {
-	getCategoriesForType,
-	getGroupedCategoriesForType,
-	getTemplatesForType,
 	isValidCategoryForType,
 	SpaceCategory,
 	SpaceType,
@@ -294,14 +302,10 @@ const autoPopulatedValues = reactive({
 	description: null as string | null,
 });
 
-// List of available categories for the selector - depends on selected type
-const categoryOptions = computed(() => getCategoriesForType(formData.type));
-
-// Get templates for the current type
-const currentTemplates = computed(() => getTemplatesForType(formData.type));
-
-// Get category groups for zone type (null for rooms - they use flat list)
-const categoryGroups = computed(() => getGroupedCategoriesForType(formData.type));
+// Category options, groups, and templates based on the selected space type
+const { categoryOptions, categoryGroups, currentTemplates } = useSpaceCategories(
+	computed(() => formData.type)
+);
 
 // Get available zones for parent zone selector (only zones, excluding the current space if editing)
 const availableZones = computed(() =>

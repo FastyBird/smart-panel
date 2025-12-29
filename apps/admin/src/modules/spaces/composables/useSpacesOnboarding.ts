@@ -15,11 +15,15 @@ interface ProposedSpace {
 	deviceIds: string[];
 	deviceCount: number;
 	selected: boolean;
+	type: SpaceType;
+	category: SpaceCategory | null;
 }
 
 interface CustomSpace {
 	name: string;
 	selected: boolean;
+	type: SpaceType;
+	category: SpaceCategory | null;
 }
 
 export interface DeviceInfo {
@@ -125,6 +129,8 @@ export const useSpacesOnboarding = () => {
 				deviceIds: p.device_ids ?? [],
 				deviceCount: p.device_count ?? 0,
 				selected: true,
+				type: SpaceType.ROOM,
+				category: null,
 			}));
 		} catch (err) {
 			state.error = err instanceof Error ? err.message : 'Unknown error';
@@ -157,8 +163,8 @@ export const useSpacesOnboarding = () => {
 				id: uuid(),
 				name: proposal.name,
 				description: null,
-				type: SpaceType.ROOM,
-				category: null,
+				type: proposal.type,
+				category: proposal.category,
 				icon: null,
 				displayOrder: 0,
 				parentId: null,
@@ -194,8 +200,8 @@ export const useSpacesOnboarding = () => {
 				id: uuid(),
 				name: customSpace.name,
 				description: null,
-				type: SpaceType.ROOM,
-				category: null,
+				type: customSpace.type,
+				category: customSpace.category,
 				icon: null,
 				displayOrder: 0,
 				parentId: null,
@@ -257,6 +263,7 @@ export const useSpacesOnboarding = () => {
 						data: {
 							name: draftSpace.name,
 							type: spaceTypeToApiType(draftSpace.type),
+							category: spaceCategoryToApiCategory(draftSpace.category),
 						},
 					},
 				});
@@ -458,6 +465,8 @@ export const useSpacesOnboarding = () => {
 		state.customSpaces.push({
 			name,
 			selected: true,
+			type: SpaceType.ROOM,
+			category: null,
 		});
 	};
 
