@@ -22,11 +22,11 @@ import {
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
 import { AdoptHelperRequestDto, HelperMappingPreviewRequestDto } from '../dto/helper-mapping-preview.dto';
+import { HelperMappingPreviewResponseModel } from '../models/helper-mapping-preview.model';
 import {
 	HomeAssistantDiscoveredHelperResponseModel,
 	HomeAssistantDiscoveredHelpersResponseModel,
 } from '../models/home-assistant-response.model';
-import { HelperMappingPreviewResponseModel } from '../models/helper-mapping-preview.model';
 import { HelperAdoptionService } from '../services/helper-adoption.service';
 import { HelperMappingPreviewService } from '../services/helper-mapping-preview.service';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';

@@ -17,7 +17,7 @@ import { useDiscoveredItemsOptions } from './useDiscoveredItemsOptions';
 import { useMappingPreview } from './useMappingPreview';
 import { useDeviceAdoption } from './useDeviceAdoption';
 
-import type { IDiscoveryOptionGroup, IUseDeviceAddForm } from './types';
+import type { IUseDeviceAddForm } from './types';
 
 interface IUseDeviceAddFormProps {
 	id: IDevice['id'];

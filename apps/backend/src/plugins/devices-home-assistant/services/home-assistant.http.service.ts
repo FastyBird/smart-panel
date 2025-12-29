@@ -164,9 +164,7 @@ export class HomeAssistantHttpService {
 
 				const helper = helpers.find((h) => h.entity_id === entityId);
 				if (!helper) {
-					throw new DevicesHomeAssistantNotFoundException(
-						`Home Assistant helper with entity_id ${entityId} not found`,
-					);
+					throw new DevicesHomeAssistantNotFoundException(`Home Assistant helper with entity_id ${entityId} not found`);
 				}
 
 				const helperModel = this.toDiscoveredHelperModel(helper);

@@ -43,7 +43,10 @@ export class HelperMappingPreviewService {
 	/**
 	 * Generate a mapping preview for a Home Assistant helper
 	 */
-	async generatePreview(entityId: string, options?: HelperMappingPreviewRequestDto): Promise<HelperMappingPreviewModel> {
+	async generatePreview(
+		entityId: string,
+		options?: HelperMappingPreviewRequestDto,
+	): Promise<HelperMappingPreviewModel> {
 		this.logger.debug(`[HELPER MAPPING PREVIEW] Generating preview for helper: ${entityId}`);
 
 		// Fetch helper information
@@ -61,8 +64,8 @@ export class HelperMappingPreviewService {
 		const rule = findMatchingRule(domain, deviceClass, entityId);
 
 		// Determine channel category
-		let channelCategory = options?.channelCategory ?? rule?.channel_category ?? ChannelCategory.GENERIC;
-		let deviceCategory = options?.deviceCategory ?? rule?.device_category_hint ?? DeviceCategory.GENERIC;
+		const channelCategory = options?.channelCategory ?? rule?.channel_category ?? ChannelCategory.GENERIC;
+		const deviceCategory = options?.deviceCategory ?? rule?.device_category_hint ?? DeviceCategory.GENERIC;
 
 		// Generate property mappings
 		const suggestedProperties: HelperPropertyMappingPreviewModel[] = [];
@@ -85,7 +88,10 @@ export class HelperMappingPreviewService {
 					dataType: propertyMetadata?.data_type ?? DataTypeType.STRING,
 					permissions: propertyMetadata?.permissions ?? [PermissionType.READ_ONLY],
 					unit: propertyMetadata?.unit ?? null,
-					format: this.getFormatFromState(helper.state?.attributes, binding.property_category) ?? propertyMetadata?.format ?? null,
+					format:
+						this.getFormatFromState(helper.state?.attributes, binding.property_category) ??
+						propertyMetadata?.format ??
+						null,
 					required: propertyMetadata?.required ?? false,
 					currentValue,
 				});
