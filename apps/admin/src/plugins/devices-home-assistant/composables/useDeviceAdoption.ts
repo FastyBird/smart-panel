@@ -90,8 +90,9 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 				isAdopting.value = false;
 
 				// Transform the response device to match IDevice type
-				const element = getPluginElement(responseData.data.type);
-				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
+				const deviceData = responseData.data as Record<string, unknown>;
+				const element = getPluginElement(deviceData.type as string);
+				const transformed = transformDeviceResponse(deviceData, element?.schemas?.deviceSchema || DeviceSchema);
 
 				// Store the device in the store
 				devicesStore.set({
