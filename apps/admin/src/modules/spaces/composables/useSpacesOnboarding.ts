@@ -261,9 +261,6 @@ export const useSpacesOnboarding = () => {
 			for (const deviceId of proposal.deviceIds) {
 				state.deviceAssignments[deviceId] = space.id;
 			}
-
-			// Mark proposal as no longer selected to prevent duplicate creation on back/next
-			proposal.selected = false;
 		}
 
 		// Create draft spaces from custom spaces
@@ -293,9 +290,6 @@ export const useSpacesOnboarding = () => {
 
 			state.spaces = [...state.spaces, space];
 			createdSpaces.push(space);
-
-			// Mark custom space as no longer selected to prevent duplicate creation on back/next
-			customSpace.selected = false;
 		}
 
 		return createdSpaces;
