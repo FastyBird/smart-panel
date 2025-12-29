@@ -18,6 +18,7 @@ interface ProposedSpace {
 	selected: boolean;
 	type: SpaceType;
 	category: SpaceCategory | null;
+	draftId: string; // Pre-generated UUID for draft space
 }
 
 interface CustomSpace {
@@ -25,6 +26,7 @@ interface CustomSpace {
 	selected: boolean;
 	type: SpaceType;
 	category: SpaceCategory | null;
+	draftId: string; // Pre-generated UUID for draft space
 }
 
 /**
@@ -173,6 +175,7 @@ export const useSpacesOnboarding = () => {
 				selected: true,
 				type: p.type ? apiTypeToSpaceType(p.type) : SpaceType.ROOM,
 				category: apiCategoryToSpaceCategory(p.category),
+				draftId: uuid(), // Pre-generate UUID for draft space
 			}));
 
 			// Detect matches with existing spaces
@@ -225,20 +228,20 @@ export const useSpacesOnboarding = () => {
 
 		// Create draft spaces from proposed spaces
 		for (const proposal of selectedProposals) {
-			// Check if space already exists (to prevent duplicates when going back/forward)
-			const existingSpace = state.spaces.find((s) => s.name === proposal.name && s.draft);
-			if (existingSpace) {
+			// Check if draft already exists (to prevent duplicates when going back/forward)
+			const existingDraft = state.spaces.find((s) => s.id === proposal.draftId);
+			if (existingDraft) {
 				// Pre-populate device assignments based on proposal
 				for (const deviceId of proposal.deviceIds) {
 					if (!state.deviceAssignments[deviceId]) {
-						state.deviceAssignments[deviceId] = existingSpace.id;
+						state.deviceAssignments[deviceId] = existingDraft.id;
 					}
 				}
 				continue;
 			}
 
 			const space: ISpace = {
-				id: uuid(),
+				id: proposal.draftId, // Use pre-generated UUID
 				name: proposal.name,
 				description: null,
 				type: proposal.type,
@@ -265,14 +268,14 @@ export const useSpacesOnboarding = () => {
 
 		// Create draft spaces from custom spaces
 		for (const customSpace of selectedCustomSpaces) {
-			// Check if space already exists (to prevent duplicates when going back/forward)
-			const existingSpace = state.spaces.find((s) => s.name === customSpace.name && s.draft);
-			if (existingSpace) {
+			// Check if draft already exists (to prevent duplicates when going back/forward)
+			const existingDraft = state.spaces.find((s) => s.id === customSpace.draftId);
+			if (existingDraft) {
 				continue;
 			}
 
 			const space: ISpace = {
-				id: uuid(),
+				id: customSpace.draftId, // Use pre-generated UUID
 				name: customSpace.name,
 				description: null,
 				type: customSpace.type,
@@ -528,8 +531,33 @@ export const useSpacesOnboarding = () => {
 	};
 
 	const toggleProposedSpace = (index: number): void => {
-		if (state.proposedSpaces[index]) {
-			state.proposedSpaces[index].selected = !state.proposedSpaces[index].selected;
+		const proposal = state.proposedSpaces[index];
+		if (proposal) {
+			proposal.selected = !proposal.selected;
+
+			// Sync draft space with selection state
+			if (!proposal.selected) {
+				// Remove draft and clear device assignments when unchecked
+				state.spaces = state.spaces.filter((s) => s.id !== proposal.draftId);
+				for (const deviceId of proposal.deviceIds) {
+					if (state.deviceAssignments[deviceId] === proposal.draftId) {
+						state.deviceAssignments[deviceId] = null;
+					}
+				}
+			}
+		}
+	};
+
+	const toggleCustomSpace = (index: number): void => {
+		const customSpace = state.customSpaces[index];
+		if (customSpace) {
+			customSpace.selected = !customSpace.selected;
+
+			// Sync draft space with selection state
+			if (!customSpace.selected) {
+				// Remove draft when unchecked
+				state.spaces = state.spaces.filter((s) => s.id !== customSpace.draftId);
+			}
 		}
 	};
 
@@ -579,16 +607,32 @@ export const useSpacesOnboarding = () => {
 			selected: true,
 			type: SpaceType.ROOM,
 			category: null,
+			draftId: uuid(), // Pre-generate UUID for draft space
 		});
 
 		return { success: true };
 	};
 
 	const removeProposedSpace = (index: number): void => {
+		const proposal = state.proposedSpaces[index];
+		if (proposal) {
+			// Remove draft and clear device assignments
+			state.spaces = state.spaces.filter((s) => s.id !== proposal.draftId);
+			for (const deviceId of proposal.deviceIds) {
+				if (state.deviceAssignments[deviceId] === proposal.draftId) {
+					state.deviceAssignments[deviceId] = null;
+				}
+			}
+		}
 		state.proposedSpaces.splice(index, 1);
 	};
 
 	const removeCustomSpace = (index: number): void => {
+		const customSpace = state.customSpaces[index];
+		if (customSpace) {
+			// Remove draft
+			state.spaces = state.spaces.filter((s) => s.id !== customSpace.draftId);
+		}
 		state.customSpaces.splice(index, 1);
 	};
 
@@ -760,6 +804,7 @@ export const useSpacesOnboarding = () => {
 		nextStep,
 		prevStep,
 		toggleProposedSpace,
+		toggleCustomSpace,
 		addManualSpace,
 		checkDuplicateSpaceName,
 		removeProposedSpace,

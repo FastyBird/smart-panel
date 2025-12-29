@@ -122,7 +122,7 @@
 										class="flex items-center justify-between rounded border p-3"
 									>
 										<div class="flex items-center gap-3 flex-1 flex-wrap">
-											<el-checkbox v-model="space.selected" />
+											<el-checkbox :model-value="space.selected" @change="() => toggleProposedSpace(index)" />
 											<span class="flex-1 min-w-0">{{ space.name }}</span>
 											<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
 											<el-select
@@ -303,7 +303,7 @@
 									class="flex items-center justify-between rounded border p-3"
 								>
 									<div class="flex items-center gap-3 flex-1 flex-wrap">
-										<el-checkbox v-model="space.selected" />
+										<el-checkbox :model-value="space.selected" @change="() => toggleCustomSpace(index)" />
 										<span class="flex-1 min-w-0">{{ space.name }}</span>
 										<el-select
 											v-model="space.type"
@@ -665,6 +665,8 @@ const {
 	applyAssignments,
 	nextStep,
 	prevStep,
+	toggleProposedSpace,
+	toggleCustomSpace,
 	addManualSpace,
 	checkDuplicateSpaceName,
 	removeProposedSpace,
