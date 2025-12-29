@@ -11,6 +11,7 @@ import {
 	LightingRole,
 	QuickActionType,
 	SpaceCategory,
+	SpaceType,
 	SuggestionType,
 } from '../spaces.constants';
 
@@ -125,6 +126,23 @@ export class ProposedSpaceDataModel {
 	})
 	@Expose()
 	name: string;
+
+	@ApiProperty({
+		description: 'Proposed space type',
+		enum: SpaceType,
+		example: SpaceType.ROOM,
+	})
+	@Expose()
+	type: SpaceType;
+
+	@ApiPropertyOptional({
+		description: 'Proposed space category (based on detected room/zone type)',
+		enum: SpaceCategory,
+		nullable: true,
+		example: SpaceCategory.LIVING_ROOM,
+	})
+	@Expose()
+	category: SpaceCategory | null;
 
 	@ApiProperty({
 		name: 'device_ids',

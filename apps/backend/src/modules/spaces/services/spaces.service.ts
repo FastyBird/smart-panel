@@ -20,8 +20,11 @@ import {
 	isFloorZoneCategory,
 	isValidCategoryForType,
 	normalizeCategoryValue,
+	type SpaceCategory,
+	SpaceRoomCategory,
 	SPACES_MODULE_NAME,
 	SpaceType,
+	SpaceZoneCategory,
 } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
@@ -340,100 +343,112 @@ export class SpacesService {
 		return unassigned;
 	}
 
-	async proposeSpaces(): Promise<{ name: string; deviceIds: string[]; deviceCount: number }[]> {
+	async proposeSpaces(): Promise<
+		{ name: string; type: SpaceType; category: SpaceCategory | null; deviceIds: string[]; deviceCount: number }[]
+	> {
 		this.logger.debug('Proposing spaces based on device names');
 
-		// Common room/space tokens to look for in device names
-		const roomTokens = [
-			'living room',
-			'bedroom',
-			'master bedroom',
-			'guest bedroom',
-			'kids bedroom',
-			'children bedroom',
-			'kitchen',
-			'bathroom',
-			'master bathroom',
-			'guest bathroom',
-			'hallway',
-			'corridor',
-			'entrance',
-			'entry',
-			'foyer',
-			'garage',
-			'basement',
-			'attic',
-			'office',
-			'home office',
-			'study',
-			'dining room',
-			'laundry',
-			'utility room',
-			'patio',
-			'balcony',
-			'terrace',
-			'garden',
-			'backyard',
-			'front yard',
-			'porch',
-			'nursery',
-			'playroom',
-			'game room',
-			'media room',
-			'theater',
-			'gym',
-			'workshop',
-			'closet',
-			'pantry',
-			'mudroom',
-			'sunroom',
-			'pool',
-			'spa',
-			'sauna',
-		];
+		// Token to (type, category) mapping for intelligent space proposals
+		const tokenMapping: Record<string, { type: SpaceType; category: SpaceCategory | null }> = {
+			// Room tokens
+			'living room': { type: SpaceType.ROOM, category: SpaceRoomCategory.LIVING_ROOM },
+			bedroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
+			'master bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
+			'guest bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.GUEST_ROOM },
+			'kids bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
+			'children bedroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BEDROOM },
+			kitchen: { type: SpaceType.ROOM, category: SpaceRoomCategory.KITCHEN },
+			bathroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.BATHROOM },
+			'master bathroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BATHROOM },
+			'guest bathroom': { type: SpaceType.ROOM, category: SpaceRoomCategory.BATHROOM },
+			hallway: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
+			corridor: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
+			entrance: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
+			entry: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
+			foyer: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
+			garage: { type: SpaceType.ROOM, category: SpaceRoomCategory.GARAGE },
+			office: { type: SpaceType.ROOM, category: SpaceRoomCategory.OFFICE },
+			'home office': { type: SpaceType.ROOM, category: SpaceRoomCategory.OFFICE },
+			study: { type: SpaceType.ROOM, category: SpaceRoomCategory.OFFICE },
+			'dining room': { type: SpaceType.ROOM, category: SpaceRoomCategory.DINING_ROOM },
+			laundry: { type: SpaceType.ROOM, category: SpaceRoomCategory.LAUNDRY },
+			'utility room': { type: SpaceType.ROOM, category: SpaceRoomCategory.LAUNDRY },
+			nursery: { type: SpaceType.ROOM, category: SpaceRoomCategory.NURSERY },
+			playroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.MEDIA_ROOM },
+			'game room': { type: SpaceType.ROOM, category: SpaceRoomCategory.MEDIA_ROOM },
+			'media room': { type: SpaceType.ROOM, category: SpaceRoomCategory.MEDIA_ROOM },
+			theater: { type: SpaceType.ROOM, category: SpaceRoomCategory.MEDIA_ROOM },
+			gym: { type: SpaceType.ROOM, category: SpaceRoomCategory.GYM },
+			workshop: { type: SpaceType.ROOM, category: SpaceRoomCategory.WORKSHOP },
+			closet: { type: SpaceType.ROOM, category: SpaceRoomCategory.STORAGE },
+			pantry: { type: SpaceType.ROOM, category: SpaceRoomCategory.STORAGE },
+			mudroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.HALLWAY },
+			sunroom: { type: SpaceType.ROOM, category: SpaceRoomCategory.LIVING_ROOM },
+			sauna: { type: SpaceType.ROOM, category: SpaceRoomCategory.OTHER },
+			// Zone tokens
+			basement: { type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_BASEMENT },
+			attic: { type: SpaceType.ZONE, category: SpaceZoneCategory.FLOOR_ATTIC },
+			patio: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_TERRACE },
+			balcony: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_TERRACE },
+			terrace: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_TERRACE },
+			garden: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_GARDEN },
+			backyard: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_BACKYARD },
+			'front yard': { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_FRONT_YARD },
+			porch: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_TERRACE },
+			pool: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_BACKYARD },
+			spa: { type: SpaceType.ROOM, category: SpaceRoomCategory.OTHER },
+			driveway: { type: SpaceType.ZONE, category: SpaceZoneCategory.OUTDOOR_DRIVEWAY },
+		};
+
+		const tokens = Object.keys(tokenMapping);
 
 		// Get all devices (including those already assigned, for completeness)
 		const devices = await this.deviceRepository.find({
 			select: ['id', 'name'],
 		});
 
-		// Map to store space name -> device IDs
+		// Map to store space token -> device IDs
 		const spaceMap = new Map<string, string[]>();
 
 		for (const device of devices) {
 			const deviceNameLower = device.name.toLowerCase();
 
-			// Try to match room tokens in device name
-			let matchedRoom: string | null = null;
+			// Try to match room tokens in device name (prefer longest match)
+			let matchedToken: string | null = null;
 			let matchLength = 0;
 
-			for (const token of roomTokens) {
+			for (const token of tokens) {
 				if (deviceNameLower.includes(token) && token.length > matchLength) {
-					matchedRoom = token;
+					matchedToken = token;
 					matchLength = token.length;
 				}
 			}
 
-			if (matchedRoom) {
-				// Capitalize the matched room name properly
-				const spaceName = matchedRoom
-					.split(' ')
-					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-					.join(' ');
-
-				const existingDevices = spaceMap.get(spaceName) ?? [];
+			if (matchedToken) {
+				const existingDevices = spaceMap.get(matchedToken) ?? [];
 				existingDevices.push(device.id);
-				spaceMap.set(spaceName, existingDevices);
+				spaceMap.set(matchedToken, existingDevices);
 			}
 		}
 
 		// Convert map to array and sort by device count (descending)
 		const proposals = Array.from(spaceMap.entries())
-			.map(([name, deviceIds]) => ({
-				name,
-				deviceIds,
-				deviceCount: deviceIds.length,
-			}))
+			.map(([token, deviceIds]) => {
+				const mapping = tokenMapping[token];
+				// Capitalize the token for display name
+				const name = token
+					.split(' ')
+					.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+					.join(' ');
+
+				return {
+					name,
+					type: mapping.type,
+					category: mapping.category,
+					deviceIds,
+					deviceCount: deviceIds.length,
+				};
+			})
 			.sort((a, b) => b.deviceCount - a.deviceCount);
 
 		this.logger.debug(`Proposed ${proposals.length} spaces from device names`);

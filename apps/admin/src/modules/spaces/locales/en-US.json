@@ -125,6 +125,7 @@
 					"gym": "Gym",
 					"media_room": "Media room",
 					"workshop": "Workshop",
+					"other": "Other",
 					"floor_ground": "Ground floor",
 					"floor_first": "First floor",
 					"floor_second": "Second floor",
@@ -138,7 +139,7 @@
 					"outdoor_walkway": "Walkway",
 					"security_perimeter": "Security perimeter",
 					"utility": "Utility",
-					"other": "Other"
+					"zone_other": "Other"
 				}
 			},
 			"icon": {

@@ -27,8 +27,7 @@ const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => 
 	}
 };
 
-const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType | undefined => {
-	if (!spaceType) return undefined;
+const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
 	switch (spaceType) {
 		case SpaceType.ROOM:
 			return SpacesModuleCreateSpaceType.room;

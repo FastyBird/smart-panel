@@ -62,7 +62,7 @@ export enum SpaceZoneCategory {
 	// Utility
 	UTILITY = 'utility',
 	// Other
-	OTHER = 'other',
+	OTHER = 'zone_other',
 }
 
 /**

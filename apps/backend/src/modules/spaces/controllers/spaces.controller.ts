@@ -133,6 +133,8 @@ export class SpacesController {
 		response.data = proposals.map((p) => {
 			const model = new ProposedSpaceDataModel();
 			model.name = p.name;
+			model.type = p.type;
+			model.category = p.category;
 			model.deviceIds = p.deviceIds;
 			model.deviceCount = p.deviceCount;
 			return model;

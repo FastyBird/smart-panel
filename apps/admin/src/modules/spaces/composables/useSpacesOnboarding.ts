@@ -129,8 +129,8 @@ export const useSpacesOnboarding = () => {
 				deviceIds: p.device_ids ?? [],
 				deviceCount: p.device_count ?? 0,
 				selected: true,
-				type: SpaceType.ROOM,
-				category: null,
+				type: p.type ? apiTypeToSpaceType(p.type) : SpaceType.ROOM,
+				category: apiCategoryToSpaceCategory(p.category),
 			}));
 		} catch (err) {
 			state.error = err instanceof Error ? err.message : 'Unknown error';
