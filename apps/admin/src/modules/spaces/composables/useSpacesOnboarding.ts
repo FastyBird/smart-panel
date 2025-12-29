@@ -6,13 +6,14 @@ import {
 	SpacesModuleCreateSpaceType,
 	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { SpaceCategory, SpaceType, SPACE_CATEGORY_TEMPLATES } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 import type { ISpace, ISpaceCreateData } from '../store';
 
 interface ProposedSpace {
 	name: string;
+	description: string | null;
 	deviceIds: string[];
 	deviceCount: number;
 	selected: boolean;
@@ -23,6 +24,7 @@ interface ProposedSpace {
 
 interface CustomSpace {
 	name: string;
+	description: string | null;
 	selected: boolean;
 	type: SpaceType;
 	category: SpaceCategory | null;
@@ -168,15 +170,21 @@ export const useSpacesOnboarding = () => {
 				throw new SpacesApiException('Failed to fetch proposed spaces');
 			}
 
-			const allProposals = response.data.data.map((p) => ({
-				name: p.name ?? '',
-				deviceIds: p.device_ids ?? [],
-				deviceCount: p.device_count ?? 0,
-				selected: true,
-				type: p.type ? apiTypeToSpaceType(p.type) : SpaceType.ROOM,
-				category: apiCategoryToSpaceCategory(p.category),
-				draftId: uuid(), // Pre-generate UUID for draft space
-			}));
+			const allProposals = response.data.data.map((p) => {
+				const category = apiCategoryToSpaceCategory(p.category);
+				// Get default description from category template
+				const defaultDescription = category ? SPACE_CATEGORY_TEMPLATES[category]?.description ?? null : null;
+				return {
+					name: p.name ?? '',
+					description: defaultDescription,
+					deviceIds: p.device_ids ?? [],
+					deviceCount: p.device_count ?? 0,
+					selected: true,
+					type: p.type ? apiTypeToSpaceType(p.type) : SpaceType.ROOM,
+					category,
+					draftId: uuid(), // Pre-generate UUID for draft space
+				};
+			});
 
 			// Detect matches with existing spaces
 			state.matchedSpaces = [];
@@ -248,7 +256,7 @@ export const useSpacesOnboarding = () => {
 			const space: ISpace = {
 				id: proposal.draftId, // Use pre-generated UUID
 				name: proposal.name,
-				description: null,
+				description: proposal.description,
 				type: proposal.type,
 				category: proposal.category,
 				icon: null,
@@ -284,7 +292,7 @@ export const useSpacesOnboarding = () => {
 			const space: ISpace = {
 				id: customSpace.draftId, // Use pre-generated UUID
 				name: customSpace.name,
-				description: null,
+				description: customSpace.description,
 				type: customSpace.type,
 				category: customSpace.category,
 				icon: null,
@@ -626,6 +634,7 @@ export const useSpacesOnboarding = () => {
 
 		state.customSpaces.push({
 			name,
+			description: null,
 			selected: true,
 			type: SpaceType.ROOM,
 			category: null,

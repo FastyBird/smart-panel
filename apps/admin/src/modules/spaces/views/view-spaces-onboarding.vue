@@ -114,89 +114,85 @@
 
 					<el-scrollbar class="flex-1 overflow-hidden h-full">
 						<template v-if="proposedSpaces.length > 0">
-							<h4 class="mb-2 font-medium">
+							<h4 class="my-2 font-medium">
 								{{ t('spacesModule.onboarding.steps.spaces.proposed') }}
 							</h4>
 
-							<div class="space-y-2">
-								<div
-									v-for="(space, index) in proposedSpaces"
-									:key="index"
-									class="flex items-center justify-between rounded border p-3"
+							<div
+								v-for="(space, index) in proposedSpaces"
+								:key="index"
+								class="flex items-center gap-3 flex-wrap p-2"
+							>
+								<el-checkbox :model-value="space.selected" @change="() => toggleProposedSpace(index)" />
+								<span class="flex-1 min-w-0">{{ space.name }}</span>
+								<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
+								<el-select
+									v-model="space.type"
+									size="small"
+									style="width: 120px"
+									@change="() => onSpaceTypeChange(space)"
 								>
-									<div class="flex items-center gap-3 flex-1 flex-wrap">
-										<el-checkbox :model-value="space.selected" @change="() => toggleProposedSpace(index)" />
-										<span class="flex-1 min-w-0">{{ space.name }}</span>
-										<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
-										<el-select
-											v-model="space.type"
-											size="small"
-											style="width: 120px"
-											@change="() => onSpaceTypeChange(space)"
+									<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
+									<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+								</el-select>
+								<el-select
+									v-model="space.category"
+									size="small"
+									:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
+									:clearable="space.type === SpaceType.ROOM"
+									:required="space.type === SpaceType.ZONE"
+									style="width: 180px"
+									@change="() => onCategoryChange(space)"
+								>
+									<!-- Grouped categories for zones -->
+									<template v-if="space.type === SpaceType.ZONE">
+										<el-option-group
+											v-for="group in getCategoryGroups(space.type)"
+											:key="group.key"
+											:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
 										>
-											<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
-											<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
-										</el-select>
-										<el-select
-											v-model="space.category"
-											size="small"
-											:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
-											:clearable="space.type === SpaceType.ROOM"
-											:required="space.type === SpaceType.ZONE"
-											style="width: 180px"
+											<el-option
+												v-for="category in group.categories"
+												:key="category"
+												:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+												:value="category"
+											>
+												<span class="flex items-center gap-2">
+													<el-icon v-if="getCategoryTemplates(space.type)[category]">
+														<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+													</el-icon>
+													{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+												</span>
+											</el-option>
+										</el-option-group>
+									</template>
+									<!-- Flat list for rooms -->
+									<template v-else>
+										<el-option
+											v-for="category in getCategoryOptions(space.type)"
+											:key="category"
+											:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+											:value="category"
 										>
-											<!-- Grouped categories for zones -->
-											<template v-if="space.type === SpaceType.ZONE">
-												<el-option-group
-													v-for="group in getCategoryGroups(space.type)"
-													:key="group.key"
-													:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
-												>
-													<el-option
-														v-for="category in group.categories"
-														:key="category"
-														:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-														:value="category"
-													>
-														<span class="flex items-center gap-2">
-															<el-icon v-if="getCategoryTemplates(space.type)[category]">
-																<icon :icon="getCategoryTemplates(space.type)[category].icon" />
-															</el-icon>
-															{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-														</span>
-													</el-option>
-												</el-option-group>
-											</template>
-											<!-- Flat list for rooms -->
-											<template v-else>
-												<el-option
-													v-for="category in getCategoryOptions(space.type)"
-													:key="category"
-													:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-													:value="category"
-												>
-													<span class="flex items-center gap-2">
-														<el-icon v-if="getCategoryTemplates(space.type)[category]">
-															<icon :icon="getCategoryTemplates(space.type)[category].icon" />
-														</el-icon>
-														{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-													</span>
-												</el-option>
-											</template>
-										</el-select>
-									</div>
-									<el-button
-										size="small"
-										type="warning"
-										plain
-										class="ml-2"
-										@click="removeProposedSpace(index)"
-									>
-										<template #icon>
-											<icon icon="mdi:trash" />
-										</template>
-									</el-button>
-								</div>
+											<span class="flex items-center gap-2">
+												<el-icon v-if="getCategoryTemplates(space.type)[category]">
+													<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+												</el-icon>
+												{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+											</span>
+										</el-option>
+									</template>
+								</el-select>
+								<el-button
+									size="small"
+									type="warning"
+									plain
+									@click="removeProposedSpace(index)"
+								>
+									<template #icon>
+										<icon icon="mdi:trash" />
+									</template>
+								</el-button>
 							</div>
 						</template>
 
@@ -210,199 +206,197 @@
 						/>
 
 						<!-- Matched existing spaces (proposals that match existing spaces) -->
-						<div v-if="matchedSpaces.length > 0" class="mb-4">
-							<h4 class="mb-2 font-medium">{{ t('spacesModule.onboarding.steps.spaces.matchedExisting') }}</h4>
-							<div class="space-y-2">
-								<div
-									v-for="(matched, index) in matchedSpaces"
-									:key="index"
-									class="flex items-center justify-between rounded border p-3"
-								>
-									<div class="flex items-center gap-3 flex-1 flex-wrap">
-										<el-checkbox
-											:model-value="true"
-											readonly
-										/>
-										<span class="flex-1 min-w-0">
-											{{ matched.proposedName }}
-											<span class="text-gray-500 text-sm ml-2">
-												→ {{ t('spacesModule.onboarding.steps.spaces.matchedWith', { name: matched.existingSpace.name }) }}
-											</span>
-										</span>
-										<el-tag size="small" type="info">{{ matched.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
-										<el-select
-											:model-value="matched.existingSpace.type"
-											size="small"
-											readonly
-											style="width: 120px"
-										>
-											<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
-											<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
-										</el-select>
-										<el-select
-											:model-value="matched.existingSpace.category"
-											size="small"
-											readonly
-											:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
-											style="width: 180px"
-										>
-											<!-- Grouped categories for zones -->
-											<template v-if="matched.existingSpace.type === SpaceType.ZONE">
-												<el-option-group
-													v-for="group in getCategoryGroups(matched.existingSpace.type)"
-													:key="group.key"
-													:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
-												>
-													<el-option
-														v-for="category in group.categories"
-														:key="category"
-														:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-														:value="category"
-													>
-														<span class="flex items-center gap-2">
-															<el-icon v-if="getCategoryTemplates(matched.existingSpace.type)[category]">
-																<icon :icon="getCategoryTemplates(matched.existingSpace.type)[category].icon" />
-															</el-icon>
-															{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-														</span>
-													</el-option>
-												</el-option-group>
-											</template>
-											<!-- Flat list for rooms -->
-											<template v-else>
-												<el-option
-													v-for="category in getCategoryOptions(matched.existingSpace.type)"
-													:key="category"
-													:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-													:value="category"
-												>
-													<span class="flex items-center gap-2">
-														<el-icon v-if="getCategoryTemplates(matched.existingSpace.type)[category]">
-															<icon :icon="getCategoryTemplates(matched.existingSpace.type)[category].icon" />
-														</el-icon>
-														{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-													</span>
-												</el-option>
-											</template>
-										</el-select>
-									</div>
-									<el-button
-										size="small"
-										type="warning"
-										plain
-										disabled
-										class="ml-2"
-									>
-										<template #icon>
-											<icon icon="mdi:trash" />
-										</template>
-									</el-button>
-								</div>
-							</div>
-						</div>
+						<template v-if="matchedSpaces.length > 0">
+							<h4 class="my-2 font-medium">
+								{{ t('spacesModule.onboarding.steps.spaces.matchedExisting') }}
+							</h4>
 
-						<div v-if="unmatchedExistingSpaces.length > 0" class="mb-4">
-							<h4 class="mb-2 font-medium">{{ t('spacesModule.onboarding.steps.spaces.existing') }}</h4>
+							<div
+								v-for="(matched, index) in matchedSpaces"
+								:key="index"
+								class="flex items-center gap-3 flex-wrap p-2"
+							>
+								<el-checkbox
+									:model-value="true"
+									readonly
+								/>
+								<span class="flex-1 min-w-0">
+									{{ matched.proposedName }}
+									<span class="text-gray-500 text-sm ml-2">
+										→ {{ t('spacesModule.onboarding.steps.spaces.matchedWith', { name: matched.existingSpace.name }) }}
+									</span>
+								</span>
+								<el-tag size="small" type="info">{{ matched.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
+								<el-select
+									:model-value="matched.existingSpace.type"
+									size="small"
+									readonly
+									style="width: 120px"
+								>
+									<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
+									<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+								</el-select>
+								<el-select
+									:model-value="matched.existingSpace.category"
+									size="small"
+									readonly
+									:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
+									style="width: 180px"
+								>
+									<!-- Grouped categories for zones -->
+									<template v-if="matched.existingSpace.type === SpaceType.ZONE">
+										<el-option-group
+											v-for="group in getCategoryGroups(matched.existingSpace.type)"
+											:key="group.key"
+											:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
+										>
+											<el-option
+												v-for="category in group.categories"
+												:key="category"
+												:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+												:value="category"
+											>
+												<span class="flex items-center gap-2">
+													<el-icon v-if="getCategoryTemplates(matched.existingSpace.type)[category]">
+														<icon :icon="getCategoryTemplates(matched.existingSpace.type)[category].icon" />
+													</el-icon>
+													{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+												</span>
+											</el-option>
+										</el-option-group>
+									</template>
+									<!-- Flat list for rooms -->
+									<template v-else>
+										<el-option
+											v-for="category in getCategoryOptions(matched.existingSpace.type)"
+											:key="category"
+											:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+											:value="category"
+										>
+											<span class="flex items-center gap-2">
+												<el-icon v-if="getCategoryTemplates(matched.existingSpace.type)[category]">
+													<icon :icon="getCategoryTemplates(matched.existingSpace.type)[category].icon" />
+												</el-icon>
+												{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+											</span>
+										</el-option>
+									</template>
+								</el-select>
+								<el-button
+									size="small"
+									type="warning"
+									plain
+									disabled
+								>
+									<template #icon>
+										<icon icon="mdi:trash" />
+									</template>
+								</el-button>
+							</div>
+						</template>
+
+						<template v-if="unmatchedExistingSpaces.length > 0">
+							<h4 class="my-2 font-medium">
+								{{ t('spacesModule.onboarding.steps.spaces.existing') }}
+							</h4>
+
 							<div class="flex flex-wrap gap-2">
 								<el-tag v-for="space in unmatchedExistingSpaces" :key="space.id" size="large">
 									{{ space.name }}
 								</el-tag>
 							</div>
-						</div>
+						</template>
 
-						<div v-if="customSpaces.length > 0" class="mb-4">
-							<h4 class="mb-2 font-medium">{{ t('spacesModule.onboarding.steps.spaces.custom') }}</h4>
-							<div class="space-y-2">
-								<div
-									v-for="(space, index) in customSpaces"
-									:key="index"
-									class="flex items-center justify-between rounded border p-3"
-								>
-									<div class="flex items-center gap-3 flex-1 flex-wrap">
-										<el-checkbox :model-value="space.selected" @change="() => toggleCustomSpace(index)" />
-										<span class="flex-1 min-w-0">{{ space.name }}</span>
-										<el-select
-											v-model="space.type"
-											size="small"
-											style="width: 120px"
-											@change="() => onSpaceTypeChange(space)"
-										>
-											<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
-											<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
-										</el-select>
-										<el-select
-											v-model="space.category"
-											size="small"
-											:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
-											:clearable="space.type === SpaceType.ROOM"
-											:required="space.type === SpaceType.ZONE"
-											style="width: 180px"
-										>
-											<!-- Grouped categories for zones -->
-											<template v-if="space.type === SpaceType.ZONE">
-												<el-option-group
-													v-for="group in getCategoryGroups(space.type)"
-													:key="group.key"
-													:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
-												>
-													<el-option
-														v-for="category in group.categories"
-														:key="category"
-														:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-														:value="category"
-													>
-														<span class="flex items-center gap-2">
-															<el-icon v-if="getCategoryTemplates(space.type)[category]">
-																<icon :icon="getCategoryTemplates(space.type)[category].icon" />
-															</el-icon>
-															{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-														</span>
-													</el-option>
-												</el-option-group>
-											</template>
-											<!-- Flat list for rooms -->
-											<template v-else>
-												<el-option
-													v-for="category in getCategoryOptions(space.type)"
-													:key="category"
-													:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-													:value="category"
-												>
-													<span class="flex items-center gap-2">
-														<el-icon v-if="getCategoryTemplates(space.type)[category]">
-															<icon :icon="getCategoryTemplates(space.type)[category].icon" />
-														</el-icon>
-														{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-													</span>
-												</el-option>
-											</template>
-										</el-select>
-									</div>
-									<el-button
-										size="small"
-										type="warning"
-										plain
-										class="ml-2"
-										@click="removeCustomSpace(index)"
-									>
-										<template #icon>
-											<icon icon="mdi:trash" />
-										</template>
-									</el-button>
-								</div>
-							</div>
-						</div>
-
-						<div class="mb-4">
-							<h4 class="mb-2 font-medium">
-								{{ t('spacesModule.onboarding.steps.spaces.addManual') }}
+						<template v-if="customSpaces.length > 0">
+							<h4 class="my-2 font-medium">
+								{{ t('spacesModule.onboarding.steps.spaces.custom') }}
 							</h4>
-							<div class="flex gap-2 px-3">
-								<el-input v-model="newSpaceName" :placeholder="t('spacesModule.onboarding.steps.spaces.placeholder')" />
-								<el-button type="primary" :disabled="!newSpaceName.trim()" @click="handleAddSpace">
-									{{ t('spacesModule.buttons.add.title') }}
+
+							<div
+								v-for="(space, index) in customSpaces"
+								:key="index"
+								class="flex items-center gap-3 flex-wrap p-2"
+							>
+								<el-checkbox :model-value="space.selected" @change="() => toggleCustomSpace(index)" />
+								<span class="flex-1 min-w-0">{{ space.name }}</span>
+								<el-select
+									v-model="space.type"
+									size="small"
+									style="width: 120px"
+									@change="() => onSpaceTypeChange(space)"
+								>
+									<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
+									<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+								</el-select>
+								<el-select
+									v-model="space.category"
+									size="small"
+									:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
+									:clearable="space.type === SpaceType.ROOM"
+									:required="space.type === SpaceType.ZONE"
+									style="width: 180px"
+									@change="() => onCategoryChange(space)"
+								>
+									<!-- Grouped categories for zones -->
+									<template v-if="space.type === SpaceType.ZONE">
+										<el-option-group
+											v-for="group in getCategoryGroups(space.type)"
+											:key="group.key"
+											:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
+										>
+											<el-option
+												v-for="category in group.categories"
+												:key="category"
+												:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+												:value="category"
+											>
+												<span class="flex items-center gap-2">
+													<el-icon v-if="getCategoryTemplates(space.type)[category]">
+														<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+													</el-icon>
+													{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+												</span>
+											</el-option>
+										</el-option-group>
+									</template>
+									<!-- Flat list for rooms -->
+									<template v-else>
+										<el-option
+											v-for="category in getCategoryOptions(space.type)"
+											:key="category"
+											:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+											:value="category"
+										>
+											<span class="flex items-center gap-2">
+												<el-icon v-if="getCategoryTemplates(space.type)[category]">
+													<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+												</el-icon>
+												{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+											</span>
+										</el-option>
+									</template>
+								</el-select>
+								<el-button
+									size="small"
+									type="warning"
+									plain
+									@click="removeCustomSpace(index)"
+								>
+									<template #icon>
+										<icon icon="mdi:trash" />
+									</template>
 								</el-button>
 							</div>
+						</template>
+
+						<h4 class="my-2 font-medium">
+							{{ t('spacesModule.onboarding.steps.spaces.addManual') }}
+						</h4>
+						<div class="flex items-center gap-3 p-2">
+							<el-input v-model="newSpaceName" :placeholder="t('spacesModule.onboarding.steps.spaces.placeholder')" />
+							<el-button type="primary" :disabled="!newSpaceName.trim()" @click="handleAddSpace">
+								{{ t('spacesModule.buttons.add.title') }}
+							</el-button>
 						</div>
 					</el-scrollbar>
 				</template>
@@ -666,7 +660,6 @@ const {
 	isLoading,
 	currentStep,
 	existingSpaces,
-	spaces,
 	proposedSpaces,
 	customSpaces,
 	matchedSpaces,
@@ -687,7 +680,6 @@ const {
 	toggleProposedSpace,
 	toggleCustomSpace,
 	addManualSpace,
-	checkDuplicateSpaceName,
 	removeProposedSpace,
 	removeCustomSpace,
 	initializeDeviceAssignments,
@@ -785,10 +777,22 @@ const handleAddSpace = (): void => {
 // Category helpers from composable
 const { getCategoryOptions, getCategoryGroups, getCategoryTemplates } = useSpaceCategories();
 
-const onSpaceTypeChange = (space: { type: SpaceType; category: SpaceCategory | null }): void => {
+const onSpaceTypeChange = (space: { type: SpaceType; category: SpaceCategory | null; description: string | null }): void => {
 	// Clear category if it's no longer valid for the new type
 	if (space.category && !isValidCategoryForType(space.category, space.type)) {
 		space.category = null;
+		space.description = null;
+	}
+};
+
+const onCategoryChange = (space: { type: SpaceType; category: SpaceCategory | null; description: string | null }): void => {
+	// Update description from category template when category changes
+	if (space.category) {
+		const templates = getCategoryTemplates(space.type);
+		const template = templates[space.category];
+		if (template?.description) {
+			space.description = template.description;
+		}
 	}
 };
 
