@@ -14,7 +14,7 @@ import { HomeAssistantDeviceAddFormSchema } from '../schemas/devices.schemas';
 import type { IHomeAssistantDeviceAddForm } from '../schemas/devices.types';
 import type { IMappingPreviewResponse, IAdoptDeviceRequest, IMappingPreviewRequest } from '../schemas/mapping-preview.types';
 import { useDiscoveredItemsOptions } from './useDiscoveredItemsOptions';
-import { useMappingPreview } from './useMappingPreview';
+import { useMappingPreview, type ItemType } from './useMappingPreview';
 import { useDeviceAdoption } from './useDeviceAdoption';
 
 import type { IUseDeviceAddForm } from './types';
@@ -34,9 +34,20 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	let timer: number;
 
-	const { preview, isLoading: isPreviewLoading, error: previewError, fetchPreview, clearPreview } = useMappingPreview();
+	const { preview, isLoading: isPreviewLoading, error: previewError, itemType, fetchPreview, clearPreview } = useMappingPreview();
 	const { isAdopting, error: adoptionError, adoptDevice } = useDeviceAdoption();
 	const { itemsOptions, areLoading: itemsOptionsLoading } = useDiscoveredItemsOptions();
+
+	// Helper function to get item type from selected value
+	const getItemTypeFromSelection = (selectedId: string): ItemType => {
+		for (const group of itemsOptions.value) {
+			const item = group.options.find((opt) => opt.value === selectedId);
+			if (item) {
+				return item.type;
+			}
+		}
+		return 'device'; // Default to device
+	};
 
 	const categoriesOptions = computed<{ value: DevicesModuleDeviceCategory; label: string }[]>(() => {
 		return Object.values(DevicesModuleDeviceCategory)
@@ -91,8 +102,11 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			formResult.value = FormResult.WORKING;
 
 			try {
+				// Determine item type from selection
+				const selectedItemType = getItemTypeFromSelection(model.haDeviceId);
+
 				// Fetch mapping preview without category to get suggestion
-				await fetchPreview(model.haDeviceId);
+				await fetchPreview(model.haDeviceId, undefined, selectedItemType);
 
 				// Auto-populate device info from preview
 				if (preview.value) {
@@ -140,10 +154,10 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			formResult.value = FormResult.WORKING;
 
 			try {
-				// Fetch mapping preview with selected category
+				// Fetch mapping preview with selected category (use stored item type)
 				await fetchPreview(model.haDeviceId, {
 					deviceCategory: model.category,
-				});
+				}, itemType.value);
 
 				// Auto-populate device name from preview if not set
 				if (preview.value && !model.name) {
@@ -251,7 +265,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 						deviceCategory: model.category,
 					};
 
-					await fetchPreview(model.haDeviceId, overrides);
+					await fetchPreview(model.haDeviceId, overrides, itemType.value);
 				}
 
 				// Proceed to next step
@@ -387,8 +401,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 					channels,
 				};
 
-				// Adopt the device
-				await adoptDevice(adoptRequest);
+				// Adopt the device/helper using the stored item type
+				await adoptDevice(adoptRequest, itemType.value);
 
 				formResult.value = FormResult.OK;
 

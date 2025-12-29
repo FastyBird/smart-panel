@@ -1,4 +1,5 @@
 import { validate } from 'class-validator';
+import { instanceToPlain } from 'class-transformer';
 
 import { Injectable } from '@nestjs/common';
 
@@ -14,7 +15,11 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+	DEVICES_HOME_ASSISTANT_TYPE,
+	ENTITY_MAIN_STATE_ATTRIBUTE,
+} from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -23,7 +28,12 @@ import { CreateHomeAssistantChannelPropertyDto } from '../dto/create-channel-pro
 import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { CreateHomeAssistantDeviceDto } from '../dto/create-device.dto';
 import { AdoptHelperRequestDto } from '../dto/helper-mapping-preview.dto';
-import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
+import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
+import {
+	HomeAssistantChannelEntity,
+	HomeAssistantChannelPropertyEntity,
+	HomeAssistantDeviceEntity,
+} from '../entities/devices-home-assistant.entity';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
@@ -254,12 +264,87 @@ export class HelperAdoptionService {
 
 	/**
 	 * Sync the initial state from Home Assistant
+	 * This method fetches the helper's state and updates all matching property values
 	 */
 	private async syncHelperState(deviceId: string, entityId: string): Promise<void> {
 		try {
 			const state = await this.homeAssistantHttpService.getState(entityId);
 
-			this.logger.debug(`[HELPER ADOPTION] Synced initial state for helper ${entityId}: ${state.state}`, {
+			this.logger.debug(`[HELPER ADOPTION] Fetched state for helper ${entityId}: ${state.state}`, {
+				resource: deviceId,
+			});
+
+			// Load all properties for this device's channels
+			const allProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
+				undefined,
+				DEVICES_HOME_ASSISTANT_TYPE,
+			);
+
+			// Filter to properties belonging to this device
+			const deviceProperties = allProperties.filter(
+				(p) =>
+					p.channel instanceof HomeAssistantChannelEntity &&
+					p.channel.device instanceof HomeAssistantDeviceEntity &&
+					p.channel.device.id === deviceId &&
+					p.haEntityId === entityId,
+			);
+
+			if (deviceProperties.length === 0) {
+				this.logger.debug(`[HELPER ADOPTION] No matching properties found for helper ${entityId}`, {
+					resource: deviceId,
+				});
+				return;
+			}
+
+			this.logger.debug(
+				`[HELPER ADOPTION] Found ${deviceProperties.length} properties to sync for helper ${entityId}`,
+				{ resource: deviceId },
+			);
+
+			// Update each property based on its ha_attribute mapping
+			for (const property of deviceProperties) {
+				let newValue: string | number | boolean | null = null;
+
+				if (property.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE || property.haAttribute === 'fb.main_state') {
+					// Map the main state value
+					newValue = state.state;
+				} else if (state.attributes && property.haAttribute) {
+					// Map from a specific attribute
+					const attrValue = state.attributes[property.haAttribute];
+					if (attrValue !== undefined) {
+						newValue = attrValue as string | number | boolean;
+					}
+				}
+
+				if (newValue !== null) {
+					try {
+						await this.channelsPropertiesService.update(
+							property.id,
+							toInstance(UpdateHomeAssistantChannelPropertyDto, {
+								...instanceToPlain(property),
+								value: newValue,
+							}),
+						);
+
+						this.logger.debug(
+							`[HELPER ADOPTION] Updated property ${property.category} = ${String(newValue)}`,
+							{ resource: deviceId },
+						);
+					} catch (updateError) {
+						const updateErr = updateError as Error;
+
+						this.logger.warn(
+							`[HELPER ADOPTION] Failed to update property ${property.category}`,
+							{
+								resource: deviceId,
+								message: updateErr.message,
+							},
+						);
+					}
+				}
+			}
+
+			this.logger.debug(`[HELPER ADOPTION] Synced initial state for helper ${entityId}`, {
 				resource: deviceId,
 			});
 		} catch (error) {

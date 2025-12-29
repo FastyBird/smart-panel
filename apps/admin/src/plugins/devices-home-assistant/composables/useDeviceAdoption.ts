@@ -6,12 +6,14 @@ import { DeviceSchema, transformDeviceResponse, type IDevice, devicesStoreKey, u
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IAdoptDeviceRequest } from '../schemas/mapping-preview.types';
-import { transformAdoptDeviceRequest } from '../utils/mapping-preview.transformers';
+import { transformAdoptDeviceRequest, transformAdoptHelperRequest } from '../utils/mapping-preview.transformers';
+
+import type { ItemType } from './useMappingPreview';
 
 export interface IUseDeviceAdoption {
 	isAdopting: Ref<boolean>;
 	error: Ref<Error | null>;
-	adoptDevice: (request: IAdoptDeviceRequest) => Promise<IDevice>;
+	adoptDevice: (request: IAdoptDeviceRequest, itemType?: ItemType) => Promise<IDevice>;
 }
 
 export const useDeviceAdoption = (): IUseDeviceAdoption => {
@@ -26,7 +28,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 	const isAdopting = ref<boolean>(false);
 	const error = ref<Error | null>(null);
 
-	const adoptDevice = async (request: IAdoptDeviceRequest): Promise<IDevice> => {
+	const adoptDevice = async (request: IAdoptDeviceRequest, itemType: ItemType = 'device'): Promise<IDevice> => {
 		if (isAdopting.value) {
 			throw new DevicesHomeAssistantApiException('Device adoption is already in progress.');
 		}
@@ -37,15 +39,39 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 		let storedDeviceId: string | null = null;
 
 		try {
-			const requestBody = transformAdoptDeviceRequest(request);
+			let responseData: { data?: unknown } | undefined;
+			let apiError: unknown;
+			let response: { status: number };
 
-			const {
-				data: responseData,
-				error: apiError,
-				response,
-			} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/adopt`, {
-				body: requestBody as never,
-			});
+			if (itemType === 'helper') {
+				// Adopt helper
+				const requestBody = transformAdoptHelperRequest(request);
+
+				const result = await backend.client.POST(
+					`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-helpers/adopt`,
+					{
+						body: requestBody as never,
+					},
+				);
+
+				responseData = result.data;
+				apiError = result.error;
+				response = result.response;
+			} else {
+				// Adopt device
+				const requestBody = transformAdoptDeviceRequest(request);
+
+				const result = await backend.client.POST(
+					`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/adopt`,
+					{
+						body: requestBody as never,
+					},
+				);
+
+				responseData = result.data;
+				apiError = result.error;
+				response = result.response;
+			}
 
 			// Check for errors first - if there's an error or non-2xx status, don't process response data
 			if (apiError || response.status < 200 || response.status >= 300) {
