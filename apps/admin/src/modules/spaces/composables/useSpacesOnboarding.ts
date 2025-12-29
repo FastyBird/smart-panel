@@ -218,10 +218,13 @@ export const useSpacesOnboarding = () => {
 		const selectedCustomSpaces = state.customSpaces.filter((c) => c.selected);
 
 		// Pre-populate device assignments for matched spaces (proposals matching existing spaces)
+		// Only for rooms, not zones (zones cannot have devices directly assigned)
 		for (const matched of state.matchedSpaces) {
-			for (const deviceId of matched.deviceIds) {
-				if (!state.deviceAssignments[deviceId]) {
-					state.deviceAssignments[deviceId] = matched.existingSpace.id;
+			if (matched.existingSpace.type === SpaceType.ROOM) {
+				for (const deviceId of matched.deviceIds) {
+					if (!state.deviceAssignments[deviceId]) {
+						state.deviceAssignments[deviceId] = matched.existingSpace.id;
+					}
 				}
 			}
 		}
@@ -231,10 +234,12 @@ export const useSpacesOnboarding = () => {
 			// Check if draft already exists (to prevent duplicates when going back/forward)
 			const existingDraft = state.spaces.find((s) => s.id === proposal.draftId);
 			if (existingDraft) {
-				// Pre-populate device assignments based on proposal
-				for (const deviceId of proposal.deviceIds) {
-					if (!state.deviceAssignments[deviceId]) {
-						state.deviceAssignments[deviceId] = existingDraft.id;
+				// Pre-populate device assignments based on proposal (only for rooms, not zones)
+				if (proposal.type === SpaceType.ROOM) {
+					for (const deviceId of proposal.deviceIds) {
+						if (!state.deviceAssignments[deviceId]) {
+							state.deviceAssignments[deviceId] = existingDraft.id;
+						}
 					}
 				}
 				continue;
@@ -260,9 +265,11 @@ export const useSpacesOnboarding = () => {
 			state.spaces = [...state.spaces, space];
 			createdSpaces.push(space);
 
-			// Pre-populate device assignments based on proposal
-			for (const deviceId of proposal.deviceIds) {
-				state.deviceAssignments[deviceId] = space.id;
+			// Pre-populate device assignments based on proposal (only for rooms, not zones)
+			if (proposal.type === SpaceType.ROOM) {
+				for (const deviceId of proposal.deviceIds) {
+					state.deviceAssignments[deviceId] = space.id;
+				}
 			}
 		}
 
