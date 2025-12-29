@@ -399,7 +399,7 @@
 						/>
 
 						<div v-if="displays.length > 0">
-							<el-table :data="displays" class="w-full">
+							<el-table :data="sortedDisplays" class="w-full">
 								<el-table-column prop="name" :label="t('spacesModule.onboarding.displayName')" min-width="200">
 									<template #default="{ row }">
 										<div>
@@ -460,7 +460,7 @@
 						/>
 
 						<div v-if="devices.length > 0">
-							<el-table :data="devices" class="w-full">
+							<el-table :data="sortedDevices" class="w-full">
 								<el-table-column prop="name" :label="t('spacesModule.onboarding.deviceName')" min-width="200">
 									<template #default="{ row }">
 										<div>
@@ -679,6 +679,16 @@ const {
 const newSpaceName = ref('');
 const devices = ref<DeviceInfo[]>([]);
 const displays = ref<DisplayInfo[]>([]);
+
+// Sorted displays for Step 2 (alphabetically by name, fallback to id)
+const sortedDisplays = computed(() =>
+	[...displays.value].sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+);
+
+// Sorted devices for Step 3 (alphabetically by name)
+const sortedDevices = computed(() =>
+	[...devices.value].sort((a, b) => a.name.localeCompare(b.name))
+);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
