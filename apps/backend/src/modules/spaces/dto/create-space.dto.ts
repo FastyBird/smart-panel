@@ -41,26 +41,26 @@ export class CreateSpaceDto {
 	@ValidateIf((_, value) => value !== null)
 	description?: string | null;
 
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Space type',
 		enum: SpaceType,
 		example: SpaceType.ROOM,
 	})
 	@Expose()
-	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"type","reason":"Type is required."}]' })
 	@IsEnum(SpaceType, { message: '[{"field":"type","reason":"Type must be a valid space type."}]' })
-	type?: SpaceType;
+	type: SpaceType;
 
 	@ApiPropertyOptional({
 		description:
-			'Space category. For type=room: room categories (living_room, bedroom, etc.). For type=zone: zone categories (floor_ground, outdoor_garden, etc.)',
+			'Space category. For type=room: room categories (living_room, bedroom, etc.). For type=zone: zone categories (floor_ground, outdoor_garden, etc.). Required for zones.',
 		enum: ALL_SPACE_CATEGORIES,
 		nullable: true,
 		example: 'living_room',
 	})
 	@Expose()
-	@IsOptional()
-	@ValidateIf((_, value) => value !== null)
+	@ValidateIf((obj: CreateSpaceDto) => obj.type === SpaceType.ZONE || obj.category !== null && obj.category !== undefined)
+	@IsNotEmpty({ message: '[{"field":"category","reason":"Category is required for zones."}]' })
 	@IsValidSpaceCategory()
 	category?: SpaceCategory | null;
 

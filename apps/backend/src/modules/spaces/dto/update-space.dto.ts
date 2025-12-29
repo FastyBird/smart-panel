@@ -3,6 +3,7 @@ import {
 	IsBoolean,
 	IsEnum,
 	IsInt,
+	IsNotEmpty,
 	IsOptional,
 	IsString,
 	IsUUID,
@@ -52,14 +53,14 @@ export class UpdateSpaceDto {
 
 	@ApiPropertyOptional({
 		description:
-			'Space category. For type=room: room categories (living_room, bedroom, etc.). For type=zone: zone categories (floor_ground, outdoor_garden, etc.)',
+			'Space category. For type=room: room categories (living_room, bedroom, etc.). For type=zone: zone categories (floor_ground, outdoor_garden, etc.). Required for zones.',
 		enum: ALL_SPACE_CATEGORIES,
 		nullable: true,
 		example: 'living_room',
 	})
 	@Expose()
-	@IsOptional()
-	@ValidateIf((_, value) => value !== null)
+	@ValidateIf((obj: UpdateSpaceDto) => obj.type === SpaceType.ZONE || (obj.category !== null && obj.category !== undefined))
+	@IsNotEmpty({ message: '[{"field":"category","reason":"Category is required for zones."}]' })
 	@IsValidSpaceCategory()
 	category?: SpaceCategory | null;
 

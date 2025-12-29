@@ -86,8 +86,14 @@ export class SpacesService {
 		const dtoInstance = await this.validateDto(CreateSpaceDto, createDto);
 
 		// Normalize legacy category values (e.g., 'outdoor' -> 'outdoor_garden' for zones)
-		const type = dtoInstance.type ?? SpaceType.ROOM;
+		const type = dtoInstance.type;
 		const normalizedCategory = normalizeCategoryValue(dtoInstance.category ?? null, type);
+
+		// Zones must have a category
+		if (type === SpaceType.ZONE && normalizedCategory === null) {
+			this.logger.error('Zone must have a category');
+			throw new SpacesValidationException('Category is required for zones.');
+		}
 
 		// Validate parent assignment
 		await this.validateParentAssignment(type, dtoInstance.parentId ?? null);
@@ -123,6 +129,12 @@ export class SpacesService {
 
 		// Determine the effective category (new category if provided, otherwise existing)
 		const effectiveCategory = dtoInstance.category !== undefined ? dtoInstance.category : space.category;
+
+		// Zones must have a category
+		if (effectiveType === SpaceType.ZONE && effectiveCategory === null) {
+			this.logger.error(`Zone must have a category. Update rejected for space id=${id}`);
+			throw new SpacesValidationException('Category is required for zones.');
+		}
 
 		// Validate that the category is compatible with the type
 		// This handles the case where type is changed but category is not,

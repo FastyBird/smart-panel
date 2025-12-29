@@ -15,7 +15,7 @@
 			<el-select
 				v-model="formData.category"
 				:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
-				clearable
+				:clearable="formData.type !== SpaceType.ZONE"
 				style="width: 100%"
 				@change="onCategoryChange"
 			>
@@ -349,9 +349,17 @@ const onCategoryChange = (category: SpaceCategory | null): void => {
 	}
 };
 
-const rules: FormRules = {
+const rules = computed<FormRules>(() => ({
 	name: [{ required: true, message: t('spacesModule.fields.spaces.name.validation.required'), trigger: 'blur' }],
-};
+	type: [{ required: true, message: t('spacesModule.fields.spaces.type.validation.required'), trigger: 'change' }],
+	category: [
+		{
+			required: formData.type === SpaceType.ZONE,
+			message: t('spacesModule.fields.spaces.category.validation.requiredForZone'),
+			trigger: 'change',
+		},
+	],
+}));
 
 // Filter devices by category
 const thermostatDevices = computed(() =>

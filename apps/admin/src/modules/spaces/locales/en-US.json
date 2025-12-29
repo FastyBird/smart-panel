@@ -91,12 +91,18 @@
 				"options": {
 					"room": "Room",
 					"zone": "Zone"
+				},
+				"validation": {
+					"required": "Type is required"
 				}
 			},
 			"category": {
 				"title": "Category",
-				"placeholder": "Select a category (optional)",
+				"placeholder": "Select a category",
 				"hint": "Selecting a category will auto-fill the icon and description with suggested defaults. Categories are filtered by the selected type.",
+				"validation": {
+					"requiredForZone": "Category is required for zones"
+				},
 				"groups": {
 					"floors": "Floors",
 					"outdoor": "Outdoor areas",

@@ -512,7 +512,7 @@ describe('SpacesService', () => {
 			await expect(service.update(existingRoomSpace.id, updateDto)).rejects.toThrow(SpacesValidationException);
 		});
 
-		it('should accept changing type when category is null', async () => {
+		it('should reject changing type to ZONE when category is null', async () => {
 			const spaceWithNullCategory: SpaceEntity = {
 				...existingRoomSpace,
 				category: null,
@@ -524,9 +524,27 @@ describe('SpacesService', () => {
 				type: SpaceType.ZONE,
 			};
 
+			// Zones require a category, so this should fail
+			await expect(service.update(spaceWithNullCategory.id, updateDto)).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should accept changing type to ZONE when category is provided', async () => {
+			const spaceWithNullCategory: SpaceEntity = {
+				...existingRoomSpace,
+				category: null,
+			};
+
+			spaceRepository.findOne.mockResolvedValue(spaceWithNullCategory);
+
+			const updateDto = {
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			};
+
 			const updatedSpace = {
 				...spaceWithNullCategory,
 				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
 			};
 
 			spaceRepository.save.mockResolvedValue(updatedSpace);
@@ -534,7 +552,7 @@ describe('SpacesService', () => {
 			const result = await service.update(spaceWithNullCategory.id, updateDto);
 
 			expect(result.type).toBe(SpaceType.ZONE);
-			expect(result.category).toBeNull();
+			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
 		});
 
 		it('should accept changing type and category together when compatible', async () => {
@@ -579,23 +597,43 @@ describe('SpacesService', () => {
 			expect(result.category).toBe(SpaceZoneCategory.OUTDOOR_GARDEN);
 		});
 
-		it('should accept setting category to null', async () => {
-			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+		it('should accept setting category to null for a ROOM', async () => {
+			// Create a fresh room space instance
+			const roomSpace: SpaceEntity = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Test Room',
+				type: SpaceType.ROOM,
+				category: SpaceRoomCategory.BEDROOM,
+			};
+
+			spaceRepository.findOne.mockResolvedValue(roomSpace);
 
 			const updateDto = {
 				category: null,
 			};
 
 			const updatedSpace = {
-				...existingRoomSpace,
+				...roomSpace,
 				category: null,
 			};
 
 			spaceRepository.save.mockResolvedValue(updatedSpace);
 
-			const result = await service.update(existingRoomSpace.id, updateDto);
+			const result = await service.update(roomSpace.id, updateDto);
 
 			expect(result.category).toBeNull();
+		});
+
+		it('should reject setting category to null for a ZONE', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
+
+			const updateDto = {
+				category: null,
+			};
+
+			// Zones require a category
+			await expect(service.update(existingZoneSpace.id, updateDto)).rejects.toThrow(SpacesValidationException);
 		});
 	});
 });
