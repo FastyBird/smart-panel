@@ -4,10 +4,6 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import type {
-	DevicesHomeAssistantPluginGetHelperOperation,
-	DevicesHomeAssistantPluginGetHelpersOperation,
-} from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
@@ -134,7 +130,7 @@ export const useHomeAssistantDiscoveredHelpers = defineStore<
 				let errorReason: string | null = 'Failed to fetch HomeAssistantDiscoveredHelper.';
 
 				if (error) {
-					errorReason = getErrorReason<DevicesHomeAssistantPluginGetHelperOperation>(error, errorReason);
+					errorReason = getErrorReason(error, errorReason);
 				}
 
 				throw new DevicesHomeAssistantApiException(errorReason, response.status);
@@ -192,7 +188,7 @@ export const useHomeAssistantDiscoveredHelpers = defineStore<
 				let errorReason: string | null = 'Failed to fetch Home Assistant helpers.';
 
 				if (error) {
-					errorReason = getErrorReason<DevicesHomeAssistantPluginGetHelpersOperation>(error, errorReason);
+					errorReason = getErrorReason(error, errorReason);
 				}
 
 				throw new DevicesHomeAssistantApiException(errorReason, response.status);

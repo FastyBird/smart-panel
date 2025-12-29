@@ -12,7 +12,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHelperPropertyMappingPreview' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataHelperPropertyMappingPreview' })
 export class HelperPropertyMappingPreviewModel {
 	@ApiProperty({
 		description: 'Smart Panel property category',
@@ -95,7 +95,7 @@ export class HelperPropertyMappingPreviewModel {
 	currentValue: string | number | boolean | null;
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHelperChannelMappingPreview' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataHelperChannelMappingPreview' })
 export class HelperChannelMappingPreviewModel {
 	@ApiProperty({
 		description: 'Smart Panel channel category',
@@ -133,7 +133,7 @@ export class HelperChannelMappingPreviewModel {
 	suggestedProperties: HelperPropertyMappingPreviewModel[];
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHelperInfo' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataHelperInfo' })
 export class HelperInfoModel {
 	@ApiProperty({
 		description: 'Helper entity ID',
@@ -161,7 +161,7 @@ export class HelperInfoModel {
 	domain: string;
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginSuggestedHelperDevice' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataSuggestedHelperDevice' })
 export class SuggestedHelperDeviceModel {
 	@ApiProperty({
 		description: 'Suggested device category',
@@ -187,7 +187,7 @@ export class SuggestedHelperDeviceModel {
 	confidence: 'high' | 'medium' | 'low';
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHelperMappingWarning' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataHelperMappingWarning' })
 export class HelperMappingWarningModel {
 	@ApiProperty({
 		description: 'Warning type',
@@ -215,7 +215,7 @@ export class HelperMappingWarningModel {
 	suggestion?: string;
 }
 
-@ApiSchema({ name: 'DevicesHomeAssistantPluginHelperMappingPreview' })
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataHelperMappingPreview' })
 export class HelperMappingPreviewModel {
 	@ApiProperty({
 		description: 'Helper information',

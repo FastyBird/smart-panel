@@ -1,10 +1,6 @@
 import { type ZodType, z } from 'zod';
 
-import type { DevicesHomeAssistantPluginDiscoveredHelperSchema } from '../../../openapi.constants';
-
 import { HomeAssistantStateSchema } from './home-assistant-states.store.schemas';
-
-type ApiDiscoveredHelper = DevicesHomeAssistantPluginDiscoveredHelperSchema;
 
 // STORE STATE
 // ===========
@@ -47,7 +43,7 @@ export const HomeAssistantDiscoveredHelpersGetActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-export const HomeAssistantDiscoveredHelperResSchema: ZodType<ApiDiscoveredHelper> = z.object({
+export const HomeAssistantDiscoveredHelperResSchema: ZodType = z.object({
 	entity_id: z.string().trim().nonempty(),
 	name: z.string().trim(),
 	domain: z.string().trim().nonempty(),
