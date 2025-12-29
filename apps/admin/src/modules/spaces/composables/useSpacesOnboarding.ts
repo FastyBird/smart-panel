@@ -537,6 +537,24 @@ export const useSpacesOnboarding = () => {
 		}
 	};
 
+	/**
+	 * Clear all device and display assignments pointing to a specific space
+	 */
+	const clearAssignmentsForSpace = (spaceId: string): void => {
+		// Clear all device assignments pointing to this space
+		for (const [deviceId, assignedSpaceId] of Object.entries(state.deviceAssignments)) {
+			if (assignedSpaceId === spaceId) {
+				state.deviceAssignments[deviceId] = null;
+			}
+		}
+		// Clear all display assignments pointing to this space
+		for (const [displayId, assignedSpaceId] of Object.entries(state.displayAssignments)) {
+			if (assignedSpaceId === spaceId) {
+				state.displayAssignments[displayId] = null;
+			}
+		}
+	};
+
 	const toggleProposedSpace = (index: number): void => {
 		const proposal = state.proposedSpaces[index];
 		if (proposal) {
@@ -544,13 +562,9 @@ export const useSpacesOnboarding = () => {
 
 			// Sync draft space with selection state
 			if (!proposal.selected) {
-				// Remove draft and clear device assignments when unchecked
+				// Remove draft and clear ALL assignments when unchecked
 				state.spaces = state.spaces.filter((s) => s.id !== proposal.draftId);
-				for (const deviceId of proposal.deviceIds) {
-					if (state.deviceAssignments[deviceId] === proposal.draftId) {
-						state.deviceAssignments[deviceId] = null;
-					}
-				}
+				clearAssignmentsForSpace(proposal.draftId);
 			}
 		}
 	};
@@ -562,8 +576,9 @@ export const useSpacesOnboarding = () => {
 
 			// Sync draft space with selection state
 			if (!customSpace.selected) {
-				// Remove draft when unchecked
+				// Remove draft and clear ALL assignments when unchecked
 				state.spaces = state.spaces.filter((s) => s.id !== customSpace.draftId);
+				clearAssignmentsForSpace(customSpace.draftId);
 			}
 		}
 	};
@@ -623,13 +638,9 @@ export const useSpacesOnboarding = () => {
 	const removeProposedSpace = (index: number): void => {
 		const proposal = state.proposedSpaces[index];
 		if (proposal) {
-			// Remove draft and clear device assignments
+			// Remove draft and clear ALL assignments
 			state.spaces = state.spaces.filter((s) => s.id !== proposal.draftId);
-			for (const deviceId of proposal.deviceIds) {
-				if (state.deviceAssignments[deviceId] === proposal.draftId) {
-					state.deviceAssignments[deviceId] = null;
-				}
-			}
+			clearAssignmentsForSpace(proposal.draftId);
 		}
 		state.proposedSpaces.splice(index, 1);
 	};
@@ -637,8 +648,9 @@ export const useSpacesOnboarding = () => {
 	const removeCustomSpace = (index: number): void => {
 		const customSpace = state.customSpaces[index];
 		if (customSpace) {
-			// Remove draft
+			// Remove draft and clear ALL assignments
 			state.spaces = state.spaces.filter((s) => s.id !== customSpace.draftId);
+			clearAssignmentsForSpace(customSpace.draftId);
 		}
 		state.customSpaces.splice(index, 1);
 	};
