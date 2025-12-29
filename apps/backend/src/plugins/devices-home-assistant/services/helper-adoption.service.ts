@@ -204,6 +204,7 @@ export class HelperAdoptionService {
 
 		for (const prop of properties) {
 			const createPropertyDto = toInstance(CreateHomeAssistantChannelPropertyDto, {
+				type: DEVICES_HOME_ASSISTANT_TYPE,
 				category: prop.category,
 				name: prop.name,
 				data_type: prop.dataType,
@@ -247,6 +248,7 @@ export class HelperAdoptionService {
 		// Create properties
 		for (const propDef of channelDef.properties) {
 			const createPropertyDto = toInstance(CreateHomeAssistantChannelPropertyDto, {
+				type: DEVICES_HOME_ASSISTANT_TYPE,
 				category: propDef.category,
 				name: propDef.category.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
 				data_type: propDef.dataType,
