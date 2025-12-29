@@ -64,7 +64,7 @@ export const EntityMappingPreviewSchema = z.object({
 });
 
 export const MappingWarningSchema = z.object({
-	type: z.enum(['missing_required_channel', 'missing_required_property', 'unsupported_entity', 'unknown_device_class']),
+	type: z.enum(['missing_required_channel', 'missing_required_property', 'unsupported_entity', 'unknown_device_class', 'no_mapping_rule']),
 	entityId: z.string().optional(),
 	message: z.string(),
 	suggestion: z.string().optional(),
