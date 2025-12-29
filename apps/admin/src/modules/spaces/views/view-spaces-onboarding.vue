@@ -124,6 +124,7 @@
 										<div class="flex items-center gap-3 flex-1 flex-wrap">
 											<el-checkbox v-model="space.selected" />
 											<span class="flex-1 min-w-0">{{ space.name }}</span>
+											<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
 											<el-select
 												v-model="space.type"
 												size="small"
@@ -180,7 +181,6 @@
 													</el-option>
 												</template>
 											</el-select>
-											<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
 										</div>
 										<el-button
 											size="small"
@@ -198,7 +198,7 @@
 							</div>
 
 							<el-alert
-								v-else
+								v-else-if="matchedSpaces.length === 0"
 								type="info"
 								:title="t('spacesModule.onboarding.steps.spaces.noProposals')"
 								:closable="false"
@@ -206,10 +206,88 @@
 								class="!mb-4"
 							/>
 
-							<div v-if="existingSpaces.length > 0" class="mb-4">
+							<!-- Matched existing spaces (proposals that match existing spaces) -->
+							<div v-if="matchedSpaces.length > 0" class="mb-4">
+								<h4 class="mb-2 font-medium">{{ t('spacesModule.onboarding.steps.spaces.matchedExisting') }}</h4>
+								<div class="space-y-2">
+									<div
+										v-for="(matched, index) in matchedSpaces"
+										:key="index"
+										class="flex items-center justify-between rounded border p-3"
+									>
+										<div class="flex items-center gap-3 flex-1 flex-wrap">
+											<el-checkbox
+												:model-value="true"
+												readonly
+											/>
+											<span class="flex-1 min-w-0">
+												{{ matched.proposedName }}
+												<span class="text-gray-500 text-sm ml-2">
+													→ {{ t('spacesModule.onboarding.steps.spaces.matchedWith', { name: matched.existingSpace.name }) }}
+												</span>
+											</span>
+											<el-tag size="small" type="info">{{ matched.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
+											<el-select
+												:model-value="matched.existingSpace.type"
+												size="small"
+												readonly
+												style="width: 120px"
+											>
+												<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
+												<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+											</el-select>
+											<el-select
+												:model-value="matched.existingSpace.category"
+												size="small"
+												readonly
+												:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
+												style="width: 180px"
+											>
+												<!-- Grouped categories for zones -->
+												<template v-if="matched.existingSpace.type === SpaceType.ZONE">
+													<el-option-group
+														v-for="group in getCategoryGroups(matched.existingSpace.type)"
+														:key="group.key"
+														:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
+													>
+														<el-option
+															v-for="category in group.categories"
+															:key="category"
+															:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+															:value="category"
+														/>
+													</el-option-group>
+												</template>
+												<!-- Flat list for rooms -->
+												<template v-else>
+													<el-option
+														v-for="category in getCategoryOptions(matched.existingSpace.type)"
+														:key="category"
+														:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+														:value="category"
+													/>
+												</template>
+											</el-select>
+										</div>
+										<el-button
+											size="small"
+											type="warning"
+											plain
+											disabled
+											class="ml-2"
+										>
+											<template #icon>
+												<icon icon="mdi:trash" />
+											</template>
+										</el-button>
+									</div>
+								</div>
+							</div>
+
+							<div v-if="unmatchedExistingSpaces.length > 0" class="mb-4">
 								<h4 class="mb-2 font-medium">{{ t('spacesModule.onboarding.steps.spaces.existing') }}</h4>
 								<div class="flex flex-wrap gap-2">
-									<el-tag v-for="space in existingSpaces" :key="space.id" size="large">
+									<el-tag v-for="space in unmatchedExistingSpaces" :key="space.id" size="large">
 										{{ space.name }}
 									</el-tag>
 								</div>
@@ -342,7 +420,7 @@
 											@update:model-value="(val: string | null) => setDisplayAssignment(row.id, val)"
 										>
 											<el-option
-												v-for="space in allSpaces"
+												v-for="space in roomSpaces"
 												:key="space.id"
 												:label="space.name"
 												:value="space.id"
@@ -403,7 +481,7 @@
 											@update:model-value="(val: string | null) => setDeviceAssignment(row.id, val)"
 										>
 											<el-option
-												v-for="space in allSpaces"
+												v-for="space in roomSpaces"
 												:key="space.id"
 												:label="space.name"
 												:value="space.id"
@@ -572,6 +650,8 @@ const {
 	spaces,
 	proposedSpaces,
 	customSpaces,
+	matchedSpaces,
+	availableSpaces,
 	deviceAssignments,
 	displayAssignments,
 	fetchProposedSpaces,
@@ -586,6 +666,7 @@ const {
 	nextStep,
 	prevStep,
 	addManualSpace,
+	checkDuplicateSpaceName,
 	removeProposedSpace,
 	removeCustomSpace,
 	initializeDeviceAssignments,
@@ -612,7 +693,17 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-const allSpaces = computed(() => [...existingSpaces.value, ...spaces.value]);
+// Use availableSpaces from composable which handles deduplication
+const allSpaces = availableSpaces;
+
+// Only room spaces for device/display assignment (zones cannot have devices directly assigned)
+const roomSpaces = computed(() => allSpaces.value.filter((space) => space.type === SpaceType.ROOM));
+
+// Existing spaces that are NOT already shown in matched spaces section
+const unmatchedExistingSpaces = computed(() => {
+	const matchedIds = new Set(matchedSpaces.value.map((m) => m.existingSpace.id));
+	return existingSpaces.value.filter((space) => !matchedIds.has(space.id));
+});
 
 const summary = computed(() => getSummary());
 
@@ -644,8 +735,14 @@ onMounted(async () => {
 
 const handleAddSpace = (): void => {
 	if (newSpaceName.value.trim()) {
-		addManualSpace(newSpaceName.value.trim());
-		newSpaceName.value = '';
+		const result = addManualSpace(newSpaceName.value.trim());
+		if (result.success) {
+			newSpaceName.value = '';
+		} else {
+			flashMessage.warning(
+				t('spacesModule.onboarding.steps.spaces.duplicateWarning', { name: result.duplicateOf })
+			);
+		}
 	}
 };
 

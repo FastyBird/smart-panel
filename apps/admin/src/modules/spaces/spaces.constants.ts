@@ -33,13 +33,18 @@ export enum SpaceRoomCategory {
 	LIVING_ROOM = 'living_room',
 	BEDROOM = 'bedroom',
 	BATHROOM = 'bathroom',
+	TOILET = 'toilet',
 	KITCHEN = 'kitchen',
 	DINING_ROOM = 'dining_room',
 	OFFICE = 'office',
+	ENTRYWAY = 'entryway',
 	GARAGE = 'garage',
 	HALLWAY = 'hallway',
 	LAUNDRY = 'laundry',
+	UTILITY_ROOM = 'utility_room',
 	STORAGE = 'storage',
+	CLOSET = 'closet',
+	PANTRY = 'pantry',
 	NURSERY = 'nursery',
 	GUEST_ROOM = 'guest_room',
 	GYM = 'gym',
@@ -65,6 +70,7 @@ export enum SpaceZoneCategory {
 	OUTDOOR_DRIVEWAY = 'outdoor_driveway',
 	OUTDOOR_GARDEN = 'outdoor_garden',
 	OUTDOOR_TERRACE = 'outdoor_terrace',
+	OUTDOOR_BALCONY = 'outdoor_balcony',
 	OUTDOOR_WALKWAY = 'outdoor_walkway',
 	// Security
 	SECURITY_PERIMETER = 'security_perimeter',
@@ -192,6 +198,7 @@ export const ZONE_CATEGORY_GROUPS: CategoryGroup[] = [
 			SpaceZoneCategory.OUTDOOR_DRIVEWAY,
 			SpaceZoneCategory.OUTDOOR_GARDEN,
 			SpaceZoneCategory.OUTDOOR_TERRACE,
+			SpaceZoneCategory.OUTDOOR_BALCONY,
 			SpaceZoneCategory.OUTDOOR_WALKWAY,
 		],
 	},
@@ -243,6 +250,10 @@ export const SPACE_ROOM_CATEGORY_TEMPLATES: Record<SpaceRoomCategory, Omit<Space
 		icon: 'mdi:shower',
 		description: 'Bathroom and hygiene area',
 	},
+	[SpaceRoomCategory.TOILET]: {
+		icon: 'mdi:toilet',
+		description: 'Toilet or water closet',
+	},
 	[SpaceRoomCategory.KITCHEN]: {
 		icon: 'mdi:stove',
 		description: 'Food preparation and cooking area',
@@ -254,6 +265,10 @@ export const SPACE_ROOM_CATEGORY_TEMPLATES: Record<SpaceRoomCategory, Omit<Space
 	[SpaceRoomCategory.OFFICE]: {
 		icon: 'mdi:desk',
 		description: 'Home office or work space',
+	},
+	[SpaceRoomCategory.ENTRYWAY]: {
+		icon: 'mdi:door-open',
+		description: 'Entry, foyer or vestibule',
 	},
 	[SpaceRoomCategory.GARAGE]: {
 		icon: 'mdi:garage',
@@ -267,9 +282,21 @@ export const SPACE_ROOM_CATEGORY_TEMPLATES: Record<SpaceRoomCategory, Omit<Space
 		icon: 'mdi:washing-machine',
 		description: 'Laundry and utility area',
 	},
+	[SpaceRoomCategory.UTILITY_ROOM]: {
+		icon: 'mdi:water-boiler',
+		description: 'Utility room with mechanical systems',
+	},
 	[SpaceRoomCategory.STORAGE]: {
 		icon: 'mdi:archive',
 		description: 'Storage and closet space',
+	},
+	[SpaceRoomCategory.CLOSET]: {
+		icon: 'mdi:hanger',
+		description: 'Walk-in closet or wardrobe room',
+	},
+	[SpaceRoomCategory.PANTRY]: {
+		icon: 'mdi:fridge-outline',
+		description: 'Food and supplies pantry',
 	},
 	[SpaceRoomCategory.NURSERY]: {
 		icon: 'mdi:baby-carriage',
@@ -341,7 +368,11 @@ export const SPACE_ZONE_CATEGORY_TEMPLATES: Record<SpaceZoneCategory, Omit<Space
 	},
 	[SpaceZoneCategory.OUTDOOR_TERRACE]: {
 		icon: 'mdi:balcony',
-		description: 'Terrace, patio, or balcony',
+		description: 'Terrace or patio area',
+	},
+	[SpaceZoneCategory.OUTDOOR_BALCONY]: {
+		icon: 'mdi:balcony',
+		description: 'Balcony area',
 	},
 	[SpaceZoneCategory.OUTDOOR_WALKWAY]: {
 		icon: 'mdi:walk',

@@ -8,6 +8,7 @@ import {
 } from '../../../openapi';
 import { SpaceCategory, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
+import { canonicalizeSpaceName } from '../spaces.utils';
 import type { ISpace, ISpaceCreateData } from '../store';
 
 interface ProposedSpace {
@@ -24,6 +25,16 @@ interface CustomSpace {
 	selected: boolean;
 	type: SpaceType;
 	category: SpaceCategory | null;
+}
+
+/**
+ * Represents a proposed space that matches an existing space
+ */
+export interface MatchedSpace {
+	proposedName: string;
+	existingSpace: ISpace;
+	deviceIds: string[];
+	deviceCount: number;
 }
 
 export interface DeviceInfo {
@@ -47,6 +58,7 @@ interface WizardState {
 	spaces: ISpace[];
 	proposedSpaces: ProposedSpace[];
 	customSpaces: CustomSpace[];
+	matchedSpaces: MatchedSpace[]; // Proposed spaces that match existing spaces
 	deviceAssignments: Record<string, string | null>; // deviceId -> spaceId
 	displayAssignments: Record<string, string | null>; // displayId -> spaceId
 	isLoading: boolean;
@@ -97,6 +109,7 @@ export const useSpacesOnboarding = () => {
 		spaces: [],
 		proposedSpaces: [],
 		customSpaces: [],
+		matchedSpaces: [],
 		deviceAssignments: {},
 		displayAssignments: {},
 		isLoading: false,
@@ -110,8 +123,37 @@ export const useSpacesOnboarding = () => {
 	const spaces = computed(() => state.spaces);
 	const proposedSpaces = computed(() => state.proposedSpaces);
 	const customSpaces = computed(() => state.customSpaces);
+	const matchedSpaces = computed(() => state.matchedSpaces);
 	const deviceAssignments = computed(() => state.deviceAssignments);
 	const displayAssignments = computed(() => state.displayAssignments);
+
+	/**
+	 * Proposed spaces that don't match existing spaces (will be created)
+	 */
+	const unmatchedProposals = computed(() =>
+		state.proposedSpaces.filter(
+			(p) =>
+				!state.matchedSpaces.some(
+					(m) => canonicalizeSpaceName(m.proposedName) === canonicalizeSpaceName(p.name)
+				)
+		)
+	);
+
+	/**
+	 * All available spaces for Steps 2 & 3 (existing + created, deduplicated by ID)
+	 */
+	const availableSpaces = computed(() => {
+		const map = new Map<string, ISpace>();
+		// Add existing spaces
+		for (const space of state.existingSpaces) {
+			map.set(space.id, space);
+		}
+		// Add created/draft spaces
+		for (const space of state.spaces) {
+			map.set(space.id, space);
+		}
+		return Array.from(map.values());
+	});
 
 	const fetchProposedSpaces = async (): Promise<void> => {
 		state.isLoading = true;
@@ -124,7 +166,7 @@ export const useSpacesOnboarding = () => {
 				throw new SpacesApiException('Failed to fetch proposed spaces');
 			}
 
-			state.proposedSpaces = response.data.data.map((p) => ({
+			const allProposals = response.data.data.map((p) => ({
 				name: p.name ?? '',
 				deviceIds: p.device_ids ?? [],
 				deviceCount: p.device_count ?? 0,
@@ -132,6 +174,33 @@ export const useSpacesOnboarding = () => {
 				type: p.type ? apiTypeToSpaceType(p.type) : SpaceType.ROOM,
 				category: apiCategoryToSpaceCategory(p.category),
 			}));
+
+			// Detect matches with existing spaces
+			state.matchedSpaces = [];
+			const unmatchedProposals: typeof allProposals = [];
+
+			for (const proposal of allProposals) {
+				const canonicalProposalName = canonicalizeSpaceName(proposal.name);
+				const matchedExisting = state.existingSpaces.find(
+					(existing) => canonicalizeSpaceName(existing.name) === canonicalProposalName
+				);
+
+				if (matchedExisting) {
+					// This proposal matches an existing space
+					state.matchedSpaces.push({
+						proposedName: proposal.name,
+						existingSpace: matchedExisting,
+						deviceIds: proposal.deviceIds,
+						deviceCount: proposal.deviceCount,
+					});
+				} else {
+					// This proposal doesn't match any existing space
+					unmatchedProposals.push(proposal);
+				}
+			}
+
+			// Only store unmatched proposals in proposedSpaces
+			state.proposedSpaces = unmatchedProposals;
 		} catch (err) {
 			state.error = err instanceof Error ? err.message : 'Unknown error';
 			throw err;
@@ -144,6 +213,15 @@ export const useSpacesOnboarding = () => {
 		const createdSpaces: ISpace[] = [];
 		const selectedProposals = state.proposedSpaces.filter((p) => p.selected);
 		const selectedCustomSpaces = state.customSpaces.filter((c) => c.selected);
+
+		// Pre-populate device assignments for matched spaces (proposals matching existing spaces)
+		for (const matched of state.matchedSpaces) {
+			for (const deviceId of matched.deviceIds) {
+				if (!state.deviceAssignments[deviceId]) {
+					state.deviceAssignments[deviceId] = matched.existingSpace.id;
+				}
+			}
+		}
 
 		// Create draft spaces from proposed spaces
 		for (const proposal of selectedProposals) {
@@ -461,13 +539,55 @@ export const useSpacesOnboarding = () => {
 		}
 	};
 
-	const addManualSpace = (name: string): void => {
+	/**
+	 * Check if a space name is a duplicate of an existing, proposed, or custom space
+	 * @returns The name of the conflicting space if duplicate, null otherwise
+	 */
+	const checkDuplicateSpaceName = (name: string): string | null => {
+		const canonicalName = canonicalizeSpaceName(name);
+
+		// Check existing spaces
+		const existingMatch = state.existingSpaces.find(
+			(s) => canonicalizeSpaceName(s.name) === canonicalName
+		);
+		if (existingMatch) {
+			return existingMatch.name;
+		}
+
+		// Check proposed spaces
+		const proposedMatch = state.proposedSpaces.find(
+			(p) => canonicalizeSpaceName(p.name) === canonicalName
+		);
+		if (proposedMatch) {
+			return proposedMatch.name;
+		}
+
+		// Check custom spaces
+		const customMatch = state.customSpaces.find(
+			(c) => canonicalizeSpaceName(c.name) === canonicalName
+		);
+		if (customMatch) {
+			return customMatch.name;
+		}
+
+		return null;
+	};
+
+	const addManualSpace = (name: string): { success: boolean; duplicateOf?: string } => {
+		// Check for duplicates
+		const duplicate = checkDuplicateSpaceName(name);
+		if (duplicate) {
+			return { success: false, duplicateOf: duplicate };
+		}
+
 		state.customSpaces.push({
 			name,
 			selected: true,
 			type: SpaceType.ROOM,
 			category: null,
 		});
+
+		return { success: true };
 	};
 
 	const removeProposedSpace = (index: number): void => {
@@ -626,6 +746,9 @@ export const useSpacesOnboarding = () => {
 		spaces,
 		proposedSpaces,
 		customSpaces,
+		matchedSpaces,
+		unmatchedProposals,
+		availableSpaces,
 		deviceAssignments,
 		displayAssignments,
 		// Actions
@@ -644,6 +767,7 @@ export const useSpacesOnboarding = () => {
 		prevStep,
 		toggleProposedSpace,
 		addManualSpace,
+		checkDuplicateSpaceName,
 		removeProposedSpace,
 		removeCustomSpace,
 		initializeFromExistingSpaces,

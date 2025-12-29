@@ -27,6 +27,7 @@ import {
 	SpaceZoneCategory,
 } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
+import { canonicalizeSpaceName } from '../spaces.utils';
 
 @Injectable()
 export class SpacesService {
@@ -83,10 +84,30 @@ export class SpacesService {
 		return space;
 	}
 
+	/**
+	 * Find a space by its canonical name
+	 * Used for deduplication during creation
+	 */
+	async findByCanonicalName(canonicalName: string): Promise<SpaceEntity | null> {
+		const allSpaces = await this.findAll();
+		return allSpaces.find((space) => canonicalizeSpaceName(space.name) === canonicalName) ?? null;
+	}
+
 	async create(createDto: CreateSpaceDto): Promise<SpaceEntity> {
 		this.logger.debug('Creating new space');
 
 		const dtoInstance = await this.validateDto(CreateSpaceDto, createDto);
+
+		// Check for existing space with same canonical name (deduplication)
+		const canonicalName = canonicalizeSpaceName(dtoInstance.name);
+		const existingSpace = await this.findByCanonicalName(canonicalName);
+
+		if (existingSpace) {
+			this.logger.debug(
+				`Space with canonical name "${canonicalName}" already exists (id=${existingSpace.id}), returning existing`,
+			);
+			return existingSpace;
+		}
 
 		// Normalize legacy category values (e.g., 'outdoor' -> 'outdoor_garden' for zones)
 		const type = dtoInstance.type;
