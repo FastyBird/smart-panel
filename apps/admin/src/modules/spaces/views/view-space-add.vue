@@ -44,7 +44,7 @@
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar class="grow-1 p-2 md:px-4">
-			<space-edit-form
+			<space-add-form
 				ref="formRef"
 				v-model:remote-form-changed="remoteFormChanged"
 				:hide-actions="isMDDevice"
@@ -105,7 +105,7 @@ import {
 	useBreakpoints,
 	useFlashMessage,
 } from '../../../common';
-import { SpaceEditForm } from '../components/components';
+import { SpaceAddForm } from '../components/components';
 import { RouteNames } from '../spaces.constants';
 import type { ISpace } from '../store';
 
@@ -123,7 +123,7 @@ useMeta({
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const formRef = ref<InstanceType<typeof SpaceEditForm> | null>(null);
+const formRef = ref<InstanceType<typeof SpaceAddForm> | null>(null);
 const remoteFormChanged = ref(false);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

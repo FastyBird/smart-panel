@@ -124,6 +124,7 @@
 		</el-form-item>
 
 		<el-alert
+			v-if="formData.type === SpaceType.ROOM"
 			:title="t('spacesModule.fields.spaces.parentZone.hint')"
 			type="info"
 			:closable="false"
@@ -131,81 +132,8 @@
 			class="!mt-2"
 		/>
 
-		<!-- Climate Device Overrides Section -->
-		<template v-if="climateDevices.length > 0">
-			<el-divider>{{ t('spacesModule.fields.spaces.climateOverrides.title') }}</el-divider>
-
-			<el-form-item
-				:label="t('spacesModule.fields.spaces.primaryThermostat.title')"
-				prop="primaryThermostatId"
-			>
-				<el-select
-					v-model="formData.primaryThermostatId"
-					:placeholder="t('spacesModule.fields.spaces.primaryThermostat.placeholder')"
-					clearable
-					style="width: 100%"
-					:loading="loadingDevices"
-				>
-					<el-option
-						v-for="device in thermostatDevices"
-						:key="device.id"
-						:label="device.name"
-						:value="device.id"
-					/>
-				</el-select>
-				<div class="text-xs text-gray-500 mt-1">
-					{{ t('spacesModule.fields.spaces.primaryThermostat.hint') }}
-				</div>
-			</el-form-item>
-
-			<el-form-item
-				:label="t('spacesModule.fields.spaces.primaryTemperatureSensor.title')"
-				prop="primaryTemperatureSensorId"
-			>
-				<el-select
-					v-model="formData.primaryTemperatureSensorId"
-					:placeholder="t('spacesModule.fields.spaces.primaryTemperatureSensor.placeholder')"
-					clearable
-					style="width: 100%"
-					:loading="loadingDevices"
-				>
-					<el-option
-						v-for="device in temperatureSensorDevices"
-						:key="device.id"
-						:label="device.name"
-						:value="device.id"
-					/>
-				</el-select>
-				<div class="text-xs text-gray-500 mt-1">
-					{{ t('spacesModule.fields.spaces.primaryTemperatureSensor.hint') }}
-				</div>
-			</el-form-item>
-		</template>
-
-		<!-- Lighting Roles Section -->
-		<space-lighting-roles v-if="hasLightingDevices" :space="props.space" />
-
-		<!-- Suggestions Section -->
-		<el-divider>{{ t('spacesModule.fields.spaces.suggestions.title') }}</el-divider>
-
-		<el-form-item
-			prop="suggestionsEnabled"
-			label-position="left"
-		>
-			<template #label>
-				{{ t('spacesModule.fields.spaces.suggestionsEnabled.title') }}
-			</template>
-			<el-switch v-model="formData.suggestionsEnabled" />
-		</el-form-item>
-		<el-alert
-			:title="t('spacesModule.fields.spaces.suggestionsEnabled.hint')"
-			type="info"
-			:closable="false"
-			show-icon
-		/>
-
 		<div
-			v-if="!hideActions"
+			v-if="!props.hideActions"
 			class="flex gap-2 justify-end mt-4"
 		>
 			<el-button @click="onCancel">
@@ -223,62 +151,46 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElAlert, ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElOptionGroup, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElOptionGroup, ElSelect, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
-import { MODULES_PREFIX } from '../../../app.constants';
-import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { injectStoresManager, useFlashMessage } from '../../../common';
 import { useSpaceCategories } from '../composables';
 import {
 	isValidCategoryForType,
 	SpaceCategory,
 	SpaceType,
-	SPACES_MODULE_PREFIX,
 } from '../spaces.constants';
 import { spacesStoreKey, type ISpace, type ISpaceCreateData } from '../store';
 
-import SpaceLightingRoles from './space-lighting-roles.vue';
-import { type ISpaceEditFormProps, spaceEditFormEmits } from './space-edit-form.types';
+import { type ISpaceAddFormProps, spaceAddFormEmits } from './space-add-form.types';
 
-interface ISpaceDevice {
-	id: string;
-	name: string;
-	category: DevicesModuleDeviceCategory;
-}
-
-const props = withDefaults(defineProps<ISpaceEditFormProps>(), {
+const props = withDefaults(defineProps<ISpaceAddFormProps>(), {
 	hideActions: false,
 });
 
-const emit = defineEmits(spaceEditFormEmits);
+const emit = defineEmits(spaceAddFormEmits);
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
-const backend = useBackend();
 const storesManager = injectStoresManager();
 const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const formRef = ref<FormInstance>();
 const saving = ref(false);
-const loadingDevices = ref(false);
-const spaceDevices = ref<ISpaceDevice[]>([]);
 
 const initialValues = {
-	name: props.space.name,
-	type: props.space.type,
-	category: props.space.category ?? null as SpaceCategory | null,
-	description: props.space.description ?? '',
-	icon: props.space.icon ?? '',
-	displayOrder: props.space.displayOrder,
-	parentId: props.space.parentId ?? null as string | null,
-	primaryThermostatId: props.space.primaryThermostatId ?? null,
-	primaryTemperatureSensorId: props.space.primaryTemperatureSensorId ?? null,
-	suggestionsEnabled: props.space.suggestionsEnabled ?? true,
+	name: '',
+	type: SpaceType.ROOM,
+	category: null as SpaceCategory | null,
+	description: '',
+	icon: '',
+	displayOrder: 0,
+	parentId: null as string | null,
 };
 
 const formData = reactive({ ...initialValues });
@@ -294,11 +206,9 @@ const { categoryOptions, categoryGroups, currentTemplates } = useSpaceCategories
 	computed(() => formData.type)
 );
 
-// Get available zones for parent zone selector (only zones, excluding the current space if editing)
+// Get available zones for parent zone selector
 const availableZones = computed(() =>
-	spacesStore.findAll()
-		.filter((s) => s.type === SpaceType.ZONE)
-		.filter((s) => !props.space || s.id !== props.space.id)
+	spacesStore.findAll().filter((s) => s.type === SpaceType.ZONE)
 );
 
 // Handle type change - clear category if it becomes incompatible
@@ -352,33 +262,6 @@ const rules = computed<FormRules>(() => ({
 	],
 }));
 
-// Filter devices by category
-const thermostatDevices = computed(() =>
-	spaceDevices.value.filter(d => d.category === DevicesModuleDeviceCategory.thermostat)
-);
-
-const sensorDevices = computed(() =>
-	spaceDevices.value.filter(d => d.category === DevicesModuleDeviceCategory.sensor)
-);
-
-// Temperature sensor options include both thermostats (which have temp sensors) and standalone sensors
-const temperatureSensorDevices = computed(() =>
-	spaceDevices.value.filter(d =>
-		d.category === DevicesModuleDeviceCategory.thermostat ||
-		d.category === DevicesModuleDeviceCategory.sensor
-	)
-);
-
-// All climate-capable devices (for showing/hiding the section)
-const climateDevices = computed(() =>
-	[...thermostatDevices.value, ...sensorDevices.value]
-);
-
-// Check if there are lighting devices in this space
-const hasLightingDevices = computed(() =>
-	spaceDevices.value.some(d => d.category === DevicesModuleDeviceCategory.lighting)
-);
-
 const formChanged = computed<boolean>((): boolean => {
 	return (
 		formData.name !== initialValues.name ||
@@ -387,10 +270,7 @@ const formChanged = computed<boolean>((): boolean => {
 		formData.description !== initialValues.description ||
 		formData.icon !== initialValues.icon ||
 		formData.displayOrder !== initialValues.displayOrder ||
-		formData.parentId !== initialValues.parentId ||
-		formData.primaryThermostatId !== initialValues.primaryThermostatId ||
-		formData.primaryTemperatureSensorId !== initialValues.primaryTemperatureSensorId ||
-		formData.suggestionsEnabled !== initialValues.suggestionsEnabled
+		formData.parentId !== initialValues.parentId
 	);
 });
 
@@ -401,68 +281,6 @@ watch(
 	},
 	{ immediate: true }
 );
-
-watch(
-	() => props.space,
-	(space) => {
-		if (space) {
-			formData.name = space.name;
-			formData.type = space.type;
-			formData.category = space.category ?? null;
-			formData.description = space.description ?? '';
-			formData.icon = space.icon ?? '';
-			formData.displayOrder = space.displayOrder;
-			formData.parentId = space.parentId ?? null;
-			formData.primaryThermostatId = space.primaryThermostatId ?? null;
-			formData.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
-			formData.suggestionsEnabled = space.suggestionsEnabled ?? true;
-			// Update initial values when space prop changes
-			initialValues.name = space.name;
-			initialValues.type = space.type;
-			initialValues.category = space.category ?? null;
-			initialValues.description = space.description ?? '';
-			initialValues.icon = space.icon ?? '';
-			initialValues.displayOrder = space.displayOrder;
-			initialValues.parentId = space.parentId ?? null;
-			initialValues.primaryThermostatId = space.primaryThermostatId ?? null;
-			initialValues.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
-			initialValues.suggestionsEnabled = space.suggestionsEnabled ?? true;
-			// Reset auto-populated tracking for the new space
-			autoPopulatedValues.icon = null;
-			autoPopulatedValues.description = null;
-			// Reload devices for the new space
-			loadSpaceDevices();
-		}
-	}
-);
-
-// Load devices for the space
-const loadSpaceDevices = async (): Promise<void> => {
-	loadingDevices.value = true;
-
-	try {
-		const { data: responseData, error } = await backend.client.GET(
-			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/devices`,
-			{ params: { path: { id: props.space.id } } }
-		);
-
-		if (error || !responseData) {
-			return;
-		}
-
-		spaceDevices.value = (responseData.data ?? []).map((device) => ({
-			id: device.id,
-			name: device.name,
-			category: device.category as DevicesModuleDeviceCategory,
-		}));
-	} finally {
-		loadingDevices.value = false;
-	}
-};
-
-onMounted(() => {
-	loadSpaceDevices();
-});
 
 const onSubmit = async (): Promise<void> => {
 	const valid = await formRef.value?.validate().catch(() => false);
@@ -482,16 +300,13 @@ const onSubmit = async (): Promise<void> => {
 			icon: formData.icon || null,
 			displayOrder: formData.displayOrder,
 			parentId: formData.parentId || null,
-			primaryThermostatId: formData.primaryThermostatId || null,
-			primaryTemperatureSensorId: formData.primaryTemperatureSensorId || null,
-			suggestionsEnabled: formData.suggestionsEnabled,
 		};
 
-		const savedSpace: ISpace = await spacesStore.edit({ id: props.space.id, data });
+		const savedSpace: ISpace = await spacesStore.add({ data });
 
 		emit('saved', savedSpace);
 	} catch {
-		flashMessage.error(t('spacesModule.messages.saveError'));
+		flashMessage.error(t('spacesModule.messages.createError'));
 	} finally {
 		saving.value = false;
 	}
