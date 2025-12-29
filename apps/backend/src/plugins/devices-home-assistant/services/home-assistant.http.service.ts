@@ -43,17 +43,19 @@ import {
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext, VirtualPropertyType, getVirtualPropertiesForChannel } from './virtual-property.types';
 
+// Exclude single-entity devices in virtual_device_domains (they appear in helpers instead)
 const DISCOVERED_DEVICES_TEMPLATE =
-	"{% set devices = states | map(attribute='entity_id') | map('device_id') | unique | reject('eq', None) | list %}{% set ns = namespace(list=[]) %}{% for device in devices %}{% set entities = device_entities(device) | list %}{% if entities %}{% set ns.list = ns.list + [{'id': device, 'name': device_attr(device, 'name'), 'entities': entities}] %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
+	"{% set virtual_device_domains = ['climate', 'humidifier', 'water_heater'] %}{% set devices = states | map(attribute='entity_id') | map('device_id') | unique | reject('eq', None) | list %}{% set ns = namespace(list=[]) %}{% for device in devices %}{% set entities = device_entities(device) | list %}{% if entities %}{% set dominated_by_virtual = (entities | length == 1 and entities[0].split('.')[0] in virtual_device_domains) %}{% if not dominated_by_virtual %}{% set ns.list = ns.list + [{'id': device, 'name': device_attr(device, 'name'), 'entities': entities}] %}{% endif %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
 
 const DISCOVERED_DEVICE_TEMPLATE =
 	"{% set target_device = device_id %}{% set entities = device_entities(target_device) | list %}{% if entities %}{{ [{'id': target_device, 'name': device_attr(target_device, 'name'), 'entities': entities}] | tojson }}{% else %}{{ [] | tojson }}{% endif %}";
 
-// Template to discover helper entities (entities without device_id)
+// Template to discover helper entities (entities without device_id or from single-entity virtual devices)
 // Includes: input_boolean, input_number, input_select, input_text, input_datetime, input_button, timer
 // Also includes climate entities without device (e.g., generic_thermostat) and standalone sensors
+// For climate/humidifier/water_heater domains, also includes entities from single-entity devices (typically virtual)
 const DISCOVERED_HELPERS_TEMPLATE =
-	"{% set helper_domains = ['input_boolean', 'input_number', 'input_select', 'input_text', 'input_datetime', 'input_button', 'timer', 'climate', 'sensor', 'binary_sensor', 'switch', 'light', 'fan', 'cover', 'lock', 'humidifier', 'water_heater', 'vacuum'] %}{% set ns = namespace(list=[]) %}{% for state in states %}{% set domain = state.entity_id.split('.')[0] %}{% if domain in helper_domains %}{% set dev_id = device_id(state.entity_id) %}{% if dev_id is none %}{% set ns.list = ns.list + [{'entity_id': state.entity_id, 'name': state.attributes.friendly_name | default(state.entity_id), 'domain': domain}] %}{% endif %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
+	"{% set helper_domains = ['input_boolean', 'input_number', 'input_select', 'input_text', 'input_datetime', 'input_button', 'timer', 'climate', 'sensor', 'binary_sensor', 'switch', 'light', 'fan', 'cover', 'lock', 'humidifier', 'water_heater', 'vacuum'] %}{% set virtual_device_domains = ['climate', 'humidifier', 'water_heater'] %}{% set ns = namespace(list=[]) %}{% for state in states %}{% set domain = state.entity_id.split('.')[0] %}{% if domain in helper_domains %}{% set dev_id = device_id(state.entity_id) %}{% if dev_id is none or dev_id == '' %}{% set ns.list = ns.list + [{'entity_id': state.entity_id, 'name': state.attributes.friendly_name | default(state.entity_id), 'domain': domain}] %}{% elif domain in virtual_device_domains %}{% set dev_entities = device_entities(dev_id) | list %}{% if dev_entities | length == 1 %}{% set ns.list = ns.list + [{'entity_id': state.entity_id, 'name': state.attributes.friendly_name | default(state.entity_id), 'domain': domain}] %}{% endif %}{% endif %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
 
 @Injectable()
 export class HomeAssistantHttpService {
