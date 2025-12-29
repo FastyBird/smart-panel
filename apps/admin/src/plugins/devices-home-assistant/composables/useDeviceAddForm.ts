@@ -13,11 +13,11 @@ import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationExcepti
 import { HomeAssistantDeviceAddFormSchema } from '../schemas/devices.schemas';
 import type { IHomeAssistantDeviceAddForm } from '../schemas/devices.types';
 import type { IMappingPreviewResponse, IAdoptDeviceRequest, IMappingPreviewRequest } from '../schemas/mapping-preview.types';
-import { useDiscoveredDevicesOptions } from './useDiscoveredDevicesOptions';
+import { useDiscoveredItemsOptions } from './useDiscoveredItemsOptions';
 import { useMappingPreview } from './useMappingPreview';
 import { useDeviceAdoption } from './useDeviceAdoption';
 
-import type { IUseDeviceAddForm } from './types';
+import type { IDiscoveryOptionGroup, IUseDeviceAddForm } from './types';
 
 interface IUseDeviceAddFormProps {
 	id: IDevice['id'];
@@ -36,7 +36,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 
 	const { preview, isLoading: isPreviewLoading, error: previewError, fetchPreview, clearPreview } = useMappingPreview();
 	const { isAdopting, error: adoptionError, adoptDevice } = useDeviceAdoption();
-	const { devicesOptions, areLoading: devicesOptionsLoading } = useDiscoveredDevicesOptions();
+	const { itemsOptions, areLoading: itemsOptionsLoading } = useDiscoveredItemsOptions();
 
 	const categoriesOptions = computed<{ value: DevicesModuleDeviceCategory; label: string }[]>(() => {
 		return Object.values(DevicesModuleDeviceCategory)
@@ -472,8 +472,8 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		previewError,
 		isAdopting,
 		adoptionError,
-		devicesOptions,
-		devicesOptionsLoading,
+		itemsOptions,
+		itemsOptionsLoading,
 		entityOverrides,
 		model,
 		stepOneFormEl,

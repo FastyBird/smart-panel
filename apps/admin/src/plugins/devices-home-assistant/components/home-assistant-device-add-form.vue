@@ -18,8 +18,8 @@
 			<device-selection-step
 				ref="deviceSelectionStepRef"
 				:model="model"
-				:devices-options="devicesOptions"
-				:devices-options-loading="devicesOptionsLoading"
+				:items-options="itemsOptions"
+				:items-options-loading="itemsOptionsLoading"
 				@device-change="onDeviceChange"
 			/>
 		</el-collapse-item>
@@ -271,8 +271,8 @@ const {
 	previewError,
 	isAdopting,
 	categoriesOptions,
-	devicesOptions,
-	devicesOptionsLoading,
+	itemsOptions,
+	itemsOptionsLoading,
 	entityOverrides,
 	model,
 	formChanged,

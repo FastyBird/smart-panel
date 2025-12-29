@@ -47,6 +47,12 @@
       },
       "entities": {
         "title": "Entities"
+      },
+      "domain": {
+        "title": "Domain"
+      },
+      "type": {
+        "title": "Type"
       }
     },
     "channelsProperties": {

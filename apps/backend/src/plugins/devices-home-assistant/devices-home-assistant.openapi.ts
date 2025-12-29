@@ -12,6 +12,12 @@ import {
 	HomeAssistantStateDto,
 } from './dto/home-assistant-state.dto';
 import {
+	AdoptHelperChannelDefinitionDto,
+	AdoptHelperPropertyDefinitionDto,
+	AdoptHelperRequestDto,
+	HelperMappingPreviewRequestDto,
+} from './dto/helper-mapping-preview.dto';
+import {
 	AdoptChannelDefinitionDto,
 	AdoptDeviceRequestDto,
 	AdoptPropertyDefinitionDto,
@@ -33,14 +39,26 @@ import {
 	HomeAssistantDeviceRegistryResponseModel,
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,
+	HomeAssistantDiscoveredHelperResponseModel,
+	HomeAssistantDiscoveredHelpersResponseModel,
 	HomeAssistantEntityRegistryResponseModel,
 	HomeAssistantStateResponseModel,
 	HomeAssistantStatesResponseModel,
 } from './models/home-assistant-response.model';
 import {
+	HelperChannelMappingPreviewModel,
+	HelperInfoModel,
+	HelperMappingPreviewModel,
+	HelperMappingPreviewResponseModel,
+	HelperMappingWarningModel,
+	HelperPropertyMappingPreviewModel,
+	SuggestedHelperDeviceModel,
+} from './models/helper-mapping-preview.model';
+import {
 	HomeAssistantDeviceRegistryModel,
 	HomeAssistantDeviceRegistryResultModel,
 	HomeAssistantDiscoveredDeviceModel,
+	HomeAssistantDiscoveredHelperModel,
 	HomeAssistantEntityRegistryModel,
 	HomeAssistantEntityRegistryResultModel,
 	HomeAssistantStateModel,
@@ -76,9 +94,16 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	AdoptDeviceRequestDto,
 	AdoptChannelDefinitionDto,
 	AdoptPropertyDefinitionDto,
+	// Helper mapping preview DTOs
+	HelperMappingPreviewRequestDto,
+	AdoptHelperRequestDto,
+	AdoptHelperChannelDefinitionDto,
+	AdoptHelperPropertyDefinitionDto,
 	// Response models
 	HomeAssistantDiscoveredDeviceResponseModel,
 	HomeAssistantDiscoveredDevicesResponseModel,
+	HomeAssistantDiscoveredHelperResponseModel,
+	HomeAssistantDiscoveredHelpersResponseModel,
 	HomeAssistantStateResponseModel,
 	HomeAssistantStatesResponseModel,
 	HomeAssistantDeviceRegistryResponseModel,
@@ -86,6 +111,7 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	// Data models
 	HomeAssistantStateModel,
 	HomeAssistantDiscoveredDeviceModel,
+	HomeAssistantDiscoveredHelperModel,
 	HomeAssistantEntityRegistryResultModel,
 	HomeAssistantEntityRegistryModel,
 	HomeAssistantDeviceRegistryResultModel,
@@ -100,6 +126,14 @@ export const DEVICES_HOME_ASSISTANT_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	SuggestedDeviceModel,
 	MappingWarningModel,
 	HaDeviceInfoModel,
+	// Helper mapping preview models
+	HelperMappingPreviewModel,
+	HelperMappingPreviewResponseModel,
+	HelperChannelMappingPreviewModel,
+	HelperPropertyMappingPreviewModel,
+	HelperInfoModel,
+	SuggestedHelperDeviceModel,
+	HelperMappingWarningModel,
 	// Entities
 	HomeAssistantDeviceEntity,
 	HomeAssistantChannelEntity,
