@@ -13,7 +13,8 @@ import {
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { ALL_SPACE_CATEGORIES, SpaceCategory, SpaceType } from '../spaces.constants';
+import { IsValidSpaceCategory } from '../validators/space-category-constraint.validator';
 
 @ApiSchema({ name: 'SpacesModuleUpdateSpace' })
 export class UpdateSpaceDto {
@@ -50,15 +51,16 @@ export class UpdateSpaceDto {
 	type?: SpaceType;
 
 	@ApiPropertyOptional({
-		description: 'Space category (room type template)',
-		enum: SpaceCategory,
+		description:
+			'Space category. For type=room: room categories (living_room, bedroom, etc.). For type=zone: zone categories (floor_ground, outdoor_garden, etc.)',
+		enum: ALL_SPACE_CATEGORIES,
 		nullable: true,
-		example: SpaceCategory.LIVING_ROOM,
+		example: 'living_room',
 	})
 	@Expose()
 	@IsOptional()
-	@IsEnum(SpaceCategory, { message: '[{"field":"category","reason":"Category must be a valid space category."}]' })
 	@ValidateIf((_, value) => value !== null)
+	@IsValidSpaceCategory()
 	category?: SpaceCategory | null;
 
 	@ApiPropertyOptional({
@@ -72,6 +74,25 @@ export class UpdateSpaceDto {
 	@IsString({ message: '[{"field":"icon","reason":"Icon must be a string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'parent_id',
+		description: 'Parent zone ID (only for rooms). Rooms can optionally belong to a zone.',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'parent_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"parent_id","reason":"Parent ID must be a valid UUID."}]' })
+	@ValidateIf((_, value) => value !== null)
+	@Transform(
+		({ obj }: { obj: { parent_id?: string | null; parentId?: string | null } }) =>
+			obj.parent_id !== undefined ? obj.parent_id : obj.parentId,
+		{ toClassOnly: true },
+	)
+	parentId?: string | null;
 
 	@ApiPropertyOptional({
 		name: 'display_order',

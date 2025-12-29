@@ -17,6 +17,7 @@ import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceValidationService } from '../services/device-validation.service';
+import { DeviceZonesService } from '../services/device-zones.service';
 import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
@@ -35,8 +36,9 @@ describe('DevicesController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
+		deviceZones: [],
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,
@@ -83,6 +85,14 @@ describe('DevicesController', () => {
 							devices: [],
 						}),
 						validateDeviceById: jest.fn().mockResolvedValue(null),
+					},
+				},
+				{
+					provide: DeviceZonesService,
+					useValue: {
+						addDeviceToZone: jest.fn().mockResolvedValue({}),
+						removeDeviceFromZone: jest.fn().mockResolvedValue(undefined),
+						getDeviceZones: jest.fn().mockResolvedValue([]),
 					},
 				},
 			],

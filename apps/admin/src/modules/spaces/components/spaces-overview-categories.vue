@@ -75,7 +75,7 @@ interface ICategoryCount {
 }
 
 const categoryCounts = computed<ICategoryCount[]>((): ICategoryCount[] => {
-	const counts: Partial<Record<SpaceCategory, number>> = {};
+	const counts: Record<string, number> = {};
 
 	props.spaces
 		.filter((space) => !space.draft && space.category)
@@ -88,8 +88,8 @@ const categoryCounts = computed<ICategoryCount[]>((): ICategoryCount[] => {
 	return Object.entries(counts)
 		.map(([category, count]) => ({
 			category: category as SpaceCategory,
-			icon: SPACE_CATEGORY_TEMPLATES[category as SpaceCategory]?.icon || 'mdi:home',
-			count: count as number,
+			icon: SPACE_CATEGORY_TEMPLATES[category]?.icon || 'mdi:home',
+			count,
 		}))
 		.sort((a, b) => b.count - a.count);
 });

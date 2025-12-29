@@ -50,7 +50,7 @@ describe('SpacesController', () => {
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
 		name: 'Living Room Light',
-		spaceId: mockSpace.id,
+		roomId: mockSpace.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	} as DeviceEntity;
@@ -119,7 +119,7 @@ describe('SpacesController', () => {
 					provide: SpaceContextSnapshotService,
 					useValue: {
 						captureSnapshot: jest.fn().mockResolvedValue({
-							spaceId: uuid(),
+							roomId: uuid(),
 							spaceName: 'Test Space',
 							lighting: {
 								summary: { totalLights: 0, lightsOn: 0, averageBrightness: null },

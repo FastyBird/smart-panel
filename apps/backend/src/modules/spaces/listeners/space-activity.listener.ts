@@ -49,18 +49,18 @@ export class SpaceActivityListener implements OnModuleInit {
 			.createQueryBuilder('channel')
 			.innerJoinAndSelect('channel.device', 'device')
 			.where('channel.id = :channelId', { channelId })
-			.andWhere('device.spaceId IS NOT NULL')
+			.andWhere('device.roomId IS NOT NULL')
 			.getOne();
 
 		if (!channel) {
-			this.logger.debug('Channel not found or device has no space, skipping activity update');
+			this.logger.debug('Channel not found or device has no room, skipping activity update');
 			return;
 		}
 
 		const device = channel.device as DeviceEntity;
 
-		if (!device.spaceId) {
-			this.logger.debug('Device has no space, skipping activity update');
+		if (!device.roomId) {
+			this.logger.debug('Device has no room, skipping activity update');
 			return;
 		}
 
@@ -71,9 +71,9 @@ export class SpaceActivityListener implements OnModuleInit {
 			.createQueryBuilder()
 			.update()
 			.set({ lastActivityAt: now })
-			.where('id = :spaceId', { spaceId: device.spaceId })
+			.where('id = :roomId', { roomId: device.roomId })
 			.execute();
 
-		this.logger.debug(`Updated lastActivityAt for space=${device.spaceId} to ${now.toISOString()}`);
+		this.logger.debug(`Updated lastActivityAt for room=${device.roomId} to ${now.toISOString()}`);
 	}
 }

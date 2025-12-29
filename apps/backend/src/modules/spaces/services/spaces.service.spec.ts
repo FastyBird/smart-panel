@@ -9,7 +9,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
-import { SpaceType } from '../spaces.constants';
+import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
 import { SpacesService } from './spaces.service';
@@ -32,6 +32,9 @@ describe('SpacesService', () => {
 		primaryTemperatureSensorId: null,
 		suggestionsEnabled: true,
 		lastActivityAt: null,
+		parentId: null,
+		parent: null,
+		children: [],
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -53,6 +56,7 @@ describe('SpacesService', () => {
 						find: jest.fn().mockResolvedValue([mockSpace]),
 						findOne: jest.fn().mockResolvedValue(mockSpace),
 						save: jest.fn().mockResolvedValue(mockSpace),
+						create: jest.fn().mockImplementation((data) => data as SpaceEntity),
 						delete: jest.fn().mockResolvedValue({ affected: 1 }),
 						createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
 					},
@@ -182,7 +186,7 @@ describe('SpacesService', () => {
 	});
 
 	describe('bulkAssign', () => {
-		const spaceId = mockSpace.id;
+		const roomId = mockSpace.id;
 
 		beforeEach(() => {
 			spaceRepository.findOne.mockResolvedValue(mockSpace);
@@ -209,19 +213,19 @@ describe('SpacesService', () => {
 			deviceRepository.createQueryBuilder.mockReturnValue(deviceQueryBuilder as any);
 			displayRepository.createQueryBuilder.mockReturnValue(displayQueryBuilder as any);
 
-			const result = await service.bulkAssign(spaceId, {
+			const result = await service.bulkAssign(roomId, {
 				deviceIds,
 				displayIds,
 			});
 
 			expect(result.devicesAssigned).toBe(2);
 			expect(result.displaysAssigned).toBe(1);
-			expect(deviceQueryBuilder.set).toHaveBeenCalledWith({ spaceId });
-			expect(displayQueryBuilder.set).toHaveBeenCalledWith({ spaceId });
+			expect(deviceQueryBuilder.set).toHaveBeenCalledWith({ roomId });
+			expect(displayQueryBuilder.set).toHaveBeenCalledWith({ spaceId: roomId });
 		});
 
 		it('should handle empty device and display arrays', async () => {
-			const result = await service.bulkAssign(spaceId, {
+			const result = await service.bulkAssign(roomId, {
 				deviceIds: [],
 				displayIds: [],
 			});
@@ -242,7 +246,7 @@ describe('SpacesService', () => {
 
 			deviceRepository.createQueryBuilder.mockReturnValue(deviceQueryBuilder as any);
 
-			const result = await service.bulkAssign(spaceId, {
+			const result = await service.bulkAssign(roomId, {
 				deviceIds,
 				displayIds: [],
 			});
@@ -264,7 +268,7 @@ describe('SpacesService', () => {
 
 		it('should throw SpacesValidationException for invalid device IDs', async () => {
 			await expect(
-				service.bulkAssign(spaceId, {
+				service.bulkAssign(roomId, {
 					deviceIds: ['not-a-uuid'],
 					displayIds: [],
 				}),
@@ -299,6 +303,299 @@ describe('SpacesService', () => {
 			spaceRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.getOneOrThrow('non-existent')).rejects.toThrow(SpacesNotFoundException);
+		});
+	});
+
+	describe('create - type/category validation', () => {
+		it('should accept ROOM with room category', async () => {
+			const createDto = {
+				name: 'Living Room',
+				type: SpaceType.ROOM,
+				category: SpaceRoomCategory.LIVING_ROOM,
+			};
+
+			const savedSpace = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Living Room',
+				type: SpaceType.ROOM,
+				category: SpaceRoomCategory.LIVING_ROOM,
+			};
+
+			spaceRepository.save.mockResolvedValue(savedSpace);
+			spaceRepository.findOne.mockResolvedValue(savedSpace);
+
+			const result = await service.create(createDto);
+
+			expect(result.type).toBe(SpaceType.ROOM);
+			expect(result.category).toBe(SpaceRoomCategory.LIVING_ROOM);
+		});
+
+		it('should accept ZONE with zone category', async () => {
+			const createDto = {
+				name: 'Ground Floor',
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			};
+
+			const savedSpace = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Ground Floor',
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			};
+
+			spaceRepository.save.mockResolvedValue(savedSpace);
+			spaceRepository.findOne.mockResolvedValue(savedSpace);
+
+			const result = await service.create(createDto);
+
+			expect(result.type).toBe(SpaceType.ZONE);
+			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+		});
+
+		it('should accept ZONE with legacy outdoor value and normalize to outdoor_garden', async () => {
+			const createDto = {
+				name: 'Garden',
+				type: SpaceType.ZONE,
+				category: 'outdoor' as any, // Legacy value
+			};
+
+			const savedSpace = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Garden',
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.OUTDOOR_GARDEN, // Normalized
+			};
+
+			spaceRepository.save.mockResolvedValue(savedSpace);
+			spaceRepository.findOne.mockResolvedValue(savedSpace);
+
+			// The service should normalize the legacy value
+			const result = await service.create(createDto);
+
+			expect(result.type).toBe(SpaceType.ZONE);
+			expect(result.category).toBe(SpaceZoneCategory.OUTDOOR_GARDEN);
+		});
+
+		it('should accept null category for both types', async () => {
+			const createDto = {
+				name: 'Custom Space',
+				type: SpaceType.ROOM,
+				category: null,
+			};
+
+			const savedSpace = {
+				...mockSpace,
+				id: uuid(),
+				name: 'Custom Space',
+				type: SpaceType.ROOM,
+				category: null,
+			};
+
+			spaceRepository.save.mockResolvedValue(savedSpace);
+			spaceRepository.findOne.mockResolvedValue(savedSpace);
+
+			const result = await service.create(createDto);
+
+			expect(result.category).toBeNull();
+		});
+
+		it('should reject ROOM with zone category', async () => {
+			const createDto = {
+				name: 'Invalid Room',
+				type: SpaceType.ROOM,
+				category: SpaceZoneCategory.FLOOR_GROUND, // Zone category for room type
+			};
+
+			await expect(service.create(createDto)).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should reject ZONE with room category', async () => {
+			const createDto = {
+				name: 'Invalid Zone',
+				type: SpaceType.ZONE,
+				category: SpaceRoomCategory.LIVING_ROOM, // Room category for zone type
+			};
+
+			await expect(service.create(createDto)).rejects.toThrow(SpacesValidationException);
+		});
+	});
+
+	describe('update - type/category validation', () => {
+		const existingRoomSpace: SpaceEntity = {
+			...mockSpace,
+			id: uuid(),
+			name: 'Living Room',
+			type: SpaceType.ROOM,
+			category: SpaceRoomCategory.LIVING_ROOM,
+		};
+
+		const existingZoneSpace: SpaceEntity = {
+			...mockSpace,
+			id: uuid(),
+			name: 'Ground Floor',
+			type: SpaceType.ZONE,
+			category: SpaceZoneCategory.FLOOR_GROUND,
+		};
+
+		it('should accept updating ROOM category to another room category', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+
+			const updateDto = {
+				category: SpaceRoomCategory.BEDROOM,
+			};
+
+			const updatedSpace = {
+				...existingRoomSpace,
+				category: SpaceRoomCategory.BEDROOM,
+			};
+
+			spaceRepository.save.mockResolvedValue(updatedSpace);
+
+			const result = await service.update(existingRoomSpace.id, updateDto);
+
+			expect(result.type).toBe(SpaceType.ROOM);
+			expect(result.category).toBe(SpaceRoomCategory.BEDROOM);
+		});
+
+		it('should accept updating ZONE category to another zone category', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
+
+			const updateDto = {
+				category: SpaceZoneCategory.FLOOR_FIRST,
+			};
+
+			const updatedSpace = {
+				...existingZoneSpace,
+				category: SpaceZoneCategory.FLOOR_FIRST,
+			};
+
+			spaceRepository.save.mockResolvedValue(updatedSpace);
+
+			const result = await service.update(existingZoneSpace.id, updateDto);
+
+			expect(result.type).toBe(SpaceType.ZONE);
+			expect(result.category).toBe(SpaceZoneCategory.FLOOR_FIRST);
+		});
+
+		it('should reject updating ROOM category to a zone category', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+
+			const updateDto = {
+				category: SpaceZoneCategory.FLOOR_GROUND, // Zone category for existing room
+			};
+
+			await expect(service.update(existingRoomSpace.id, updateDto)).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should reject updating ZONE category to a room category', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
+
+			const updateDto = {
+				category: SpaceRoomCategory.LIVING_ROOM, // Room category for existing zone
+			};
+
+			await expect(service.update(existingZoneSpace.id, updateDto)).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should reject changing type when existing category becomes incompatible', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+
+			// Trying to change room to zone while keeping living_room category
+			const updateDto = {
+				type: SpaceType.ZONE, // Change type but keep incompatible category
+			};
+
+			await expect(service.update(existingRoomSpace.id, updateDto)).rejects.toThrow(SpacesValidationException);
+		});
+
+		it('should accept changing type when category is null', async () => {
+			const spaceWithNullCategory: SpaceEntity = {
+				...existingRoomSpace,
+				category: null,
+			};
+
+			spaceRepository.findOne.mockResolvedValue(spaceWithNullCategory);
+
+			const updateDto = {
+				type: SpaceType.ZONE,
+			};
+
+			const updatedSpace = {
+				...spaceWithNullCategory,
+				type: SpaceType.ZONE,
+			};
+
+			spaceRepository.save.mockResolvedValue(updatedSpace);
+
+			const result = await service.update(spaceWithNullCategory.id, updateDto);
+
+			expect(result.type).toBe(SpaceType.ZONE);
+			expect(result.category).toBeNull();
+		});
+
+		it('should accept changing type and category together when compatible', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+
+			// Change from room/living_room to zone/floor_ground
+			const updateDto = {
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			};
+
+			const updatedSpace = {
+				...existingRoomSpace,
+				type: SpaceType.ZONE,
+				category: SpaceZoneCategory.FLOOR_GROUND,
+			};
+
+			spaceRepository.save.mockResolvedValue(updatedSpace);
+
+			const result = await service.update(existingRoomSpace.id, updateDto);
+
+			expect(result.type).toBe(SpaceType.ZONE);
+			expect(result.category).toBe(SpaceZoneCategory.FLOOR_GROUND);
+		});
+
+		it('should normalize legacy outdoor value on update', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
+
+			const updateDto = {
+				category: 'outdoor' as any, // Legacy value
+			};
+
+			const updatedSpace = {
+				...existingZoneSpace,
+				category: SpaceZoneCategory.OUTDOOR_GARDEN,
+			};
+
+			spaceRepository.save.mockResolvedValue(updatedSpace);
+
+			const result = await service.update(existingZoneSpace.id, updateDto);
+
+			expect(result.category).toBe(SpaceZoneCategory.OUTDOOR_GARDEN);
+		});
+
+		it('should accept setting category to null', async () => {
+			spaceRepository.findOne.mockResolvedValue(existingRoomSpace);
+
+			const updateDto = {
+				category: null,
+			};
+
+			const updatedSpace = {
+				...existingRoomSpace,
+				category: null,
+			};
+
+			spaceRepository.save.mockResolvedValue(updatedSpace);
+
+			const result = await service.update(existingRoomSpace.id, updateDto);
+
+			expect(result.category).toBeNull();
 		});
 	});
 });

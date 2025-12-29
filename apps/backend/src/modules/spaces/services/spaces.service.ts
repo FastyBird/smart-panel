@@ -15,7 +15,14 @@ import { BulkAssignDto } from '../dto/bulk-assign.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
-import { EventType, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	EventType,
+	isFloorZoneCategory,
+	isValidCategoryForType,
+	normalizeCategoryValue,
+	SPACES_MODULE_NAME,
+	SpaceType,
+} from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
 @Injectable()
@@ -78,7 +85,19 @@ export class SpacesService {
 
 		const dtoInstance = await this.validateDto(CreateSpaceDto, createDto);
 
-		const space = this.repository.create(toInstance(SpaceEntity, dtoInstance));
+		// Normalize legacy category values (e.g., 'outdoor' -> 'outdoor_garden' for zones)
+		const type = dtoInstance.type ?? SpaceType.ROOM;
+		const normalizedCategory = normalizeCategoryValue(dtoInstance.category ?? null, type);
+
+		// Validate parent assignment
+		await this.validateParentAssignment(type, dtoInstance.parentId ?? null);
+
+		const space = this.repository.create(
+			toInstance(SpaceEntity, {
+				...dtoInstance,
+				category: normalizedCategory,
+			}),
+		);
 
 		await this.repository.save(space);
 
@@ -99,7 +118,40 @@ export class SpacesService {
 
 		const dtoInstance = await this.validateDto(UpdateSpaceDto, updateDto);
 
-		Object.assign(space, omitBy(toInstance(SpaceEntity, dtoInstance), isUndefined));
+		// Determine the effective type (new type if provided, otherwise existing)
+		const effectiveType = dtoInstance.type ?? space.type;
+
+		// Determine the effective category (new category if provided, otherwise existing)
+		const effectiveCategory = dtoInstance.category !== undefined ? dtoInstance.category : space.category;
+
+		// Validate that the category is compatible with the type
+		// This handles the case where type is changed but category is not,
+		// or category is changed but type is not provided
+		if (effectiveCategory !== null && !isValidCategoryForType(effectiveCategory, effectiveType)) {
+			this.logger.error(
+				`Category '${effectiveCategory}' is not valid for type '${effectiveType}'. ` +
+					`Update rejected for space id=${id}`,
+			);
+			throw new SpacesValidationException(
+				`Category '${effectiveCategory}' is not valid for space type '${effectiveType}'.`,
+			);
+		}
+
+		// Validate parent assignment if provided
+		const effectiveParentId = dtoInstance.parentId !== undefined ? dtoInstance.parentId : space.parentId;
+		await this.validateParentAssignment(effectiveType, effectiveParentId ?? null, id);
+
+		// Normalize legacy category values
+		const normalizedCategory =
+			dtoInstance.category !== undefined ? normalizeCategoryValue(dtoInstance.category, effectiveType) : undefined;
+
+		// Build the update object
+		const updateData = {
+			...dtoInstance,
+			...(normalizedCategory !== undefined ? { category: normalizedCategory } : {}),
+		};
+
+		Object.assign(space, omitBy(toInstance(SpaceEntity, updateData), isUndefined));
 
 		await this.repository.save(space);
 
@@ -116,12 +168,20 @@ export class SpacesService {
 		const space = await this.getOneOrThrow(id);
 
 		await this.dataSource.transaction(async (manager) => {
-			// Set spaceId to null for all devices in this space
+			// Set parentId to null for all child spaces (rooms that belong to this zone)
+			await manager
+				.createQueryBuilder()
+				.update(SpaceEntity)
+				.set({ parentId: null })
+				.where('parentId = :id', { id })
+				.execute();
+
+			// Set roomId to null for all devices in this space (if it's a room)
 			await manager
 				.createQueryBuilder()
 				.update(DeviceEntity)
-				.set({ spaceId: null })
-				.where('spaceId = :id', { id })
+				.set({ roomId: null })
+				.where('roomId = :id', { id })
 				.execute();
 
 			// Set spaceId to null for all displays in this space
@@ -144,10 +204,16 @@ export class SpacesService {
 		this.logger.debug(`Fetching devices for space with id=${spaceId}`);
 
 		// Verify space exists
-		await this.getOneOrThrow(spaceId);
+		const space = await this.getOneOrThrow(spaceId);
+
+		// Only rooms have directly assigned devices
+		if (space.type !== SpaceType.ROOM) {
+			this.logger.debug(`Space ${spaceId} is a zone, returning empty device list`);
+			return [];
+		}
 
 		const devices = await this.deviceRepository.find({
-			where: { spaceId },
+			where: { roomId: spaceId },
 			relations: ['channels', 'channels.properties'],
 			order: { name: 'ASC' },
 		});
@@ -180,19 +246,23 @@ export class SpacesService {
 		this.logger.debug(`Bulk assigning to space with id=${spaceId}`);
 
 		// Verify space exists
-		await this.getOneOrThrow(spaceId);
+		const space = await this.getOneOrThrow(spaceId);
 
 		const dtoInstance = await this.validateDto(BulkAssignDto, bulkAssignDto);
 
 		let devicesAssigned = 0;
 		let displaysAssigned = 0;
 
-		// Assign devices
+		// Assign devices - only to rooms
 		if (dtoInstance.deviceIds && dtoInstance.deviceIds.length > 0) {
+			if (space.type !== SpaceType.ROOM) {
+				throw new SpacesValidationException('Devices can only be assigned to rooms, not zones');
+			}
+
 			const result = await this.deviceRepository
 				.createQueryBuilder()
 				.update()
-				.set({ spaceId })
+				.set({ roomId: spaceId })
 				.where('id IN (:...ids)', { ids: dtoInstance.deviceIds })
 				.execute();
 
@@ -219,7 +289,7 @@ export class SpacesService {
 	}
 
 	async unassignDevices(deviceIds: string[]): Promise<number> {
-		this.logger.debug(`Unassigning ${deviceIds.length} devices from their spaces`);
+		this.logger.debug(`Unassigning ${deviceIds.length} devices from their rooms`);
 
 		if (deviceIds.length === 0) {
 			return 0;
@@ -228,7 +298,7 @@ export class SpacesService {
 		const result = await this.deviceRepository
 			.createQueryBuilder()
 			.update()
-			.set({ spaceId: null })
+			.set({ roomId: null })
 			.where('id IN (:...ids)', { ids: deviceIds })
 			.execute();
 
@@ -357,6 +427,104 @@ export class SpacesService {
 		this.logger.debug(`Proposed ${proposals.length} spaces from device names`);
 
 		return proposals;
+	}
+
+	/**
+	 * Get child rooms for a zone
+	 */
+	async getChildRooms(zoneId: string): Promise<SpaceEntity[]> {
+		this.logger.debug(`Fetching child rooms for zone id=${zoneId}`);
+
+		const zone = await this.getOneOrThrow(zoneId);
+
+		if (zone.type !== SpaceType.ZONE) {
+			this.logger.warn(`Space ${zoneId} is not a zone, returning empty list`);
+			return [];
+		}
+
+		const children = await this.repository.find({
+			where: { parentId: zoneId, type: SpaceType.ROOM },
+			order: { displayOrder: 'ASC', name: 'ASC' },
+		});
+
+		this.logger.debug(`Found ${children.length} child rooms for zone`);
+
+		return children;
+	}
+
+	/**
+	 * Get parent zone for a room
+	 */
+	async getParentZone(roomId: string): Promise<SpaceEntity | null> {
+		this.logger.debug(`Fetching parent zone for room id=${roomId}`);
+
+		const room = await this.getOneOrThrow(roomId);
+
+		if (!room.parentId) {
+			this.logger.debug(`Room ${roomId} has no parent zone`);
+			return null;
+		}
+
+		const parent = await this.findOne(room.parentId);
+
+		return parent;
+	}
+
+	/**
+	 * Get all zones (for parent selection dropdown)
+	 */
+	async findAllZones(): Promise<SpaceEntity[]> {
+		this.logger.debug('Fetching all zones');
+
+		const zones = await this.repository.find({
+			where: { type: SpaceType.ZONE },
+			order: { displayOrder: 'ASC', name: 'ASC' },
+		});
+
+		this.logger.debug(`Found ${zones.length} zones`);
+
+		return zones;
+	}
+
+	/**
+	 * Validate parent assignment for a space
+	 * - Zones cannot have a parent
+	 * - Rooms can only have a zone as parent
+	 * - Cannot assign self as parent
+	 */
+	private async validateParentAssignment(
+		spaceType: SpaceType,
+		parentId: string | null,
+		currentSpaceId?: string,
+	): Promise<void> {
+		if (parentId === null) {
+			return;
+		}
+
+		// Zones cannot have a parent
+		if (spaceType === SpaceType.ZONE) {
+			this.logger.error('Zones cannot have a parent');
+			throw new SpacesValidationException('Zones cannot have a parent. Only rooms can belong to a zone.');
+		}
+
+		// Cannot assign self as parent
+		if (currentSpaceId && parentId === currentSpaceId) {
+			this.logger.error('Cannot assign space as its own parent');
+			throw new SpacesValidationException('A space cannot be its own parent.');
+		}
+
+		// Parent must exist and be a zone
+		const parent = await this.findOne(parentId);
+
+		if (!parent) {
+			this.logger.error(`Parent space with id=${parentId} not found`);
+			throw new SpacesNotFoundException('Parent space does not exist.');
+		}
+
+		if (parent.type !== SpaceType.ZONE) {
+			this.logger.error(`Parent space ${parentId} is not a zone`);
+			throw new SpacesValidationException('Parent must be a zone. Rooms can only belong to zones.');
+		}
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

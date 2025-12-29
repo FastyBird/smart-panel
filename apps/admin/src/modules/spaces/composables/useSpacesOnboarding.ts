@@ -1,7 +1,11 @@
 import { computed, reactive } from 'vue';
 
 import { injectBackendClient, useUuid } from '../../../common';
-import { SpacesModuleCreateSpaceCategory, SpacesModuleCreateSpaceType } from '../../../openapi';
+import {
+	SpacesModuleCreateSpaceCategory,
+	SpacesModuleCreateSpaceType,
+	SpacesModuleDataSpaceCategory,
+} from '../../../openapi';
 import { SpaceCategory, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import type { ISpace, ISpaceCreateData } from '../store';
@@ -67,7 +71,9 @@ const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreat
 	}
 };
 
-const apiCategoryToSpaceCategory = (apiCategory: SpacesModuleCreateSpaceCategory | null | undefined): SpaceCategory | null => {
+const apiCategoryToSpaceCategory = (
+	apiCategory: SpacesModuleCreateSpaceCategory | SpacesModuleDataSpaceCategory | null | undefined
+): SpaceCategory | null => {
 	if (!apiCategory) return null;
 	return apiCategory as unknown as SpaceCategory;
 };
@@ -155,6 +161,7 @@ export const useSpacesOnboarding = () => {
 				category: null,
 				icon: null,
 				displayOrder: 0,
+				parentId: null,
 				primaryThermostatId: null,
 				primaryTemperatureSensorId: null,
 				suggestionsEnabled: true,
@@ -191,6 +198,7 @@ export const useSpacesOnboarding = () => {
 				category: null,
 				icon: null,
 				displayOrder: 0,
+				parentId: null,
 				primaryThermostatId: null,
 				primaryTemperatureSensorId: null,
 				suggestionsEnabled: true,
@@ -265,6 +273,7 @@ export const useSpacesOnboarding = () => {
 					category: apiCategoryToSpaceCategory(response.data.data.category),
 					icon: response.data.data.icon ?? null,
 					displayOrder: response.data.data.display_order ?? 0,
+					parentId: response.data.data.parent_id ?? null,
 					primaryThermostatId: response.data.data.primary_thermostat_id ?? null,
 					primaryTemperatureSensorId: response.data.data.primary_temperature_sensor_id ?? null,
 					suggestionsEnabled: response.data.data.suggestions_enabled ?? true,
@@ -337,6 +346,7 @@ export const useSpacesOnboarding = () => {
 				category: apiCategoryToSpaceCategory(response.data.data.category),
 				icon: response.data.data.icon ?? null,
 				displayOrder: response.data.data.display_order ?? 0,
+				parentId: response.data.data.parent_id ?? null,
 				primaryThermostatId: response.data.data.primary_thermostat_id ?? null,
 				primaryTemperatureSensorId: response.data.data.primary_temperature_sensor_id ?? null,
 				suggestionsEnabled: response.data.data.suggestions_enabled ?? true,
@@ -490,7 +500,7 @@ export const useSpacesOnboarding = () => {
 				id: d.id,
 				name: d.name,
 				description: d.description ?? null,
-				spaceId: d.space_id ?? null,
+				spaceId: d.room_id ?? null,
 			}));
 		} catch (err) {
 			state.error = err instanceof Error ? err.message : 'Unknown error';
@@ -545,6 +555,7 @@ export const useSpacesOnboarding = () => {
 				category: apiCategoryToSpaceCategory(s.category),
 				icon: s.icon ?? null,
 				displayOrder: s.display_order ?? 0,
+				parentId: s.parent_id ?? null,
 				primaryThermostatId: s.primary_thermostat_id ?? null,
 				primaryTemperatureSensorId: s.primary_temperature_sensor_id ?? null,
 				suggestionsEnabled: s.suggestions_enabled ?? true,

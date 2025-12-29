@@ -28,6 +28,9 @@ describe('SpaceActivityListener', () => {
 		primaryTemperatureSensorId: null,
 		suggestionsEnabled: true,
 		lastActivityAt: null,
+		parentId: null,
+		parent: null,
+		children: [],
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -35,7 +38,7 @@ describe('SpaceActivityListener', () => {
 	const mockDevice: Partial<DeviceEntity> = {
 		id: uuid(),
 		name: 'Test Device',
-		spaceId: mockSpace.id,
+		roomId: mockSpace.id,
 	};
 
 	const mockChannel: Partial<ChannelEntity> = {

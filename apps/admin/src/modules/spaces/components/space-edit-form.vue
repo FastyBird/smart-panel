@@ -19,19 +19,44 @@
 				style="width: 100%"
 				@change="onCategoryChange"
 			>
-				<el-option
-					v-for="category in categoryOptions"
-					:key="category"
-					:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-					:value="category"
-				>
-					<span class="flex items-center gap-2">
-						<el-icon v-if="SPACE_CATEGORY_TEMPLATES[category]">
-							<icon :icon="SPACE_CATEGORY_TEMPLATES[category].icon" />
-						</el-icon>
-						{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-					</span>
-				</el-option>
+				<!-- Grouped categories for zones -->
+				<template v-if="categoryGroups">
+					<el-option-group
+						v-for="group in categoryGroups"
+						:key="group.key"
+						:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
+					>
+						<el-option
+							v-for="category in group.categories"
+							:key="category"
+							:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+							:value="category"
+						>
+							<span class="flex items-center gap-2">
+								<el-icon v-if="currentTemplates[category]">
+									<icon :icon="currentTemplates[category].icon" />
+								</el-icon>
+								{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+							</span>
+						</el-option>
+					</el-option-group>
+				</template>
+				<!-- Flat list for rooms -->
+				<template v-else>
+					<el-option
+						v-for="category in categoryOptions"
+						:key="category"
+						:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+						:value="category"
+					>
+						<span class="flex items-center gap-2">
+							<el-icon v-if="currentTemplates[category]">
+								<icon :icon="currentTemplates[category].icon" />
+							</el-icon>
+							{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+						</span>
+					</el-option>
+				</template>
 			</el-select>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('spacesModule.fields.spaces.category.hint') }}
@@ -62,6 +87,38 @@
 				v-model="formData.displayOrder"
 				:min="0"
 			/>
+		</el-form-item>
+
+		<!-- Parent Zone - only visible for rooms -->
+		<el-form-item
+			v-if="formData.type === SpaceType.ROOM"
+			:label="t('spacesModule.fields.spaces.parentZone.title')"
+			prop="parentId"
+		>
+			<el-select
+				v-model="formData.parentId"
+				:placeholder="t('spacesModule.fields.spaces.parentZone.placeholder')"
+				clearable
+				filterable
+				style="width: 100%"
+			>
+				<el-option
+					v-for="zone in availableZones"
+					:key="zone.id"
+					:label="zone.name"
+					:value="zone.id"
+				>
+					<span class="flex items-center gap-2">
+						<el-icon v-if="zone.icon">
+							<icon :icon="zone.icon" />
+						</el-icon>
+						{{ zone.name }}
+					</span>
+				</el-option>
+			</el-select>
+			<div class="text-xs text-gray-500 mt-1">
+				{{ t('spacesModule.fields.spaces.parentZone.hint') }}
+			</div>
 		</el-form-item>
 
 		<!-- Climate Device Overrides Section -->
@@ -161,13 +218,21 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElAlert, ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElOptionGroup, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { SPACE_CATEGORY_TEMPLATES, SpaceCategory, SpaceType, SPACES_MODULE_PREFIX } from '../spaces.constants';
+import {
+	getCategoriesForType,
+	getGroupedCategoriesForType,
+	getTemplatesForType,
+	isValidCategoryForType,
+	SpaceCategory,
+	SpaceType,
+	SPACES_MODULE_PREFIX,
+} from '../spaces.constants';
 import { spacesStoreKey, type ISpace, type ISpaceCreateData } from '../store';
 
 import SpaceLightingRoles from './space-lighting-roles.vue';
@@ -215,6 +280,7 @@ const initialValues = {
 	description: props.space?.description ?? '',
 	icon: props.space?.icon ?? '',
 	displayOrder: props.space?.displayOrder ?? 0,
+	parentId: props.space?.parentId ?? null as string | null,
 	primaryThermostatId: props.space?.primaryThermostatId ?? null,
 	primaryTemperatureSensorId: props.space?.primaryTemperatureSensorId ?? null,
 	suggestionsEnabled: props.space?.suggestionsEnabled ?? true,
@@ -228,13 +294,49 @@ const autoPopulatedValues = reactive({
 	description: null as string | null,
 });
 
-// List of available categories for the selector
-const categoryOptions = Object.values(SpaceCategory);
+// List of available categories for the selector - depends on selected type
+const categoryOptions = computed(() => getCategoriesForType(formData.type));
+
+// Get templates for the current type
+const currentTemplates = computed(() => getTemplatesForType(formData.type));
+
+// Get category groups for zone type (null for rooms - they use flat list)
+const categoryGroups = computed(() => getGroupedCategoriesForType(formData.type));
+
+// Get available zones for parent zone selector (only zones, excluding the current space if editing)
+const availableZones = computed(() =>
+	spacesStore.findAll()
+		.filter((s) => s.type === SpaceType.ZONE)
+		.filter((s) => !props.space || s.id !== props.space.id)
+);
+
+// Handle type change - clear category if it becomes incompatible
+watch(
+	() => formData.type,
+	(newType) => {
+		if (formData.category && !isValidCategoryForType(formData.category, newType)) {
+			formData.category = null;
+			// Also clear auto-populated values since they may not apply anymore
+			if (formData.icon === autoPopulatedValues.icon) {
+				formData.icon = '';
+				autoPopulatedValues.icon = null;
+			}
+			if (formData.description === autoPopulatedValues.description) {
+				formData.description = '';
+				autoPopulatedValues.description = null;
+			}
+		}
+		// Zones cannot have a parent - clear parentId when switching to zone type
+		if (newType === SpaceType.ZONE) {
+			formData.parentId = null;
+		}
+	}
+);
 
 // Handle category change - auto-populate icon and description from template
 const onCategoryChange = (category: SpaceCategory | null): void => {
-	if (category && SPACE_CATEGORY_TEMPLATES[category]) {
-		const template = SPACE_CATEGORY_TEMPLATES[category];
+	if (category && currentTemplates.value[category]) {
+		const template = currentTemplates.value[category];
 		// Only auto-populate if the field is empty or matches our tracked auto-populated value
 		if (!formData.icon || formData.icon === autoPopulatedValues.icon) {
 			formData.icon = template.icon;
@@ -286,6 +388,7 @@ const formChanged = computed<boolean>((): boolean => {
 		formData.description !== initialValues.description ||
 		formData.icon !== initialValues.icon ||
 		formData.displayOrder !== initialValues.displayOrder ||
+		formData.parentId !== initialValues.parentId ||
 		formData.primaryThermostatId !== initialValues.primaryThermostatId ||
 		formData.primaryTemperatureSensorId !== initialValues.primaryTemperatureSensorId ||
 		formData.suggestionsEnabled !== initialValues.suggestionsEnabled
@@ -310,6 +413,7 @@ watch(
 			formData.description = space.description ?? '';
 			formData.icon = space.icon ?? '';
 			formData.displayOrder = space.displayOrder;
+			formData.parentId = space.parentId ?? null;
 			formData.primaryThermostatId = space.primaryThermostatId ?? null;
 			formData.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
 			formData.suggestionsEnabled = space.suggestionsEnabled ?? true;
@@ -320,6 +424,7 @@ watch(
 			initialValues.description = space.description ?? '';
 			initialValues.icon = space.icon ?? '';
 			initialValues.displayOrder = space.displayOrder;
+			initialValues.parentId = space.parentId ?? null;
 			initialValues.primaryThermostatId = space.primaryThermostatId ?? null;
 			initialValues.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
 			initialValues.suggestionsEnabled = space.suggestionsEnabled ?? true;
@@ -383,6 +488,7 @@ const onSubmit = async (): Promise<void> => {
 			description: formData.description || null,
 			icon: formData.icon || null,
 			displayOrder: formData.displayOrder,
+			parentId: formData.parentId || null,
 			primaryThermostatId: formData.primaryThermostatId || null,
 			primaryTemperatureSensorId: formData.primaryTemperatureSensorId || null,
 			suggestionsEnabled: formData.suggestionsEnabled,

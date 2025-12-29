@@ -96,26 +96,41 @@
 			"category": {
 				"title": "Category",
 				"placeholder": "Select a category (optional)",
-				"hint": "Selecting a category will auto-fill the icon and description with suggested defaults",
+				"hint": "Selecting a category will auto-fill the icon and description with suggested defaults. Categories are filtered by the selected type.",
+				"groups": {
+					"floors": "Floors",
+					"outdoor": "Outdoor areas",
+					"other": "Other"
+				},
 				"options": {
-					"living_room": "Living Room",
+					"living_room": "Living room",
 					"bedroom": "Bedroom",
 					"bathroom": "Bathroom",
 					"kitchen": "Kitchen",
-					"dining_room": "Dining Room",
+					"dining_room": "Dining room",
 					"office": "Office",
 					"garage": "Garage",
 					"hallway": "Hallway",
 					"laundry": "Laundry",
 					"storage": "Storage",
-					"outdoor": "Outdoor",
-					"basement": "Basement",
-					"attic": "Attic",
 					"nursery": "Nursery",
-					"guest_room": "Guest Room",
+					"guest_room": "Guest room",
 					"gym": "Gym",
-					"media_room": "Media Room",
+					"media_room": "Media room",
 					"workshop": "Workshop",
+					"floor_ground": "Ground floor",
+					"floor_first": "First floor",
+					"floor_second": "Second floor",
+					"floor_basement": "Basement",
+					"floor_attic": "Attic",
+					"outdoor_front_yard": "Front yard",
+					"outdoor_backyard": "Backyard",
+					"outdoor_driveway": "Driveway",
+					"outdoor_garden": "Garden",
+					"outdoor_terrace": "Terrace",
+					"outdoor_walkway": "Walkway",
+					"security_perimeter": "Security perimeter",
+					"utility": "Utility",
 					"other": "Other"
 				}
 			},
@@ -126,6 +141,11 @@
 			"displayOrder": {
 				"title": "Display order",
 				"placeholder": "Order in lists"
+			},
+			"parentZone": {
+				"title": "Parent zone",
+				"placeholder": "Select a parent zone (optional)",
+				"hint": "Optionally assign this room to a zone (e.g., Ground Floor, Upstairs)"
 			},
 			"climateOverrides": {
 				"title": "Climate device overrides"

@@ -54,55 +54,55 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 	});
 
 	describe('Cooldown Functions', () => {
-		const spaceId = uuid();
+		const roomId = uuid();
 		const suggestionType = SuggestionType.LIGHTING_RELAX;
 
 		describe('isOnCooldown', () => {
 			it('should return false when no cooldown is set', () => {
-				expect(isOnCooldown(spaceId, suggestionType)).toBe(false);
+				expect(isOnCooldown(roomId, suggestionType)).toBe(false);
 			});
 
 			it('should return true when cooldown is active', () => {
 				const now = Date.now();
-				setCooldown(spaceId, suggestionType, 30000, now); // 30 second cooldown
+				setCooldown(roomId, suggestionType, 30000, now); // 30 second cooldown
 
-				expect(isOnCooldown(spaceId, suggestionType, now + 10000)).toBe(true);
+				expect(isOnCooldown(roomId, suggestionType, now + 10000)).toBe(true);
 			});
 
 			it('should return false when cooldown has expired', () => {
 				const now = Date.now();
-				setCooldown(spaceId, suggestionType, 30000, now); // 30 second cooldown
+				setCooldown(roomId, suggestionType, 30000, now); // 30 second cooldown
 
-				expect(isOnCooldown(spaceId, suggestionType, now + 60000)).toBe(false);
+				expect(isOnCooldown(roomId, suggestionType, now + 60000)).toBe(false);
 			});
 		});
 
 		describe('clearCooldown', () => {
 			it('should clear a specific cooldown', () => {
 				const now = Date.now();
-				setCooldown(spaceId, suggestionType, 30000, now);
+				setCooldown(roomId, suggestionType, 30000, now);
 
-				expect(isOnCooldown(spaceId, suggestionType, now)).toBe(true);
+				expect(isOnCooldown(roomId, suggestionType, now)).toBe(true);
 
-				clearCooldown(spaceId, suggestionType);
+				clearCooldown(roomId, suggestionType);
 
-				expect(isOnCooldown(spaceId, suggestionType, now)).toBe(false);
+				expect(isOnCooldown(roomId, suggestionType, now)).toBe(false);
 			});
 		});
 
 		describe('clearAllCooldowns', () => {
 			it('should clear all cooldowns', () => {
-				const spaceId1 = uuid();
-				const spaceId2 = uuid();
+				const roomId1 = uuid();
+				const roomId2 = uuid();
 				const now = Date.now();
 
-				setCooldown(spaceId1, SuggestionType.LIGHTING_RELAX, 30000, now);
-				setCooldown(spaceId2, SuggestionType.LIGHTING_NIGHT, 30000, now);
+				setCooldown(roomId1, SuggestionType.LIGHTING_RELAX, 30000, now);
+				setCooldown(roomId2, SuggestionType.LIGHTING_NIGHT, 30000, now);
 
 				clearAllCooldowns();
 
-				expect(isOnCooldown(spaceId1, SuggestionType.LIGHTING_RELAX, now)).toBe(false);
-				expect(isOnCooldown(spaceId2, SuggestionType.LIGHTING_NIGHT, now)).toBe(false);
+				expect(isOnCooldown(roomId1, SuggestionType.LIGHTING_RELAX, now)).toBe(false);
+				expect(isOnCooldown(roomId2, SuggestionType.LIGHTING_NIGHT, now)).toBe(false);
 			});
 		});
 	});
@@ -120,6 +120,9 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 			primaryTemperatureSensorId: null,
 			suggestionsEnabled: true,
 			lastActivityAt: null,
+			parentId: null,
+			parent: null,
+			children: [],
 			createdAt: new Date(),
 			updatedAt: null,
 		});

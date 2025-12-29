@@ -30,4 +30,5 @@ export const DeviceEditFormSchema = z.object({
 		.nullable()
 		.optional(),
 	enabled: z.boolean().optional(),
+	roomId: z.string().uuid().nullable().optional(),
 });

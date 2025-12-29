@@ -10,6 +10,7 @@ export interface ISpace {
 	category: SpaceCategory | null;
 	icon: string | null;
 	displayOrder: number;
+	parentId: string | null;
 	primaryThermostatId: string | null;
 	primaryTemperatureSensorId: string | null;
 	suggestionsEnabled: boolean;
@@ -26,6 +27,7 @@ export interface ISpaceEditData {
 	category?: SpaceCategory | null;
 	icon?: string | null;
 	displayOrder?: number;
+	parentId?: string | null;
 	primaryThermostatId?: string | null;
 	primaryTemperatureSensorId?: string | null;
 	suggestionsEnabled?: boolean;
@@ -38,6 +40,7 @@ export interface ISpaceCreateData {
 	category?: SpaceCategory | null;
 	icon?: string | null;
 	displayOrder?: number;
+	parentId?: string | null;
 	primaryThermostatId?: string | null;
 	primaryTemperatureSensorId?: string | null;
 	suggestionsEnabled?: boolean;

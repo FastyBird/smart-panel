@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../common/logger/extension-logger.service';
 import { ConfigModule } from '../config/config.module';
+import { SpaceEntity } from '../spaces/entities/space.entity';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
@@ -41,6 +42,7 @@ import {
 } from './devices.constants';
 import { DEVICES_SWAGGER_EXTRA_MODELS } from './devices.openapi';
 import { UpdateDevicesConfigDto } from './dto/update-config.dto';
+import { DeviceZoneEntity } from './entities/device-zone.entity';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -58,6 +60,7 @@ import { ChannelsService } from './services/channels.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
 import { DeviceValidationService } from './services/device-validation.service';
+import { DeviceZonesService } from './services/device-zones.service';
 import { DevicesSeederService } from './services/devices-seeder.service';
 import { DevicesTypeMapperService } from './services/devices-type-mapper.service';
 import { DevicesControlsService } from './services/devices.controls.service';
@@ -88,9 +91,11 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		TypeOrmModule.forFeature([
 			DeviceEntity,
 			DeviceControlEntity,
+			DeviceZoneEntity,
 			ChannelEntity,
 			ChannelControlEntity,
 			ChannelPropertyEntity,
+			SpaceEntity,
 		]),
 		forwardRef(() => ConfigModule),
 		forwardRef(() => ExtensionsModule),
@@ -107,6 +112,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelsPropertiesTypeMapperService,
 		DevicesService,
 		DevicesControlsService,
+		DeviceZonesService,
 		ChannelsService,
 		ChannelsControlsService,
 		ChannelsPropertiesService,
@@ -143,6 +149,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 	exports: [
 		DevicesService,
 		DevicesControlsService,
+		DeviceZonesService,
 		ChannelsService,
 		ChannelsControlsService,
 		ChannelsPropertiesService,

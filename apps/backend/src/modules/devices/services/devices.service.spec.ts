@@ -17,6 +17,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { ConnectionState, DeviceCategory, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
@@ -25,6 +26,7 @@ import { DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsService } from './channels.service';
 import { DeviceConnectionStateService } from './device-connection-state.service';
+import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
 import { DevicesService } from './devices.service';
@@ -71,8 +73,9 @@ describe('DevicesService', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
+		deviceZones: [],
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,
@@ -112,6 +115,14 @@ describe('DevicesService', () => {
 			providers: [
 				DevicesService,
 				{ provide: getRepositoryToken(DeviceEntity), useFactory: mockRepository },
+				{ provide: getRepositoryToken(SpaceEntity), useFactory: mockRepository },
+				{
+					provide: DeviceZonesService,
+					useValue: {
+						setDeviceZones: jest.fn().mockResolvedValue([]),
+						getDeviceZones: jest.fn().mockResolvedValue([]),
+					},
+				},
 				{
 					provide: DevicesTypeMapperService,
 					useValue: {
@@ -260,8 +271,9 @@ describe('DevicesService', () => {
 				name: mockCrateDevice.name,
 				description: mockCrateDevice.description,
 				enabled: mockCrateDevice.enabled,
-				spaceId: null,
-				space: null,
+				roomId: null,
+				room: null,
+		deviceZones: [],
 				status: mockCrateDevice.status,
 				createdAt: new Date(),
 				updatedAt: null,
@@ -328,8 +340,9 @@ describe('DevicesService', () => {
 				name: updateDto.name,
 				description: mockDevice.description,
 				enabled: mockDevice.enabled,
-				spaceId: null,
-				space: null,
+				roomId: null,
+				room: null,
+		deviceZones: [],
 				status: mockDevice.status,
 				controls: mockDevice.controls,
 				channels: mockDevice.channels,
@@ -345,8 +358,9 @@ describe('DevicesService', () => {
 				name: mockUpdateDevice.name,
 				description: mockUpdateDevice.description,
 				enabled: mockUpdateDevice.enabled,
-				spaceId: null,
-				space: null,
+				roomId: null,
+				room: null,
+		deviceZones: [],
 				status: mockUpdateDevice.status,
 				createdAt: mockUpdateDevice.createdAt,
 				updatedAt: new Date(),
