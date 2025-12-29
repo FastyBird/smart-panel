@@ -2,7 +2,6 @@ import { ref, type Ref } from 'vue';
 
 import { getErrorReason, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
@@ -57,7 +56,6 @@ export const useMappingPreview = (): IUseMappingPreview => {
 				// Fetch helper mapping preview
 				const helperRequestBody = overrides
 					? {
-							channel_category: overrides.deviceCategory ? DevicesModuleChannelCategory[overrides.deviceCategory] : undefined,
 							device_category: overrides.deviceCategory,
 						}
 					: undefined;

@@ -39,7 +39,7 @@ export const useDeviceAdoption = (): IUseDeviceAdoption => {
 		let storedDeviceId: string | null = null;
 
 		try {
-			let responseData: { data?: unknown } | undefined;
+			let responseData: { data?: { type: string } & Record<string, unknown> } | undefined;
 			let apiError: unknown;
 			let response: { status: number };
 

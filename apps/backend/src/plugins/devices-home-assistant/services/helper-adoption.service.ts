@@ -1,5 +1,5 @@
-import { validate } from 'class-validator';
 import { instanceToPlain } from 'class-transformer';
+import { validate } from 'class-validator';
 
 import { Injectable } from '@nestjs/common';
 
@@ -326,20 +326,16 @@ export class HelperAdoptionService {
 							}),
 						);
 
-						this.logger.debug(
-							`[HELPER ADOPTION] Updated property ${property.category} = ${String(newValue)}`,
-							{ resource: deviceId },
-						);
+						this.logger.debug(`[HELPER ADOPTION] Updated property ${property.category} = ${String(newValue)}`, {
+							resource: deviceId,
+						});
 					} catch (updateError) {
 						const updateErr = updateError as Error;
 
-						this.logger.warn(
-							`[HELPER ADOPTION] Failed to update property ${property.category}`,
-							{
-								resource: deviceId,
-								message: updateErr.message,
-							},
-						);
+						this.logger.warn(`[HELPER ADOPTION] Failed to update property ${property.category}`, {
+							resource: deviceId,
+							message: updateErr.message,
+						});
 					}
 				}
 			}
