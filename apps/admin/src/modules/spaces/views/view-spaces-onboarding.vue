@@ -699,7 +699,12 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 const allSpaces = availableSpaces;
 
 // Only room spaces for device/display assignment (zones cannot have devices directly assigned)
-const roomSpaces = computed(() => allSpaces.value.filter((space) => space.type === SpaceType.ROOM));
+// Sorted alphabetically by name for better UX
+const roomSpaces = computed(() =>
+	allSpaces.value
+		.filter((space) => space.type === SpaceType.ROOM)
+		.sort((a, b) => a.name.localeCompare(b.name))
+);
 
 // Existing spaces that are NOT already shown in matched spaces section
 const unmatchedExistingSpaces = computed(() => {
