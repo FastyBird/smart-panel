@@ -36,9 +36,9 @@ export class SceneActionsService {
 		this.logger.debug(`[LOOKUP ALL] Fetching all actions for scene id=${sceneId}`);
 
 		const actions = (await repository.find({
-			where: { scene: { id: sceneId } } as FindOptionsWhere<TAction>,
+			where: { scene: { id: sceneId } } as unknown as FindOptionsWhere<TAction>,
 			relations: ['scene'],
-			order: { order: 'ASC' } as FindOptionsOrder<TAction>,
+			order: { order: 'ASC' } as unknown as FindOptionsOrder<TAction>,
 		})) as TAction[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${actions.length} actions for scene id=${sceneId}`);
@@ -54,7 +54,7 @@ export class SceneActionsService {
 		this.logger.debug(`[LOOKUP] Fetching action with id=${id}`);
 
 		const action = (await repository.findOne({
-			where: { id } as FindOptionsWhere<TAction>,
+			where: { id } as unknown as FindOptionsWhere<TAction>,
 			relations: ['scene'],
 		})) as TAction | null;
 

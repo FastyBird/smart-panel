@@ -106,7 +106,7 @@ export class ScenesService {
 			relations: ['actions', 'actions.scene', 'conditions', 'conditions.scene', 'triggers', 'triggers.scene'],
 			order: {
 				name: 'ASC',
-			} as FindOptionsOrder<TScene>,
+			} as unknown as FindOptionsOrder<TScene>,
 		})) as TScene[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${scenes.length} scenes`);

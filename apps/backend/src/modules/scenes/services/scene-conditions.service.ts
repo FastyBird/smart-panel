@@ -28,7 +28,7 @@ export class SceneConditionsService {
 		this.logger.debug(`[LOOKUP ALL] Fetching all conditions for scene id=${sceneId}`);
 
 		const conditions = await this.repository.find({
-			where: { scene: { id: sceneId } } as FindOptionsWhere<SceneConditionEntity>,
+			where: { scene: { id: sceneId } } as unknown as FindOptionsWhere<SceneConditionEntity>,
 			relations: ['scene'],
 		});
 

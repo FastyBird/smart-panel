@@ -28,7 +28,7 @@ export class SceneTriggersService {
 		this.logger.debug(`[LOOKUP ALL] Fetching all triggers for scene id=${sceneId}`);
 
 		const triggers = await this.repository.find({
-			where: { scene: { id: sceneId } } as FindOptionsWhere<SceneTriggerEntity>,
+			where: { scene: { id: sceneId } } as unknown as FindOptionsWhere<SceneTriggerEntity>,
 			relations: ['scene'],
 		});
 
