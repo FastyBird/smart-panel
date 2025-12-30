@@ -58,7 +58,7 @@ describe('ListUsers', (): void => {
 				sortDir: defaultProps.sortDir as 'ascending' | 'descending' | null,
 				loading: defaultProps.loading,
 			},
-		}) as VueWrapper<ListUsersInstance>;
+		}) as unknown as VueWrapper<ListUsersInstance>;
 	});
 
 	it('renders the component', (): void => {
