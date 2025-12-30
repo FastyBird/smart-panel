@@ -318,6 +318,11 @@ export class HelperAdoptionService {
 					}
 				}
 
+				// Convert value based on property data type
+				if (newValue !== null) {
+					newValue = this.convertValueForProperty(property, newValue, state.state);
+				}
+
 				if (newValue !== null) {
 					try {
 						await this.channelsPropertiesService.update(
@@ -353,5 +358,62 @@ export class HelperAdoptionService {
 				message: err.message,
 			});
 		}
+	}
+
+	/**
+	 * Convert HA value to match property data type
+	 * Handles conversions like hvac_action (string) -> active (bool)
+	 */
+	private convertValueForProperty(
+		property: HomeAssistantChannelPropertyEntity,
+		value: string | number | boolean,
+		entityState: string,
+	): string | number | boolean {
+		const dataType = property.dataType;
+
+		// If property expects boolean but value is string, convert it
+		if (dataType === DataTypeType.BOOLEAN || dataType === DataTypeType.BOOL) {
+			if (typeof value === 'boolean') {
+				return value;
+			}
+
+			if (typeof value === 'string') {
+				// hvac_action conversions: heating/cooling/drying/fan = true, idle/off = false
+				if (property.haAttribute === 'hvac_action') {
+					return ['heating', 'cooling', 'drying', 'fan'].includes(value);
+				}
+
+				// Main state conversions: anything except 'off' = true
+				if (property.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE || property.haAttribute === 'fb.main_state') {
+					return entityState !== 'off';
+				}
+
+				// Generic string to boolean: common truthy values
+				return ['on', 'true', 'yes', '1', 'heating', 'cooling'].includes(value.toLowerCase());
+			}
+
+			if (typeof value === 'number') {
+				return value !== 0;
+			}
+		}
+
+		// If property expects number but value is string, try to parse it
+		if (
+			(dataType === DataTypeType.FLOAT ||
+				dataType === DataTypeType.INT ||
+				dataType === DataTypeType.UINT ||
+				dataType === DataTypeType.CHAR ||
+				dataType === DataTypeType.UCHAR ||
+				dataType === DataTypeType.SHORT ||
+				dataType === DataTypeType.USHORT) &&
+			typeof value === 'string'
+		) {
+			const parsed = parseFloat(value);
+			if (!isNaN(parsed)) {
+				return parsed;
+			}
+		}
+
+		return value;
 	}
 }
