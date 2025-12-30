@@ -100,7 +100,7 @@ export const useUsersActions = (): IUseUsersActions => {
 				}
 			})
 			.catch((): void => {
-				// Just ignore it
+				flashMessage.info(t('usersModule.messages.bulkRemoveCanceled'));
 			});
 	};
 

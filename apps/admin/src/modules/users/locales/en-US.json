@@ -47,7 +47,8 @@
     "passwordEdited": "User password has been successfully updated.",
     "passwordNotEdited": "Failed to update user password. Please try again.",
     "bulkRemoved": "{count} user(s) have been removed.",
-    "bulkRemoveFailed": "Failed to remove {count} user(s)."
+    "bulkRemoveFailed": "Failed to remove {count} user(s).",
+    "bulkRemoveCanceled": "Bulk user removal has been canceled."
   },
   "texts": {
     "confirmRemove": "Are you sure you want to remove user: {user}? This cannot be reversed.",
