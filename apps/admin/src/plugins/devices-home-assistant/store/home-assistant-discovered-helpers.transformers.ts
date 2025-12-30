@@ -1,4 +1,4 @@
-import { logger, snakeToCamel } from '../../../common';
+import { logger } from '../../../common';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
 import { HomeAssistantDiscoveredHelperResSchema, HomeAssistantDiscoveredHelperSchema } from './home-assistant-discovered-helpers.store.schemas';
