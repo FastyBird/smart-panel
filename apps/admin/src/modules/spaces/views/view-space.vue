@@ -99,6 +99,23 @@
 					{{ space.icon }}
 				</el-descriptions-item>
 			</el-descriptions>
+
+			<!-- Devices Section -->
+			<space-devices-section
+				:space-id="space.id"
+				:space-type="space.type"
+			/>
+
+			<!-- Parent Zone Section (Room only) -->
+			<space-parent-zone-section
+				v-if="space.type === SpaceType.ROOM"
+				:space="space"
+			/>
+
+			<!-- Displays Section -->
+			<space-displays-section
+				:space-id="space.id"
+			/>
 		</template>
 	</el-scrollbar>
 
@@ -191,8 +208,13 @@ import {
 	useBreakpoints,
 	useFlashMessage,
 } from '../../../common';
+import {
+	SpaceDevicesSection,
+	SpaceDisplaysSection,
+	SpaceParentZoneSection,
+} from '../components/components';
 import { useSpace } from '../composables';
-import { RouteNames } from '../spaces.constants';
+import { RouteNames, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import type { ISpace } from '../store';
 

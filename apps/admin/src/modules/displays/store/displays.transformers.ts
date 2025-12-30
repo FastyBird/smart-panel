@@ -33,6 +33,8 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		homeMode: response.home_mode ?? 'auto_space',
 		homePageId: response.home_page_id ?? null,
 		resolvedHomePageId: response.resolved_home_page_id ?? null,
+		// Space assignment
+		spaceId: response.space_id ?? null,
 		registeredFromIp: response.registered_from_ip ?? null,
 		currentIpAddress: response.current_ip_address ?? null,
 		online: response.online ?? false,
@@ -101,6 +103,11 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 	}
 	if (display.homePageId !== undefined) {
 		baseData.home_page_id = display.homePageId;
+	}
+
+	// Space assignment
+	if (display.spaceId !== undefined) {
+		baseData.space_id = display.spaceId;
 	}
 
 	const parsedRequest = DisplayUpdateReqSchema.safeParse(baseData);

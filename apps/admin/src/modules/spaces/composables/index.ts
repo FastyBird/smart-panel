@@ -1,5 +1,7 @@
 export * from './useSpace';
 export * from './useSpaceCategories';
+export * from './useSpaceDevices';
+export * from './useSpaceDisplays';
 export * from './useSpaces';
 export * from './useSpacesActions';
 export * from './useSpacesDataSource';

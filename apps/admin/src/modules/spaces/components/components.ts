@@ -6,6 +6,11 @@ export { default as SpaceAddForm } from './space-add-form.vue';
 export { default as SpaceEditForm } from './space-edit-form.vue';
 export { default as SpaceLightingRoles } from './space-lighting-roles.vue';
 
+// Space detail sections
+export { default as SpaceDevicesSection } from './space-devices-section.vue';
+export { default as SpaceParentZoneSection } from './space-parent-zone-section.vue';
+export { default as SpaceDisplaysSection } from './space-displays-section.vue';
+
 // Overview components
 export { default as SpacesOverviewStats } from './spaces-overview-stats.vue';
 export { default as SpacesOverviewCategories } from './spaces-overview-categories.vue';

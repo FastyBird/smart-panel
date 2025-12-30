@@ -303,6 +303,27 @@
 			"type": "Type",
 			"icon": "Icon",
 			"displayOrder": "Display order"
+		},
+		"devices": {
+			"title": "Devices",
+			"add": "Add device",
+			"empty": "No devices assigned to this space",
+			"remove": "Remove from space",
+			"reassign": "Reassign to another room",
+			"selectDevice": "Select devices to add",
+			"confirmRemove": "Remove device \"{name}\" from this space?",
+			"selectRoom": "Select room for device"
+		},
+		"parentZone": {
+			"title": "Parent Zone",
+			"none": "No zone assigned",
+			"select": "Select parent zone"
+		},
+		"displays": {
+			"title": "Displays",
+			"empty": "No displays assigned to this space",
+			"reassign": "Reassign",
+			"selectRoom": "Select the room for this display"
 		}
 	},
 	"messages": {
