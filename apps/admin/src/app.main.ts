@@ -42,6 +42,7 @@ import { DisplaysModule } from './modules/displays';
 import { ExtensionsModule, installRemoteExtensions, installStaticExtensions } from './modules/extensions';
 import { InfluxDbModule } from './modules/influxdb';
 import { MdnsModule } from './modules/mdns';
+import { ScenesModule } from './modules/scenes';
 import { SpacesModule } from './modules/spaces';
 import { StatsModule } from './modules/stats';
 import { SystemModule } from './modules/system';
@@ -141,6 +142,7 @@ app.use(UsersModule, moduleOptions);
 app.use(StatsModule, moduleOptions);
 app.use(WeatherModule, moduleOptions);
 app.use(MdnsModule, moduleOptions);
+app.use(ScenesModule, moduleOptions);
 app.use(InfluxDbModule, moduleOptions);
 
 // Plugins

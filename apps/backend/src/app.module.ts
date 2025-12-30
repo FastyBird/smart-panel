@@ -26,6 +26,8 @@ import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.consta
 import { ExtensionsModule } from './modules/extensions/extensions.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { PlatformModule } from './modules/platform/platform.module';
+import { SCENES_MODULE_PREFIX } from './modules/scenes/scenes.constants';
+import { ScenesModule } from './modules/scenes/scenes.module';
 import { SeedModule } from './modules/seed/seeding.module';
 import { SPACES_MODULE_PREFIX } from './modules/spaces/spaces.constants';
 import { SpacesModule } from './modules/spaces/spaces.module';
@@ -173,6 +175,10 @@ export class AppModule {
 								module: StatsModule,
 							},
 							{
+								path: SCENES_MODULE_PREFIX,
+								module: ScenesModule,
+							},
+							{
 								path: AUTH_MODULE_PREFIX,
 								module: ApiModule,
 							},
@@ -230,6 +236,7 @@ export class AppModule {
 				DisplaysModule,
 				ExtensionsModule,
 				PlatformModule,
+				ScenesModule,
 				SpacesModule,
 				SeedModule,
 				StatsModule,
