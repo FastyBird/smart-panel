@@ -39,6 +39,14 @@ export class ScenesTypeMapperService {
 			createDto: CreateSceneDto,
 			updateDto: UpdateSceneDto,
 		});
+
+		// Register 'local' as an alias for the base scene type (used by frontend)
+		this.registerMapping({
+			type: 'local',
+			class: SceneEntity,
+			createDto: CreateSceneDto,
+			updateDto: UpdateSceneDto,
+		});
 	}
 
 	/**
