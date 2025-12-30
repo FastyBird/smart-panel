@@ -320,7 +320,7 @@ export class HelperAdoptionService {
 
 				// Convert value based on property data type
 				if (newValue !== null) {
-					newValue = this.convertValueForProperty(property, newValue, state.state);
+					newValue = this.convertValueForProperty(property, newValue, String(state.state));
 				}
 
 				if (newValue !== null) {
@@ -372,7 +372,7 @@ export class HelperAdoptionService {
 		const dataType = property.dataType;
 
 		// If property expects boolean but value is string, convert it
-		if (dataType === DataTypeType.BOOLEAN || dataType === DataTypeType.BOOL) {
+		if (dataType === DataTypeType.BOOL) {
 			if (typeof value === 'boolean') {
 				return value;
 			}
