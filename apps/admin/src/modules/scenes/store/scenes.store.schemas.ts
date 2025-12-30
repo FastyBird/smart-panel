@@ -84,6 +84,9 @@ export const SceneSchema = z.object({
 		.optional()
 		.nullable()
 		.default(null),
+	actions: z.array(SceneActionSchema).default([]),
+	conditions: z.array(SceneConditionSchema).default([]),
+	triggers: z.array(SceneTriggerSchema).default([]),
 });
 
 export const ScenesStateSemaphoreSchema = z.object({

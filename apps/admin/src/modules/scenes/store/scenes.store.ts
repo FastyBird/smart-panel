@@ -268,6 +268,11 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 
 			const transformed = transformSceneResponse(responseData.data, SceneSchema);
 
+			// Remove the temporary client-generated entry if server returned a different ID
+			if (transformed.id !== id) {
+				unset({ id });
+			}
+
 			scene = set({
 				id: transformed.id,
 				data: transformed,
