@@ -64,7 +64,7 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 
 			for (const display of displays) {
 				try {
-					await displaysStore?.remove({ id: display.id });
+					await displaysStore.remove({ id: display.id });
 					successCount++;
 				} catch {
 					failCount++;
