@@ -166,30 +166,13 @@ class _ThermostatDeviceDetailPageState
       _currentModeIndex = index;
     });
 
-    switch (_thermostatModes[index]) {
-      case ThermostatModeType.off:
-        _valueHelper.setPropertyValue(
-          context,
-          widget._device.thermostatChannel.activeProp,
-          false,
-        );
-        break;
-      default:
-        _valueHelper.setPropertyValue(
-          context,
-          widget._device.thermostatChannel.modeProp,
-          getValueFromMode(_thermostatModes[index])?.value,
-        );
-
-        if (widget._device.isOn == false) {
-          _valueHelper.setPropertyValue(
-            context,
-            widget._device.thermostatChannel.activeProp,
-            true,
-          );
-        }
-        break;
-    }
+    // Set mode property - ACTIVE property is read-only (derived from hvac_action)
+    // and will be updated automatically by the backend based on the HVAC state
+    _valueHelper.setPropertyValue(
+      context,
+      widget._device.thermostatChannel.modeProp,
+      getValueFromMode(_thermostatModes[index])?.value,
+    );
   }
 }
 

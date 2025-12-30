@@ -3057,7 +3057,7 @@
           "en": ""
         },
         "permissions": [
-          "rw"
+          "ro"
         ],
         "data_type": "bool",
         "unit": null,
