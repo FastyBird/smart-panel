@@ -349,7 +349,7 @@ export class SceneConditionEntity extends BaseEntity {
 		example: { deviceId: 'uuid', propertyId: 'uuid', operator: 'eq', value: true },
 	})
 	@Expose()
-	@Column({ type: 'json', default: {} })
+	@Column({ type: 'json', nullable: true })
 	configuration: Record<string, unknown> = {};
 
 	@ApiProperty({ description: 'Condition enabled status', type: 'boolean', example: true })
@@ -416,7 +416,7 @@ export class SceneTriggerEntity extends BaseEntity {
 		example: { cron: '0 8 * * *' },
 	})
 	@Expose()
-	@Column({ type: 'json', default: {} })
+	@Column({ type: 'json', nullable: true })
 	configuration: Record<string, unknown> = {};
 
 	@ApiProperty({ description: 'Trigger enabled status', type: 'boolean', example: true })
