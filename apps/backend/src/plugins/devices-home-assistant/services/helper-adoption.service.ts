@@ -14,6 +14,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
 	DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
@@ -52,6 +53,7 @@ export class HelperAdoptionService {
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly deviceConnectivityService: DeviceConnectivityService,
 	) {}
 
 	/**
@@ -114,6 +116,11 @@ export class HelperAdoptionService {
 
 			// Sync initial state
 			await this.syncHelperState(device.id, request.entityId);
+
+			// Set device connection state to connected (helper is available if we got here)
+			await this.deviceConnectivityService.setConnectionState(device.id, {
+				state: ConnectionState.CONNECTED,
+			});
 
 			this.logger.debug(`[HELPER ADOPTION] Helper ${request.entityId} adopted successfully as device ${device.id}`, {
 				resource: device.id,
