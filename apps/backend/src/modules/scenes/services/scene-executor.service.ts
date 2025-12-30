@@ -112,7 +112,7 @@ export class SceneExecutorService {
 
 		try {
 			// Evaluate conditions (if any)
-			const conditionsMet = await this.evaluateConditions(scene);
+			const conditionsMet = this.evaluateConditions(scene);
 
 			if (!conditionsMet) {
 				result.status = SceneExecutionStatus.FAILED;
@@ -179,7 +179,7 @@ export class SceneExecutorService {
 	/**
 	 * Evaluate scene conditions
 	 */
-	private async evaluateConditions(scene: SceneEntity): Promise<boolean> {
+	private evaluateConditions(scene: SceneEntity): boolean {
 		const conditions = scene.conditions || [];
 
 		if (conditions.length === 0) {

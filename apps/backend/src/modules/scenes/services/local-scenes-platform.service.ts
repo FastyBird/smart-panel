@@ -198,7 +198,7 @@ export class LocalScenesPlatformService implements IScenePlatform {
 				// Validate action first
 				const validation = await this.validateActionWithDetails(action);
 
-				if (!validation.valid) {
+				if (!validation.valid || !validation.device || !validation.property) {
 					results.push({
 						actionId: action.id,
 						success: false,
@@ -208,16 +208,18 @@ export class LocalScenesPlatformService implements IScenePlatform {
 					continue;
 				}
 
-				const { device, channel, property } = validation;
+				const device = validation.device;
+				const channel = validation.channel;
+				const property = validation.property;
 
 				// Get the platform handler for this device
-				const platform = this.platformRegistryService.get(device!);
+				const platform = this.platformRegistryService.get(device);
 
 				if (!platform) {
 					results.push({
 						actionId: action.id,
 						success: false,
-						error: `No platform handler found for device type: ${device!.type}`,
+						error: `No platform handler found for device type: ${device.type}`,
 						executionTimeMs: Date.now() - startTime,
 					});
 					continue;
@@ -225,9 +227,9 @@ export class LocalScenesPlatformService implements IScenePlatform {
 
 				// Send command to device via platform
 				const success = await platform.process({
-					device: device!,
-					channel: channel!,
-					property: property!,
+					device,
+					channel,
+					property,
 					value: action.value,
 				});
 
@@ -239,7 +241,7 @@ export class LocalScenesPlatformService implements IScenePlatform {
 				});
 
 				this.logger.debug(
-					`[EXECUTE] Action ${action.id}: device=${device!.id}, property=${property!.id}, value=${action.value}, success=${success}`,
+					`[EXECUTE] Action ${action.id}: device=${device.id}, property=${property.id}, value=${action.value}, success=${success}`,
 				);
 			} catch (error) {
 				const err = error as Error;

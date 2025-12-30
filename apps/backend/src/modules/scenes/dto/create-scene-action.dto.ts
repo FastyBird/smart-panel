@@ -61,7 +61,7 @@ export class CreateSceneActionDto {
 	})
 	@Expose({ name: 'channel_id' })
 	@IsOptional()
-	@ValidateIf((o) => o.channelId !== null && o.channelId !== undefined)
+	@ValidateIf((o: { channelId?: string | null }) => o.channelId !== null && o.channelId !== undefined)
 	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID (version 4)."}]' })
 	@Transform(
 		({ obj }: { obj: { channel_id?: string | null; channelId?: string | null } }) =>
