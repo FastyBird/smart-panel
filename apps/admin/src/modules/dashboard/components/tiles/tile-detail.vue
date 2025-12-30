@@ -1,7 +1,7 @@
 <template>
 	<dl class="grid m-0">
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('dashboardModule.texts.tiles.plugin') }}
@@ -12,7 +12,7 @@
 			</el-text>
 		</dd>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('dashboardModule.texts.tiles.dataSources') }}
@@ -30,7 +30,7 @@
 			</el-text>
 		</dd>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('dashboardModule.texts.tiles.row') }}
@@ -41,7 +41,7 @@
 			</el-text>
 		</dd>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('dashboardModule.texts.tiles.col') }}
@@ -52,7 +52,7 @@
 			</el-text>
 		</dd>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('dashboardModule.texts.tiles.size') }}
@@ -61,7 +61,7 @@
 			<el-text>{{ props.tile.colSpan }} x {{ props.tile.rowSpan }}</el-text>
 		</dd>
 		<dt
-			class="b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('dashboardModule.texts.tiles.visibility') }}

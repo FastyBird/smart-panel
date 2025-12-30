@@ -1,7 +1,7 @@
 <template>
 	<dl class="grid m-0">
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('weatherModule.texts.locationDetail.provider') }}
@@ -12,7 +12,7 @@
 			</el-text>
 		</dd>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('weatherModule.texts.locationDetail.temperature') }}
@@ -31,7 +31,7 @@
 			</div>
 		</dd>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('weatherModule.texts.locationDetail.conditions') }}
@@ -42,7 +42,7 @@
 			</el-text>
 		</dd>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('weatherModule.texts.locationDetail.humidity') }}
@@ -53,7 +53,7 @@
 			</el-text>
 		</dd>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('weatherModule.texts.locationDetail.wind') }}
@@ -64,7 +64,7 @@
 			</el-text>
 		</dd>
 		<dt
-			class="b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t('weatherModule.texts.locationDetail.pressure') }}
