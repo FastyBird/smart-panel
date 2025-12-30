@@ -386,7 +386,9 @@
 			"bySpace": "Assignments by space",
 			"unassignedDevicesTitle": "Unassigned devices",
 			"unassignedDisplaysTitle": "Unassigned displays",
-			"noDevices": "No devices"
+			"noDevices": "No devices",
+			"clickToAssignDevices": "Click to assign devices",
+			"clickToAssignDisplays": "Click to assign displays"
 		},
 		"messages": {
 			"spacesCreated": "{count} space(s) created successfully",

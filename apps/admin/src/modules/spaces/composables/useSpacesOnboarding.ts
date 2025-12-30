@@ -14,6 +14,7 @@ import type { ISpace, ISpaceCreateData } from '../store';
 interface ProposedSpace {
 	name: string;
 	description: string | null;
+	icon: string | null;
 	deviceIds: string[];
 	deviceCount: number;
 	selected: boolean;
@@ -27,6 +28,7 @@ interface ProposedSpace {
 interface CustomSpace {
 	name: string;
 	description: string | null;
+	icon: string | null;
 	selected: boolean;
 	type: SpaceType;
 	category: SpaceCategory | null;
@@ -199,12 +201,15 @@ export const useSpacesOnboarding = () => {
 
 			const allProposals = response.data.data.map((p) => {
 				const category = apiCategoryToSpaceCategory(p.category);
-				// Get default description from category template
-				const defaultDescription = category ? SPACE_CATEGORY_TEMPLATES[category]?.description ?? null : null;
+				// Get default description and icon from category template
+				const template = category ? SPACE_CATEGORY_TEMPLATES[category] : null;
+				const defaultDescription = template?.description ?? null;
+				const defaultIcon = template?.icon ?? null;
 				const name = p.name ?? '';
 				return {
 					name,
 					description: defaultDescription,
+					icon: defaultIcon,
 					deviceIds: p.device_ids ?? [],
 					deviceCount: p.device_count ?? 0,
 					selected: true,
@@ -289,7 +294,7 @@ export const useSpacesOnboarding = () => {
 				description: proposal.description,
 				type: proposal.type,
 				category: proposal.category,
-				icon: null,
+				icon: proposal.icon,
 				displayOrder: 0,
 				parentId: null,
 				primaryThermostatId: null,
@@ -325,7 +330,7 @@ export const useSpacesOnboarding = () => {
 				description: customSpace.description,
 				type: customSpace.type,
 				category: customSpace.category,
-				icon: null,
+				icon: customSpace.icon,
 				displayOrder: 0,
 				parentId: null,
 				primaryThermostatId: null,
@@ -382,6 +387,8 @@ export const useSpacesOnboarding = () => {
 					body: {
 						data: {
 							name: draftSpace.name,
+							description: draftSpace.description,
+							icon: draftSpace.icon,
 							type: spaceTypeToApiType(draftSpace.type),
 							category: spaceCategoryToApiCategory(draftSpace.category),
 						},
@@ -665,6 +672,7 @@ export const useSpacesOnboarding = () => {
 		state.customSpaces.push({
 			name,
 			description: null,
+			icon: null,
 			selected: true,
 			type: SpaceType.ROOM,
 			category: null,
@@ -1004,9 +1012,17 @@ export const useSpacesOnboarding = () => {
 		const devicesBySpace: Record<string, number> = {};
 		const displaysBySpace: Record<string, number> = {};
 
+		// Count devices assigned to rooms
 		for (const spaceId of Object.values(state.deviceAssignments)) {
 			if (spaceId) {
 				devicesBySpace[spaceId] = (devicesBySpace[spaceId] ?? 0) + 1;
+			}
+		}
+
+		// Count devices assigned to zones (from advanced mode)
+		for (const zoneIds of Object.values(state.zoneAssignments)) {
+			for (const zoneId of zoneIds) {
+				devicesBySpace[zoneId] = (devicesBySpace[zoneId] ?? 0) + 1;
 			}
 		}
 

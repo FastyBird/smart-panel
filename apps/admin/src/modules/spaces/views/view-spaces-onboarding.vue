@@ -140,7 +140,7 @@
 									<!-- Read mode (default) -->
 									<template v-if="!space.editing">
 										{{ space.name }}
-										<el-button link size="small" @click="startEditingProposedName(index)">
+										<el-button link size="small" @click="handleStartEditingProposedName(index)">
 											<el-icon :size="14">
 												<icon icon="mdi:pencil" />
 											</el-icon>
@@ -150,6 +150,7 @@
 									<!-- Edit mode -->
 									<el-input
 										v-else
+										:ref="(el: any) => setProposedEditInputRef(index, el)"
 										v-model="space.editName"
 										size="small"
 										class="max-w-[250px]!"
@@ -298,7 +299,7 @@
 									<!-- Read mode (default) -->
 									<template v-if="!space.editing">
 										{{ space.name }}
-										<el-button link size="small" @click="startEditingCustomName(index)">
+										<el-button link size="small" @click="handleStartEditingCustomName(index)">
 											<el-icon :size="14">
 												<icon icon="mdi:pencil" />
 											</el-icon>
@@ -308,6 +309,7 @@
 									<!-- Edit mode -->
 									<el-input
 										v-else
+										:ref="(el: any) => setCustomEditInputRef(index, el)"
 										v-model="space.editName"
 										size="small"
 										class="max-w-[250px]"
@@ -571,27 +573,39 @@
 							<div class="text-2xl font-bold text-green-600">{{ summary.assignedDevices }}</div>
 							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.assignedDevices') }}</div>
 						</div>
-						<div
-							:class="{ 'cursor-pointer hover:underline': summary.unassignedDevices > 0 }"
-							@click="summary.unassignedDevices > 0 && (showUnassignedDevicesDialog = true)"
+						<el-tooltip
+							:content="t('spacesModule.onboarding.summary.clickToAssignDevices')"
+							placement="top"
+							:disabled="summary.unassignedDevices === 0"
 						>
-							<div class="text-2xl font-bold text-yellow-600">{{ summary.unassignedDevices }}</div>
-							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.unassignedDevices') }}</div>
-						</div>
+							<div
+								:class="{ 'cursor-pointer': summary.unassignedDevices > 0 }"
+								@click="summary.unassignedDevices > 0 && (showUnassignedDevicesDialog = true)"
+							>
+								<div class="text-2xl font-bold text-yellow-600">{{ summary.unassignedDevices }}</div>
+								<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.unassignedDevices') }}</div>
+							</div>
+						</el-tooltip>
 						<div>
 							<div class="text-2xl font-bold text-green-600">{{ summary.assignedDisplays }}</div>
 							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.assignedDisplays') }}</div>
 						</div>
-						<div
-							:class="{ 'cursor-pointer hover:underline': summary.unassignedDisplays > 0 }"
-							@click="summary.unassignedDisplays > 0 && (showUnassignedDisplaysDialog = true)"
+						<el-tooltip
+							:content="t('spacesModule.onboarding.summary.clickToAssignDisplays')"
+							placement="top"
+							:disabled="summary.unassignedDisplays === 0"
 						>
-							<div class="text-2xl font-bold text-yellow-600">{{ summary.unassignedDisplays }}</div>
-							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.unassignedDisplays') }}</div>
-						</div>
+							<div
+								:class="{ 'cursor-pointer': summary.unassignedDisplays > 0 }"
+								@click="summary.unassignedDisplays > 0 && (showUnassignedDisplaysDialog = true)"
+							>
+								<div class="text-2xl font-bold text-yellow-600">{{ summary.unassignedDisplays }}</div>
+								<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.unassignedDisplays') }}</div>
+							</div>
+						</el-tooltip>
 					</div>
 
-					<div v-if="allSpaces.length > 0" class="mt-4">
+					<template v-if="allSpaces.length > 0">
 						<h4 class="mb-2 font-medium">
 							{{ t('spacesModule.onboarding.summary.bySpace') }}
 						</h4>
@@ -601,10 +615,17 @@
 								<template #default="{ row }">
 									<span>{{ row.name }}</span>
 									<el-tag
+										size="small"
+										:type="row.type === SpaceType.ROOM ? 'primary' : 'info'"
+										class="ml-2"
+									>
+										{{ row.type === SpaceType.ROOM ? t('spacesModule.misc.types.room') : t('spacesModule.misc.types.zone') }}
+									</el-tag>
+									<el-tag
 										v-if="row.devices === 0 && row.type === SpaceType.ROOM"
 										size="small"
 										type="warning"
-										class="ml-2"
+										class="ml-1"
 									>
 										{{ t('spacesModule.onboarding.summary.noDevices') }}
 									</el-tag>
@@ -613,16 +634,15 @@
 							<el-table-column prop="devices" :label="t('spacesModule.onboarding.devices')" width="120" align="center" />
 							<el-table-column prop="displays" :label="t('spacesModule.onboarding.displays')" width="120" align="center" />
 						</el-table>
-					</div>
+					</template>
 				</template>
 
 				<!-- Unassigned Devices Dialog -->
 				<el-dialog
 					v-model="showUnassignedDevicesDialog"
 					:title="t('spacesModule.onboarding.summary.unassignedDevicesTitle')"
-					width="600px"
 				>
-					<el-table :data="unassignedDevicesList">
+					<el-table :data="unassignedDevicesList" class="max-h-[70vh] w-full" table-layout="fixed" max-height="70vh" stripe>
 						<el-table-column prop="name" :label="t('spacesModule.onboarding.deviceName')" />
 						<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="200">
 							<template #default="{ row }">
@@ -649,9 +669,8 @@
 				<el-dialog
 					v-model="showUnassignedDisplaysDialog"
 					:title="t('spacesModule.onboarding.summary.unassignedDisplaysTitle')"
-					width="600px"
 				>
-					<el-table :data="unassignedDisplaysList">
+					<el-table :data="unassignedDisplaysList" class="max-h-[70vh] w-full" table-layout="fixed" max-height="70vh" stripe>
 						<el-table-column :label="t('spacesModule.onboarding.displayName')">
 							<template #default="{ row }">
 								{{ row.name || row.id }}
@@ -712,7 +731,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import {
@@ -733,6 +752,7 @@ import {
 	ElTable,
 	ElTableColumn,
 	ElTag,
+	ElTooltip,
 	vLoading,
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';
@@ -813,6 +833,38 @@ const devices = ref<DeviceInfo[]>([]);
 const displays = ref<DisplayInfo[]>([]);
 const showUnassignedDevicesDialog = ref(false);
 const showUnassignedDisplaysDialog = ref(false);
+
+// Refs for inline edit inputs (to enable autofocus)
+const proposedEditInputRefs = ref<Map<number, InstanceType<typeof ElInput> | null>>(new Map());
+const customEditInputRefs = ref<Map<number, InstanceType<typeof ElInput> | null>>(new Map());
+
+const setProposedEditInputRef = (index: number, el: InstanceType<typeof ElInput> | null): void => {
+	if (el) {
+		proposedEditInputRefs.value.set(index, el);
+	} else {
+		proposedEditInputRefs.value.delete(index);
+	}
+};
+
+const setCustomEditInputRef = (index: number, el: InstanceType<typeof ElInput> | null): void => {
+	if (el) {
+		customEditInputRefs.value.set(index, el);
+	} else {
+		customEditInputRefs.value.delete(index);
+	}
+};
+
+const handleStartEditingProposedName = async (index: number): Promise<void> => {
+	startEditingProposedName(index);
+	await nextTick();
+	proposedEditInputRefs.value.get(index)?.focus?.();
+};
+
+const handleStartEditingCustomName = async (index: number): Promise<void> => {
+	startEditingCustomName(index);
+	await nextTick();
+	customEditInputRefs.value.get(index)?.focus?.();
+};
 
 // Sorted displays for Step 2 (alphabetically by name, fallback to id)
 const sortedDisplays = computed(() =>
@@ -897,14 +949,18 @@ const spaceSummaryData = computed(() =>
 	}))
 );
 
-// Unassigned devices for drill-down dialog
+// Unassigned devices for drill-down dialog (sorted alphabetically)
 const unassignedDevicesList = computed(() =>
-	devices.value.filter((d) => !deviceAssignments.value[d.id])
+	devices.value
+		.filter((d) => !deviceAssignments.value[d.id])
+		.sort((a, b) => a.name.localeCompare(b.name))
 );
 
-// Unassigned displays for drill-down dialog
+// Unassigned displays for drill-down dialog (sorted alphabetically)
 const unassignedDisplaysList = computed(() =>
-	displays.value.filter((d) => !displayAssignments.value[d.id])
+	displays.value
+		.filter((d) => !displayAssignments.value[d.id])
+		.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
 );
 
 onMounted(async () => {
