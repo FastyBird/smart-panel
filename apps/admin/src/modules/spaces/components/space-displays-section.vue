@@ -1,10 +1,11 @@
 <template>
-	<div v-loading="loading">
-		<el-table
-			v-if="displays.length > 0"
-			:data="displays"
-			style="width: 100%"
-		>
+	<el-table
+		v-loading="loading"
+		:element-loading-text="t('spacesModule.detail.displays.loading')"
+		:data="displays"
+		table-layout="fixed"
+		row-key="id"
+	>
 			<el-table-column :label="t('spacesModule.onboarding.displayName')" min-width="200">
 				<template #default="{ row }">
 					<div class="flex items-center gap-2">
@@ -21,7 +22,7 @@
 				</template>
 			</el-table-column>
 
-			<el-table-column label="" width="100" align="center">
+			<el-table-column :label="t('displaysModule.table.columns.state.title')" width="100" align="center">
 				<template #default="{ row }">
 					<el-tag
 						:type="row.online ? 'success' : 'danger'"
@@ -32,90 +33,91 @@
 				</template>
 			</el-table-column>
 
-			<el-table-column :label="t('spacesModule.table.columns.actions')" width="120" align="right">
+			<el-table-column label="" width="220" align="right">
 				<template #default="{ row }">
-					<el-dropdown trigger="click">
-						<el-button link>
-							<icon icon="mdi:dots-vertical" />
+					<div class="flex items-center gap-2 justify-end">
+						<el-button
+							type="warning"
+							plain
+							size="small"
+							@click="onReassignDisplay(row)"
+						>
+							<template #icon>
+								<icon icon="mdi:swap-horizontal" />
+							</template>
+							{{ t('spacesModule.detail.displays.reassign') }}
 						</el-button>
-						<template #dropdown>
-							<el-dropdown-menu>
-								<el-dropdown-item @click="onReassignDisplay(row)">
-									<icon icon="mdi:swap-horizontal" class="mr-2" />
-									{{ t('spacesModule.detail.displays.reassign') }}
-								</el-dropdown-item>
-								<el-dropdown-item divided @click="onRemoveDisplay(row)">
-									<icon icon="mdi:close" class="mr-2 text-red-500" />
-									<span class="text-red-500">{{ t('spacesModule.detail.displays.remove') }}</span>
-								</el-dropdown-item>
-							</el-dropdown-menu>
-						</template>
-					</el-dropdown>
-				</template>
-			</el-table-column>
-		</el-table>
-
-		<el-empty
-			v-else
-			:description="t('spacesModule.detail.displays.empty')"
-			:image-size="60"
-		>
-			<el-button type="primary" @click="openAddDialog">
-				{{ t('spacesModule.detail.displays.add') }}
-			</el-button>
-		</el-empty>
-	</div>
-
-	<!-- Add Display Dialog -->
-	<el-dialog
-		v-model="showAddDialog"
-		:title="t('spacesModule.detail.displays.selectDisplay')"
-		width="600px"
-	>
-		<el-table
-			v-if="availableDisplays.length > 0"
-			:data="availableDisplays"
-			max-height="400px"
-			@row-click="onSelectDisplay"
-		>
-			<el-table-column :label="t('spacesModule.onboarding.displayName')" min-width="200">
-				<template #default="{ row }">
-					<div class="flex items-center gap-2">
-						<el-avatar :size="32">
-							<icon icon="mdi:monitor" class="w[20px] h[20px]" />
-						</el-avatar>
-						<div>
-							<div class="font-medium">{{ row.name || row.macAddress }}</div>
-							<div class="text-xs text-gray-500">
-								{{ row.macAddress }}
-							</div>
-						</div>
+						<el-button
+							type="danger"
+							plain
+							size="small"
+							@click="onRemoveDisplay(row)"
+						>
+							<template #icon>
+								<icon icon="mdi:close" />
+							</template>
+							{{ t('spacesModule.detail.displays.remove') }}
+						</el-button>
 					</div>
 				</template>
 			</el-table-column>
 
-			<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="150">
-				<template #default="{ row }">
-					<el-tag v-if="row.spaceId" size="small" type="warning">
-						{{ getSpaceName(row.spaceId) }}
-					</el-tag>
-					<span v-else class="text-gray-400 text-sm">-</span>
-				</template>
-			</el-table-column>
-		</el-table>
+		<template #empty>
+			<div
+				v-if="loading"
+				class="h-full w-full leading-normal"
+			>
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child :size="80">
+							<template #primary>
+								<icon icon="mdi:monitor" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:database-refresh" />
+							</template>
+						</icon-with-child>
+					</template>
+				</el-result>
+			</div>
 
-		<el-empty
-			v-else
-			:description="t('spacesModule.detail.displays.noAvailable')"
-			:image-size="60"
-		/>
+			<div
+				v-else
+				class="h-full w-full leading-normal"
+			>
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child :size="80">
+							<template #primary>
+								<icon icon="mdi:monitor" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:information" />
+							</template>
+						</icon-with-child>
+					</template>
 
-		<template #footer>
-			<el-button @click="showAddDialog = false">
-				{{ t('spacesModule.buttons.cancel.title') }}
-			</el-button>
+					<template #title>
+						{{ t('spacesModule.detail.displays.empty') }}
+					</template>
+
+					<template #extra>
+						<el-button
+							type="primary"
+							plain
+							@click="openAddDialog"
+						>
+							<template #icon>
+								<icon icon="mdi:plus" />
+							</template>
+
+							{{ t('spacesModule.detail.displays.add') }}
+						</el-button>
+					</template>
+				</el-result>
+			</div>
 		</template>
-	</el-dialog>
+	</el-table>
 
 	<!-- Reassign Display Dialog -->
 	<el-dialog
@@ -156,15 +158,11 @@ import { computed, onMounted, ref, toRef } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import {
-	ElAvatar,
 	ElButton,
 	ElDialog,
-	ElDropdown,
-	ElDropdownItem,
-	ElDropdownMenu,
-	ElEmpty,
 	ElMessageBox,
 	ElOption,
+	ElResult,
 	ElSelect,
 	ElTable,
 	ElTableColumn,
@@ -173,9 +171,8 @@ import {
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { IconWithChild, injectStoresManager, useFlashMessage } from '../../../common';
 import type { IDisplay } from '../../displays/store/displays.store.types';
-import { displaysStoreKey } from '../../displays/store/keys';
 import { useSpaceDisplays } from '../composables';
 import { SpaceType } from '../spaces.constants';
 import { spacesStoreKey } from '../store';
@@ -188,11 +185,14 @@ defineOptions({
 
 const props = defineProps<ISpaceDisplaysSectionProps>();
 
+const emit = defineEmits<{
+	(e: 'open-add-dialog'): void;
+}>();
+
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
 const storesManager = injectStoresManager();
-const displaysStore = storesManager.getStore(displaysStoreKey);
 const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const spaceIdRef = toRef(props, 'spaceId');
@@ -201,11 +201,10 @@ const {
 	displays,
 	loading,
 	fetchDisplays,
-	reassignDisplay,
 	removeDisplay,
+	reassignDisplay,
 } = useSpaceDisplays(spaceIdRef);
 
-const showAddDialog = ref(false);
 const showReassignDialog = ref(false);
 const selectedDisplay = ref<IDisplay | null>(null);
 const selectedTargetSpace = ref<string | null>(null);
@@ -216,31 +215,9 @@ const roomSpaces = computed(() => {
 	return spacesStore.findAll().filter((space) => space.type === SpaceType.ROOM);
 });
 
-// Get available displays (not assigned to current space)
-const availableDisplays = computed(() => {
-	return displaysStore.findAll().filter((display) => {
-		// Show all displays that are not in the current space
-		return display.spaceId !== props.spaceId;
-	});
-});
-
-const getSpaceName = (spaceId: string): string => {
-	const space = spacesStore.findById(spaceId);
-	return space?.name || 'Unknown';
-};
-
 const openAddDialog = (): void => {
-	showAddDialog.value = true;
-};
-
-const onSelectDisplay = async (display: IDisplay): Promise<void> => {
-	try {
-		await reassignDisplay(display.id, props.spaceId);
-		showAddDialog.value = false;
-		flashMessage.success(t('spacesModule.messages.edited', { space: display.name || display.macAddress }));
-	} catch {
-		flashMessage.error(t('spacesModule.messages.saveError'));
-	}
+	// Emit event to parent to open dialog
+	emit('open-add-dialog');
 };
 
 const onReassignDisplay = (display: IDisplay): void => {
@@ -291,5 +268,6 @@ onMounted(async () => {
 // Expose methods for parent component
 defineExpose({
 	openAddDialog,
+	fetchDisplays,
 });
 </script>

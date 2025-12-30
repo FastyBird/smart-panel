@@ -39,7 +39,36 @@
 		:heading="t('spacesModule.headings.detail', { space: space?.name })"
 		:sub-heading="t('spacesModule.subHeadings.detail', { space: space?.name })"
 		:icon="spaceIcon"
-	/>
+	>
+		<template #extra>
+			<div class="flex items-center">
+				<el-button
+					type="primary"
+					plain
+					class="px-4! ml-2!"
+					@click="onAddDevice"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+
+					{{ t('spacesModule.detail.devices.add') }}
+				</el-button>
+				<el-button
+					type="primary"
+					plain
+					class="px-4! ml-2!"
+					@click="onAddDisplay"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+
+					{{ t('spacesModule.detail.displays.add') }}
+				</el-button>
+			</div>
+		</template>
+	</view-header>
 
 	<el-scrollbar
 		v-if="isSpaceRoute || isLGDevice"
@@ -48,123 +77,60 @@
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
 	>
 		<template v-if="space">
-			<el-descriptions
-				:column="1"
-				border
-				class="mt-2"
-			>
-				<el-descriptions-item :label="t('spacesModule.fields.spaces.name.title')">
-					{{ space.name }}
-				</el-descriptions-item>
-				<el-descriptions-item :label="t('spacesModule.fields.spaces.type.title')">
-					{{ t(`spacesModule.misc.types.${space.type}`) }}
-				</el-descriptions-item>
-				<el-descriptions-item
-					v-if="space.description"
-					:label="t('spacesModule.fields.spaces.description.title')"
-				>
-					{{ space.description }}
-				</el-descriptions-item>
-				<el-descriptions-item
-					v-if="space.icon"
-					:label="t('spacesModule.fields.spaces.icon.title')"
-				>
-					<el-icon>
-						<icon :icon="space.icon" />
-					</el-icon>
-					{{ space.icon }}
-				</el-descriptions-item>
-				<!-- Inline Floor selector (Room only) -->
-				<el-descriptions-item
-					v-if="space.type === SpaceType.ROOM"
-					:label="t('spacesModule.detail.parentZone.title')"
-				>
-					<div class="flex items-center gap-2">
-						<el-select
-							v-model="selectedFloorId"
-							:placeholder="t('spacesModule.detail.parentZone.select')"
-							clearable
-							size="small"
-							class="w-50"
-							:loading="isSavingFloor"
-							@change="onFloorChange"
-						>
-							<el-option
-								v-for="zone in floorZones"
-								:key="zone.id"
-								:label="zone.name"
-								:value="zone.id"
-							>
-								<div class="flex items-center gap-2">
-									<icon :icon="zone.icon || 'mdi:home-floor-1'" />
-									<span>{{ zone.name }}</span>
-								</div>
-							</el-option>
-						</el-select>
-						<el-tag v-if="currentFloor" type="success" size="small">
-							<div class="flex items-center gap-1">
-								<icon :icon="currentFloor.icon || 'mdi:home-floor-1'" />
-								{{ currentFloor.name }}
-							</div>
-						</el-tag>
-						<span v-else-if="!selectedFloorId" class="text-gray-400 text-sm">
-							{{ t('spacesModule.detail.parentZone.none') }}
-						</span>
-					</div>
-				</el-descriptions-item>
-			</el-descriptions>
+			<space-detail :space="space" />
 
 			<!-- Tabs for Devices and Displays -->
-			<el-tabs v-model="activeTab" class="mt-4">
-				<el-tab-pane :name="'devices'">
-					<template #label>
-						<div class="flex items-center gap-2">
-							<icon icon="mdi:devices" />
-							<span>{{ t('spacesModule.detail.devices.title') }}</span>
-							<el-button
-								type="primary"
-								size="small"
-								class="ml-2"
-								@click.stop="onAddDevice"
-							>
-								<template #icon>
-									<icon icon="mdi:plus" />
-								</template>
-								{{ t('spacesModule.detail.devices.add') }}
-							</el-button>
-						</div>
-					</template>
-					<space-devices-section
-						ref="devicesSectionRef"
-						:space-id="space.id"
-						:space-type="space.type"
-					/>
-				</el-tab-pane>
+			<el-card
+				shadow="never"
+				class="flex-1 min-h-0 flex flex-col mt-4"
+				body-class="p-0! flex-1 min-h-0 flex flex-col"
+			>
+				<el-tabs
+					v-model="activeTab"
+					:class="['flex-1 min-h-0 flex flex-col', ns.e('tabs')]"
+				>
+					<el-tab-pane
+						name="devices"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:devices" />
+								{{ t('spacesModule.detail.devices.title') }}
+							</div>
+						</template>
 
-				<el-tab-pane :name="'displays'">
-					<template #label>
-						<div class="flex items-center gap-2">
-							<icon icon="mdi:monitor" />
-							<span>{{ t('spacesModule.detail.displays.title') }}</span>
-							<el-button
-								type="primary"
-								size="small"
-								class="ml-2"
-								@click.stop="onAddDisplay"
-							>
-								<template #icon>
-									<icon icon="mdi:plus" />
-								</template>
-								{{ t('spacesModule.detail.displays.add') }}
-							</el-button>
-						</div>
-					</template>
-					<space-displays-section
-						ref="displaysSectionRef"
-						:space-id="space.id"
-					/>
-				</el-tab-pane>
-			</el-tabs>
+						<el-scrollbar class="h-full">
+							<space-devices-section
+								ref="devicesSectionRef"
+								:space-id="space.id"
+								:space-type="space.type"
+								@open-add-dialog="onAddDevice"
+							/>
+						</el-scrollbar>
+					</el-tab-pane>
+
+					<el-tab-pane
+						name="displays"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:monitor" />
+								{{ t('spacesModule.detail.displays.title') }}
+							</div>
+						</template>
+
+						<el-scrollbar class="h-full">
+							<space-displays-section
+								ref="displaysSectionRef"
+								:space-id="space.id"
+								@open-add-dialog="onAddDisplay"
+							/>
+						</el-scrollbar>
+					</el-tab-pane>
+				</el-tabs>
+			</el-card>
 		</template>
 	</el-scrollbar>
 
@@ -175,6 +141,23 @@
 	>
 		<component :is="Component" />
 	</router-view>
+
+	<!-- Add Device Dialog -->
+	<space-add-device-dialog
+		v-if="space"
+		v-model:visible="showAddDeviceDialog"
+		:space-id="space.id"
+		:space-type="space.type"
+		@device-added="onDeviceAdded"
+	/>
+
+	<!-- Add Display Dialog -->
+	<space-add-display-dialog
+		v-if="space"
+		v-model:visible="showAddDisplayDialog"
+		:space-id="space.id"
+		@display-added="onDisplayAdded"
+	/>
 
 	<el-drawer
 		v-if="isLGDevice"
@@ -235,17 +218,14 @@ import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-rout
 
 import {
 	ElButton,
-	ElDescriptions,
-	ElDescriptionsItem,
+	ElCard,
 	ElDrawer,
 	ElIcon,
 	ElMessageBox,
-	ElOption,
 	ElScrollbar,
-	ElSelect,
 	ElTabPane,
 	ElTabs,
-	ElTag,
+	useNamespace,
 	vLoading,
 } from 'element-plus';
 
@@ -257,19 +237,21 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
-	injectStoresManager,
 	useBreakpoints,
 	useFlashMessage,
 	ViewError,
 	ViewHeader,
 } from '../../../common';
 import {
+	SpaceAddDeviceDialog,
+	SpaceAddDisplayDialog,
+	SpaceDetail,
 	SpaceDevicesSection,
 	SpaceDisplaysSection,
 } from '../components/components';
 import { useSpace } from '../composables';
-import { RouteNames, SpaceType } from '../spaces.constants';
-import { spacesStoreKey, type ISpace } from '../store';
+import { RouteNames } from '../spaces.constants';
+import { type ISpace } from '../store';
 
 import type { IViewSpaceProps } from './view-space.types';
 
@@ -289,8 +271,7 @@ const flashMessage = useFlashMessage();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore(spacesStoreKey);
+const ns = useNamespace('view-space');
 
 const spaceId = computed(() => (props.id || route.params.id) as string | undefined);
 
@@ -307,9 +288,9 @@ const remoteFormChanged = ref<boolean>(false);
 // Tabs
 const activeTab = ref<string>('devices');
 
-// Floor selector
-const selectedFloorId = ref<string | null>(null);
-const isSavingFloor = ref<boolean>(false);
+// Dialog visibility
+const showAddDeviceDialog = ref<boolean>(false);
+const showAddDisplayDialog = ref<boolean>(false);
 
 // Component refs
 const devicesSectionRef = ref<InstanceType<typeof SpaceDevicesSection> | null>(null);
@@ -324,21 +305,6 @@ const spaceIcon = computed<string>((): string => {
 		return space.value.icon;
 	}
 	return space.value?.type === 'room' ? 'mdi:door' : 'mdi:home-floor-1';
-});
-
-// Get floor-type zones for selector
-const floorZones = computed(() => {
-	return spacesStore.findAll().filter((s) => {
-		if (s.type !== SpaceType.ZONE) return false;
-		if (!s.category?.startsWith('floor_')) return false;
-		return true;
-	});
-});
-
-// Get current parent floor
-const currentFloor = computed<ISpace | null>(() => {
-	if (!space.value?.parentId) return null;
-	return spacesStore.findById(space.value.parentId);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -364,78 +330,32 @@ const onCloseDrawer = (done?: () => void): void => {
 			type: 'warning',
 		})
 			.then((): void => {
-				if (isLGDevice.value) {
-					router.replace({
-						name: RouteNames.SPACE,
-						params: {
-							id: spaceId.value,
-						},
-					});
-				} else {
-					router.push({
-						name: RouteNames.SPACE,
-						params: {
-							id: spaceId.value,
-						},
-					});
-				}
-
 				done?.();
 			})
 			.catch((): void => {
 				// Just ignore it
 			});
 	} else {
-		if (isLGDevice.value) {
-			router.replace({
-				name: RouteNames.SPACE,
-				params: {
-					id: spaceId.value,
-				},
-			});
-		} else {
-			router.push({
-				name: RouteNames.SPACE,
-				params: {
-					id: spaceId.value,
-				},
-			});
-		}
-
 		done?.();
 	}
 };
 
-const onFloorChange = async (newFloorId: string | null): Promise<void> => {
-	if (!space.value || newFloorId === space.value.parentId) return;
-
-	isSavingFloor.value = true;
-
-	try {
-		await spacesStore.edit({
-			id: space.value.id,
-			data: {
-				name: space.value.name,
-				parentId: newFloorId,
-			},
-		});
-
-		flashMessage.success(t('spacesModule.messages.edited', { space: space.value.name }));
-	} catch {
-		// Revert selection on error
-		selectedFloorId.value = space.value.parentId;
-		flashMessage.error(t('spacesModule.messages.saveError'));
-	} finally {
-		isSavingFloor.value = false;
-	}
-};
-
 const onAddDevice = (): void => {
-	devicesSectionRef.value?.openAddDialog();
+	showAddDeviceDialog.value = true;
 };
 
 const onAddDisplay = (): void => {
-	displaysSectionRef.value?.openAddDialog();
+	showAddDisplayDialog.value = true;
+};
+
+const onDeviceAdded = (): void => {
+	// Refresh devices list
+	devicesSectionRef.value?.fetchDevices();
+};
+
+const onDisplayAdded = (): void => {
+	// Refresh displays list
+	displaysSectionRef.value?.fetchDisplays();
 };
 
 const onClose = (): void => {
@@ -454,24 +374,14 @@ onBeforeMount(async (): Promise<void> => {
 	// Mark as loaded if space was successfully fetched
 	if (space.value !== null) {
 		wasSpaceLoaded.value = true;
-		selectedFloorId.value = space.value.parentId;
 	}
 
-	showDrawer.value =
-		route.matched.find((matched) => matched.name === RouteNames.SPACE_EDIT) !== undefined;
 });
 
 onMounted((): void => {
 	// Component mounted
 });
 
-watch(
-	(): string => route.path,
-	(): void => {
-		showDrawer.value =
-			route.matched.find((matched) => matched.name === RouteNames.SPACE_EDIT) !== undefined;
-	}
-);
 
 watch(
 	(): boolean => isLoading.value,
@@ -488,7 +398,6 @@ watch(
 	(val: ISpace | null): void => {
 		if (val !== null) {
 			wasSpaceLoaded.value = true;
-			selectedFloorId.value = val.parentId;
 			meta.title = t('spacesModule.meta.spaces.detail.title', { space: space.value?.name });
 		} else if (wasSpaceLoaded.value && !isLoading.value) {
 			// Space was previously loaded but is now null - it was deleted

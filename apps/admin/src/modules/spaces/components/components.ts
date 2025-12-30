@@ -7,8 +7,13 @@ export { default as SpaceEditForm } from './space-edit-form.vue';
 export { default as SpaceLightingRoles } from './space-lighting-roles.vue';
 
 // Space detail sections
+export { default as SpaceDetail } from './space-detail.vue';
 export { default as SpaceDevicesSection } from './space-devices-section.vue';
 export { default as SpaceDisplaysSection } from './space-displays-section.vue';
+
+// Space dialogs
+export { default as SpaceAddDeviceDialog } from './space-add-device-dialog.vue';
+export { default as SpaceAddDisplayDialog } from './space-add-display-dialog.vue';
 
 // Overview components
 export { default as SpacesOverviewStats } from './spaces-overview-stats.vue';

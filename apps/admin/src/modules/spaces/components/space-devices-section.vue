@@ -1,15 +1,16 @@
 <template>
-	<div v-loading="loading">
-		<el-table
-			v-if="devices.length > 0"
-			:data="devices"
-			style="width: 100%"
-		>
+	<el-table
+		v-loading="loading"
+		:element-loading-text="t('spacesModule.detail.devices.loading')"
+		:data="devices"
+		table-layout="fixed"
+		row-key="id"
+	>
 			<el-table-column :label="t('spacesModule.onboarding.deviceName')" min-width="200">
 				<template #default="{ row }">
 					<div class="flex items-center gap-2">
 						<el-avatar :size="32">
-							<icon :icon="getDeviceIcon(row)" class="w[20px] h[20px]" />
+							<icon :icon="getDeviceCategoryIcon(row.category)" class="w[20px] h[20px]" />
 						</el-avatar>
 						<div>
 							<div class="font-medium">{{ row.name }}</div>
@@ -29,7 +30,7 @@
 				</template>
 			</el-table-column>
 
-			<el-table-column label="" width="100" align="center">
+			<el-table-column :label="t('devicesModule.table.devices.columns.state.title')" width="100" align="center">
 				<template #default="{ row }">
 					<el-tag
 						:type="row.status?.online ? 'success' : 'danger'"
@@ -40,94 +41,91 @@
 				</template>
 			</el-table-column>
 
-			<el-table-column :label="t('spacesModule.table.columns.actions')" width="120" align="right">
+			<el-table-column label="" width="220" align="right">
 				<template #default="{ row }">
-					<el-dropdown trigger="click">
-						<el-button link>
-							<icon icon="mdi:dots-vertical" />
+					<div class="flex items-center gap-2 justify-end">
+						<el-button
+							type="warning"
+							plain
+							size="small"
+							@click="onReassignDevice(row)"
+						>
+							<template #icon>
+								<icon icon="mdi:swap-horizontal" />
+							</template>
+							{{ t('spacesModule.detail.devices.reassign') }}
 						</el-button>
-						<template #dropdown>
-							<el-dropdown-menu>
-								<el-dropdown-item @click="onReassignDevice(row)">
-									<icon icon="mdi:swap-horizontal" class="mr-2" />
-									{{ t('spacesModule.detail.devices.reassign') }}
-								</el-dropdown-item>
-								<el-dropdown-item divided @click="onRemoveDevice(row)">
-									<icon icon="mdi:close" class="mr-2 text-red-500" />
-									<span class="text-red-500">{{ t('spacesModule.detail.devices.remove') }}</span>
-								</el-dropdown-item>
-							</el-dropdown-menu>
-						</template>
-					</el-dropdown>
-				</template>
-			</el-table-column>
-		</el-table>
-
-		<el-empty
-			v-else
-			:description="t('spacesModule.detail.devices.empty')"
-			:image-size="60"
-		>
-			<el-button type="primary" @click="openAddDialog">
-				{{ t('spacesModule.detail.devices.add') }}
-			</el-button>
-		</el-empty>
-	</div>
-
-	<!-- Add Device Dialog -->
-	<el-dialog
-		v-model="showAddDialog"
-		:title="t('spacesModule.detail.devices.selectDevice')"
-		width="600px"
-	>
-		<el-input
-			v-model="searchQuery"
-			:placeholder="t('spacesModule.fields.search.placeholder')"
-			clearable
-			class="mb-4"
-		>
-			<template #prefix>
-				<icon icon="mdi:magnify" />
-			</template>
-		</el-input>
-
-		<el-table
-			:data="filteredAvailableDevices"
-			max-height="400px"
-			@row-click="onSelectDevice"
-		>
-			<el-table-column :label="t('spacesModule.onboarding.deviceName')" min-width="200">
-				<template #default="{ row }">
-					<div class="flex items-center gap-2">
-						<el-avatar :size="32">
-							<icon :icon="getDeviceIcon(row)" class="w[20px] h[20px]" />
-						</el-avatar>
-						<div>
-							<div class="font-medium">{{ row.name }}</div>
-							<div v-if="row.description" class="text-xs text-gray-500">
-								{{ row.description }}
-							</div>
-						</div>
+						<el-button
+							type="danger"
+							plain
+							size="small"
+							@click="onRemoveDevice(row)"
+						>
+							<template #icon>
+								<icon icon="mdi:close" />
+							</template>
+							{{ t('spacesModule.detail.devices.remove') }}
+						</el-button>
 					</div>
 				</template>
 			</el-table-column>
 
-			<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="150">
-				<template #default="{ row }">
-					<el-tag v-if="row.roomId" size="small" type="warning">
-						{{ getSpaceName(row.roomId) }}
-					</el-tag>
-					<span v-else class="text-gray-400 text-sm">-</span>
-				</template>
-			</el-table-column>
-		</el-table>
+		<template #empty>
+			<div
+				v-if="loading"
+				class="h-full w-full leading-normal"
+			>
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child :size="80">
+							<template #primary>
+								<icon icon="mdi:devices" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:database-refresh" />
+							</template>
+						</icon-with-child>
+					</template>
+				</el-result>
+			</div>
 
-		<template #footer>
-			<el-button @click="showAddDialog = false">
-				{{ t('spacesModule.buttons.cancel.title') }}
-			</el-button>
+			<div
+				v-else
+				class="h-full w-full leading-normal"
+			>
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child :size="80">
+							<template #primary>
+								<icon icon="mdi:devices" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:information" />
+							</template>
+						</icon-with-child>
+					</template>
+
+					<template #title>
+						{{ t('spacesModule.detail.devices.empty') }}
+					</template>
+
+					<template #extra>
+						<el-button
+							type="primary"
+							plain
+							@click="openAddDialog"
+						>
+							<template #icon>
+								<icon icon="mdi:plus" />
+							</template>
+
+							{{ t('spacesModule.detail.devices.add') }}
+						</el-button>
+					</template>
+				</el-result>
+			</div>
 		</template>
-	</el-dialog>
+	</el-table>
 
 	<!-- Reassign Device Dialog -->
 	<el-dialog
@@ -171,13 +169,9 @@ import {
 	ElAvatar,
 	ElButton,
 	ElDialog,
-	ElDropdown,
-	ElDropdownItem,
-	ElDropdownMenu,
-	ElEmpty,
-	ElInput,
 	ElMessageBox,
 	ElOption,
+	ElResult,
 	ElSelect,
 	ElTable,
 	ElTableColumn,
@@ -186,9 +180,8 @@ import {
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { IconWithChild, injectStoresManager, useFlashMessage } from '../../../common';
 import type { IDevice } from '../../devices/store/devices.store.types';
-import { devicesStoreKey } from '../../devices/store/keys';
 import { useSpaceDevices } from '../composables';
 import { SpaceType } from '../spaces.constants';
 import { spacesStoreKey } from '../store';
@@ -201,11 +194,14 @@ defineOptions({
 
 const props = defineProps<ISpaceDevicesSectionProps>();
 
+const emit = defineEmits<{
+	(e: 'open-add-dialog'): void;
+}>();
+
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
 const storesManager = injectStoresManager();
-const devicesStore = storesManager.getStore(devicesStoreKey);
 const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const spaceIdRef = toRef(props, 'spaceId');
@@ -215,14 +211,11 @@ const {
 	devices,
 	loading,
 	fetchDevices,
-	addDevice,
 	removeDevice,
 	reassignDevice,
 } = useSpaceDevices(spaceIdRef, spaceTypeRef);
 
-const showAddDialog = ref(false);
 const showReassignDialog = ref(false);
-const searchQuery = ref('');
 const selectedDevice = ref<IDevice | null>(null);
 const selectedTargetSpace = ref<string | null>(null);
 const isReassigning = ref(false);
@@ -232,29 +225,7 @@ const roomSpaces = computed(() => {
 	return spacesStore.findAll().filter((space) => space.type === SpaceType.ROOM);
 });
 
-// Get available devices (not assigned to current space)
-const availableDevices = computed(() => {
-	return devicesStore.findAll().filter((device) => {
-		if (device.draft) return false;
-		// Show all devices that are not in the current space
-		return device.roomId !== props.spaceId;
-	});
-});
-
-// Filter available devices by search query
-const filteredAvailableDevices = computed(() => {
-	if (!searchQuery.value.trim()) {
-		return availableDevices.value;
-	}
-
-	const query = searchQuery.value.toLowerCase();
-	return availableDevices.value.filter((device) =>
-		device.name.toLowerCase().includes(query) ||
-		device.description?.toLowerCase().includes(query)
-	);
-});
-
-const getDeviceIcon = (device: IDevice): string => {
+const getDeviceCategoryIcon = (category: string): string => {
 	// Simple category-based icons
 	const categoryIcons: Record<string, string> = {
 		generic: 'mdi:power-plug',
@@ -270,26 +241,12 @@ const getDeviceIcon = (device: IDevice): string => {
 		window_covering: 'mdi:blinds',
 	};
 
-	return categoryIcons[device.category] || 'mdi:power-plug';
-};
-
-const getSpaceName = (spaceId: string): string => {
-	const space = spacesStore.findById(spaceId);
-	return space?.name || 'Unknown';
+	return categoryIcons[category] || 'mdi:power-plug';
 };
 
 const openAddDialog = (): void => {
-	showAddDialog.value = true;
-};
-
-const onSelectDevice = async (device: IDevice): Promise<void> => {
-	try {
-		await addDevice(device.id);
-		showAddDialog.value = false;
-		flashMessage.success(t('spacesModule.messages.edited', { space: device.name }));
-	} catch {
-		flashMessage.error(t('spacesModule.messages.saveError'));
-	}
+	// Emit event to parent to open dialog
+	emit('open-add-dialog');
 };
 
 const onReassignDevice = (device: IDevice): void => {
@@ -340,5 +297,6 @@ onMounted(async () => {
 // Expose methods for parent component
 defineExpose({
 	openAddDialog,
+	fetchDevices,
 });
 </script>

@@ -5,7 +5,7 @@
 		</el-form-item>
 
 		<el-form-item :label="t('spacesModule.fields.spaces.type.title')" prop="type">
-			<el-select v-model="formData.type" style="width: 100%">
+			<el-select v-model="formData.type">
 				<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
 				<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
 			</el-select>
@@ -16,7 +16,6 @@
 				v-model="formData.category"
 				:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
 				:clearable="formData.type !== SpaceType.ZONE"
-				style="width: 100%"
 				@change="onCategoryChange"
 			>
 				<!-- Grouped categories for zones -->
@@ -105,7 +104,6 @@
 				:placeholder="t('spacesModule.fields.spaces.parentZone.placeholder')"
 				clearable
 				filterable
-				style="width: 100%"
 			>
 				<el-option
 					v-for="zone in availableZones"
@@ -143,7 +141,6 @@
 					v-model="formData.primaryThermostatId"
 					:placeholder="t('spacesModule.fields.spaces.primaryThermostat.placeholder')"
 					clearable
-					style="width: 100%"
 					:loading="loadingDevices"
 				>
 					<el-option
@@ -166,7 +163,6 @@
 					v-model="formData.primaryTemperatureSensorId"
 					:placeholder="t('spacesModule.fields.spaces.primaryTemperatureSensor.placeholder')"
 					clearable
-					style="width: 100%"
 					:loading="loadingDevices"
 				>
 					<el-option

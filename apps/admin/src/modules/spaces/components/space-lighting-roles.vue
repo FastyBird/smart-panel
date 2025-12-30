@@ -11,7 +11,7 @@
 		</div>
 
 		<template v-else-if="lightTargets.length > 0">
-			<el-table :data="lightTargets" style="width: 100%" border>
+			<el-table :data="lightTargets" border>
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
@@ -27,7 +27,6 @@
 							:model-value="row.role ?? ''"
 							:placeholder="t('spacesModule.fields.spaces.lightingRoles.role.placeholder')"
 							clearable
-							style="width: 100%"
 							@update:model-value="onRoleChange(row, $event)"
 						>
 							<el-option
