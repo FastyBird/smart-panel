@@ -537,6 +537,78 @@ export class HomeAssistantHttpService {
 	}
 
 	/**
+	 * Mark all Home Assistant devices as disconnected
+	 * Called when the HA WebSocket connection is lost or service stops
+	 */
+	async markAllDevicesDisconnected(): Promise<void> {
+		try {
+			const devices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
+
+			this.logger.debug(`[CONNECTIVITY] Marking ${devices.length} HA devices as disconnected`);
+
+			for (const device of devices) {
+				try {
+					await this.deviceConnectivityService.setConnectionState(device.id, {
+						state: ConnectionState.DISCONNECTED,
+					});
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.warn(`[CONNECTIVITY] Failed to mark device ${device.id} as disconnected`, {
+						resource: device.id,
+						message: err.message,
+					});
+				}
+			}
+
+			this.logger.debug('[CONNECTIVITY] All HA devices marked as disconnected');
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[CONNECTIVITY] Failed to mark devices as disconnected', {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
+	}
+
+	/**
+	 * Mark all Home Assistant devices as connected
+	 * Called when the HA WebSocket connection is established
+	 */
+	async markAllDevicesConnected(): Promise<void> {
+		try {
+			const devices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
+
+			this.logger.debug(`[CONNECTIVITY] Marking ${devices.length} HA devices as connected`);
+
+			for (const device of devices) {
+				try {
+					await this.deviceConnectivityService.setConnectionState(device.id, {
+						state: ConnectionState.CONNECTED,
+					});
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.warn(`[CONNECTIVITY] Failed to mark device ${device.id} as connected`, {
+						resource: device.id,
+						message: err.message,
+					});
+				}
+			}
+
+			this.logger.debug('[CONNECTIVITY] All HA devices marked as connected');
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[CONNECTIVITY] Failed to mark devices as connected', {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
+	}
+
+	/**
 	 * Update virtual property values based on source properties
 	 * This recalculates derived values like battery status from percentage
 	 */

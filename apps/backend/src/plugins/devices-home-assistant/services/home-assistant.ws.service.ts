@@ -303,6 +303,11 @@ export class HomeAssistantWsService implements IManagedPluginService {
 				this.connectionResolver.reject(new Error('WebSocket connection closed before authentication completed'));
 			}
 
+			// Mark all HA devices as disconnected when connection is lost
+			this.homeAssistantHttpService.markAllDevicesDisconnected().catch((err: Error) => {
+				this.logger.warn(`Failed to mark devices as disconnected: ${err?.message ?? 'unknown error'}`);
+			});
+
 			// Only schedule reconnect for unexpected disconnections
 			// Skip if this was an intentional disconnect (e.g., from onConfigChanged or stop)
 			if (this.state === 'started' && !this.intentionalDisconnect) {
@@ -523,6 +528,11 @@ export class HomeAssistantWsService implements IManagedPluginService {
 			}
 
 			this.subscribeToStates();
+
+			// Mark all HA devices as connected now that we're authenticated
+			this.homeAssistantHttpService.markAllDevicesConnected().catch((err: Error) => {
+				this.logger.warn(`Failed to mark devices as connected: ${err?.message ?? 'unknown error'}`);
+			});
 
 			// Load initial states immediately after authentication
 			// This ensures devices have state values without waiting for cron job
