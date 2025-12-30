@@ -152,7 +152,7 @@ export class HelperMappingPreviewService {
 	 */
 	private generateClimateChannels(
 		helper: HomeAssistantDiscoveredHelperModel,
-		entityId: string,
+		_entityId: string,
 	): HelperChannelMappingPreviewModel[] {
 		const channels: HelperChannelMappingPreviewModel[] = [];
 		const attributes = helper.state?.attributes ?? {};
@@ -244,10 +244,7 @@ export class HelperMappingPreviewService {
 				dataType: DataTypeType.FLOAT,
 				permissions: [PermissionType.READ_WRITE],
 				unit: '°C',
-				format: [
-					(attributes.min_temp as number) ?? 0,
-					(attributes.max_temp as number) ?? 100,
-				],
+				format: [(attributes.min_temp as number) ?? 0, (attributes.max_temp as number) ?? 100],
 				required: true,
 				currentValue: attributes.temperature as number,
 			});
@@ -340,7 +337,7 @@ export class HelperMappingPreviewService {
 		// For mode properties, check for domain-specific mode attributes
 		if (propertyCategory === PropertyCategory.MODE) {
 			// Climate entities use hvac_modes
-			if (domain === HomeAssistantDomain.CLIMATE) {
+			if (domain === (HomeAssistantDomain.CLIMATE as string)) {
 				const hvacModes = attributes.hvac_modes;
 				if (Array.isArray(hvacModes) && hvacModes.length > 0) {
 					return hvacModes as string[];

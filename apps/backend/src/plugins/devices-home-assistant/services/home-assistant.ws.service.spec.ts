@@ -34,6 +34,8 @@ describe('HomeAssistantWsService', () => {
 
 		mockHttpService = {
 			loadStates: jest.fn().mockResolvedValue(undefined),
+			markAllDevicesConnected: jest.fn().mockResolvedValue(undefined),
+			markAllDevicesDisconnected: jest.fn().mockResolvedValue(undefined),
 		};
 
 		mockWs = {
