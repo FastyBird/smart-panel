@@ -220,4 +220,13 @@ watch(
 		sortBy.value = val;
 	}
 );
+
+watch(
+	(): boolean => isMDDevice.value,
+	(val: boolean): void => {
+		if (!val) {
+			selectedItems.value = [];
+		}
+	}
+);
 </script>

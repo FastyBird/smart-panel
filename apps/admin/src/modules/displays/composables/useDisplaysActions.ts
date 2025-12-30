@@ -35,7 +35,7 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 				}
 			);
 
-			await displaysStore?.remove({ id });
+			await displaysStore.remove({ id });
 
 			flashMessage.success(t('displaysModule.messages.removed'));
 		} catch {
