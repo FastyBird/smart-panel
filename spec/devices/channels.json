@@ -3081,8 +3081,7 @@
           "heat",
           "cool",
           "auto",
-          "manual",
-          "idle"
+          "manual"
         ],
         "invalid": null,
         "step": null
