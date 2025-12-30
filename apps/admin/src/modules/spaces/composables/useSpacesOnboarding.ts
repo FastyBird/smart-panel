@@ -6,7 +6,7 @@ import {
 	SpacesModuleCreateSpaceType,
 	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
-import { SpaceCategory, SpaceType, SPACE_CATEGORY_TEMPLATES } from '../spaces.constants';
+import { ASSIGNABLE_ZONE_CATEGORIES, SpaceCategory, SpaceType, SPACE_CATEGORY_TEMPLATES } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 import type { ISpace, ISpaceCreateData } from '../store';
@@ -20,6 +20,8 @@ interface ProposedSpace {
 	type: SpaceType;
 	category: SpaceCategory | null;
 	draftId: string; // Pre-generated UUID for draft space
+	editing: boolean; // Is name being edited inline
+	editName: string; // Temporary edit value
 }
 
 interface CustomSpace {
@@ -29,6 +31,8 @@ interface CustomSpace {
 	type: SpaceType;
 	category: SpaceCategory | null;
 	draftId: string; // Pre-generated UUID for draft space
+	editing: boolean; // Is name being edited inline
+	editName: string; // Temporary edit value
 }
 
 /**
@@ -63,8 +67,10 @@ interface WizardState {
 	proposedSpaces: ProposedSpace[];
 	customSpaces: CustomSpace[];
 	matchedSpaces: MatchedSpace[]; // Proposed spaces that match existing spaces
-	deviceAssignments: Record<string, string | null>; // deviceId -> spaceId
+	deviceAssignments: Record<string, string | null>; // deviceId -> spaceId (room)
 	displayAssignments: Record<string, string | null>; // displayId -> spaceId
+	zoneAssignments: Record<string, string[]>; // deviceId -> zoneIds[] (optional zone assignment)
+	showAdvancedZones: boolean; // Toggle for advanced zone column in Step 3
 	isLoading: boolean;
 	error: string | null;
 }
@@ -116,6 +122,8 @@ export const useSpacesOnboarding = () => {
 		matchedSpaces: [],
 		deviceAssignments: {},
 		displayAssignments: {},
+		zoneAssignments: {},
+		showAdvancedZones: false,
 		isLoading: false,
 		error: null,
 	});
@@ -130,6 +138,25 @@ export const useSpacesOnboarding = () => {
 	const matchedSpaces = computed(() => state.matchedSpaces);
 	const deviceAssignments = computed(() => state.deviceAssignments);
 	const displayAssignments = computed(() => state.displayAssignments);
+	const zoneAssignments = computed(() => state.zoneAssignments);
+	const showAdvancedZones = computed({
+		get: () => state.showAdvancedZones,
+		set: (val: boolean) => {
+			state.showAdvancedZones = val;
+		},
+	});
+
+	/**
+	 * Get zones that can be assigned to devices (excludes floor_* categories)
+	 */
+	const assignableZones = computed(() =>
+		availableSpaces.value.filter(
+			(space) =>
+				space.type === SpaceType.ZONE &&
+				space.category &&
+				(ASSIGNABLE_ZONE_CATEGORIES as readonly SpaceCategory[]).includes(space.category)
+		)
+	);
 
 	/**
 	 * Proposed spaces that don't match existing spaces (will be created)
@@ -174,8 +201,9 @@ export const useSpacesOnboarding = () => {
 				const category = apiCategoryToSpaceCategory(p.category);
 				// Get default description from category template
 				const defaultDescription = category ? SPACE_CATEGORY_TEMPLATES[category]?.description ?? null : null;
+				const name = p.name ?? '';
 				return {
-					name: p.name ?? '',
+					name,
 					description: defaultDescription,
 					deviceIds: p.device_ids ?? [],
 					deviceCount: p.device_count ?? 0,
@@ -183,6 +211,8 @@ export const useSpacesOnboarding = () => {
 					type: p.type ? apiTypeToSpaceType(p.type) : SpaceType.ROOM,
 					category,
 					draftId: uuid(), // Pre-generate UUID for draft space
+					editing: false,
+					editName: name,
 				};
 			});
 
@@ -639,6 +669,8 @@ export const useSpacesOnboarding = () => {
 			type: SpaceType.ROOM,
 			category: null,
 			draftId: uuid(), // Pre-generate UUID for draft space
+			editing: false,
+			editName: name,
 		});
 
 		return { success: true };
@@ -662,6 +694,198 @@ export const useSpacesOnboarding = () => {
 			clearAssignmentsForSpace(customSpace.draftId);
 		}
 		state.customSpaces.splice(index, 1);
+	};
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Inline name editing methods
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	const startEditingProposedName = (index: number): void => {
+		const proposal = state.proposedSpaces[index];
+		if (proposal) {
+			proposal.editing = true;
+			proposal.editName = proposal.name;
+		}
+	};
+
+	const confirmProposedNameEdit = (
+		index: number
+	): { success: boolean; convertedToMatch?: boolean; duplicateOf?: string } => {
+		const proposal = state.proposedSpaces[index];
+		if (!proposal) {
+			return { success: false };
+		}
+
+		const newName = proposal.editName.trim();
+
+		// Revert if empty
+		if (!newName) {
+			proposal.editing = false;
+			proposal.editName = proposal.name;
+			return { success: false };
+		}
+
+		// If name unchanged, just close edit mode
+		if (newName === proposal.name) {
+			proposal.editing = false;
+			return { success: true };
+		}
+
+		// Check for dedupe match with existing spaces
+		const canonicalNew = canonicalizeSpaceName(newName);
+		const existingMatch = state.existingSpaces.find(
+			(s) => canonicalizeSpaceName(s.name) === canonicalNew
+		);
+
+		if (existingMatch) {
+			// Convert to matched space
+			state.matchedSpaces.push({
+				proposedName: newName,
+				existingSpace: existingMatch,
+				deviceIds: proposal.deviceIds,
+				deviceCount: proposal.deviceCount,
+			});
+			// Remove from proposed
+			state.proposedSpaces.splice(index, 1);
+			return { success: true, convertedToMatch: true };
+		}
+
+		// Check for duplicate with other proposals/custom (excluding self)
+		const duplicateProposal = state.proposedSpaces.find(
+			(p, i) => i !== index && canonicalizeSpaceName(p.name) === canonicalNew
+		);
+		if (duplicateProposal) {
+			proposal.editing = false;
+			proposal.editName = proposal.name;
+			return { success: false, duplicateOf: duplicateProposal.name };
+		}
+
+		const duplicateCustom = state.customSpaces.find(
+			(c) => canonicalizeSpaceName(c.name) === canonicalNew
+		);
+		if (duplicateCustom) {
+			proposal.editing = false;
+			proposal.editName = proposal.name;
+			return { success: false, duplicateOf: duplicateCustom.name };
+		}
+
+		// Apply the rename
+		proposal.name = newName;
+		proposal.editing = false;
+
+		// Also update the draft space name if it exists
+		const draftSpace = state.spaces.find((s) => s.id === proposal.draftId);
+		if (draftSpace) {
+			draftSpace.name = newName;
+		}
+
+		return { success: true };
+	};
+
+	const discardProposedNameEdit = (index: number): void => {
+		const proposal = state.proposedSpaces[index];
+		if (proposal) {
+			proposal.editing = false;
+			proposal.editName = proposal.name;
+		}
+	};
+
+	const startEditingCustomName = (index: number): void => {
+		const customSpace = state.customSpaces[index];
+		if (customSpace) {
+			customSpace.editing = true;
+			customSpace.editName = customSpace.name;
+		}
+	};
+
+	const confirmCustomNameEdit = (
+		index: number
+	): { success: boolean; convertedToMatch?: boolean; duplicateOf?: string } => {
+		const customSpace = state.customSpaces[index];
+		if (!customSpace) {
+			return { success: false };
+		}
+
+		const newName = customSpace.editName.trim();
+
+		// Revert if empty
+		if (!newName) {
+			customSpace.editing = false;
+			customSpace.editName = customSpace.name;
+			return { success: false };
+		}
+
+		// If name unchanged, just close edit mode
+		if (newName === customSpace.name) {
+			customSpace.editing = false;
+			return { success: true };
+		}
+
+		// Check for dedupe match with existing spaces
+		const canonicalNew = canonicalizeSpaceName(newName);
+		const existingMatch = state.existingSpaces.find(
+			(s) => canonicalizeSpaceName(s.name) === canonicalNew
+		);
+
+		if (existingMatch) {
+			// Convert to matched space (custom spaces don't have device IDs)
+			state.matchedSpaces.push({
+				proposedName: newName,
+				existingSpace: existingMatch,
+				deviceIds: [],
+				deviceCount: 0,
+			});
+			// Remove from custom
+			state.customSpaces.splice(index, 1);
+			return { success: true, convertedToMatch: true };
+		}
+
+		// Check for duplicate with proposals/other customs (excluding self)
+		const duplicateProposal = state.proposedSpaces.find(
+			(p) => canonicalizeSpaceName(p.name) === canonicalNew
+		);
+		if (duplicateProposal) {
+			customSpace.editing = false;
+			customSpace.editName = customSpace.name;
+			return { success: false, duplicateOf: duplicateProposal.name };
+		}
+
+		const duplicateCustom = state.customSpaces.find(
+			(c, i) => i !== index && canonicalizeSpaceName(c.name) === canonicalNew
+		);
+		if (duplicateCustom) {
+			customSpace.editing = false;
+			customSpace.editName = customSpace.name;
+			return { success: false, duplicateOf: duplicateCustom.name };
+		}
+
+		// Apply the rename
+		customSpace.name = newName;
+		customSpace.editing = false;
+
+		// Also update the draft space name if it exists
+		const draftSpace = state.spaces.find((s) => s.id === customSpace.draftId);
+		if (draftSpace) {
+			draftSpace.name = newName;
+		}
+
+		return { success: true };
+	};
+
+	const discardCustomNameEdit = (index: number): void => {
+		const customSpace = state.customSpaces[index];
+		if (customSpace) {
+			customSpace.editing = false;
+			customSpace.editName = customSpace.name;
+		}
+	};
+
+	// ─────────────────────────────────────────────────────────────────────────────
+	// Zone assignment methods
+	// ─────────────────────────────────────────────────────────────────────────────
+
+	const setDeviceZones = (deviceId: string, zoneIds: string[]): void => {
+		state.zoneAssignments[deviceId] = zoneIds;
 	};
 
 	const initializeFromExistingSpaces = (existingSpacesData: ISpace[]): void => {
@@ -817,6 +1041,9 @@ export const useSpacesOnboarding = () => {
 		availableSpaces,
 		deviceAssignments,
 		displayAssignments,
+		zoneAssignments,
+		showAdvancedZones,
+		assignableZones,
 		// Actions
 		fetchProposedSpaces,
 		fetchDevices,
@@ -827,6 +1054,7 @@ export const useSpacesOnboarding = () => {
 		createSpace,
 		setDeviceAssignment,
 		setDisplayAssignment,
+		setDeviceZones,
 		applyAssignments,
 		setStep,
 		nextStep,
@@ -837,6 +1065,12 @@ export const useSpacesOnboarding = () => {
 		checkDuplicateSpaceName,
 		removeProposedSpace,
 		removeCustomSpace,
+		startEditingProposedName,
+		confirmProposedNameEdit,
+		discardProposedNameEdit,
+		startEditingCustomName,
+		confirmCustomNameEdit,
+		discardCustomNameEdit,
 		initializeFromExistingSpaces,
 		initializeDeviceAssignments,
 		initializeDisplayAssignments,

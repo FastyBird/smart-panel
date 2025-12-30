@@ -335,10 +335,14 @@
 		"devices": "devices",
 		"displays": "displays",
 		"selectSpace": "Select space",
+		"selectZones": "Select zones...",
 		"deviceName": "Device name",
 		"displayName": "Display name",
 		"assignedSpace": "Assigned space",
 		"spaceName": "Space name",
+		"zones": "Zones (optional)",
+		"advanced": "Advanced",
+		"basic": "Basic",
 		"steps": {
 			"spaces": {
 				"title": "Create spaces",
@@ -352,7 +356,10 @@
 				"addManual": "Add custom space",
 				"placeholder": "Enter space name (e.g., Living Room)",
 				"noProposals": "No spaces could be detected from your device names. Add spaces manually below.",
-				"duplicateWarning": "A space similar to \"{name}\" already exists."
+				"duplicateWarning": "A space similar to \"{name}\" already exists.",
+				"convertedToMatch": "This space matches an existing space and has been moved to the 'Using existing spaces' section.",
+				"multipleMatchedWith": "{count} detected spaces will use existing space '{name}'",
+				"existingTag": "Existing"
 			},
 			"displays": {
 				"title": "Assign displays",
@@ -376,7 +383,10 @@
 			"unassignedDevices": "Unassigned devices",
 			"assignedDisplays": "Assigned displays",
 			"unassignedDisplays": "Unassigned displays",
-			"bySpace": "Assignments by space"
+			"bySpace": "Assignments by space",
+			"unassignedDevicesTitle": "Unassigned devices",
+			"unassignedDisplaysTitle": "Unassigned displays",
+			"noDevices": "No devices"
 		},
 		"messages": {
 			"spacesCreated": "{count} space(s) created successfully",

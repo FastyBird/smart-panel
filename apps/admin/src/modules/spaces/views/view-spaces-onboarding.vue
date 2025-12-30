@@ -46,13 +46,23 @@
 		>
 			<div class="flex items-center gap-2">
 				<el-button
+					v-if="currentStep === 2 && assignableZones.length > 0"
+					:type="showAdvancedZones ? 'primary' : 'default'"
+					class="px-4!"
+					@click="showAdvancedZones = !showAdvancedZones"
+				>
+					{{ showAdvancedZones ? t('spacesModule.onboarding.basic') : t('spacesModule.onboarding.advanced') }}
+				</el-button>
+				<el-button
 					link
+					class="px-4!"
 					@click="handleCancel"
 				>
 					{{ t('spacesModule.buttons.cancel.title') }}
 				</el-button>
 				<el-button
 					v-if="currentStep > 0"
+					class="px-4!"
 					@click="prevStep"
 				>
 					{{ t('spacesModule.buttons.previous.title') }}
@@ -60,6 +70,7 @@
 				<el-button
 					v-if="currentStep < 3"
 					type="primary"
+					class="px-4!"
 					@click="handleNext"
 				>
 					{{ t('spacesModule.buttons.next.title') }}
@@ -68,6 +79,7 @@
 					v-else
 					type="primary"
 					:loading="isLoading"
+					class="px-4!"
 					@click="handleFinish"
 				>
 					{{ t('spacesModule.buttons.finish.title') }}
@@ -124,12 +136,33 @@
 								class="flex items-center gap-3 flex-wrap p-2"
 							>
 								<el-checkbox :model-value="space.selected" @change="() => toggleProposedSpace(index)" />
-								<span class="flex-1 min-w-0">{{ space.name }}</span>
+								<div class="grow-1 flex items-center gap-1 min-w-[150px]">
+									<!-- Read mode (default) -->
+									<template v-if="!space.editing">
+										{{ space.name }}
+										<el-button link size="small" @click="startEditingProposedName(index)">
+											<el-icon :size="14">
+												<icon icon="mdi:pencil" />
+											</el-icon>
+										</el-button>
+									</template>
+
+									<!-- Edit mode -->
+									<el-input
+										v-else
+										v-model="space.editName"
+										size="small"
+										class="max-w-[250px]!"
+										@keyup.enter="handleConfirmProposedNameEdit(index)"
+										@keyup.esc="handleDiscardProposedNameEdit(index)"
+										@blur="handleConfirmProposedNameEdit(index)"
+									/>
+								</div>
 								<el-tag size="small" type="info">{{ space.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
 								<el-select
 									v-model="space.type"
 									size="small"
-									style="width: 120px"
+									class="w-[120px]!"
 									@change="() => onSpaceTypeChange(space)"
 								>
 									<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
@@ -141,7 +174,7 @@
 									:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
 									:clearable="space.type === SpaceType.ROOM"
 									:required="space.type === SpaceType.ZONE"
-									style="width: 180px"
+									class="w-[180px]!"
 									@change="() => onCategoryChange(space)"
 								>
 									<!-- Grouped categories for zones -->
@@ -206,92 +239,35 @@
 						/>
 
 						<!-- Matched existing spaces (proposals that match existing spaces) -->
-						<template v-if="matchedSpaces.length > 0">
+						<template v-if="aggregatedMatchedSpaces.length > 0">
 							<h4 class="my-2 font-medium">
 								{{ t('spacesModule.onboarding.steps.spaces.matchedExisting') }}
 							</h4>
 
 							<div
-								v-for="(matched, index) in matchedSpaces"
-								:key="index"
+								v-for="aggregated in aggregatedMatchedSpaces"
+								:key="aggregated.existingSpace.id"
 								class="flex items-center gap-3 flex-wrap p-2"
 							>
 								<el-checkbox
 									:model-value="true"
-									readonly
-								/>
-								<span class="flex-1 min-w-0">
-									{{ matched.proposedName }}
-									<span class="text-gray-500 text-sm ml-2">
-										→ {{ t('spacesModule.onboarding.steps.spaces.matchedWith', { name: matched.existingSpace.name }) }}
-									</span>
-								</span>
-								<el-tag size="small" type="info">{{ matched.deviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
-								<el-select
-									:model-value="matched.existingSpace.type"
-									size="small"
-									readonly
-									style="width: 120px"
-								>
-									<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
-									<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
-								</el-select>
-								<el-select
-									:model-value="matched.existingSpace.category"
-									size="small"
-									readonly
-									:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
-									style="width: 180px"
-								>
-									<!-- Grouped categories for zones -->
-									<template v-if="matched.existingSpace.type === SpaceType.ZONE">
-										<el-option-group
-											v-for="group in getCategoryGroups(matched.existingSpace.type)"
-											:key="group.key"
-											:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
-										>
-											<el-option
-												v-for="category in group.categories"
-												:key="category"
-												:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-												:value="category"
-											>
-												<span class="flex items-center gap-2">
-													<el-icon v-if="getCategoryTemplates(matched.existingSpace.type)[category]">
-														<icon :icon="getCategoryTemplates(matched.existingSpace.type)[category].icon" />
-													</el-icon>
-													{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-												</span>
-											</el-option>
-										</el-option-group>
-									</template>
-									<!-- Flat list for rooms -->
-									<template v-else>
-										<el-option
-											v-for="category in getCategoryOptions(matched.existingSpace.type)"
-											:key="category"
-											:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-											:value="category"
-										>
-											<span class="flex items-center gap-2">
-												<el-icon v-if="getCategoryTemplates(matched.existingSpace.type)[category]">
-													<icon :icon="getCategoryTemplates(matched.existingSpace.type)[category].icon" />
-												</el-icon>
-												{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-											</span>
-										</el-option>
-									</template>
-								</el-select>
-								<el-button
-									size="small"
-									type="warning"
-									plain
 									disabled
-								>
-									<template #icon>
-										<icon icon="mdi:trash" />
+								/>
+								<span class="grow-1 min-w-0">
+									<template v-if="aggregated.matchCount === 1">
+										{{ aggregated.proposedNames[0] }}
+										<span class="text-gray-500 text-sm ml-2">
+											→ {{ t('spacesModule.onboarding.steps.spaces.matchedWith', { name: aggregated.existingSpace.name }) }}
+										</span>
 									</template>
-								</el-button>
+									<template v-else>
+										<span class="text-gray-600">
+											{{ t('spacesModule.onboarding.steps.spaces.multipleMatchedWith', { count: aggregated.matchCount, name: aggregated.existingSpace.name }) }}
+										</span>
+									</template>
+								</span>
+								<el-tag size="small" type="info">{{ aggregated.totalDeviceCount }} {{ t('spacesModule.onboarding.devices') }}</el-tag>
+								<el-tag size="small" type="success">{{ t('spacesModule.onboarding.steps.spaces.existingTag') }}</el-tag>
 							</div>
 						</template>
 
@@ -318,11 +294,32 @@
 								class="flex items-center gap-3 flex-wrap p-2"
 							>
 								<el-checkbox :model-value="space.selected" @change="() => toggleCustomSpace(index)" />
-								<span class="flex-1 min-w-0">{{ space.name }}</span>
+								<div class="grow-1 flex items-center gap-1 min-w-[150px]">
+									<!-- Read mode (default) -->
+									<template v-if="!space.editing">
+										{{ space.name }}
+										<el-button link size="small" @click="startEditingCustomName(index)">
+											<el-icon :size="14">
+												<icon icon="mdi:pencil" />
+											</el-icon>
+										</el-button>
+									</template>
+
+									<!-- Edit mode -->
+									<el-input
+										v-else
+										v-model="space.editName"
+										size="small"
+										class="max-w-[250px]"
+										@keyup.enter="handleConfirmCustomNameEdit(index)"
+										@keyup.esc="handleDiscardCustomNameEdit(index)"
+										@blur="handleConfirmCustomNameEdit(index)"
+									/>
+								</div>
 								<el-select
 									v-model="space.type"
 									size="small"
-									style="width: 120px"
+									class="w-[120px]!"
 									@change="() => onSpaceTypeChange(space)"
 								>
 									<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
@@ -334,7 +331,7 @@
 									:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
 									:clearable="space.type === SpaceType.ROOM"
 									:required="space.type === SpaceType.ZONE"
-									style="width: 180px"
+									class="w-[180px]!"
 									@change="() => onCategoryChange(space)"
 								>
 									<!-- Grouped categories for zones -->
@@ -526,6 +523,32 @@
 								</el-select>
 							</template>
 						</el-table-column>
+
+						<!-- Optional zones column (advanced mode) -->
+						<el-table-column
+							v-if="showAdvancedZones && assignableZones.length > 0"
+							:label="t('spacesModule.onboarding.zones')"
+							width="250"
+						>
+							<template #default="{ row }">
+								<el-select
+									:model-value="zoneAssignments[row.id] || []"
+									multiple
+									clearable
+									collapse-tags
+									:placeholder="t('spacesModule.onboarding.selectZones')"
+									class="w-full"
+									@update:model-value="(val: string[]) => setDeviceZones(row.id, val)"
+								>
+									<el-option
+										v-for="zone in assignableZones"
+										:key="zone.id"
+										:label="zone.name"
+										:value="zone.id"
+									/>
+								</el-select>
+							</template>
+						</el-table-column>
 					</el-table>
 				</template>
 
@@ -548,7 +571,10 @@
 							<div class="text-2xl font-bold text-green-600">{{ summary.assignedDevices }}</div>
 							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.assignedDevices') }}</div>
 						</div>
-						<div>
+						<div
+							:class="{ 'cursor-pointer hover:underline': summary.unassignedDevices > 0 }"
+							@click="summary.unassignedDevices > 0 && (showUnassignedDevicesDialog = true)"
+						>
 							<div class="text-2xl font-bold text-yellow-600">{{ summary.unassignedDevices }}</div>
 							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.unassignedDevices') }}</div>
 						</div>
@@ -556,7 +582,10 @@
 							<div class="text-2xl font-bold text-green-600">{{ summary.assignedDisplays }}</div>
 							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.assignedDisplays') }}</div>
 						</div>
-						<div>
+						<div
+							:class="{ 'cursor-pointer hover:underline': summary.unassignedDisplays > 0 }"
+							@click="summary.unassignedDisplays > 0 && (showUnassignedDisplaysDialog = true)"
+						>
 							<div class="text-2xl font-bold text-yellow-600">{{ summary.unassignedDisplays }}</div>
 							<div class="text-sm text-gray-500">{{ t('spacesModule.onboarding.summary.unassignedDisplays') }}</div>
 						</div>
@@ -568,12 +597,86 @@
 						</h4>
 
 						<el-table :data="spaceSummaryData" class="h-full w-full flex-grow" table-layout="fixed">
-							<el-table-column prop="name" :label="t('spacesModule.onboarding.spaceName')" />
+							<el-table-column prop="name" :label="t('spacesModule.onboarding.spaceName')">
+								<template #default="{ row }">
+									<span>{{ row.name }}</span>
+									<el-tag
+										v-if="row.devices === 0 && row.type === SpaceType.ROOM"
+										size="small"
+										type="warning"
+										class="ml-2"
+									>
+										{{ t('spacesModule.onboarding.summary.noDevices') }}
+									</el-tag>
+								</template>
+							</el-table-column>
 							<el-table-column prop="devices" :label="t('spacesModule.onboarding.devices')" width="120" align="center" />
 							<el-table-column prop="displays" :label="t('spacesModule.onboarding.displays')" width="120" align="center" />
 						</el-table>
 					</div>
 				</template>
+
+				<!-- Unassigned Devices Dialog -->
+				<el-dialog
+					v-model="showUnassignedDevicesDialog"
+					:title="t('spacesModule.onboarding.summary.unassignedDevicesTitle')"
+					width="600px"
+				>
+					<el-table :data="unassignedDevicesList">
+						<el-table-column prop="name" :label="t('spacesModule.onboarding.deviceName')" />
+						<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="200">
+							<template #default="{ row }">
+								<el-select
+									:model-value="deviceAssignments[row.id]"
+									:placeholder="t('spacesModule.onboarding.selectSpace')"
+									clearable
+									class="w-full"
+									@update:model-value="(val: string | null) => setDeviceAssignment(row.id, val)"
+								>
+									<el-option
+										v-for="space in roomSpaces"
+										:key="space.id"
+										:label="space.name"
+										:value="space.id"
+									/>
+								</el-select>
+							</template>
+						</el-table-column>
+					</el-table>
+				</el-dialog>
+
+				<!-- Unassigned Displays Dialog -->
+				<el-dialog
+					v-model="showUnassignedDisplaysDialog"
+					:title="t('spacesModule.onboarding.summary.unassignedDisplaysTitle')"
+					width="600px"
+				>
+					<el-table :data="unassignedDisplaysList">
+						<el-table-column :label="t('spacesModule.onboarding.displayName')">
+							<template #default="{ row }">
+								{{ row.name || row.id }}
+							</template>
+						</el-table-column>
+						<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="200">
+							<template #default="{ row }">
+								<el-select
+									:model-value="displayAssignments[row.id]"
+									:placeholder="t('spacesModule.onboarding.selectSpace')"
+									clearable
+									class="w-full"
+									@update:model-value="(val: string | null) => setDisplayAssignment(row.id, val)"
+								>
+									<el-option
+										v-for="space in roomSpaces"
+										:key="space.id"
+										:label="space.name"
+										:value="space.id"
+									/>
+								</el-select>
+							</template>
+						</el-table-column>
+					</el-table>
+				</el-dialog>
 			</div>
 
 			<div
@@ -588,6 +691,13 @@
 				<div class="flex gap-2">
 					<el-button @click="handleCancel">
 						{{ t('spacesModule.buttons.cancel.title') }}
+					</el-button>
+					<el-button
+						v-if="currentStep === 2 && assignableZones.length > 0"
+						:type="showAdvancedZones ? 'primary' : 'default'"
+						@click="showAdvancedZones = !showAdvancedZones"
+					>
+						{{ showAdvancedZones ? t('spacesModule.onboarding.basic') : t('spacesModule.onboarding.advanced') }}
 					</el-button>
 					<el-button v-if="currentStep < 3" type="primary" @click="handleNext">
 						{{ t('spacesModule.buttons.next.title') }}
@@ -610,6 +720,7 @@ import {
 	ElButton,
 	ElCard,
 	ElCheckbox,
+	ElDialog,
 	ElIcon,
 	ElInput,
 	ElOption,
@@ -666,6 +777,9 @@ const {
 	availableSpaces,
 	deviceAssignments,
 	displayAssignments,
+	zoneAssignments,
+	showAdvancedZones,
+	assignableZones,
 	fetchProposedSpaces,
 	fetchDevices,
 	fetchDisplays,
@@ -674,6 +788,7 @@ const {
 	createSpacesFromProposals,
 	setDeviceAssignment,
 	setDisplayAssignment,
+	setDeviceZones,
 	applyAssignments,
 	nextStep,
 	prevStep,
@@ -682,6 +797,12 @@ const {
 	addManualSpace,
 	removeProposedSpace,
 	removeCustomSpace,
+	startEditingProposedName,
+	confirmProposedNameEdit,
+	discardProposedNameEdit,
+	startEditingCustomName,
+	confirmCustomNameEdit,
+	discardCustomNameEdit,
 	initializeDeviceAssignments,
 	initializeDisplayAssignments,
 	getSummary,
@@ -690,6 +811,8 @@ const {
 const newSpaceName = ref('');
 const devices = ref<DeviceInfo[]>([]);
 const displays = ref<DisplayInfo[]>([]);
+const showUnassignedDevicesDialog = ref(false);
+const showUnassignedDisplaysDialog = ref(false);
 
 // Sorted displays for Step 2 (alphabetically by name, fallback to id)
 const sortedDisplays = computed(() =>
@@ -733,14 +856,55 @@ const unmatchedExistingSpaces = computed(() => {
 	return existingSpaces.value.filter((space) => !matchedIds.has(space.id));
 });
 
+// Aggregate matched spaces by existing space ID to avoid duplicate rows
+interface AggregatedMatch {
+	existingSpace: (typeof existingSpaces.value)[0];
+	proposedNames: string[];
+	totalDeviceCount: number;
+	matchCount: number;
+}
+
+const aggregatedMatchedSpaces = computed<AggregatedMatch[]>(() => {
+	const byExistingId = new Map<string, AggregatedMatch>();
+
+	for (const matched of matchedSpaces.value) {
+		const existing = byExistingId.get(matched.existingSpace.id);
+		if (existing) {
+			existing.proposedNames.push(matched.proposedName);
+			existing.totalDeviceCount += matched.deviceCount;
+			existing.matchCount++;
+		} else {
+			byExistingId.set(matched.existingSpace.id, {
+				existingSpace: matched.existingSpace,
+				proposedNames: [matched.proposedName],
+				totalDeviceCount: matched.deviceCount,
+				matchCount: 1,
+			});
+		}
+	}
+
+	return Array.from(byExistingId.values());
+});
+
 const summary = computed(() => getSummary());
 
 const spaceSummaryData = computed(() =>
 	allSpaces.value.map((space) => ({
 		name: space.name,
+		type: space.type,
 		devices: summary.value.devicesBySpace[space.id] ?? 0,
 		displays: summary.value.displaysBySpace[space.id] ?? 0,
 	}))
+);
+
+// Unassigned devices for drill-down dialog
+const unassignedDevicesList = computed(() =>
+	devices.value.filter((d) => !deviceAssignments.value[d.id])
+);
+
+// Unassigned displays for drill-down dialog
+const unassignedDisplaysList = computed(() =>
+	displays.value.filter((d) => !displayAssignments.value[d.id])
 );
 
 onMounted(async () => {
@@ -772,6 +936,36 @@ const handleAddSpace = (): void => {
 			);
 		}
 	}
+};
+
+const handleConfirmProposedNameEdit = (index: number): void => {
+	const result = confirmProposedNameEdit(index);
+	if (result.convertedToMatch) {
+		flashMessage.info(t('spacesModule.onboarding.steps.spaces.convertedToMatch'));
+	} else if (result.duplicateOf) {
+		flashMessage.warning(
+			t('spacesModule.onboarding.steps.spaces.duplicateWarning', { name: result.duplicateOf })
+		);
+	}
+};
+
+const handleConfirmCustomNameEdit = (index: number): void => {
+	const result = confirmCustomNameEdit(index);
+	if (result.convertedToMatch) {
+		flashMessage.info(t('spacesModule.onboarding.steps.spaces.convertedToMatch'));
+	} else if (result.duplicateOf) {
+		flashMessage.warning(
+			t('spacesModule.onboarding.steps.spaces.duplicateWarning', { name: result.duplicateOf })
+		);
+	}
+};
+
+const handleDiscardProposedNameEdit = (index: number): void => {
+	discardProposedNameEdit(index);
+};
+
+const handleDiscardCustomNameEdit = (index: number): void => {
+	discardCustomNameEdit(index);
 };
 
 // Category helpers from composable
