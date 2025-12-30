@@ -35,7 +35,7 @@ import { transformSceneCreateRequest, transformSceneResponse, transformSceneUpda
 
 export type ScenesStoreSetup = IScenesStoreState & IScenesStoreActions;
 
-const defaultSemaphore: IScenesStateSemaphore = {
+const createDefaultSemaphore = (): IScenesStateSemaphore => ({
 	fetching: {
 		items: false,
 		item: [],
@@ -44,13 +44,13 @@ const defaultSemaphore: IScenesStateSemaphore = {
 	updating: [],
 	deleting: [],
 	triggering: [],
-};
+});
 
 export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSetup>('scenes_module-scenes', (): ScenesStoreSetup => {
 	const backend = useBackend();
 	const logger = useLogger();
 
-	const semaphore = ref<IScenesStateSemaphore>(defaultSemaphore);
+	const semaphore = ref<IScenesStateSemaphore>(createDefaultSemaphore());
 
 	const firstLoad = ref<boolean>(false);
 
@@ -380,6 +380,11 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 			}
 
 			const transformed = transformSceneResponse(responseData.data, SceneSchema);
+
+			// Remove the draft entry if server returned a different ID
+			if (transformed.id !== payload.id) {
+				unset({ id: payload.id });
+			}
 
 			const scene = set({
 				id: transformed.id,

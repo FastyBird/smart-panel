@@ -354,10 +354,10 @@ export const SceneExecutionResSchema = z.object({
 	failed_actions: z.number(),
 	action_results: z.array(
 		z.object({
-			actionId: z.string().uuid(),
+			action_id: z.string().uuid(),
 			success: z.boolean(),
 			error: z.string().nullable().optional(),
-			executionTimeMs: z.number(),
+			execution_time_ms: z.number(),
 		})
 	),
 	error: z.string().nullable(),
