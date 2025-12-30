@@ -196,15 +196,15 @@ export class HelperMappingPreviewService {
 			currentValue: helper.state?.state ?? null,
 		});
 
-		// Active property - derived from hvac_action
+		// Active property - derived from hvac_action (spec requires rw permissions)
 		const hvacAction = attributes.hvac_action as string | undefined;
 		const isActive = hvacAction ? ['heating', 'cooling', 'drying', 'fan'].includes(hvacAction) : false;
 		thermostatProperties.push({
 			category: PropertyCategory.ACTIVE,
 			name: 'Active',
 			haAttribute: 'hvac_action',
-			dataType: DataTypeType.BOOLEAN,
-			permissions: [PermissionType.READ_ONLY],
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
 			unit: null,
 			format: null,
 			required: true,
@@ -228,7 +228,7 @@ export class HelperMappingPreviewService {
 				category: PropertyCategory.ON,
 				name: 'On',
 				haAttribute: ENTITY_MAIN_STATE_ATTRIBUTE,
-				dataType: DataTypeType.BOOLEAN,
+				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_WRITE],
 				unit: null,
 				format: null,
@@ -257,7 +257,7 @@ export class HelperMappingPreviewService {
 				category: PropertyCategory.STATUS,
 				name: 'Status',
 				haAttribute: 'hvac_action',
-				dataType: DataTypeType.BOOLEAN,
+				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
 				unit: null,
 				format: null,
