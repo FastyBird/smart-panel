@@ -260,41 +260,43 @@
 			align="right"
 		>
 			<template #default="scope">
-				<el-button
-					size="small"
-					plain
-					data-test-id="detail-device"
-					@click.stop="emit('detail', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:file-search-outline" />
-					</template>
+				<div @click.stop>
+					<el-button
+						size="small"
+						plain
+						data-test-id="detail-device"
+						@click="emit('detail', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:file-search-outline" />
+						</template>
 
-					{{ t('devicesModule.buttons.detail.title') }}
-				</el-button>
-				<el-button
-					size="small"
-					plain
-					class="ml-1!"
-					data-test-id="edit-device"
-					@click.stop="emit('edit', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-				<el-button
-					size="small"
-					type="warning"
-					plain
-					class="ml-1!"
-					data-test-id="remove-device"
-					@click.stop="emit('remove', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:trash" />
-					</template>
-				</el-button>
+						{{ t('devicesModule.buttons.detail.title') }}
+					</el-button>
+					<el-button
+						size="small"
+						plain
+						class="ml-1!"
+						data-test-id="edit-device"
+						@click="emit('edit', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:pencil" />
+						</template>
+					</el-button>
+					<el-button
+						size="small"
+						type="warning"
+						plain
+						class="ml-1!"
+						data-test-id="remove-device"
+						@click="emit('remove', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:trash" />
+						</template>
+					</el-button>
+				</div>
 			</template>
 		</el-table-column>
 	</el-table>

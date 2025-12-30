@@ -173,12 +173,14 @@
 			align="right"
 		>
 			<template #default="scope">
-				<pages-table-column-actions
-					:page="scope.row"
-					@detail="(id: IPage['id']) => emit('detail', id)"
-					@edit="(id: IPage['id']) => emit('edit', id)"
-					@remove="(id: IPage['id']) => emit('remove', id)"
-				/>
+				<div @click.stop>
+					<pages-table-column-actions
+						:page="scope.row"
+						@detail="(id: IPage['id']) => emit('detail', id)"
+						@edit="(id: IPage['id']) => emit('edit', id)"
+						@remove="(id: IPage['id']) => emit('remove', id)"
+					/>
+				</div>
 			</template>
 		</el-table-column>
 	</el-table>

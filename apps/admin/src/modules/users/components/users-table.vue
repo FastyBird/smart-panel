@@ -191,28 +191,30 @@
 			align="right"
 		>
 			<template #default="scope">
-				<el-button
-					size="small"
-					plain
-					data-test-id="edit-user"
-					@click.stop="emit('edit', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-				<el-button
-					size="small"
-					type="danger"
-					plain
-					class="ml-1!"
-					data-test-id="remove-user"
-					@click.stop="emit('remove', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:trash" />
-					</template>
-				</el-button>
+				<div @click.stop>
+					<el-button
+						size="small"
+						plain
+						data-test-id="edit-user"
+						@click="emit('edit', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:pencil" />
+						</template>
+					</el-button>
+					<el-button
+						size="small"
+						type="danger"
+						plain
+						class="ml-1!"
+						data-test-id="remove-user"
+						@click="emit('remove', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:trash" />
+						</template>
+					</el-button>
+				</div>
 			</template>
 		</el-table-column>
 	</el-table>
