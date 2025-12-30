@@ -731,7 +731,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, shallowRef } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import {
@@ -825,18 +825,19 @@ const {
 	discardCustomNameEdit,
 	initializeDeviceAssignments,
 	initializeDisplayAssignments,
-	getSummary,
+	summary,
 } = useSpacesOnboarding();
 
 const newSpaceName = ref('');
-const devices = ref<DeviceInfo[]>([]);
-const displays = ref<DisplayInfo[]>([]);
+// Use shallowRef for arrays that are replaced entirely, not mutated
+const devices = shallowRef<DeviceInfo[]>([]);
+const displays = shallowRef<DisplayInfo[]>([]);
 const showUnassignedDevicesDialog = ref(false);
 const showUnassignedDisplaysDialog = ref(false);
 
 // Refs for inline edit inputs (to enable autofocus)
-const proposedEditInputRefs = ref<Map<number, InstanceType<typeof ElInput> | null>>(new Map());
-const customEditInputRefs = ref<Map<number, InstanceType<typeof ElInput> | null>>(new Map());
+const proposedEditInputRefs = shallowRef<Map<number, InstanceType<typeof ElInput> | null>>(new Map());
+const customEditInputRefs = shallowRef<Map<number, InstanceType<typeof ElInput> | null>>(new Map());
 
 const setProposedEditInputRef = (index: number, el: InstanceType<typeof ElInput> | null): void => {
 	if (el) {
@@ -937,8 +938,6 @@ const aggregatedMatchedSpaces = computed<AggregatedMatch[]>(() => {
 
 	return Array.from(byExistingId.values());
 });
-
-const summary = computed(() => getSummary());
 
 const spaceSummaryData = computed(() =>
 	allSpaces.value.map((space) => ({

@@ -1002,7 +1002,8 @@ export const useSpacesOnboarding = () => {
 		}
 	};
 
-	const getSummary = () => {
+	// Memoized summary - only recalculates when assignments or spaces change
+	const summary = computed(() => {
 		const spaceCount = state.existingSpaces.length + state.spaces.length;
 		const assignedDevices = Object.values(state.deviceAssignments).filter((v) => v !== null).length;
 		const assignedDisplays = Object.values(state.displayAssignments).filter((v) => v !== null).length;
@@ -1041,7 +1042,7 @@ export const useSpacesOnboarding = () => {
 			devicesBySpace,
 			displaysBySpace,
 		};
-	};
+	});
 
 	return {
 		// State
@@ -1090,6 +1091,6 @@ export const useSpacesOnboarding = () => {
 		initializeFromExistingSpaces,
 		initializeDeviceAssignments,
 		initializeDisplayAssignments,
-		getSummary,
+		summary,
 	};
 };
