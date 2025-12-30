@@ -149,7 +149,7 @@ const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
 const { spaces, firstLoadFinished, fetchSpaces } = useSpaces();
-const { editSpace } = useSpace({ id: computed(() => props.space?.id) });
+const { editSpace } = useSpace(computed(() => props.space?.id));
 
 // Ensure all spaces are loaded when component mounts (needed for floor selector)
 onMounted(async () => {
