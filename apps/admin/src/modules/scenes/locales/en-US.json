@@ -12,24 +12,59 @@
 		"breadcrumbs": {
 			"scenes": "Scenes"
 		},
+		"filters": {
+			"allRooms": "All Rooms"
+		},
 		"fields": {
 			"name": "Name",
 			"category": "Category",
+			"room": "Room",
 			"enabled": "Enabled",
-			"actions": "Actions"
+			"actions": "Actions",
+			"unknownRoom": "Unknown Room"
+		},
+		"form": {
+			"room": "Room",
+			"selectRoom": "Select a room",
+			"roomRequired": "Room is required",
+			"name": "Scene Name",
+			"namePlaceholder": "Enter scene name",
+			"nameRequired": "Scene name is required",
+			"category": "Category",
+			"categoryRequired": "Category is required",
+			"description": "Description",
+			"descriptionPlaceholder": "Optional description for this scene",
+			"actionsSection": "Scene Actions",
+			"noActions": "No actions defined. Add actions to control devices when this scene is triggered.",
+			"actionNumber": "Action {number}",
+			"device": "Device",
+			"selectDevice": "Select a device",
+			"deviceRequired": "Device is required",
+			"channel": "Channel",
+			"selectChannel": "Select a channel",
+			"property": "Property",
+			"selectProperty": "Select a property",
+			"propertyRequired": "Property is required",
+			"value": "Value",
+			"valuePlaceholder": "Enter value",
+			"valueRequired": "Value is required",
+			"addAction": "Add Action"
 		},
 		"buttons": {
 			"add": {
 				"title": "Add Scene"
 			},
 			"delete": "Delete",
-			"cancel": "Cancel"
+			"cancel": "Cancel",
+			"save": "Save"
 		},
 		"messages": {
 			"triggered": "Scene \"{name}\" triggered successfully",
 			"triggerFailed": "Failed to trigger scene",
 			"confirmDelete": "Are you sure you want to delete scene \"{name}\"?",
 			"deleted": "Scene deleted successfully",
+			"created": "Scene created successfully",
+			"createFailed": "Failed to create scene",
 			"addFormPlaceholder": "Scene add form will be implemented here",
 			"editFormPlaceholder": "Scene edit form will be implemented here"
 		},

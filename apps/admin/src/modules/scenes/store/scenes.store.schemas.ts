@@ -11,8 +11,11 @@ import { ItemIdSchema } from './types';
 export const SceneActionSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
+	deviceId: ItemIdSchema,
+	channelId: ItemIdSchema.nullable().default(null),
+	propertyId: ItemIdSchema,
+	value: z.union([z.string(), z.number(), z.boolean()]),
 	order: z.number().int().min(0).default(0),
-	configuration: z.record(z.unknown()).default({}),
 	enabled: z.boolean().default(true),
 	scene: ItemIdSchema,
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -60,10 +63,12 @@ export const SceneSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
 	type: z.string().trim().nonempty(),
+	spaceId: ItemIdSchema,
 	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	icon: z.string().trim().nullable().default(null),
+	displayOrder: z.number().int().min(0).default(0),
 	enabled: z.boolean().default(true),
 	isTriggerable: z.boolean().default(true),
 	isEditable: z.boolean().default(true),
@@ -106,6 +111,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
+			spaceId: ItemIdSchema,
 			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 			name: z.string().trim().nonempty(),
 			description: z
@@ -120,6 +126,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			displayOrder: z.number().int().min(0).optional(),
 			enabled: z.boolean(),
 			isTriggerable: z.boolean(),
 			isEditable: z.boolean(),
@@ -142,6 +149,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
+			spaceId: ItemIdSchema,
 			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 			name: z.string().trim().nonempty(),
 			description: z
@@ -156,6 +164,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			displayOrder: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
 		.passthrough(),
@@ -166,6 +175,7 @@ export const ScenesEditActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
+			spaceId: ItemIdSchema.optional(),
 			name: z.string().trim().optional(),
 			description: z
 				.string()
@@ -179,6 +189,7 @@ export const ScenesEditActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			displayOrder: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
 		.passthrough(),
@@ -204,23 +215,32 @@ export const ScenesTriggerActionPayloadSchema = z.object({
 export const SceneActionCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
+	device_id: z.string().uuid(),
+	channel_id: z.string().uuid().nullable().optional(),
+	property_id: z.string().uuid(),
+	value: z.union([z.string(), z.number(), z.boolean()]),
 	order: z.number().int().min(0).optional(),
-	configuration: z.record(z.unknown()),
 	enabled: z.boolean().optional(),
 });
 
 export const SceneActionUpdateReqSchema = z.object({
 	type: z.string().trim().nonempty(),
+	device_id: z.string().uuid().optional(),
+	channel_id: z.string().uuid().nullable().optional(),
+	property_id: z.string().uuid().optional(),
+	value: z.union([z.string(), z.number(), z.boolean()]).optional(),
 	order: z.number().int().min(0).optional(),
-	configuration: z.record(z.unknown()).optional(),
 	enabled: z.boolean().optional(),
 });
 
 export const SceneActionResSchema = z.object({
 	id: z.string().uuid(),
 	type: z.string(),
+	device_id: z.string().uuid(),
+	channel_id: z.string().uuid().nullable(),
+	property_id: z.string().uuid(),
+	value: z.union([z.string(), z.number(), z.boolean()]),
 	order: z.number(),
-	configuration: z.record(z.unknown()),
 	enabled: z.boolean(),
 	scene: z.string().uuid(),
 	created_at: z.string(),
@@ -252,6 +272,7 @@ export const SceneTriggerResSchema = z.object({
 export const SceneCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
+	space_id: z.string().uuid(),
 	category: z.nativeEnum(SceneCategory).optional(),
 	name: z.string().trim().nonempty(),
 	description: z
@@ -266,12 +287,15 @@ export const SceneCreateReqSchema = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	display_order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
+	is_triggerable: z.boolean().optional(),
 	actions: z.array(SceneActionCreateReqSchema).optional(),
 });
 
 export const SceneUpdateReqSchema = z.object({
 	type: z.string().trim().nonempty(),
+	space_id: z.string().uuid().optional(),
 	category: z.nativeEnum(SceneCategory).optional(),
 	name: z.string().trim().nonempty().optional(),
 	description: z
@@ -286,16 +310,20 @@ export const SceneUpdateReqSchema = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	display_order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
+	is_triggerable: z.boolean().optional(),
 });
 
 export const SceneResSchema = z.object({
 	id: z.string().uuid(),
 	type: z.string(),
+	space_id: z.string().uuid(),
 	category: z.nativeEnum(SceneCategory),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	icon: z.string().trim().nullable(),
+	display_order: z.number().int().min(0),
 	enabled: z.boolean(),
 	is_triggerable: z.boolean(),
 	is_editable: z.boolean(),
@@ -315,18 +343,19 @@ export const SceneTriggerReqSchema = z.object({
 export const SceneExecutionResSchema = z.object({
 	scene_id: z.string().uuid(),
 	status: z.enum(['pending', 'running', 'completed', 'failed', 'partially_completed']),
-	triggered_by: z.string(),
+	triggered_by: z.string().nullable(),
 	triggered_at: z.string(),
 	completed_at: z.string().nullable(),
 	total_actions: z.number(),
 	successful_actions: z.number(),
 	failed_actions: z.number(),
-	results: z.array(
+	action_results: z.array(
 		z.object({
-			action_id: z.string().uuid(),
+			actionId: z.string().uuid(),
 			success: z.boolean(),
 			error: z.string().nullable().optional(),
-			executed_at: z.string(),
+			executionTimeMs: z.number(),
 		})
 	),
+	error: z.string().nullable(),
 });

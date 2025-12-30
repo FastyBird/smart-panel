@@ -5,7 +5,22 @@
 	<el-card class="scenes-list">
 		<template #header>
 			<div class="card-header">
-				<span>{{ t('scenes.headings.list') }}</span>
+				<div class="header-left">
+					<span>{{ t('scenes.headings.list') }}</span>
+					<el-select
+						v-model="selectedSpaceId"
+						:placeholder="t('scenes.filters.allRooms')"
+						clearable
+						class="room-filter"
+					>
+						<el-option
+							v-for="room in rooms"
+							:key="room.id"
+							:label="room.name"
+							:value="room.id"
+						/>
+					</el-select>
+				</div>
 				<el-button type="primary" @click="onAddScene">
 					<template #icon>
 						<icon icon="mdi:plus" />
@@ -15,13 +30,19 @@
 			</div>
 		</template>
 
-		<el-table v-loading="fetching" :data="scenes" stripe style="width: 100%">
+		<el-table v-loading="fetching || fetchingSpaces" :data="filteredScenes" stripe style="width: 100%">
 			<el-table-column prop="name" :label="t('scenes.fields.name')" min-width="200">
 				<template #default="{ row }">
 					<div class="scene-name">
 						<icon :icon="getCategoryIcon(row.category)" class="scene-icon" />
 						<span>{{ row.name }}</span>
 					</div>
+				</template>
+			</el-table-column>
+
+			<el-table-column prop="spaceId" :label="t('scenes.fields.room')" width="180">
+				<template #default="{ row }">
+					<span>{{ getSpaceName(row.spaceId) }}</span>
 				</template>
 			</el-table-column>
 
@@ -71,10 +92,12 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElCard, ElTable, ElTableColumn, ElButton, ElButtonGroup, ElTag, ElMessageBox, ElMessage } from 'element-plus';
+import { ElCard, ElTable, ElTableColumn, ElButton, ElButtonGroup, ElTag, ElMessageBox, ElMessage, ElSelect, ElOption } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, AppBreadcrumbs, type IBreadcrumb } from '../../../common';
+import { useSpaces } from '../../spaces/composables';
+import { SpaceType } from '../../spaces/spaces.constants';
 import { useScenes } from '../composables/useScenes';
 import { RouteNames, SceneCategory, SCENE_CATEGORY_ICONS } from '../scenes.constants';
 import type { IScene } from '../store/scenes.store.types';
@@ -82,9 +105,44 @@ import type { IScene } from '../store/scenes.store.types';
 const { t } = useI18n();
 const router = useRouter();
 
-const { scenes, fetching, fetchScenes, triggerScene } = useScenes();
+const { scenes, fetching, fetchScenes, triggerScene, removeScene } = useScenes();
+const { spaces, fetching: fetchingSpaces, fetchSpaces } = useSpaces();
 
 const triggering = ref<string[]>([]);
+const selectedSpaceId = ref<string | null>(null);
+
+// Filter spaces to only show rooms (not zones)
+const rooms = computed(() => {
+	return spaces.value.filter((space) => space.type === SpaceType.ROOM).sort((a, b) => a.name.localeCompare(b.name));
+});
+
+// Filter scenes by selected room
+const filteredScenes = computed<IScene[]>(() => {
+	const allScenes = scenes.value;
+	if (!selectedSpaceId.value) {
+		return allScenes.sort((a, b) => {
+			// Sort by displayOrder first, then by name
+			if (a.displayOrder !== b.displayOrder) {
+				return a.displayOrder - b.displayOrder;
+			}
+			return a.name.localeCompare(b.name);
+		});
+	}
+	return allScenes
+		.filter((scene) => scene.spaceId === selectedSpaceId.value)
+		.sort((a, b) => {
+			if (a.displayOrder !== b.displayOrder) {
+				return a.displayOrder - b.displayOrder;
+			}
+			return a.name.localeCompare(b.name);
+		});
+});
+
+// Get space name by ID
+const getSpaceName = (spaceId: string): string => {
+	const space = spaces.value.find((s) => s.id === spaceId);
+	return space?.name || t('scenes.fields.unknownRoom');
+};
 
 const breadcrumbs = computed<IBreadcrumb[]>(() => [
 	{
@@ -142,15 +200,15 @@ const onDeleteScene = async (scene: IScene): Promise<void> => {
 			type: 'warning',
 		});
 
-		// TODO: Implement delete via store
+		await removeScene(scene.id);
 		ElMessage.success(t('scenes.messages.deleted'));
 	} catch {
-		// Cancelled
+		// Cancelled or error
 	}
 };
 
 onMounted(async () => {
-	await fetchScenes();
+	await Promise.all([fetchScenes(), fetchSpaces()]);
 });
 </script>
 
@@ -163,6 +221,16 @@ onMounted(async () => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.header-left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.room-filter {
+	width: 200px;
 }
 
 .scene-name {

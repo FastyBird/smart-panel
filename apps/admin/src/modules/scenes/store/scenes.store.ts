@@ -71,6 +71,10 @@ export const useScenes = defineStore<'scenes_module-scenes', ScenesStoreSetup>('
 
 	const findById = (id: IScene['id']): IScene | null => data.value.get(id) ?? null;
 
+	const findBySpace = (spaceId: IScene['spaceId']): IScene[] => {
+		return Array.from(data.value.values()).filter((scene) => scene.spaceId === spaceId);
+	};
+
 	const pendingGetPromises: Record<string, Promise<IScene>> = {};
 
 	const pendingFetchPromises: Record<string, Promise<IScene[]>> = {};
@@ -463,6 +467,7 @@ export const useScenes = defineStore<'scenes_module-scenes', ScenesStoreSetup>('
 		fetching,
 		findAll,
 		findById,
+		findBySpace,
 		onEvent,
 		set,
 		unset,
