@@ -5,7 +5,6 @@ import {
 	IsEnum,
 	IsInstance,
 	IsInt,
-	IsObject,
 	IsOptional,
 	IsString,
 	IsUUID,
@@ -24,6 +23,22 @@ import { ConditionOperator, SceneCategory, TriggerType } from '../scenes.constan
 @Entity('scenes_module_scenes')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class SceneEntity extends BaseEntity {
+	@ApiProperty({
+		name: 'space_id',
+		description: 'Room space identifier this scene belongs to',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@Expose({ name: 'space_id' })
+	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
+		toClassOnly: true,
+	})
+	@Index()
+	@Column({ type: 'varchar', length: 36 })
+	spaceId: string;
+
 	@ApiProperty({ description: 'Scene category', enum: SceneCategory, example: SceneCategory.GENERIC })
 	@Expose()
 	@IsEnum(SceneCategory)
@@ -64,6 +79,22 @@ export class SceneEntity extends BaseEntity {
 	@Column({ nullable: true })
 	icon: string | null;
 
+	@ApiProperty({
+		name: 'display_order',
+		description: 'Display order for UI',
+		type: 'integer',
+		minimum: 0,
+		example: 0,
+	})
+	@Expose({ name: 'display_order' })
+	@IsInt()
+	@Min(0)
+	@Transform(({ obj }: { obj: { display_order?: number; displayOrder?: number } }) => obj.display_order ?? obj.displayOrder ?? 0, {
+		toClassOnly: true,
+	})
+	@Column({ type: 'int', default: 0 })
+	displayOrder: number = 0;
+
 	@ApiProperty({ description: 'Scene enabled status', type: 'boolean', example: true })
 	@Expose()
 	@IsBoolean()
@@ -81,7 +112,7 @@ export class SceneEntity extends BaseEntity {
 	@IsBoolean()
 	@Transform(
 		({ obj }: { obj: { is_triggerable?: boolean; isTriggerable?: boolean } }) =>
-			obj.is_triggerable ?? obj.isTriggerable,
+			obj.is_triggerable ?? obj.isTriggerable ?? true,
 		{ toClassOnly: true },
 	)
 	@Column({ nullable: false, default: true })
@@ -96,7 +127,7 @@ export class SceneEntity extends BaseEntity {
 	@Expose({ name: 'is_editable' })
 	@IsBoolean()
 	@Transform(
-		({ obj }: { obj: { is_editable?: boolean; isEditable?: boolean } }) => obj.is_editable ?? obj.isEditable,
+		({ obj }: { obj: { is_editable?: boolean; isEditable?: boolean } }) => obj.is_editable ?? obj.isEditable ?? true,
 		{ toClassOnly: true },
 	)
 	@Column({ nullable: false, default: true })
@@ -138,11 +169,12 @@ export class SceneEntity extends BaseEntity {
 	actions: SceneActionEntity[];
 
 	@ApiProperty({
-		description: 'Scene conditions',
+		description: 'Scene conditions (for future automation)',
 		type: 'array',
 		items: { $ref: '#/components/schemas/ScenesModuleDataSceneCondition' },
 	})
 	@Expose()
+	@IsOptional()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => SceneConditionEntity)
@@ -150,11 +182,12 @@ export class SceneEntity extends BaseEntity {
 	conditions: SceneConditionEntity[];
 
 	@ApiProperty({
-		description: 'Scene triggers',
+		description: 'Scene triggers (for future automation)',
 		type: 'array',
 		items: { $ref: '#/components/schemas/ScenesModuleDataSceneTrigger' },
 	})
 	@Expose()
+	@IsOptional()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => SceneTriggerEntity)
@@ -191,6 +224,66 @@ export class SceneActionEntity extends BaseEntity {
 	@ManyToOne(() => SceneEntity, (scene) => scene.actions, { onDelete: 'CASCADE' })
 	scene: SceneEntity | string;
 
+	@ApiProperty({
+		name: 'device_id',
+		description: 'Target device identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440001',
+	})
+	@Expose({ name: 'device_id' })
+	@IsUUID('4', { message: '[{"field":"device_id","reason":"Device ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { device_id?: string; deviceId?: string } }) => obj.device_id ?? obj.deviceId, {
+		toClassOnly: true,
+	})
+	@Index()
+	@Column({ type: 'varchar', length: 36 })
+	deviceId: string;
+
+	@ApiPropertyOptional({
+		name: 'channel_id',
+		description: 'Target channel identifier (optional if device has single channel)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: '550e8400-e29b-41d4-a716-446655440002',
+	})
+	@Expose({ name: 'channel_id' })
+	@IsOptional()
+	@ValidateIf((o) => o.channelId !== null && o.channelId !== undefined)
+	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { channel_id?: string | null; channelId?: string | null } }) => obj.channel_id ?? obj.channelId ?? null, {
+		toClassOnly: true,
+	})
+	@Index()
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	channelId: string | null;
+
+	@ApiProperty({
+		name: 'property_id',
+		description: 'Target property identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440003',
+	})
+	@Expose({ name: 'property_id' })
+	@IsUUID('4', { message: '[{"field":"property_id","reason":"Property ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { property_id?: string; propertyId?: string } }) => obj.property_id ?? obj.propertyId, {
+		toClassOnly: true,
+	})
+	@Index()
+	@Column({ type: 'varchar', length: 36 })
+	propertyId: string;
+
+	@ApiProperty({
+		description: 'Target value to set',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		example: true,
+	})
+	@Expose()
+	@Column({ type: 'json' })
+	value: string | number | boolean;
+
 	@ApiProperty({ description: 'Action execution order', type: 'integer', example: 0 })
 	@Expose()
 	@IsInt()
@@ -198,17 +291,6 @@ export class SceneActionEntity extends BaseEntity {
 	@Index()
 	@Column({ type: 'int', default: 0 })
 	order: number = 0;
-
-	@ApiProperty({
-		description: 'Action configuration (plugin-specific)',
-		type: 'object',
-		additionalProperties: true,
-		example: { deviceId: 'uuid', channelId: 'uuid', propertyId: 'uuid', value: true },
-	})
-	@Expose()
-	@IsObject()
-	@Column({ type: 'json', default: {} })
-	configuration: Record<string, unknown> = {};
 
 	@ApiProperty({ description: 'Action enabled status', type: 'boolean', example: true })
 	@Expose()
@@ -267,7 +349,6 @@ export class SceneConditionEntity extends BaseEntity {
 		example: { deviceId: 'uuid', propertyId: 'uuid', operator: 'eq', value: true },
 	})
 	@Expose()
-	@IsObject()
 	@Column({ type: 'json', default: {} })
 	configuration: Record<string, unknown> = {};
 
@@ -335,7 +416,6 @@ export class SceneTriggerEntity extends BaseEntity {
 		example: { cron: '0 8 * * *' },
 	})
 	@Expose()
-	@IsObject()
 	@Column({ type: 'json', default: {} })
 	configuration: Record<string, unknown> = {};
 

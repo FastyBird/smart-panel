@@ -9,11 +9,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { SpacesService } from '../../spaces/services/spaces.service';
+import { SpaceType } from '../../spaces/spaces.constants';
 import { CreateSceneDto } from '../dto/create-scene.dto';
 import { UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
 import { EventType } from '../scenes.constants';
-import { ScenesException, ScenesNotEditableException, ScenesNotFoundException, ScenesValidationException } from '../scenes.exceptions';
+import { ScenesException, ScenesNotEditableException, ScenesNotFoundException, ScenesSpaceValidationException, ScenesValidationException } from '../scenes.exceptions';
 
 import { SceneActionsService } from './scene-actions.service';
 import { ScenesTypeMapperService } from './scenes-type-mapper.service';
@@ -27,9 +29,51 @@ export class ScenesService {
 		private readonly repository: Repository<SceneEntity>,
 		private readonly scenesMapperService: ScenesTypeMapperService,
 		private readonly sceneActionsService: SceneActionsService,
+		private readonly spacesService: SpacesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
+
+	/**
+	 * Validate that space exists and is of type ROOM
+	 */
+	private async validateSpace(spaceId: string): Promise<void> {
+		const space = await this.spacesService.findOne(spaceId);
+
+		if (!space) {
+			throw new ScenesSpaceValidationException(`Space with id=${spaceId} not found.`);
+		}
+
+		if (space.type !== SpaceType.ROOM) {
+			throw new ScenesSpaceValidationException(
+				`Space with id=${spaceId} is not a room. Scenes can only be assigned to rooms.`,
+			);
+		}
+	}
+
+	/**
+	 * Find all scenes for a specific space (room)
+	 */
+	async findBySpace<TScene extends SceneEntity>(spaceId: string): Promise<TScene[]> {
+		this.logger.debug(`[LOOKUP] Fetching scenes for spaceId=${spaceId}`);
+
+		const scenes = (await this.repository
+			.createQueryBuilder('scene')
+			.leftJoinAndSelect('scene.actions', 'actions')
+			.leftJoinAndSelect('actions.scene', 'actionScene')
+			.leftJoinAndSelect('scene.conditions', 'conditions')
+			.leftJoinAndSelect('conditions.scene', 'conditionScene')
+			.leftJoinAndSelect('scene.triggers', 'triggers')
+			.leftJoinAndSelect('triggers.scene', 'triggerScene')
+			.where('scene.spaceId = :spaceId', { spaceId })
+			.orderBy('scene.displayOrder', 'ASC')
+			.addOrderBy('scene.name', 'ASC')
+			.getMany()) as TScene[];
+
+		this.logger.debug(`[LOOKUP] Found ${scenes.length} scenes for spaceId=${spaceId}`);
+
+		return scenes;
+	}
 
 	async getCount<TScene extends SceneEntity>(type?: string): Promise<number> {
 		const mapping = type ? this.scenesMapperService.getMapping<TScene, any, any>(type) : null;
@@ -138,12 +182,15 @@ export class ScenesService {
 	): Promise<TScene> {
 		this.logger.debug('[CREATE] Creating new scene');
 
-		const { type } = createDto;
+		const { type, spaceId } = createDto;
 
 		if (!type) {
 			this.logger.error('[CREATE] Validation failed: Missing required "type" attribute in data.');
 			throw new ScenesException('Scene type attribute is required.');
 		}
+
+		// Validate that space exists and is a room
+		await this.validateSpace(spaceId);
 
 		const mapping = this.scenesMapperService.getMapping<TScene, TCreateDTO, any>(type);
 
@@ -215,11 +262,16 @@ export class ScenesService {
 			throw new ScenesNotEditableException(`Scene with id=${id} cannot be edited.`);
 		}
 
-		const { type } = updateDto;
+		const { type, spaceId } = updateDto;
 
 		if (!type) {
 			this.logger.error('[UPDATE] Validation failed: Missing required "type" attribute in data.');
 			throw new ScenesException('Scene type attribute is required.');
+		}
+
+		// Validate space if being updated
+		if (spaceId) {
+			await this.validateSpace(spaceId);
 		}
 
 		const mapping = this.scenesMapperService.getMapping<TScene, any, TUpdateDTO>(type);

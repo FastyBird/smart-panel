@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { DevicesModule } from '../devices/devices.module';
+import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
@@ -23,6 +25,7 @@ import {
 	SCENES_MODULE_NAME,
 } from './scenes.constants';
 import { SCENES_SWAGGER_EXTRA_MODELS } from './scenes.openapi';
+import { LocalScenesPlatformService } from './services/local-scenes-platform.service';
 import { ScenesModuleResetService } from './services/module-reset.service';
 import { SceneActionsTypeMapperService } from './services/scene-actions-type-mapper.service';
 import { SceneActionsService } from './services/scene-actions.service';
@@ -42,6 +45,8 @@ import { ScenesService } from './services/scenes.service';
 		TypeOrmModule.forFeature([SceneEntity, SceneActionEntity, SceneConditionEntity, SceneTriggerEntity]),
 		ConfigModule,
 		forwardRef(() => SystemModule),
+		forwardRef(() => DevicesModule),
+		forwardRef(() => SpacesModule),
 		WebsocketModule,
 	],
 	controllers: [ScenesController, SceneActionsController, SceneConditionsController, SceneTriggersController],
@@ -56,6 +61,8 @@ import { ScenesService } from './services/scenes.service';
 		SceneActionsTypeMapperService,
 		// Execution service
 		SceneExecutorService,
+		// Local scenes platform (built-in device control)
+		LocalScenesPlatformService,
 		// Reset service
 		ScenesModuleResetService,
 		// WebSocket listener
@@ -69,6 +76,7 @@ import { ScenesService } from './services/scenes.service';
 		ScenesTypeMapperService,
 		SceneActionsTypeMapperService,
 		SceneExecutorService,
+		LocalScenesPlatformService,
 		ScenesModuleResetService,
 	],
 })
@@ -78,6 +86,8 @@ export class ScenesModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly sceneExecutor: SceneExecutorService,
+		private readonly localScenesPlatform: LocalScenesPlatformService,
 	) {}
 
 	onModuleInit(): void {
@@ -87,6 +97,9 @@ export class ScenesModule implements OnModuleInit {
 			class: ScenesConfigModel,
 			configDto: UpdateScenesConfigDto,
 		});
+
+		// Register the local scenes platform for built-in device control
+		this.sceneExecutor.registerPlatform(this.localScenesPlatform);
 
 		// Register factory reset handler
 		this.factoryResetRegistry.register(

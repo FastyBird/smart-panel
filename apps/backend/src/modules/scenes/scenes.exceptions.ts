@@ -51,3 +51,39 @@ export class ScenesExecutionException extends ScenesException {
 		this.name = 'ScenesExecutionException';
 	}
 }
+
+export class ScenesSpaceValidationException extends ScenesException {
+	public readonly status = HttpStatus.BAD_REQUEST;
+
+	public constructor(message: string) {
+		super(message);
+		this.name = 'ScenesSpaceValidationException';
+	}
+}
+
+export class ScenesDeviceNotFoundException extends ScenesException {
+	public readonly status = HttpStatus.BAD_REQUEST;
+
+	public constructor(message: string) {
+		super(message);
+		this.name = 'ScenesDeviceNotFoundException';
+	}
+}
+
+export class ScenesPropertyNotFoundException extends ScenesException {
+	public readonly status = HttpStatus.BAD_REQUEST;
+
+	public constructor(message: string) {
+		super(message);
+		this.name = 'ScenesPropertyNotFoundException';
+	}
+}
+
+export class ScenesActionValidationException extends ScenesException {
+	public readonly status = HttpStatus.BAD_REQUEST;
+
+	public constructor(message: string) {
+		super(message);
+		this.name = 'ScenesActionValidationException';
+	}
+}
