@@ -230,6 +230,9 @@ export interface IUseDevicesDataSource {
 
 export interface IUseDevicesActions {
 	remove: (id: IDevice['id']) => Promise<void>;
+	bulkRemove: (devices: IDevice[]) => Promise<void>;
+	bulkEnable: (devices: IDevice[]) => Promise<void>;
+	bulkDisable: (devices: IDevice[]) => Promise<void>;
 }
 
 export interface IUseDeviceIcon {

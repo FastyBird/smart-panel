@@ -43,7 +43,48 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 		}
 	};
 
+	const bulkRemove = async (displays: IDisplay[]): Promise<void> => {
+		if (displays.length === 0) {
+			return;
+		}
+
+		try {
+			await ElMessageBox.confirm(
+				t('displaysModule.messages.confirmBulkRemove', { count: displays.length }),
+				t('displaysModule.headings.bulkRemoveDisplay'),
+				{
+					confirmButtonText: t('displaysModule.buttons.yes.title'),
+					cancelButtonText: t('displaysModule.buttons.no.title'),
+					type: 'warning',
+				}
+			);
+
+			let successCount = 0;
+			let failCount = 0;
+
+			for (const display of displays) {
+				try {
+					await displaysStore?.remove({ id: display.id });
+					successCount++;
+				} catch {
+					failCount++;
+				}
+			}
+
+			if (successCount > 0) {
+				flashMessage.success(t('displaysModule.messages.bulkRemoved', { count: successCount }));
+			}
+
+			if (failCount > 0) {
+				flashMessage.error(t('displaysModule.messages.bulkRemoveFailed', { count: failCount }));
+			}
+		} catch {
+			flashMessage.info(t('displaysModule.messages.bulkRemoveCanceled'));
+		}
+	};
+
 	return {
 		remove,
+		bulkRemove,
 	};
 };

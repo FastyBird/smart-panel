@@ -41,4 +41,5 @@ export interface IUseSpaces {
 
 export interface IUseSpacesActions {
 	remove: (id: ISpace['id']) => Promise<boolean>;
+	bulkRemove: (spaces: ISpace[]) => Promise<void>;
 }

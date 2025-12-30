@@ -58,6 +58,7 @@
       "edit": "Edit page",
       "detail": "Page: {page}",
       "remove": "Remove page?",
+      "bulkRemove": "Remove pages?",
       "selectPlugin": "Page plugin required",
       "adjustFilters": "Filter pages",
       "addDataSource": "Add page data source",
@@ -121,7 +122,10 @@
       "removeCanceled": "Page: {page} removal has been canceled.",
       "notRemoved": "Something went wrong, and the page: {page} was not removed.",
       "noDetailAllowed": "This page type cannot be opened because it has no detail view.",
-      "deletedWhileEditing": "This page was deleted and is no longer available."
+      "deletedWhileEditing": "This page was deleted and is no longer available.",
+      "bulkRemoved": "{count} pages were successfully removed.",
+      "bulkRemoveFailed": "Failed to remove {count} pages.",
+      "bulkRemoveCanceled": "Bulk page removal has been canceled."
     },
     "tiles": {
       "notFound": "The tile you are looking for doesn’t exist or may have been removed.",
@@ -158,6 +162,7 @@
       "loadingPages": "Loading pages...",
       "loadingPage": "Loading page...",
       "confirmRemove": "Are you sure you want to remove page: {page}? This cannot be reversed.",
+      "confirmBulkRemove": "Are you sure you want to remove {count} pages? This cannot be reversed.",
       "selectPlugin": "To create a new page, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific page types.",
       "noPlugins": "No page plugins have been configured yet.",
       "noDisplays": "No displays have been paired yet."

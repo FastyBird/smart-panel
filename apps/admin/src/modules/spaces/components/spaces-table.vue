@@ -13,6 +13,7 @@
 		class="flex-grow"
 		:max-height="tableHeight"
 		@sort-change="onSortData"
+		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
 	>
 		<template #empty>
@@ -238,6 +239,7 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'displayOrder' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
+	(e: 'selected-changes', items: ISpace[]): void;
 }>();
 
 const { t } = useI18n();
@@ -261,5 +263,9 @@ const onSortData = ({
 
 const onRowClick = (row: ISpace): void => {
 	emit('detail', row.id);
+};
+
+const onSelectionChange = (selected: ISpace[]): void => {
+	emit('selected-changes', selected);
 };
 </script>

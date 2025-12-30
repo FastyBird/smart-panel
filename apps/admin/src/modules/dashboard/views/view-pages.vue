@@ -90,6 +90,7 @@
 			@remove="onPageRemove"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
+			@bulk-action="onBulkAction"
 		/>
 	</div>
 
@@ -296,6 +297,14 @@ const onPageEdit = (id: IPage['id']): void => {
 
 const onPageRemove = (id: IPage['id']): void => {
 	pageActions.remove(id);
+};
+
+const onBulkAction = (action: string, items: IPage[]): void => {
+	switch (action) {
+		case 'delete':
+			pageActions.bulkRemove(items);
+			break;
+	}
 };
 
 const onResetFilters = (): void => {

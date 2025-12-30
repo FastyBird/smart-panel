@@ -90,6 +90,7 @@
 			@remove="onDeviceRemove"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
+			@bulk-action="onBulkAction"
 		/>
 	</div>
 
@@ -307,6 +308,20 @@ const onDeviceEdit = (id: IDevice['id']): void => {
 
 const onDeviceRemove = (id: IDevice['id']): void => {
 	deviceActions.remove(id);
+};
+
+const onBulkAction = (action: string, items: IDevice[]): void => {
+	switch (action) {
+		case 'delete':
+			deviceActions.bulkRemove(items);
+			break;
+		case 'enable':
+			deviceActions.bulkEnable(items);
+			break;
+		case 'disable':
+			deviceActions.bulkDisable(items);
+			break;
+	}
 };
 
 const onResetFilters = (): void => {

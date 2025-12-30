@@ -92,6 +92,7 @@
 			@add="onAddSpace"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
+			@bulk-action="onBulkAction"
 		/>
 	</div>
 
@@ -305,6 +306,14 @@ const onSpaceEdit = (id: ISpace['id']): void => {
 
 const onSpaceRemove = (id: ISpace['id']): void => {
 	spacesActions.remove(id);
+};
+
+const onBulkAction = (action: string, items: ISpace[]): void => {
+	switch (action) {
+		case 'delete':
+			spacesActions.bulkRemove(items);
+			break;
+	}
 };
 
 const onAddSpace = (): void => {

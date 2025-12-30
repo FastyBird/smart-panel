@@ -27,6 +27,12 @@
 			"home": {
 				"title": "Home"
 			}
+		},
+		"bulkActions": {
+			"selected": "{count} selected",
+			"delete": "Delete",
+			"enable": "Enable",
+			"disable": "Disable"
 		}
 	}
 }

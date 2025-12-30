@@ -88,6 +88,7 @@
 			@edit="onUserEdit"
 			@remove="onUserRemove"
 			@reset-filters="onResetFilters"
+			@bulk-action="onBulkAction"
 		/>
 	</div>
 
@@ -280,6 +281,14 @@ const onUserCreate = (): void => {
 
 const onUserRemove = (id: IUser['id']): void => {
 	userActions.remove(id);
+};
+
+const onBulkAction = (action: string, items: IUser[]): void => {
+	switch (action) {
+		case 'delete':
+			userActions.bulkRemove(items);
+			break;
+	}
 };
 
 const onResetFilters = (): void => {

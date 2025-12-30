@@ -68,7 +68,114 @@ export const useDevicesActions = (): IUseDevicesActions => {
 			});
 	};
 
+	const bulkRemove = async (devices: IDevice[]): Promise<void> => {
+		if (devices.length === 0) {
+			return;
+		}
+
+		ElMessageBox.confirm(
+			t('devicesModule.texts.devices.confirmBulkRemove', { count: devices.length }),
+			t('devicesModule.headings.devices.bulkRemove'),
+			{
+				confirmButtonText: t('devicesModule.buttons.yes.title'),
+				cancelButtonText: t('devicesModule.buttons.no.title'),
+				type: 'warning',
+			}
+		)
+			.then(async (): Promise<void> => {
+				let successCount = 0;
+				let failCount = 0;
+
+				for (const device of devices) {
+					try {
+						await devicesStore.remove({ id: device.id });
+						successCount++;
+					} catch {
+						failCount++;
+					}
+				}
+
+				if (successCount > 0) {
+					flashMessage.success(t('devicesModule.messages.devices.bulkRemoved', { count: successCount }));
+				}
+
+				if (failCount > 0) {
+					flashMessage.error(t('devicesModule.messages.devices.bulkRemoveFailed', { count: failCount }));
+				}
+			})
+			.catch((): void => {
+				flashMessage.info(t('devicesModule.messages.devices.bulkRemoveCanceled'));
+			});
+	};
+
+	const bulkEnable = async (devices: IDevice[]): Promise<void> => {
+		if (devices.length === 0) {
+			return;
+		}
+
+		let successCount = 0;
+		let failCount = 0;
+
+		for (const device of devices) {
+			try {
+				await devicesStore.edit({
+					id: device.id,
+					data: {
+						type: device.type,
+						enabled: true,
+					},
+				});
+				successCount++;
+			} catch {
+				failCount++;
+			}
+		}
+
+		if (successCount > 0) {
+			flashMessage.success(t('devicesModule.messages.devices.bulkEnabled', { count: successCount }));
+		}
+
+		if (failCount > 0) {
+			flashMessage.error(t('devicesModule.messages.devices.bulkEnableFailed', { count: failCount }));
+		}
+	};
+
+	const bulkDisable = async (devices: IDevice[]): Promise<void> => {
+		if (devices.length === 0) {
+			return;
+		}
+
+		let successCount = 0;
+		let failCount = 0;
+
+		for (const device of devices) {
+			try {
+				await devicesStore.edit({
+					id: device.id,
+					data: {
+						type: device.type,
+						enabled: false,
+					},
+				});
+				successCount++;
+			} catch {
+				failCount++;
+			}
+		}
+
+		if (successCount > 0) {
+			flashMessage.success(t('devicesModule.messages.devices.bulkDisabled', { count: successCount }));
+		}
+
+		if (failCount > 0) {
+			flashMessage.error(t('devicesModule.messages.devices.bulkDisableFailed', { count: failCount }));
+		}
+	};
+
 	return {
 		remove,
+		bulkRemove,
+		bulkEnable,
+		bulkDisable,
 	};
 };

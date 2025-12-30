@@ -39,14 +39,22 @@
 			</el-form-item>
 		</el-form>
 
-		<el-button
-			v-if="props.filtersActive"
-			plain
-			class="px-2! mt-1 mr-1"
-			@click="emit('reset-filters')"
-		>
-			<icon icon="mdi:filter-off" />
-		</el-button>
+		<div class="flex items-center">
+			<bulk-actions-toolbar
+				:selected-count="props.selectedCount"
+				:actions="props.bulkActions"
+				@action="(action) => emit('bulk-action', action)"
+			/>
+
+			<el-button
+				v-if="props.filtersActive"
+				plain
+				class="px-2! mt-1 mr-1"
+				@click="emit('reset-filters')"
+			>
+				<icon icon="mdi:filter-off" />
+			</el-button>
+		</div>
 	</div>
 </template>
 
@@ -59,6 +67,7 @@ import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElS
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
+import { BulkActionsToolbar } from '../../../common';
 import { UsersModuleUserRole } from '../../../openapi.constants';
 import type { IUsersFilter } from '../composables/types';
 
@@ -74,6 +83,7 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: IUsersFilter): void;
 	(e: 'reset-filters'): void;
 	(e: 'adjust-list'): void;
+	(e: 'bulk-action', action: string): void;
 }>();
 
 const { t } = useI18n();

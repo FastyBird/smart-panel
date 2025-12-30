@@ -60,6 +60,7 @@ export interface IUsePagesDataSource {
 
 export interface IUsePagesActions {
 	remove: (id: IPage['id']) => Promise<void>;
+	bulkRemove: (pages: IPage[]) => Promise<void>;
 }
 
 export interface IUsePageIcon {
