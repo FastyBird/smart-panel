@@ -72,9 +72,12 @@ export class SpaceEntity extends BaseEntity {
 	@Expose({ name: 'parent_id' })
 	@IsOptional()
 	@IsUUID('4')
-	@Transform(({ obj }: { obj: { parent_id?: string | null; parentId?: string | null } }) => obj.parent_id ?? obj.parentId, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { parent_id?: string | null; parentId?: string | null } }) => obj.parent_id ?? obj.parentId,
+		{
+			toClassOnly: true,
+		},
+	)
 	@Index()
 	@Column({ nullable: true, default: null })
 	parentId: string | null;

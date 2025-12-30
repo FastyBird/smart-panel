@@ -32,6 +32,7 @@ export const DeviceSchema = z.object({
 	description: z.string().trim().nullable().default(null),
 	enabled: z.boolean().default(true),
 	roomId: z.string().uuid().nullable().default(null),
+	zoneIds: z.array(z.string().uuid()).default([]),
 	status: z.object({
 		online: z.boolean().default(false),
 		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
@@ -189,6 +190,7 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	description: z.string().trim().nullable(),
 	enabled: z.boolean(),
 	room_id: z.string().uuid().nullable(),
+	zone_ids: z.array(z.string().uuid()),
 	status: z.object({
 		online: z.boolean(),
 		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),

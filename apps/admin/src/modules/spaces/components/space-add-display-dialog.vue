@@ -222,7 +222,6 @@ const onAssignDisplay = async (display: IDisplay): Promise<void> => {
 	assigningDisplayId.value = display.id;
 	try {
 		await reassignDisplay(display.id, props.spaceId);
-		onClose();
 		flashMessage.success(t('spacesModule.messages.edited', { space: display.name || display.macAddress }));
 		emit('display-added');
 	} catch {

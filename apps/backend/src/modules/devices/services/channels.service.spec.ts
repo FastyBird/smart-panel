@@ -78,7 +78,7 @@ describe('ChannelsService', () => {
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
 
-	const mockDevice: MockDevice = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,

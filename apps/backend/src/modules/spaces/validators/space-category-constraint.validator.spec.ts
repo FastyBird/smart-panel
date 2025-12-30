@@ -1,6 +1,5 @@
-import { validate } from 'class-validator';
-
 import { Expose } from 'class-transformer';
+import { validate } from 'class-validator';
 
 import { LEGACY_OUTDOOR_CATEGORY, SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
 

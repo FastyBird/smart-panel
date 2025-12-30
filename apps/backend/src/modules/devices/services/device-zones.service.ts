@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
-import { isFloorZoneCategory, SpaceType } from '../../spaces/spaces.constants';
+import { SpaceType, isFloorZoneCategory } from '../../spaces/spaces.constants';
 import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
 import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { DeviceZoneEntity } from '../entities/device-zone.entity';

@@ -1,6 +1,6 @@
 import { Expose, Transform } from 'class-transformer';
 import { IsDate, IsUUID } from 'class-validator';
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 

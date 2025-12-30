@@ -41,10 +41,12 @@
 				</template>
 			</el-table-column>
 
-			<el-table-column label="" width="220" align="right">
+			<el-table-column label="" :width="props.spaceType === SpaceType.ZONE ? 110 : 220" align="right">
 				<template #default="{ row }">
 					<div class="flex items-center gap-2 justify-end">
+						<!-- Reassign button only shown for rooms (zones can have multiple assignments) -->
 						<el-button
+							v-if="props.spaceType === SpaceType.ROOM"
 							type="warning"
 							plain
 							size="small"

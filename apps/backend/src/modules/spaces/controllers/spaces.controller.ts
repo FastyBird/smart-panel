@@ -393,8 +393,7 @@ export class SpacesController {
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-children',
 		summary: 'List child rooms of a zone',
-		description:
-			'Retrieves all child rooms that belong to a zone. Only applicable for zones; returns empty for rooms.',
+		description: 'Retrieves all child rooms that belong to a zone. Only applicable for zones; returns empty for rooms.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Zone ID' })
 	@ApiSuccessResponse(SpacesResponseModel, 'Returns the list of child rooms')

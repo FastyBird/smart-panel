@@ -33,6 +33,7 @@ const validDeviceResponse: IDeviceRes = {
 	description: 'With description',
 	enabled: true,
 	room_id: null,
+	zone_ids: [],
 	status: {
 		online: false,
 		status: DevicesModuleDeviceConnectionStatus.unknown,
@@ -68,6 +69,7 @@ describe('Devices Transformers', (): void => {
 				description: 'With description',
 				enabled: true,
 				roomId: null,
+				zoneIds: [],
 				status: {
 					online: false,
 					status: DevicesModuleDeviceConnectionStatus.unknown,

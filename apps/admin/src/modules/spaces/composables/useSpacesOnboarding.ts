@@ -430,6 +430,13 @@ export const useSpacesOnboarding = () => {
 					}
 				}
 
+				// Update zone assignments to use the new space ID
+				for (const [deviceId, zoneIds] of Object.entries(state.zoneAssignments)) {
+					state.zoneAssignments[deviceId] = zoneIds.map((zoneId) =>
+						zoneId === draftSpace.id ? space.id : zoneId
+					);
+				}
+
 				// Replace draft space with real space
 				const draftIndex = state.spaces.findIndex((s) => s.id === draftSpace.id);
 				if (draftIndex !== -1) {
@@ -508,12 +515,13 @@ export const useSpacesOnboarding = () => {
 		state.displayAssignments[displayId] = spaceId;
 	};
 
-	const applyAssignments = async (): Promise<{ devicesAssigned: number; displaysAssigned: number }> => {
+	const applyAssignments = async (): Promise<{ devicesAssigned: number; displaysAssigned: number; zonesAssigned: number }> => {
 		state.isLoading = true;
 		state.error = null;
 
 		let totalDevicesAssigned = 0;
 		let totalDisplaysAssigned = 0;
+		let totalZonesAssigned = 0;
 
 		try {
 			// Group assignments by space
@@ -537,7 +545,7 @@ export const useSpacesOnboarding = () => {
 				}
 			}
 
-			// Apply assignments for each space
+			// Apply room/display assignments for each space
 			for (const [spaceId, assignments] of Object.entries(spaceAssignments)) {
 				const response = await backendClient.POST('/modules/spaces/spaces/{id}/assign', {
 					params: { path: { id: spaceId } },
@@ -559,7 +567,22 @@ export const useSpacesOnboarding = () => {
 				}
 			}
 
-			return { devicesAssigned: totalDevicesAssigned, displaysAssigned: totalDisplaysAssigned };
+			// Apply zone assignments (advanced mode)
+			for (const [deviceId, zoneIds] of Object.entries(state.zoneAssignments)) {
+				for (const zoneId of zoneIds) {
+					const response = await backendClient.POST('/modules/devices/devices/{id}/zones/{zoneId}', {
+						params: { path: { id: deviceId, zoneId } },
+					});
+
+					if (response.error) {
+						throw new SpacesApiException(`Failed to assign device ${deviceId} to zone ${zoneId}`);
+					}
+
+					totalZonesAssigned++;
+				}
+			}
+
+			return { devicesAssigned: totalDevicesAssigned, displaysAssigned: totalDisplaysAssigned, zonesAssigned: totalZonesAssigned };
 		} catch (err) {
 			state.error = err instanceof Error ? err.message : 'Unknown error';
 			throw err;

@@ -4,7 +4,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../common/logger/extension-logger.service';
 import { ConfigModule } from '../config/config.module';
-import { SpaceEntity } from '../spaces/entities/space.entity';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
@@ -12,6 +11,7 @@ import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
+import { SpaceEntity } from '../spaces/entities/space.entity';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';

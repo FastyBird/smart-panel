@@ -83,7 +83,7 @@ describe('PropertyCommandService', () => {
 	let loggerWarnSpy: jest.SpyInstance;
 	let loggerLogSpy: jest.SpyInstance;
 
-	const mockDevice: MockDevice = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,

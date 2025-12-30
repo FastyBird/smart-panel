@@ -1,10 +1,10 @@
 import {
-	isValidCategoryForType,
 	LEGACY_OUTDOOR_CATEGORY,
-	normalizeCategoryValue,
 	SpaceRoomCategory,
 	SpaceType,
 	SpaceZoneCategory,
+	isValidCategoryForType,
+	normalizeCategoryValue,
 } from './spaces.constants';
 
 describe('spaces.constants helper functions', () => {
@@ -93,9 +93,7 @@ describe('spaces.constants helper functions', () => {
 			});
 
 			it('should normalize legacy outdoor to outdoor_garden', () => {
-				expect(normalizeCategoryValue(LEGACY_OUTDOOR_CATEGORY, SpaceType.ZONE)).toBe(
-					SpaceZoneCategory.OUTDOOR_GARDEN,
-				);
+				expect(normalizeCategoryValue(LEGACY_OUTDOOR_CATEGORY, SpaceType.ZONE)).toBe(SpaceZoneCategory.OUTDOOR_GARDEN);
 			});
 		});
 	});

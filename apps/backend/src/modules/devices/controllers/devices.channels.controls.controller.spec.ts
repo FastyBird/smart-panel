@@ -29,7 +29,7 @@ describe('DevicesChannelsControlsController', () => {
 	let channelsControlsService: ChannelsControlsService;
 	let mapper: DevicesTypeMapperService;
 
-	const mockDevice: DeviceEntity = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -50,7 +50,7 @@ describe('DevicesChannelsControlsController', () => {
 		channels: [],
 	};
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: ChannelCategory.GENERIC,
@@ -64,7 +64,7 @@ describe('DevicesChannelsControlsController', () => {
 		properties: [],
 	};
 
-	const mockChannelControl: ChannelControlEntity = {
+	const mockChannelControl = {
 		id: uuid().toString(),
 		name: 'Test Control',
 		channel: mockChannel,

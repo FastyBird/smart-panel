@@ -437,7 +437,7 @@
 		},
 		"messages": {
 			"spacesCreated": "{count} space(s) created successfully",
-			"completed": "Onboarding complete! {devices} device(s) and {displays} display(s) assigned."
+			"completed": "Onboarding complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
 		}
 	}
 }

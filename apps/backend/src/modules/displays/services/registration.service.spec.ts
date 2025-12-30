@@ -133,13 +133,13 @@ describe('RegistrationService', () => {
 	describe('registerDisplay', () => {
 		it('should create a new display and return token when display does not exist', async () => {
 			const registerDto: RegisterDisplayDto = {
-				macAddress: 'AA:BB:CC:DD:EE:FF',
+				mac_address: 'AA:BB:CC:DD:EE:FF',
 				version: '1.0.0',
 				build: '42',
-				screenWidth: 1920,
-				screenHeight: 1080,
-				pixelRatio: 1.5,
-				unitSize: 8,
+				screen_width: 1920,
+				screen_height: 1080,
+				pixel_ratio: 1.5,
+				unit_size: 8,
 				rows: 12,
 				cols: 24,
 			};
@@ -152,15 +152,15 @@ describe('RegistrationService', () => {
 
 			expect(result.display).toEqual(toInstance(DisplayEntity, mockDisplay));
 			expect(result.accessToken).toBe(mockToken);
-			expect(displaysService.findByMacAddress).toHaveBeenCalledWith(registerDto.macAddress);
+			expect(displaysService.findByMacAddress).toHaveBeenCalledWith(registerDto.mac_address);
 			expect(displaysService.create).toHaveBeenCalledWith({
-				macAddress: registerDto.macAddress,
+				macAddress: registerDto.mac_address,
 				version: registerDto.version,
 				build: registerDto.build,
-				screenWidth: registerDto.screenWidth,
-				screenHeight: registerDto.screenHeight,
-				pixelRatio: registerDto.pixelRatio,
-				unitSize: registerDto.unitSize,
+				screenWidth: registerDto.screen_width,
+				screenHeight: registerDto.screen_height,
+				pixelRatio: registerDto.pixel_ratio,
+				unitSize: registerDto.unit_size,
 				rows: registerDto.rows,
 				cols: registerDto.cols,
 				audioOutputSupported: false,
@@ -189,13 +189,13 @@ describe('RegistrationService', () => {
 
 		it('should update existing display and revoke old tokens', async () => {
 			const registerDto: RegisterDisplayDto = {
-				macAddress: 'AA:BB:CC:DD:EE:FF',
+				mac_address: 'AA:BB:CC:DD:EE:FF',
 				version: '2.0.0',
 				build: '100',
-				screenWidth: 1920,
-				screenHeight: 1080,
-				pixelRatio: 1.5,
-				unitSize: 8,
+				screen_width: 1920,
+				screen_height: 1080,
+				pixel_ratio: 1.5,
+				unit_size: 8,
 				rows: 12,
 				cols: 24,
 			};
@@ -217,15 +217,15 @@ describe('RegistrationService', () => {
 
 			expect(result.display.version).toBe('2.0.0');
 			expect(result.accessToken).toBe(mockToken);
-			expect(displaysService.findByMacAddress).toHaveBeenCalledWith(registerDto.macAddress);
+			expect(displaysService.findByMacAddress).toHaveBeenCalledWith(registerDto.mac_address);
 			expect(tokensService.revokeByOwnerId).toHaveBeenCalledWith(mockDisplay.id, TokenOwnerType.DISPLAY);
 			expect(displaysService.update).toHaveBeenCalledWith(mockDisplay.id, {
 				version: registerDto.version,
 				build: registerDto.build,
-				screenWidth: registerDto.screenWidth,
-				screenHeight: registerDto.screenHeight,
-				pixelRatio: registerDto.pixelRatio,
-				unitSize: registerDto.unitSize,
+				screen_width: registerDto.screen_width,
+				screen_height: registerDto.screen_height,
+				pixel_ratio: registerDto.pixel_ratio,
+				unit_size: registerDto.unit_size,
 				rows: registerDto.rows,
 				cols: registerDto.cols,
 			});
@@ -234,7 +234,7 @@ describe('RegistrationService', () => {
 
 		it('should use default values when optional fields are not provided', async () => {
 			const registerDto: RegisterDisplayDto = {
-				macAddress: 'AA:BB:CC:DD:EE:FF',
+				mac_address: 'AA:BB:CC:DD:EE:FF',
 				version: '1.0.0',
 			};
 
@@ -245,7 +245,7 @@ describe('RegistrationService', () => {
 			await service.registerDisplay(registerDto, 'FlutterApp', '192.168.1.100');
 
 			expect(displaysService.create).toHaveBeenCalledWith({
-				macAddress: registerDto.macAddress,
+				macAddress: registerDto.mac_address,
 				version: registerDto.version,
 				build: null,
 				screenWidth: 0,

@@ -2,10 +2,13 @@ import { computed, type ComputedRef, type Ref, ref } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { injectStoresManager } from '../../../common';
+import { injectStoresManager, useBackend } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
+import { DEVICES_MODULE_PREFIX } from '../../devices/devices.constants';
 import type { IDevice } from '../../devices/store/devices.store.types';
 import { devicesStoreKey } from '../../devices/store/keys';
-import { SpaceType } from '../spaces.constants';
+import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
+import { spacesStoreKey } from '../store';
 
 interface IUseSpaceDevices {
 	devices: ComputedRef<IDevice[]>;
@@ -20,8 +23,10 @@ export const useSpaceDevices = (
 	spaceId: Ref<string | undefined>,
 	spaceType: Ref<SpaceType | undefined>
 ): IUseSpaceDevices => {
+	const backend = useBackend();
 	const storesManager = injectStoresManager();
 	const devicesStore = storesManager.getStore(devicesStoreKey);
+	const spacesStore = storesManager.getStore(spacesStoreKey);
 
 	const { semaphore, firstLoad } = storeToRefs(devicesStore);
 
@@ -32,15 +37,17 @@ export const useSpaceDevices = (
 
 		const allDevices = devicesStore.findAll().filter((device) => !device.draft);
 
+		let filtered: IDevice[];
 		if (spaceType.value === SpaceType.ROOM) {
 			// For rooms: filter devices where roomId matches
-			return allDevices.filter((device) => device.roomId === spaceId.value);
+			filtered = allDevices.filter((device) => device.roomId === spaceId.value);
 		} else {
-			// For zones: would need device-zone junction table query
-			// Currently not implemented in admin app - return empty for now
-			// TODO: Add zone device fetching when backend API integration is added
-			return [];
+			// For zones: filter devices where zoneIds includes this zone
+			filtered = allDevices.filter((device) => device.zoneIds.includes(spaceId.value!));
 		}
+
+		// Sort alphabetically by name
+		return filtered.sort((a, b) => a.name.localeCompare(b.name));
 	});
 
 	const loading = computed<boolean>(() => {
@@ -51,6 +58,7 @@ export const useSpaceDevices = (
 	});
 
 	const fetchDevices = async (): Promise<void> => {
+		// Fetch all devices - zoneIds are now included in the device response
 		await devicesStore.fetch();
 	};
 
@@ -77,9 +85,31 @@ export const useSpaceDevices = (
 					},
 				});
 			} else {
-				// For zones: would call POST /devices/{id}/zones/{zoneId}
-				// TODO: Implement when backend API integration is added
-				throw new Error('Zone device assignment not yet implemented');
+				// For zones: check if it's a floor zone (not allowed)
+				const space = spacesStore.findById(spaceId.value);
+				if (space && isFloorZoneCategory(space.category)) {
+					throw new Error('Cannot assign devices to floor zones. Floor membership is derived from room assignment.');
+				}
+
+				// Call POST /devices/{id}/zones/{zoneId}
+				const { response } = await backend.client.POST(
+					`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}/zones/{zoneId}`,
+					{
+						params: {
+							path: {
+								id: deviceId,
+								zoneId: spaceId.value,
+							},
+						},
+					}
+				);
+
+				if (!response.ok) {
+					throw new Error('Failed to add device to zone');
+				}
+
+				// Re-fetch the device to update store with new zoneIds
+				await devicesStore.get({ id: deviceId });
 			}
 		} finally {
 			isOperating.value = false;
@@ -109,9 +139,25 @@ export const useSpaceDevices = (
 					},
 				});
 			} else {
-				// For zones: would call DELETE /devices/{id}/zones/{zoneId}
-				// TODO: Implement when backend API integration is added
-				throw new Error('Zone device removal not yet implemented');
+				// For zones: call DELETE /devices/{id}/zones/{zoneId}
+				const { response } = await backend.client.DELETE(
+					`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}/zones/{zoneId}`,
+					{
+						params: {
+							path: {
+								id: deviceId,
+								zoneId: spaceId.value,
+							},
+						},
+					}
+				);
+
+				if (!response.ok) {
+					throw new Error('Failed to remove device from zone');
+				}
+
+				// Re-fetch the device to update store with new zoneIds
+				await devicesStore.get({ id: deviceId });
 			}
 		} finally {
 			isOperating.value = false;

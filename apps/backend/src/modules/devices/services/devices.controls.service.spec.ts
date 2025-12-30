@@ -45,7 +45,7 @@ describe('DevicesControlsService', () => {
 	let repository: Repository<DeviceControlEntity>;
 	let eventEmitter: EventEmitter2;
 
-	const mockDevice: MockDevice = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,

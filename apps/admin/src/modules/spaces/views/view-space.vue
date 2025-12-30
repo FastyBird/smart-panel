@@ -351,8 +351,8 @@ const onAddDisplay = (): void => {
 };
 
 const onDeviceAdded = (): void => {
-	// Refresh devices list
-	devicesSectionRef.value?.fetchDevices();
+	// Store is already updated by addDevice() which re-fetches the single device
+	// The computed devices list will automatically update from the store
 };
 
 const onDisplayAdded = (): void => {

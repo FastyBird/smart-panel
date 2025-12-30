@@ -39,7 +39,7 @@ describe('ChannelsPropertiesController', () => {
 	let mapper: ChannelsPropertiesTypeMapperService;
 	let propertyTimeseriesService: PropertyTimeseriesService;
 
-	const mockDevice: DeviceEntity = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -60,7 +60,7 @@ describe('ChannelsPropertiesController', () => {
 		channels: [],
 	};
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: ChannelCategory.GENERIC,
@@ -74,7 +74,7 @@ describe('ChannelsPropertiesController', () => {
 		properties: [],
 	};
 
-	const mockChannelProperty: ChannelPropertyEntity = {
+	const mockChannelProperty = {
 		id: uuid().toString(),
 		type: 'mock',
 		name: 'Test Property',

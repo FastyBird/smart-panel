@@ -459,7 +459,12 @@
 										:key="space.id"
 										:label="space.name"
 										:value="space.id"
-									/>
+									>
+										<div class="flex items-center gap-2">
+											<icon :icon="getSpaceIcon(space)" class="w-4 h-4" />
+											<span>{{ space.name }}</span>
+										</div>
+									</el-option>
 								</el-select>
 							</template>
 						</el-table-column>
@@ -524,7 +529,12 @@
 										:key="space.id"
 										:label="space.name"
 										:value="space.id"
-									/>
+									>
+										<div class="flex items-center gap-2">
+											<icon :icon="getSpaceIcon(space)" class="w-4 h-4" />
+											<span>{{ space.name }}</span>
+										</div>
+									</el-option>
 								</el-select>
 							</template>
 						</el-table-column>
@@ -617,22 +627,25 @@
 						<el-table :data="spaceSummaryData" class="h-full w-full flex-grow" table-layout="fixed">
 							<el-table-column prop="name" :label="t('spacesModule.onboarding.spaceName')">
 								<template #default="{ row }">
-									<span>{{ row.name }}</span>
-									<el-tag
-										size="small"
-										:type="row.type === SpaceType.ROOM ? 'primary' : 'info'"
-										class="ml-2"
-									>
-										{{ row.type === SpaceType.ROOM ? t('spacesModule.misc.types.room') : t('spacesModule.misc.types.zone') }}
-									</el-tag>
-									<el-tag
-										v-if="row.devices === 0 && row.type === SpaceType.ROOM"
-										size="small"
-										type="warning"
-										class="ml-1"
-									>
-										{{ t('spacesModule.onboarding.summary.noDevices') }}
-									</el-tag>
+									<div class="flex items-center gap-2">
+										<icon :icon="getSpaceIcon(row)" class="w-4 h-4" />
+										<span>{{ row.name }}</span>
+										<el-tag
+											size="small"
+											:type="row.type === SpaceType.ROOM ? 'primary' : 'info'"
+											class="ml-2"
+										>
+											{{ row.type === SpaceType.ROOM ? t('spacesModule.misc.types.room') : t('spacesModule.misc.types.zone') }}
+										</el-tag>
+										<el-tag
+											v-if="row.devices === 0 && row.type === SpaceType.ROOM"
+											size="small"
+											type="warning"
+											class="ml-1"
+										>
+											{{ t('spacesModule.onboarding.summary.noDevices') }}
+										</el-tag>
+									</div>
 								</template>
 							</el-table-column>
 							<el-table-column prop="devices" :label="t('spacesModule.onboarding.devices')" width="120" align="center" />
@@ -662,7 +675,12 @@
 										:key="space.id"
 										:label="space.name"
 										:value="space.id"
-									/>
+									>
+										<div class="flex items-center gap-2">
+											<icon :icon="getSpaceIcon(space)" class="w-4 h-4" />
+											<span>{{ space.name }}</span>
+										</div>
+									</el-option>
 								</el-select>
 							</template>
 						</el-table-column>
@@ -694,7 +712,12 @@
 										:key="space.id"
 										:label="space.name"
 										:value="space.id"
-									/>
+									>
+										<div class="flex items-center gap-2">
+											<icon :icon="getSpaceIcon(space)" class="w-4 h-4" />
+											<span>{{ space.name }}</span>
+										</div>
+									</el-option>
 								</el-select>
 							</template>
 						</el-table-column>
@@ -907,6 +930,14 @@ const roomSpaces = computed(() =>
 		.sort((a, b) => a.name.localeCompare(b.name))
 );
 
+// Helper function to get space icon
+const getSpaceIcon = (space: { icon?: string | null; type: SpaceType }): string => {
+	if (space.icon) {
+		return space.icon;
+	}
+	return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
+};
+
 // Existing spaces that are NOT already shown in matched spaces section
 const unmatchedExistingSpaces = computed(() => {
 	const matchedIds = new Set(matchedSpaces.value.map((m) => m.existingSpace.id));
@@ -947,6 +978,7 @@ const spaceSummaryData = computed(() =>
 	allSpaces.value.map((space) => ({
 		name: space.name,
 		type: space.type,
+		icon: space.icon,
 		devices: summary.value.devicesBySpace[space.id] ?? 0,
 		displays: summary.value.displaysBySpace[space.id] ?? 0,
 	}))
@@ -1093,14 +1125,15 @@ const handleFinish = async (): Promise<void> => {
 	try {
 		// First, create spaces from proposals and custom spaces
 		await createSpacesFromProposals();
-		
-		// Then, apply device and display assignments
+
+		// Then, apply device, display, and zone assignments
 		const result = await applyAssignments();
-		
+
 		flashMessage.success(
 			t('spacesModule.onboarding.messages.completed', {
 				devices: result.devicesAssigned,
 				displays: result.displaysAssigned,
+				zones: result.zonesAssigned,
 			})
 		);
 		if (isLGDevice.value) {

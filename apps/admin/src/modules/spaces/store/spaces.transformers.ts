@@ -88,7 +88,7 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 };
 
 export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate => {
-	return {
+	const baseData: Record<string, unknown> = {
 		name: data.name,
 		description: data.description,
 		type: spaceTypeToApiType(data.type),
@@ -96,9 +96,23 @@ export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate 
 		category: spaceCategoryToApiCategory(data.category) as SpacesModuleCreateSpaceCategory | undefined,
 		icon: data.icon,
 		display_order: data.displayOrder,
-		parent_id: data.parentId,
-		primary_thermostat_id: data.primaryThermostatId,
-		primary_temperature_sensor_id: data.primaryTemperatureSensorId,
 		suggestions_enabled: data.suggestionsEnabled,
 	};
+
+	// Parent zone assignment - explicitly include null to unassign
+	if ('parentId' in data) {
+		baseData.parent_id = data.parentId ?? null;
+	}
+
+	// Primary thermostat ID - explicitly include null to unassign
+	if ('primaryThermostatId' in data) {
+		baseData.primary_thermostat_id = data.primaryThermostatId ?? null;
+	}
+
+	// Primary temperature sensor ID - explicitly include null to unassign
+	if ('primaryTemperatureSensorId' in data) {
+		baseData.primary_temperature_sensor_id = data.primaryTemperatureSensorId ?? null;
+	}
+
+	return baseData as ApiSpaceUpdate;
 };

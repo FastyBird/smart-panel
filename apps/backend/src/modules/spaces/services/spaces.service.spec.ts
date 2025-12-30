@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { SpaceRoomCategory, SpaceType, SpaceZoneCategory } from '../spaces.constants';
@@ -56,7 +57,7 @@ describe('SpacesService', () => {
 						find: jest.fn().mockResolvedValue([mockSpace]),
 						findOne: jest.fn().mockResolvedValue(mockSpace),
 						save: jest.fn().mockResolvedValue(mockSpace),
-						create: jest.fn().mockImplementation((data) => data as SpaceEntity),
+						create: jest.fn().mockImplementation((data) => ({ ...data, id: mockSpace.id }) as SpaceEntity),
 						delete: jest.fn().mockResolvedValue({ affected: 1 }),
 						createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
 					},
@@ -95,6 +96,13 @@ describe('SpacesService', () => {
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(),
+					},
+				},
+				{
+					provide: DeviceZonesService,
+					useValue: {
+						getDeviceZones: jest.fn().mockResolvedValue([]),
+						setDeviceZones: jest.fn().mockResolvedValue([]),
 					},
 				},
 			],
@@ -322,6 +330,8 @@ describe('SpacesService', () => {
 				category: SpaceRoomCategory.LIVING_ROOM,
 			};
 
+			// Clear find mock to avoid deduplication with mockSpace (same name)
+			spaceRepository.find.mockResolvedValue([]);
 			spaceRepository.save.mockResolvedValue(savedSpace);
 			spaceRepository.findOne.mockResolvedValue(savedSpace);
 
@@ -359,6 +369,7 @@ describe('SpacesService', () => {
 			const createDto = {
 				name: 'Garden',
 				type: SpaceType.ZONE,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				category: 'outdoor' as any, // Legacy value
 			};
 
@@ -582,6 +593,7 @@ describe('SpacesService', () => {
 			spaceRepository.findOne.mockResolvedValue(existingZoneSpace);
 
 			const updateDto = {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				category: 'outdoor' as any, // Legacy value
 			};
 

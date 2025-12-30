@@ -3,13 +3,14 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { DeviceZonesService } from '../../devices/services/device-zones.service';
 import { DisplayEntity } from '../../displays/entities/displays.entity';
 import { BulkAssignDto } from '../dto/bulk-assign.dto';
 import { CreateSpaceDto } from '../dto/create-space.dto';
@@ -17,14 +18,13 @@ import { UpdateSpaceDto } from '../dto/update-space.dto';
 import { SpaceEntity } from '../entities/space.entity';
 import {
 	EventType,
-	isFloorZoneCategory,
-	isValidCategoryForType,
-	normalizeCategoryValue,
+	SPACES_MODULE_NAME,
 	type SpaceCategory,
 	SpaceRoomCategory,
-	SPACES_MODULE_NAME,
 	SpaceType,
 	SpaceZoneCategory,
+	isValidCategoryForType,
+	normalizeCategoryValue,
 } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
@@ -40,6 +40,8 @@ export class SpacesService {
 		private readonly deviceRepository: Repository<DeviceEntity>,
 		@InjectRepository(DisplayEntity)
 		private readonly displayRepository: Repository<DisplayEntity>,
+		@Inject(forwardRef(() => DeviceZonesService))
+		private readonly deviceZonesService: DeviceZonesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -189,6 +191,21 @@ export class SpacesService {
 
 		Object.assign(space, omitBy(toInstance(SpaceEntity, updateData), isUndefined));
 
+		// Explicitly handle parent_id being set to null (toInstance with exposeUnsetFields:false drops null values)
+		if (dtoInstance.parent_id === null) {
+			space.parentId = null;
+		}
+
+		// Explicitly handle primary_thermostat_id being set to null
+		if (dtoInstance.primary_thermostat_id === null) {
+			space.primaryThermostatId = null;
+		}
+
+		// Explicitly handle primary_temperature_sensor_id being set to null
+		if (dtoInstance.primary_temperature_sensor_id === null) {
+			space.primaryTemperatureSensorId = null;
+		}
+
 		await this.repository.save(space);
 
 		this.logger.debug(`Successfully updated space with id=${space.id}`);
@@ -242,21 +259,25 @@ export class SpacesService {
 		// Verify space exists
 		const space = await this.getOneOrThrow(spaceId);
 
-		// Only rooms have directly assigned devices
-		if (space.type !== SpaceType.ROOM) {
-			this.logger.debug(`Space ${spaceId} is a zone, returning empty device list`);
-			return [];
+		if (space.type === SpaceType.ROOM) {
+			// Rooms have directly assigned devices via roomId
+			const devices = await this.deviceRepository.find({
+				where: { roomId: spaceId },
+				relations: ['channels', 'channels.properties'],
+				order: { name: 'ASC' },
+			});
+
+			this.logger.debug(`Found ${devices.length} devices in room`);
+
+			return devices;
+		} else {
+			// Zones have devices via junction table
+			const devices = await this.deviceZonesService.getZoneDevices(spaceId);
+
+			this.logger.debug(`Found ${devices.length} devices in zone`);
+
+			return devices;
 		}
-
-		const devices = await this.deviceRepository.find({
-			where: { roomId: spaceId },
-			relations: ['channels', 'channels.properties'],
-			order: { name: 'ASC' },
-		});
-
-		this.logger.debug(`Found ${devices.length} devices in space`);
-
-		return devices;
 	}
 
 	async findDisplaysBySpace(spaceId: string): Promise<DisplayEntity[]> {

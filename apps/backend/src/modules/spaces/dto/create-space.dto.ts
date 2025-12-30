@@ -59,7 +59,9 @@ export class CreateSpaceDto {
 		example: 'living_room',
 	})
 	@Expose()
-	@ValidateIf((obj: CreateSpaceDto) => obj.type === SpaceType.ZONE || obj.category !== null && obj.category !== undefined)
+	@ValidateIf(
+		(obj: CreateSpaceDto) => obj.type === SpaceType.ZONE || (obj.category !== null && obj.category !== undefined),
+	)
 	@IsNotEmpty({ message: '[{"field":"category","reason":"Category is required for zones."}]' })
 	@IsValidSpaceCategory()
 	category?: SpaceCategory | null;

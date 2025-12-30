@@ -110,11 +110,11 @@ describe('RegistrationController', () => {
 	describe('register', () => {
 		it('should register a display with FastyBird Smart Panel user agent', async () => {
 			const registerDto = {
-				macAddress: 'AA:BB:CC:DD:EE:FF',
+				mac_address: 'AA:BB:CC:DD:EE:FF',
 				version: '1.0.0',
 				build: '42',
-				screenWidth: 1920,
-				screenHeight: 1080,
+				screen_width: 1920,
+				screen_height: 1080,
 			};
 
 			jest.spyOn(service, 'registerDisplay').mockResolvedValue({
@@ -135,7 +135,7 @@ describe('RegistrationController', () => {
 
 		it('should register a display with FastyBird-Display user agent', async () => {
 			const registerDto = {
-				macAddress: 'AA:BB:CC:DD:EE:FF',
+				mac_address: 'AA:BB:CC:DD:EE:FF',
 				version: '1.0.0',
 			};
 
@@ -156,7 +156,7 @@ describe('RegistrationController', () => {
 
 		it('should throw DisplaysRegistrationException for invalid user agent', async () => {
 			const registerDto = {
-				macAddress: 'AA:BB:CC:DD:EE:FF',
+				mac_address: 'AA:BB:CC:DD:EE:FF',
 				version: '1.0.0',
 			};
 
@@ -173,7 +173,7 @@ describe('RegistrationController', () => {
 
 		it('should throw DisplaysRegistrationException for missing user agent', async () => {
 			const registerDto = {
-				macAddress: 'AA:BB:CC:DD:EE:FF',
+				mac_address: 'AA:BB:CC:DD:EE:FF',
 				version: '1.0.0',
 			};
 
@@ -190,7 +190,7 @@ describe('RegistrationController', () => {
 
 		it('should throw DisplaysRegistrationException for empty user agent', async () => {
 			const registerDto = {
-				macAddress: 'AA:BB:CC:DD:EE:FF',
+				mac_address: 'AA:BB:CC:DD:EE:FF',
 				version: '1.0.0',
 			};
 

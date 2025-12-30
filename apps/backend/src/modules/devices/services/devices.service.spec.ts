@@ -65,7 +65,7 @@ describe('DevicesService', () => {
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
 
-	const mockDevice: MockDevice = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -193,7 +193,7 @@ describe('DevicesService', () => {
 
 	describe('findAll', () => {
 		it('should return all devices', async () => {
-			const mockDevices: DeviceEntity[] = [mockDevice];
+			const mockDevices = [mockDevice];
 			jest.spyOn(repository, 'find').mockResolvedValue(mockDevices.map((entity) => toInstance(MockDevice, entity)));
 
 			const result = await service.findAll();
@@ -209,6 +209,7 @@ describe('DevicesService', () => {
 					'channels.controls.channel',
 					'channels.properties',
 					'channels.properties.channel',
+					'deviceZones',
 				],
 			});
 		});
@@ -263,7 +264,7 @@ describe('DevicesService', () => {
 				name: createDto.name,
 				mockValue: createDto.mock_value,
 			};
-			const mockCratedDevice: MockDevice = {
+			const mockCratedDevice = {
 				id: uuid().toString(),
 				type: mockCrateDevice.type,
 				category: mockCrateDevice.category,
@@ -273,7 +274,7 @@ describe('DevicesService', () => {
 				enabled: mockCrateDevice.enabled,
 				roomId: null,
 				room: null,
-		deviceZones: [],
+				deviceZones: [],
 				status: mockCrateDevice.status,
 				createdAt: new Date(),
 				updatedAt: null,
@@ -332,7 +333,7 @@ describe('DevicesService', () => {
 				name: 'Updated device',
 				mock_value: 'Changed text',
 			};
-			const mockUpdateDevice: MockDevice = {
+			const mockUpdateDevice = {
 				id: mockDevice.id,
 				type: mockDevice.type,
 				category: mockDevice.category,
@@ -342,7 +343,7 @@ describe('DevicesService', () => {
 				enabled: mockDevice.enabled,
 				roomId: null,
 				room: null,
-		deviceZones: [],
+				deviceZones: [],
 				status: mockDevice.status,
 				controls: mockDevice.controls,
 				channels: mockDevice.channels,
@@ -350,7 +351,7 @@ describe('DevicesService', () => {
 				updatedAt: mockDevice.updatedAt,
 				mockValue: updateDto.mock_value,
 			};
-			const mockUpdatedDevice: MockDevice = {
+			const mockUpdatedDevice = {
 				id: mockUpdateDevice.id,
 				type: mockUpdateDevice.type,
 				category: mockUpdateDevice.category,
@@ -360,7 +361,7 @@ describe('DevicesService', () => {
 				enabled: mockUpdateDevice.enabled,
 				roomId: null,
 				room: null,
-		deviceZones: [],
+				deviceZones: [],
 				status: mockUpdateDevice.status,
 				createdAt: mockUpdateDevice.createdAt,
 				updatedAt: new Date(),

@@ -105,17 +105,19 @@
 
 			<el-table-column label="" width="150" align="right">
 				<template #default="{ row }">
+					<!-- For rooms: show "Reassign" if device has a room, "Assign" otherwise -->
+					<!-- For zones: always show "Assign" since zone membership doesn't change room ownership -->
 					<el-button
-						:type="row.roomId ? 'warning' : 'default'"
+						:type="props.spaceType === SpaceType.ROOM && row.roomId ? 'warning' : 'default'"
 						plain
 						size="small"
 						:loading="assigningDeviceId === row.id"
 						@click="onAssignDevice(row)"
 					>
 						<template #icon>
-							<icon :icon="row.roomId ? 'mdi:swap-horizontal' : 'mdi:plus'" />
+							<icon :icon="props.spaceType === SpaceType.ROOM && row.roomId ? 'mdi:swap-horizontal' : 'mdi:plus'" />
 						</template>
-						{{ row.roomId ? t('spacesModule.detail.devices.reassign') : t('spacesModule.detail.devices.assign') }}
+						{{ props.spaceType === SpaceType.ROOM && row.roomId ? t('spacesModule.detail.devices.reassign') : t('spacesModule.detail.devices.assign') }}
 					</el-button>
 				</template>
 			</el-table-column>
@@ -141,6 +143,7 @@ import { IconWithChild, injectStoresManager, useFlashMessage } from '../../../co
 import type { IDevice } from '../../devices/store/devices.store.types';
 import { devicesStoreKey } from '../../devices/store/keys';
 import { useSpaceDevices } from '../composables';
+import { SpaceType } from '../spaces.constants';
 import { spacesStoreKey } from '../store';
 
 import type { ISpaceAddDeviceDialogProps } from './space-add-device-dialog.types';
@@ -167,18 +170,26 @@ const searchQuery = ref('');
 const assigningDeviceId = ref<string | null>(null);
 
 const {
+	devices: spaceDevices,
 	addDevice,
 } = useSpaceDevices(
 	computed(() => props.spaceId),
 	computed(() => props.spaceType)
 );
 
+// Get IDs of devices already in this space (for zones, uses fetched zone device IDs)
+const spaceDeviceIds = computed(() => new Set(spaceDevices.value.map((d) => d.id)));
+
 // Get available devices (not assigned to current space)
 const availableDevices = computed(() => {
 	return devicesStore.findAll()
 		.filter((device) => {
 			if (device.draft) return false;
-			// Show all devices that are not in the current space
+			// For zones, filter out devices already in this zone
+			if (props.spaceType === SpaceType.ZONE) {
+				return !spaceDeviceIds.value.has(device.id);
+			}
+			// For rooms, filter by roomId
 			return device.roomId !== props.spaceId;
 		})
 		.sort((a, b) => a.name.localeCompare(b.name));
@@ -236,7 +247,6 @@ const onAssignDevice = async (device: IDevice): Promise<void> => {
 	assigningDeviceId.value = device.id;
 	try {
 		await addDevice(device.id);
-		onClose();
 		flashMessage.success(t('spacesModule.messages.edited', { space: device.name }));
 		emit('device-added');
 	} catch {

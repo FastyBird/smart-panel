@@ -73,6 +73,7 @@ export class DevicesService {
 				'channels.controls.channel',
 				'channels.properties',
 				'channels.properties.channel',
+				'deviceZones',
 			],
 		})) as TDevice[];
 
@@ -98,6 +99,7 @@ export class DevicesService {
 			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
 			.leftJoinAndSelect('channels.properties', 'channelProperties')
 			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
 			.where('device.id = :id', { id })
 			.getOne()) as TDevice | null;
 
@@ -133,6 +135,7 @@ export class DevicesService {
 			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
 			.leftJoinAndSelect('channels.properties', 'channelProperties')
 			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
 			.where(`device.${column} = :filterBy`, { filterBy: value })
 			.getOne()) as TDevice | null;
 

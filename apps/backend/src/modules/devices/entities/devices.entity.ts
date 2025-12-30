@@ -143,6 +143,18 @@ export class DeviceEntity extends BaseEntity {
 	@OneToMany('DeviceZoneEntity', 'device')
 	deviceZones: import('./device-zone.entity').DeviceZoneEntity[];
 
+	@ApiProperty({
+		name: 'zone_ids',
+		description: 'IDs of zones this device is assigned to',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['550e8400-e29b-41d4-a716-446655440000'],
+	})
+	@Expose({ name: 'zone_ids' })
+	get zoneIds(): string[] {
+		return (this.deviceZones ?? []).map((dz) => dz.zoneId);
+	}
+
 	@ApiProperty({ description: 'Device connection status', type: DeviceConnectionStatus })
 	@Expose()
 	@ValidateNested()
