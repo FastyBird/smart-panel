@@ -32,7 +32,8 @@ describe('UsersFilter', (): void => {
 			props: {
 				filters: filters.value,
 				filtersActive: false,
-				remoteFormReset: false,
+				selectedCount: 0,
+				bulkActions: [],
 				...props,
 			},
 		});

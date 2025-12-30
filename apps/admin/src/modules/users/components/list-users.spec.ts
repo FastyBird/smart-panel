@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
+import type { IBulkAction } from '../../../common';
 import { UsersModuleUserRole } from '../../../openapi.constants';
+import type { IUser } from '../store/users.store.types';
 
 import type { IListUsersProps } from './list-users.types';
 import ListUsers from './list-users.vue';
@@ -14,6 +16,10 @@ import UsersTable from './users-table.vue';
 
 type ListUsersInstance = ComponentPublicInstance<IListUsersProps> & {
 	innerFilters: { search: string | undefined; roles: UsersModuleUserRole[] };
+	selectedItems: IUser[];
+	bulkActions: IBulkAction[];
+	sortBy: 'username' | 'firstName' | 'lastName' | 'email' | 'role';
+	sortDir: 'ascending' | 'descending' | null;
 };
 
 vi.mock('vue-i18n', () => ({
