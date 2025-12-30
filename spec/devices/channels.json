@@ -3077,10 +3077,12 @@
         "data_type": "enum",
         "unit": null,
         "format": [
+          "off",
           "heat",
           "cool",
           "auto",
-          "manual"
+          "manual",
+          "idle"
         ],
         "invalid": null,
         "step": null
