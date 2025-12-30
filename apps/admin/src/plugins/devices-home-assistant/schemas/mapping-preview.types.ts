@@ -65,7 +65,8 @@ export type MappingWarningType =
 	| 'missing_required_channel'
 	| 'missing_required_property'
 	| 'unsupported_entity'
-	| 'unknown_device_class';
+	| 'unknown_device_class'
+	| 'no_mapping_rule';
 
 export type IVirtualPropertyType = z.infer<typeof VirtualPropertyTypeSchema>;
 

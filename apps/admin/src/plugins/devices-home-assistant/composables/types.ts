@@ -6,6 +6,7 @@ import type { FormResultType, IDevice } from '../../../modules/devices';
 import type { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IAdoptDeviceRequest, IMappingEntityOverride, IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
 import type { IHomeAssistantDiscoveredDevice } from '../store/home-assistant-discovered-devices.store.types';
+import type { IHomeAssistantDiscoveredHelper } from '../store/home-assistant-discovered-helpers.store.types';
 import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
 import type { IDeviceAddForm } from '../../../modules/devices/schemas/devices.types';
 
@@ -35,6 +36,13 @@ export interface IUseDiscoveredDevices {
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
 	fetchDiscoveredDevices: () => Promise<void>;
+}
+
+export interface IUseDiscoveredHelpers {
+	helpers: ComputedRef<IHomeAssistantDiscoveredHelper[]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchDiscoveredHelpers: () => Promise<void>;
 }
 
 export interface IUseDiscoveredDevicesDataSource {
@@ -87,6 +95,16 @@ export interface IUseDiscoveredDevicesOptions {
 	areLoading: ComputedRef<boolean>;
 }
 
+export interface IDiscoveryOptionGroup {
+	label: string;
+	options: { value: string; label: string; type: 'device' | 'helper' }[];
+}
+
+export interface IUseDiscoveredItemsOptions {
+	itemsOptions: ComputedRef<IDiscoveryOptionGroup[]>;
+	areLoading: ComputedRef<boolean>;
+}
+
 export interface IUseEntitiesOptions {
 	entitiesOptions: ComputedRef<{ value: IHomeAssistantState['entityId']; label: IHomeAssistantState['entityId'] | string }[]>;
 	areLoading: ComputedRef<boolean>;
@@ -122,8 +140,8 @@ export interface IUseDeviceAddForm<TForm extends IDeviceAddForm = IDeviceAddForm
 	previewError: Ref<Error | null>;
 	isAdopting: Ref<boolean>;
 	adoptionError: Ref<Error | null>;
-	devicesOptions: ComputedRef<{ value: IHomeAssistantDiscoveredDevice['id']; label: IHomeAssistantDiscoveredDevice['name'] }[]>;
-	devicesOptionsLoading: ComputedRef<boolean>;
+	itemsOptions: ComputedRef<IDiscoveryOptionGroup[]>;
+	itemsOptionsLoading: ComputedRef<boolean>;
 	entityOverrides: Ref<IMappingEntityOverride[] | undefined>;
 	model: Reactive<TForm>;
 	stepOneFormEl: Ref<FormInstance | undefined>;

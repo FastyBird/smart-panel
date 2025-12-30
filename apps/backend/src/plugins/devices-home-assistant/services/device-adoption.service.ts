@@ -78,6 +78,17 @@ export class DeviceAdoptionService {
 			);
 		}
 
+		// Check if any of the device's entities are already adopted as standalone helpers
+		// For helpers, haDeviceId stores the entity_id, so we check against channel entityIds
+		const entityIds = [...new Set(request.channels.map((ch) => ch.entityId))];
+		const alreadyAdoptedAsHelper = existingDevices.find((d) => entityIds.includes(d.haDeviceId));
+
+		if (alreadyAdoptedAsHelper) {
+			throw new DevicesHomeAssistantValidationException(
+				`Home Assistant entity ${alreadyAdoptedAsHelper.haDeviceId} is already adopted as helper device ${alreadyAdoptedAsHelper.id}`,
+			);
+		}
+
 		// Validate device DTO
 		const createDeviceDto = toInstance(CreateHomeAssistantDeviceDto, {
 			type: DEVICES_HOME_ASSISTANT_TYPE,

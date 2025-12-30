@@ -4,6 +4,10 @@ import type {
 	IHomeAssistantDiscoveredDevicesStoreActions,
 	IHomeAssistantDiscoveredDevicesStoreState,
 } from './home-assistant-discovered-devices.store.types';
+import type {
+	IHomeAssistantDiscoveredHelpersStoreActions,
+	IHomeAssistantDiscoveredHelpersStoreState,
+} from './home-assistant-discovered-helpers.store.types';
 import type { IHomeAssistantStatesStoreActions, IHomeAssistantStatesStoreState } from './home-assistant-states.store.types';
 
 export const discoveredDevicesStoreKey: StoreInjectionKey<
@@ -12,6 +16,13 @@ export const discoveredDevicesStoreKey: StoreInjectionKey<
 	object,
 	IHomeAssistantDiscoveredDevicesStoreActions
 > = Symbol('FB-Plugin-Devices-Home-Assistant-Discovered-Devices');
+
+export const discoveredHelpersStoreKey: StoreInjectionKey<
+	string,
+	IHomeAssistantDiscoveredHelpersStoreState,
+	object,
+	IHomeAssistantDiscoveredHelpersStoreActions
+> = Symbol('FB-Plugin-Devices-Home-Assistant-Discovered-Helpers');
 
 export const statesStoreKey: StoreInjectionKey<string, IHomeAssistantStatesStoreState, object, IHomeAssistantStatesStoreActions> = Symbol(
 	'FB-Plugin-Devices-Home-Assistant-States'

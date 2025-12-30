@@ -3057,7 +3057,7 @@
           "en": ""
         },
         "permissions": [
-          "rw"
+          "ro"
         ],
         "data_type": "bool",
         "unit": null,
@@ -3077,6 +3077,7 @@
         "data_type": "enum",
         "unit": null,
         "format": [
+          "off",
           "heat",
           "cool",
           "auto",

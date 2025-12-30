@@ -605,3 +605,57 @@ export class HomeAssistantDeviceRegistryModel {
 	@Type(() => HomeAssistantDeviceRegistryResultModel)
 	result: HomeAssistantDeviceRegistryResultModel[];
 }
+
+@ApiSchema({ name: 'DevicesHomeAssistantPluginDataDiscoveredHelper' })
+export class HomeAssistantDiscoveredHelperModel {
+	@ApiProperty({
+		description: 'Helper entity identifier (used as unique ID)',
+		type: 'string',
+		example: 'input_boolean.my_toggle',
+		name: 'entity_id',
+	})
+	@Expose({ name: 'entity_id' })
+	@IsString()
+	entityId: string;
+
+	@ApiProperty({
+		description: 'Helper friendly name',
+		type: 'string',
+		example: 'My Toggle Helper',
+	})
+	@Expose()
+	@IsString()
+	name: string;
+
+	@ApiProperty({
+		description: 'Home Assistant domain of the helper',
+		type: 'string',
+		example: 'input_boolean',
+	})
+	@Expose()
+	@IsString()
+	domain: string;
+
+	@ApiPropertyOptional({
+		description: 'ID of the adopted device in the system',
+		type: 'string',
+		nullable: true,
+		example: null,
+		name: 'adopted_device_id',
+	})
+	@Expose({ name: 'adopted_device_id' })
+	@IsString()
+	@IsOptional()
+	adoptedDeviceId: string | null = null;
+
+	@ApiPropertyOptional({
+		description: 'Current state of the helper entity',
+		type: HomeAssistantStateModel,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => HomeAssistantStateModel)
+	state: HomeAssistantStateModel | null = null;
+}

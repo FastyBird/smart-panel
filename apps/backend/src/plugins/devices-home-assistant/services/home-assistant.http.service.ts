@@ -24,6 +24,7 @@ import {
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
+import { HomeAssistantDiscoveredHelperDto } from '../dto/home-assistant-discovered-helper.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
@@ -33,16 +34,29 @@ import {
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config.model';
-import { HomeAssistantDiscoveredDeviceModel, HomeAssistantStateModel } from '../models/home-assistant.model';
+import {
+	HomeAssistantDiscoveredDeviceModel,
+	HomeAssistantDiscoveredHelperModel,
+	HomeAssistantStateModel,
+} from '../models/home-assistant.model';
 
 import { VirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext, VirtualPropertyType, getVirtualPropertiesForChannel } from './virtual-property.types';
 
+// Exclude devices dominated by virtual_device_domains (climate/humidifier/water_heater + their sensors)
+// These appear in helpers instead. A device is "virtual" if it has a virtual domain entity and only sensors/binary_sensors otherwise.
 const DISCOVERED_DEVICES_TEMPLATE =
-	"{% set devices = states | map(attribute='entity_id') | map('device_id') | unique | reject('eq', None) | list %}{% set ns = namespace(list=[]) %}{% for device in devices %}{% set entities = device_entities(device) | list %}{% if entities %}{% set ns.list = ns.list + [{'id': device, 'name': device_attr(device, 'name'), 'entities': entities}] %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
+	"{% set virtual_device_domains = ['climate', 'humidifier', 'water_heater'] %}{% set auxiliary_domains = ['sensor', 'binary_sensor'] %}{% set devices = states | map(attribute='entity_id') | map('device_id') | unique | reject('eq', None) | list %}{% set ns = namespace(list=[]) %}{% for device in devices %}{% set entities = device_entities(device) | list %}{% if entities %}{% set domains = entities | map('regex_replace', '\\\\..*', '') | list %}{% set has_virtual = domains | select('in', virtual_device_domains) | list | length > 0 %}{% set non_aux_domains = domains | reject('in', virtual_device_domains) | reject('in', auxiliary_domains) | list %}{% set is_pure_virtual = has_virtual and non_aux_domains | length == 0 %}{% if not is_pure_virtual %}{% set ns.list = ns.list + [{'id': device, 'name': device_attr(device, 'name'), 'entities': entities}] %}{% endif %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
 
 const DISCOVERED_DEVICE_TEMPLATE =
 	"{% set target_device = device_id %}{% set entities = device_entities(target_device) | list %}{% if entities %}{{ [{'id': target_device, 'name': device_attr(target_device, 'name'), 'entities': entities}] | tojson }}{% else %}{{ [] | tojson }}{% endif %}";
+
+// Template to discover helper entities (entities without device_id or virtual device domains)
+// Includes: input_boolean, input_number, input_select, input_text, input_datetime, input_button, timer
+// Also includes climate entities without device (e.g., generic_thermostat) and standalone sensors
+// Climate/humidifier/water_heater are always included as helpers (they are typically virtual/user-configured)
+const DISCOVERED_HELPERS_TEMPLATE =
+	"{% set helper_domains = ['input_boolean', 'input_number', 'input_select', 'input_text', 'input_datetime', 'input_button', 'timer', 'climate', 'sensor', 'binary_sensor', 'switch', 'light', 'fan', 'cover', 'lock', 'humidifier', 'water_heater', 'vacuum'] %}{% set virtual_device_domains = ['climate', 'humidifier', 'water_heater'] %}{% set ns = namespace(list=[]) %}{% for state in states %}{% set domain = state.entity_id.split('.')[0] %}{% if domain in helper_domains %}{% set dev_id = device_id(state.entity_id) %}{% if dev_id is none or dev_id == '' or domain in virtual_device_domains %}{% set ns.list = ns.list + [{'entity_id': state.entity_id, 'name': state.attributes.friendly_name | default(state.entity_id), 'domain': domain}] %}{% endif %}{% endif %}{% endfor %}{{ ns.list | tojson }}";
 
 @Injectable()
 export class HomeAssistantHttpService {
@@ -138,6 +152,99 @@ export class HomeAssistantHttpService {
 		}
 
 		throw new DevicesHomeAssistantNotFoundException('Home Assistant discovered devices list could not be loaded');
+	}
+
+	async getDiscoveredHelper(entityId: string): Promise<HomeAssistantDiscoveredHelperModel> {
+		this.ensureApiKey();
+
+		try {
+			this.logger.debug(`Fetching Home Assistant discovered helper: ${entityId}`);
+
+			const [helpers, states] = await Promise.all([this.fetchListHaHelpers(), this.fetchListHaStates()]);
+
+			if (helpers && states) {
+				const panelDevices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
+
+				const helper = helpers.find((h) => h.entity_id === entityId);
+				if (!helper) {
+					throw new DevicesHomeAssistantNotFoundException(`Home Assistant helper with entity_id ${entityId} not found`);
+				}
+
+				const helperModel = this.toDiscoveredHelperModel(helper);
+
+				// Check if this helper is already adopted (entity_id is stored as ha_device_id)
+				helperModel.adoptedDeviceId =
+					panelDevices.find((panelDevice) => panelDevice.haDeviceId === entityId)?.id ?? null;
+
+				// Attach state
+				const state = states.find((s) => s.entity_id === entityId);
+				if (state) {
+					helperModel.state = this.toStateModel(state);
+				}
+
+				return helperModel;
+			}
+		} catch (error) {
+			if (error instanceof DevicesHomeAssistantNotFoundException) {
+				throw error;
+			}
+
+			const err = error as Error;
+
+			this.logger.error('Failed to fetch Home Assistant discovered helper detail', {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			throw new DevicesHomeAssistantException(
+				'An unhandled error occur. Home Assistant discovered helper detail could not be loaded',
+			);
+		}
+
+		throw new DevicesHomeAssistantNotFoundException('Home Assistant discovered helper detail could not be loaded');
+	}
+
+	async getDiscoveredHelpers(): Promise<HomeAssistantDiscoveredHelperModel[]> {
+		this.ensureApiKey();
+
+		try {
+			this.logger.debug('Fetching all Home Assistant discovered helpers list');
+
+			const [helpers, states] = await Promise.all([this.fetchListHaHelpers(), this.fetchListHaStates()]);
+
+			if (helpers && states) {
+				const panelDevices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
+
+				return helpers.map((helper) => {
+					const helperModel = this.toDiscoveredHelperModel(helper);
+
+					// Check if this helper is already adopted (entity_id is stored as ha_device_id)
+					helperModel.adoptedDeviceId =
+						panelDevices.find((panelDevice) => panelDevice.haDeviceId === helper.entity_id)?.id ?? null;
+
+					// Attach state
+					const state = states.find((s) => s.entity_id === helper.entity_id);
+					if (state) {
+						helperModel.state = this.toStateModel(state);
+					}
+
+					return helperModel;
+				});
+			}
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('Failed to fetch Home Assistant discovered helpers list', {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			throw new DevicesHomeAssistantException(
+				'An unhandled error occur. Home Assistant discovered helpers list could not be loaded',
+			);
+		}
+
+		throw new DevicesHomeAssistantNotFoundException('Home Assistant discovered helpers list could not be loaded');
 	}
 
 	async getState(entityId: string): Promise<HomeAssistantStateModel> {
@@ -423,6 +530,78 @@ export class HomeAssistantHttpService {
 
 			this.logger.error(`[SYNC] Failed to sync states for device ${deviceId}`, {
 				resource: deviceId,
+				message: err.message,
+				stack: err.stack,
+			});
+		}
+	}
+
+	/**
+	 * Mark all Home Assistant devices as disconnected
+	 * Called when the HA WebSocket connection is lost or service stops
+	 */
+	async markAllDevicesDisconnected(): Promise<void> {
+		try {
+			const devices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
+
+			this.logger.debug(`[CONNECTIVITY] Marking ${devices.length} HA devices as disconnected`);
+
+			for (const device of devices) {
+				try {
+					await this.deviceConnectivityService.setConnectionState(device.id, {
+						state: ConnectionState.DISCONNECTED,
+					});
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.warn(`[CONNECTIVITY] Failed to mark device ${device.id} as disconnected`, {
+						resource: device.id,
+						message: err.message,
+					});
+				}
+			}
+
+			this.logger.debug('[CONNECTIVITY] All HA devices marked as disconnected');
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[CONNECTIVITY] Failed to mark devices as disconnected', {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
+	}
+
+	/**
+	 * Mark all Home Assistant devices as connected
+	 * Called when the HA WebSocket connection is established
+	 */
+	async markAllDevicesConnected(): Promise<void> {
+		try {
+			const devices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
+
+			this.logger.debug(`[CONNECTIVITY] Marking ${devices.length} HA devices as connected`);
+
+			for (const device of devices) {
+				try {
+					await this.deviceConnectivityService.setConnectionState(device.id, {
+						state: ConnectionState.CONNECTED,
+					});
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.warn(`[CONNECTIVITY] Failed to mark device ${device.id} as connected`, {
+						resource: device.id,
+						message: err.message,
+					});
+				}
+			}
+
+			this.logger.debug('[CONNECTIVITY] All HA devices marked as connected');
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[CONNECTIVITY] Failed to mark devices as connected', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -804,5 +983,71 @@ export class HomeAssistantHttpService {
 
 			return null;
 		}
+	}
+
+	private async fetchListHaHelpers(): Promise<HomeAssistantDiscoveredHelperDto[] | null> {
+		try {
+			const url = new URL('/api/template', this.baseUrl);
+
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${this.apiKey}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					template: DISCOVERED_HELPERS_TEMPLATE,
+				}),
+			});
+
+			const data = (await response.json()) as unknown;
+
+			if (!response.ok || response.status !== 200) {
+				this.logger.error('Home Assistant API template request failed', { response: data });
+
+				return null;
+			}
+
+			const helpers = toInstance(HomeAssistantDiscoveredHelperDto, data as object[], {
+				excludeExtraneousValues: false,
+			});
+
+			const errors = await Promise.all(
+				helpers.map((helper) => validate(helper, { whitelist: true, forbidNonWhitelisted: true })),
+			);
+
+			if (errors.some((e) => e.length > 0)) {
+				this.logger.error(`Home Assistant helpers response validation failed error=${JSON.stringify(errors)}`);
+
+				return null;
+			}
+
+			return helpers;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('Failed to fetch helpers list', {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			return null;
+		}
+	}
+
+	private toDiscoveredHelperModel(dto: HomeAssistantDiscoveredHelperDto): HomeAssistantDiscoveredHelperModel {
+		return toInstance(
+			HomeAssistantDiscoveredHelperModel,
+			{
+				entityId: dto.entity_id,
+				name: dto.name,
+				domain: dto.domain,
+				adoptedDeviceId: null,
+				state: null,
+			},
+			{
+				excludeExtraneousValues: false,
+			},
+		);
 	}
 }

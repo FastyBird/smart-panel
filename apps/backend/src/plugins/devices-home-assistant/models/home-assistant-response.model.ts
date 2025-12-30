@@ -7,6 +7,7 @@ import { BaseSuccessResponseModel } from '../../../modules/api/models/api-respon
 import {
 	HomeAssistantDeviceRegistryResultModel,
 	HomeAssistantDiscoveredDeviceModel,
+	HomeAssistantDiscoveredHelperModel,
 	HomeAssistantEntityRegistryResultModel,
 	HomeAssistantStateModel,
 } from './home-assistant.model';
@@ -97,4 +98,33 @@ export class HomeAssistantEntityRegistryResponseModel extends BaseSuccessRespons
 	})
 	@Expose()
 	declare data: HomeAssistantEntityRegistryResultModel[];
+}
+
+/**
+ * Response wrapper for HomeAssistantDiscoveredHelperModel
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginResDiscoveredHelper' })
+export class HomeAssistantDiscoveredHelperResponseModel extends BaseSuccessResponseModel<HomeAssistantDiscoveredHelperModel> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: () => HomeAssistantDiscoveredHelperModel,
+	})
+	@Expose()
+	declare data: HomeAssistantDiscoveredHelperModel;
+}
+
+/**
+ * Response wrapper for array of HomeAssistantDiscoveredHelperModel
+ */
+@ApiSchema({ name: 'DevicesHomeAssistantPluginResDiscoveredHelpers' })
+export class HomeAssistantDiscoveredHelpersResponseModel extends BaseSuccessResponseModel<
+	HomeAssistantDiscoveredHelperModel[]
+> {
+	@ApiProperty({
+		description: 'The actual data payload returned by the API',
+		type: 'array',
+		items: { $ref: getSchemaPath(HomeAssistantDiscoveredHelperModel) },
+	})
+	@Expose()
+	declare data: HomeAssistantDiscoveredHelperModel[];
 }

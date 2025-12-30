@@ -37,7 +37,9 @@ import { HomeAssistantConfigSchema, HomeAssistantConfigUpdateReqSchema } from '.
 import { HomeAssistantDeviceCreateReqSchema, HomeAssistantDeviceSchema, HomeAssistantDeviceUpdateReqSchema } from './store/devices.store.schemas';
 import {
 	discoveredDevicesStoreKey,
+	discoveredHelpersStoreKey,
 	registerHomeAssistantDiscoveredDevicesStore,
+	registerHomeAssistantDiscoveredHelpersStore,
 	registerHomeAssistantStatesStore,
 	statesStoreKey,
 } from './store/stores';
@@ -65,6 +67,11 @@ export default {
 
 		app.provide(discoveredDevicesStoreKey, discoveredDevicesStore);
 		storesManager.addStore(discoveredDevicesStoreKey, discoveredDevicesStore);
+
+		const discoveredHelpersStore = registerHomeAssistantDiscoveredHelpersStore(options.store);
+
+		app.provide(discoveredHelpersStoreKey, discoveredHelpersStore);
+		storesManager.addStore(discoveredHelpersStoreKey, discoveredHelpersStore);
 
 		const statesStore = registerHomeAssistantStatesStore(options.store);
 

@@ -5,14 +5,21 @@ import { PLUGINS_PREFIX } from '../../../app.constants';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import type { IMappingPreviewRequest, IMappingPreviewResponse } from '../schemas/mapping-preview.types';
-import { transformMappingPreviewRequest, transformMappingPreviewResponse } from '../utils/mapping-preview.transformers';
+import {
+	transformHelperMappingPreviewResponse,
+	transformMappingPreviewRequest,
+	transformMappingPreviewResponse,
+} from '../utils/mapping-preview.transformers';
+
+export type ItemType = 'device' | 'helper';
 
 export interface IUseMappingPreview {
 	preview: Ref<IMappingPreviewResponse | null>;
 	isLoading: Ref<boolean>;
 	error: Ref<Error | null>;
-	fetchPreview: (haDeviceId: string, overrides?: IMappingPreviewRequest) => Promise<IMappingPreviewResponse>;
-	updatePreview: (haDeviceId: string, overrides: IMappingPreviewRequest) => Promise<IMappingPreviewResponse>;
+	itemType: Ref<ItemType>;
+	fetchPreview: (itemId: string, overrides?: IMappingPreviewRequest, type?: ItemType) => Promise<IMappingPreviewResponse>;
+	updatePreview: (itemId: string, overrides: IMappingPreviewRequest, type?: ItemType) => Promise<IMappingPreviewResponse>;
 	clearPreview: () => void;
 }
 
@@ -24,61 +31,117 @@ export const useMappingPreview = (): IUseMappingPreview => {
 	const preview = ref<IMappingPreviewResponse | null>(null);
 	const isLoading = ref<boolean>(false);
 	const error = ref<Error | null>(null);
+	const itemType = ref<ItemType>('device');
 
 	// Request sequence guard: track the current request ID to ignore stale responses
 	let currentRequestId = 0;
 
-	const fetchPreview = async (haDeviceId: string, overrides?: IMappingPreviewRequest): Promise<IMappingPreviewResponse> => {
+	const fetchPreview = async (
+		itemId: string,
+		overrides?: IMappingPreviewRequest,
+		type?: ItemType,
+	): Promise<IMappingPreviewResponse> => {
+		// Store the item type for later use
+		const currentType = type ?? itemType.value;
+		itemType.value = currentType;
 		// Increment request ID for this new request
 		const requestId = ++currentRequestId;
 		isLoading.value = true;
 		error.value = null;
 
 		try {
-			const requestBody = overrides ? transformMappingPreviewRequest(overrides) : undefined;
+			let transformed: IMappingPreviewResponse;
 
-			const {
-				data: responseData,
-				error: apiError,
-				response,
-			} = await backend.client.POST(
-				`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/{id}/preview-mapping`,
-				{
-					params: {
-						path: { id: haDeviceId },
+			if (currentType === 'helper') {
+				// Fetch helper mapping preview
+				// For helpers, extract channelCategory from the first entityOverride if present
+				// (helpers have only one entity, so only one override applies)
+				const helperChannelCategory = overrides?.entityOverrides?.[0]?.channelCategory;
+				const helperRequestBody = overrides
+					? {
+							device_category: overrides.deviceCategory,
+							channel_category: helperChannelCategory,
+						}
+					: undefined;
+
+				const {
+					data: responseData,
+					error: apiError,
+					response,
+				} = await backend.client.POST(
+					`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-helpers/{entityId}/preview-mapping`,
+					{
+						params: {
+							path: { entityId: itemId },
+						},
+						body: helperRequestBody as never,
 					},
-					body: requestBody as never,
-				}
-			);
+				);
 
-			// Sequence guard: ignore response if this request is no longer the current one
-			if (requestId !== currentRequestId) {
-				// This response is stale - don't update state, but still throw to indicate cancellation
-				throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
-			}
-
-			if (typeof responseData !== 'undefined' && responseData.data) {
-				// Double-check sequence guard before updating state
+				// Sequence guard: ignore response if this request is no longer the current one
 				if (requestId !== currentRequestId) {
 					throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
 				}
 
-				const transformed = transformMappingPreviewResponse(responseData.data);
+				if (typeof responseData !== 'undefined' && responseData.data) {
+					if (requestId !== currentRequestId) {
+						throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
+					}
 
-				preview.value = transformed;
-				isLoading.value = false;
+					transformed = transformHelperMappingPreviewResponse(responseData.data);
+				} else {
+					let errorReason: string | null = 'Failed to fetch helper mapping preview.';
 
-				return transformed;
+					if (apiError) {
+						errorReason = getErrorReason(apiError as never, errorReason);
+					}
+
+					throw new DevicesHomeAssistantApiException(errorReason, response?.status);
+				}
+			} else {
+				// Fetch device mapping preview
+				const requestBody = overrides ? transformMappingPreviewRequest(overrides) : undefined;
+
+				const {
+					data: responseData,
+					error: apiError,
+					response,
+				} = await backend.client.POST(
+					`/${PLUGINS_PREFIX}/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/{id}/preview-mapping`,
+					{
+						params: {
+							path: { id: itemId },
+						},
+						body: requestBody as never,
+					},
+				);
+
+				// Sequence guard: ignore response if this request is no longer the current one
+				if (requestId !== currentRequestId) {
+					throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
+				}
+
+				if (typeof responseData !== 'undefined' && responseData.data) {
+					if (requestId !== currentRequestId) {
+						throw new DevicesHomeAssistantApiException('Request was superseded by a newer request.');
+					}
+
+					transformed = transformMappingPreviewResponse(responseData.data);
+				} else {
+					let errorReason: string | null = 'Failed to fetch mapping preview.';
+
+					if (apiError) {
+						errorReason = getErrorReason(apiError as never, errorReason);
+					}
+
+					throw new DevicesHomeAssistantApiException(errorReason, response?.status);
+				}
 			}
 
-			let errorReason: string | null = 'Failed to fetch mapping preview.';
+			preview.value = transformed;
+			isLoading.value = false;
 
-			if (apiError) {
-				// OpenAPI operation type will be generated when OpenAPI spec is updated
-				errorReason = getErrorReason(apiError as never, errorReason);
-			}
-
-			throw new DevicesHomeAssistantApiException(errorReason, response?.status);
+			return transformed;
 		} catch (err: unknown) {
 			// Only update loading state if this is still the current request
 			if (requestId === currentRequestId) {
@@ -112,8 +175,12 @@ export const useMappingPreview = (): IUseMappingPreview => {
 		}
 	};
 
-	const updatePreview = async (haDeviceId: string, overrides: IMappingPreviewRequest): Promise<IMappingPreviewResponse> => {
-		return fetchPreview(haDeviceId, overrides);
+	const updatePreview = async (
+		itemId: string,
+		overrides: IMappingPreviewRequest,
+		type?: ItemType,
+	): Promise<IMappingPreviewResponse> => {
+		return fetchPreview(itemId, overrides, type ?? itemType.value);
 	};
 
 	const clearPreview = (): void => {
@@ -129,6 +196,7 @@ export const useMappingPreview = (): IUseMappingPreview => {
 		preview,
 		isLoading,
 		error,
+		itemType,
 		fetchPreview,
 		updatePreview,
 		clearPreview,

@@ -64,7 +64,7 @@ export const EntityMappingPreviewSchema = z.object({
 });
 
 export const MappingWarningSchema = z.object({
-	type: z.enum(['missing_required_channel', 'missing_required_property', 'unsupported_entity', 'unknown_device_class']),
+	type: z.enum(['missing_required_channel', 'missing_required_property', 'unsupported_entity', 'unknown_device_class', 'no_mapping_rule']),
 	entityId: z.string().optional(),
 	message: z.string(),
 	suggestion: z.string().optional(),
@@ -138,4 +138,50 @@ export const AdoptDeviceRequestSchema = z.object({
 		.optional(),
 	enabled: z.boolean().default(true).optional(),
 	channels: z.array(AdoptChannelDefinitionSchema),
+});
+
+// ============================================================================
+// Helper Mapping Preview Schemas
+// ============================================================================
+
+const HelperPropertyMappingSchema = z.object({
+	category: z.string(),
+	name: z.string(),
+	haAttribute: z.string(),
+	dataType: z.string(),
+	permissions: z.array(z.string()),
+	unit: z.string().nullable().optional(),
+	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	required: z.boolean(),
+	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+});
+
+const HelperChannelMappingSchema = z.object({
+	category: z.string(),
+	name: z.string(),
+	confidence: z.string(),
+	suggestedProperties: z.array(HelperPropertyMappingSchema),
+});
+
+export const HelperMappingPreviewResponseSchema = z.object({
+	helper: z.object({
+		entityId: z.string(),
+		name: z.string(),
+		domain: z.string(),
+	}),
+	suggestedDevice: z.object({
+		category: z.string(),
+		name: z.string(),
+		confidence: z.string(),
+	}),
+	suggestedChannel: HelperChannelMappingSchema,
+	suggestedChannels: z.array(HelperChannelMappingSchema).optional(),
+	warnings: z.array(
+		z.object({
+			type: z.string(),
+			message: z.string(),
+			suggestion: z.string().optional(),
+		})
+	),
+	readyToAdopt: z.boolean(),
 });

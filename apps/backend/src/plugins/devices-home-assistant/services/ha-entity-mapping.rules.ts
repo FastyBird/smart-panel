@@ -667,6 +667,114 @@ export const HA_ENTITY_MAPPING_RULES: HaEntityMappingRule[] = [
 	},
 
 	// ============================================================================
+	// INPUT NUMBER ENTITIES (Virtual Number Input)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.INPUT_NUMBER,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.GENERIC }],
+	},
+
+	// ============================================================================
+	// INPUT SELECT ENTITIES (Virtual Dropdown)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.INPUT_SELECT,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.MODE }],
+	},
+
+	// ============================================================================
+	// INPUT TEXT ENTITIES (Virtual Text Input)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.INPUT_TEXT,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.GENERIC }],
+	},
+
+	// ============================================================================
+	// INPUT DATETIME ENTITIES (Virtual Date/Time Input)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.INPUT_DATETIME,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.GENERIC }],
+	},
+
+	// ============================================================================
+	// INPUT BUTTON ENTITIES (Virtual Button)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.INPUT_BUTTON,
+		device_class: null,
+		channel_category: ChannelCategory.SWITCHER,
+		device_category_hint: DeviceCategory.SWITCHER,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.ON }],
+	},
+
+	// ============================================================================
+	// TIMER ENTITIES (Virtual Timer)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.TIMER,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.STATUS }],
+	},
+
+	// ============================================================================
+	// NUMBER ENTITIES (Generic Number Control)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.NUMBER,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.GENERIC }],
+	},
+
+	// ============================================================================
+	// SELECT ENTITIES (Generic Select Control)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.SELECT,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.MODE }],
+	},
+
+	// ============================================================================
+	// TEXT ENTITIES (Generic Text Control)
+	// ============================================================================
+	{
+		domain: HomeAssistantDomain.TEXT,
+		device_class: null,
+		channel_category: ChannelCategory.GENERIC,
+		device_category_hint: DeviceCategory.GENERIC,
+		priority: 10,
+		property_bindings: [{ ha_attribute: 'fb.main_state', property_category: PropertyCategory.GENERIC }],
+	},
+
+	// ============================================================================
 	// WATER HEATER ENTITIES
 	// ============================================================================
 	{
