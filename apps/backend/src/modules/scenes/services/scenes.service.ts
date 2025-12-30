@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, type FindOptionsOrder, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -106,7 +106,7 @@ export class ScenesService {
 			relations: ['actions', 'actions.scene', 'conditions', 'conditions.scene', 'triggers', 'triggers.scene'],
 			order: {
 				name: 'ASC',
-			} as any,
+			} as FindOptionsOrder<TScene>,
 		})) as TScene[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${scenes.length} scenes`);

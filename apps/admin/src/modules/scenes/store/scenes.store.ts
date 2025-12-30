@@ -2,6 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
+import { MODULES_PREFIX } from '../../../app.constants';
 import { useBackend, useLogger } from '../../../common';
 import { SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
@@ -127,15 +128,17 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 			const existingRecord = data.value.get(payload.id);
 
 			try {
-				const response = await backend.client.GET(`/api/v1/${SCENES_MODULE_PREFIX}/scenes/{id}`, {
+				const response = await backend.client.GET(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes/{id}` as never, {
 					params: { path: { id: payload.id } },
-				});
+				} as never);
 
-				if (response.error || !response.data || !('data' in response.data)) {
+				const responseData = (response as { data?: { data: ISceneRes } }).data;
+
+				if (typeof responseData === 'undefined') {
 					throw new ScenesApiException('Received unexpected response.');
 				}
 
-				const transformed = transformSceneResponse(response.data.data as ISceneRes, SceneSchema);
+				const transformed = transformSceneResponse(responseData.data, SceneSchema);
 
 				return set({
 					id: transformed.id,
@@ -178,15 +181,17 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 			firstLoad.value = false;
 
 			try {
-				const response = await backend.client.GET(`/api/v1/${SCENES_MODULE_PREFIX}/scenes`);
+				const response = await backend.client.GET(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes` as never, {} as never);
 
-				if (response.error || !response.data || !('data' in response.data)) {
+				const responseData = (response as { data?: { data: ISceneRes[] } }).data;
+
+				if (typeof responseData === 'undefined') {
 					throw new ScenesApiException('Received unexpected response.');
 				}
 
 				const scenes: IScene[] = [];
 
-				for (const sceneData of response.data.data as ISceneRes[]) {
+				for (const sceneData of responseData.data) {
 					const transformed = transformSceneResponse(sceneData, SceneSchema);
 
 					set({
@@ -233,6 +238,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 				...sceneData,
 				id,
 				draft,
+				enabled: sceneData.enabled ?? true,
 				isTriggerable: true,
 				isEditable: true,
 				lastTriggeredAt: null,
@@ -250,15 +256,17 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		try {
 			const createData = transformSceneCreateRequest(sceneData, SceneCreateReqSchema);
 
-			const response = await backend.client.POST(`/api/v1/${SCENES_MODULE_PREFIX}/scenes`, {
+			const response = await backend.client.POST(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes` as never, {
 				body: { data: createData },
-			});
+			} as never);
 
-			if (response.error || !response.data || !('data' in response.data)) {
+			const responseData = (response as { data?: { data: ISceneRes } }).data;
+
+			if (typeof responseData === 'undefined') {
 				throw new ScenesApiException('Received unexpected response.');
 			}
 
-			const transformed = transformSceneResponse(response.data.data as ISceneRes, SceneSchema);
+			const transformed = transformSceneResponse(responseData.data, SceneSchema);
 
 			scene = set({
 				id: transformed.id,
@@ -295,6 +303,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		let scene = set({
 			id,
 			data: {
+				...existingRecord,
 				...sceneData,
 			},
 		});
@@ -308,16 +317,18 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		try {
 			const updateData = transformSceneUpdateRequest(sceneData, SceneUpdateReqSchema);
 
-			const response = await backend.client.PATCH(`/api/v1/${SCENES_MODULE_PREFIX}/scenes/{id}`, {
+			const response = await backend.client.PATCH(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes/{id}` as never, {
 				params: { path: { id } },
 				body: { data: updateData },
-			});
+			} as never);
 
-			if (response.error || !response.data || !('data' in response.data)) {
+			const responseData = (response as { data?: { data: ISceneRes } }).data;
+
+			if (typeof responseData === 'undefined') {
 				throw new ScenesApiException('Received unexpected response.');
 			}
 
-			const transformed = transformSceneResponse(response.data.data as ISceneRes, SceneSchema);
+			const transformed = transformSceneResponse(responseData.data, SceneSchema);
 
 			scene = set({
 				id: transformed.id,
@@ -353,15 +364,17 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		try {
 			const createData = transformSceneCreateRequest(existingRecord, SceneCreateReqSchema);
 
-			const response = await backend.client.POST(`/api/v1/${SCENES_MODULE_PREFIX}/scenes`, {
+			const response = await backend.client.POST(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes` as never, {
 				body: { data: createData },
-			});
+			} as never);
 
-			if (response.error || !response.data || !('data' in response.data)) {
+			const responseData = (response as { data?: { data: ISceneRes } }).data;
+
+			if (typeof responseData === 'undefined') {
 				throw new ScenesApiException('Received unexpected response.');
 			}
 
-			const transformed = transformSceneResponse(response.data.data as ISceneRes, SceneSchema);
+			const transformed = transformSceneResponse(responseData.data, SceneSchema);
 
 			const scene = set({
 				id: transformed.id,
@@ -391,11 +404,13 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		semaphore.value.deleting.push(payload.id);
 
 		try {
-			const response = await backend.client.DELETE(`/api/v1/${SCENES_MODULE_PREFIX}/scenes/{id}`, {
+			const response = await backend.client.DELETE(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes/{id}` as never, {
 				params: { path: { id: payload.id } },
-			});
+			} as never);
 
-			if (response.error) {
+			const responseStatus = (response as { error?: unknown }).error;
+
+			if (typeof responseStatus !== 'undefined') {
 				throw new ScenesApiException('Received unexpected response.');
 			}
 
@@ -421,7 +436,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		semaphore.value.triggering.push(payload.id);
 
 		try {
-			const response = await backend.client.POST(`/api/v1/${SCENES_MODULE_PREFIX}/scenes/{id}/trigger`, {
+			const response = await backend.client.POST(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes/{id}/trigger` as never, {
 				params: { path: { id: payload.id } },
 				body: {
 					data: {
@@ -429,9 +444,11 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 						context: payload.context,
 					},
 				},
-			});
+			} as never);
 
-			if (response.error || !response.data || !('data' in response.data)) {
+			const responseData = (response as { data?: { data: ISceneExecutionResult } }).data;
+
+			if (typeof responseData === 'undefined') {
 				throw new ScenesApiException('Received unexpected response.');
 			}
 
@@ -444,7 +461,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 				},
 			});
 
-			return response.data.data as ISceneExecutionResult;
+			return responseData.data;
 		} catch (e) {
 			throw new ScenesApiException('Failed to trigger scene.', null, e as Error);
 		} finally {
@@ -475,6 +492,6 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 	};
 });
 
-export const registerScenesStore = (pinia: Pinia): Store<'scenes_module-scenes', ScenesStoreSetup> => {
+export const registerScenesStore = (pinia: Pinia): Store<string, IScenesStoreState, object, IScenesStoreActions> => {
 	return useScenesStore(pinia);
 };

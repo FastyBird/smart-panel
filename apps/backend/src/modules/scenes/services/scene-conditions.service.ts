@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { Repository } from 'typeorm';
+import { type FindOptionsWhere, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -28,7 +28,7 @@ export class SceneConditionsService {
 		this.logger.debug(`[LOOKUP ALL] Fetching all conditions for scene id=${sceneId}`);
 
 		const conditions = await this.repository.find({
-			where: { scene: { id: sceneId } as any },
+			where: { scene: { id: sceneId } } as FindOptionsWhere<SceneConditionEntity>,
 			relations: ['scene'],
 		});
 

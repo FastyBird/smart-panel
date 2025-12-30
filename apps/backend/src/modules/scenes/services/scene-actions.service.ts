@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, type FindOptionsOrder, type FindOptionsWhere, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -36,9 +36,9 @@ export class SceneActionsService {
 		this.logger.debug(`[LOOKUP ALL] Fetching all actions for scene id=${sceneId}`);
 
 		const actions = (await repository.find({
-			where: { scene: { id: sceneId } as any },
+			where: { scene: { id: sceneId } } as FindOptionsWhere<TAction>,
 			relations: ['scene'],
-			order: { order: 'ASC' } as any,
+			order: { order: 'ASC' } as FindOptionsOrder<TAction>,
 		})) as TAction[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${actions.length} actions for scene id=${sceneId}`);
@@ -54,7 +54,7 @@ export class SceneActionsService {
 		this.logger.debug(`[LOOKUP] Fetching action with id=${id}`);
 
 		const action = (await repository.findOne({
-			where: { id } as any,
+			where: { id } as FindOptionsWhere<TAction>,
 			relations: ['scene'],
 		})) as TAction | null;
 
@@ -77,8 +77,8 @@ export class SceneActionsService {
 
 		const mapping = type ? this.actionsMapperService.getMapping<TAction, any, any>(type) : null;
 
-		const dtoClass = mapping?.createDto || CreateSceneActionDto;
-		const dtoInstance = toInstance(dtoClass, createDto);
+		const dtoClass = mapping?.createDto ?? CreateSceneActionDto;
+		const dtoInstance = toInstance(dtoClass, createDto) as object;
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
@@ -117,8 +117,8 @@ export class SceneActionsService {
 
 		const mapping = type ? this.actionsMapperService.getMapping<TAction, any, any>(type) : null;
 
-		const dtoClass = mapping?.updateDto || UpdateSceneActionDto;
-		const dtoInstance = toInstance(dtoClass, updateDto);
+		const dtoClass = mapping?.updateDto ?? UpdateSceneActionDto;
+		const dtoInstance = toInstance(dtoClass, updateDto) as object;
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,

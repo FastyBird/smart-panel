@@ -82,7 +82,7 @@
 						<el-option
 							v-for="channel in getChannelsForDevice(action.deviceId)"
 							:key="channel.id"
-							:label="channel.name || channel.identifier"
+							:label="channel.name ?? channel.identifier ?? channel.id"
 							:value="channel.id"
 						/>
 					</el-select>
@@ -104,7 +104,7 @@
 						<el-option
 							v-for="prop in getWritablePropertiesForChannel(action.channelId)"
 							:key="prop.id"
-							:label="prop.name || prop.identifier"
+							:label="prop.name ?? prop.identifier ?? prop.id"
 							:value="prop.id"
 						/>
 					</el-select>
@@ -118,7 +118,7 @@
 					:rules="actionRules.value"
 				>
 					<template v-if="getPropertyDataType(action.propertyId) === 'boolean'">
-						<el-switch v-model="action.value" />
+						<el-switch v-model="(action.value as boolean)" />
 					</template>
 					<template v-else-if="getPropertyFormat(action.propertyId)?.length">
 						<el-select v-model="action.value" style="width: 100%">
@@ -132,7 +132,7 @@
 					</template>
 					<template v-else-if="getPropertyDataType(action.propertyId) === 'number'">
 						<el-input-number
-							v-model="action.value"
+							v-model="(action.value as number)"
 							:min="getPropertyMin(action.propertyId)"
 							:max="getPropertyMax(action.propertyId)"
 							:step="getPropertyStep(action.propertyId)"
@@ -140,7 +140,7 @@
 						/>
 					</template>
 					<template v-else>
-						<el-input v-model="action.value" :placeholder="t('scenes.form.valuePlaceholder')" />
+						<el-input v-model="(action.value as string)" :placeholder="t('scenes.form.valuePlaceholder')" />
 					</template>
 				</el-form-item>
 			</div>
