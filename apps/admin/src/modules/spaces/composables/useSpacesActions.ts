@@ -64,39 +64,39 @@ export const useSpacesActions = (): IUseSpacesActions => {
 			return;
 		}
 
-		ElMessageBox.confirm(
-			t('spacesModule.messages.confirmBulkRemove', { count: spaces.length }),
-			t('spacesModule.headings.bulkRemoveSpace'),
-			{
-				confirmButtonText: t('spacesModule.buttons.yes.title'),
-				cancelButtonText: t('spacesModule.buttons.no.title'),
-				type: 'warning',
+		try {
+			await ElMessageBox.confirm(
+				t('spacesModule.messages.confirmBulkRemove', { count: spaces.length }),
+				t('spacesModule.headings.bulkRemoveSpace'),
+				{
+					confirmButtonText: t('spacesModule.buttons.yes.title'),
+					cancelButtonText: t('spacesModule.buttons.no.title'),
+					type: 'warning',
+				}
+			);
+
+			let successCount = 0;
+			let failCount = 0;
+
+			for (const space of spaces) {
+				try {
+					await spacesStore.remove({ id: space.id });
+					successCount++;
+				} catch {
+					failCount++;
+				}
 			}
-		)
-			.then(async (): Promise<void> => {
-				let successCount = 0;
-				let failCount = 0;
 
-				for (const space of spaces) {
-					try {
-						await spacesStore.remove({ id: space.id });
-						successCount++;
-					} catch {
-						failCount++;
-					}
-				}
+			if (successCount > 0) {
+				flashMessage.success(t('spacesModule.messages.bulkRemoved', { count: successCount }));
+			}
 
-				if (successCount > 0) {
-					flashMessage.success(t('spacesModule.messages.bulkRemoved', { count: successCount }));
-				}
-
-				if (failCount > 0) {
-					flashMessage.error(t('spacesModule.messages.bulkRemoveFailed', { count: failCount }));
-				}
-			})
-			.catch((): void => {
-				flashMessage.info(t('spacesModule.messages.bulkRemoveCanceled'));
-			});
+			if (failCount > 0) {
+				flashMessage.error(t('spacesModule.messages.bulkRemoveFailed', { count: failCount }));
+			}
+		} catch {
+			// User cancelled - do nothing
+		}
 	};
 
 	return {

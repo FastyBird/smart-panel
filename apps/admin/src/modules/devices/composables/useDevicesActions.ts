@@ -73,39 +73,39 @@ export const useDevicesActions = (): IUseDevicesActions => {
 			return;
 		}
 
-		ElMessageBox.confirm(
-			t('devicesModule.texts.devices.confirmBulkRemove', { count: devices.length }),
-			t('devicesModule.headings.devices.bulkRemove'),
-			{
-				confirmButtonText: t('devicesModule.buttons.yes.title'),
-				cancelButtonText: t('devicesModule.buttons.no.title'),
-				type: 'warning',
+		try {
+			await ElMessageBox.confirm(
+				t('devicesModule.texts.devices.confirmBulkRemove', { count: devices.length }),
+				t('devicesModule.headings.devices.bulkRemove'),
+				{
+					confirmButtonText: t('devicesModule.buttons.yes.title'),
+					cancelButtonText: t('devicesModule.buttons.no.title'),
+					type: 'warning',
+				}
+			);
+
+			let successCount = 0;
+			let failCount = 0;
+
+			for (const device of devices) {
+				try {
+					await devicesStore.remove({ id: device.id });
+					successCount++;
+				} catch {
+					failCount++;
+				}
 			}
-		)
-			.then(async (): Promise<void> => {
-				let successCount = 0;
-				let failCount = 0;
 
-				for (const device of devices) {
-					try {
-						await devicesStore.remove({ id: device.id });
-						successCount++;
-					} catch {
-						failCount++;
-					}
-				}
+			if (successCount > 0) {
+				flashMessage.success(t('devicesModule.messages.devices.bulkRemoved', { count: successCount }));
+			}
 
-				if (successCount > 0) {
-					flashMessage.success(t('devicesModule.messages.devices.bulkRemoved', { count: successCount }));
-				}
-
-				if (failCount > 0) {
-					flashMessage.error(t('devicesModule.messages.devices.bulkRemoveFailed', { count: failCount }));
-				}
-			})
-			.catch((): void => {
-				flashMessage.info(t('devicesModule.messages.devices.bulkRemoveCanceled'));
-			});
+			if (failCount > 0) {
+				flashMessage.error(t('devicesModule.messages.devices.bulkRemoveFailed', { count: failCount }));
+			}
+		} catch {
+			// User cancelled - do nothing
+		}
 	};
 
 	const bulkEnable = async (devices: IDevice[]): Promise<void> => {

@@ -73,35 +73,35 @@ export const useUsersActions = (): IUseUsersActions => {
 			return;
 		}
 
-		ElMessageBox.confirm(t('usersModule.texts.confirmBulkRemove', { count: users.length }), t('usersModule.headings.removeBulk'), {
-			confirmButtonText: t('usersModule.buttons.yes.title'),
-			cancelButtonText: t('usersModule.buttons.no.title'),
-			type: 'warning',
-		})
-			.then(async (): Promise<void> => {
-				let successCount = 0;
-				let failCount = 0;
-
-				for (const user of users) {
-					try {
-						await usersStore.remove({ id: user.id });
-						successCount++;
-					} catch {
-						failCount++;
-					}
-				}
-
-				if (successCount > 0) {
-					flashMessage.success(t('usersModule.messages.bulkRemoved', { count: successCount }));
-				}
-
-				if (failCount > 0) {
-					flashMessage.error(t('usersModule.messages.bulkRemoveFailed', { count: failCount }));
-				}
-			})
-			.catch((): void => {
-				flashMessage.info(t('usersModule.messages.bulkRemoveCanceled'));
+		try {
+			await ElMessageBox.confirm(t('usersModule.texts.confirmBulkRemove', { count: users.length }), t('usersModule.headings.removeBulk'), {
+				confirmButtonText: t('usersModule.buttons.yes.title'),
+				cancelButtonText: t('usersModule.buttons.no.title'),
+				type: 'warning',
 			});
+
+			let successCount = 0;
+			let failCount = 0;
+
+			for (const user of users) {
+				try {
+					await usersStore.remove({ id: user.id });
+					successCount++;
+				} catch {
+					failCount++;
+				}
+			}
+
+			if (successCount > 0) {
+				flashMessage.success(t('usersModule.messages.bulkRemoved', { count: successCount }));
+			}
+
+			if (failCount > 0) {
+				flashMessage.error(t('usersModule.messages.bulkRemoveFailed', { count: failCount }));
+			}
+		} catch {
+			// User cancelled - do nothing
+		}
 	};
 
 	return {
