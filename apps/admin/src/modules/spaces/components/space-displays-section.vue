@@ -242,23 +242,29 @@ const confirmReassign = async (): Promise<void> => {
 	}
 };
 
-const onRemoveDisplay = async (display: IDisplay): Promise<void> => {
-	try {
-		await ElMessageBox.confirm(
-			t('spacesModule.detail.displays.confirmRemove', { name: display.name || display.macAddress }),
-			{
-				type: 'warning',
-			}
-		);
+const onRemoveDisplay = (display: IDisplay): void => {
+	const displayName = display.name || display.macAddress;
 
-		await removeDisplay(display.id);
-		flashMessage.success(t('spacesModule.messages.edited', { space: display.name || display.macAddress }));
-	} catch (error) {
-		// User cancelled or error occurred
-		if (error !== 'cancel') {
-			flashMessage.error(t('spacesModule.messages.saveError'));
+	ElMessageBox.confirm(
+		t('spacesModule.detail.displays.confirmRemove', { name: displayName }),
+		t('spacesModule.detail.displays.removeHeading'),
+		{
+			confirmButtonText: t('spacesModule.buttons.yes.title'),
+			cancelButtonText: t('spacesModule.buttons.no.title'),
+			type: 'warning',
 		}
-	}
+	)
+		.then(async (): Promise<void> => {
+			try {
+				await removeDisplay(display.id);
+				flashMessage.success(t('spacesModule.detail.displays.removed', { name: displayName }));
+			} catch {
+				flashMessage.error(t('spacesModule.messages.saveError'));
+			}
+		})
+		.catch((): void => {
+			flashMessage.info(t('spacesModule.detail.displays.removeCanceled'));
+		});
 };
 
 onMounted(async () => {

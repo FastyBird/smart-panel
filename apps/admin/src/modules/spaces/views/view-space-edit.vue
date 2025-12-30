@@ -118,7 +118,7 @@ import {
 } from '../../../common';
 import { SpaceEditForm } from '../components/components';
 import { useSpace } from '../composables';
-import { RouteNames } from '../spaces.constants';
+import { RouteNames, SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store';
 
 const emit = defineEmits<{
@@ -156,7 +156,7 @@ const spaceIcon = computed<string>((): string => {
 	if (space.value?.icon) {
 		return space.value.icon;
 	}
-	return space.value?.type === 'room' ? 'mdi:door' : 'mdi:home-floor-1';
+	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

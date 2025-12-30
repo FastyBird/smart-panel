@@ -120,7 +120,7 @@ export class SpacesService {
 		}
 
 		// Validate parent assignment
-		await this.validateParentAssignment(type, dtoInstance.parentId ?? null);
+		await this.validateParentAssignment(type, dtoInstance.parent_id ?? null);
 
 		const space = this.repository.create(
 			toInstance(SpaceEntity, {
@@ -174,7 +174,7 @@ export class SpacesService {
 		}
 
 		// Validate parent assignment if provided
-		const effectiveParentId = dtoInstance.parentId !== undefined ? dtoInstance.parentId : space.parentId;
+		const effectiveParentId = dtoInstance.parent_id !== undefined ? dtoInstance.parent_id : space.parentId;
 		await this.validateParentAssignment(effectiveType, effectiveParentId ?? null, id);
 
 		// Normalize legacy category values

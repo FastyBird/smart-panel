@@ -40,7 +40,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 
 				// Update current IP address if provided
 				if (payload.ipAddress && payload.ipAddress !== 'unknown') {
-					await this.displaysService.update(payload.user.id, { currentIpAddress: payload.ipAddress });
+					await this.displaysService.update(payload.user.id, { current_ip_address: payload.ipAddress });
 					this.logger.debug(`Updated current IP address for display=${payload.user.id} to ${payload.ipAddress}`);
 				}
 

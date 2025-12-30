@@ -133,7 +133,7 @@ import { ElCard, ElIcon, ElOption, ElSelect, ElTag, ElText } from 'element-plus'
 import { Icon } from '@iconify/vue';
 
 import { useFlashMessage } from '../../../common';
-import { SpaceType } from '../spaces.constants';
+import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
 import { type ISpace } from '../store';
 import { useSpace, useSpaces } from '../composables';
 
@@ -173,7 +173,7 @@ const justChanged = ref<boolean>(false);
 const floorZones = computed(() => {
 	return spaces.value.filter((s) => {
 		if (s.type !== SpaceType.ZONE) return false;
-		if (!s.category?.startsWith('floor_')) return false;
+		if (!isFloorZoneCategory(s.category)) return false;
 		return true;
 	});
 });

@@ -12,7 +12,7 @@
 		</el-table-column>
 		<el-table-column prop="type" :label="t('spacesModule.table.columns.type')" width="120">
 			<template #default="{ row }">
-				<el-tag :type="row.type === 'room' ? 'primary' : 'info'" size="small">
+				<el-tag :type="row.type === SpaceType.ROOM ? 'primary' : 'info'" size="small">
 					{{ t(`spacesModule.misc.types.${row.type}`) }}
 				</el-tag>
 			</template>
@@ -61,7 +61,7 @@ import { useRouter } from 'vue-router';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { useSpaces } from '../composables';
-import { RouteNames } from '../spaces.constants';
+import { RouteNames, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
 import { spacesStoreKey, type ISpace } from '../store';
 

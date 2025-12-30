@@ -165,13 +165,13 @@ export class DevicesService {
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
 		// Validate room assignment if provided
-		if (dtoInstance.roomId) {
-			await this.validateRoomAssignment(dtoInstance.roomId);
+		if (dtoInstance.room_id) {
+			await this.validateRoomAssignment(dtoInstance.room_id);
 		}
 
 		// Extract zone IDs before processing
-		const zoneIds = dtoInstance.zoneIds || [];
-		delete dtoInstance.zoneIds;
+		const zoneIds = dtoInstance.zone_ids || [];
+		delete dtoInstance.zone_ids;
 
 		(dtoInstance.channels || []).forEach((channel) => {
 			channel.id = channel.id ?? uuid().toString();
@@ -247,22 +247,27 @@ export class DevicesService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
-		// Validate room assignment if provided
-		if (dtoInstance.roomId !== undefined && dtoInstance.roomId !== null) {
-			await this.validateRoomAssignment(dtoInstance.roomId);
+		// Validate room assignment if provided (only validate if it's a non-null UUID)
+		if (dtoInstance.room_id !== undefined && dtoInstance.room_id !== null) {
+			await this.validateRoomAssignment(dtoInstance.room_id);
 		}
 
 		// Handle zone assignments if provided
-		const zoneIds = dtoInstance.zoneIds;
-		delete dtoInstance.zoneIds;
+		const zoneIds = dtoInstance.zone_ids;
+		delete dtoInstance.zone_ids;
 
 		const repository: Repository<TDevice> = this.dataSource.getRepository(mapping.class);
 
 		Object.assign(device, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
 
+		// Explicitly handle room_id being set to null (toInstance with exposeUnsetFields:false drops null values)
+		if (dtoInstance.room_id === null) {
+			device.roomId = null;
+		}
+
 		await repository.save(device as TDevice);
 
-		// Update zone memberships if zoneIds was explicitly provided
+		// Update zone memberships if zone_ids was explicitly provided
 		if (zoneIds !== undefined) {
 			await this.deviceZonesService.setDeviceZones(device.id, zoneIds);
 		}

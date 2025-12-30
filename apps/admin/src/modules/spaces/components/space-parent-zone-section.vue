@@ -54,7 +54,7 @@ import { ElCard, ElOption, ElSelect, ElTag } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { SpaceType } from '../spaces.constants';
+import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
 import { spacesStoreKey, type ISpace } from '../store';
 
 import type { ISpaceParentZoneSectionProps } from './space-parent-zone-section.types';
@@ -86,7 +86,7 @@ const availableZones = computed(() => {
 		if (space.type !== SpaceType.ZONE) return false;
 		if (space.id === props.space.id) return false;
 		// Only allow floor-type zones as parent
-		if (!space.category?.startsWith('floor_')) return false;
+		if (!isFloorZoneCategory(space.category)) return false;
 		return true;
 	});
 });

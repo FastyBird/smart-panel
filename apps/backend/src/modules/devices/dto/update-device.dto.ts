@@ -1,4 +1,4 @@
-import { Expose, Transform, Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
@@ -95,14 +95,11 @@ export class UpdateDeviceDto {
 		nullable: true,
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
-	@Expose({ name: 'room_id' })
+	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"room_id","reason":"Room ID must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => value !== null)
-	@Transform(({ obj }: { obj: { room_id?: string | null; roomId?: string | null } }) => obj.room_id ?? obj.roomId, {
-		toClassOnly: true,
-	})
-	roomId?: string | null;
+	room_id?: string | null;
 
 	@ApiPropertyOptional({
 		name: 'zone_ids',
@@ -111,14 +108,11 @@ export class UpdateDeviceDto {
 		items: { type: 'string', format: 'uuid' },
 		example: ['f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6'],
 	})
-	@Expose({ name: 'zone_ids' })
+	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"zone_ids","reason":"Zone IDs must be an array."}]' })
 	@IsUUID('4', { each: true, message: '[{"field":"zone_ids","reason":"Each zone ID must be a valid UUID."}]' })
-	@Transform(({ obj }: { obj: { zone_ids?: string[]; zoneIds?: string[] } }) => obj.zone_ids ?? obj.zoneIds, {
-		toClassOnly: true,
-	})
-	zoneIds?: string[];
+	zone_ids?: string[];
 }
 
 @ApiSchema({ name: 'DevicesModuleReqUpdateDevice' })

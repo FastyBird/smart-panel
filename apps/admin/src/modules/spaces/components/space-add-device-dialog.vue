@@ -175,24 +175,26 @@ const {
 
 // Get available devices (not assigned to current space)
 const availableDevices = computed(() => {
-	return devicesStore.findAll().filter((device) => {
-		if (device.draft) return false;
-		// Show all devices that are not in the current space
-		return device.roomId !== props.spaceId;
-	});
+	return devicesStore.findAll()
+		.filter((device) => {
+			if (device.draft) return false;
+			// Show all devices that are not in the current space
+			return device.roomId !== props.spaceId;
+		})
+		.sort((a, b) => a.name.localeCompare(b.name));
 });
 
 // Filter available devices by search query
 const filteredAvailableDevices = computed(() => {
-	if (!searchQuery.value.trim()) {
-		return availableDevices.value;
-	}
+	const filtered = !searchQuery.value.trim()
+		? availableDevices.value
+		: availableDevices.value.filter((device) => {
+			const query = searchQuery.value.toLowerCase();
+			return device.name.toLowerCase().includes(query) ||
+				device.description?.toLowerCase().includes(query);
+		});
 
-	const query = searchQuery.value.toLowerCase();
-	return availableDevices.value.filter((device) =>
-		device.name.toLowerCase().includes(query) ||
-		device.description?.toLowerCase().includes(query)
-	);
+	return filtered.sort((a, b) => a.name.localeCompare(b.name));
 });
 
 const getDeviceIcon = (device: IDevice): string => {

@@ -271,23 +271,27 @@ const confirmReassign = async (): Promise<void> => {
 	}
 };
 
-const onRemoveDevice = async (device: IDevice): Promise<void> => {
-	try {
-		await ElMessageBox.confirm(
-			t('spacesModule.detail.devices.confirmRemove', { name: device.name }),
-			{
-				type: 'warning',
-			}
-		);
-
-		await removeDevice(device.id);
-		flashMessage.success(t('spacesModule.messages.edited', { space: device.name }));
-	} catch (error) {
-		// User cancelled or error occurred
-		if (error !== 'cancel') {
-			flashMessage.error(t('spacesModule.messages.saveError'));
+const onRemoveDevice = (device: IDevice): void => {
+	ElMessageBox.confirm(
+		t('spacesModule.detail.devices.confirmRemove', { name: device.name }),
+		t('spacesModule.detail.devices.removeHeading'),
+		{
+			confirmButtonText: t('spacesModule.buttons.yes.title'),
+			cancelButtonText: t('spacesModule.buttons.no.title'),
+			type: 'warning',
 		}
-	}
+	)
+		.then(async (): Promise<void> => {
+			try {
+				await removeDevice(device.id);
+				flashMessage.success(t('spacesModule.detail.devices.removed', { name: device.name }));
+			} catch {
+				flashMessage.error(t('spacesModule.messages.saveError'));
+			}
+		})
+		.catch((): void => {
+			flashMessage.info(t('spacesModule.detail.devices.removeCanceled'));
+		});
 };
 
 onMounted(async () => {

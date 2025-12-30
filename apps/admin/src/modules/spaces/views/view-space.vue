@@ -55,6 +55,7 @@
 					{{ t('spacesModule.detail.devices.add') }}
 				</el-button>
 				<el-button
+					v-if="space?.type === SpaceType.ROOM"
 					type="primary"
 					plain
 					class="px-4! ml-2!"
@@ -111,6 +112,7 @@
 					</el-tab-pane>
 
 					<el-tab-pane
+						v-if="space?.type === SpaceType.ROOM"
 						name="displays"
 						class="h-full overflow-hidden"
 					>
@@ -153,7 +155,7 @@
 
 	<!-- Add Display Dialog -->
 	<space-add-display-dialog
-		v-if="space"
+		v-if="space && space.type === SpaceType.ROOM"
 		v-model:visible="showAddDisplayDialog"
 		:space-id="space.id"
 		@display-added="onDisplayAdded"
@@ -250,7 +252,7 @@ import {
 	SpaceDisplaysSection,
 } from '../components/components';
 import { useSpace } from '../composables';
-import { RouteNames } from '../spaces.constants';
+import { RouteNames, SpaceType } from '../spaces.constants';
 import { type ISpace } from '../store';
 
 import type { IViewSpaceProps } from './view-space.types';
@@ -304,7 +306,7 @@ const spaceIcon = computed<string>((): string => {
 	if (space.value?.icon) {
 		return space.value.icon;
 	}
-	return space.value?.type === 'room' ? 'mdi:door' : 'mdi:home-floor-1';
+	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

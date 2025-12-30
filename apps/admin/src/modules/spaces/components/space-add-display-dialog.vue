@@ -173,23 +173,33 @@ const {
 
 // Get available displays (not assigned to current space)
 const availableDisplays = computed(() => {
-	return displaysStore.findAll().filter((display) => {
-		// Show all displays that are not in the current space
-		return display.spaceId !== props.spaceId;
-	});
+	return displaysStore.findAll()
+		.filter((display) => {
+			// Show all displays that are not in the current space
+			return display.spaceId !== props.spaceId;
+		})
+		.sort((a, b) => {
+			const nameA = a.name || a.macAddress;
+			const nameB = b.name || b.macAddress;
+			return nameA.localeCompare(nameB);
+		});
 });
 
 // Filter available displays by search query
 const filteredAvailableDisplays = computed(() => {
-	if (!searchQuery.value.trim()) {
-		return availableDisplays.value;
-	}
+	const filtered = !searchQuery.value.trim()
+		? availableDisplays.value
+		: availableDisplays.value.filter((display) => {
+			const query = searchQuery.value.toLowerCase();
+			return (display.name || '').toLowerCase().includes(query) ||
+				display.macAddress.toLowerCase().includes(query);
+		});
 
-	const query = searchQuery.value.toLowerCase();
-	return availableDisplays.value.filter((display) =>
-		(display.name || '').toLowerCase().includes(query) ||
-		display.macAddress.toLowerCase().includes(query)
-	);
+	return filtered.sort((a, b) => {
+		const nameA = a.name || a.macAddress;
+		const nameB = b.name || b.macAddress;
+		return nameA.localeCompare(nameB);
+	});
 });
 
 const getSpaceName = (spaceId: string): string => {

@@ -46,12 +46,12 @@ export class RegistrationService {
 		_userAgent: string,
 		clientIp: string,
 	): Promise<RegistrationResult> {
-		this.logger.debug(`Registering display with MAC=${registerDto.macAddress}, IP=${clientIp}`);
+		this.logger.debug(`Registering display with MAC=${registerDto.mac_address}, IP=${clientIp}`);
 
 		const dtoInstance = await this.validateDto(RegisterDisplayDto, registerDto);
 
 		// Check if display already exists by MAC address
-		let display = await this.displaysService.findByMacAddress(dtoInstance.macAddress);
+		let display = await this.displaysService.findByMacAddress(dtoInstance.mac_address);
 
 		if (display) {
 			// Update existing display
@@ -60,10 +60,10 @@ export class RegistrationService {
 			display = await this.displaysService.update(display.id, {
 				version: dtoInstance.version,
 				build: dtoInstance.build ?? null,
-				screenWidth: dtoInstance.screenWidth,
-				screenHeight: dtoInstance.screenHeight,
-				pixelRatio: dtoInstance.pixelRatio,
-				unitSize: dtoInstance.unitSize,
+				screen_width: dtoInstance.screen_width,
+				screen_height: dtoInstance.screen_height,
+				pixel_ratio: dtoInstance.pixel_ratio,
+				unit_size: dtoInstance.unit_size,
 				rows: dtoInstance.rows,
 				cols: dtoInstance.cols,
 			});
@@ -79,17 +79,17 @@ export class RegistrationService {
 			this.logger.debug(`Creating new display`);
 
 			display = await this.displaysService.create({
-				macAddress: dtoInstance.macAddress,
+				macAddress: dtoInstance.mac_address,
 				version: dtoInstance.version,
 				build: dtoInstance.build ?? null,
-				screenWidth: dtoInstance.screenWidth ?? 0,
-				screenHeight: dtoInstance.screenHeight ?? 0,
-				pixelRatio: dtoInstance.pixelRatio ?? 1,
-				unitSize: dtoInstance.unitSize ?? 8,
+				screenWidth: dtoInstance.screen_width ?? 0,
+				screenHeight: dtoInstance.screen_height ?? 0,
+				pixelRatio: dtoInstance.pixel_ratio ?? 1,
+				unitSize: dtoInstance.unit_size ?? 8,
 				rows: dtoInstance.rows ?? 12,
 				cols: dtoInstance.cols ?? 24,
-				audioOutputSupported: dtoInstance.audioOutputSupported ?? false,
-				audioInputSupported: dtoInstance.audioInputSupported ?? false,
+				audioOutputSupported: dtoInstance.audio_output_supported ?? false,
+				audioInputSupported: dtoInstance.audio_input_supported ?? false,
 				registeredFromIp: clientIp,
 			});
 		}

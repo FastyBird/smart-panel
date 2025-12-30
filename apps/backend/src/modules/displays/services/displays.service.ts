@@ -85,6 +85,16 @@ export class DisplaysService {
 
 		Object.assign(display, omitBy(toInstance(DisplayEntity, dtoInstance), isUndefined));
 
+		// Explicitly handle space_id being set to null (toInstance with exposeUnsetFields:false drops null values)
+		if (dtoInstance.space_id === null) {
+			display.spaceId = null;
+		}
+
+		// Explicitly handle home_page_id being set to null
+		if (dtoInstance.home_page_id === null) {
+			display.homePageId = null;
+		}
+
 		await this.repository.save(display);
 
 		this.logger.debug(`Successfully updated display with id=${display.id}`);

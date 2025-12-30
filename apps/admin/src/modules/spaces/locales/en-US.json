@@ -310,12 +310,15 @@
 			"empty": "No devices assigned to this space",
 			"loading": "Loading devices...",
 			"remove": "Remove",
+			"removeHeading": "Remove device from space",
 			"reassign": "Reassign",
 			"assign": "Assign",
 			"selectDevice": "Select devices to add",
 			"confirmRemove": "Remove device \"{name}\" from this space?",
 			"selectRoom": "Select room for device",
-			"noAvailable": "No devices available to add"
+			"noAvailable": "No devices available to add",
+			"removed": "Device \"{name}\" was removed from this space.",
+			"removeCanceled": "Device removal was canceled."
 		},
 		"parentZone": {
 			"title": "Floor",
@@ -328,12 +331,15 @@
 			"empty": "No displays assigned to this space",
 			"loading": "Loading displays...",
 			"remove": "Remove",
+			"removeHeading": "Remove display from space",
 			"reassign": "Reassign",
 			"assign": "Assign",
 			"selectDisplay": "Select display to add",
 			"confirmRemove": "Remove display \"{name}\" from this space?",
 			"selectRoom": "Select the room for this display",
-			"noAvailable": "No displays available to add"
+			"noAvailable": "No displays available to add",
+			"removed": "Display \"{name}\" was removed from this space.",
+			"removeCanceled": "Display removal was canceled."
 		}
 	},
 	"messages": {

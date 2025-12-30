@@ -105,9 +105,9 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 		baseData.home_page_id = display.homePageId;
 	}
 
-	// Space assignment
-	if (display.spaceId !== undefined) {
-		baseData.space_id = display.spaceId;
+	// Space assignment - explicitly include null to unassign
+	if ('spaceId' in display) {
+		baseData.space_id = display.spaceId ?? null;
 	}
 
 	const parsedRequest = DisplayUpdateReqSchema.safeParse(baseData);
