@@ -6,7 +6,6 @@ import { defaultsDeep } from 'lodash';
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
 import {
-	injectLogger,
 	injectModulesManager,
 	injectSockets,
 	injectStoresManager,
@@ -26,7 +25,6 @@ export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
-		const logger = injectLogger(app);
 		const modulesManager = injectModulesManager(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {

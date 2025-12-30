@@ -197,9 +197,7 @@ export class SceneExecutorService {
 	 * Execute scene actions in order
 	 */
 	private async executeActions(scene: SceneEntity): Promise<ActionExecutionResultModel[]> {
-		const actions = (scene.actions || [])
-			.filter((a) => a.enabled)
-			.sort((a, b) => a.order - b.order);
+		const actions = (scene.actions || []).filter((a) => a.enabled).sort((a, b) => a.order - b.order);
 
 		if (actions.length === 0) {
 			this.logger.debug(`[EXECUTE] No enabled actions to execute for scene id=${scene.id}`);

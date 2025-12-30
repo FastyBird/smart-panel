@@ -401,7 +401,7 @@ const onSave = async (): Promise<void> => {
 
 		ElMessage.success(t('scenes.messages.created'));
 		onClose();
-	} catch (e) {
+	} catch {
 		ElMessage.error(t('scenes.messages.createFailed'));
 	} finally {
 		saving.value = false;

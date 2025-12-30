@@ -102,7 +102,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 						enabled: scene.enabled,
 						isTriggerable: scene.isTriggerable,
 						isEditable: scene.isEditable,
-						lastTriggeredAt: scene.lastTriggeredAt instanceof Date ? scene.lastTriggeredAt.toISOString() : scene.lastTriggeredAt || null,
+						lastTriggeredAt:
+							scene.lastTriggeredAt instanceof Date
+								? scene.lastTriggeredAt.toISOString()
+								: scene.lastTriggeredAt || null,
 					})),
 				},
 			};
@@ -147,7 +150,10 @@ export class WebsocketExchangeListener implements OnModuleInit {
 						enabled: scene.enabled,
 						isTriggerable: scene.isTriggerable,
 						isEditable: scene.isEditable,
-						lastTriggeredAt: scene.lastTriggeredAt instanceof Date ? scene.lastTriggeredAt.toISOString() : scene.lastTriggeredAt || null,
+						lastTriggeredAt:
+							scene.lastTriggeredAt instanceof Date
+								? scene.lastTriggeredAt.toISOString()
+								: scene.lastTriggeredAt || null,
 						actionsCount: scene.actions?.length || 0,
 						conditionsCount: scene.conditions?.length || 0,
 						triggersCount: scene.triggers?.length || 0,

@@ -37,18 +37,9 @@ import { CreateSceneDto, ReqCreateSceneDto } from '../dto/create-scene.dto';
 import { ReqTriggerSceneDto, TriggerSceneDto } from '../dto/trigger-scene.dto';
 import { ReqUpdateSceneDto, UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
-import {
-	SceneExecutionResponseModel,
-	SceneResponseModel,
-	ScenesResponseModel,
-} from '../models/scenes-response.model';
+import { SceneExecutionResponseModel, SceneResponseModel, ScenesResponseModel } from '../models/scenes-response.model';
 import { SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_PREFIX } from '../scenes.constants';
-import {
-	ScenesException,
-	ScenesNotEditableException,
-	ScenesNotFoundException,
-	ScenesNotTriggerableException,
-} from '../scenes.exceptions';
+import { ScenesException, ScenesNotEditableException, ScenesNotTriggerableException } from '../scenes.exceptions';
 import { SceneExecutorService } from '../services/scene-executor.service';
 import { SceneTypeMapping, ScenesTypeMapperService } from '../services/scenes-type-mapper.service';
 import { ScenesService } from '../services/scenes.service';

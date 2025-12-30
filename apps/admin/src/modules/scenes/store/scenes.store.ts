@@ -2,9 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { omitBy, isUndefined } from 'lodash';
-
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { useBackend, useLogger } from '../../../common';
 import { SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
 
@@ -17,9 +15,7 @@ import {
 } from './scenes.store.schemas';
 import type {
 	IScene,
-	ISceneCreateReq,
 	ISceneRes,
-	ISceneUpdateReq,
 	ISceneExecutionResult,
 	IScenesAddActionPayload,
 	IScenesEditActionPayload,

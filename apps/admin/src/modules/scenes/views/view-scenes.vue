@@ -185,7 +185,7 @@ const onTriggerScene = async (scene: IScene): Promise<void> => {
 	try {
 		await triggerScene(scene.id, 'admin');
 		ElMessage.success(t('scenes.messages.triggered', { name: scene.name }));
-	} catch (e) {
+	} catch {
 		ElMessage.error(t('scenes.messages.triggerFailed'));
 	} finally {
 		triggering.value = triggering.value.filter((id) => id !== scene.id);

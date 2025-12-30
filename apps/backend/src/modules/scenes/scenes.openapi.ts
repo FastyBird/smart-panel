@@ -9,9 +9,9 @@ import {
 	SceneConditionsResponseModel,
 	SceneExecutionResponseModel,
 	SceneResponseModel,
-	ScenesResponseModel,
 	SceneTriggerResponseModel,
 	SceneTriggersResponseModel,
+	ScenesResponseModel,
 } from './models/scenes-response.model';
 import { ActionExecutionResultModel, SceneExecutionResultModel } from './models/scenes.model';
 

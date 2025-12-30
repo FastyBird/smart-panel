@@ -15,7 +15,13 @@ import { CreateSceneDto } from '../dto/create-scene.dto';
 import { UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
 import { EventType } from '../scenes.constants';
-import { ScenesException, ScenesNotEditableException, ScenesNotFoundException, ScenesSpaceValidationException, ScenesValidationException } from '../scenes.exceptions';
+import {
+	ScenesException,
+	ScenesNotEditableException,
+	ScenesNotFoundException,
+	ScenesSpaceValidationException,
+	ScenesValidationException,
+} from '../scenes.exceptions';
 
 import { SceneActionsService } from './scene-actions.service';
 import { ScenesTypeMapperService } from './scenes-type-mapper.service';
@@ -97,14 +103,7 @@ export class ScenesService {
 		this.logger.debug('[LOOKUP ALL] Fetching all scenes');
 
 		const scenes = (await repository.find({
-			relations: [
-				'actions',
-				'actions.scene',
-				'conditions',
-				'conditions.scene',
-				'triggers',
-				'triggers.scene',
-			],
+			relations: ['actions', 'actions.scene', 'conditions', 'conditions.scene', 'triggers', 'triggers.scene'],
 			order: {
 				name: 'ASC',
 			} as any,
@@ -177,9 +176,7 @@ export class ScenesService {
 		return scene;
 	}
 
-	async create<TScene extends SceneEntity, TCreateDTO extends CreateSceneDto>(
-		createDto: TCreateDTO,
-	): Promise<TScene> {
+	async create<TScene extends SceneEntity, TCreateDTO extends CreateSceneDto>(createDto: TCreateDTO): Promise<TScene> {
 		this.logger.debug('[CREATE] Creating new scene');
 
 		const { type, spaceId } = createDto;

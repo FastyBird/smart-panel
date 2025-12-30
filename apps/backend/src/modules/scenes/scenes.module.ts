@@ -19,11 +19,7 @@ import { UpdateScenesConfigDto } from './dto/update-config.dto';
 import { SceneActionEntity, SceneConditionEntity, SceneEntity, SceneTriggerEntity } from './entities/scenes.entity';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { ScenesConfigModel } from './models/config.model';
-import {
-	SCENES_MODULE_API_TAG_DESCRIPTION,
-	SCENES_MODULE_API_TAG_NAME,
-	SCENES_MODULE_NAME,
-} from './scenes.constants';
+import { SCENES_MODULE_API_TAG_DESCRIPTION, SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_NAME } from './scenes.constants';
 import { SCENES_SWAGGER_EXTRA_MODELS } from './scenes.openapi';
 import { LocalScenesPlatformService } from './services/local-scenes-platform.service';
 import { ScenesModuleResetService } from './services/module-reset.service';

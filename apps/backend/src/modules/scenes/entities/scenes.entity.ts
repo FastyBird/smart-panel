@@ -89,9 +89,12 @@ export class SceneEntity extends BaseEntity {
 	@Expose({ name: 'display_order' })
 	@IsInt()
 	@Min(0)
-	@Transform(({ obj }: { obj: { display_order?: number; displayOrder?: number } }) => obj.display_order ?? obj.displayOrder ?? 0, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { display_order?: number; displayOrder?: number } }) => obj.display_order ?? obj.displayOrder ?? 0,
+		{
+			toClassOnly: true,
+		},
+	)
 	@Column({ type: 'int', default: 0 })
 	displayOrder: number = 0;
 
@@ -252,9 +255,13 @@ export class SceneActionEntity extends BaseEntity {
 	@IsOptional()
 	@ValidateIf((o) => o.channelId !== null && o.channelId !== undefined)
 	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { channel_id?: string | null; channelId?: string | null } }) => obj.channel_id ?? obj.channelId ?? null, {
-		toClassOnly: true,
-	})
+	@Transform(
+		({ obj }: { obj: { channel_id?: string | null; channelId?: string | null } }) =>
+			obj.channel_id ?? obj.channelId ?? null,
+		{
+			toClassOnly: true,
+		},
+	)
 	@Index()
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	channelId: string | null;

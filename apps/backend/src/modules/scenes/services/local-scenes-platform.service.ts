@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { PermissionType } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
@@ -10,12 +10,7 @@ import { SpacesService } from '../../spaces/services/spaces.service';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 import { ActionExecutionResultModel } from '../models/scenes.model';
-import {
-	ScenesActionValidationException,
-	ScenesDeviceNotFoundException,
-	ScenesPropertyNotFoundException,
-	ScenesSpaceValidationException,
-} from '../scenes.exceptions';
+import { ScenesActionValidationException, ScenesSpaceValidationException } from '../scenes.exceptions';
 
 import { IScenePlatform } from './scene-executor.service';
 

@@ -2,7 +2,6 @@ import { validate } from 'class-validator';
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
-	BadRequestException,
 	Body,
 	Controller,
 	Delete,
@@ -35,7 +34,7 @@ import { CreateSceneActionDto, ReqCreateSceneActionDto } from '../dto/create-sce
 import { ReqUpdateSceneActionDto, UpdateSceneActionDto } from '../dto/update-scene-action.dto';
 import { SceneActionResponseModel, SceneActionsResponseModel } from '../models/scenes-response.model';
 import { SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_PREFIX } from '../scenes.constants';
-import { ScenesException, ScenesNotFoundException } from '../scenes.exceptions';
+import { ScenesException } from '../scenes.exceptions';
 import { SceneActionsService } from '../services/scene-actions.service';
 import { ScenesService } from '../services/scenes.service';
 
