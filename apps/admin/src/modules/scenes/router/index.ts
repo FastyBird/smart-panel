@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { UserRole } from '../../../common';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { RouteNames } from '../scenes.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
@@ -10,7 +10,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		component: () => import('../views/view-scenes.vue'),
 		props: true,
 		meta: {
-			guards: { authenticated: true, roles: [UserRole.ADMIN, UserRole.OWNER] },
+			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
 			title: 'Scenes',
 			icon: 'mdi:play-box-multiple',
 			menu: 5000,
@@ -22,7 +22,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				component: () => import('../views/view-scene-add.vue'),
 				props: true,
 				meta: {
-					guards: { authenticated: true, roles: [UserRole.ADMIN, UserRole.OWNER] },
+					guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
 				},
 			},
 			{
@@ -31,7 +31,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				component: () => import('../views/view-scene-edit.vue'),
 				props: true,
 				meta: {
-					guards: { authenticated: true, roles: [UserRole.ADMIN, UserRole.OWNER] },
+					guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
 				},
 			},
 		],

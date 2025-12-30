@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { useBackend } from '../../../common';
+import { useBackend, useLogger } from '../../../common';
 import { SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
 
@@ -45,8 +45,9 @@ const defaultSemaphore: IScenesStateSemaphore = {
 	triggering: [],
 };
 
-export const useScenes = defineStore<'scenes_module-scenes', ScenesStoreSetup>('scenes_module-scenes', (): ScenesStoreSetup => {
+export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSetup>('scenes_module-scenes', (): ScenesStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const semaphore = ref<IScenesStateSemaphore>(defaultSemaphore);
 
@@ -475,5 +476,5 @@ export const useScenes = defineStore<'scenes_module-scenes', ScenesStoreSetup>('
 });
 
 export const registerScenesStore = (pinia: Pinia): Store<'scenes_module-scenes', ScenesStoreSetup> => {
-	return useScenes(pinia);
+	return useScenesStore(pinia);
 };

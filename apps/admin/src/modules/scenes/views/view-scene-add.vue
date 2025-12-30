@@ -72,7 +72,6 @@
 				<el-form-item
 					v-if="action.deviceId"
 					:label="t('scenes.form.channel')"
-					:prop="`actions.${index}.channelId`"
 				>
 					<el-select
 						v-model="action.channelId"
@@ -91,7 +90,7 @@
 
 				<!-- Property Selection -->
 				<el-form-item
-					v-if="action.channelId"
+					v-if="action.channelId !== ''"
 					:label="t('scenes.form.property')"
 					:prop="`actions.${index}.propertyId`"
 					:rules="actionRules.propertyId"
@@ -198,7 +197,7 @@ import { RouteNames, SceneCategory } from '../scenes.constants';
 
 interface IActionForm {
 	deviceId: string;
-	channelId: string | null;
+	channelId: string;
 	propertyId: string;
 	value: string | number | boolean;
 }
@@ -279,9 +278,10 @@ const getPropertyDataType = (propertyId: string): string => {
 	return 'string';
 };
 
-const getPropertyFormat = (propertyId: string): (string | number | null)[] | null => {
+const getPropertyFormat = (propertyId: string): (string | number)[] | null => {
 	const prop = getProperty(propertyId);
-	return prop?.format || null;
+	if (!prop?.format) return null;
+	return prop.format.filter((f): f is string | number => f !== null);
 };
 
 const getPropertyMin = (propertyId: string): number | undefined => {
@@ -310,7 +310,7 @@ const getPropertyStep = (propertyId: string): number => {
 };
 
 const onDeviceChange = (index: number): void => {
-	form.actions[index].channelId = null;
+	form.actions[index].channelId = '';
 	form.actions[index].propertyId = '';
 	form.actions[index].value = '';
 
@@ -349,7 +349,7 @@ const onPropertyChange = (index: number): void => {
 const addAction = (): void => {
 	form.actions.push({
 		deviceId: '',
-		channelId: null,
+		channelId: '',
 		propertyId: '',
 		value: '',
 	});
@@ -390,7 +390,7 @@ const onSave = async (): Promise<void> => {
 					id: uuid(),
 					type: LOCAL_SCENE_TYPE,
 					deviceId: action.deviceId,
-					channelId: action.channelId,
+					channelId: action.channelId || null,
 					propertyId: action.propertyId,
 					value: action.value,
 					order: index,

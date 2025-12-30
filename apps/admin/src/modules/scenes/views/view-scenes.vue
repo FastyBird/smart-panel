@@ -154,21 +154,21 @@ const getCategoryIcon = (category: SceneCategory): string => {
 	return SCENE_CATEGORY_ICONS[category] || 'mdi:play-circle';
 };
 
-const getCategoryType = (category: SceneCategory): 'success' | 'warning' | 'info' | 'primary' | 'danger' | '' => {
-	const typeMap: Record<SceneCategory, 'success' | 'warning' | 'info' | 'primary' | 'danger' | ''> = {
-		[SceneCategory.GENERIC]: '',
+const getCategoryType = (category: SceneCategory): 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined => {
+	const typeMap: Record<SceneCategory, 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined> = {
+		[SceneCategory.GENERIC]: undefined,
 		[SceneCategory.LIGHTING]: 'warning',
 		[SceneCategory.CLIMATE]: 'info',
 		[SceneCategory.SECURITY]: 'danger',
 		[SceneCategory.ENTERTAINMENT]: 'primary',
 		[SceneCategory.MORNING]: 'warning',
 		[SceneCategory.EVENING]: 'info',
-		[SceneCategory.AWAY]: '',
+		[SceneCategory.AWAY]: undefined,
 		[SceneCategory.HOME]: 'success',
 		[SceneCategory.SLEEP]: 'info',
-		[SceneCategory.CUSTOM]: '',
+		[SceneCategory.CUSTOM]: undefined,
 	};
-	return typeMap[category] || '';
+	return typeMap[category];
 };
 
 const onAddScene = (): void => {
