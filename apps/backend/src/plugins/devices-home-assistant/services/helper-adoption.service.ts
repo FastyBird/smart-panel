@@ -81,6 +81,26 @@ export class HelperAdoptionService {
 			);
 		}
 
+		// Also check if this entity is already mapped as part of another device
+		// This prevents climate entities from being adopted both as part of a device and as a standalone helper
+		const allProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
+			undefined,
+			DEVICES_HOME_ASSISTANT_TYPE,
+		);
+		const existingPropertyMapping = allProperties.find((p) => p.haEntityId === request.entityId);
+
+		if (existingPropertyMapping) {
+			const channel = existingPropertyMapping.channel;
+			const deviceId =
+				channel instanceof HomeAssistantChannelEntity && channel.device instanceof HomeAssistantDeviceEntity
+					? channel.device.id
+					: 'unknown';
+
+			throw new DevicesHomeAssistantValidationException(
+				`Home Assistant entity ${request.entityId} is already mapped in device ${deviceId}`,
+			);
+		}
+
 		// Validate device DTO
 		const createDeviceDto = toInstance(CreateHomeAssistantDeviceDto, {
 			type: DEVICES_HOME_ASSISTANT_TYPE,

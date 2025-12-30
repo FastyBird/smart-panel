@@ -196,7 +196,7 @@ export class HelperMappingPreviewService {
 			currentValue: helper.state?.state ?? null,
 		});
 
-		// Active property - derived from hvac_action (spec requires rw permissions)
+		// Active property - derived from hvac_action (read-only in HA, indicates current heating/cooling state)
 		const hvacAction = attributes.hvac_action as string | undefined;
 		const isActive = hvacAction ? ['heating', 'cooling', 'drying', 'fan'].includes(hvacAction) : false;
 		thermostatProperties.push({
@@ -204,7 +204,7 @@ export class HelperMappingPreviewService {
 			name: 'Active',
 			haAttribute: 'hvac_action',
 			dataType: DataTypeType.BOOL,
-			permissions: [PermissionType.READ_WRITE],
+			permissions: [PermissionType.READ_ONLY],
 			unit: null,
 			format: null,
 			required: true,

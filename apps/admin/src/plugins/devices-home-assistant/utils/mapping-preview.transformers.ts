@@ -4,6 +4,7 @@ import {
 	AdoptDeviceRequestSchema,
 	EntityMappingPreviewSchema,
 	HaDeviceInfoSchema,
+	HelperMappingPreviewResponseSchema,
 	MappingPreviewRequestSchema,
 	MappingPreviewResponseSchema,
 	PropertyMappingPreviewSchema,
@@ -170,45 +171,16 @@ export const transformSuggestedDeviceResponse = (response: object): ISuggestedDe
  * a separate "entity" in the normalized response to work with the existing UI.
  */
 export const transformHelperMappingPreviewResponse = (response: object): IMappingPreviewResponse => {
-	const camelResponse = snakeToCamel(response) as {
-		helper: { entityId: string; name: string; domain: string };
-		suggestedDevice: { category: string; name: string; confidence: string };
-		suggestedChannel: {
-			category: string;
-			name: string;
-			confidence: string;
-			suggestedProperties: Array<{
-				category: string;
-				name: string;
-				haAttribute: string;
-				dataType: string;
-				permissions: string[];
-				unit?: string | null;
-				format?: (string | number)[] | null;
-				required: boolean;
-				currentValue?: string | number | boolean | null;
-			}>;
-		};
-		// New field: array of all suggested channels
-		suggestedChannels?: Array<{
-			category: string;
-			name: string;
-			confidence: string;
-			suggestedProperties: Array<{
-				category: string;
-				name: string;
-				haAttribute: string;
-				dataType: string;
-				permissions: string[];
-				unit?: string | null;
-				format?: (string | number)[] | null;
-				required: boolean;
-				currentValue?: string | number | boolean | null;
-			}>;
-		}>;
-		warnings: Array<{ type: string; message: string; suggestion?: string }>;
-		readyToAdopt: boolean;
-	};
+	// Validate raw response structure first to catch malformed data early
+	const parsedHelper = HelperMappingPreviewResponseSchema.safeParse(snakeToCamel(response));
+
+	if (!parsedHelper.success) {
+		logger.error('Helper mapping preview response validation failed with:', parsedHelper.error);
+
+		throw new DevicesHomeAssistantValidationException('Failed to validate helper mapping preview response.');
+	}
+
+	const camelResponse = parsedHelper.data;
 
 	// Use suggestedChannels if available, otherwise fall back to single suggestedChannel
 	const channels = camelResponse.suggestedChannels ?? [camelResponse.suggestedChannel];

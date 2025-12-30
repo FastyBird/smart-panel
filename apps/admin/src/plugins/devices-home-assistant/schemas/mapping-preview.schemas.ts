@@ -139,3 +139,49 @@ export const AdoptDeviceRequestSchema = z.object({
 	enabled: z.boolean().default(true).optional(),
 	channels: z.array(AdoptChannelDefinitionSchema),
 });
+
+// ============================================================================
+// Helper Mapping Preview Schemas
+// ============================================================================
+
+const HelperPropertyMappingSchema = z.object({
+	category: z.string(),
+	name: z.string(),
+	haAttribute: z.string(),
+	dataType: z.string(),
+	permissions: z.array(z.string()),
+	unit: z.string().nullable().optional(),
+	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
+	required: z.boolean(),
+	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+});
+
+const HelperChannelMappingSchema = z.object({
+	category: z.string(),
+	name: z.string(),
+	confidence: z.string(),
+	suggestedProperties: z.array(HelperPropertyMappingSchema),
+});
+
+export const HelperMappingPreviewResponseSchema = z.object({
+	helper: z.object({
+		entityId: z.string(),
+		name: z.string(),
+		domain: z.string(),
+	}),
+	suggestedDevice: z.object({
+		category: z.string(),
+		name: z.string(),
+		confidence: z.string(),
+	}),
+	suggestedChannel: HelperChannelMappingSchema,
+	suggestedChannels: z.array(HelperChannelMappingSchema).optional(),
+	warnings: z.array(
+		z.object({
+			type: z.string(),
+			message: z.string(),
+			suggestion: z.string().optional(),
+		})
+	),
+	readyToAdopt: z.boolean(),
+});
