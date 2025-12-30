@@ -320,6 +320,7 @@
 		"confirmBulkRemove": "Are you sure you want to remove {count} display(s)? This action cannot be undone.",
 		"removed": "Display removed successfully",
 		"bulkRemoved": "{count} display(s) have been removed",
+		"bulkRemoveFailed": "Failed to remove {count} display(s)",
 		"edited": "Display {display} has been updated",
 		"notEdited": "Display {display} was not updated",
 		"deletedWhileEditing": "This display was deleted and is no longer available.",

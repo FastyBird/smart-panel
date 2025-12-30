@@ -51,7 +51,7 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 		try {
 			await ElMessageBox.confirm(
 				t('displaysModule.messages.confirmBulkRemove', { count: displays.length }),
-				t('displaysModule.headings.bulkRemoveDisplay'),
+				t('displaysModule.headings.removeBulkDisplays'),
 				{
 					confirmButtonText: t('displaysModule.buttons.yes.title'),
 					cancelButtonText: t('displaysModule.buttons.no.title'),
@@ -79,7 +79,7 @@ export const useDisplaysActions = (): IUseDisplaysActions => {
 				flashMessage.error(t('displaysModule.messages.bulkRemoveFailed', { count: failCount }));
 			}
 		} catch {
-			flashMessage.info(t('displaysModule.messages.bulkRemoveCanceled'));
+			// User cancelled - do nothing
 		}
 	};
 
