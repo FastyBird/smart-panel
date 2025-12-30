@@ -1,96 +1,78 @@
 <template>
-	<el-card shadow="never" class="mt-4">
-		<template #header>
-			<div class="flex items-center justify-between">
-				<span class="font-medium">{{ t('spacesModule.detail.devices.title') }}</span>
-				<el-button
-					type="primary"
-					size="small"
-					@click="showAddDialog = true"
-				>
-					<template #icon>
-						<icon icon="mdi:plus" />
-					</template>
-					{{ t('spacesModule.detail.devices.add') }}
-				</el-button>
-			</div>
-		</template>
-
-		<div v-loading="loading">
-			<el-table
-				v-if="devices.length > 0"
-				:data="devices"
-				style="width: 100%"
-			>
-				<el-table-column :label="t('spacesModule.onboarding.deviceName')" min-width="200">
-					<template #default="{ row }">
-						<div class="flex items-center gap-2">
-							<el-avatar :size="32">
-								<icon :icon="getDeviceIcon(row)" class="w[20px] h[20px]" />
-							</el-avatar>
-							<div>
-								<div class="font-medium">{{ row.name }}</div>
-								<div v-if="row.description" class="text-xs text-gray-500">
-									{{ row.description }}
-								</div>
+	<div v-loading="loading">
+		<el-table
+			v-if="devices.length > 0"
+			:data="devices"
+			style="width: 100%"
+		>
+			<el-table-column :label="t('spacesModule.onboarding.deviceName')" min-width="200">
+				<template #default="{ row }">
+					<div class="flex items-center gap-2">
+						<el-avatar :size="32">
+							<icon :icon="getDeviceIcon(row)" class="w[20px] h[20px]" />
+						</el-avatar>
+						<div>
+							<div class="font-medium">{{ row.name }}</div>
+							<div v-if="row.description" class="text-xs text-gray-500">
+								{{ row.description }}
 							</div>
 						</div>
-					</template>
-				</el-table-column>
+					</div>
+				</template>
+			</el-table-column>
 
-				<el-table-column :label="t('spacesModule.table.columns.category')" width="150">
-					<template #default="{ row }">
-						<el-tag size="small" type="info">
-							{{ row.category }}
-						</el-tag>
-					</template>
-				</el-table-column>
+			<el-table-column :label="t('spacesModule.table.columns.category')" width="150">
+				<template #default="{ row }">
+					<el-tag size="small" type="info">
+						{{ row.category }}
+					</el-tag>
+				</template>
+			</el-table-column>
 
-				<el-table-column label="" width="100" align="center">
-					<template #default="{ row }">
-						<el-tag
-							:type="row.status?.online ? 'success' : 'danger'"
-							size="small"
-						>
-							{{ row.status?.online ? 'Online' : 'Offline' }}
-						</el-tag>
-					</template>
-				</el-table-column>
+			<el-table-column label="" width="100" align="center">
+				<template #default="{ row }">
+					<el-tag
+						:type="row.status?.online ? 'success' : 'danger'"
+						size="small"
+					>
+						{{ row.status?.online ? 'Online' : 'Offline' }}
+					</el-tag>
+				</template>
+			</el-table-column>
 
-				<el-table-column :label="t('spacesModule.table.columns.actions')" width="120" align="right">
-					<template #default="{ row }">
-						<el-dropdown trigger="click">
-							<el-button link>
-								<icon icon="mdi:dots-vertical" />
-							</el-button>
-							<template #dropdown>
-								<el-dropdown-menu>
-									<el-dropdown-item @click="onReassignDevice(row)">
-										<icon icon="mdi:swap-horizontal" class="mr-2" />
-										{{ t('spacesModule.detail.devices.reassign') }}
-									</el-dropdown-item>
-									<el-dropdown-item divided @click="onRemoveDevice(row)">
-										<icon icon="mdi:close" class="mr-2 text-red-500" />
-										<span class="text-red-500">{{ t('spacesModule.detail.devices.remove') }}</span>
-									</el-dropdown-item>
-								</el-dropdown-menu>
-							</template>
-						</el-dropdown>
-					</template>
-				</el-table-column>
-			</el-table>
+			<el-table-column :label="t('spacesModule.table.columns.actions')" width="120" align="right">
+				<template #default="{ row }">
+					<el-dropdown trigger="click">
+						<el-button link>
+							<icon icon="mdi:dots-vertical" />
+						</el-button>
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item @click="onReassignDevice(row)">
+									<icon icon="mdi:swap-horizontal" class="mr-2" />
+									{{ t('spacesModule.detail.devices.reassign') }}
+								</el-dropdown-item>
+								<el-dropdown-item divided @click="onRemoveDevice(row)">
+									<icon icon="mdi:close" class="mr-2 text-red-500" />
+									<span class="text-red-500">{{ t('spacesModule.detail.devices.remove') }}</span>
+								</el-dropdown-item>
+							</el-dropdown-menu>
+						</template>
+					</el-dropdown>
+				</template>
+			</el-table-column>
+		</el-table>
 
-			<el-empty
-				v-else
-				:description="t('spacesModule.detail.devices.empty')"
-				:image-size="60"
-			>
-				<el-button type="primary" @click="showAddDialog = true">
-					{{ t('spacesModule.detail.devices.add') }}
-				</el-button>
-			</el-empty>
-		</div>
-	</el-card>
+		<el-empty
+			v-else
+			:description="t('spacesModule.detail.devices.empty')"
+			:image-size="60"
+		>
+			<el-button type="primary" @click="openAddDialog">
+				{{ t('spacesModule.detail.devices.add') }}
+			</el-button>
+		</el-empty>
+	</div>
 
 	<!-- Add Device Dialog -->
 	<el-dialog
@@ -188,7 +170,6 @@ import { Icon } from '@iconify/vue';
 import {
 	ElAvatar,
 	ElButton,
-	ElCard,
 	ElDialog,
 	ElDropdown,
 	ElDropdownItem,
@@ -297,6 +278,10 @@ const getSpaceName = (spaceId: string): string => {
 	return space?.name || 'Unknown';
 };
 
+const openAddDialog = (): void => {
+	showAddDialog.value = true;
+};
+
 const onSelectDevice = async (device: IDevice): Promise<void> => {
 	try {
 		await addDevice(device.id);
@@ -350,5 +335,10 @@ const onRemoveDevice = async (device: IDevice): Promise<void> => {
 
 onMounted(async () => {
 	await fetchDevices();
+});
+
+// Expose methods for parent component
+defineExpose({
+	openAddDialog,
 });
 </script>

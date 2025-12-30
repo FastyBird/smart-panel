@@ -321,9 +321,14 @@
 		},
 		"displays": {
 			"title": "Displays",
+			"add": "Add display",
 			"empty": "No displays assigned to this space",
+			"remove": "Remove from space",
 			"reassign": "Reassign",
-			"selectRoom": "Select the room for this display"
+			"selectDisplay": "Select display to add",
+			"confirmRemove": "Remove display \"{name}\" from this space?",
+			"selectRoom": "Select the room for this display",
+			"noAvailable": "No displays available to add"
 		}
 	},
 	"messages": {

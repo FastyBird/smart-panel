@@ -8,7 +8,6 @@ export { default as SpaceLightingRoles } from './space-lighting-roles.vue';
 
 // Space detail sections
 export { default as SpaceDevicesSection } from './space-devices-section.vue';
-export { default as SpaceParentZoneSection } from './space-parent-zone-section.vue';
 export { default as SpaceDisplaysSection } from './space-displays-section.vue';
 
 // Overview components

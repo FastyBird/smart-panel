@@ -9,6 +9,7 @@ interface IUseSpaceDisplays {
 	loading: ComputedRef<boolean>;
 	fetchDisplays: () => Promise<void>;
 	reassignDisplay: (displayId: string, targetSpaceId: string | null) => Promise<void>;
+	removeDisplay: (displayId: string) => Promise<void>;
 }
 
 export const useSpaceDisplays = (spaceId: Ref<string | undefined>): IUseSpaceDisplays => {
@@ -50,10 +51,26 @@ export const useSpaceDisplays = (spaceId: Ref<string | undefined>): IUseSpaceDis
 		}
 	};
 
+	const removeDisplay = async (displayId: string): Promise<void> => {
+		isOperating.value = true;
+
+		try {
+			await displaysStore.edit({
+				id: displayId,
+				data: {
+					spaceId: null,
+				},
+			});
+		} finally {
+			isOperating.value = false;
+		}
+	};
+
 	return {
 		displays,
 		loading,
 		fetchDisplays,
 		reassignDisplay,
+		removeDisplay,
 	};
 };
