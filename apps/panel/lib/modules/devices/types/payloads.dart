@@ -433,6 +433,7 @@ enum TelevisionRemoteKeyValue {
 }
 
 enum ThermostatModeValue {
+  off('off'),
   heat('heat'),
   cool('cool'),
   auto('auto'),

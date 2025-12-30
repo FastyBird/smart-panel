@@ -1385,6 +1385,7 @@ enum ThermostatModeType {
 }
 
 final Map<ThermostatModeValue, ThermostatModeType> modeValueMapping = {
+  ThermostatModeValue.off: ThermostatModeType.off,
   ThermostatModeValue.heat: ThermostatModeType.heat,
   ThermostatModeValue.cool: ThermostatModeType.cool,
   ThermostatModeValue.auto: ThermostatModeType.auto,
@@ -1396,6 +1397,7 @@ ThermostatModeType? getModeFromValue(ThermostatModeValue type) {
 }
 
 final Map<ThermostatModeType, ThermostatModeValue> valueModeMapping = {
+  ThermostatModeType.off: ThermostatModeValue.off,
   ThermostatModeType.heat: ThermostatModeValue.heat,
   ThermostatModeType.cool: ThermostatModeValue.cool,
   ThermostatModeType.auto: ThermostatModeValue.auto,
