@@ -1114,5 +1114,17 @@
   "house_modes_confirm_away_description": "Are you sure you want to set the house to Away mode? This may affect automation rules and security settings.",
   "@house_modes_confirm_away_description": {
     "description": "Confirmation message for away mode"
+  },
+  "space_scenes_title": "Quick Scenes",
+  "@space_scenes_title": {
+    "description": "Title for the quick scenes section on space page"
+  },
+  "space_scene_triggered": "Scene activated",
+  "@space_scene_triggered": {
+    "description": "Success message when a scene is triggered"
+  },
+  "space_scene_partial_success": "Scene partially activated",
+  "@space_scene_partial_success": {
+    "description": "Message when a scene is partially activated (some actions failed)"
   }
 }

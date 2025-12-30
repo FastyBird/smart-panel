@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../../websocket/services/command-event-registry.service';
+import { SceneExecutionStatus } from '../scenes.constants';
 import { SceneExecutorService } from '../services/scene-executor.service';
 import { ScenesService } from '../services/scenes.service';
 
@@ -60,7 +61,9 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			const result = await this.sceneExecutorService.triggerScene(sceneId, triggeredBy);
 
 			return {
-				success: result.status === 'completed' || result.status === 'partially_completed',
+				success:
+					result.status === SceneExecutionStatus.COMPLETED ||
+					result.status === SceneExecutionStatus.PARTIALLY_COMPLETED,
 				data: {
 					sceneId: result.sceneId,
 					status: result.status,

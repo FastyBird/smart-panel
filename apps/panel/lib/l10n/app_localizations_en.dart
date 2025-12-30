@@ -829,4 +829,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get house_modes_confirm_away_description => 'Are you sure you want to set the house to Away mode? This may affect automation rules and security settings.';
+
+  @override
+  String get space_scenes_title => 'Quick Scenes';
+
+  @override
+  String get space_scene_triggered => 'Scene activated';
+
+  @override
+  String get space_scene_partial_success => 'Scene partially activated';
 }

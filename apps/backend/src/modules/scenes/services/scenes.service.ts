@@ -231,12 +231,12 @@ export class ScenesService {
 		}
 
 		// Retrieve the saved scene with its full relations
-		let savedScene = (await this.getOneOrThrow(scene.id)) as TScene;
+		let savedScene = await this.getOneOrThrow<TScene>(scene.id);
 
 		// Call afterCreate hook if defined
 		if (mapping.afterCreate) {
 			await mapping.afterCreate(savedScene);
-			savedScene = (await this.getOneOrThrow(scene.id)) as TScene;
+			savedScene = await this.getOneOrThrow<TScene>(scene.id);
 		}
 
 		this.logger.debug(`[CREATE] Successfully created new scene with id=${savedScene.id}`);
@@ -298,12 +298,12 @@ export class ScenesService {
 		const savedScene = await repository.save(mergedScene);
 
 		// Retrieve the updated scene with its full relations
-		let updatedScene = (await this.getOneOrThrow(savedScene.id)) as TScene;
+		let updatedScene = await this.getOneOrThrow<TScene>(savedScene.id);
 
 		// Call afterUpdate hook if defined
 		if (mapping.afterUpdate) {
 			await mapping.afterUpdate(updatedScene);
-			updatedScene = (await this.getOneOrThrow(savedScene.id)) as TScene;
+			updatedScene = await this.getOneOrThrow<TScene>(savedScene.id);
 		}
 
 		this.logger.debug(`[UPDATE] Successfully updated scene with id=${updatedScene.id}`);

@@ -1726,6 +1726,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Are you sure you want to set the house to Away mode?'**
   String get house_modes_confirm_away_description;
+
+  /// Title for the quick scenes section on space page
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Scenes'**
+  String get space_scenes_title;
+
+  /// Success message when a scene is triggered
+  ///
+  /// In en, this message translates to:
+  /// **'Scene activated'**
+  String get space_scene_triggered;
+
+  /// Message when a scene is partially activated (some actions failed)
+  ///
+  /// In en, this message translates to:
+  /// **'Scene partially activated'**
+  String get space_scene_partial_success;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
