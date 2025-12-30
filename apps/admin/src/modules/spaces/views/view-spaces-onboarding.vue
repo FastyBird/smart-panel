@@ -118,7 +118,8 @@
 				<template v-if="currentStep === 0">
 					<el-alert
 						type="info"
-						:title="t('spacesModule.onboarding.steps.spaces.description')"
+						:title="t('spacesModule.onboarding.steps.spaces.alertTitle')"
+						:description="t('spacesModule.onboarding.steps.spaces.alertDescription')"
 						:closable="false"
 						show-icon
 						class="!mb-4 shrink-0"
@@ -404,7 +405,8 @@
 				<template v-if="currentStep === 1">
 					<el-alert
 						type="info"
-						:title="t('spacesModule.onboarding.steps.displays.description')"
+						:title="t('spacesModule.onboarding.steps.displays.alertTitle')"
+						:description="t('spacesModule.onboarding.steps.displays.alertDescription')"
 						:closable="false"
 						show-icon
 						class="!mb-4 shrink-0"
@@ -468,7 +470,8 @@
 				<template v-if="currentStep === 2">
 					<el-alert
 						type="info"
-						:title="t('spacesModule.onboarding.steps.devices.description')"
+						:title="t('spacesModule.onboarding.steps.devices.alertTitle')"
+						:description="t('spacesModule.onboarding.steps.devices.alertDescription')"
 						:closable="false"
 						show-icon
 						class="!mb-4 shrink-0"
@@ -558,7 +561,8 @@
 				<template v-if="currentStep === 3">
 					<el-alert
 						type="info"
-						:title="t('spacesModule.onboarding.steps.summary.description')"
+						:title="t('spacesModule.onboarding.steps.summary.alertTitle')"
+						:description="t('spacesModule.onboarding.steps.summary.alertDescription')"
 						:closable="false"
 						show-icon
 						class="!mb-4 shrink-0"

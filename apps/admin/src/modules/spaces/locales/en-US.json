@@ -347,6 +347,8 @@
 			"spaces": {
 				"title": "Create spaces",
 				"description": "Spaces help you organize your devices and displays by rooms or zones (e.g., Living Room, Kitchen, Bedroom). We've automatically detected some spaces from your device names - review and select the ones you want to create, or add your own custom spaces below.",
+				"alertTitle": "Spaces represent rooms or areas in your home",
+				"alertDescription": "We've suggested some spaces based on your device names. You can adjust them now or change everything later.",
 				"proposed": "Proposed spaces",
 				"custom": "Custom spaces",
 				"existing": "Existing spaces",
@@ -364,16 +366,22 @@
 			"displays": {
 				"title": "Assign displays",
 				"description": "Assign each display to a space. This determines which space the display will show by default.",
+				"alertTitle": "Choose a default space for each display",
+				"alertDescription": "This only sets the initial view—you can switch spaces anytime from the display itself.",
 				"noDisplays": "No displays registered yet."
 			},
 			"devices": {
 				"title": "Assign devices",
 				"description": "Assign devices to spaces. Devices will be pre-assigned based on their names if detected.",
+				"alertTitle": "Connect your devices to rooms",
+				"alertDescription": "Some devices are pre-filled based on their names. Feel free to adjust—you can always change assignments later.",
 				"noDevices": "No devices found."
 			},
 			"summary": {
 				"title": "Summary",
-				"description": "Review your configuration before applying changes."
+				"description": "Review your configuration before applying changes.",
+				"alertTitle": "Summary of your setup",
+				"alertDescription": "You can still go back and adjust anything before finishing."
 			}
 		},
 		"summary": {
