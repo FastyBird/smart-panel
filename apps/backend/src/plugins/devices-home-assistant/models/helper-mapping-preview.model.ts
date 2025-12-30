@@ -238,7 +238,7 @@ export class HelperMappingPreviewModel {
 	suggestedDevice: SuggestedHelperDeviceModel;
 
 	@ApiProperty({
-		description: 'Suggested channel configuration',
+		description: 'Suggested channel configuration (first/primary channel for backward compatibility)',
 		type: () => HelperChannelMappingPreviewModel,
 		name: 'suggested_channel',
 	})
@@ -246,6 +246,18 @@ export class HelperMappingPreviewModel {
 	@ValidateNested()
 	@Type(() => HelperChannelMappingPreviewModel)
 	suggestedChannel: HelperChannelMappingPreviewModel;
+
+	@ApiProperty({
+		description: 'All suggested channels for this helper',
+		type: 'array',
+		items: { $ref: getSchemaPath(HelperChannelMappingPreviewModel) },
+		name: 'suggested_channels',
+	})
+	@Expose({ name: 'suggested_channels' })
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => HelperChannelMappingPreviewModel)
+	suggestedChannels: HelperChannelMappingPreviewModel[];
 
 	@ApiProperty({
 		description: 'Mapping warnings',

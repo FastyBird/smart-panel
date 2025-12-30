@@ -166,6 +166,8 @@ export const transformSuggestedDeviceResponse = (response: object): ISuggestedDe
 /**
  * Transform helper mapping preview response to match device mapping preview structure.
  * This normalizes helper responses to use the same interface as device responses.
+ * For helpers with multiple channels (like climate entities), each channel becomes
+ * a separate "entity" in the normalized response to work with the existing UI.
  */
 export const transformHelperMappingPreviewResponse = (response: object): IMappingPreviewResponse => {
 	const camelResponse = snakeToCamel(response) as {
@@ -187,11 +189,63 @@ export const transformHelperMappingPreviewResponse = (response: object): IMappin
 				currentValue?: string | number | boolean | null;
 			}>;
 		};
+		// New field: array of all suggested channels
+		suggestedChannels?: Array<{
+			category: string;
+			name: string;
+			confidence: string;
+			suggestedProperties: Array<{
+				category: string;
+				name: string;
+				haAttribute: string;
+				dataType: string;
+				permissions: string[];
+				unit?: string | null;
+				format?: (string | number)[] | null;
+				required: boolean;
+				currentValue?: string | number | boolean | null;
+			}>;
+		}>;
 		warnings: Array<{ type: string; message: string; suggestion?: string }>;
 		readyToAdopt: boolean;
 	};
 
+	// Use suggestedChannels if available, otherwise fall back to single suggestedChannel
+	const channels = camelResponse.suggestedChannels ?? [camelResponse.suggestedChannel];
+
 	// Transform to device mapping preview format
+	// Each channel becomes a separate "entity" entry for UI compatibility
+	const entities: IEntityMappingPreview[] = channels.map((channel, index) => ({
+		// Use a unique entityId for each channel to differentiate them in the UI
+		// The first channel uses the original entityId, subsequent ones append the channel category
+		entityId: index === 0 ? camelResponse.helper.entityId : `${camelResponse.helper.entityId}#${channel.category}`,
+		domain: camelResponse.helper.domain,
+		deviceClass: null,
+		currentState: channel.suggestedProperties[0]?.currentValue ?? null,
+		attributes: {},
+		status: 'mapped' as const,
+		suggestedChannel: {
+			category: channel.category as ISuggestedChannel['category'],
+			name: channel.name,
+			confidence: channel.confidence as ISuggestedChannel['confidence'],
+		},
+		suggestedProperties: channel.suggestedProperties.map((prop) => ({
+			category: prop.category as IPropertyMappingPreview['category'],
+			name: prop.name,
+			haAttribute: prop.haAttribute,
+			dataType: prop.dataType as IPropertyMappingPreview['dataType'],
+			permissions: prop.permissions as IPropertyMappingPreview['permissions'],
+			unit: prop.unit ?? null,
+			format: prop.format ?? null,
+			required: prop.required,
+			currentValue: prop.currentValue ?? null,
+			// All properties map back to the original entity
+			haEntityId: camelResponse.helper.entityId,
+		})),
+		unmappedAttributes: [],
+		missingRequiredProperties: [],
+	}));
+
 	const normalizedResponse: IMappingPreviewResponse = {
 		haDevice: {
 			id: camelResponse.helper.entityId,
@@ -204,35 +258,7 @@ export const transformHelperMappingPreviewResponse = (response: object): IMappin
 			name: camelResponse.suggestedDevice.name,
 			confidence: camelResponse.suggestedDevice.confidence as ISuggestedDevice['confidence'],
 		},
-		entities: [
-			{
-				entityId: camelResponse.helper.entityId,
-				domain: camelResponse.helper.domain,
-				deviceClass: null,
-				currentState: camelResponse.suggestedChannel.suggestedProperties[0]?.currentValue ?? null,
-				attributes: {},
-				status: 'mapped' as const,
-				suggestedChannel: {
-					category: camelResponse.suggestedChannel.category as ISuggestedChannel['category'],
-					name: camelResponse.suggestedChannel.name,
-					confidence: camelResponse.suggestedChannel.confidence as ISuggestedChannel['confidence'],
-				},
-				suggestedProperties: camelResponse.suggestedChannel.suggestedProperties.map((prop) => ({
-					category: prop.category as IPropertyMappingPreview['category'],
-					name: prop.name,
-					haAttribute: prop.haAttribute,
-					dataType: prop.dataType as IPropertyMappingPreview['dataType'],
-					permissions: prop.permissions as IPropertyMappingPreview['permissions'],
-					unit: prop.unit ?? null,
-					format: prop.format ?? null,
-					required: prop.required,
-					currentValue: prop.currentValue ?? null,
-					haEntityId: camelResponse.helper.entityId,
-				})),
-				unmappedAttributes: [],
-				missingRequiredProperties: [],
-			},
-		],
+		entities,
 		warnings: camelResponse.warnings.map((w) => ({
 			type: w.type as IMappingPreviewResponse['warnings'][0]['type'],
 			entityId: camelResponse.helper.entityId,
