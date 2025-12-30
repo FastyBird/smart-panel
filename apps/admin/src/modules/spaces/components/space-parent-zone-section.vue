@@ -80,11 +80,13 @@ const currentZone = computed<ISpace | null>(() => {
 	return spacesStore.findById(props.space.parentId);
 });
 
-// Get available zones (only zone-type spaces, excluding self)
+// Get available zones (only floor-type zones, excluding self)
 const availableZones = computed(() => {
 	return spacesStore.findAll().filter((space) => {
 		if (space.type !== SpaceType.ZONE) return false;
 		if (space.id === props.space.id) return false;
+		// Only allow floor-type zones as parent
+		if (!space.category?.startsWith('floor_')) return false;
 		return true;
 	});
 });

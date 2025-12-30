@@ -315,9 +315,9 @@
 			"selectRoom": "Select room for device"
 		},
 		"parentZone": {
-			"title": "Parent Zone",
-			"none": "No zone assigned",
-			"select": "Select parent zone"
+			"title": "Floor",
+			"none": "No floor assigned",
+			"select": "Select floor"
 		},
 		"displays": {
 			"title": "Displays",
