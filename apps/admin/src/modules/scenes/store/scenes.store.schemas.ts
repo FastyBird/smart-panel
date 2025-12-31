@@ -11,10 +11,7 @@ import { ItemIdSchema } from './types';
 export const SceneActionSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	deviceId: ItemIdSchema,
-	channelId: ItemIdSchema.nullable().default(null),
-	propertyId: ItemIdSchema,
-	value: z.union([z.string(), z.number(), z.boolean()]),
+	configuration: z.record(z.unknown()).default({}),
 	order: z.number().int().min(0).default(0),
 	enabled: z.boolean().default(true),
 	scene: ItemIdSchema.optional(),
@@ -188,20 +185,14 @@ export const ScenesTriggerActionPayloadSchema = z.object({
 export const SceneActionCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
-	device_id: z.string().uuid(),
-	channel_id: z.string().uuid().nullable().optional(),
-	property_id: z.string().uuid(),
-	value: z.union([z.string(), z.number(), z.boolean()]),
+	configuration: z.record(z.unknown()),
 	order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
 });
 
 export const SceneActionUpdateReqSchema = z.object({
 	type: z.string().trim().nonempty(),
-	device_id: z.string().uuid().optional(),
-	channel_id: z.string().uuid().nullable().optional(),
-	property_id: z.string().uuid().optional(),
-	value: z.union([z.string(), z.number(), z.boolean()]).optional(),
+	configuration: z.record(z.unknown()).optional(),
 	order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
 });
@@ -209,10 +200,7 @@ export const SceneActionUpdateReqSchema = z.object({
 export const SceneActionResSchema = z.object({
 	id: z.string().uuid(),
 	type: z.string(),
-	device_id: z.string().uuid(),
-	channel_id: z.string().uuid().nullable(),
-	property_id: z.string().uuid(),
-	value: z.union([z.string(), z.number(), z.boolean()]),
+	configuration: z.record(z.unknown()),
 	order: z.number(),
 	enabled: z.boolean(),
 	scene: z.string().uuid(),

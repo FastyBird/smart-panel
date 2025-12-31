@@ -184,18 +184,11 @@ export class SceneExecutorService {
 
 	/**
 	 * Evaluate scene conditions
+	 * Note: Conditions are not supported in the current implementation.
+	 * This method always returns true.
 	 */
-	private evaluateConditions(scene: SceneEntity): boolean {
-		const conditions = scene.conditions || [];
-
-		if (conditions.length === 0) {
-			return true; // No conditions means always execute
-		}
-
-		this.logger.debug(`[EVALUATE] Evaluating ${conditions.length} conditions for scene id=${scene.id}`);
-
-		// For now, return true - condition evaluation will be implemented by plugins
-		// Each plugin can register condition evaluators
+	private evaluateConditions(_scene: SceneEntity): boolean {
+		// Conditions are not implemented - always execute
 		return true;
 	}
 

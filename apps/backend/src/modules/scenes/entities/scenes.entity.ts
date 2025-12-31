@@ -201,68 +201,14 @@ export class SceneActionEntity extends BaseEntity {
 	scene: SceneEntity | string;
 
 	@ApiProperty({
-		name: 'device_id',
-		description: 'Target device identifier',
-		type: 'string',
-		format: 'uuid',
-		example: '550e8400-e29b-41d4-a716-446655440001',
-	})
-	@Expose({ name: 'device_id' })
-	@IsUUID('4', { message: '[{"field":"device_id","reason":"Device ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { device_id?: string; deviceId?: string } }) => obj.device_id ?? obj.deviceId, {
-		toClassOnly: true,
-	})
-	@Index()
-	@Column({ type: 'varchar', length: 36 })
-	deviceId: string;
-
-	@ApiPropertyOptional({
-		name: 'channel_id',
-		description: 'Target channel identifier (optional if device has single channel)',
-		type: 'string',
-		format: 'uuid',
-		nullable: true,
-		example: '550e8400-e29b-41d4-a716-446655440002',
-	})
-	@Expose({ name: 'channel_id' })
-	@IsOptional()
-	@ValidateIf((o: { channelId?: string | null }) => o.channelId !== null && o.channelId !== undefined)
-	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID (version 4)."}]' })
-	@Transform(
-		({ obj }: { obj: { channel_id?: string | null; channelId?: string | null } }) =>
-			obj.channel_id ?? obj.channelId ?? null,
-		{
-			toClassOnly: true,
-		},
-	)
-	@Index()
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	channelId: string | null;
-
-	@ApiProperty({
-		name: 'property_id',
-		description: 'Target property identifier',
-		type: 'string',
-		format: 'uuid',
-		example: '550e8400-e29b-41d4-a716-446655440003',
-	})
-	@Expose({ name: 'property_id' })
-	@IsUUID('4', { message: '[{"field":"property_id","reason":"Property ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { property_id?: string; propertyId?: string } }) => obj.property_id ?? obj.propertyId, {
-		toClassOnly: true,
-	})
-	@Index()
-	@Column({ type: 'varchar', length: 36 })
-	propertyId: string;
-
-	@ApiProperty({
-		description: 'Target value to set',
-		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
-		example: true,
+		description: 'Action configuration (plugin-specific)',
+		type: 'object',
+		additionalProperties: true,
+		example: { device_id: 'uuid', property_id: 'uuid', value: true },
 	})
 	@Expose()
-	@Column({ type: 'json' })
-	value: string | number | boolean;
+	@Column({ type: 'json', nullable: false, default: '{}' })
+	configuration: Record<string, unknown> = {};
 
 	@ApiProperty({ description: 'Action execution order', type: 'integer', example: 0 })
 	@Expose()

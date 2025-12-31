@@ -25,6 +25,38 @@ export interface IActionValidationResult {
 	property?: ChannelPropertyEntity;
 }
 
+/**
+ * Local action configuration structure
+ */
+export interface ILocalActionConfiguration {
+	deviceId: string;
+	channelId?: string | null;
+	propertyId: string;
+	value: string | number | boolean;
+}
+
+/**
+ * Extract configuration from SceneActionEntity
+ */
+function extractLocalActionConfig(action: SceneActionEntity): ILocalActionConfiguration | null {
+	const config = action.configuration;
+
+	const deviceId = config.deviceId as string | undefined;
+	const propertyId = config.propertyId as string | undefined;
+	const value = config.value as string | number | boolean | undefined;
+
+	if (!deviceId || !propertyId || value === undefined) {
+		return null;
+	}
+
+	return {
+		deviceId,
+		channelId: (config.channelId as string | null | undefined) ?? null,
+		propertyId,
+		value,
+	};
+}
+
 @Injectable()
 export class LocalScenePlatform implements IScenePlatform {
 	private readonly logger = new Logger(`${SCENES_LOCAL_PLUGIN_NAME}:${LocalScenePlatform.name}`);
@@ -70,34 +102,44 @@ export class LocalScenePlatform implements IScenePlatform {
 	 * Validate action and return details for execution
 	 */
 	async validateActionWithDetails(action: SceneActionEntity): Promise<IActionValidationResult> {
+		// Extract configuration from action
+		const config = extractLocalActionConfig(action);
+
+		if (!config) {
+			return {
+				valid: false,
+				error: 'Invalid action configuration. Required: deviceId, propertyId, value.',
+			};
+		}
+
 		// Validate device exists
-		const device = await this.devicesService.findOne(action.deviceId);
+		const device = await this.devicesService.findOne(config.deviceId);
 
 		if (!device) {
 			return {
 				valid: false,
-				error: `Device with id=${action.deviceId} not found.`,
+				error: `Device with id=${config.deviceId} not found.`,
 			};
 		}
 
 		// Validate channel exists (if provided) or find default
 		let channel: ChannelEntity | null = null;
 
-		if (action.channelId) {
-			channel = await this.channelsService.findOne(action.channelId, action.deviceId);
+		if (config.channelId) {
+			channel = await this.channelsService.findOne(config.channelId, config.deviceId);
 
 			if (!channel) {
 				return {
 					valid: false,
-					error: `Channel with id=${action.channelId} not found for device id=${action.deviceId}.`,
+					error: `Channel with id=${config.channelId} not found for device id=${config.deviceId}.`,
 				};
 			}
 		} else {
 			// Try to find the channel that contains the property
-			const channels = await this.channelsService.findAll(action.deviceId);
+			const channels = await this.channelsService.findAll(config.deviceId);
 
 			for (const ch of channels) {
-				const prop = await this.channelsPropertiesService.findOne(action.propertyId, ch.id);
+				const prop = await this.channelsPropertiesService.findOne(config.propertyId, ch.id);
 
 				if (prop) {
 					channel = ch;
@@ -108,18 +150,18 @@ export class LocalScenePlatform implements IScenePlatform {
 			if (!channel) {
 				return {
 					valid: false,
-					error: `Could not find channel containing property id=${action.propertyId} for device id=${action.deviceId}.`,
+					error: `Could not find channel containing property id=${config.propertyId} for device id=${config.deviceId}.`,
 				};
 			}
 		}
 
 		// Validate property exists
-		const property = await this.channelsPropertiesService.findOne(action.propertyId, channel.id);
+		const property = await this.channelsPropertiesService.findOne(config.propertyId, channel.id);
 
 		if (!property) {
 			return {
 				valid: false,
-				error: `Property with id=${action.propertyId} not found in channel id=${channel.id}.`,
+				error: `Property with id=${config.propertyId} not found in channel id=${channel.id}.`,
 			};
 		}
 
@@ -131,17 +173,17 @@ export class LocalScenePlatform implements IScenePlatform {
 		if (!isWritable) {
 			return {
 				valid: false,
-				error: `Property with id=${action.propertyId} is not writable. Permissions: ${property.permissions?.join(', ') || 'none'}.`,
+				error: `Property with id=${config.propertyId} is not writable. Permissions: ${property.permissions?.join(', ') || 'none'}.`,
 			};
 		}
 
 		// Validate value type matches property data type
-		const valueTypeValid = this.validateValueType(property, action.value);
+		const valueTypeValid = this.validateValueType(property, config.value);
 
 		if (!valueTypeValid) {
 			return {
 				valid: false,
-				error: `Value type mismatch for property id=${action.propertyId}. Expected ${property.dataType}, got ${typeof action.value}.`,
+				error: `Value type mismatch for property id=${config.propertyId}. Expected ${property.dataType}, got ${typeof config.value}.`,
 			};
 		}
 
@@ -196,6 +238,19 @@ export class LocalScenePlatform implements IScenePlatform {
 			const startTime = Date.now();
 
 			try {
+				// Extract configuration from action
+				const config = extractLocalActionConfig(action);
+
+				if (!config) {
+					results.push({
+						actionId: action.id,
+						success: false,
+						error: 'Invalid action configuration. Required: deviceId, propertyId, value.',
+						executionTimeMs: Date.now() - startTime,
+					});
+					continue;
+				}
+
 				// Validate action first
 				const validation = await this.validateActionWithDetails(action);
 
@@ -231,7 +286,7 @@ export class LocalScenePlatform implements IScenePlatform {
 					device,
 					channel,
 					property,
-					value: action.value,
+					value: config.value,
 				});
 
 				results.push({
@@ -242,7 +297,7 @@ export class LocalScenePlatform implements IScenePlatform {
 				});
 
 				this.logger.debug(
-					`[EXECUTE] Action ${action.id}: device=${device.id}, property=${property.id}, value=${action.value}, success=${success}`,
+					`[EXECUTE] Action ${action.id}: device=${device.id}, property=${property.id}, value=${config.value}, success=${success}`,
 				);
 			} catch (error) {
 				const err = error as Error;
