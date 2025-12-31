@@ -120,6 +120,15 @@
 					<template v-if="getPropertyDataType(action.propertyId) === 'boolean'">
 						<el-switch v-model="(action.value as boolean)" />
 					</template>
+					<template v-else-if="getPropertyDataType(action.propertyId) === 'number'">
+						<el-input-number
+							v-model="(action.value as number)"
+							:min="getPropertyMin(action.propertyId)"
+							:max="getPropertyMax(action.propertyId)"
+							:step="getPropertyStep(action.propertyId)"
+							style="width: 100%"
+						/>
+					</template>
 					<template v-else-if="getPropertyFormat(action.propertyId)?.length">
 						<el-select v-model="action.value" style="width: 100%">
 							<el-option
@@ -129,15 +138,6 @@
 								:value="option"
 							/>
 						</el-select>
-					</template>
-					<template v-else-if="getPropertyDataType(action.propertyId) === 'number'">
-						<el-input-number
-							v-model="(action.value as number)"
-							:min="getPropertyMin(action.propertyId)"
-							:max="getPropertyMax(action.propertyId)"
-							:step="getPropertyStep(action.propertyId)"
-							style="width: 100%"
-						/>
 					</template>
 					<template v-else>
 						<el-input v-model="(action.value as string)" :placeholder="t('scenes.form.valuePlaceholder')" />

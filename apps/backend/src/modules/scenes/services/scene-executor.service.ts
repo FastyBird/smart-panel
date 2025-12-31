@@ -143,8 +143,14 @@ export class SceneExecutorService {
 
 			result.completedAt = new Date().toISOString();
 
-			// Update last triggered timestamp
-			await this.scenesService.updateLastTriggered(sceneId);
+			// Update last triggered timestamp (non-critical, don't let it affect execution result)
+			try {
+				await this.scenesService.updateLastTriggered(sceneId);
+			} catch (updateError) {
+				this.logger.warn(
+					`[TRIGGER] Failed to update lastTriggeredAt for scene id=${sceneId}: ${(updateError as Error).message}`,
+				);
+			}
 
 			// Emit appropriate event
 			if (result.status === SceneExecutionStatus.COMPLETED) {
