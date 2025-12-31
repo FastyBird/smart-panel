@@ -12,7 +12,9 @@
 	"headings": {
 		"list": "Extensions",
 		"detail": "Extension Detail",
-		"adjustFilters": "Adjust Filters"
+		"adjustFilters": "Adjust Filters",
+		"bulkEnable": "Enable extensions",
+		"bulkDisable": "Disable extensions"
 	},
 	"subHeadings": {
 		"list": "Manage your application modules and plugins",
@@ -125,7 +127,9 @@
 		},
 		"resetFilters": {
 			"title": "Reset Filters"
-		}
+		},
+		"yes": "Yes",
+		"no": "No"
 	},
 	"tooltips": {
 		"coreCannotBeRemoved": "Core extensions cannot be removed",
@@ -143,7 +147,17 @@
 		"coreExtensionError": "Core extensions cannot be modified",
 		"notConfigurableError": "This extension does not support enable/disable",
 		"loadError": "Failed to load extensions",
-		"noMatchingExtensions": "No extensions match your filters"
+		"noMatchingExtensions": "No extensions match your filters",
+		"confirmBulkEnable": "Are you sure you want to enable {count} extension(s)?",
+		"confirmBulkDisable": "Are you sure you want to disable {count} extension(s)?",
+		"bulkEnabled": "{count} extension(s) have been enabled",
+		"bulkDisabled": "{count} extension(s) have been disabled",
+		"bulkEnableFailed": "Failed to enable {count} extension(s)",
+		"bulkDisableFailed": "Failed to disable {count} extension(s)",
+		"bulkEnableCanceled": "Bulk enable was canceled",
+		"bulkDisableCanceled": "Bulk disable was canceled",
+		"noExtensionsToEnable": "No extensions to enable (all selected are already enabled or cannot be toggled)",
+		"noExtensionsToDisable": "No extensions to disable (all selected are already disabled or cannot be toggled)"
 	},
 	"services": {
 		"headings": {

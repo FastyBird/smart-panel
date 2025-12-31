@@ -18,6 +18,12 @@
 			</el-input>
 		</el-form>
 
+		<bulk-actions-toolbar
+			:selected-count="props.selectedCount"
+			:actions="props.bulkActions"
+			@action="(key) => emit('bulk-action', key)"
+		/>
+
 		<el-button
 			v-if="props.filtersActive"
 			plain
@@ -46,6 +52,7 @@ import { ElButton, ElForm, ElIcon, ElInput, type FormInstance } from 'element-pl
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
+import { BulkActionsToolbar } from '../../../common';
 import type { ISpacesFilter } from '../composables/types';
 
 import type { ISpacesFilterProps } from './spaces-filter.types';
@@ -60,6 +67,7 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: ISpacesFilter): void;
 	(e: 'reset-filters'): void;
 	(e: 'adjust-list'): void;
+	(e: 'bulk-action', key: string): void;
 }>();
 
 const { t } = useI18n();

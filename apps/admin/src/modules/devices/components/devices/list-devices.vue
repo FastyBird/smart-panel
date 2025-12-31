@@ -7,8 +7,11 @@
 		<devices-filter
 			v-model:filters="innerFilters"
 			:filters-active="props.filtersActive"
+			:selected-count="selectedItems.length"
+			:bulk-actions="bulkActions"
 			@reset-filters="emit('reset-filters')"
 			@adjust-list="emit('adjust-list')"
+			@bulk-action="onBulkAction"
 		/>
 	</el-card>
 
@@ -34,6 +37,7 @@
 				@edit="onEdit"
 				@remove="onRemove"
 				@reset-filters="onResetFilters"
+				@selected-changes="onSelectionChange"
 			/>
 
 			<div
@@ -54,13 +58,14 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { useBreakpoints } from '../../../../common';
+import { type IBulkAction, useBreakpoints } from '../../../../common';
 import type { IDevicesFilter } from '../../composables/types';
 import type { IDevice } from '../../store/devices.store.types';
 
@@ -85,8 +90,10 @@ const emit = defineEmits<{
 	(e: 'update:paginate-page', page: number): void;
 	(e: 'update:sort-by', dir: 'name' | 'description' | 'type' | 'state' | 'category' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
+	(e: 'bulk-action', action: string, items: IDevice[]): void;
 }>();
 
+const { t } = useI18n();
 const { isMDDevice } = useBreakpoints();
 
 let observer: ResizeObserver | null = null;
@@ -105,6 +112,29 @@ const paginatePage = ref<number>(props.paginatePage);
 const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
+
+const selectedItems = ref<IDevice[]>([]);
+
+const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
+	{
+		key: 'enable',
+		label: t('application.bulkActions.enable'),
+		icon: 'mdi:check-circle-outline',
+		type: 'success',
+	},
+	{
+		key: 'disable',
+		label: t('application.bulkActions.disable'),
+		icon: 'mdi:close-circle-outline',
+		type: 'warning',
+	},
+	{
+		key: 'delete',
+		label: t('application.bulkActions.delete'),
+		icon: 'mdi:trash',
+		type: 'danger',
+	},
+]);
 
 const onDetail = (id: IDevice['id']): void => {
 	emit('detail', id);
@@ -128,6 +158,14 @@ const onPaginatePageSize = (size: number): void => {
 
 const onPaginatePage = (page: number): void => {
 	emit('update:paginate-page', page);
+};
+
+const onSelectionChange = (selected: IDevice[]): void => {
+	selectedItems.value = selected;
+};
+
+const onBulkAction = (action: string): void => {
+	emit('bulk-action', action, selectedItems.value);
 };
 
 onMounted((): void => {
@@ -192,6 +230,15 @@ watch(
 	(): 'name' | 'description' | 'type' | 'state' | 'category' | undefined => props.sortBy,
 	(val: 'name' | 'description' | 'type' | 'state' | 'category' | undefined): void => {
 		sortBy.value = val;
+	}
+);
+
+watch(
+	(): boolean => isMDDevice.value,
+	(val: boolean): void => {
+		if (!val) {
+			selectedItems.value = [];
+		}
 	}
 );
 </script>

@@ -7,8 +7,11 @@
 		<locations-filter
 			v-model:filters="innerFilters"
 			:filters-active="props.filtersActive"
+			:selected-count="selectedItems.length"
+			:bulk-actions="bulkActions"
 			@reset-filters="emit('reset-filters')"
 			@adjust-list="emit('adjust-list')"
+			@bulk-action="onBulkAction"
 		/>
 	</el-card>
 
@@ -38,6 +41,7 @@
 				@edit="onEdit"
 				@remove="onRemove"
 				@reset-filters="onResetFilters"
+				@selected-changes="onSelectionChange"
 			/>
 
 			<div
@@ -58,13 +62,14 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { useBreakpoints } from '../../../common';
+import { type IBulkAction, useBreakpoints } from '../../../common';
 import type { IWeatherLocationsFilter } from '../composables/types';
 import type { IWeatherLocation } from '../store/locations.store.types';
 
@@ -89,8 +94,10 @@ const emit = defineEmits<{
 	(e: 'update:paginate-page', page: number): void;
 	(e: 'update:sort-by', dir: 'name' | 'type'): void;
 	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
+	(e: 'bulk-action', action: string, items: IWeatherLocation[]): void;
 }>();
 
+const { t } = useI18n();
 const { isMDDevice } = useBreakpoints();
 
 let observer: ResizeObserver | null = null;
@@ -109,6 +116,17 @@ const paginatePage = ref<number>(props.paginatePage);
 const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
+
+const selectedItems = ref<IWeatherLocation[]>([]);
+
+const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
+	{
+		key: 'delete',
+		label: t('application.bulkActions.delete'),
+		icon: 'mdi:trash',
+		type: 'danger',
+	},
+]);
 
 const onDetail = (id: IWeatherLocation['id']): void => {
 	emit('detail', id);
@@ -132,6 +150,14 @@ const onPaginatePageSize = (size: number): void => {
 
 const onPaginatePage = (page: number): void => {
 	emit('update:paginate-page', page);
+};
+
+const onSelectionChange = (selected: IWeatherLocation[]): void => {
+	selectedItems.value = selected;
+};
+
+const onBulkAction = (action: string): void => {
+	emit('bulk-action', action, selectedItems.value);
 };
 
 onMounted((): void => {
@@ -196,6 +222,15 @@ watch(
 	(): 'name' | 'type' => props.sortBy,
 	(val: 'name' | 'type'): void => {
 		sortBy.value = val;
+	}
+);
+
+watch(
+	(): boolean => isMDDevice.value,
+	(val: boolean): void => {
+		if (!val) {
+			selectedItems.value = [];
+		}
 	}
 );
 </script>

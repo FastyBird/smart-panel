@@ -45,6 +45,7 @@ export interface IUseDisplaysDataSource {
 
 export interface IUseDisplaysActions {
 	remove: (id: IDisplay['id']) => Promise<void>;
+	bulkRemove: (displays: IDisplay[]) => Promise<void>;
 }
 
 export type HomeMode = 'auto_space' | 'explicit' | 'first_page';

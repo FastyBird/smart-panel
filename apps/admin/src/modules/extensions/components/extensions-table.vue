@@ -250,18 +250,20 @@
 			align="right"
 		>
 			<template #default="scope">
-				<el-button
-					size="small"
-					plain
-					data-test-id="detail-extension"
-					@click.stop="emit('detail', scope.row.type)"
-				>
-					<template #icon>
-						<icon icon="mdi:file-search-outline" />
-					</template>
+				<div @click.stop>
+					<el-button
+						size="small"
+						plain
+						data-test-id="detail-extension"
+						@click="emit('detail', scope.row.type)"
+					>
+						<template #icon>
+							<icon icon="mdi:file-search-outline" />
+						</template>
 
-					{{ t('extensionsModule.buttons.detail.title') }}
-				</el-button>
+						{{ t('extensionsModule.buttons.detail.title') }}
+					</el-button>
+				</div>
 			</template>
 		</el-table-column>
 	</el-table>
@@ -291,6 +293,7 @@ const emit = defineEmits<{
 	(e: 'detail', type: IExtension['type']): void;
 	(e: 'toggle-enabled', type: IExtension['type'], enabled: boolean): void;
 	(e: 'reset-filters'): void;
+	(e: 'selected-changes', selected: IExtension[]): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'kind' | 'enabled' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
@@ -323,8 +326,7 @@ const onToggleEnabled = (type: IExtension['type'], enabled: boolean): void => {
 	emit('toggle-enabled', type, enabled);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onSelectionChange = (selection: IExtension[]): void => {
-	// Selection handling - can be extended for bulk operations
+	emit('selected-changes', selection);
 };
 </script>

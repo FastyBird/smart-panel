@@ -5,6 +5,7 @@
 		"list": "Displays",
 		"adjustFilters": "Filter Displays",
 		"removeDisplay": "Remove Display",
+		"removeBulkDisplays": "Remove Displays",
 		"discard": "Discard Changes",
 		"aboutDisplayConfiguration": "Display Configuration"
 	},
@@ -316,7 +317,10 @@
 		"notFound": "Display not found",
 		"loadError": "Failed to load displays",
 		"confirmRemove": "Are you sure you want to remove display \"{name}\"? This action cannot be undone.",
+		"confirmBulkRemove": "Are you sure you want to remove {count} display(s)? This action cannot be undone.",
 		"removed": "Display removed successfully",
+		"bulkRemoved": "{count} display(s) have been removed",
+		"bulkRemoveFailed": "Failed to remove {count} display(s)",
 		"edited": "Display {display} has been updated",
 		"notEdited": "Display {display} was not updated",
 		"deletedWhileEditing": "This display was deleted and is no longer available.",

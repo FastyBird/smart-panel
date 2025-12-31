@@ -13,6 +13,7 @@
 		class="flex-grow"
 		:max-height="tableHeight"
 		@sort-change="onSortData"
+		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
 	>
 		<template #empty>
@@ -171,41 +172,43 @@
 			align="right"
 		>
 			<template #default="scope">
-				<el-button
-					size="small"
-					plain
-					data-test-id="detail-space"
-					@click.stop="emit('detail', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:file-search-outline" />
-					</template>
+				<div @click.stop>
+					<el-button
+						size="small"
+						plain
+						data-test-id="detail-space"
+						@click="emit('detail', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:file-search-outline" />
+						</template>
 
-					{{ t('spacesModule.buttons.detail.title') }}
-				</el-button>
-				<el-button
-					size="small"
-					plain
-					class="ml-1!"
-					data-test-id="edit-space"
-					@click.stop="emit('edit', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-				<el-button
-					size="small"
-					type="warning"
-					plain
-					class="ml-1!"
-					data-test-id="remove-space"
-					@click.stop="emit('remove', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:trash" />
-					</template>
-				</el-button>
+						{{ t('spacesModule.buttons.detail.title') }}
+					</el-button>
+					<el-button
+						size="small"
+						plain
+						class="ml-1!"
+						data-test-id="edit-space"
+						@click="emit('edit', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:pencil" />
+						</template>
+					</el-button>
+					<el-button
+						size="small"
+						type="warning"
+						plain
+						class="ml-1!"
+						data-test-id="remove-space"
+						@click="emit('remove', scope.row.id)"
+					>
+						<template #icon>
+							<icon icon="mdi:trash" />
+						</template>
+					</el-button>
+				</div>
 			</template>
 		</el-table-column>
 	</el-table>
@@ -238,6 +241,7 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'displayOrder' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
+	(e: 'selected-changes', items: ISpace[]): void;
 }>();
 
 const { t } = useI18n();
@@ -261,5 +265,9 @@ const onSortData = ({
 
 const onRowClick = (row: ISpace): void => {
 	emit('detail', row.id);
+};
+
+const onSelectionChange = (selected: ISpace[]): void => {
+	emit('selected-changes', selected);
 };
 </script>

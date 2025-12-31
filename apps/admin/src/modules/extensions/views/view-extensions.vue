@@ -74,6 +74,7 @@
 				@detail="onExtensionDetail"
 				@adjust-list="onAdjustList"
 				@reset-filters="onResetFilters"
+				@bulk-action="onBulkAction"
 			/>
 		</el-tab-pane>
 
@@ -182,7 +183,7 @@ const {
 	viewMode,
 	resetFilter,
 } = useExtensionsDataSource();
-const { toggleEnabled } = useExtensionActions();
+const { toggleEnabled, bulkEnable, bulkDisable } = useExtensionActions();
 
 // Services
 const { services, areLoading: areServicesLoading, fetchServices } = useServices();
@@ -222,6 +223,17 @@ const onToggleEnabled = async (type: IExtension['type'], enabled: boolean): Prom
 
 const onResetFilters = (): void => {
 	resetFilter();
+};
+
+const onBulkAction = (action: string, items: IExtension[]): void => {
+	switch (action) {
+		case 'enable':
+			bulkEnable(items);
+			break;
+		case 'disable':
+			bulkDisable(items);
+			break;
+	}
 };
 
 const onExtensionDetail = (type: IExtension['type']): void => {

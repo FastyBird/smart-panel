@@ -42,6 +42,12 @@
 			</el-form-item>
 		</el-form>
 
+		<bulk-actions-toolbar
+			:selected-count="props.selectedCount"
+			:actions="props.bulkActions"
+			@action="(key) => emit('bulk-action', key)"
+		/>
+
 		<el-button-group class="mr-3">
 			<el-button
 				:type="innerViewMode === 'table' ? 'primary' : undefined"
@@ -101,6 +107,7 @@ import {
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
+import { BulkActionsToolbar } from '../../../common';
 import type { IExtensionsFilter } from '../composables/types';
 
 import type { IExtensionsFilterProps } from './extensions-filter.types';
@@ -118,6 +125,7 @@ const emit = defineEmits<{
 	(e: 'update:view-mode', mode: 'table' | 'cards'): void;
 	(e: 'reset-filters'): void;
 	(e: 'adjust-list'): void;
+	(e: 'bulk-action', key: string): void;
 }>();
 
 const ns = useNamespace('extensions-filter');

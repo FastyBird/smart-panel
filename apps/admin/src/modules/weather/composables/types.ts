@@ -68,6 +68,7 @@ export interface IUseWeatherLocationEditForm {
 
 export interface IUseWeatherLocationsActions {
 	remove: (id: IWeatherLocation['id']) => Promise<void>;
+	bulkRemove: (locations: IWeatherLocation[]) => Promise<void>;
 }
 
 export interface IUseWeatherDay {

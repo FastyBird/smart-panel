@@ -63,6 +63,7 @@ export interface IUseUsersDataSource {
 
 export interface IUseUsersActions {
 	remove: (id: IUser['id']) => Promise<void>;
+	bulkRemove: (users: IUser[]) => Promise<void>;
 }
 
 export interface IUseUserAddForm {

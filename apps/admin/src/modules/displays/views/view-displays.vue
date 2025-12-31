@@ -79,6 +79,7 @@
 			@remove="onDisplayRemove"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
+			@bulk-action="onBulkAction"
 		/>
 	</div>
 
@@ -306,6 +307,14 @@ const onDisplayEdit = (id: IDisplay['id']): void => {
 
 const onDisplayRemove = (id: IDisplay['id']): void => {
 	displayActions.remove(id);
+};
+
+const onBulkAction = (action: string, items: IDisplay[]): void => {
+	switch (action) {
+		case 'delete':
+			displayActions.bulkRemove(items);
+			break;
+	}
 };
 
 const onResetFilters = (): void => {

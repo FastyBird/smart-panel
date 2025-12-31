@@ -9,6 +9,7 @@
 		"add": "Add space",
 		"edit": "Edit space",
 		"removeSpace": "Remove space",
+		"bulkRemoveSpace": "Remove spaces",
 		"discard": "Discard changes",
 		"adjustFilters": "Filter spaces"
 	},
@@ -283,7 +284,11 @@
 		"removeCanceled": "Space: {space} removal has been canceled.",
 		"deletedWhileEditing": "This space was deleted and is no longer available.",
 		"createError": "Failed to create space. Please try again.",
-		"saveError": "Failed to save changes. Please try again."
+		"saveError": "Failed to save changes. Please try again.",
+		"confirmBulkRemove": "Are you sure you want to remove {count} spaces? This action cannot be undone.",
+		"bulkRemoved": "{count} spaces were successfully removed.",
+		"bulkRemoveFailed": "Failed to remove {count} spaces.",
+		"bulkRemoveCanceled": "Bulk space removal has been canceled."
 	},
 	"misc": {
 		"types": {

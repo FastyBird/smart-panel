@@ -68,7 +68,48 @@ export const usePagesActions = (): IUsePagesActions => {
 			});
 	};
 
+	const bulkRemove = async (pages: IPage[]): Promise<void> => {
+		if (pages.length === 0) {
+			return;
+		}
+
+		try {
+			await ElMessageBox.confirm(
+				t('dashboardModule.texts.pages.confirmBulkRemove', { count: pages.length }),
+				t('dashboardModule.headings.pages.bulkRemove'),
+				{
+					confirmButtonText: t('dashboardModule.buttons.yes.title'),
+					cancelButtonText: t('dashboardModule.buttons.no.title'),
+					type: 'warning',
+				}
+			);
+
+			let successCount = 0;
+			let failCount = 0;
+
+			for (const page of pages) {
+				try {
+					await pagesStore.remove({ id: page.id });
+					successCount++;
+				} catch {
+					failCount++;
+				}
+			}
+
+			if (successCount > 0) {
+				flashMessage.success(t('dashboardModule.messages.pages.bulkRemoved', { count: successCount }));
+			}
+
+			if (failCount > 0) {
+				flashMessage.error(t('dashboardModule.messages.pages.bulkRemoveFailed', { count: failCount }));
+			}
+		} catch {
+			// User cancelled - do nothing
+		}
+	};
+
 	return {
 		remove,
+		bulkRemove,
 	};
 };

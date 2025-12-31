@@ -8,6 +8,7 @@
 		"addLocation": "Add location",
 		"editLocation": "Edit location",
 		"deleteLocation": "Delete location",
+		"bulkDeleteLocations": "Delete locations",
 		"discard": "Discard changes",
 		"selectProvider": "Select a weather provider",
 		"unsupportedProvider": "Unsupported provider",
@@ -41,6 +42,10 @@
 			"deleted": "Location has been deleted",
 			"notDeleted": "Failed to delete location",
 			"deleteCanceled": "Location \"{location}\" deletion was canceled",
+			"confirmBulkDelete": "Are you sure you want to delete {count} location(s)?",
+			"bulkDeleted": "{count} location(s) have been deleted",
+			"bulkDeleteFailed": "Failed to delete {count} location(s)",
+			"bulkDeleteCanceled": "Bulk location deletion was canceled",
 			"noLocations": "No locations configured. Add a location to get weather data.",
 			"notFound": "Location not found",
 			"confirmDeleteLocation": "Are you sure you want to delete location \"{name}\"?"

@@ -67,6 +67,9 @@
       "detail": "Device: {device}",
       "control": "Control: {device}",
       "remove": "Remove device?",
+      "bulkRemove": "Remove devices?",
+      "bulkEnable": "Enable devices?",
+      "bulkDisable": "Disable devices?",
       "adjustFilters": "Filter devices",
       "selectPlugin": "Device plugin required"
     },
@@ -121,7 +124,16 @@
       "removed": "The device: {device} was successfully removed.",
       "removeCanceled": "Device: {device} removal has been canceled.",
       "notRemoved": "Something went wrong, and the device: {device} was not removed.",
-      "deletedWhileEditing": "This device was deleted and is no longer available."
+      "deletedWhileEditing": "This device was deleted and is no longer available.",
+      "bulkRemoved": "{count} devices were successfully removed.",
+      "bulkRemoveFailed": "Failed to remove {count} devices.",
+      "bulkRemoveCanceled": "Bulk device removal has been canceled.",
+      "bulkEnabled": "{count} devices were successfully enabled.",
+      "bulkEnableFailed": "Failed to enable {count} devices.",
+      "bulkEnableCanceled": "Bulk device enable has been canceled.",
+      "bulkDisabled": "{count} devices were successfully disabled.",
+      "bulkDisableFailed": "Failed to disable {count} devices.",
+      "bulkDisableCanceled": "Bulk device disable has been canceled."
     },
     "channels": {
       "notFound": "The channel you are looking for doesn’t exist or may have been removed.",
@@ -158,6 +170,9 @@
       "loadingDevices": "Loading devices...",
       "loadingDevice": "Loading device...",
       "confirmRemove": "Are you sure you want to remove device: {device}? This cannot be reversed.",
+      "confirmBulkRemove": "Are you sure you want to remove {count} devices? This cannot be reversed.",
+      "confirmBulkEnable": "Are you sure you want to enable {count} devices?",
+      "confirmBulkDisable": "Are you sure you want to disable {count} devices?",
       "description": {
         "generic": "",
         "air_conditioner": "The Air Conditioner device represents a cooling system with additional features for environmental monitoring and energy management.",

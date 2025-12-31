@@ -22,6 +22,7 @@
     "addUser": "Add user",
     "editUser": "Edit user",
     "remove": "Remove user?",
+    "removeBulk": "Remove users?",
     "discard": "Discard changes?",
     "changeUsername": "Change username",
     "changePassword": "Change password"
@@ -44,10 +45,14 @@
     "usernameEdited": "User username has been successfully updated.",
     "usernameNotEdited": "Failed to update user username. Please try again.",
     "passwordEdited": "User password has been successfully updated.",
-    "passwordNotEdited": "Failed to update user password. Please try again."
+    "passwordNotEdited": "Failed to update user password. Please try again.",
+    "bulkRemoved": "{count} user(s) have been removed.",
+    "bulkRemoveFailed": "Failed to remove {count} user(s).",
+    "bulkRemoveCanceled": "Bulk user removal has been canceled."
   },
   "texts": {
     "confirmRemove": "Are you sure you want to remove user: {user}? This cannot be reversed.",
+    "confirmBulkRemove": "Are you sure you want to remove {count} user(s)? This action cannot be undone.",
     "misc": {
       "noUsers": "You don't have configured any user",
       "noFilteredUsers": "No users found matching the active filter criteria",

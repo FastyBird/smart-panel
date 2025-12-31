@@ -19,6 +19,12 @@
 			</el-input>
 		</el-form>
 
+		<bulk-actions-toolbar
+			:selected-count="props.selectedCount"
+			:actions="props.bulkActions"
+			@action="(key) => emit('bulk-action', key)"
+		/>
+
 		<el-button
 			v-if="props.filtersActive"
 			plain
@@ -47,6 +53,7 @@ import { ElButton, ElForm, ElIcon, ElInput, type FormInstance, useNamespace } fr
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
+import { BulkActionsToolbar } from '../../../../common';
 import type { IPagesFilter } from '../../composables/types';
 
 import type { IPagesFilterProps } from './pages-filter.types';
@@ -61,6 +68,7 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: IPagesFilter): void;
 	(e: 'reset-filters'): void;
 	(e: 'adjust-list'): void;
+	(e: 'bulk-action', key: string): void;
 }>();
 
 const ns = useNamespace('pages-filter');
