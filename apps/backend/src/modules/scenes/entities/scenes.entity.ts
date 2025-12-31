@@ -17,7 +17,7 @@ import { Column, Entity, Index, ManyToOne, OneToMany, TableInheritance } from 't
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { ConditionOperator, SceneCategory, TriggerType } from '../scenes.constants';
+import { SceneCategory } from '../scenes.constants';
 
 @ApiSchema({ name: 'ScenesModuleDataScene' })
 @Entity('scenes_module_scenes')
@@ -171,32 +171,6 @@ export class SceneEntity extends BaseEntity {
 	@OneToMany(() => SceneActionEntity, (action) => action.scene, { cascade: true, onDelete: 'CASCADE' })
 	actions: SceneActionEntity[];
 
-	@ApiProperty({
-		description: 'Scene conditions (for future automation)',
-		type: 'array',
-		items: { $ref: '#/components/schemas/ScenesModuleDataSceneCondition' },
-	})
-	@Expose()
-	@IsOptional()
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => SceneConditionEntity)
-	@OneToMany(() => SceneConditionEntity, (condition) => condition.scene, { cascade: true, onDelete: 'CASCADE' })
-	conditions: SceneConditionEntity[];
-
-	@ApiProperty({
-		description: 'Scene triggers (for future automation)',
-		type: 'array',
-		items: { $ref: '#/components/schemas/ScenesModuleDataSceneTrigger' },
-	})
-	@Expose()
-	@IsOptional()
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => SceneTriggerEntity)
-	@OneToMany(() => SceneTriggerEntity, (trigger) => trigger.scene, { cascade: true, onDelete: 'CASCADE' })
-	triggers: SceneTriggerEntity[];
-
 	@ApiProperty({ description: 'Scene type (plugin identifier)', type: 'string', example: 'local' })
 	@Expose()
 	@IsString()
@@ -310,130 +284,4 @@ export class SceneActionEntity extends BaseEntity {
 	@Index()
 	@Column({ type: 'varchar', length: 100, default: 'local' })
 	type: string = 'local';
-}
-
-@ApiSchema({ name: 'ScenesModuleDataSceneCondition' })
-@Entity('scenes_module_scene_conditions')
-@TableInheritance({ column: { type: 'varchar', name: 'type' } })
-export class SceneConditionEntity extends BaseEntity {
-	@ApiProperty({
-		description: 'Scene identifier',
-		type: 'string',
-		format: 'uuid',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@Expose()
-	@ValidateIf((_, value) => typeof value === 'string')
-	@IsUUID('4', { message: '[{"field":"scene","reason":"Scene must be a valid UUID (version 4)."}]' })
-	@ValidateIf((_, value) => value instanceof SceneEntity)
-	@IsInstance(SceneEntity, { message: '[{"field":"scene","reason":"Scene must be a valid SceneEntity."}]' })
-	@Transform(({ value }: { value: SceneEntity | string }) => (typeof value === 'string' ? value : value?.id), {
-		toPlainOnly: true,
-	})
-	@ManyToOne(() => SceneEntity, (scene) => scene.conditions, { onDelete: 'CASCADE' })
-	scene: SceneEntity | string;
-
-	@ApiProperty({
-		description: 'Logical operator with other conditions',
-		enum: ConditionOperator,
-		example: ConditionOperator.AND,
-	})
-	@Expose()
-	@IsEnum(ConditionOperator)
-	@Column({
-		type: 'text',
-		enum: ConditionOperator,
-		default: ConditionOperator.AND,
-	})
-	operator: ConditionOperator = ConditionOperator.AND;
-
-	@ApiProperty({
-		description: 'Condition configuration (plugin-specific)',
-		type: 'object',
-		additionalProperties: true,
-		example: { deviceId: 'uuid', propertyId: 'uuid', operator: 'eq', value: true },
-	})
-	@Expose()
-	@Column({ type: 'json', nullable: true })
-	configuration: Record<string, unknown> = {};
-
-	@ApiProperty({ description: 'Condition enabled status', type: 'boolean', example: true })
-	@Expose()
-	@IsBoolean()
-	@Column({ nullable: false, default: true })
-	enabled: boolean = true;
-
-	@ApiProperty({ description: 'Condition type (plugin identifier)', type: 'string', example: 'device-state' })
-	@Expose()
-	@IsString()
-	@Index()
-	@Column({ type: 'varchar', length: 100, default: 'device-state' })
-	type: string = 'device-state';
-}
-
-@ApiSchema({ name: 'ScenesModuleDataSceneTrigger' })
-@Entity('scenes_module_scene_triggers')
-@TableInheritance({ column: { type: 'varchar', name: 'type' } })
-export class SceneTriggerEntity extends BaseEntity {
-	@ApiProperty({
-		description: 'Scene identifier',
-		type: 'string',
-		format: 'uuid',
-		example: '550e8400-e29b-41d4-a716-446655440000',
-	})
-	@Expose()
-	@ValidateIf((_, value) => typeof value === 'string')
-	@IsUUID('4', { message: '[{"field":"scene","reason":"Scene must be a valid UUID (version 4)."}]' })
-	@ValidateIf((_, value) => value instanceof SceneEntity)
-	@IsInstance(SceneEntity, { message: '[{"field":"scene","reason":"Scene must be a valid SceneEntity."}]' })
-	@Transform(({ value }: { value: SceneEntity | string }) => (typeof value === 'string' ? value : value?.id), {
-		toPlainOnly: true,
-	})
-	@ManyToOne(() => SceneEntity, (scene) => scene.triggers, { onDelete: 'CASCADE' })
-	scene: SceneEntity | string;
-
-	@ApiProperty({
-		name: 'trigger_type',
-		description: 'Type of trigger',
-		enum: TriggerType,
-		example: TriggerType.MANUAL,
-	})
-	@Expose({ name: 'trigger_type' })
-	@IsEnum(TriggerType)
-	@Transform(
-		({ obj }: { obj: { trigger_type?: TriggerType; triggerType?: TriggerType } }) =>
-			obj.trigger_type ?? obj.triggerType,
-		{ toClassOnly: true },
-	)
-	@Index()
-	@Column({
-		type: 'text',
-		enum: TriggerType,
-		default: TriggerType.MANUAL,
-	})
-	triggerType: TriggerType = TriggerType.MANUAL;
-
-	@ApiProperty({
-		description: 'Trigger configuration (type-specific)',
-		type: 'object',
-		additionalProperties: true,
-		example: { cron: '0 8 * * *' },
-	})
-	@Expose()
-	@Column({ type: 'json', nullable: true })
-	configuration: Record<string, unknown> = {};
-
-	@ApiProperty({ description: 'Trigger enabled status', type: 'boolean', example: true })
-	@Expose()
-	@IsBoolean()
-	@Index()
-	@Column({ nullable: false, default: true })
-	enabled: boolean = true;
-
-	@ApiProperty({ description: 'Trigger type (plugin identifier)', type: 'string', example: 'manual' })
-	@Expose()
-	@IsString()
-	@Index()
-	@Column({ type: 'varchar', length: 100, default: 'manual' })
-	type: string = 'manual';
 }

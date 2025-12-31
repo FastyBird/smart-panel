@@ -12,11 +12,9 @@ import { SystemModule } from '../system/system.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SceneActionsController } from './controllers/scene-actions.controller';
-import { SceneConditionsController } from './controllers/scene-conditions.controller';
-import { SceneTriggersController } from './controllers/scene-triggers.controller';
 import { ScenesController } from './controllers/scenes.controller';
 import { UpdateScenesConfigDto } from './dto/update-config.dto';
-import { SceneActionEntity, SceneConditionEntity, SceneEntity, SceneTriggerEntity } from './entities/scenes.entity';
+import { SceneActionEntity, SceneEntity } from './entities/scenes.entity';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { ScenesConfigModel } from './models/config.model';
 import { SCENES_MODULE_API_TAG_DESCRIPTION, SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_NAME } from './scenes.constants';
@@ -24,9 +22,7 @@ import { SCENES_SWAGGER_EXTRA_MODELS } from './scenes.openapi';
 import { ScenesModuleResetService } from './services/module-reset.service';
 import { SceneActionsTypeMapperService } from './services/scene-actions-type-mapper.service';
 import { SceneActionsService } from './services/scene-actions.service';
-import { SceneConditionsService } from './services/scene-conditions.service';
 import { SceneExecutorService } from './services/scene-executor.service';
-import { SceneTriggersService } from './services/scene-triggers.service';
 import { ScenesTypeMapperService } from './services/scenes-type-mapper.service';
 import { ScenesService } from './services/scenes.service';
 
@@ -37,20 +33,18 @@ import { ScenesService } from './services/scenes.service';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([SceneEntity, SceneActionEntity, SceneConditionEntity, SceneTriggerEntity]),
+		TypeOrmModule.forFeature([SceneEntity, SceneActionEntity]),
 		ConfigModule,
 		forwardRef(() => SystemModule),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => SpacesModule),
 		WebsocketModule,
 	],
-	controllers: [ScenesController, SceneActionsController, SceneConditionsController, SceneTriggersController],
+	controllers: [ScenesController, SceneActionsController],
 	providers: [
 		// Core services
 		ScenesService,
 		SceneActionsService,
-		SceneConditionsService,
-		SceneTriggersService,
 		// Type mappers for plugin system
 		ScenesTypeMapperService,
 		SceneActionsTypeMapperService,
@@ -64,8 +58,6 @@ import { ScenesService } from './services/scenes.service';
 	exports: [
 		ScenesService,
 		SceneActionsService,
-		SceneConditionsService,
-		SceneTriggersService,
 		ScenesTypeMapperService,
 		SceneActionsTypeMapperService,
 		SceneExecutorService,

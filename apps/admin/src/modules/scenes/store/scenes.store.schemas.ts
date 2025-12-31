@@ -31,46 +31,6 @@ export const SceneActionSchema = z.object({
 		.default(null),
 });
 
-export const SceneConditionSchema = z.object({
-	id: ItemIdSchema,
-	type: z.string().trim().nonempty(),
-	operator: z.enum(['and', 'or']).default('and'),
-	configuration: z.record(z.unknown()).default({}),
-	enabled: z.boolean().default(true),
-	scene: ItemIdSchema.optional(),
-	createdAt: z
-		.union([z.string().datetime({ offset: true }), z.date()])
-		.transform((date) => (date instanceof Date ? date : new Date(date)))
-		.optional()
-		.default(() => new Date()),
-	updatedAt: z
-		.union([z.string().datetime({ offset: true }), z.date()])
-		.transform((date) => (date instanceof Date ? date : new Date(date)))
-		.optional()
-		.nullable()
-		.default(null),
-});
-
-export const SceneTriggerSchema = z.object({
-	id: ItemIdSchema,
-	type: z.string().trim().nonempty(),
-	triggerType: z.enum(['manual', 'schedule', 'device_state', 'webhook', 'sunrise', 'sunset']).default('manual'),
-	configuration: z.record(z.unknown()).default({}),
-	enabled: z.boolean().default(true),
-	scene: ItemIdSchema.optional(),
-	createdAt: z
-		.union([z.string().datetime({ offset: true }), z.date()])
-		.transform((date) => (date instanceof Date ? date : new Date(date)))
-		.optional()
-		.default(() => new Date()),
-	updatedAt: z
-		.union([z.string().datetime({ offset: true }), z.date()])
-		.transform((date) => (date instanceof Date ? date : new Date(date)))
-		.optional()
-		.nullable()
-		.default(null),
-});
-
 export const SceneSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
@@ -97,8 +57,6 @@ export const SceneSchema = z.object({
 		.nullable()
 		.default(null),
 	actions: z.array(SceneActionSchema).default([]),
-	conditions: z.array(SceneConditionSchema).default([]),
-	triggers: z.array(SceneTriggerSchema).default([]),
 });
 
 export const ScenesStateSemaphoreSchema = z.object({
@@ -262,28 +220,6 @@ export const SceneActionResSchema = z.object({
 	updated_at: z.string().nullable(),
 });
 
-export const SceneConditionResSchema = z.object({
-	id: z.string().uuid(),
-	type: z.string(),
-	operator: z.enum(['and', 'or']),
-	configuration: z.record(z.unknown()),
-	enabled: z.boolean(),
-	scene: z.string().uuid(),
-	created_at: z.string(),
-	updated_at: z.string().nullable(),
-});
-
-export const SceneTriggerResSchema = z.object({
-	id: z.string().uuid(),
-	type: z.string(),
-	trigger_type: z.enum(['manual', 'schedule', 'device_state', 'webhook', 'sunrise', 'sunset']),
-	configuration: z.record(z.unknown()),
-	enabled: z.boolean(),
-	scene: z.string().uuid(),
-	created_at: z.string(),
-	updated_at: z.string().nullable(),
-});
-
 export const SceneCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
@@ -346,8 +282,6 @@ export const SceneResSchema = z.object({
 	created_at: z.string(),
 	updated_at: z.string().nullable(),
 	actions: z.array(SceneActionResSchema),
-	conditions: z.array(SceneConditionResSchema),
-	triggers: z.array(SceneTriggerResSchema),
 });
 
 export const SceneTriggerReqSchema = z.object({

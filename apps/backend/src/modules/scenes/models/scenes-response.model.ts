@@ -3,7 +3,7 @@ import { Expose } from 'class-transformer';
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import { SceneActionEntity, SceneConditionEntity, SceneEntity, SceneTriggerEntity } from '../entities/scenes.entity';
+import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
 
 import { SceneExecutionResultModel } from './scenes.model';
 
@@ -59,60 +59,6 @@ export class SceneActionsResponseModel extends BaseSuccessResponseModel<SceneAct
 	})
 	@Expose()
 	declare data: SceneActionEntity[];
-}
-
-/**
- * Response wrapper for SceneConditionEntity
- */
-@ApiSchema({ name: 'ScenesModuleResSceneCondition' })
-export class SceneConditionResponseModel extends BaseSuccessResponseModel<SceneConditionEntity> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => SceneConditionEntity,
-	})
-	@Expose()
-	declare data: SceneConditionEntity;
-}
-
-/**
- * Response wrapper for array of SceneConditionEntity
- */
-@ApiSchema({ name: 'ScenesModuleResSceneConditions' })
-export class SceneConditionsResponseModel extends BaseSuccessResponseModel<SceneConditionEntity[]> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: 'array',
-		items: { $ref: getSchemaPath(SceneConditionEntity) },
-	})
-	@Expose()
-	declare data: SceneConditionEntity[];
-}
-
-/**
- * Response wrapper for SceneTriggerEntity
- */
-@ApiSchema({ name: 'ScenesModuleResSceneTrigger' })
-export class SceneTriggerResponseModel extends BaseSuccessResponseModel<SceneTriggerEntity> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => SceneTriggerEntity,
-	})
-	@Expose()
-	declare data: SceneTriggerEntity;
-}
-
-/**
- * Response wrapper for array of SceneTriggerEntity
- */
-@ApiSchema({ name: 'ScenesModuleResSceneTriggers' })
-export class SceneTriggersResponseModel extends BaseSuccessResponseModel<SceneTriggerEntity[]> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: 'array',
-		items: { $ref: getSchemaPath(SceneTriggerEntity) },
-	})
-	@Expose()
-	declare data: SceneTriggerEntity[];
 }
 
 /**

@@ -4,11 +4,10 @@ import type { z } from 'zod';
 
 import type {
 	SceneActionSchema,
-	SceneConditionSchema,
 	SceneCreateReqSchema,
+	SceneExecutionResSchema,
 	SceneResSchema,
 	SceneSchema,
-	SceneTriggerSchema,
 	SceneUpdateReqSchema,
 	ScenesAddActionPayloadSchema,
 	ScenesEditActionPayloadSchema,
@@ -20,16 +19,11 @@ import type {
 	ScenesStateSemaphoreSchema,
 	ScenesTriggerActionPayloadSchema,
 	ScenesUnsetActionPayloadSchema,
-	SceneExecutionResSchema,
 } from './scenes.store.schemas';
 
 export type IScene = z.infer<typeof SceneSchema>;
 
 export type ISceneAction = z.infer<typeof SceneActionSchema>;
-
-export type ISceneCondition = z.infer<typeof SceneConditionSchema>;
-
-export type ISceneTrigger = z.infer<typeof SceneTriggerSchema>;
 
 export type IScenesStateSemaphore = z.infer<typeof ScenesStateSemaphoreSchema>;
 

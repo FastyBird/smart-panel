@@ -158,8 +158,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 								? scene.lastTriggeredAt.toISOString()
 								: scene.lastTriggeredAt || null,
 						actionsCount: scene.actions?.length || 0,
-						conditionsCount: scene.conditions?.length || 0,
-						triggersCount: scene.triggers?.length || 0,
 					},
 				},
 			};

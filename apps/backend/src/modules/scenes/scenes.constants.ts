@@ -18,12 +18,6 @@ export enum EventType {
 	SCENE_ACTION_CREATED = 'ScenesModule.SceneAction.Created',
 	SCENE_ACTION_UPDATED = 'ScenesModule.SceneAction.Updated',
 	SCENE_ACTION_DELETED = 'ScenesModule.SceneAction.Deleted',
-	SCENE_CONDITION_CREATED = 'ScenesModule.SceneCondition.Created',
-	SCENE_CONDITION_UPDATED = 'ScenesModule.SceneCondition.Updated',
-	SCENE_CONDITION_DELETED = 'ScenesModule.SceneCondition.Deleted',
-	SCENE_TRIGGER_CREATED = 'ScenesModule.SceneTrigger.Created',
-	SCENE_TRIGGER_UPDATED = 'ScenesModule.SceneTrigger.Updated',
-	SCENE_TRIGGER_DELETED = 'ScenesModule.SceneTrigger.Deleted',
 	MODULE_RESET = 'ScenesModule.All.Reset',
 }
 
@@ -39,20 +33,6 @@ export enum SceneCategory {
 	HOME = 'home',
 	SLEEP = 'sleep',
 	CUSTOM = 'custom',
-}
-
-export enum ConditionOperator {
-	AND = 'and',
-	OR = 'or',
-}
-
-export enum TriggerType {
-	MANUAL = 'manual',
-	SCHEDULE = 'schedule',
-	DEVICE_STATE = 'device_state',
-	WEBHOOK = 'webhook',
-	SUNRISE = 'sunrise',
-	SUNSET = 'sunset',
 }
 
 export enum SceneExecutionStatus {
