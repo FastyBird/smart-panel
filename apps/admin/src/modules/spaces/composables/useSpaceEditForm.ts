@@ -96,12 +96,6 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 
 		timer = window.setTimeout(clear, 2000);
 
-		flashMessage.success(
-			t('spacesModule.messages.edited', {
-				space: model.name,
-			})
-		);
-
 		formChanged.value = false;
 
 		initialModel = deepClone<Reactive<TForm>>(toRaw(model));

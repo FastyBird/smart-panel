@@ -6,7 +6,7 @@ import { isEqual } from 'lodash';
 
 import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, SpaceType } from '../spaces.constants';
-import { spacesStoreKey } from '../store';
+import { spacesStoreKey, type ISpace } from '../store';
 
 import { SpaceAddFormSchema } from './schemas';
 import type { ISpaceAddForm, IUseSpaceAddForm } from './types';
@@ -25,6 +25,7 @@ export const useSpaceAddForm = <TForm extends ISpaceAddForm = ISpaceAddForm>({
 	const flashMessage = useFlashMessage();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
+	const createdSpace = ref<ISpace | null>(null);
 
 	let timer: number;
 
@@ -63,7 +64,7 @@ export const useSpaceAddForm = <TForm extends ISpaceAddForm = ISpaceAddForm>({
 		const errorMessage = t('spacesModule.messages.notCreated', { space: model.name });
 
 		try {
-			await spacesStore.add({
+			createdSpace.value = await spacesStore.add({
 				id,
 				data: {
 					name: parsedModel.data.name,
@@ -77,6 +78,7 @@ export const useSpaceAddForm = <TForm extends ISpaceAddForm = ISpaceAddForm>({
 			});
 		} catch (error: unknown) {
 			formResult.value = FormResult.ERROR;
+			createdSpace.value = null;
 
 			timer = window.setTimeout(clear, 2000);
 
@@ -102,6 +104,7 @@ export const useSpaceAddForm = <TForm extends ISpaceAddForm = ISpaceAddForm>({
 		window.clearTimeout(timer);
 
 		formResult.value = FormResult.NONE;
+		createdSpace.value = null;
 	};
 
 	watch(model, (): void => {
@@ -115,5 +118,6 @@ export const useSpaceAddForm = <TForm extends ISpaceAddForm = ISpaceAddForm>({
 		submit,
 		clear,
 		formResult,
+		createdSpace,
 	};
 };

@@ -58,7 +58,7 @@ const router = useRouter();
 const { t } = useI18n();
 
 const onAddSpace = (): void => {
-	router.push({ name: RouteNames.SPACES_EDIT });
+	router.push({ name: RouteNames.SPACES_ADD });
 };
 
 const onOnboarding = (): void => {

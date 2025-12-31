@@ -59,6 +59,10 @@
 					{{ space.icon }}
 				</el-text>
 			</dd>
+			<!-- Lighting roles summary -->
+			<space-lighting-roles-summary :space="space" />
+			<!-- Climate overrides summary -->
+			<space-climate-overrides-summary :space="space" />
 			<!-- Inline Floor selector (Room only) -->
 			<dt
 				v-if="space.type === SpaceType.ROOM"
@@ -136,6 +140,8 @@ import { useFlashMessage } from '../../../common';
 import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
 import { type ISpace } from '../store';
 import { useSpace, useSpaces } from '../composables';
+import SpaceClimateOverridesSummary from './space-climate-overrides-summary.vue';
+import SpaceLightingRolesSummary from './space-lighting-roles-summary.vue';
 
 import type { ISpaceDetailProps } from './space-detail.types';
 

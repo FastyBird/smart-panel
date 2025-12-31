@@ -4,9 +4,14 @@
 			{{ t('spacesModule.edit.sections.smartOverrides.lightingRoles') }}
 		</el-divider>
 
-		<div class="text-sm text-gray-500 mb-4">
+		<el-alert
+			type="info"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		>
 			{{ t('spacesModule.fields.spaces.lightingRoles.description') }}
-		</div>
+		</el-alert>
 
 		<div v-if="loading" class="flex justify-center py-4">
 			<icon icon="mdi:loading" class="animate-spin text-2xl" />
@@ -73,7 +78,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElButton, ElDivider, ElEmpty, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElEmpty, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { useBackend, useFlashMessage } from '../../../common';

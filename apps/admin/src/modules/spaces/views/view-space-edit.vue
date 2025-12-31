@@ -151,12 +151,10 @@ const remoteFormChanged = ref(false);
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
 
-const isDetailRoute = computed<boolean>((): boolean => {
-	// Check if we came from the detail view via navigation state
-	// Since SPACE and SPACE_EDIT are now separate routes, we can't use route.matched
-	const fromDetail = (window.history.state as { fromDetail?: boolean } | undefined)?.fromDetail;
-	return fromDetail === true;
-});
+const isDetailRoute = computed<boolean>(
+	(): boolean =>
+		route.matched.find((matched) => matched.name === RouteNames.SPACE) !== undefined
+);
 
 const spaceIcon = computed<string>((): string => {
 	if (space.value?.icon) {
@@ -179,11 +177,16 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 				label: t('spacesModule.breadcrumbs.spaces.detail', { space: space.value?.name }),
 				route: router.resolve({ name: RouteNames.SPACE, params: { id: spaceId.value } }),
 			});
+			items.push({
+				label: t('spacesModule.breadcrumbs.spaces.edit', { space: space.value?.name }),
+				route: router.resolve({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } }),
+			});
+		} else {
+			items.push({
+				label: t('spacesModule.breadcrumbs.spaces.edit', { space: space.value?.name }),
+				route: router.resolve({ name: RouteNames.SPACES_EDIT, params: { id: spaceId.value } }),
+			});
 		}
-		items.push({
-			label: t('spacesModule.breadcrumbs.spaces.edit', { space: space.value?.name }),
-			route: router.resolve({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } }),
-		});
 
 		return items;
 	}

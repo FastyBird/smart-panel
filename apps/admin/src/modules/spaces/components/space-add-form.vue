@@ -90,13 +90,11 @@
 					</el-form-item>
 
 					<el-form-item :label="t('spacesModule.fields.spaces.icon.title')" prop="icon">
-						<el-input v-model="model.icon" :placeholder="t('spacesModule.fields.spaces.icon.placeholder')">
-							<template v-if="model.icon" #prefix>
-								<el-icon>
-									<icon :icon="model.icon" />
-								</el-icon>
-							</template>
-						</el-input>
+						<icon-picker
+							v-model="iconPickerValue"
+							:placeholder="t('spacesModule.fields.spaces.icon.placeholder')"
+							icon-set="mdi"
+						/>
 					</el-form-item>
 
 					<el-form-item :label="t('spacesModule.fields.spaces.displayOrder.title')" prop="displayOrder">
@@ -197,6 +195,8 @@ import {
 import { v4 as uuid } from 'uuid';
 import { useI18n } from 'vue-i18n';
 
+import { IconPicker } from '../../../common';
+
 import { useSpaceAddForm, useSpaceCategories, useSpaces } from '../composables';
 import {
 	FormResult,
@@ -215,7 +215,7 @@ const emit = defineEmits(spaceAddFormEmits);
 
 const { t } = useI18n();
 
-const { zoneSpaces: availableZones, findById } = useSpaces();
+const { zoneSpaces: availableZones } = useSpaces();
 
 // Use the form composable
 const {
@@ -224,6 +224,7 @@ const {
 	formChanged,
 	submit,
 	formResult,
+	createdSpace,
 } = useSpaceAddForm({ id: uuid().toString() });
 
 // Local ref for template, synced with composable's formEl
@@ -240,6 +241,14 @@ const activeCollapses = ref<string[]>(['general', 'organization']);
 const autoPopulatedValues = reactive({
 	icon: null as string | null,
 	description: null as string | null,
+});
+
+// Computed for icon picker (converts between 'mdi:icon-name' and 'icon-name')
+const iconPickerValue = computed({
+	get: () => model.icon?.replace('mdi:', '') ?? null,
+	set: (val: string | null) => {
+		model.icon = val ? `mdi:${val}` : null;
+	},
 });
 
 // Category options, groups, and templates based on the selected space type
@@ -311,10 +320,8 @@ const onSubmit = async (): Promise<void> => {
 	try {
 		await submit();
 
-		const space = findById(model.id);
-
-		if (space) {
-			emit('saved', space);
+		if (createdSpace.value) {
+			emit('saved', createdSpace.value);
 		}
 	} catch {
 		// Error already handled by composable

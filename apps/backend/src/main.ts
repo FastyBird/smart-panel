@@ -67,7 +67,7 @@ async function bootstrap() {
 
 	app.useGlobalPipes(
 		new ValidationPipe({
-			//transform: true, // Enables class-transformer transformation
+			transform: true, // Enables class-transformer transformation
 			whitelist: true, // Strips properties not defined in DTO
 			forbidNonWhitelisted: true, // Rejects requests with extra properties
 			transformOptions: {

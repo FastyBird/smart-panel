@@ -73,7 +73,7 @@ const { spaces, fetching } = useSpaces();
 const { remove } = useSpacesActions();
 
 const onAdd = (): void => {
-	router.push({ name: RouteNames.SPACES_EDIT });
+	router.push({ name: RouteNames.SPACES_ADD });
 };
 
 const onView = (space: ISpace): void => {
@@ -81,7 +81,7 @@ const onView = (space: ISpace): void => {
 };
 
 const onEdit = (space: ISpace): void => {
-	router.push({ name: RouteNames.SPACE_EDIT, params: { id: space.id } });
+	router.push({ name: RouteNames.SPACES_EDIT, params: { id: space.id } });
 };
 
 const onDelete = async (space: ISpace): Promise<void> => {

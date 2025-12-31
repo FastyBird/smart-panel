@@ -103,7 +103,6 @@ import {
 	AppBarHeading,
 	AppBreadcrumbs,
 	useBreakpoints,
-	useFlashMessage,
 } from '../../../common';
 import { SpaceAddForm } from '../components/components';
 import { RouteNames } from '../spaces.constants';
@@ -119,7 +118,6 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const { t } = useI18n();
-const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('spacesModule.meta.spaces.add.title'),
@@ -139,7 +137,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			},
 			{
 				label: t('spacesModule.breadcrumbs.spaces.add'),
-				route: router.resolve({ name: RouteNames.SPACES_EDIT }),
+				route: router.resolve({ name: RouteNames.SPACES_ADD }),
 			},
 		];
 	}
@@ -179,8 +177,7 @@ const onClose = (): void => {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onSaved = (_savedSpace: ISpace): void => {
-	flashMessage.success(t('spacesModule.messages.created'));
-
+	// Flash message is already shown by the composable, just handle navigation
 	if (isLGDevice.value) {
 		router.replace({ name: RouteNames.SPACES });
 	} else {

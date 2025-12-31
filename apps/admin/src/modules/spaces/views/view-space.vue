@@ -67,6 +67,15 @@
 
 					{{ t('spacesModule.detail.displays.add') }}
 				</el-button>
+				<el-button
+					plain
+					class="px-4! ml-2!"
+					@click="onSpaceEdit"
+				>
+					<template #icon>
+						<icon icon="mdi:pencil" />
+					</template>
+				</el-button>
 			</div>
 		</template>
 	</view-header>
@@ -332,12 +341,36 @@ const onCloseDrawer = (done?: () => void): void => {
 			type: 'warning',
 		})
 			.then((): void => {
+				if (isLGDevice.value) {
+					router.replace({
+						name: RouteNames.SPACE,
+						params: { id: spaceId.value },
+					});
+				} else {
+					router.push({
+						name: RouteNames.SPACE,
+						params: { id: spaceId.value },
+					});
+				}
+
 				done?.();
 			})
 			.catch((): void => {
 				// Just ignore it
 			});
 	} else {
+		if (isLGDevice.value) {
+			router.replace({
+				name: RouteNames.SPACE,
+				params: { id: spaceId.value },
+			});
+		} else {
+			router.push({
+				name: RouteNames.SPACE,
+				params: { id: spaceId.value },
+			});
+		}
+
 		done?.();
 	}
 };
@@ -368,6 +401,14 @@ const onClose = (): void => {
 	}
 };
 
+const onSpaceEdit = (): void => {
+	if (isLGDevice.value) {
+		router.replace({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } });
+	} else {
+		router.push({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } });
+	}
+};
+
 onBeforeMount(async (): Promise<void> => {
 	await fetchSpace();
 	if (!isLoading.value && space.value === null && !wasSpaceLoaded.value) {
@@ -378,12 +419,26 @@ onBeforeMount(async (): Promise<void> => {
 		wasSpaceLoaded.value = true;
 	}
 
+	showDrawer.value =
+		route.matched.find(
+			(matched) => matched.name === RouteNames.SPACE_EDIT
+		) !== undefined;
 });
 
 onMounted((): void => {
 	// Component mounted
 });
 
+
+watch(
+	(): string => route.path,
+	(): void => {
+		showDrawer.value =
+			route.matched.find(
+				(matched) => matched.name === RouteNames.SPACE_EDIT
+			) !== undefined;
+	}
+);
 
 watch(
 	(): boolean => isLoading.value,

@@ -203,7 +203,7 @@
 			},
 			"lightingRoles": {
 				"title": "Lighting roles",
-				"description": "Assign roles to lights for smart intent-based control (Work/Relax/Night modes)",
+				"description": "Assign roles to lights to help the panel understand how each light is typically used (Work, Relax, Night)",
 				"noLights": "No lights found in this space",
 				"role": {
 					"title": "Role",
@@ -228,7 +228,15 @@
 		"accent": "Accent",
 		"night": "Night",
 		"other": "Other",
-		"unassigned": "Unassigned"
+		"unassigned": "Unassigned",
+		"descriptions": {
+			"main": "Primary lighting for the space, typically overhead or central fixtures used for general illumination.",
+			"task": "Focused lighting for specific activities like reading, cooking, or working.",
+			"ambient": "Soft background lighting used to create atmosphere and comfort.",
+			"accent": "Decorative lighting used to highlight features or create visual interest.",
+			"night": "Low-level lighting for nighttime navigation and safety.",
+			"other": "Lighting that doesn't fit into standard categories."
+		}
 	},
 	"filters": {
 		"type": {
@@ -323,6 +331,19 @@
 	},
 	"detail": {
 		"title": "Space detail",
+		"lightingRoles": {
+			"title": "Lighting roles",
+			"lightsAssigned": "Lights assigned"
+		},
+		"climateOverrides": {
+			"title": "Climate",
+			"popoverTitle": "Climate overrides",
+			"popoverDescription": "These settings define which devices are used to control and measure climate in this space.",
+			"primaryThermostat": "Thermostat",
+			"temperatureSensor": "Temperature",
+			"autoDetected": "Auto-detected",
+			"notConfigured": "Not configured"
+		},
 		"info": {
 			"title": "Space information",
 			"name": "Name",

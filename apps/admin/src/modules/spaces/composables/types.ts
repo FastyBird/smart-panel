@@ -63,6 +63,7 @@ export interface IUseSpaceAddForm<TForm extends ISpaceAddForm = ISpaceAddForm> {
 	submit: () => Promise<'added'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
+	createdSpace: Ref<ISpace | null>;
 }
 
 export interface IUseSpaceEditForm<TForm extends ISpaceEditForm = ISpaceEditForm> {
