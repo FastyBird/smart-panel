@@ -97,14 +97,11 @@ export class SceneTriggersController {
 		this.logger.debug(`[LOOKUP] Fetching trigger id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
+		await this.getTriggerOrThrow(id, sceneId);
 
 		const trigger = await this.sceneTriggersService.findOne(id);
 
-		if (!trigger) {
-			throw new NotFoundException(`Trigger with id=${id} was not found.`);
-		}
-
-		this.logger.debug(`[LOOKUP] Found trigger id=${trigger.id}`);
+		this.logger.debug(`[LOOKUP] Found trigger id=${trigger?.id}`);
 
 		const response = new SceneTriggerResponseModel();
 		response.data = trigger;
@@ -201,7 +198,7 @@ export class SceneTriggersController {
 		this.logger.debug(`[UPDATE] Incoming request to update trigger id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
-		await this.getTriggerOrThrow(id);
+		await this.getTriggerOrThrow(id, sceneId);
 
 		const dtoInstance = toInstance(UpdateSceneTriggerDto, updateDto.data, {
 			excludeExtraneousValues: false,
@@ -258,7 +255,7 @@ export class SceneTriggersController {
 		this.logger.debug(`[DELETE] Incoming request to delete trigger id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
-		await this.getTriggerOrThrow(id);
+		await this.getTriggerOrThrow(id, sceneId);
 
 		await this.sceneTriggersService.remove(id);
 
@@ -273,10 +270,16 @@ export class SceneTriggersController {
 		}
 	}
 
-	private async getTriggerOrThrow(id: string): Promise<void> {
+	private async getTriggerOrThrow(id: string, sceneId: string): Promise<void> {
 		const trigger = await this.sceneTriggersService.findOne(id);
 
 		if (!trigger) {
+			throw new NotFoundException(`Trigger with id=${id} was not found.`);
+		}
+
+		// Verify the trigger belongs to the specified scene (IDOR protection)
+		const triggerSceneId = typeof trigger.scene === 'string' ? trigger.scene : trigger.scene?.id;
+		if (triggerSceneId !== sceneId) {
 			throw new NotFoundException(`Trigger with id=${id} was not found.`);
 		}
 	}

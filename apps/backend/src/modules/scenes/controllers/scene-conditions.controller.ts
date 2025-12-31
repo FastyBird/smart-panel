@@ -97,14 +97,11 @@ export class SceneConditionsController {
 		this.logger.debug(`[LOOKUP] Fetching condition id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
+		await this.getConditionOrThrow(id, sceneId);
 
 		const condition = await this.sceneConditionsService.findOne(id);
 
-		if (!condition) {
-			throw new NotFoundException(`Condition with id=${id} was not found.`);
-		}
-
-		this.logger.debug(`[LOOKUP] Found condition id=${condition.id}`);
+		this.logger.debug(`[LOOKUP] Found condition id=${condition?.id}`);
 
 		const response = new SceneConditionResponseModel();
 		response.data = condition;
@@ -201,7 +198,7 @@ export class SceneConditionsController {
 		this.logger.debug(`[UPDATE] Incoming request to update condition id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
-		await this.getConditionOrThrow(id);
+		await this.getConditionOrThrow(id, sceneId);
 
 		const dtoInstance = toInstance(UpdateSceneConditionDto, updateDto.data, {
 			excludeExtraneousValues: false,
@@ -258,7 +255,7 @@ export class SceneConditionsController {
 		this.logger.debug(`[DELETE] Incoming request to delete condition id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
-		await this.getConditionOrThrow(id);
+		await this.getConditionOrThrow(id, sceneId);
 
 		await this.sceneConditionsService.remove(id);
 
@@ -273,10 +270,16 @@ export class SceneConditionsController {
 		}
 	}
 
-	private async getConditionOrThrow(id: string): Promise<void> {
+	private async getConditionOrThrow(id: string, sceneId: string): Promise<void> {
 		const condition = await this.sceneConditionsService.findOne(id);
 
 		if (!condition) {
+			throw new NotFoundException(`Condition with id=${id} was not found.`);
+		}
+
+		// Verify the condition belongs to the specified scene (IDOR protection)
+		const conditionSceneId = typeof condition.scene === 'string' ? condition.scene : condition.scene?.id;
+		if (conditionSceneId !== sceneId) {
 			throw new NotFoundException(`Condition with id=${id} was not found.`);
 		}
 	}

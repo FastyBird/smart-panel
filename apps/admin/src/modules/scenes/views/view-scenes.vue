@@ -202,8 +202,11 @@ const onDeleteScene = async (scene: IScene): Promise<void> => {
 
 		await removeScene(scene.id);
 		ElMessage.success(t('scenes.messages.deleted'));
-	} catch {
-		// Cancelled or error
+	} catch (error) {
+		// ElMessageBox.confirm rejects with 'cancel' when user cancels
+		if (error !== 'cancel') {
+			ElMessage.error(t('scenes.messages.deleteFailed'));
+		}
 	}
 };
 

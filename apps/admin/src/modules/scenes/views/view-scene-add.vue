@@ -351,7 +351,9 @@ const onPropertyChange = (index: number): void => {
 	if (dataType === 'boolean') {
 		form.actions[index].value = false;
 	} else if (dataType === 'number') {
-		form.actions[index].value = 0;
+		// Use property minimum if defined, otherwise default to 0
+		const min = getPropertyMin(propertyId);
+		form.actions[index].value = min ?? 0;
 	} else {
 		form.actions[index].value = '';
 	}

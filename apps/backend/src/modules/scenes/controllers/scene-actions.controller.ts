@@ -97,14 +97,11 @@ export class SceneActionsController {
 		this.logger.debug(`[LOOKUP] Fetching action id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
+		await this.getActionOrThrow(id, sceneId);
 
 		const action = await this.sceneActionsService.findOne(id);
 
-		if (!action) {
-			throw new NotFoundException(`Action with id=${id} was not found.`);
-		}
-
-		this.logger.debug(`[LOOKUP] Found action id=${action.id}`);
+		this.logger.debug(`[LOOKUP] Found action id=${action?.id}`);
 
 		const response = new SceneActionResponseModel();
 		response.data = action;
@@ -201,7 +198,7 @@ export class SceneActionsController {
 		this.logger.debug(`[UPDATE] Incoming request to update action id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
-		await this.getActionOrThrow(id);
+		await this.getActionOrThrow(id, sceneId);
 
 		const dtoInstance = toInstance(UpdateSceneActionDto, updateDto.data, {
 			excludeExtraneousValues: false,
@@ -258,7 +255,7 @@ export class SceneActionsController {
 		this.logger.debug(`[DELETE] Incoming request to delete action id=${id} for scene id=${sceneId}`);
 
 		await this.getSceneOrThrow(sceneId);
-		await this.getActionOrThrow(id);
+		await this.getActionOrThrow(id, sceneId);
 
 		await this.sceneActionsService.remove(id);
 
@@ -273,10 +270,16 @@ export class SceneActionsController {
 		}
 	}
 
-	private async getActionOrThrow(id: string): Promise<void> {
+	private async getActionOrThrow(id: string, sceneId: string): Promise<void> {
 		const action = await this.sceneActionsService.findOne(id);
 
 		if (!action) {
+			throw new NotFoundException(`Action with id=${id} was not found.`);
+		}
+
+		// Verify the action belongs to the specified scene (IDOR protection)
+		const actionSceneId = typeof action.scene === 'string' ? action.scene : action.scene?.id;
+		if (actionSceneId !== sceneId) {
 			throw new NotFoundException(`Action with id=${id} was not found.`);
 		}
 	}
