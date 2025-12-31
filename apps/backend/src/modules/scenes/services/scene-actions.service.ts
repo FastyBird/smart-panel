@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, type FindOptionsOrder, type FindOptionsWhere, Repository } from 'typeorm';
+import { DataSource, EntityManager, type FindOptionsOrder, type FindOptionsWhere, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -106,6 +106,45 @@ export class SceneActionsService {
 		this.eventEmitter.emit(EventType.SCENE_ACTION_CREATED, result);
 
 		return result;
+	}
+
+	/**
+	 * Create action using a provided EntityManager (for transaction support)
+	 */
+	async createWithEntityManager<TAction extends SceneActionEntity>(
+		createDto: CreateSceneActionDto & { scene: string },
+		entityManager: EntityManager,
+	): Promise<TAction> {
+		this.logger.debug('[CREATE] Creating new scene action within transaction');
+
+		const { type } = createDto;
+
+		const mapping = type ? this.actionsMapperService.getMapping<TAction, any, any>(type) : null;
+
+		const dtoClass = mapping?.createDto ?? CreateSceneActionDto;
+		const dtoInstance = toInstance(dtoClass, createDto) as object;
+
+		const errors = await validate(dtoInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
+		});
+
+		if (errors.length > 0) {
+			this.logger.error(`[VALIDATION FAILED] Validation failed for action creation error=${JSON.stringify(errors)}`);
+			throw new ScenesValidationException('Provided action data are invalid.');
+		}
+
+		const entityClass = mapping?.class || SceneActionEntity;
+		const repository = entityManager.getRepository(entityClass) as Repository<TAction>;
+
+		const action = repository.create(toInstance(entityClass, dtoInstance) as TAction);
+
+		const savedAction = await repository.save(action);
+
+		this.logger.debug(`[CREATE] Successfully created new action with id=${savedAction.id} within transaction`);
+
+		return savedAction;
 	}
 
 	async update<TAction extends SceneActionEntity>(id: string, updateDto: UpdateSceneActionDto): Promise<TAction> {

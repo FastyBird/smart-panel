@@ -201,37 +201,45 @@ export class ScenesService {
 			throw new ScenesValidationException('Provided scene data are invalid.');
 		}
 
-		const repository: Repository<TScene> = this.dataSource.getRepository(mapping.class);
+		// Use transaction to ensure scene and actions are created atomically
+		const savedScene = await this.dataSource.transaction(async (transactionalEntityManager) => {
+			const repository: Repository<TScene> = transactionalEntityManager.getRepository(mapping.class);
 
-		const scene = repository.create(toInstance(mapping.class, dtoInstance));
+			const scene = repository.create(toInstance(mapping.class, dtoInstance));
 
-		// Save the scene
-		const raw = await repository.save(scene);
+			// Save the scene
+			const raw = await repository.save(scene);
 
-		// Create actions
-		for (const actionDto of actions) {
-			this.logger.debug(`[CREATE] Creating new action for sceneId=${raw.id}`);
+			// Create actions within the same transaction
+			for (const actionDto of actions) {
+				this.logger.debug(`[CREATE] Creating new action for sceneId=${raw.id}`);
 
-			await this.sceneActionsService.create({
-				...actionDto,
-				scene: raw.id,
-			});
-		}
+				await this.sceneActionsService.createWithEntityManager(
+					{
+						...actionDto,
+						scene: raw.id,
+					},
+					transactionalEntityManager,
+				);
+			}
+
+			return raw;
+		});
 
 		// Retrieve the saved scene with its full relations
-		let savedScene = await this.getOneOrThrow<TScene>(scene.id);
+		let fullScene = await this.getOneOrThrow<TScene>(savedScene.id);
 
 		// Call afterCreate hook if defined
 		if (mapping.afterCreate) {
-			await mapping.afterCreate(savedScene);
-			savedScene = await this.getOneOrThrow<TScene>(scene.id);
+			await mapping.afterCreate(fullScene);
+			fullScene = await this.getOneOrThrow<TScene>(savedScene.id);
 		}
 
-		this.logger.debug(`[CREATE] Successfully created new scene with id=${savedScene.id}`);
+		this.logger.debug(`[CREATE] Successfully created new scene with id=${fullScene.id}`);
 
-		this.eventEmitter.emit(EventType.SCENE_CREATED, savedScene);
+		this.eventEmitter.emit(EventType.SCENE_CREATED, fullScene);
 
-		return savedScene;
+		return fullScene;
 	}
 
 	async update<TScene extends SceneEntity, TUpdateDTO extends UpdateSceneDto>(
