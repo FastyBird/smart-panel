@@ -68,11 +68,15 @@ export default {
 			switch (data.event) {
 				case EventType.SCENE_CREATED:
 				case EventType.SCENE_UPDATED:
-					scenesStore.onEvent({
-						id: data.payload.id,
-						type: 'type' in data.payload ? String(data.payload.type) : 'unknown',
-						data: data.payload,
-					});
+					try {
+						scenesStore.onEvent({
+							id: data.payload.id,
+							type: 'type' in data.payload ? String(data.payload.type) : 'unknown',
+							data: data.payload,
+						});
+					} catch (error) {
+						console.warn(`Failed to process ${data.event} event:`, error);
+					}
 					break;
 
 				case EventType.SCENE_TRIGGERED:

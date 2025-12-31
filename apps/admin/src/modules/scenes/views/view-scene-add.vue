@@ -259,7 +259,7 @@ const rules: FormRules = {
 const actionRules = {
 	deviceId: [{ required: true, message: t('scenes.form.deviceRequired'), trigger: 'change' }],
 	propertyId: [{ required: true, message: t('scenes.form.propertyRequired'), trigger: 'change' }],
-	value: [{ required: true, message: t('scenes.form.valueRequired'), trigger: 'blur' }],
+	value: [{ required: true, message: t('scenes.form.valueRequired'), trigger: 'change' }],
 };
 
 const getChannelsForDevice = (deviceId: string): IChannel[] => {
