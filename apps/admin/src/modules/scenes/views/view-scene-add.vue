@@ -431,12 +431,10 @@ const onSave = async (): Promise<void> => {
 				actions: form.actions.map((action, index) => ({
 					id: uuid(),
 					type: LOCAL_SCENE_TYPE,
-					configuration: {
-						deviceId: action.deviceId,
-						channelId: action.channelId || null,
-						propertyId: action.propertyId,
-						value: action.value,
-					},
+					deviceId: action.deviceId,
+					channelId: action.channelId || null,
+					propertyId: action.propertyId,
+					value: action.value,
 					order: index,
 					enabled: true,
 				})),

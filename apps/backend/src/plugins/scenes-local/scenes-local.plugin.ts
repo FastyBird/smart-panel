@@ -16,6 +16,9 @@ import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import { CreateLocalSceneActionDto } from './dto/create-local-scene-action.dto';
+import { UpdateLocalSceneActionDto } from './dto/update-local-scene-action.dto';
+import { LocalSceneActionEntity } from './entities/scenes-local.entity';
 import { LocalScenePlatform } from './platforms/local-scene.platform';
 import { SCENES_LOCAL_PLUGIN_NAME, SCENES_LOCAL_TYPE } from './scenes-local.constants';
 
@@ -44,11 +47,15 @@ export class ScenesLocalPlugin {
 		});
 
 		// Register scene action type mapping for local actions
-		this.sceneActionsMapper.registerMapping<SceneActionEntity, CreateSceneActionDto, UpdateSceneActionDto>({
+		this.sceneActionsMapper.registerMapping<
+			LocalSceneActionEntity,
+			CreateLocalSceneActionDto,
+			UpdateLocalSceneActionDto
+		>({
 			type: SCENES_LOCAL_TYPE,
-			class: SceneActionEntity,
-			createDto: CreateSceneActionDto,
-			updateDto: UpdateSceneActionDto,
+			class: LocalSceneActionEntity,
+			createDto: CreateLocalSceneActionDto,
+			updateDto: UpdateLocalSceneActionDto,
 		});
 
 		// Register the local scenes platform with the executor
@@ -80,21 +87,21 @@ export class ScenesLocalPlugin {
 			parentClass: SceneActionEntity,
 			discriminatorProperty: 'type',
 			discriminatorValue: SCENES_LOCAL_TYPE,
-			modelClass: SceneActionEntity,
+			modelClass: LocalSceneActionEntity,
 		});
 
 		this.discriminatorRegistry.register({
 			parentClass: CreateSceneActionDto,
 			discriminatorProperty: 'type',
 			discriminatorValue: SCENES_LOCAL_TYPE,
-			modelClass: CreateSceneActionDto,
+			modelClass: CreateLocalSceneActionDto,
 		});
 
 		this.discriminatorRegistry.register({
 			parentClass: UpdateSceneActionDto,
 			discriminatorProperty: 'type',
 			discriminatorValue: SCENES_LOCAL_TYPE,
-			modelClass: UpdateSceneActionDto,
+			modelClass: UpdateLocalSceneActionDto,
 		});
 
 		// Register extension metadata

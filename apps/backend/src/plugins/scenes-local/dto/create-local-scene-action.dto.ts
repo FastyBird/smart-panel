@@ -1,0 +1,104 @@
+import { Expose, Transform } from 'class-transformer';
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
+import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
+
+@ApiSchema({ name: 'ScenesLocalPluginCreateSceneAction' })
+export class CreateLocalSceneActionDto {
+	@ApiPropertyOptional({
+		description: 'Action ID',
+		type: 'string',
+		format: 'uuid',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
+	id?: string;
+
+	@ApiProperty({
+		description: 'Action type',
+		type: 'string',
+		default: SCENES_LOCAL_TYPE,
+		example: SCENES_LOCAL_TYPE,
+	})
+	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a valid action type string."}]' })
+	readonly type: typeof SCENES_LOCAL_TYPE = SCENES_LOCAL_TYPE;
+
+	@ApiProperty({
+		name: 'device_id',
+		description: 'Target device identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
+	@Expose({ name: 'device_id' })
+	@IsNotEmpty({ message: '[{"field":"device_id","reason":"Device ID is required."}]' })
+	@IsUUID('4', { message: '[{"field":"device_id","reason":"Device ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { device_id?: string; deviceId?: string } }) => obj.device_id ?? obj.deviceId, {
+		toClassOnly: true,
+	})
+	device_id: string;
+
+	@ApiPropertyOptional({
+		name: 'channel_id',
+		description: 'Target channel identifier (optional, auto-detected if omitted)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: '550e8400-e29b-41d4-a716-446655440001',
+	})
+	@Expose({ name: 'channel_id' })
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"channel_id","reason":"Channel ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { channel_id?: string; channelId?: string } }) => obj.channel_id ?? obj.channelId, {
+		toClassOnly: true,
+	})
+	channel_id?: string | null;
+
+	@ApiProperty({
+		name: 'property_id',
+		description: 'Target property identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440002',
+	})
+	@Expose({ name: 'property_id' })
+	@IsNotEmpty({ message: '[{"field":"property_id","reason":"Property ID is required."}]' })
+	@IsUUID('4', { message: '[{"field":"property_id","reason":"Property ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { property_id?: string; propertyId?: string } }) => obj.property_id ?? obj.propertyId, {
+		toClassOnly: true,
+	})
+	property_id: string;
+
+	@ApiProperty({
+		description: 'Value to set on the property',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		example: true,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => {
+		if (typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
+			return value;
+		}
+		// For other types, convert to string representation
+		return JSON.stringify(value);
+	})
+	value: string | number | boolean;
+
+	@ApiPropertyOptional({ description: 'Action execution order', type: 'integer', example: 0 })
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"order","reason":"Order must be a valid integer."}]' })
+	@Min(0, { message: '[{"field":"order","reason":"Order must be a non-negative integer."}]' })
+	order?: number;
+
+	@ApiPropertyOptional({ description: 'Whether action is enabled', type: 'boolean', example: true })
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
+	enabled?: boolean;
+}
