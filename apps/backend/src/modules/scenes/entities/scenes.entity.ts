@@ -197,13 +197,12 @@ export class SceneEntity extends BaseEntity {
 	@OneToMany(() => SceneTriggerEntity, (trigger) => trigger.scene, { cascade: true, onDelete: 'CASCADE' })
 	triggers: SceneTriggerEntity[];
 
-	@ApiProperty({ description: 'Scene type (plugin identifier)', type: 'string', example: 'scenes-local' })
+	@ApiProperty({ description: 'Scene type (plugin identifier)', type: 'string', example: 'local' })
 	@Expose()
+	@IsString()
 	@Index()
-	get type(): string {
-		const constructorName = (this.constructor as { name: string }).name;
-		return constructorName.toLowerCase();
-	}
+	@Column({ type: 'varchar', length: 100, default: 'local' })
+	type: string = 'local';
 }
 
 @ApiSchema({ name: 'ScenesModuleDataSceneAction' })
@@ -305,13 +304,12 @@ export class SceneActionEntity extends BaseEntity {
 	@Column({ nullable: false, default: true })
 	enabled: boolean = true;
 
-	@ApiProperty({ description: 'Action type (plugin identifier)', type: 'string', example: 'scenes-local' })
+	@ApiProperty({ description: 'Action type (plugin identifier)', type: 'string', example: 'local' })
 	@Expose()
+	@IsString()
 	@Index()
-	get type(): string {
-		const constructorName = (this.constructor as { name: string }).name;
-		return constructorName.toLowerCase();
-	}
+	@Column({ type: 'varchar', length: 100, default: 'local' })
+	type: string = 'local';
 }
 
 @ApiSchema({ name: 'ScenesModuleDataSceneCondition' })
@@ -367,11 +365,10 @@ export class SceneConditionEntity extends BaseEntity {
 
 	@ApiProperty({ description: 'Condition type (plugin identifier)', type: 'string', example: 'device-state' })
 	@Expose()
+	@IsString()
 	@Index()
-	get type(): string {
-		const constructorName = (this.constructor as { name: string }).name;
-		return constructorName.toLowerCase();
-	}
+	@Column({ type: 'varchar', length: 100, default: 'device-state' })
+	type: string = 'device-state';
 }
 
 @ApiSchema({ name: 'ScenesModuleDataSceneTrigger' })
@@ -433,10 +430,10 @@ export class SceneTriggerEntity extends BaseEntity {
 	@Column({ nullable: false, default: true })
 	enabled: boolean = true;
 
-	@ApiProperty({ description: 'Trigger type (plugin identifier)', type: 'string', example: 'schedule' })
+	@ApiProperty({ description: 'Trigger type (plugin identifier)', type: 'string', example: 'manual' })
 	@Expose()
-	get type(): string {
-		const constructorName = (this.constructor as { name: string }).name;
-		return constructorName.toLowerCase();
-	}
+	@IsString()
+	@Index()
+	@Column({ type: 'varchar', length: 100, default: 'manual' })
+	type: string = 'manual';
 }

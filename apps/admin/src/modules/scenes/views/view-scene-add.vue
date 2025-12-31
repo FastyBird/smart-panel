@@ -186,10 +186,12 @@ import {
 import { Icon } from '@iconify/vue';
 import { v4 as uuid } from 'uuid';
 
+import { injectStoresManager } from '../../../common';
 import { DevicesModuleChannelPropertyPermissions } from '../../../openapi.constants';
-import { useChannels, useChannelsProperties, useDevices } from '../../devices/composables/composables';
+import { useChannels, useDevices } from '../../devices/composables/composables';
 import type { IChannelProperty } from '../../devices/store/channels.properties.store.types';
 import type { IChannel } from '../../devices/store/channels.store.types';
+import { channelsPropertiesStoreKey } from '../../devices/store/keys';
 import { useSpaces } from '../../spaces/composables';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { useScenesActions } from '../composables/useScenesActions';
@@ -215,11 +217,20 @@ const LOCAL_SCENE_TYPE = 'local';
 const { t } = useI18n();
 const router = useRouter();
 
+const storesManager = injectStoresManager();
+const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+
 const { addScene } = useScenesActions();
 const { spaces, fetching: spacesLoading, fetchSpaces } = useSpaces();
 const { devices, areLoading: devicesLoading, fetchDevices } = useDevices();
 const { channels, fetchChannels } = useChannels();
-const { properties, fetchProperties } = useChannelsProperties({ channelId: computed(() => undefined) });
+
+const properties = computed<IChannelProperty[]>(() => propertiesStore.findAll());
+
+const fetchPropertiesForChannel = async (channelId: string): Promise<void> => {
+	if (!channelId) return;
+	await propertiesStore.fetch({ channelId });
+};
 
 const isOpen = ref(false);
 const saving = ref(false);
@@ -321,14 +332,14 @@ const onDeviceChange = (index: number): void => {
 	}
 };
 
-const onChannelChange = (index: number): void => {
+const onChannelChange = async (index: number): Promise<void> => {
 	form.actions[index].propertyId = '';
 	form.actions[index].value = '';
 
 	// Fetch properties for the selected channel
 	const channelId = form.actions[index].channelId;
 	if (channelId) {
-		fetchProperties();
+		await fetchPropertiesForChannel(channelId);
 	}
 };
 
@@ -410,7 +421,7 @@ const onSave = async (): Promise<void> => {
 
 onMounted(async () => {
 	isOpen.value = true;
-	await Promise.all([fetchSpaces(), fetchDevices(), fetchChannels(), fetchProperties()]);
+	await Promise.all([fetchSpaces(), fetchDevices(), fetchChannels()]);
 });
 </script>
 

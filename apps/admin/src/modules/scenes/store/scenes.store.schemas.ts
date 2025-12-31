@@ -17,8 +17,12 @@ export const SceneActionSchema = z.object({
 	value: z.union([z.string(), z.number(), z.boolean()]),
 	order: z.number().int().min(0).default(0),
 	enabled: z.boolean().default(true),
-	scene: ItemIdSchema,
-	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
+	scene: ItemIdSchema.optional(),
+	createdAt: z
+		.union([z.string().datetime({ offset: true }), z.date()])
+		.transform((date) => (date instanceof Date ? date : new Date(date)))
+		.optional()
+		.default(() => new Date()),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
 		.transform((date) => (date instanceof Date ? date : new Date(date)))
@@ -33,8 +37,12 @@ export const SceneConditionSchema = z.object({
 	operator: z.enum(['and', 'or']).default('and'),
 	configuration: z.record(z.unknown()).default({}),
 	enabled: z.boolean().default(true),
-	scene: ItemIdSchema,
-	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
+	scene: ItemIdSchema.optional(),
+	createdAt: z
+		.union([z.string().datetime({ offset: true }), z.date()])
+		.transform((date) => (date instanceof Date ? date : new Date(date)))
+		.optional()
+		.default(() => new Date()),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
 		.transform((date) => (date instanceof Date ? date : new Date(date)))
@@ -49,8 +57,12 @@ export const SceneTriggerSchema = z.object({
 	triggerType: z.enum(['manual', 'schedule', 'device_state', 'webhook', 'sunrise', 'sunset']).default('manual'),
 	configuration: z.record(z.unknown()).default({}),
 	enabled: z.boolean().default(true),
-	scene: ItemIdSchema,
-	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
+	scene: ItemIdSchema.optional(),
+	createdAt: z
+		.union([z.string().datetime({ offset: true }), z.date()])
+		.transform((date) => (date instanceof Date ? date : new Date(date)))
+		.optional()
+		.default(() => new Date()),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
 		.transform((date) => (date instanceof Date ? date : new Date(date)))
