@@ -154,7 +154,7 @@ export class SceneExecutorService {
 			}
 
 			this.eventEmitter.emit(EventType.SCENE_TRIGGERED, {
-				sceneId,
+				id: sceneId,
 				result,
 			});
 
