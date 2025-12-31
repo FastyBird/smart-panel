@@ -168,7 +168,7 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 	watch(
 		(): 'name' | 'category' | 'displayOrder' | undefined => sortBy.value,
 		(val: 'name' | 'category' | 'displayOrder' | undefined): void => {
-			if (typeof val === 'undefined') {
+			if (typeof val === 'undefined' || sortDir.value === null) {
 				sort.value = [];
 			} else {
 				sort.value = [

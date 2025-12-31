@@ -319,7 +319,7 @@ const onSortData = ({
 	prop: 'name' | 'category' | 'displayOrder';
 	order: 'ascending' | 'descending' | null;
 }): void => {
-	emit('update:sort-by', prop);
+	emit('update:sort-by', order === null ? undefined : prop);
 	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
 };
 
