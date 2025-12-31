@@ -76,25 +76,27 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
 
 	const scenes = computed<IScene[]>((): IScene[] => {
-		return orderBy<IScene>(
-			scenesStore
-				.findAll()
-				.filter(
-					(scene) =>
-						!scene.draft &&
-						(!filters.value.search ||
-							scene.id.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-							scene.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-							scene.description?.toLowerCase().includes(filters.value.search.toLowerCase())) &&
-						(filters.value.categories.length === 0 || filters.value.categories.includes(scene.category)) &&
-						(!filters.value.spaceId || scene.spaceId === filters.value.spaceId) &&
-						(filters.value.enabled === 'all' ||
-							(filters.value.enabled === 'enabled' && scene.enabled) ||
-							(filters.value.enabled === 'disabled' && !scene.enabled))
-				),
-			[(scene: IScene) => scene[sortBy.value as keyof IScene] ?? ''],
-			[sortDir.value === 'asc' ? 'asc' : 'desc']
-		);
+		const filtered = scenesStore
+			.findAll()
+			.filter(
+				(scene) =>
+					!scene.draft &&
+					(!filters.value.search ||
+						scene.id.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+						scene.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+						scene.description?.toLowerCase().includes(filters.value.search.toLowerCase())) &&
+					(filters.value.categories.length === 0 || filters.value.categories.includes(scene.category)) &&
+					(!filters.value.spaceId || scene.spaceId === filters.value.spaceId) &&
+					(filters.value.enabled === 'all' ||
+						(filters.value.enabled === 'enabled' && scene.enabled) ||
+						(filters.value.enabled === 'disabled' && !scene.enabled))
+			);
+
+		// When sorting is disabled (sortBy undefined or sortDir null), fall back to displayOrder ascending
+		const effectiveSortBy = sortBy.value ?? 'displayOrder';
+		const effectiveSortDir = sortDir.value ?? 'asc';
+
+		return orderBy<IScene>(filtered, [(scene: IScene) => scene[effectiveSortBy as keyof IScene] ?? ''], [effectiveSortDir]);
 	});
 
 	const scenesPaginated = computed<IScene[]>((): IScene[] => {
