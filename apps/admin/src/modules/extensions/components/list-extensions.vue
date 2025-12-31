@@ -182,9 +182,8 @@ const onSelectionChange = (selected: IExtension[]): void => {
 
 const onBulkAction = (action: string): void => {
 	emit('bulk-action', action, allSelectedItems.value);
-
-	// Clear selections after bulk action
-	selectedItemsMap.value.clear();
+	// Don't clear selections here - let the confirmation dialog complete first
+	// Selections will be cleared when view mode changes or user navigates away
 };
 
 const updateHeight = (): void => {

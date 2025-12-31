@@ -113,30 +113,44 @@ export const useDevicesActions = (): IUseDevicesActions => {
 			return;
 		}
 
-		let successCount = 0;
-		let failCount = 0;
+		try {
+			await ElMessageBox.confirm(
+				t('devicesModule.texts.devices.confirmBulkEnable', { count: devices.length }),
+				t('devicesModule.headings.devices.bulkEnable'),
+				{
+					confirmButtonText: t('devicesModule.buttons.yes.title'),
+					cancelButtonText: t('devicesModule.buttons.no.title'),
+					type: 'info',
+				}
+			);
 
-		for (const device of devices) {
-			try {
-				await devicesStore.edit({
-					id: device.id,
-					data: {
-						type: device.type,
-						enabled: true,
-					},
-				});
-				successCount++;
-			} catch {
-				failCount++;
+			let successCount = 0;
+			let failCount = 0;
+
+			for (const device of devices) {
+				try {
+					await devicesStore.edit({
+						id: device.id,
+						data: {
+							type: device.type,
+							enabled: true,
+						},
+					});
+					successCount++;
+				} catch {
+					failCount++;
+				}
 			}
-		}
 
-		if (successCount > 0) {
-			flashMessage.success(t('devicesModule.messages.devices.bulkEnabled', { count: successCount }));
-		}
+			if (successCount > 0) {
+				flashMessage.success(t('devicesModule.messages.devices.bulkEnabled', { count: successCount }));
+			}
 
-		if (failCount > 0) {
-			flashMessage.error(t('devicesModule.messages.devices.bulkEnableFailed', { count: failCount }));
+			if (failCount > 0) {
+				flashMessage.error(t('devicesModule.messages.devices.bulkEnableFailed', { count: failCount }));
+			}
+		} catch {
+			flashMessage.info(t('devicesModule.messages.devices.bulkEnableCanceled'));
 		}
 	};
 
@@ -145,30 +159,44 @@ export const useDevicesActions = (): IUseDevicesActions => {
 			return;
 		}
 
-		let successCount = 0;
-		let failCount = 0;
+		try {
+			await ElMessageBox.confirm(
+				t('devicesModule.texts.devices.confirmBulkDisable', { count: devices.length }),
+				t('devicesModule.headings.devices.bulkDisable'),
+				{
+					confirmButtonText: t('devicesModule.buttons.yes.title'),
+					cancelButtonText: t('devicesModule.buttons.no.title'),
+					type: 'warning',
+				}
+			);
 
-		for (const device of devices) {
-			try {
-				await devicesStore.edit({
-					id: device.id,
-					data: {
-						type: device.type,
-						enabled: false,
-					},
-				});
-				successCount++;
-			} catch {
-				failCount++;
+			let successCount = 0;
+			let failCount = 0;
+
+			for (const device of devices) {
+				try {
+					await devicesStore.edit({
+						id: device.id,
+						data: {
+							type: device.type,
+							enabled: false,
+						},
+					});
+					successCount++;
+				} catch {
+					failCount++;
+				}
 			}
-		}
 
-		if (successCount > 0) {
-			flashMessage.success(t('devicesModule.messages.devices.bulkDisabled', { count: successCount }));
-		}
+			if (successCount > 0) {
+				flashMessage.success(t('devicesModule.messages.devices.bulkDisabled', { count: successCount }));
+			}
 
-		if (failCount > 0) {
-			flashMessage.error(t('devicesModule.messages.devices.bulkDisableFailed', { count: failCount }));
+			if (failCount > 0) {
+				flashMessage.error(t('devicesModule.messages.devices.bulkDisableFailed', { count: failCount }));
+			}
+		} catch {
+			flashMessage.info(t('devicesModule.messages.devices.bulkDisableCanceled'));
 		}
 	};
 

@@ -174,9 +174,8 @@ const onSelectionChange = (selected: IWeatherLocation[]): void => {
 
 const onBulkAction = (action: string): void => {
 	emit('bulk-action', action, allSelectedItems.value);
-
-	// Clear selections after bulk action
-	selectedItemsMap.value.clear();
+	// Don't clear selections here - let the confirmation dialog complete first
+	// Selections will be cleared when items are removed from the store or user navigates away
 };
 
 onMounted((): void => {
