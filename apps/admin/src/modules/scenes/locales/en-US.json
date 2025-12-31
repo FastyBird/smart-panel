@@ -63,6 +63,7 @@
 			"triggerFailed": "Failed to trigger scene",
 			"confirmDelete": "Are you sure you want to delete scene \"{name}\"?",
 			"deleted": "Scene deleted successfully",
+			"deleteFailed": "Failed to delete scene",
 			"created": "Scene created successfully",
 			"createFailed": "Failed to create scene",
 			"addFormPlaceholder": "Scene add form will be implemented here",
