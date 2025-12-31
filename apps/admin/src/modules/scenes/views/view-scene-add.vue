@@ -377,12 +377,41 @@ const onClose = (): void => {
 	router.push({ name: RouteNames.SCENES });
 };
 
+const validateActions = (): boolean => {
+	for (let i = 0; i < form.actions.length; i++) {
+		const action = form.actions[i];
+
+		if (!action.deviceId) {
+			ElMessage.error(t('scenes.form.deviceRequired'));
+			return false;
+		}
+
+		if (!action.propertyId) {
+			ElMessage.error(t('scenes.form.propertyRequired'));
+			return false;
+		}
+
+		// Check value is set (handle boolean false as valid)
+		if (action.value === '' || action.value === undefined || action.value === null) {
+			ElMessage.error(t('scenes.form.valueRequired'));
+			return false;
+		}
+	}
+
+	return true;
+};
+
 const onSave = async (): Promise<void> => {
 	if (!formRef.value) return;
 
 	try {
 		await formRef.value.validate();
 	} catch {
+		return;
+	}
+
+	// Validate conditionally rendered action fields
+	if (!validateActions()) {
 		return;
 	}
 
