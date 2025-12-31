@@ -14,7 +14,7 @@ import { ScenesActionValidationException, ScenesSpaceValidationException } from 
 
 import { IScenePlatform } from './scene-executor.service';
 
-export const LOCAL_SCENES_PLATFORM_TYPE = 'sceneactionentity';
+export const LOCAL_SCENES_PLATFORM_TYPE = 'local';
 
 export interface IActionValidationResult {
 	valid: boolean;

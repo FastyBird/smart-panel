@@ -159,7 +159,7 @@ export const ScenesGetActionPayloadSchema = z.object({
 });
 
 export const ScenesAddActionPayloadSchema = z.object({
-	id: ItemIdSchema.optional().default(uuid()),
+	id: ItemIdSchema.optional().default(() => uuid()),
 	draft: z.boolean().optional().default(false),
 	data: z
 		.object({

@@ -178,8 +178,6 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 
 			semaphore.value.fetching.items = true;
 
-			firstLoad.value = false;
-
 			try {
 				const response = await backend.client.GET(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes` as never, {} as never);
 
