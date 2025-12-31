@@ -60,7 +60,7 @@
 			</div>
 		</el-form-item>
 
-		<el-divider>{{ t('weatherOpenweathermapOnecallPlugin.texts.orEnterManually') }}</el-divider>
+		<el-divider content-position="left" class="mt-6!">{{ t('weatherOpenweathermapOnecallPlugin.texts.orEnterManually') }}</el-divider>
 
 		<!-- Latitude/Longitude fields -->
 		<div class="flex flex-row items-start gap-4">

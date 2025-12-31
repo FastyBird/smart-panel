@@ -437,10 +437,15 @@
 						<el-table-column prop="name" :label="t('spacesModule.onboarding.displayName')" min-width="200">
 							<template #default="{ row }">
 								<div>
-									<div>{{ row.name || row.id }}</div>
-									<div v-if="row.macAddress" class="text-xs text-gray-500 mt-1">
-										{{ row.macAddress }}
-									</div>
+									<template v-if="row.name">
+										<div class="font-medium">{{ row.name }}</div>
+										<div class="text-xs text-gray-500 mt-1">
+											{{ row.macAddress }}
+										</div>
+									</template>
+									<template v-else>
+										<div class="font-medium">{{ row.macAddress }}</div>
+									</template>
 								</div>
 							</template>
 						</el-table-column>
@@ -695,7 +700,13 @@
 					<el-table :data="unassignedDisplaysList" class="max-h-[70vh] w-full" table-layout="fixed" max-height="70vh" stripe>
 						<el-table-column :label="t('spacesModule.onboarding.displayName')">
 							<template #default="{ row }">
-								{{ row.name || row.id }}
+								<template v-if="row.name">
+									<div class="font-medium">{{ row.name }}</div>
+									<div class="text-xs text-gray-500">{{ row.macAddress }}</div>
+								</template>
+								<template v-else>
+									<div class="font-medium">{{ row.macAddress }}</div>
+								</template>
 							</template>
 						</el-table-column>
 						<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="200">
@@ -894,9 +905,9 @@ const handleStartEditingCustomName = async (index: number): Promise<void> => {
 	customEditInputRefs.value.get(index)?.focus?.();
 };
 
-// Sorted displays for Step 2 (alphabetically by name, fallback to id)
+// Sorted displays for Step 2 (alphabetically by name, fallback to macAddress)
 const sortedDisplays = computed(() =>
-	[...displays.value].sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+	[...displays.value].sort((a, b) => (a.name || a.macAddress).localeCompare(b.name || b.macAddress))
 );
 
 // Sorted devices for Step 3 (alphabetically by name)
@@ -995,7 +1006,7 @@ const unassignedDevicesList = computed(() =>
 const unassignedDisplaysList = computed(() =>
 	displays.value
 		.filter((d) => !displayAssignments.value[d.id])
-		.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+		.sort((a, b) => (a.name || a.macAddress).localeCompare(b.name || b.macAddress))
 );
 
 onMounted(async () => {

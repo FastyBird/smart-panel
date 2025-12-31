@@ -1,134 +1,160 @@
 <template>
 	<el-form ref="formRef" :model="formData" :rules="rules" label-position="top" @submit.prevent="onSubmit">
-		<el-form-item :label="t('spacesModule.fields.spaces.name.title')" prop="name">
-			<el-input v-model="formData.name" :placeholder="t('spacesModule.fields.spaces.name.placeholder')" />
-		</el-form-item>
-
-		<el-form-item :label="t('spacesModule.fields.spaces.type.title')" prop="type">
-			<el-select v-model="formData.type">
-				<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
-				<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
-			</el-select>
-		</el-form-item>
-
-		<el-form-item :label="t('spacesModule.fields.spaces.category.title')" prop="category">
-			<el-select
-				v-model="formData.category"
-				:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
-				:clearable="formData.type !== SpaceType.ZONE"
-				@change="onCategoryChange"
-			>
-				<!-- Grouped categories for zones -->
-				<template v-if="categoryGroups">
-					<el-option-group
-						v-for="group in categoryGroups"
-						:key="group.key"
-						:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
-					>
-						<el-option
-							v-for="category in group.categories"
-							:key="category"
-							:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-							:value="category"
-						>
-							<span class="flex items-center gap-2">
-								<el-icon v-if="currentTemplates[category]">
-									<icon :icon="currentTemplates[category].icon" />
-								</el-icon>
-								{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-							</span>
-						</el-option>
-					</el-option-group>
-				</template>
-				<!-- Flat list for rooms -->
-				<template v-else>
-					<el-option
-						v-for="category in categoryOptions"
-						:key="category"
-						:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
-						:value="category"
-					>
-						<span class="flex items-center gap-2">
-							<el-icon v-if="currentTemplates[category]">
-								<icon :icon="currentTemplates[category].icon" />
-							</el-icon>
-							{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
-						</span>
-					</el-option>
-				</template>
-			</el-select>
-		</el-form-item>
-
-		<el-alert
-			:title="t('spacesModule.fields.spaces.category.hint')"
-			type="info"
-			:closable="false"
-			show-icon
-			class="!my-2"
-		/>
-
-		<el-form-item :label="t('spacesModule.fields.spaces.description.title')" prop="description">
-			<el-input
-				v-model="formData.description"
-				type="textarea"
-				:rows="3"
-				:placeholder="t('spacesModule.fields.spaces.description.placeholder')"
-			/>
-		</el-form-item>
-
-		<el-form-item :label="t('spacesModule.fields.spaces.icon.title')" prop="icon">
-			<el-input v-model="formData.icon" :placeholder="t('spacesModule.fields.spaces.icon.placeholder')">
-				<template v-if="formData.icon" #prefix>
-					<el-icon>
-						<icon :icon="formData.icon" />
-					</el-icon>
-				</template>
-			</el-input>
-		</el-form-item>
-
-		<el-form-item :label="t('spacesModule.fields.spaces.displayOrder.title')" prop="displayOrder">
-			<el-input-number
-				v-model="formData.displayOrder"
-				:min="0"
-			/>
-		</el-form-item>
-
-		<!-- Parent Zone - only visible for rooms -->
-		<el-form-item
-			v-if="formData.type === SpaceType.ROOM"
-			:label="t('spacesModule.fields.spaces.parentZone.title')"
-			prop="parentId"
-		>
-			<el-select
-				v-model="formData.parentId"
-				:placeholder="t('spacesModule.fields.spaces.parentZone.placeholder')"
-				clearable
-				filterable
-			>
-				<el-option
-					v-for="zone in availableZones"
-					:key="zone.id"
-					:label="zone.name"
-					:value="zone.id"
-				>
-					<span class="flex items-center gap-2">
-						<el-icon v-if="zone.icon">
-							<icon :icon="zone.icon" />
+		<el-collapse v-model="activeCollapses">
+			<!-- 1. General Section -->
+			<el-collapse-item name="general">
+				<template #title>
+					<div class="flex items-center gap-2">
+						<el-icon :size="20">
+							<icon icon="mdi:information" />
 						</el-icon>
-						{{ zone.name }}
-					</span>
-				</el-option>
-			</el-select>
-		</el-form-item>
+						<span class="font-medium">{{ t('spacesModule.edit.sections.general.title') }}</span>
+					</div>
+				</template>
 
-		<el-alert
-			v-if="formData.type === SpaceType.ROOM"
-			:title="t('spacesModule.fields.spaces.parentZone.hint')"
-			type="info"
-			:closable="false"
-			show-icon
-			class="!mt-2"
-		/>
+				<div class="px-2">
+					<el-form-item :label="t('spacesModule.fields.spaces.name.title')" prop="name">
+						<el-input v-model="formData.name" :placeholder="t('spacesModule.fields.spaces.name.placeholder')" />
+					</el-form-item>
+
+					<el-form-item :label="t('spacesModule.fields.spaces.type.title')" prop="type">
+						<el-select v-model="formData.type">
+							<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
+							<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
+						</el-select>
+					</el-form-item>
+
+					<el-form-item :label="t('spacesModule.fields.spaces.category.title')" prop="category">
+						<el-select
+							v-model="formData.category"
+							:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
+							:clearable="formData.type !== SpaceType.ZONE"
+							@change="onCategoryChange"
+						>
+							<!-- Grouped categories for zones -->
+							<template v-if="categoryGroups">
+								<el-option-group
+									v-for="group in categoryGroups"
+									:key="group.key"
+									:label="t(`spacesModule.fields.spaces.category.groups.${group.key}`)"
+								>
+									<el-option
+										v-for="category in group.categories"
+										:key="category"
+										:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+										:value="category"
+									>
+										<span class="flex items-center gap-2">
+											<el-icon v-if="currentTemplates[category]">
+												<icon :icon="currentTemplates[category].icon" />
+											</el-icon>
+											{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+										</span>
+									</el-option>
+								</el-option-group>
+							</template>
+							<!-- Flat list for rooms -->
+							<template v-else>
+								<el-option
+									v-for="category in categoryOptions"
+									:key="category"
+									:label="t(`spacesModule.fields.spaces.category.options.${category}`)"
+									:value="category"
+								>
+									<span class="flex items-center gap-2">
+										<el-icon v-if="currentTemplates[category]">
+											<icon :icon="currentTemplates[category].icon" />
+										</el-icon>
+										{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
+									</span>
+								</el-option>
+							</template>
+						</el-select>
+					</el-form-item>
+
+					<el-alert
+						:title="t('spacesModule.fields.spaces.category.hint')"
+						type="info"
+						:closable="false"
+						show-icon
+						class="my-2!"
+					/>
+
+					<el-form-item :label="t('spacesModule.fields.spaces.description.title')" prop="description">
+						<el-input
+							v-model="formData.description"
+							type="textarea"
+							:rows="3"
+							:placeholder="t('spacesModule.fields.spaces.description.placeholder')"
+						/>
+					</el-form-item>
+
+					<el-form-item :label="t('spacesModule.fields.spaces.icon.title')" prop="icon">
+						<el-input v-model="formData.icon" :placeholder="t('spacesModule.fields.spaces.icon.placeholder')">
+							<template v-if="formData.icon" #prefix>
+								<el-icon>
+									<icon :icon="formData.icon" />
+								</el-icon>
+							</template>
+						</el-input>
+					</el-form-item>
+
+					<el-form-item :label="t('spacesModule.fields.spaces.displayOrder.title')" prop="displayOrder">
+						<el-input-number
+							v-model="formData.displayOrder"
+							:min="0"
+						/>
+					</el-form-item>
+				</div>
+			</el-collapse-item>
+
+			<!-- 2. Organization Section (Room only) -->
+			<el-collapse-item v-if="formData.type === SpaceType.ROOM" name="organization">
+				<template #title>
+					<div class="flex items-center gap-2">
+						<el-icon :size="20">
+							<icon icon="mdi:sitemap" />
+						</el-icon>
+						<span class="font-medium">{{ t('spacesModule.edit.sections.organization.title') }}</span>
+					</div>
+				</template>
+
+				<div class="px-2">
+					<el-form-item
+						:label="t('spacesModule.fields.spaces.parentZone.title')"
+						prop="parentId"
+					>
+						<el-select
+							v-model="formData.parentId"
+							:placeholder="t('spacesModule.fields.spaces.parentZone.placeholder')"
+							clearable
+							filterable
+						>
+							<el-option
+								v-for="zone in availableZones"
+								:key="zone.id"
+								:label="zone.name"
+								:value="zone.id"
+							>
+								<span class="flex items-center gap-2">
+									<el-icon v-if="zone.icon">
+										<icon :icon="zone.icon" />
+									</el-icon>
+									{{ zone.name }}
+								</span>
+							</el-option>
+						</el-select>
+					</el-form-item>
+
+					<el-alert
+						:title="t('spacesModule.edit.sections.organization.hint')"
+						type="info"
+						:closable="false"
+						show-icon
+					/>
+				</div>
+			</el-collapse-item>
+		</el-collapse>
 
 		<div
 			v-if="!props.hideActions"
@@ -152,7 +178,22 @@
 import { computed, reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElAlert, ElButton, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElOptionGroup, ElSelect, type FormInstance, type FormRules } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElCollapse,
+	ElCollapseItem,
+	ElForm,
+	ElFormItem,
+	ElIcon,
+	ElInput,
+	ElInputNumber,
+	ElOption,
+	ElOptionGroup,
+	ElSelect,
+	type FormInstance,
+	type FormRules,
+} from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
@@ -180,6 +221,9 @@ const spacesStore = storesManager.getStore(spacesStoreKey);
 
 const formRef = ref<FormInstance>();
 const saving = ref(false);
+
+// Collapse state - General and Organization open by default
+const activeCollapses = ref<string[]>(['general', 'organization']);
 
 const initialValues = {
 	name: '',
@@ -229,6 +273,8 @@ watch(
 		if (newType === SpaceType.ZONE) {
 			formData.parentId = null;
 		}
+		// Clear validation state to prevent warning messages when rules change
+		formRef.value?.clearValidate();
 	}
 );
 
@@ -255,7 +301,7 @@ const rules = computed<FormRules>(() => ({
 		{
 			required: formData.type === SpaceType.ZONE,
 			message: t('spacesModule.fields.spaces.category.validation.requiredForZone'),
-			trigger: 'change',
+			trigger: 'blur',
 		},
 	],
 }));

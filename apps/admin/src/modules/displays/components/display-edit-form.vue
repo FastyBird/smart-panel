@@ -141,7 +141,7 @@
 		</el-form-item>
 
 		<!-- Home Page Configuration -->
-		<el-divider>{{ t('displaysModule.fields.displays.homeMode.title') }}</el-divider>
+		<el-divider content-position="left" class="mt-6!">{{ t('displaysModule.fields.displays.homeMode.title') }}</el-divider>
 
 		<el-form-item
 			:label="t('displaysModule.fields.displays.homeMode.title')"
@@ -194,7 +194,7 @@
 
 		<!-- Audio Settings (Speaker) - Only shown if audio output is supported -->
 		<template v-if="display.audioOutputSupported">
-			<el-divider>{{ t('displaysModule.fields.displays.audio.speaker.title') }}</el-divider>
+			<el-divider content-position="left" class="mt-6!">{{ t('displaysModule.fields.displays.audio.speaker.title') }}</el-divider>
 
 			<el-form-item
 				:label="t('displaysModule.fields.displays.speaker.title')"
@@ -223,7 +223,7 @@
 
 		<!-- Audio Settings (Microphone) - Only shown if audio input is supported -->
 		<template v-if="display.audioInputSupported">
-			<el-divider>{{ t('displaysModule.fields.displays.audio.microphone.title') }}</el-divider>
+			<el-divider content-position="left" class="mt-6!">{{ t('displaysModule.fields.displays.audio.microphone.title') }}</el-divider>
 
 			<el-form-item
 				:label="t('displaysModule.fields.displays.microphone.title')"

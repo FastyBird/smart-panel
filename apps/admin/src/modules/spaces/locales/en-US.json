@@ -13,6 +13,33 @@
 		"discard": "Discard changes",
 		"adjustFilters": "Filter spaces"
 	},
+	"edit": {
+		"sections": {
+			"general": {
+				"title": "General"
+			},
+			"organization": {
+				"title": "Organization",
+				"hint": "Assign this room to a zone (e.g. \"Ground Floor\", \"Upstairs\") to group related rooms together."
+			},
+			"devicesDisplays": {
+				"title": "Devices & Displays",
+				"titleDevicesOnly": "Devices",
+				"summary": "{devices} devices and {displays} displays are currently assigned to this space.",
+				"summaryDevicesOnly": "{devices} devices are currently assigned to this space.",
+				"manageDevices": "Manage devices",
+				"manageDisplays": "Manage displays"
+			},
+			"smartOverrides": {
+				"title": "Smart Overrides",
+				"badge": "Advanced",
+				"hint": "Optional settings to improve smart behavior and intent-based control.",
+				"climateOverrides": "Climate device overrides",
+				"lightingRoles": "Lighting roles",
+				"smartSuggestions": "Smart suggestions"
+			}
+		}
+	},
 	"subHeadings": {
 		"overview": "Dashboard view of your spaces",
 		"list": "Organize devices and displays by rooms or zones",
@@ -190,7 +217,7 @@
 			},
 			"suggestionsEnabled": {
 				"title": "Enable suggestions",
-				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state"
+				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state."
 			}
 		}
 	},

@@ -13,10 +13,19 @@
 							<icon icon="mdi:monitor" class="w[20px] h[20px]" />
 						</el-avatar>
 						<div>
-							<div class="font-medium">{{ row.name || row.macAddress }}</div>
-							<div class="text-xs text-gray-500">
-								{{ row.macAddress }}
-							</div>
+							<template v-if="row.name">
+								<strong class="block">{{ row.name }}</strong>
+								<el-text
+									size="small"
+									class="block leading-4"
+									truncated
+								>
+									{{ row.macAddress }}
+								</el-text>
+							</template>
+							<template v-else>
+								<div class="font-medium">{{ row.macAddress }}</div>
+							</template>
 						</div>
 					</div>
 				</template>
@@ -158,6 +167,7 @@ import { computed, onMounted, ref, toRef } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import {
+	ElAvatar,
 	ElButton,
 	ElDialog,
 	ElMessageBox,
@@ -167,6 +177,7 @@ import {
 	ElTable,
 	ElTableColumn,
 	ElTag,
+	ElText,
 	vLoading,
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';

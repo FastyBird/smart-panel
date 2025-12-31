@@ -1,6 +1,8 @@
 <template>
 	<div class="mt-2">
-		<el-divider>{{ t('spacesModule.fields.spaces.lightingRoles.title') }}</el-divider>
+		<el-divider content-position="left" class="mt-6!">
+			{{ t('spacesModule.edit.sections.smartOverrides.lightingRoles') }}
+		</el-divider>
 
 		<div class="text-sm text-gray-500 mb-4">
 			{{ t('spacesModule.fields.spaces.lightingRoles.description') }}
