@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 import { ChildEntity, Column, Index } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -65,7 +65,18 @@ export class LocalSceneActionEntity extends SceneActionEntity {
 		example: true,
 	})
 	@Expose()
-	@IsString({ message: '[{"field":"value","reason":"Value must be a string, number, or boolean."}]' })
-	@Column({ type: 'text' })
+	@Column({
+		type: 'text',
+		transformer: {
+			to: (value: string | number | boolean): string => JSON.stringify(value),
+			from: (value: string): string | number | boolean => {
+				try {
+					return JSON.parse(value) as string | number | boolean;
+				} catch {
+					return value;
+				}
+			},
+		},
+	})
 	value: string | number | boolean;
 }

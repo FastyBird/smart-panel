@@ -67,10 +67,6 @@ export class ScenesService {
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
 			.leftJoinAndSelect('actions.scene', 'actionScene')
-			.leftJoinAndSelect('scene.conditions', 'conditions')
-			.leftJoinAndSelect('conditions.scene', 'conditionScene')
-			.leftJoinAndSelect('scene.triggers', 'triggers')
-			.leftJoinAndSelect('triggers.scene', 'triggerScene')
 			.where('scene.spaceId = :spaceId', { spaceId })
 			.orderBy('scene.displayOrder', 'ASC')
 			.addOrderBy('scene.name', 'ASC')
@@ -103,7 +99,7 @@ export class ScenesService {
 		this.logger.debug('[LOOKUP ALL] Fetching all scenes');
 
 		const scenes = (await repository.find({
-			relations: ['actions', 'actions.scene', 'conditions', 'conditions.scene', 'triggers', 'triggers.scene'],
+			relations: ['actions', 'actions.scene'],
 			order: {
 				name: 'ASC',
 			} as unknown as FindOptionsOrder<TScene>,
@@ -125,10 +121,6 @@ export class ScenesService {
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
 			.leftJoinAndSelect('actions.scene', 'actionScene')
-			.leftJoinAndSelect('scene.conditions', 'conditions')
-			.leftJoinAndSelect('conditions.scene', 'conditionScene')
-			.leftJoinAndSelect('scene.triggers', 'triggers')
-			.leftJoinAndSelect('triggers.scene', 'triggerScene')
 			.where('scene.id = :id', { id })
 			.orderBy('actions.order', 'ASC')
 			.getOne()) as TScene | null;
@@ -158,10 +150,6 @@ export class ScenesService {
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
 			.leftJoinAndSelect('actions.scene', 'actionScene')
-			.leftJoinAndSelect('scene.conditions', 'conditions')
-			.leftJoinAndSelect('conditions.scene', 'conditionScene')
-			.leftJoinAndSelect('scene.triggers', 'triggers')
-			.leftJoinAndSelect('triggers.scene', 'triggerScene')
 			.where(`scene.${column} = :filterBy`, { filterBy: value })
 			.orderBy('actions.order', 'ASC')
 			.getOne()) as TScene | null;
