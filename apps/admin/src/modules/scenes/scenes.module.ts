@@ -68,12 +68,28 @@ export default {
 			switch (data.event) {
 				case EventType.SCENE_CREATED:
 				case EventType.SCENE_UPDATED:
-				case EventType.SCENE_TRIGGERED:
 					scenesStore.onEvent({
 						id: data.payload.id,
 						type: 'type' in data.payload ? String(data.payload.type) : 'unknown',
 						data: data.payload,
 					});
+					break;
+
+				case EventType.SCENE_TRIGGERED:
+					// SCENE_TRIGGERED has a different payload structure { id, result }
+					// Only update lastTriggeredAt for the existing scene
+					{
+						const existingScene = scenesStore.findById(data.payload.id);
+						if (existingScene) {
+							scenesStore.set({
+								id: data.payload.id,
+								data: {
+									...existingScene,
+									lastTriggeredAt: new Date(),
+								},
+							});
+						}
+					}
 					break;
 
 				case EventType.SCENE_DELETED:
