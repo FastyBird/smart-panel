@@ -143,7 +143,10 @@ onMounted((): void => {
 	}
 
 	const updateHeight = () => {
-		tableHeight.value = wrapper.value!.clientHeight - paginator.value!.clientHeight;
+		if (!wrapper.value || !paginator.value) {
+			return;
+		}
+		tableHeight.value = wrapper.value.clientHeight - paginator.value.clientHeight;
 	};
 
 	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
