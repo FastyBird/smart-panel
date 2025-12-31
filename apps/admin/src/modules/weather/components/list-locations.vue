@@ -7,7 +7,7 @@
 		<locations-filter
 			v-model:filters="innerFilters"
 			:filters-active="props.filtersActive"
-			:selected-count="allSelectedItems.length"
+			:selected-count="selectedItems.length"
 			:bulk-actions="bulkActions"
 			@reset-filters="emit('reset-filters')"
 			@adjust-list="emit('adjust-list')"
@@ -117,10 +117,7 @@ const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
 
-// Cross-page selection: store selected items by ID
-const selectedItemsMap = ref<Map<IWeatherLocation['id'], IWeatherLocation>>(new Map());
-
-const allSelectedItems = computed<IWeatherLocation[]>((): IWeatherLocation[] => Array.from(selectedItemsMap.value.values()));
+const selectedItems = ref<IWeatherLocation[]>([]);
 
 const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
 	{
@@ -156,26 +153,11 @@ const onPaginatePage = (page: number): void => {
 };
 
 const onSelectionChange = (selected: IWeatherLocation[]): void => {
-	// Get IDs of items currently visible on the page
-	const currentPageIds = new Set(props.items.map((item) => item.id));
-
-	// Remove items from the current page that are no longer selected
-	for (const id of currentPageIds) {
-		if (!selected.find((item) => item.id === id)) {
-			selectedItemsMap.value.delete(id);
-		}
-	}
-
-	// Add newly selected items
-	for (const item of selected) {
-		selectedItemsMap.value.set(item.id, item);
-	}
+	selectedItems.value = selected;
 };
 
 const onBulkAction = (action: string): void => {
-	emit('bulk-action', action, allSelectedItems.value);
-	// Don't clear selections here - let the confirmation dialog complete first
-	// Selections will be cleared when items are removed from the store or user navigates away
+	emit('bulk-action', action, selectedItems.value);
 };
 
 onMounted((): void => {
@@ -247,7 +229,7 @@ watch(
 	(): boolean => isMDDevice.value,
 	(val: boolean): void => {
 		if (!val) {
-			selectedItemsMap.value.clear();
+			selectedItems.value = [];
 		}
 	}
 );

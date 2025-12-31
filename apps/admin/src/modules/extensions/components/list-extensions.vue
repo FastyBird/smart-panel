@@ -8,7 +8,7 @@
 			v-model:filters="innerFilters"
 			v-model:view-mode="innerViewMode"
 			:filters-active="props.filtersActive"
-			:selected-count="allSelectedItems.length"
+			:selected-count="selectedItems.length"
 			:bulk-actions="bulkActions"
 			@reset-filters="emit('reset-filters')"
 			@adjust-list="emit('adjust-list')"
@@ -123,10 +123,7 @@ const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
 
-// Cross-page selection: store selected items by type
-const selectedItemsMap = ref<Map<IExtension['type'], IExtension>>(new Map());
-
-const allSelectedItems = computed<IExtension[]>((): IExtension[] => Array.from(selectedItemsMap.value.values()));
+const selectedItems = ref<IExtension[]>([]);
 
 const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
 	{
@@ -164,26 +161,11 @@ const onPaginatePage = (page: number): void => {
 };
 
 const onSelectionChange = (selected: IExtension[]): void => {
-	// Get types of items currently visible on the page
-	const currentPageTypes = new Set(props.items.map((item) => item.type));
-
-	// Remove items from the current page that are no longer selected
-	for (const type of currentPageTypes) {
-		if (!selected.find((item) => item.type === type)) {
-			selectedItemsMap.value.delete(type);
-		}
-	}
-
-	// Add newly selected items
-	for (const item of selected) {
-		selectedItemsMap.value.set(item.type, item);
-	}
+	selectedItems.value = selected;
 };
 
 const onBulkAction = (action: string): void => {
-	emit('bulk-action', action, allSelectedItems.value);
-	// Don't clear selections here - let the confirmation dialog complete first
-	// Selections will be cleared when view mode changes or user navigates away
+	emit('bulk-action', action, selectedItems.value);
 };
 
 const updateHeight = (): void => {
@@ -261,7 +243,7 @@ watch(
 	(val: 'table' | 'cards'): void => {
 		// Clear selections when switching to cards view (cards don't support selection)
 		if (val === 'cards') {
-			selectedItemsMap.value.clear();
+			selectedItems.value = [];
 		}
 
 		// Recalculate height after view mode changes and DOM updates
@@ -273,7 +255,7 @@ watch(
 	(): boolean => isMDDevice.value,
 	(val: boolean): void => {
 		if (!val) {
-			selectedItemsMap.value.clear();
+			selectedItems.value = [];
 		}
 	}
 );
