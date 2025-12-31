@@ -14,6 +14,7 @@ import { SceneExecutorService } from '../../modules/scenes/services/scene-execut
 import { ScenesTypeMapperService } from '../../modules/scenes/services/scenes-type-mapper.service';
 import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
+import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { CreateLocalSceneActionDto } from './dto/create-local-scene-action.dto';
@@ -21,6 +22,7 @@ import { UpdateLocalSceneActionDto } from './dto/update-local-scene-action.dto';
 import { LocalSceneActionEntity } from './entities/scenes-local.entity';
 import { LocalScenePlatform } from './platforms/local-scene.platform';
 import { SCENES_LOCAL_PLUGIN_NAME, SCENES_LOCAL_TYPE } from './scenes-local.constants';
+import { SCENES_LOCAL_PLUGIN_SWAGGER_EXTRA_MODELS } from './scenes-local.openapi';
 
 @Module({
 	imports: [ScenesModule, DevicesModule, SpacesModule, SwaggerModule, ExtensionsModule],
@@ -33,6 +35,7 @@ export class ScenesLocalPlugin {
 		private readonly sceneActionsMapper: SceneActionsTypeMapperService,
 		private readonly sceneExecutor: SceneExecutorService,
 		private readonly localScenePlatform: LocalScenePlatform,
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
 	) {}
@@ -60,6 +63,11 @@ export class ScenesLocalPlugin {
 
 		// Register the local scenes platform with the executor
 		this.sceneExecutor.registerPlatform(this.localScenePlatform);
+
+		// Register Swagger extra models
+		for (const model of SCENES_LOCAL_PLUGIN_SWAGGER_EXTRA_MODELS) {
+			this.swaggerRegistry.register(model);
+		}
 
 		// Register discriminator mappings for OpenAPI
 		this.discriminatorRegistry.register({
