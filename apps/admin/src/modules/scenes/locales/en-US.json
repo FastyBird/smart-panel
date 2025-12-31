@@ -4,7 +4,8 @@
 			"list": "Scenes",
 			"add": "Add Scene",
 			"edit": "Edit Scene",
-			"delete": "Delete Scene"
+			"delete": "Delete Scene",
+			"discard": "Discard Changes"
 		},
 		"subHeadings": {
 			"list": "Manage automation scenes for your smart home"
@@ -13,7 +14,10 @@
 			"scenes": "Scenes"
 		},
 		"filters": {
-			"allRooms": "All Rooms"
+			"allRooms": "All Rooms",
+			"enabled": "Enabled",
+			"disabled": "Disabled",
+			"all": "All"
 		},
 		"fields": {
 			"name": "Name",
@@ -21,7 +25,16 @@
 			"room": "Room",
 			"enabled": "Enabled",
 			"actions": "Actions",
-			"unknownRoom": "Unknown Room"
+			"unknownRoom": "Unknown Room",
+			"search": {
+				"placeholder": "Search scenes..."
+			}
+		},
+		"texts": {
+			"loadingScenes": "Loading scenes...",
+			"noScenes": "No scenes found",
+			"noFilteredScenes": "No scenes match your filters",
+			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
 		},
 		"form": {
 			"room": "Room",
@@ -56,7 +69,12 @@
 			},
 			"delete": "Delete",
 			"cancel": "Cancel",
-			"save": "Save"
+			"save": "Save",
+			"yes": "Yes",
+			"no": "No",
+			"resetFilters": {
+				"title": "Reset Filters"
+			}
 		},
 		"messages": {
 			"triggered": "Scene \"{name}\" triggered successfully",
@@ -67,7 +85,8 @@
 			"created": "Scene created successfully",
 			"createFailed": "Failed to create scene",
 			"addFormPlaceholder": "Scene add form will be implemented here",
-			"editFormPlaceholder": "Scene edit form will be implemented here"
+			"editFormPlaceholder": "Scene edit form will be implemented here",
+			"requestError": "An error occurred while processing your request"
 		},
 		"categories": {
 			"generic": "Generic",

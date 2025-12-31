@@ -1,198 +1,328 @@
 <template>
-	<app-bar-heading :heading="t('scenes.headings.list')" :sub-heading="t('scenes.subHeadings.list')" />
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<el-card class="scenes-list">
-		<template #header>
-			<div class="card-header">
-				<div class="header-left">
-					<span>{{ t('scenes.headings.list') }}</span>
-					<el-select
-						v-model="selectedSpaceId"
-						:placeholder="t('scenes.filters.allRooms')"
-						clearable
-						class="room-filter"
-					>
-						<el-option
-							v-for="room in rooms"
-							:key="room.id"
-							:label="room.name"
-							:value="room.id"
-						/>
-					</el-select>
-				</div>
-				<el-button type="primary" @click="onAddScene">
+	<app-bar-heading
+		v-if="!isMDDevice && isScenesListRoute"
+		teleport
+	>
+		<template #icon>
+			<icon
+				icon="mdi:play-box-multiple"
+				class="w[20px] h[20px]"
+			/>
+		</template>
+
+		<template #title>
+			{{ t('scenes.headings.list') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('scenes.subHeadings.list') }}
+		</template>
+	</app-bar-heading>
+
+	<app-bar-button
+		v-if="!isMDDevice && isScenesListRoute"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="router.push('/')"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+
+		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
+	</app-bar-button>
+
+	<app-bar-button
+		v-if="!isMDDevice && isScenesListRoute"
+		:align="AppBarButtonAlign.RIGHT"
+		teleport
+		small
+		@click="onSceneCreate"
+	>
+		<span class="uppercase">{{ t('scenes.buttons.add.title') }}</span>
+	</app-bar-button>
+
+	<view-header
+		:heading="t('scenes.headings.list')"
+		:sub-heading="t('scenes.subHeadings.list')"
+		icon="mdi:play-box-multiple"
+	>
+		<template #extra>
+			<div class="flex items-center">
+				<el-button
+					type="primary"
+					plain
+					class="px-4! ml-2!"
+					@click="onSceneCreate"
+				>
 					<template #icon>
 						<icon icon="mdi:plus" />
 					</template>
+
 					{{ t('scenes.buttons.add.title') }}
 				</el-button>
 			</div>
 		</template>
+	</view-header>
 
-		<el-table v-loading="fetching || fetchingSpaces" :data="filteredScenes" stripe style="width: 100%">
-			<el-table-column prop="name" :label="t('scenes.fields.name')" min-width="200">
-				<template #default="{ row }">
-					<div class="scene-name">
-						<icon :icon="getCategoryIcon(row.category)" class="scene-icon" />
-						<span>{{ row.name }}</span>
-					</div>
+	<div
+		v-if="isScenesListRoute || isLGDevice"
+		class="grow-1 flex flex-col gap-2 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden mt-2"
+	>
+		<list-scenes
+			v-model:filters="filters"
+			v-model:sort-by="sortBy"
+			v-model:sort-dir="sortDir"
+			v-model:paginate-size="paginateSize"
+			v-model:paginate-page="paginatePage"
+			:items="scenesPaginated"
+			:all-items="scenes"
+			:total-rows="totalRows"
+			:loading="areLoading"
+			:filters-active="filtersActive"
+			:triggering="triggering"
+			@edit="onSceneEdit"
+			@remove="onSceneRemove"
+			@trigger="onSceneTrigger"
+			@adjust-list="onAdjustList"
+			@reset-filters="onResetFilters"
+		/>
+	</div>
+
+	<router-view
+		v-else
+		:key="props.id"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
+
+	<el-drawer
+		v-if="isLGDevice"
+		v-model="showDrawer"
+		:show-close="false"
+		:size="adjustList ? '300px' : '40%'"
+		:with-header="false"
+		:before-close="onCloseDrawer"
+	>
+		<div class="flex flex-col h-full">
+			<app-bar menu-button-hidden>
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="() => onCloseDrawer()"
+					>
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
 				</template>
-			</el-table-column>
+			</app-bar>
 
-			<el-table-column prop="spaceId" :label="t('scenes.fields.room')" width="180">
-				<template #default="{ row }">
-					<span>{{ getSpaceName(row.spaceId) }}</span>
-				</template>
-			</el-table-column>
+			<template v-if="showDrawer">
+				<list-scenes-adjust
+					v-if="adjustList"
+					v-model:filters="filters"
+					:filters-active="filtersActive"
+					@reset-filters="onResetFilters"
+				/>
 
-			<el-table-column prop="category" :label="t('scenes.fields.category')" width="150">
-				<template #default="{ row }">
-					<el-tag :type="getCategoryType(row.category)">
-						{{ t(`scenes.categories.${row.category}`) }}
-					</el-tag>
-				</template>
-			</el-table-column>
+				<view-error v-else>
+					<template #icon>
+						<icon icon="mdi:play-box-multiple" />
+					</template>
+					<template #message>
+						{{ t('scenes.messages.requestError') }}
+					</template>
 
-			<el-table-column prop="enabled" :label="t('scenes.fields.enabled')" width="100" align="center">
-				<template #default="{ row }">
-					<icon :icon="row.enabled ? 'mdi:check-circle' : 'mdi:close-circle'" :class="row.enabled ? 'text-success' : 'text-danger'" />
-				</template>
-			</el-table-column>
-
-			<el-table-column :label="t('scenes.fields.actions')" width="200" align="center">
-				<template #default="{ row }">
-					<el-button-group>
-						<el-button
-							v-if="row.isTriggerable"
-							type="success"
-							size="small"
-							:loading="triggering.includes(row.id)"
-							@click="onTriggerScene(row)"
+					<suspense>
+						<router-view
+							:key="props.id"
+							v-slot="{ Component }"
 						>
-							<icon icon="mdi:play" />
-						</el-button>
-						<el-button v-if="row.isEditable" type="primary" size="small" @click="onEditScene(row)">
-							<icon icon="mdi:pencil" />
-						</el-button>
-						<el-button v-if="row.isEditable" type="danger" size="small" @click="onDeleteScene(row)">
-							<icon icon="mdi:delete" />
-						</el-button>
-					</el-button-group>
-				</template>
-			</el-table-column>
-		</el-table>
-	</el-card>
-
-	<router-view />
+							<component
+								:is="Component"
+								v-model:remote-form-changed="remoteFormChanged"
+							/>
+						</router-view>
+					</suspense>
+				</view-error>
+			</template>
+		</div>
+	</el-drawer>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeMount, onMounted, provide, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useMeta } from 'vue-meta';
+import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElCard, ElTable, ElTableColumn, ElButton, ElButtonGroup, ElTag, ElMessageBox, ElMessage, ElSelect, ElOption } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessage, ElMessageBox } from 'element-plus';
+
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, AppBreadcrumbs, type IBreadcrumb } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
 import { SpaceType } from '../../spaces/spaces.constants';
-import { useScenes } from '../composables/useScenes';
-import { RouteNames, SceneCategory, SCENE_CATEGORY_ICONS } from '../scenes.constants';
+import { ListScenes } from '../components/components';
+import { useScenesDataSource, useScenes } from '../composables/composables';
+import { RouteNames } from '../scenes.constants';
+import { ScenesException } from '../scenes.exceptions';
 import type { IScene } from '../store/scenes.store.types';
 
-const { t } = useI18n();
+import type { IViewScenesProps } from './view-scenes.types';
+
+// Placeholder component for list adjustment - to be implemented
+const ListScenesAdjust = {
+	name: 'ListScenesAdjust',
+	template: '<div class="p-4">Filters adjustment panel</div>',
+};
+
+defineOptions({
+	name: 'ViewScenes',
+});
+
+const props = defineProps<IViewScenesProps>();
+
+const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 
-const { scenes, fetching, fetchScenes, triggerScene, removeScene } = useScenes();
-const { spaces, fetching: fetchingSpaces, fetchSpaces } = useSpaces();
+useMeta({
+	title: t('scenes.headings.list'),
+});
 
-const triggering = ref<string[]>([]);
-const selectedSpaceId = ref<string | null>(null);
+const { isMDDevice, isLGDevice } = useBreakpoints();
 
-// Filter spaces to only show rooms (not zones)
+const {
+	fetchScenes,
+	scenes,
+	scenesPaginated,
+	totalRows,
+	filters,
+	filtersActive,
+	sortBy,
+	sortDir,
+	paginateSize,
+	paginatePage,
+	areLoading,
+	resetFilter,
+} = useScenesDataSource();
+
+const { triggerScene, removeScene } = useScenes();
+const { spaces, fetchSpaces } = useSpaces();
+
+// Provide spaces to child components (for table room display)
 const rooms = computed(() => {
-	return spaces.value.filter((space) => space.type === SpaceType.ROOM).sort((a, b) => a.name.localeCompare(b.name));
+	return spaces.value
+		.filter((space) => space.type === SpaceType.ROOM)
+		.map((space) => ({ id: space.id, name: space.name }))
+		.sort((a, b) => a.name.localeCompare(b.name));
+});
+provide('spaces', rooms);
+
+const mounted = ref<boolean>(false);
+
+const showDrawer = ref<boolean>(false);
+const adjustList = ref<boolean>(false);
+const triggering = ref<IScene['id'][]>([]);
+
+const remoteFormChanged = ref<boolean>(false);
+
+const isScenesListRoute = computed<boolean>((): boolean => {
+	return route.name === RouteNames.SCENES;
 });
 
-// Filter scenes by selected room
-const filteredScenes = computed<IScene[]>(() => {
-	const allScenes = scenes.value;
-	if (!selectedSpaceId.value) {
-		return allScenes.sort((a, b) => {
-			// Sort by displayOrder first, then by name
-			if (a.displayOrder !== b.displayOrder) {
-				return a.displayOrder - b.displayOrder;
-			}
-			return a.name.localeCompare(b.name);
-		});
+const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
+	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
+		return [
+			{
+				label: t('scenes.breadcrumbs.scenes'),
+				route: router.resolve({ name: RouteNames.SCENES }),
+			},
+		];
 	}
-	return allScenes
-		.filter((scene) => scene.spaceId === selectedSpaceId.value)
-		.sort((a, b) => {
-			if (a.displayOrder !== b.displayOrder) {
-				return a.displayOrder - b.displayOrder;
+);
+
+const onCloseDrawer = (done?: () => void): void => {
+	if (adjustList.value) {
+		showDrawer.value = false;
+		adjustList.value = false;
+
+		done?.();
+	} else {
+		if (remoteFormChanged.value) {
+			ElMessageBox.confirm(t('scenes.texts.confirmDiscard'), t('scenes.headings.discard'), {
+				confirmButtonText: t('scenes.buttons.yes'),
+				cancelButtonText: t('scenes.buttons.no'),
+				type: 'warning',
+			})
+				.then((): void => {
+					if (isLGDevice.value) {
+						router.replace({
+							name: RouteNames.SCENES,
+						});
+					} else {
+						router.push({
+							name: RouteNames.SCENES,
+						});
+					}
+
+					done?.();
+				})
+				.catch((): void => {
+					// Just ignore it
+				});
+		} else {
+			if (isLGDevice.value) {
+				router.replace({
+					name: RouteNames.SCENES,
+				});
+			} else {
+				router.push({
+					name: RouteNames.SCENES,
+				});
 			}
-			return a.name.localeCompare(b.name);
-		});
-});
 
-// Get space name by ID
-const getSpaceName = (spaceId: string): string => {
-	const space = spaces.value.find((s) => s.id === spaceId);
-	return space?.name || t('scenes.fields.unknownRoom');
-};
-
-const breadcrumbs = computed<IBreadcrumb[]>(() => [
-	{
-		label: t('scenes.breadcrumbs.scenes'),
-	},
-]);
-
-const getCategoryIcon = (category: SceneCategory): string => {
-	return SCENE_CATEGORY_ICONS[category] || 'mdi:play-circle';
-};
-
-const getCategoryType = (category: SceneCategory): 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined => {
-	const typeMap: Record<SceneCategory, 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined> = {
-		[SceneCategory.GENERIC]: undefined,
-		[SceneCategory.LIGHTING]: 'warning',
-		[SceneCategory.CLIMATE]: 'info',
-		[SceneCategory.SECURITY]: 'danger',
-		[SceneCategory.ENTERTAINMENT]: 'primary',
-		[SceneCategory.MORNING]: 'warning',
-		[SceneCategory.EVENING]: 'info',
-		[SceneCategory.AWAY]: undefined,
-		[SceneCategory.HOME]: 'success',
-		[SceneCategory.SLEEP]: 'info',
-		[SceneCategory.CUSTOM]: undefined,
-	};
-	return typeMap[category];
-};
-
-const onAddScene = (): void => {
-	router.push({ name: RouteNames.SCENES_ADD });
-};
-
-const onEditScene = (scene: IScene): void => {
-	router.push({ name: RouteNames.SCENES_EDIT, params: { id: scene.id } });
-};
-
-const onTriggerScene = async (scene: IScene): Promise<void> => {
-	triggering.value.push(scene.id);
-
-	try {
-		await triggerScene(scene.id, 'admin');
-		ElMessage.success(t('scenes.messages.triggered', { name: scene.name }));
-	} catch {
-		ElMessage.error(t('scenes.messages.triggerFailed'));
-	} finally {
-		triggering.value = triggering.value.filter((id) => id !== scene.id);
+			done?.();
+		}
 	}
 };
 
-const onDeleteScene = async (scene: IScene): Promise<void> => {
+const onSceneEdit = (id: IScene['id']): void => {
+	if (isLGDevice.value) {
+		router.replace({
+			name: RouteNames.SCENES_EDIT,
+			params: {
+				id,
+			},
+		});
+	} else {
+		router.push({
+			name: RouteNames.SCENES_EDIT,
+			params: {
+				id,
+			},
+		});
+	}
+};
+
+const onSceneRemove = async (id: IScene['id']): Promise<void> => {
+	const scene = scenes.value.find((s) => s.id === id);
+
+	if (!scene) {
+		return;
+	}
+
 	try {
 		await ElMessageBox.confirm(t('scenes.messages.confirmDelete', { name: scene.name }), t('scenes.headings.delete'), {
 			confirmButtonText: t('scenes.buttons.delete'),
@@ -200,7 +330,7 @@ const onDeleteScene = async (scene: IScene): Promise<void> => {
 			type: 'warning',
 		});
 
-		await removeScene(scene.id);
+		await removeScene(id);
 		ElMessage.success(t('scenes.messages.deleted'));
 	} catch (error) {
 		// ElMessageBox.confirm rejects with 'cancel' when user cancels
@@ -210,48 +340,66 @@ const onDeleteScene = async (scene: IScene): Promise<void> => {
 	}
 };
 
-onMounted(async () => {
-	await Promise.all([fetchScenes(), fetchSpaces()]);
+const onSceneTrigger = async (id: IScene['id']): Promise<void> => {
+	const scene = scenes.value.find((s) => s.id === id);
+
+	if (!scene) {
+		return;
+	}
+
+	triggering.value.push(id);
+
+	try {
+		await triggerScene(id, 'admin');
+		ElMessage.success(t('scenes.messages.triggered', { name: scene.name }));
+	} catch {
+		ElMessage.error(t('scenes.messages.triggerFailed'));
+	} finally {
+		triggering.value = triggering.value.filter((triggerId) => triggerId !== id);
+	}
+};
+
+const onResetFilters = (): void => {
+	resetFilter();
+};
+
+const onSceneCreate = (): void => {
+	if (isLGDevice.value) {
+		router.replace({
+			name: RouteNames.SCENES_ADD,
+		});
+	} else {
+		router.push({
+			name: RouteNames.SCENES_ADD,
+		});
+	}
+};
+
+const onAdjustList = (): void => {
+	showDrawer.value = true;
+	adjustList.value = true;
+};
+
+onBeforeMount((): void => {
+	Promise.all([fetchScenes(), fetchSpaces()]).catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new ScenesException('Something went wrong', err);
+	});
+
+	showDrawer.value =
+		route.matched.find((matched) => matched.name === RouteNames.SCENES_ADD || matched.name === RouteNames.SCENES_EDIT) !== undefined;
 });
+
+onMounted((): void => {
+	mounted.value = true;
+});
+
+watch(
+	(): string => route.path,
+	(): void => {
+		showDrawer.value =
+			route.matched.find((matched) => matched.name === RouteNames.SCENES_ADD || matched.name === RouteNames.SCENES_EDIT) !== undefined;
+	}
+);
 </script>
-
-<style scoped>
-.scenes-list {
-	margin: 20px;
-}
-
-.card-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.header-left {
-	display: flex;
-	align-items: center;
-	gap: 16px;
-}
-
-.room-filter {
-	width: 200px;
-}
-
-.scene-name {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-}
-
-.scene-icon {
-	font-size: 20px;
-	color: var(--el-color-primary);
-}
-
-.text-success {
-	color: var(--el-color-success);
-}
-
-.text-danger {
-	color: var(--el-color-danger);
-}
-</style>
