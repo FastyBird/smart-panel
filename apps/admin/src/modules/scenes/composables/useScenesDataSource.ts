@@ -183,6 +183,15 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 		}
 	);
 
+	// Reset pagination to page 1 when filters change to avoid showing empty results
+	watch(
+		() => filters.value,
+		() => {
+			paginatePage.value = DEFAULT_PAGE;
+		},
+		{ deep: true }
+	);
+
 	return {
 		scenes,
 		scenesPaginated,

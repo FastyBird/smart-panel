@@ -291,8 +291,9 @@ const getPropertyDataType = (propertyId: string): string => {
 
 const getPropertyFormat = (propertyId: string): (string | number)[] | null => {
 	const prop = getProperty(propertyId);
-	if (!prop?.format) return null;
-	return prop.format.filter((f): f is string | number => f !== null);
+	const format = prop?.format;
+	if (!format || !Array.isArray(format)) return null;
+	return format.filter((f): f is string | number => f !== null);
 };
 
 const getPropertyMin = (propertyId: string): number | undefined => {
