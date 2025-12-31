@@ -94,6 +94,7 @@
 			@remove="onLocationRemove"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
+			@bulk-action="onBulkAction"
 		/>
 	</div>
 
@@ -334,6 +335,14 @@ const onLocationCreate = (): void => {
 
 const onLocationRemove = (id: IWeatherLocation['id']): void => {
 	locationActions.remove(id);
+};
+
+const onBulkAction = (action: string, items: IWeatherLocation[]): void => {
+	switch (action) {
+		case 'delete':
+			locationActions.bulkRemove(items);
+			break;
+	}
 };
 
 const onResetFilters = (): void => {

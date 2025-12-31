@@ -8,8 +8,11 @@
 			v-model:filters="innerFilters"
 			v-model:view-mode="innerViewMode"
 			:filters-active="props.filtersActive"
+			:selected-count="allSelectedItems.length"
+			:bulk-actions="bulkActions"
 			@reset-filters="emit('reset-filters')"
 			@adjust-list="emit('adjust-list')"
+			@bulk-action="onBulkAction"
 		/>
 	</el-card>
 
@@ -34,6 +37,7 @@
 				@detail="onDetail"
 				@toggle-enabled="onToggleEnabled"
 				@reset-filters="onResetFilters"
+				@selected-changes="onSelectionChange"
 			/>
 
 			<div
@@ -64,13 +68,14 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { useBreakpoints } from '../../../common';
+import { type IBulkAction, useBreakpoints } from '../../../common';
 import type { IExtensionsFilter } from '../composables/types';
 import type { IExtension } from '../store/extensions.store.types';
 
@@ -96,8 +101,10 @@ const emit = defineEmits<{
 	(e: 'update:paginate-page', page: number): void;
 	(e: 'update:sort-by', by: 'name' | 'type' | 'kind' | 'enabled' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
+	(e: 'bulk-action', action: string, items: IExtension[]): void;
 }>();
 
+const { t } = useI18n();
 const { isMDDevice } = useBreakpoints();
 
 let observer: ResizeObserver | null = null;
@@ -115,6 +122,26 @@ const paginatePage = ref<number>(props.paginatePage);
 const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
+
+// Cross-page selection: store selected items by type
+const selectedItemsMap = ref<Map<IExtension['type'], IExtension>>(new Map());
+
+const allSelectedItems = computed<IExtension[]>((): IExtension[] => Array.from(selectedItemsMap.value.values()));
+
+const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
+	{
+		key: 'enable',
+		label: t('application.bulkActions.enable'),
+		icon: 'mdi:check-circle-outline',
+		type: 'success',
+	},
+	{
+		key: 'disable',
+		label: t('application.bulkActions.disable'),
+		icon: 'mdi:close-circle-outline',
+		type: 'warning',
+	},
+]);
 
 const onDetail = (type: IExtension['type']): void => {
 	emit('detail', type);
@@ -134,6 +161,30 @@ const onPaginatePageSize = (size: number): void => {
 
 const onPaginatePage = (page: number): void => {
 	emit('update:paginate-page', page);
+};
+
+const onSelectionChange = (selected: IExtension[]): void => {
+	// Get types of items currently visible on the page
+	const currentPageTypes = new Set(props.items.map((item) => item.type));
+
+	// Remove items from the current page that are no longer selected
+	for (const type of currentPageTypes) {
+		if (!selected.find((item) => item.type === type)) {
+			selectedItemsMap.value.delete(type);
+		}
+	}
+
+	// Add newly selected items
+	for (const item of selected) {
+		selectedItemsMap.value.set(item.type, item);
+	}
+};
+
+const onBulkAction = (action: string): void => {
+	emit('bulk-action', action, allSelectedItems.value);
+
+	// Clear selections after bulk action
+	selectedItemsMap.value.clear();
 };
 
 const updateHeight = (): void => {
@@ -208,9 +259,23 @@ watch(
 
 watch(
 	(): 'table' | 'cards' => innerViewMode.value,
-	(): void => {
+	(val: 'table' | 'cards'): void => {
+		// Clear selections when switching to cards view (cards don't support selection)
+		if (val === 'cards') {
+			selectedItemsMap.value.clear();
+		}
+
 		// Recalculate height after view mode changes and DOM updates
 		setTimeout(updateHeight, 50);
+	}
+);
+
+watch(
+	(): boolean => isMDDevice.value,
+	(val: boolean): void => {
+		if (!val) {
+			selectedItemsMap.value.clear();
+		}
 	}
 );
 </script>

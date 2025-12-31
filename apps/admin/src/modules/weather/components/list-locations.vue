@@ -7,8 +7,11 @@
 		<locations-filter
 			v-model:filters="innerFilters"
 			:filters-active="props.filtersActive"
+			:selected-count="allSelectedItems.length"
+			:bulk-actions="bulkActions"
 			@reset-filters="emit('reset-filters')"
 			@adjust-list="emit('adjust-list')"
+			@bulk-action="onBulkAction"
 		/>
 	</el-card>
 
@@ -38,6 +41,7 @@
 				@edit="onEdit"
 				@remove="onRemove"
 				@reset-filters="onResetFilters"
+				@selected-changes="onSelectionChange"
 			/>
 
 			<div
@@ -58,13 +62,14 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { useBreakpoints } from '../../../common';
+import { type IBulkAction, useBreakpoints } from '../../../common';
 import type { IWeatherLocationsFilter } from '../composables/types';
 import type { IWeatherLocation } from '../store/locations.store.types';
 
@@ -89,8 +94,10 @@ const emit = defineEmits<{
 	(e: 'update:paginate-page', page: number): void;
 	(e: 'update:sort-by', dir: 'name' | 'type'): void;
 	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
+	(e: 'bulk-action', action: string, items: IWeatherLocation[]): void;
 }>();
 
+const { t } = useI18n();
 const { isMDDevice } = useBreakpoints();
 
 let observer: ResizeObserver | null = null;
@@ -109,6 +116,20 @@ const paginatePage = ref<number>(props.paginatePage);
 const paginateSize = ref<number>(props.paginateSize);
 
 const tableHeight = ref<number>(250);
+
+// Cross-page selection: store selected items by ID
+const selectedItemsMap = ref<Map<IWeatherLocation['id'], IWeatherLocation>>(new Map());
+
+const allSelectedItems = computed<IWeatherLocation[]>((): IWeatherLocation[] => Array.from(selectedItemsMap.value.values()));
+
+const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
+	{
+		key: 'delete',
+		label: t('application.bulkActions.delete'),
+		icon: 'mdi:trash',
+		type: 'danger',
+	},
+]);
 
 const onDetail = (id: IWeatherLocation['id']): void => {
 	emit('detail', id);
@@ -132,6 +153,30 @@ const onPaginatePageSize = (size: number): void => {
 
 const onPaginatePage = (page: number): void => {
 	emit('update:paginate-page', page);
+};
+
+const onSelectionChange = (selected: IWeatherLocation[]): void => {
+	// Get IDs of items currently visible on the page
+	const currentPageIds = new Set(props.items.map((item) => item.id));
+
+	// Remove items from the current page that are no longer selected
+	for (const id of currentPageIds) {
+		if (!selected.find((item) => item.id === id)) {
+			selectedItemsMap.value.delete(id);
+		}
+	}
+
+	// Add newly selected items
+	for (const item of selected) {
+		selectedItemsMap.value.set(item.id, item);
+	}
+};
+
+const onBulkAction = (action: string): void => {
+	emit('bulk-action', action, allSelectedItems.value);
+
+	// Clear selections after bulk action
+	selectedItemsMap.value.clear();
 };
 
 onMounted((): void => {
@@ -196,6 +241,15 @@ watch(
 	(): 'name' | 'type' => props.sortBy,
 	(val: 'name' | 'type'): void => {
 		sortBy.value = val;
+	}
+);
+
+watch(
+	(): boolean => isMDDevice.value,
+	(val: boolean): void => {
+		if (!val) {
+			selectedItemsMap.value.clear();
+		}
 	}
 );
 </script>
