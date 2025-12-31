@@ -21,7 +21,6 @@ import { WebsocketExchangeListener } from './listeners/websocket-exchange.listen
 import { ScenesConfigModel } from './models/config.model';
 import { SCENES_MODULE_API_TAG_DESCRIPTION, SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_NAME } from './scenes.constants';
 import { SCENES_SWAGGER_EXTRA_MODELS } from './scenes.openapi';
-import { LocalScenesPlatformService } from './services/local-scenes-platform.service';
 import { ScenesModuleResetService } from './services/module-reset.service';
 import { SceneActionsTypeMapperService } from './services/scene-actions-type-mapper.service';
 import { SceneActionsService } from './services/scene-actions.service';
@@ -57,8 +56,6 @@ import { ScenesService } from './services/scenes.service';
 		SceneActionsTypeMapperService,
 		// Execution service
 		SceneExecutorService,
-		// Local scenes platform (built-in device control)
-		LocalScenesPlatformService,
 		// Reset service
 		ScenesModuleResetService,
 		// WebSocket listener
@@ -72,7 +69,6 @@ import { ScenesService } from './services/scenes.service';
 		ScenesTypeMapperService,
 		SceneActionsTypeMapperService,
 		SceneExecutorService,
-		LocalScenesPlatformService,
 		ScenesModuleResetService,
 	],
 })
@@ -82,8 +78,6 @@ export class ScenesModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
-		private readonly sceneExecutor: SceneExecutorService,
-		private readonly localScenesPlatform: LocalScenesPlatformService,
 	) {}
 
 	onModuleInit(): void {
@@ -93,9 +87,6 @@ export class ScenesModule implements OnModuleInit {
 			class: ScenesConfigModel,
 			configDto: UpdateScenesConfigDto,
 		});
-
-		// Register the local scenes platform for built-in device control
-		this.sceneExecutor.registerPlatform(this.localScenesPlatform);
 
 		// Register factory reset handler
 		this.factoryResetRegistry.register(

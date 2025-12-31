@@ -64,6 +64,7 @@ import { PagesHousePlugin } from './plugins/pages-house';
 import { PagesHouseModesPlugin } from './plugins/pages-house-modes';
 import { PagesSpacePlugin } from './plugins/pages-space';
 import { PagesTilesPlugin } from './plugins/pages-tiles';
+import { ScenesLocalPlugin } from './plugins/scenes-local';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview';
 import { TilesTimePlugin } from './plugins/tiles-time';
 import { TilesWeatherPlugin } from './plugins/tiles-weather';
@@ -172,6 +173,7 @@ app.use(DataSourcesWeatherPlugin, pluginOptions);
 app.use(LoggerRotatingFilePlugin, pluginOptions);
 app.use(WeatherOpenweathermapPlugin, pluginOptions);
 app.use(WeatherOpenweathermapOnecallPlugin, pluginOptions);
+app.use(ScenesLocalPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 

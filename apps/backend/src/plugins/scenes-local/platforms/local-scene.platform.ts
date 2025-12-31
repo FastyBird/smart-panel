@@ -1,20 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { PermissionType } from '../../devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
-import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
-import { ChannelsService } from '../../devices/services/channels.service';
-import { DevicesService } from '../../devices/services/devices.service';
-import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
-import { SpacesService } from '../../spaces/services/spaces.service';
-import { SpaceType } from '../../spaces/spaces.constants';
-import { SceneActionEntity, SceneEntity } from '../entities/scenes.entity';
-import { ActionExecutionResultModel } from '../models/scenes.model';
-import { ScenesActionValidationException, ScenesSpaceValidationException } from '../scenes.exceptions';
-
-import { IScenePlatform } from './scene-executor.service';
-
-export const LOCAL_SCENES_PLATFORM_TYPE = 'local';
+import { PermissionType } from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { SceneActionEntity, SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
+import { ActionExecutionResultModel } from '../../../modules/scenes/models/scenes.model';
+import {
+	ScenesActionValidationException,
+	ScenesSpaceValidationException,
+} from '../../../modules/scenes/scenes.exceptions';
+import { IScenePlatform } from '../../../modules/scenes/services/scene-executor.service';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
+import { SpaceType } from '../../../modules/spaces/spaces.constants';
+import { SCENES_LOCAL_PLUGIN_NAME, SCENES_LOCAL_TYPE } from '../scenes-local.constants';
 
 export interface IActionValidationResult {
 	valid: boolean;
@@ -25,8 +26,8 @@ export interface IActionValidationResult {
 }
 
 @Injectable()
-export class LocalScenesPlatformService implements IScenePlatform {
-	private readonly logger = new Logger(LocalScenesPlatformService.name);
+export class LocalScenePlatform implements IScenePlatform {
+	private readonly logger = new Logger(`${SCENES_LOCAL_PLUGIN_NAME}:${LocalScenePlatform.name}`);
 
 	constructor(
 		private readonly devicesService: DevicesService,
@@ -37,7 +38,7 @@ export class LocalScenesPlatformService implements IScenePlatform {
 	) {}
 
 	getType(): string {
-		return LOCAL_SCENES_PLATFORM_TYPE;
+		return SCENES_LOCAL_TYPE;
 	}
 
 	/**

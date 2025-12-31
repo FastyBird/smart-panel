@@ -1,0 +1,6 @@
+{
+	"plugin": {
+		"name": "Local Scenes",
+		"description": "Execute scenes locally by controlling device properties"
+	}
+}
