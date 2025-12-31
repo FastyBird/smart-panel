@@ -68,15 +68,4 @@ export class LocalSceneActionEntity extends SceneActionEntity {
 	@IsString({ message: '[{"field":"value","reason":"Value must be a string, number, or boolean."}]' })
 	@Column({ type: 'text' })
 	value: string | number | boolean;
-
-	@ApiProperty({
-		description: 'Action type',
-		type: 'string',
-		default: SCENES_LOCAL_TYPE,
-		example: SCENES_LOCAL_TYPE,
-	})
-	@Expose()
-	get type(): string {
-		return SCENES_LOCAL_TYPE;
-	}
 }
