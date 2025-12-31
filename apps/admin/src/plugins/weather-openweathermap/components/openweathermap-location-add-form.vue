@@ -202,8 +202,8 @@ import 'leaflet/dist/leaflet.css';
 import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
-import { FormResult, type FormResultType, weatherLocationsStoreKey } from '../../../modules/weather';
+import { useFlashMessage } from '../../../common';
+import { FormResult, type FormResultType, useLocationsActions } from '../../../modules/weather';
 import { OpenWeatherMapLocationType, WEATHER_OPENWEATHERMAP_PLUGIN_TYPE } from '../weather-openweathermap.constants';
 
 import type { IOpenWeatherMapLocationAddFormProps } from './openweathermap-location-add-form.types';
@@ -228,8 +228,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
-const storesManager = injectStoresManager();
-const locationsStore = storesManager.getStore(weatherLocationsStoreKey);
+const { add: addLocation } = useLocationsActions();
 
 const formEl = ref<FormInstance | undefined>(undefined);
 const isGettingLocation = ref(false);
@@ -452,7 +451,7 @@ const onSubmit = async (): Promise<void> => {
 			locationData.country_code = model.zipCountryCode || undefined;
 		}
 
-		await locationsStore.add({
+		await addLocation({
 			id: props.id,
 			draft: false,
 			data: locationData,

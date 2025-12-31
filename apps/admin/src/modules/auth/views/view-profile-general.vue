@@ -22,17 +22,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 
 import { ElCard } from 'element-plus';
 
-import { injectStoresManager, useBreakpoints } from '../../../common';
-import type { IUser } from '../../users';
+import { useBreakpoints } from '../../../common';
 import { FormResult, type FormResultType, Layout } from '../auth.constants';
 import { SettingsProfileForm } from '../components/components';
-import { sessionStoreKey } from '../store/keys';
+import { useSession } from '../composables/composables';
 
 import type { ViewProfileGeneralProps } from './view-profile-general.types';
 
@@ -56,17 +55,11 @@ const { t } = useI18n();
 
 const { isMDDevice } = useBreakpoints();
 
-const storesManager = injectStoresManager();
-
-const sessionStore = storesManager.getStore(sessionStoreKey);
+const { profile } = useSession();
 
 const remoteFormSubmit = ref<boolean>(props.remoteFormSubmit);
 const remoteFormResult = ref<FormResultType>(props.remoteFormResult);
 const remoteFormReset = ref<boolean>(props.remoteFormReset);
-
-const profile = computed<IUser | null>((): IUser | null => {
-	return sessionStore.profile;
-});
 
 watch(
 	(): boolean => props.remoteFormSubmit,

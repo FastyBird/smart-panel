@@ -67,6 +67,8 @@ export interface IUseWeatherLocationEditForm {
 }
 
 export interface IUseWeatherLocationsActions {
+	add: (payload: { id: IWeatherLocation['id']; draft: boolean; data: { name: string; type: string } & Record<string, unknown> }) => Promise<IWeatherLocation>;
+	edit: (payload: { id: IWeatherLocation['id']; data: { type: string; name?: string } & Record<string, unknown> }) => Promise<IWeatherLocation>;
 	remove: (id: IWeatherLocation['id']) => Promise<void>;
 	bulkRemove: (locations: IWeatherLocation[]) => Promise<void>;
 }

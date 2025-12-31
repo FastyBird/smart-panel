@@ -59,20 +59,18 @@ import { ElButton, ElButtonGroup, ElEmpty, ElIcon, ElMessageBox, ElTable, ElTabl
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
-import { useSpaces } from '../composables';
+import { useFlashMessage } from '../../../common';
+import { useSpaces, useSpacesActions } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
-import { spacesStoreKey, type ISpace } from '../store';
+import type { ISpace } from '../store';
 
 const { t } = useI18n();
 const router = useRouter();
 const flashMessage = useFlashMessage();
 
-const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore(spacesStoreKey);
-
 const { spaces, fetching } = useSpaces();
+const { remove } = useSpacesActions();
 
 const onAdd = (): void => {
 	router.push({ name: RouteNames.SPACES_EDIT });
@@ -92,7 +90,7 @@ const onDelete = async (space: ISpace): Promise<void> => {
 			type: 'warning',
 		});
 
-		await spacesStore.remove({ id: space.id });
+		await remove(space.id);
 		flashMessage.success(t('spacesModule.messages.removed', { space: space.name }));
 	} catch (error: unknown) {
 		if (error instanceof SpacesApiException) {

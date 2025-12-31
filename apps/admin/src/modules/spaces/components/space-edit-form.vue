@@ -1,5 +1,5 @@
 <template>
-	<el-form ref="formRef" :model="formData" :rules="rules" label-position="top" @submit.prevent="onSubmit">
+	<el-form ref="formRef" :model="model" :rules="rules" label-position="top" @submit.prevent="onSubmit">
 		<el-collapse v-model="activeCollapses">
 			<!-- 1. General Section -->
 			<el-collapse-item name="general">
@@ -14,14 +14,14 @@
 
 				<div class="px-2">
 					<el-form-item :label="t('spacesModule.fields.spaces.name.title')" prop="name">
-						<el-input v-model="formData.name" :placeholder="t('spacesModule.fields.spaces.name.placeholder')" />
+						<el-input v-model="model.name" :placeholder="t('spacesModule.fields.spaces.name.placeholder')" />
 					</el-form-item>
 
 					<el-form-item :label="t('spacesModule.fields.spaces.category.title')" prop="category">
 						<el-select
-							v-model="formData.category"
+							v-model="model.category"
 							:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
-							:clearable="formData.type !== SpaceType.ZONE"
+							:clearable="model.type !== SpaceType.ZONE"
 							@change="onCategoryChange"
 						>
 							<!-- Grouped categories for zones -->
@@ -75,7 +75,7 @@
 
 					<el-form-item :label="t('spacesModule.fields.spaces.description.title')" prop="description">
 						<el-input
-							v-model="formData.description"
+							v-model="model.description"
 							type="textarea"
 							:rows="3"
 							:placeholder="t('spacesModule.fields.spaces.description.placeholder')"
@@ -83,10 +83,10 @@
 					</el-form-item>
 
 					<el-form-item :label="t('spacesModule.fields.spaces.icon.title')" prop="icon">
-						<el-input v-model="formData.icon" :placeholder="t('spacesModule.fields.spaces.icon.placeholder')">
-							<template v-if="formData.icon" #prefix>
+						<el-input v-model="model.icon" :placeholder="t('spacesModule.fields.spaces.icon.placeholder')">
+							<template v-if="model.icon" #prefix>
 								<el-icon>
-									<icon :icon="formData.icon" />
+									<icon :icon="model.icon" />
 								</el-icon>
 							</template>
 						</el-input>
@@ -94,7 +94,7 @@
 
 					<el-form-item :label="t('spacesModule.fields.spaces.displayOrder.title')" prop="displayOrder">
 						<el-input-number
-							v-model="formData.displayOrder"
+							v-model="model.displayOrder"
 							:min="0"
 						/>
 					</el-form-item>
@@ -102,7 +102,7 @@
 			</el-collapse-item>
 
 			<!-- 2. Organization Section (Room only) -->
-			<el-collapse-item v-if="formData.type === SpaceType.ROOM" name="organization">
+			<el-collapse-item v-if="model.type === SpaceType.ROOM" name="organization">
 				<template #title>
 					<div class="flex items-center gap-2">
 						<el-icon :size="20">
@@ -118,7 +118,7 @@
 						prop="parentId"
 					>
 						<el-select
-							v-model="formData.parentId"
+							v-model="model.parentId"
 							:placeholder="t('spacesModule.fields.spaces.parentZone.placeholder')"
 							clearable
 							filterable
@@ -156,7 +156,7 @@
 							<icon icon="mdi:devices" />
 						</el-icon>
 						<span class="font-medium">{{
-							formData.type === SpaceType.ROOM
+							model.type === SpaceType.ROOM
 								? t('spacesModule.edit.sections.devicesDisplays.title')
 								: t('spacesModule.edit.sections.devicesDisplays.titleDevicesOnly')
 						}}</span>
@@ -166,7 +166,7 @@
 				<div class="px-2">
 					<space-edit-summary-section
 						:space-id="props.space.id"
-						:space-type="formData.type"
+						:space-type="model.type"
 						:device-count="deviceCount"
 						:display-count="displayCount"
 						@manage-devices="emit('manage-devices')"
@@ -206,7 +206,7 @@
 							prop="primaryThermostatId"
 						>
 							<el-select
-								v-model="formData.primaryThermostatId"
+								v-model="model.primaryThermostatId"
 								:placeholder="t('spacesModule.fields.spaces.primaryThermostat.placeholder')"
 								clearable
 								:loading="loadingDevices"
@@ -228,7 +228,7 @@
 							prop="primaryTemperatureSensorId"
 						>
 							<el-select
-								v-model="formData.primaryTemperatureSensorId"
+								v-model="model.primaryTemperatureSensorId"
 								:placeholder="t('spacesModule.fields.spaces.primaryTemperatureSensor.placeholder')"
 								clearable
 								:loading="loadingDevices"
@@ -264,7 +264,7 @@
 							{{ t('spacesModule.fields.spaces.suggestionsEnabled.title') }}
 						</template>
 
-						<el-switch v-model="formData.suggestionsEnabled" />
+						<el-switch v-model="model.suggestionsEnabled" />
 					</el-form-item>
 
 					<el-alert
@@ -286,7 +286,7 @@
 			</el-button>
 			<el-button
 				type="primary"
-				:loading="saving"
+				:loading="formResult === FormResult.WORKING"
 				@click="onSubmit"
 			>
 				{{ t('spacesModule.buttons.save.title') }}
@@ -320,17 +320,17 @@ import {
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useBackend, useFlashMessage } from '../../../common';
+import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { useSpaceCategories } from '../composables';
+import { useSpaceCategories, useSpaceEditForm, useSpaces } from '../composables';
 import {
+	FormResult,
 	isValidCategoryForType,
-	SpaceCategory,
+	type SpaceCategory,
 	SpaceType,
 	SPACES_MODULE_PREFIX,
 } from '../spaces.constants';
-import { spacesStoreKey, type ISpace, type ISpaceCreateData } from '../store';
 
 import SpaceEditSummarySection from './space-edit-summary-section.vue';
 import SpaceLightingRoles from './space-lighting-roles.vue';
@@ -349,14 +349,26 @@ const props = withDefaults(defineProps<ISpaceEditFormProps>(), {
 const emit = defineEmits(spaceEditFormEmits);
 
 const { t } = useI18n();
-const flashMessage = useFlashMessage();
 
 const backend = useBackend();
-const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore(spacesStoreKey);
+const { zoneSpaces, findById } = useSpaces();
 
+// Use the form composable
+const {
+	model,
+	formEl,
+	formChanged,
+	submit,
+	formResult,
+} = useSpaceEditForm({ space: props.space });
+
+// Local ref for template, synced with composable's formEl
 const formRef = ref<FormInstance>();
-const saving = ref(false);
+
+watch(formRef, (newVal) => {
+	formEl.value = newVal;
+}, { immediate: true });
+
 const loadingDevices = ref(false);
 const spaceDevices = ref<ISpaceDevice[]>([]);
 
@@ -367,21 +379,6 @@ const activeCollapses = ref<string[]>(['general', 'organization']);
 const deviceCount = ref<number>(0);
 const displayCount = ref<number>(0);
 
-const initialValues = {
-	name: props.space.name,
-	type: props.space.type,
-	category: props.space.category ?? null as SpaceCategory | null,
-	description: props.space.description ?? '',
-	icon: props.space.icon ?? '',
-	displayOrder: props.space.displayOrder,
-	parentId: props.space.parentId ?? null as string | null,
-	primaryThermostatId: props.space.primaryThermostatId ?? null,
-	primaryTemperatureSensorId: props.space.primaryTemperatureSensorId ?? null,
-	suggestionsEnabled: props.space.suggestionsEnabled ?? true,
-};
-
-const formData = reactive({ ...initialValues });
-
 // Track values that were auto-populated from templates (not manually entered)
 const autoPopulatedValues = reactive({
 	icon: null as string | null,
@@ -390,36 +387,36 @@ const autoPopulatedValues = reactive({
 
 // Category options, groups, and templates based on the selected space type
 const { categoryOptions, categoryGroups, currentTemplates } = useSpaceCategories(
-	computed(() => formData.type)
+	computed(() => model.type)
 );
 
 // Get available zones for parent zone selector (only zones, excluding the current space if editing)
 const availableZones = computed(() =>
-	spacesStore.findAll()
-		.filter((s) => s.type === SpaceType.ZONE)
-		.filter((s) => !props.space || s.id !== props.space.id)
+	zoneSpaces.value.filter((s) => !props.space || s.id !== props.space.id)
 );
 
 // Handle type change - clear category if it becomes incompatible
 watch(
-	() => formData.type,
+	() => model.type,
 	(newType) => {
-		if (formData.category && !isValidCategoryForType(formData.category, newType)) {
-			formData.category = null;
+		if (model.category && !isValidCategoryForType(model.category, newType)) {
+			model.category = null;
 			// Also clear auto-populated values since they may not apply anymore
-			if (formData.icon === autoPopulatedValues.icon) {
-				formData.icon = '';
+			if (model.icon === autoPopulatedValues.icon) {
+				model.icon = null;
 				autoPopulatedValues.icon = null;
 			}
-			if (formData.description === autoPopulatedValues.description) {
-				formData.description = '';
+			if (model.description === autoPopulatedValues.description) {
+				model.description = null;
 				autoPopulatedValues.description = null;
 			}
 		}
 		// Zones cannot have a parent - clear parentId when switching to zone type
 		if (newType === SpaceType.ZONE) {
-			formData.parentId = null;
+			model.parentId = null;
 		}
+		// Clear validation state to prevent warning messages when rules change
+		formRef.value?.clearValidate();
 	}
 );
 
@@ -428,12 +425,12 @@ const onCategoryChange = (category: SpaceCategory | null): void => {
 	if (category && currentTemplates.value[category]) {
 		const template = currentTemplates.value[category];
 		// Only auto-populate if the field is empty or matches our tracked auto-populated value
-		if (!formData.icon || formData.icon === autoPopulatedValues.icon) {
-			formData.icon = template.icon;
+		if (!model.icon || model.icon === autoPopulatedValues.icon) {
+			model.icon = template.icon;
 			autoPopulatedValues.icon = template.icon;
 		}
-		if (!formData.description || formData.description === autoPopulatedValues.description) {
-			formData.description = template.description;
+		if (!model.description || model.description === autoPopulatedValues.description) {
+			model.description = template.description;
 			autoPopulatedValues.description = template.description;
 		}
 	}
@@ -443,7 +440,7 @@ const rules = computed<FormRules>(() => ({
 	name: [{ required: true, message: t('spacesModule.fields.spaces.name.validation.required'), trigger: 'blur' }],
 	category: [
 		{
-			required: formData.type === SpaceType.ZONE,
+			required: model.type === SpaceType.ZONE,
 			message: t('spacesModule.fields.spaces.category.validation.requiredForZone'),
 			trigger: 'blur',
 		},
@@ -477,21 +474,6 @@ const hasLightingDevices = computed(() =>
 	spaceDevices.value.some(d => d.category === DevicesModuleDeviceCategory.lighting)
 );
 
-const formChanged = computed<boolean>((): boolean => {
-	return (
-		formData.name !== initialValues.name ||
-		formData.type !== initialValues.type ||
-		formData.category !== initialValues.category ||
-		formData.description !== initialValues.description ||
-		formData.icon !== initialValues.icon ||
-		formData.displayOrder !== initialValues.displayOrder ||
-		formData.parentId !== initialValues.parentId ||
-		formData.primaryThermostatId !== initialValues.primaryThermostatId ||
-		formData.primaryTemperatureSensorId !== initialValues.primaryTemperatureSensorId ||
-		formData.suggestionsEnabled !== initialValues.suggestionsEnabled
-	);
-});
-
 watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
@@ -500,31 +482,11 @@ watch(
 	{ immediate: true }
 );
 
+// Watch for space prop changes to reload devices
 watch(
 	() => props.space,
 	(space) => {
 		if (space) {
-			formData.name = space.name;
-			formData.type = space.type;
-			formData.category = space.category ?? null;
-			formData.description = space.description ?? '';
-			formData.icon = space.icon ?? '';
-			formData.displayOrder = space.displayOrder;
-			formData.parentId = space.parentId ?? null;
-			formData.primaryThermostatId = space.primaryThermostatId ?? null;
-			formData.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
-			formData.suggestionsEnabled = space.suggestionsEnabled ?? true;
-			// Update initial values when space prop changes
-			initialValues.name = space.name;
-			initialValues.type = space.type;
-			initialValues.category = space.category ?? null;
-			initialValues.description = space.description ?? '';
-			initialValues.icon = space.icon ?? '';
-			initialValues.displayOrder = space.displayOrder;
-			initialValues.parentId = space.parentId ?? null;
-			initialValues.primaryThermostatId = space.primaryThermostatId ?? null;
-			initialValues.primaryTemperatureSensorId = space.primaryTemperatureSensorId ?? null;
-			initialValues.suggestionsEnabled = space.suggestionsEnabled ?? true;
 			// Reset auto-populated tracking for the new space
 			autoPopulatedValues.icon = null;
 			autoPopulatedValues.description = null;
@@ -585,35 +547,16 @@ onMounted(() => {
 });
 
 const onSubmit = async (): Promise<void> => {
-	const valid = await formRef.value?.validate().catch(() => false);
-
-	if (!valid) {
-		return;
-	}
-
-	saving.value = true;
-
 	try {
-		const data: ISpaceCreateData = {
-			name: formData.name,
-			type: formData.type,
-			category: formData.category || null,
-			description: formData.description || null,
-			icon: formData.icon || null,
-			displayOrder: formData.displayOrder,
-			parentId: formData.parentId || null,
-			primaryThermostatId: formData.primaryThermostatId || null,
-			primaryTemperatureSensorId: formData.primaryTemperatureSensorId || null,
-			suggestionsEnabled: formData.suggestionsEnabled,
-		};
+		await submit();
 
-		const savedSpace: ISpace = await spacesStore.edit({ id: props.space.id, data });
+		const space = findById(model.id);
 
-		emit('saved', savedSpace);
+		if (space) {
+			emit('saved', space);
+		}
 	} catch {
-		flashMessage.error(t('spacesModule.messages.saveError'));
-	} finally {
-		saving.value = false;
+		// Error already handled by composable
 	}
 };
 

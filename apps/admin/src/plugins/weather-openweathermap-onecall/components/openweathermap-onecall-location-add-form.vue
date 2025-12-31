@@ -123,8 +123,8 @@ import 'leaflet/dist/leaflet.css';
 import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
-import { FormResult, type FormResultType, weatherLocationsStoreKey } from '../../../modules/weather';
+import { useFlashMessage } from '../../../common';
+import { FormResult, type FormResultType, useLocationsActions } from '../../../modules/weather';
 import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_TYPE } from '../weather-openweathermap-onecall.constants';
 import { useGeolocation, type IGeolocationCity } from '../composables/composables';
 
@@ -150,8 +150,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
-const storesManager = injectStoresManager();
-const locationsStore = storesManager.getStore(weatherLocationsStoreKey);
+const { add: addLocation } = useLocationsActions();
 
 const { searchCities, isSearching } = useGeolocation();
 
@@ -337,7 +336,7 @@ const onSubmit = async (): Promise<void> => {
 			locationData.country_code = model.countryCode;
 		}
 
-		await locationsStore.add({
+		await addLocation({
 			id: props.id,
 			draft: false,
 			data: locationData,

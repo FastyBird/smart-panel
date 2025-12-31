@@ -21,7 +21,7 @@ import { ChannelCategory, ConnectionState, DeviceCategory, EventType } from '../
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
-import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity } from '../entities/devices.entity';
 import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
 
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
@@ -29,20 +29,6 @@ import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DevicesService } from './devices.service';
-
-class MockDevice extends DeviceEntity {
-	@Expose({ name: 'mock_value' })
-	@IsString()
-	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
-		toClassOnly: true,
-	})
-	mockValue: string;
-
-	@Expose()
-	get type(): string {
-		return 'mock';
-	}
-}
 
 class MockChannel extends ChannelEntity {
 	@Expose({ name: 'mock_value' })

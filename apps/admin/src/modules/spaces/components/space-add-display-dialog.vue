@@ -138,11 +138,10 @@ import { ElAvatar, ElButton, ElDialog, ElInput, ElResult, ElTable, ElTableColumn
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild, injectStoresManager, useFlashMessage } from '../../../common';
+import { IconWithChild, useFlashMessage } from '../../../common';
+import { useDisplays } from '../../displays/composables/composables';
 import type { IDisplay } from '../../displays/store/displays.store.types';
-import { displaysStoreKey } from '../../displays/store/keys';
-import { useSpaceDisplays } from '../composables';
-import { spacesStoreKey } from '../store';
+import { useSpaceDisplays, useSpaces } from '../composables';
 
 import type { ISpaceAddDisplayDialogProps } from './space-add-display-dialog.types';
 
@@ -160,9 +159,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
-const storesManager = injectStoresManager();
-const displaysStore = storesManager.getStore(displaysStoreKey);
-const spacesStore = storesManager.getStore(spacesStoreKey);
+const { displays: allDisplays } = useDisplays();
+const { findById } = useSpaces();
 
 const searchQuery = ref('');
 const assigningDisplayId = ref<string | null>(null);
@@ -173,7 +171,7 @@ const {
 
 // Get available displays (not assigned to current space)
 const availableDisplays = computed(() => {
-	return displaysStore.findAll()
+	return allDisplays.value
 		.filter((display) => {
 			// Show all displays that are not in the current space
 			return display.spaceId !== props.spaceId;
@@ -203,7 +201,7 @@ const filteredAvailableDisplays = computed(() => {
 });
 
 const getSpaceName = (spaceId: string): string => {
-	const space = spacesStore.findById(spaceId);
+	const space = findById(spaceId);
 	return space?.name || 'Unknown';
 };
 

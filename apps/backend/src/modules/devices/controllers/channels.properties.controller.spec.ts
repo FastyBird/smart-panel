@@ -24,7 +24,7 @@ import {
 } from '../devices.constants';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { ChannelsPropertiesTypeMapperService } from '../services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';

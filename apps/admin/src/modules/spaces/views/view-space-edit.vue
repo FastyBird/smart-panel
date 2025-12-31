@@ -123,6 +123,10 @@ import { useSpace } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store';
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();

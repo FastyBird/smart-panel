@@ -427,3 +427,12 @@ export enum LightingRole {
 	NIGHT = 'night',
 	OTHER = 'other',
 }
+
+export enum FormResult {
+	NONE = 'none',
+	WORKING = 'working',
+	ERROR = 'error',
+	OK = 'ok',
+}
+
+export type FormResultType = FormResult.NONE | FormResult.WORKING | FormResult.ERROR | FormResult.OK;

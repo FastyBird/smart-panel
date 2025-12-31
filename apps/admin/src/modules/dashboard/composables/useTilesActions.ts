@@ -23,6 +23,26 @@ export const useTilesActions = (props: IUseTilesActionsProps): IUseTilesActions 
 
 	const tilesStore = storesManager.getStore(tilesStoreKey);
 
+	const findById = (parent: string, id: ITile['id']): ITile | null => {
+		return tilesStore.findById(parent, id);
+	};
+
+	const edit = async (payload: {
+		id: ITile['id'];
+		parent: { type: string; id: string };
+		data: { type: string } & Record<string, unknown>;
+	}): Promise<ITile> => {
+		return tilesStore.edit(payload);
+	};
+
+	const save = async (payload: { id: ITile['id']; parent: { type: string; id: string } }): Promise<ITile> => {
+		return tilesStore.save(payload);
+	};
+
+	const removeDirectly = async (payload: { id: ITile['id']; parent: { type: string; id: string } }): Promise<boolean> => {
+		return tilesStore.remove(payload);
+	};
+
 	const remove = async (id: ITile['id']): Promise<void> => {
 		const tile = tilesStore.findById(props.parent, id);
 
@@ -62,6 +82,10 @@ export const useTilesActions = (props: IUseTilesActionsProps): IUseTilesActions 
 	};
 
 	return {
+		findById,
+		edit,
+		save,
 		remove,
+		removeDirectly,
 	};
 };

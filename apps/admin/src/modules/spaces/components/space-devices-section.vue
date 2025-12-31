@@ -164,7 +164,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, toRef } from 'vue';
+import { onMounted, ref, toRef } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import {
@@ -182,11 +182,10 @@ import {
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { IconWithChild, injectStoresManager, useFlashMessage } from '../../../common';
+import { IconWithChild, useFlashMessage } from '../../../common';
 import type { IDevice } from '../../devices/store/devices.store.types';
-import { useSpaceDevices } from '../composables';
+import { useSpaceDevices, useSpaces } from '../composables';
 import { SpaceType } from '../spaces.constants';
-import { spacesStoreKey } from '../store';
 
 import type { ISpaceDevicesSectionProps } from './space-devices-section.types';
 
@@ -203,8 +202,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
-const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore(spacesStoreKey);
+const { roomSpaces } = useSpaces();
 
 const spaceIdRef = toRef(props, 'spaceId');
 const spaceTypeRef = toRef(props, 'spaceType');
@@ -221,11 +219,6 @@ const showReassignDialog = ref(false);
 const selectedDevice = ref<IDevice | null>(null);
 const selectedTargetSpace = ref<string | null>(null);
 const isReassigning = ref(false);
-
-// Get all room-type spaces for reassignment
-const roomSpaces = computed(() => {
-	return spacesStore.findAll().filter((space) => space.type === SpaceType.ROOM);
-});
 
 const getDeviceCategoryIcon = (category: string): string => {
 	// Simple category-based icons

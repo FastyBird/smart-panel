@@ -26,6 +26,7 @@ import type { IChannelAddForm, IChannelEditForm } from '../schemas/channels.type
 import type { IDeviceAddForm, IDeviceEditForm } from '../schemas/devices.types';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
+import type { IDeviceControl } from '../store/devices.controls.store.types';
 import type { IDevice } from '../store/devices.store.types';
 
 import { ChannelsFilterSchema, ChannelsPropertiesFilterSchema, type DevicesFilterSchema } from './schemas';
@@ -298,4 +299,11 @@ export interface IUseDeviceControl {
 	getPropertyValue: (propertyId: IChannelProperty['id']) => string | number | boolean | null;
 	isPropertyLoading: (propertyId: IChannelProperty['id']) => boolean;
 	setPropertyValue: (channelId: IChannel['id'], propertyId: IChannelProperty['id'], value: string | number | boolean | null) => Promise<boolean>;
+}
+
+export interface IUseDeviceControls {
+	controls: ComputedRef<IDeviceControl[]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchControls: () => Promise<IDeviceControl[]>;
 }

@@ -109,6 +109,10 @@ import { SpaceAddForm } from '../components/components';
 import { RouteNames } from '../spaces.constants';
 import type { ISpace } from '../store';
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();

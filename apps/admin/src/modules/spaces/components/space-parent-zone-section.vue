@@ -53,9 +53,9 @@ import { Icon } from '@iconify/vue';
 import { ElCard, ElOption, ElSelect, ElTag } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
-import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
-import { spacesStoreKey, type ISpace } from '../store';
+import { useFlashMessage } from '../../../common';
+import { useSpace, useSpaces } from '../composables';
+import type { ISpace } from '../store';
 
 import type { ISpaceParentZoneSectionProps } from './space-parent-zone-section.types';
 
@@ -68,8 +68,10 @@ const props = defineProps<ISpaceParentZoneSectionProps>();
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
-const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore(spacesStoreKey);
+const spaceId = computed(() => props.space.id);
+
+const { floorZoneSpaces, findById } = useSpaces();
+const { editSpace } = useSpace(spaceId);
 
 const selectedZoneId = ref<string | null>(props.space.parentId);
 const isSaving = ref(false);
@@ -77,18 +79,12 @@ const isSaving = ref(false);
 // Get the current parent zone
 const currentZone = computed<ISpace | null>(() => {
 	if (!props.space.parentId) return null;
-	return spacesStore.findById(props.space.parentId);
+	return findById(props.space.parentId);
 });
 
 // Get available zones (only floor-type zones, excluding self)
 const availableZones = computed(() => {
-	return spacesStore.findAll().filter((space) => {
-		if (space.type !== SpaceType.ZONE) return false;
-		if (space.id === props.space.id) return false;
-		// Only allow floor-type zones as parent
-		if (!isFloorZoneCategory(space.category)) return false;
-		return true;
-	});
+	return floorZoneSpaces.value.filter((space) => space.id !== props.space.id);
 });
 
 // Watch for external changes to parent zone
@@ -105,12 +101,9 @@ const onZoneChange = async (newZoneId: string | null): Promise<void> => {
 	isSaving.value = true;
 
 	try {
-		await spacesStore.edit({
-			id: props.space.id,
-			data: {
-				name: props.space.name,
-				parentId: newZoneId,
-			},
+		await editSpace({
+			name: props.space.name,
+			parentId: newZoneId,
 		});
 
 		flashMessage.success(t('spacesModule.messages.edited', { space: props.space.name }));

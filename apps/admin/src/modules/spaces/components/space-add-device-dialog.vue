@@ -139,12 +139,11 @@ import { ElAvatar, ElButton, ElDialog, ElInput, ElResult, ElTable, ElTableColumn
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild, injectStoresManager, useFlashMessage } from '../../../common';
+import { IconWithChild, useFlashMessage } from '../../../common';
+import { useDevices } from '../../devices/composables/composables';
 import type { IDevice } from '../../devices/store/devices.store.types';
-import { devicesStoreKey } from '../../devices/store/keys';
-import { useSpaceDevices } from '../composables';
+import { useSpaceDevices, useSpaces } from '../composables';
 import { SpaceType } from '../spaces.constants';
-import { spacesStoreKey } from '../store';
 
 import type { ISpaceAddDeviceDialogProps } from './space-add-device-dialog.types';
 
@@ -162,9 +161,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
-const storesManager = injectStoresManager();
-const devicesStore = storesManager.getStore(devicesStoreKey);
-const spacesStore = storesManager.getStore(spacesStoreKey);
+const { devices: allDevices } = useDevices();
+const { findById } = useSpaces();
 
 const searchQuery = ref('');
 const assigningDeviceId = ref<string | null>(null);
@@ -182,9 +180,8 @@ const spaceDeviceIds = computed(() => new Set(spaceDevices.value.map((d) => d.id
 
 // Get available devices (not assigned to current space)
 const availableDevices = computed(() => {
-	return devicesStore.findAll()
+	return allDevices.value
 		.filter((device) => {
-			if (device.draft) return false;
 			// For zones, filter out devices already in this zone
 			if (props.spaceType === SpaceType.ZONE) {
 				return !spaceDeviceIds.value.has(device.id);
@@ -228,7 +225,7 @@ const getDeviceIcon = (device: IDevice): string => {
 };
 
 const getSpaceName = (spaceId: string): string => {
-	const space = spacesStore.findById(spaceId);
+	const space = findById(spaceId);
 	return space?.name || 'Unknown';
 };
 

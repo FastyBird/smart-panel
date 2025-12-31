@@ -306,22 +306,19 @@ import {
 	IconWithChild,
 	ViewError,
 	ViewHeader,
-	injectStoresManager,
 	useBreakpoints,
 	useFlashMessage,
 	useUuid,
 } from '../../../common';
 import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
 import { ChannelDetail, DeviceDetail, DeviceLogs } from '../components/components';
-import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification, useDeviceValidation } from '../composables/composables';
+import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceControls, useDeviceSpecification, useDeviceValidation } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { deviceChannelsSpecificationOrder } from '../devices.mapping';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
-import type { IDeviceControl } from '../store/devices.controls.store.types';
 import type { IDevice } from '../store/devices.store.types';
-import { devicesControlsStoreKey } from '../store/keys';
 
 import type { IViewDeviceProps } from './view-device.types';
 
@@ -343,9 +340,6 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const storesManager = injectStoresManager();
-const devicesControlsStore = storesManager.getStore(devicesControlsStoreKey);
-
 const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
 const { fetchValidation } = useDeviceValidation({ id: props.id });
 
@@ -353,6 +347,7 @@ const { fetchValidation } = useDeviceValidation({ id: props.id });
 const wasDeviceLoaded = ref<boolean>(false);
 const { canAddAnotherChannel } = useDeviceSpecification({ id: props.id });
 const { channels, fetchChannels } = useChannels({ deviceId: props.id });
+const { controls, fetchControls } = useDeviceControls({ deviceId: props.id });
 const channelsActions = useChannelsActions();
 const channelsPropertiesActions = useChannelsPropertiesActions();
 
@@ -407,10 +402,6 @@ const sortedChannels = computed<IChannel[]>((): IChannel[] => {
 			// Same category → sort by name
 			return a.name.localeCompare(b.name);
 		});
-});
-
-const controls = computed<IDeviceControl[]>((): IDeviceControl[] => {
-	return devicesControlsStore.findForDevice(props.id);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -637,7 +628,7 @@ onBeforeMount((): void => {
 			});
 
 			// Fetch device controls
-			devicesControlsStore.fetch({ deviceId: props.id }).catch((): void => {
+			fetchControls().catch((): void => {
 				// Silently ignore controls fetch errors - controls are optional
 			});
 		})

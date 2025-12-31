@@ -14,7 +14,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, DEVICES_MODULE_PREFIX, DeviceCategory } from '../devices.constants';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
-import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity';
 import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
 

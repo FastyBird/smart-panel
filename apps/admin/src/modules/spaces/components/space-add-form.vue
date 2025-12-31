@@ -1,5 +1,5 @@
 <template>
-	<el-form ref="formRef" :model="formData" :rules="rules" label-position="top" @submit.prevent="onSubmit">
+	<el-form ref="formElRef" :model="model" :rules="rules" label-position="top" @submit.prevent="onSubmit">
 		<el-collapse v-model="activeCollapses">
 			<!-- 1. General Section -->
 			<el-collapse-item name="general">
@@ -14,11 +14,11 @@
 
 				<div class="px-2">
 					<el-form-item :label="t('spacesModule.fields.spaces.name.title')" prop="name">
-						<el-input v-model="formData.name" :placeholder="t('spacesModule.fields.spaces.name.placeholder')" />
+						<el-input v-model="model.name" :placeholder="t('spacesModule.fields.spaces.name.placeholder')" />
 					</el-form-item>
 
 					<el-form-item :label="t('spacesModule.fields.spaces.type.title')" prop="type">
-						<el-select v-model="formData.type">
+						<el-select v-model="model.type">
 							<el-option :label="t('spacesModule.fields.spaces.type.options.room')" :value="SpaceType.ROOM" />
 							<el-option :label="t('spacesModule.fields.spaces.type.options.zone')" :value="SpaceType.ZONE" />
 						</el-select>
@@ -26,9 +26,9 @@
 
 					<el-form-item :label="t('spacesModule.fields.spaces.category.title')" prop="category">
 						<el-select
-							v-model="formData.category"
+							v-model="model.category"
 							:placeholder="t('spacesModule.fields.spaces.category.placeholder')"
-							:clearable="formData.type !== SpaceType.ZONE"
+							:clearable="model.type !== SpaceType.ZONE"
 							@change="onCategoryChange"
 						>
 							<!-- Grouped categories for zones -->
@@ -82,7 +82,7 @@
 
 					<el-form-item :label="t('spacesModule.fields.spaces.description.title')" prop="description">
 						<el-input
-							v-model="formData.description"
+							v-model="model.description"
 							type="textarea"
 							:rows="3"
 							:placeholder="t('spacesModule.fields.spaces.description.placeholder')"
@@ -90,10 +90,10 @@
 					</el-form-item>
 
 					<el-form-item :label="t('spacesModule.fields.spaces.icon.title')" prop="icon">
-						<el-input v-model="formData.icon" :placeholder="t('spacesModule.fields.spaces.icon.placeholder')">
-							<template v-if="formData.icon" #prefix>
+						<el-input v-model="model.icon" :placeholder="t('spacesModule.fields.spaces.icon.placeholder')">
+							<template v-if="model.icon" #prefix>
 								<el-icon>
-									<icon :icon="formData.icon" />
+									<icon :icon="model.icon" />
 								</el-icon>
 							</template>
 						</el-input>
@@ -101,7 +101,7 @@
 
 					<el-form-item :label="t('spacesModule.fields.spaces.displayOrder.title')" prop="displayOrder">
 						<el-input-number
-							v-model="formData.displayOrder"
+							v-model="model.displayOrder"
 							:min="0"
 						/>
 					</el-form-item>
@@ -109,7 +109,7 @@
 			</el-collapse-item>
 
 			<!-- 2. Organization Section (Room only) -->
-			<el-collapse-item v-if="formData.type === SpaceType.ROOM" name="organization">
+			<el-collapse-item v-if="model.type === SpaceType.ROOM" name="organization">
 				<template #title>
 					<div class="flex items-center gap-2">
 						<el-icon :size="20">
@@ -125,7 +125,7 @@
 						prop="parentId"
 					>
 						<el-select
-							v-model="formData.parentId"
+							v-model="model.parentId"
 							:placeholder="t('spacesModule.fields.spaces.parentZone.placeholder')"
 							clearable
 							filterable
@@ -165,7 +165,7 @@
 			</el-button>
 			<el-button
 				type="primary"
-				:loading="saving"
+				:loading="formResult === FormResult.WORKING"
 				@click="onSubmit"
 			>
 				{{ t('spacesModule.buttons.save.title') }}
@@ -194,16 +194,16 @@ import {
 	type FormInstance,
 	type FormRules,
 } from 'element-plus';
+import { v4 as uuid } from 'uuid';
 import { useI18n } from 'vue-i18n';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
-import { useSpaceCategories } from '../composables';
+import { useSpaceAddForm, useSpaceCategories, useSpaces } from '../composables';
 import {
+	FormResult,
 	isValidCategoryForType,
-	SpaceCategory,
+	type SpaceCategory,
 	SpaceType,
 } from '../spaces.constants';
-import { spacesStoreKey, type ISpace, type ISpaceCreateData } from '../store';
 
 import { type ISpaceAddFormProps, spaceAddFormEmits } from './space-add-form.types';
 
@@ -214,28 +214,27 @@ const props = withDefaults(defineProps<ISpaceAddFormProps>(), {
 const emit = defineEmits(spaceAddFormEmits);
 
 const { t } = useI18n();
-const flashMessage = useFlashMessage();
 
-const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore(spacesStoreKey);
+const { zoneSpaces: availableZones, findById } = useSpaces();
 
-const formRef = ref<FormInstance>();
-const saving = ref(false);
+// Use the form composable
+const {
+	model,
+	formEl,
+	formChanged,
+	submit,
+	formResult,
+} = useSpaceAddForm({ id: uuid().toString() });
+
+// Local ref for template, synced with composable's formEl
+const formElRef = ref<FormInstance>();
+
+watch(formElRef, (newVal) => {
+	formEl.value = newVal;
+}, { immediate: true });
 
 // Collapse state - General and Organization open by default
 const activeCollapses = ref<string[]>(['general', 'organization']);
-
-const initialValues = {
-	name: '',
-	type: SpaceType.ROOM,
-	category: null as SpaceCategory | null,
-	description: '',
-	icon: '',
-	displayOrder: 0,
-	parentId: null as string | null,
-};
-
-const formData = reactive({ ...initialValues });
 
 // Track values that were auto-populated from templates (not manually entered)
 const autoPopulatedValues = reactive({
@@ -245,36 +244,31 @@ const autoPopulatedValues = reactive({
 
 // Category options, groups, and templates based on the selected space type
 const { categoryOptions, categoryGroups, currentTemplates } = useSpaceCategories(
-	computed(() => formData.type)
-);
-
-// Get available zones for parent zone selector
-const availableZones = computed(() =>
-	spacesStore.findAll().filter((s) => s.type === SpaceType.ZONE)
+	computed(() => model.type)
 );
 
 // Handle type change - clear category if it becomes incompatible
 watch(
-	() => formData.type,
+	() => model.type,
 	(newType) => {
-		if (formData.category && !isValidCategoryForType(formData.category, newType)) {
-			formData.category = null;
+		if (model.category && !isValidCategoryForType(model.category, newType)) {
+			model.category = null;
 			// Also clear auto-populated values since they may not apply anymore
-			if (formData.icon === autoPopulatedValues.icon) {
-				formData.icon = '';
+			if (model.icon === autoPopulatedValues.icon) {
+				model.icon = null;
 				autoPopulatedValues.icon = null;
 			}
-			if (formData.description === autoPopulatedValues.description) {
-				formData.description = '';
+			if (model.description === autoPopulatedValues.description) {
+				model.description = null;
 				autoPopulatedValues.description = null;
 			}
 		}
 		// Zones cannot have a parent - clear parentId when switching to zone type
 		if (newType === SpaceType.ZONE) {
-			formData.parentId = null;
+			model.parentId = null;
 		}
 		// Clear validation state to prevent warning messages when rules change
-		formRef.value?.clearValidate();
+		formElRef.value?.clearValidate();
 	}
 );
 
@@ -283,12 +277,12 @@ const onCategoryChange = (category: SpaceCategory | null): void => {
 	if (category && currentTemplates.value[category]) {
 		const template = currentTemplates.value[category];
 		// Only auto-populate if the field is empty or matches our tracked auto-populated value
-		if (!formData.icon || formData.icon === autoPopulatedValues.icon) {
-			formData.icon = template.icon;
+		if (!model.icon || model.icon === autoPopulatedValues.icon) {
+			model.icon = template.icon;
 			autoPopulatedValues.icon = template.icon;
 		}
-		if (!formData.description || formData.description === autoPopulatedValues.description) {
-			formData.description = template.description;
+		if (!model.description || model.description === autoPopulatedValues.description) {
+			model.description = template.description;
 			autoPopulatedValues.description = template.description;
 		}
 	}
@@ -296,27 +290,14 @@ const onCategoryChange = (category: SpaceCategory | null): void => {
 
 const rules = computed<FormRules>(() => ({
 	name: [{ required: true, message: t('spacesModule.fields.spaces.name.validation.required'), trigger: 'blur' }],
-	type: [{ required: true, message: t('spacesModule.fields.spaces.type.validation.required'), trigger: 'change' }],
 	category: [
 		{
-			required: formData.type === SpaceType.ZONE,
+			required: model.type === SpaceType.ZONE,
 			message: t('spacesModule.fields.spaces.category.validation.requiredForZone'),
 			trigger: 'blur',
 		},
 	],
 }));
-
-const formChanged = computed<boolean>((): boolean => {
-	return (
-		formData.name !== initialValues.name ||
-		formData.type !== initialValues.type ||
-		formData.category !== initialValues.category ||
-		formData.description !== initialValues.description ||
-		formData.icon !== initialValues.icon ||
-		formData.displayOrder !== initialValues.displayOrder ||
-		formData.parentId !== initialValues.parentId
-	);
-});
 
 watch(
 	(): boolean => formChanged.value,
@@ -327,32 +308,16 @@ watch(
 );
 
 const onSubmit = async (): Promise<void> => {
-	const valid = await formRef.value?.validate().catch(() => false);
-
-	if (!valid) {
-		return;
-	}
-
-	saving.value = true;
-
 	try {
-		const data: ISpaceCreateData = {
-			name: formData.name,
-			type: formData.type,
-			category: formData.category || null,
-			description: formData.description || null,
-			icon: formData.icon || null,
-			displayOrder: formData.displayOrder,
-			parentId: formData.parentId || null,
-		};
+		await submit();
 
-		const savedSpace: ISpace = await spacesStore.add({ data });
+		const space = findById(model.id);
 
-		emit('saved', savedSpace);
+		if (space) {
+			emit('saved', space);
+		}
 	} catch {
-		flashMessage.error(t('spacesModule.messages.createError'));
-	} finally {
-		saving.value = false;
+		// Error already handled by composable
 	}
 };
 

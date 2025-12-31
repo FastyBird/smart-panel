@@ -253,13 +253,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSlider, ElSwitch, type FormRules } from 'element-plus';
 
-import { injectStoresManager } from '../../../common';
-import { pagesStoreKey } from '../../dashboard/store/keys';
+import { usePages } from '../../dashboard/composables/composables';
 import { useDisplayEditForm } from '../composables/useDisplayEditForm';
 import { FormResult, type FormResultType } from '../displays.constants';
 import type { IDisplayEditForm } from '../composables/types';
@@ -285,13 +284,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const storesManager = injectStoresManager();
-const pagesStore = storesManager.getStore(pagesStoreKey);
+const { pages } = usePages();
 
 const { model, formEl, formChanged, submit, formResult } = useDisplayEditForm({ display: props.display });
-
-// Get pages for home page selection (exclude drafts to prevent selecting unpublished pages)
-const pages = computed(() => pagesStore.findAll().filter((page) => !page.draft));
 
 const rules = reactive<FormRules<IDisplayEditForm>>({
 	name: [{ max: 100, message: t('displaysModule.fields.displays.name.validation.maxLength'), trigger: 'blur' }],
