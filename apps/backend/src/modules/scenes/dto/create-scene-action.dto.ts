@@ -36,16 +36,16 @@ export class CreateSceneActionDto {
 	})
 	type: string;
 
-	@ApiProperty({
-		description: 'Action configuration (plugin-specific)',
+	@ApiPropertyOptional({
+		description: 'Action configuration (plugin-specific, used when plugin does not define specific fields)',
 		type: 'object',
 		additionalProperties: true,
 		example: { device_id: 'uuid', property_id: 'uuid', value: true },
 	})
 	@Expose()
-	@IsNotEmpty({ message: '[{"field":"configuration","reason":"Configuration is required."}]' })
+	@IsOptional()
 	@IsObject({ message: '[{"field":"configuration","reason":"Configuration must be a valid object."}]' })
-	configuration: Record<string, unknown>;
+	configuration?: Record<string, unknown>;
 
 	@ApiPropertyOptional({ description: 'Action execution order', type: 'integer', example: 0 })
 	@Expose()

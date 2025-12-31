@@ -1,23 +1,13 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { CreateSceneActionDto } from '../../../modules/scenes/dto/create-scene-action.dto';
 import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
 
 @ApiSchema({ name: 'ScenesLocalPluginCreateSceneAction' })
-export class CreateLocalSceneActionDto {
-	@ApiPropertyOptional({
-		description: 'Action ID',
-		type: 'string',
-		format: 'uuid',
-		example: '123e4567-e89b-12d3-a456-426614174000',
-	})
-	@Expose()
-	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
-	id?: string;
-
+export class CreateLocalSceneActionDto extends CreateSceneActionDto {
 	@ApiProperty({
 		description: 'Action type',
 		type: 'string',
@@ -26,7 +16,7 @@ export class CreateLocalSceneActionDto {
 	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid action type string."}]' })
-	readonly type: typeof SCENES_LOCAL_TYPE = SCENES_LOCAL_TYPE;
+	override readonly type: string = SCENES_LOCAL_TYPE;
 
 	@ApiProperty({
 		name: 'device_id',
@@ -88,17 +78,4 @@ export class CreateLocalSceneActionDto {
 		return JSON.stringify(value);
 	})
 	value: string | number | boolean;
-
-	@ApiPropertyOptional({ description: 'Action execution order', type: 'integer', example: 0 })
-	@Expose()
-	@IsOptional()
-	@IsInt({ message: '[{"field":"order","reason":"Order must be a valid integer."}]' })
-	@Min(0, { message: '[{"field":"order","reason":"Order must be a non-negative integer."}]' })
-	order?: number;
-
-	@ApiPropertyOptional({ description: 'Whether action is enabled', type: 'boolean', example: true })
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
-	enabled?: boolean;
 }

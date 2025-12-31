@@ -1,12 +1,13 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { UpdateSceneActionDto } from '../../../modules/scenes/dto/update-scene-action.dto';
 import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
 
 @ApiSchema({ name: 'ScenesLocalPluginUpdateSceneAction' })
-export class UpdateLocalSceneActionDto {
+export class UpdateLocalSceneActionDto extends UpdateSceneActionDto {
 	@ApiProperty({
 		description: 'Action type',
 		type: 'string',
@@ -15,7 +16,7 @@ export class UpdateLocalSceneActionDto {
 	})
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid action type string."}]' })
-	readonly type: typeof SCENES_LOCAL_TYPE = SCENES_LOCAL_TYPE;
+	override readonly type: string = SCENES_LOCAL_TYPE;
 
 	@ApiPropertyOptional({
 		name: 'device_id',
@@ -79,17 +80,4 @@ export class UpdateLocalSceneActionDto {
 		return JSON.stringify(value);
 	})
 	value?: string | number | boolean;
-
-	@ApiPropertyOptional({ description: 'Action execution order', type: 'integer', example: 0 })
-	@Expose()
-	@IsOptional()
-	@IsInt({ message: '[{"field":"order","reason":"Order must be a valid integer."}]' })
-	@Min(0, { message: '[{"field":"order","reason":"Order must be a non-negative integer."}]' })
-	order?: number;
-
-	@ApiPropertyOptional({ description: 'Whether action is enabled', type: 'boolean', example: true })
-	@Expose()
-	@IsOptional()
-	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
-	enabled?: boolean;
 }
