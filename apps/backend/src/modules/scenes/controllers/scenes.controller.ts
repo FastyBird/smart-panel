@@ -132,7 +132,14 @@ export class ScenesController {
 	): Promise<SceneResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new scene');
 
-		const dtoInstance = toInstance(CreateSceneDto, createDto.data, {
+		// Extract actions before validation - they will be validated by the service
+		// using plugin-specific DTOs via the type mapper
+		const rawData = createDto.data as Record<string, unknown>;
+		const actions = rawData.actions;
+		const sceneDataWithoutActions = { ...rawData };
+		delete sceneDataWithoutActions.actions;
+
+		const dtoInstance = toInstance(CreateSceneDto, sceneDataWithoutActions, {
 			excludeExtraneousValues: false,
 		});
 
@@ -146,6 +153,9 @@ export class ScenesController {
 			this.logger.error(`[VALIDATION FAILED] Validation failed for scene creation error=${JSON.stringify(errors)}`);
 			throw ValidationExceptionFactory.createException(errors);
 		}
+
+		// Re-attach actions for the service to process with type mapper
+		dtoInstance.actions = actions as CreateSceneDto['actions'];
 
 		try {
 			const scene = await this.scenesService.create(dtoInstance);

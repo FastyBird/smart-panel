@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpacesService } from '../../spaces/services/spaces.service';
+import { CreateSceneActionDto } from '../dto/create-scene-action.dto';
 import { CreateSceneDto } from '../dto/create-scene.dto';
 import { UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
@@ -144,27 +145,19 @@ export class ScenesService {
 			await this.validateSpace(primary_space_id);
 		}
 
-		const dtoInstance = await this.validateDto(CreateSceneDto, createDto);
+		// Extract actions before validation - they will be validated by SceneActionsService
+		// using plugin-specific DTOs via the type mapper
+		const actions = (createDto.actions || []) as (CreateSceneActionDto & { scene?: string })[];
+		const sceneDataWithoutActions = { ...createDto };
+		delete sceneDataWithoutActions.actions;
+
+		const dtoInstance = await this.validateDto(CreateSceneDto, sceneDataWithoutActions);
 
 		// Generate IDs for actions if not provided
-		(dtoInstance.actions || []).forEach((action, index) => {
+		actions.forEach((action, index) => {
 			action.id = action.id ?? uuid().toString();
 			action.order = action.order ?? index;
 		});
-
-		const actions = dtoInstance.actions || [];
-		delete dtoInstance.actions;
-
-		const errors = await validate(dtoInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-			stopAtFirstError: false,
-		});
-
-		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for scene creation error=${JSON.stringify(errors)}`);
-			throw new ScenesValidationException('Provided scene data are invalid.');
-		}
 
 		// Use transaction to ensure scene and actions are created atomically
 		const savedScene = await this.dataSource.transaction(async (transactionalEntityManager) => {
