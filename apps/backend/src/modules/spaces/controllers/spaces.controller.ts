@@ -94,7 +94,6 @@ export class SpacesController {
 	) {}
 
 	@Get()
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-spaces',
 		summary: 'List all spaces',
@@ -144,7 +143,6 @@ export class SpacesController {
 	}
 
 	@Get('categories/templates')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-category-templates',
 		summary: 'List space category templates',
@@ -171,7 +169,6 @@ export class SpacesController {
 	}
 
 	@Get('intents/catalog')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-intent-catalog',
 		summary: 'Get intent catalog',
@@ -255,7 +252,6 @@ export class SpacesController {
 	}
 
 	@Get(':id')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space',
 		summary: 'Get space by ID',
@@ -345,7 +341,6 @@ export class SpacesController {
 	}
 
 	@Get(':id/devices')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-devices',
 		summary: 'List devices in space',
@@ -367,7 +362,6 @@ export class SpacesController {
 	}
 
 	@Get(':id/displays')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-displays',
 		summary: 'List displays in space',
@@ -389,7 +383,6 @@ export class SpacesController {
 	}
 
 	@Get(':id/children')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-children',
 		summary: 'List child rooms of a zone',
@@ -410,7 +403,6 @@ export class SpacesController {
 	}
 
 	@Get(':id/parent')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-parent',
 		summary: 'Get parent zone of a room',
@@ -433,7 +425,6 @@ export class SpacesController {
 	}
 
 	@Get('zones')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-zones',
 		summary: 'List all zones',
@@ -483,7 +474,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/lighting')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-lighting-intent',
 		summary: 'Execute lighting intent for space',
@@ -516,7 +506,6 @@ export class SpacesController {
 	}
 
 	@Get(':id/climate')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-climate',
 		summary: 'Get climate state for space',
@@ -551,7 +540,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/climate')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-climate-intent',
 		summary: 'Execute climate intent for space',
@@ -746,7 +734,6 @@ export class SpacesController {
 	// ================================
 
 	@Get(':id/suggestion')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-suggestion',
 		summary: 'Get suggestion for space',
@@ -780,7 +767,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/suggestion/feedback')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-suggestion-feedback',
 		summary: 'Submit suggestion feedback',
@@ -816,7 +802,6 @@ export class SpacesController {
 	// ================================
 
 	@Get(':id/context/snapshot')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-context-snapshot',
 		summary: 'Capture context snapshot for space',
@@ -893,7 +878,6 @@ export class SpacesController {
 	// ================================
 
 	@Get(':id/undo')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-spaces-module-space-undo-state',
 		summary: 'Get undo state for space',
@@ -941,7 +925,6 @@ export class SpacesController {
 	}
 
 	@Post(':id/intents/undo')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'create-spaces-module-space-undo',
 		summary: 'Undo the last intent for space',
