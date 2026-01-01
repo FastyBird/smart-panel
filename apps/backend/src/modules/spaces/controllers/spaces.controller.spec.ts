@@ -58,7 +58,7 @@ describe('SpacesController', () => {
 	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
 		name: 'Living Room Panel',
-		spaceId: mockSpace.id,
+		roomId: mockSpace.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	} as DisplayEntity;

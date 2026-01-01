@@ -120,6 +120,9 @@ export class InfluxDbService implements OnApplicationBootstrap {
 			const err = error as Error;
 
 			this.logger.error('Failed to connect to InfluxDB', { message: err.message, stack: err.stack });
+
+			// Mark as disconnected so isConnected() returns false
+			this.connection = null;
 		}
 	}
 
@@ -239,11 +242,43 @@ export class InfluxDbService implements OnApplicationBootstrap {
 	}
 
 	async query<T>(query: string, options?: IQueryOptions): Promise<IResults<T>> {
-		return this.getConnection().query(query, options);
+		try {
+			return await this.getConnection().query(query, options);
+		} catch (error) {
+			const err = error as Error;
+
+			// Handle "database not found" gracefully - return empty results
+			if (err.message?.includes('database not found')) {
+				this.logger.warn('Database not found, returning empty results. Attempting to recreate...');
+
+				// Try to recreate the database
+				void this.setupDatabase();
+
+				return [] as unknown as IResults<T>;
+			}
+
+			throw error;
+		}
 	}
 
 	async queryRaw<T>(query: string, options?: IQueryOptions): Promise<T> {
-		return this.getConnection().queryRaw(query, options) as Promise<T>;
+		try {
+			return (await this.getConnection().queryRaw(query, options)) as T;
+		} catch (error) {
+			const err = error as Error;
+
+			// Handle "database not found" gracefully
+			if (err.message?.includes('database not found')) {
+				this.logger.warn('Database not found, returning empty results. Attempting to recreate...');
+
+				// Try to recreate the database
+				void this.setupDatabase();
+
+				return { results: [] } as T;
+			}
+
+			throw error;
+		}
 	}
 
 	public async revokeAdminPrivilege(...args: Parameters<InfluxDB['revokeAdminPrivilege']>): Promise<void> {

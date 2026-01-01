@@ -23,9 +23,9 @@ export const useSpaceDisplays = (spaceId: Ref<string | undefined>): IUseSpaceDis
 
 		const allDisplays = displaysStore.findAll();
 
-		// Filter displays where spaceId matches and sort alphabetically by name (or macAddress if no name)
+		// Filter displays where roomId matches and sort alphabetically by name (or macAddress if no name)
 		return allDisplays
-			.filter((display) => display.spaceId === spaceId.value)
+			.filter((display) => display.roomId === spaceId.value)
 			.sort((a, b) => (a.name || a.macAddress).localeCompare(b.name || b.macAddress));
 	});
 
@@ -45,7 +45,7 @@ export const useSpaceDisplays = (spaceId: Ref<string | undefined>): IUseSpaceDis
 			await displaysStore.edit({
 				id: displayId,
 				data: {
-					spaceId: targetSpaceId,
+					roomId: targetSpaceId,
 				},
 			});
 		} finally {
@@ -60,7 +60,7 @@ export const useSpaceDisplays = (spaceId: Ref<string | undefined>): IUseSpaceDis
 			await displaysStore.edit({
 				id: displayId,
 				data: {
-					spaceId: null,
+					roomId: null,
 				},
 			});
 		} finally {

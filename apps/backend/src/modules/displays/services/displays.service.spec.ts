@@ -14,6 +14,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { PageEntity } from '../../dashboard/entities/dashboard.entity';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
+import { SpaceType } from '../../spaces/spaces.constants';
 import { ConnectionState, DisplayRole, EventType, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
@@ -23,7 +26,10 @@ import { DisplaysService } from './displays.service';
 describe('DisplaysService', () => {
 	let service: DisplaysService;
 	let repository: Repository<DisplayEntity>;
+	let spaceRepository: Repository<SpaceEntity>;
 	let eventEmitter: EventEmitter2;
+
+	const mockRoomId = uuid().toString();
 
 	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
@@ -51,8 +57,8 @@ describe('DisplaysService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		spaceId: null,
-		space: null,
+		roomId: mockRoomId,
+		room: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,
@@ -87,8 +93,8 @@ describe('DisplaysService', () => {
 		registeredFromIp: null,
 		currentIpAddress: null,
 		online: false,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
 		homePage: null,
@@ -122,6 +128,8 @@ describe('DisplaysService', () => {
 			providers: [
 				DisplaysService,
 				{ provide: getRepositoryToken(DisplayEntity), useFactory: mockRepository },
+				{ provide: getRepositoryToken(SpaceEntity), useFactory: mockRepository },
+				{ provide: getRepositoryToken(PageEntity), useFactory: mockRepository },
 				{ provide: DataSource, useValue: mockDataSource },
 				{
 					provide: EventEmitter2,
@@ -134,6 +142,7 @@ describe('DisplaysService', () => {
 
 		service = module.get<DisplaysService>(DisplaysService);
 		repository = module.get<Repository<DisplayEntity>>(getRepositoryToken(DisplayEntity));
+		spaceRepository = module.get<Repository<SpaceEntity>>(getRepositoryToken(SpaceEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -255,7 +264,11 @@ describe('DisplaysService', () => {
 			const updateDto = { brightness: 80 };
 			const updatedDisplay = { ...mockDisplay, brightness: 80 };
 
+			// Mock the room to exist for validation
+			const mockRoom = { id: mockRoomId, type: SpaceType.ROOM } as SpaceEntity;
+
 			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(DisplayEntity, mockDisplay));
+			jest.spyOn(spaceRepository, 'findOne').mockResolvedValue(mockRoom);
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(DisplayEntity, updatedDisplay));
 
 			const result = await service.update(mockDisplay.id, updateDto);

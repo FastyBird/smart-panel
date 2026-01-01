@@ -174,7 +174,7 @@ const availableDisplays = computed(() => {
 	return allDisplays.value
 		.filter((display) => {
 			// Show all displays that are not in the current space
-			return display.spaceId !== props.spaceId;
+			return display.roomId !== props.spaceId;
 		})
 		.sort((a, b) => {
 			const nameA = a.name || a.macAddress;

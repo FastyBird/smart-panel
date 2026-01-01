@@ -3,7 +3,7 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -12,7 +12,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { SpaceType } from '../../spaces/spaces.constants';
-import { DisplayRole, DISPLAYS_MODULE_NAME, EventType, HomeMode } from '../displays.constants';
+import { DISPLAYS_MODULE_NAME, DisplayRole, EventType, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException, DisplaysValidationException } from '../displays.exceptions';
 import { UpdateDisplayDto } from '../dto/update-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';

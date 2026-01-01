@@ -4,11 +4,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
+import { DashboardModule } from '../dashboard/dashboard.module';
 import { PageEntity } from '../dashboard/entities/dashboard.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
+import { SpaceEntity } from '../spaces/entities/space.entity';
+import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
@@ -44,12 +47,14 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([DisplayEntity, PageEntity]),
+		TypeOrmModule.forFeature([DisplayEntity, PageEntity, SpaceEntity]),
 		AuthModule,
 		ConfigModule,
 		ExtensionsModule,
 		forwardRef(() => SystemModule),
 		forwardRef(() => InfluxDbModule),
+		forwardRef(() => SpacesModule),
+		forwardRef(() => DashboardModule),
 	],
 	controllers: [DisplaysController, RegistrationController],
 	providers: [
