@@ -173,19 +173,13 @@ import { Icon } from '@iconify/vue';
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
 import { SpaceType } from '../../spaces/spaces.constants';
-import { ListScenes } from '../components/components';
+import { ListScenes, ListScenesAdjust } from '../components/components';
 import { useScenesDataSource, useScenes } from '../composables/composables';
 import { RouteNames } from '../scenes.constants';
 import { ScenesException } from '../scenes.exceptions';
 import type { IScene } from '../store/scenes.store.types';
 
 import type { IViewScenesProps } from './view-scenes.types';
-
-// Placeholder component for list adjustment - to be implemented
-const ListScenesAdjust = {
-	name: 'ListScenesAdjust',
-	template: '<div class="p-4">Filters adjustment panel</div>',
-};
 
 defineOptions({
 	name: 'ViewScenes',

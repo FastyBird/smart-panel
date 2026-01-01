@@ -16,28 +16,6 @@
 					<el-icon><icon icon="mdi:magnify" /></el-icon>
 				</template>
 			</el-input>
-
-			<el-divider direction="vertical" />
-
-			<el-form-item
-				:label="t('scenes.fields.enabled')"
-				class="p-1 m-0!"
-			>
-				<el-radio-group v-model="innerFilters.enabled">
-					<el-radio-button
-						:label="t('scenes.filters.enabled')"
-						value="enabled"
-					/>
-					<el-radio-button
-						:label="t('scenes.filters.disabled')"
-						value="disabled"
-					/>
-					<el-radio-button
-						:label="t('scenes.filters.all')"
-						value="all"
-					/>
-				</el-radio-group>
-			</el-form-item>
 		</el-form>
 
 		<el-button
@@ -63,7 +41,7 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElRadioButton, ElRadioGroup, type FormInstance } from 'element-plus';
+import { ElButton, ElForm, ElIcon, ElInput, type FormInstance } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';

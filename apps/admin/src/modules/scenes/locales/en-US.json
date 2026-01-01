@@ -5,19 +5,30 @@
 			"add": "Add Scene",
 			"edit": "Edit Scene",
 			"delete": "Delete Scene",
-			"discard": "Discard Changes"
+			"discard": "Discard Changes",
+			"adjustFilters": "Adjust Filters"
 		},
 		"subHeadings": {
-			"list": "Manage automation scenes for your smart home"
+			"list": "Manage automation scenes for your smart home",
+			"adjustFilters": "Filter scenes by various criteria"
 		},
 		"breadcrumbs": {
 			"scenes": "Scenes"
 		},
 		"filters": {
 			"allRooms": "All Rooms",
-			"enabled": "Enabled",
-			"disabled": "Disabled",
-			"all": "All"
+			"enabled": {
+				"title": "Status",
+				"values": {
+					"enabled": "Enabled",
+					"disabled": "Disabled",
+					"all": "All"
+				}
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Select categories"
+			}
 		},
 		"fields": {
 			"name": "Name",
