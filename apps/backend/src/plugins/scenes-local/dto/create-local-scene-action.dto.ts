@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDefined, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -70,6 +70,7 @@ export class CreateLocalSceneActionDto extends CreateSceneActionDto {
 		example: true,
 	})
 	@Expose()
+	@IsDefined({ message: '[{"field":"value","reason":"Value is required."}]' })
 	@Transform(({ value }: { value: unknown }) => {
 		if (typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
 			return value;
