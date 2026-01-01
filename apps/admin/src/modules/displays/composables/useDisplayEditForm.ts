@@ -34,6 +34,8 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		id: display.id,
 		name: display.name,
 		role: display.role,
+		// Room assignment (only for role=room displays)
+		roomId: display.roomId,
 		unitSize: display.unitSize,
 		rows: display.rows,
 		cols: display.cols,
@@ -77,6 +79,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 			const updateData: {
 				name: string | null;
 				role: 'room' | 'master' | 'entry';
+				roomId: string | null;
 				unitSize?: number;
 				rows?: number;
 				cols?: number;
@@ -88,11 +91,13 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				speakerVolume?: number;
 				microphone?: boolean;
 				microphoneVolume?: number;
-				homeMode: 'auto_space' | 'explicit' | 'first_page';
+				homeMode: 'auto_space' | 'explicit';
 				homePageId: string | null;
 			} = {
 				name: model.name || null,
 				role: model.role,
+				// Room assignment: clear if not room role
+				roomId: model.role === 'room' ? model.roomId : null,
 				unitSize: model.unitSize,
 				rows: model.rows,
 				cols: model.cols,
@@ -101,7 +106,8 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				darkMode: model.darkMode,
 				screenSaver: model.screenSaver,
 				homeMode: model.homeMode,
-				homePageId: model.homePageId,
+				// Home page: clear if not explicit mode
+				homePageId: model.homeMode === 'explicit' ? model.homePageId : null,
 			};
 
 			// Only include audio settings if the display supports them

@@ -59,7 +59,7 @@ export interface DisplayInfo {
 	name: string | null;
 	macAddress: string;
 	role: string;
-	spaceId: string | null;
+	roomId: string | null;
 }
 
 interface WizardState {
@@ -931,7 +931,7 @@ export const useSpacesOnboarding = () => {
 
 	const initializeDisplayAssignments = (displays: DisplayInfo[]): void => {
 		for (const display of displays) {
-			state.displayAssignments[display.id] = display.spaceId ?? null;
+			state.displayAssignments[display.id] = display.roomId ?? null;
 		}
 	};
 
@@ -976,7 +976,7 @@ export const useSpacesOnboarding = () => {
 				name: d.name ?? null,
 				macAddress: d.mac_address ?? '',
 				role: d.role ?? 'room',
-				spaceId: d.space_id ?? null,
+				roomId: d.room_id ?? null,
 			}));
 		} catch (err) {
 			state.error = err instanceof Error ? err.message : 'Unknown error';

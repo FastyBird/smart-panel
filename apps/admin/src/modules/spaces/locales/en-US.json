@@ -31,7 +31,7 @@
 				"manageDisplays": "Manage displays"
 			},
 			"smartOverrides": {
-				"title": "Smart Overrides",
+				"title": "Smart overrides",
 				"badge": "Advanced",
 				"hint": "Optional settings to improve smart behavior and intent-based control.",
 				"climateOverrides": "Climate device overrides",

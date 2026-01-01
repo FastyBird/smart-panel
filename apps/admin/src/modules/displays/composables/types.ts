@@ -48,7 +48,7 @@ export interface IUseDisplaysActions {
 	bulkRemove: (displays: IDisplay[]) => Promise<void>;
 }
 
-export type HomeMode = 'auto_space' | 'explicit' | 'first_page';
+export type HomeMode = 'auto_space' | 'explicit';
 
 export type DisplayRole = 'room' | 'master' | 'entry';
 
@@ -56,6 +56,8 @@ export interface IDisplayEditForm {
 	id: string;
 	name: string | null;
 	role: DisplayRole;
+	// Room assignment (only for role=room displays)
+	roomId: string | null;
 	unitSize: number;
 	rows: number;
 	cols: number;

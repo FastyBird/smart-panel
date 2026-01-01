@@ -240,29 +240,29 @@ export class DisplayEntity extends BaseEntity {
 	@Column({ type: 'varchar', length: 20, default: DisplayRole.ROOM })
 	role: DisplayRole;
 
-	// === Space Assignment ===
+	// === Room Assignment (only for role=room displays) ===
 
 	@ApiPropertyOptional({
-		name: 'space_id',
-		description: 'Space (room/zone) this display belongs to',
+		name: 'room_id',
+		description: 'Room this display is assigned to (required for room role, must be null for master/entry roles)',
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
-	@Expose({ name: 'space_id' })
+	@Expose({ name: 'room_id' })
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
+	@IsUUID('4', { message: '[{"field":"room_id","reason":"Room ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { room_id?: string; roomId?: string } }) => obj.room_id ?? obj.roomId, {
 		toClassOnly: true,
 	})
 	@Index()
 	@Column({ nullable: true, default: null })
-	spaceId: string | null;
+	roomId: string | null;
 
 	@ManyToOne(() => SpaceEntity, { nullable: true, onDelete: 'SET NULL' })
-	@JoinColumn({ name: 'spaceId' })
-	space: SpaceEntity | null;
+	@JoinColumn({ name: 'roomId' })
+	room: SpaceEntity | null;
 
 	// === Home Page Configuration ===
 

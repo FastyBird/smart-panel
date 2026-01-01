@@ -3,11 +3,11 @@
 	"description": "Manage your display devices",
 	"headings": {
 		"list": "Displays",
-		"adjustFilters": "Filter Displays",
-		"removeDisplay": "Remove Display",
-		"removeBulkDisplays": "Remove Displays",
-		"discard": "Discard Changes",
-		"aboutDisplayConfiguration": "Display Configuration"
+		"adjustFilters": "Filter displays",
+		"removeDisplay": "Remove display",
+		"removeBulkDisplays": "Remove displays",
+		"discard": "Discard changes",
+		"aboutDisplayConfiguration": "Display configuration"
 	},
 	"subHeadings": {
 		"list": "Manage your connected display devices",
@@ -41,7 +41,7 @@
 		"columns": {
 			"name": "Name",
 			"role": "Role",
-			"macAddress": "MAC Address",
+			"macAddress": "MAC address",
 			"version": "Version",
 			"resolution": "Resolution",
 			"layout": "Layout",
@@ -64,7 +64,7 @@
 		},
 		"config": {
 			"deploymentMode": {
-				"title": "Gateway Mode",
+				"title": "Gateway mode",
 				"description": "Gateway mode for display registration",
 				"placeholder": "Select gateway mode",
 				"validation": {
@@ -72,7 +72,7 @@
 				}
 			},
 			"permitJoinDurationMs": {
-				"title": "Permit Join Duration",
+				"title": "Permit join duration",
 				"description": "Duration in milliseconds that permit join remains active",
 				"placeholder": "120000",
 				"unit": "ms",
@@ -95,7 +95,7 @@
 				}
 			},
 			"role": {
-				"title": "Display Role",
+				"title": "Display role",
 				"description": "The purpose of this display in your smart home setup",
 				"options": {
 					"room": "Room (Single room control)",
@@ -104,7 +104,7 @@
 				}
 			},
 			"unitSize": {
-				"title": "Unit Size",
+				"title": "Unit size",
 				"unit": "px",
 				"validation": {
 					"min": "Unit size must be at least 1"
@@ -129,63 +129,73 @@
 				}
 			},
 			"screenLockDuration": {
-				"title": "Screen Lock Duration",
+				"title": "Screen lock duration",
 				"unit": "seconds",
 				"validation": {
 					"min": "Screen lock duration must be positive"
 				}
 			},
 			"darkMode": {
-				"title": "Dark Mode"
+				"title": "Dark mode"
 			},
 			"screenSaver": {
-				"title": "Screen Saver"
+				"title": "Screen saver"
 			},
 			"audio": {
 				"speaker": {
-					"title": "Speaker (Audio Output)"
+					"title": "Speaker (audio output)"
 				},
 				"microphone": {
-					"title": "Microphone (Audio Input)"
+					"title": "Microphone (audio input)"
 				}
 			},
 			"speaker": {
-				"title": "Speaker Enabled"
+				"title": "Speaker enabled"
 			},
 			"speakerVolume": {
-				"title": "Speaker Volume",
+				"title": "Speaker volume",
 				"validation": {
 					"range": "Volume must be between 0 and 100"
 				}
 			},
 			"microphone": {
-				"title": "Microphone Enabled"
+				"title": "Microphone enabled"
 			},
 			"microphoneVolume": {
-				"title": "Microphone Volume",
+				"title": "Microphone volume",
 				"validation": {
 					"range": "Volume must be between 0 and 100"
 				}
 			},
 			"homeMode": {
-				"title": "Home Page Mode",
+				"title": "Home page mode",
 				"description": "How the home page is determined when the display starts",
 				"options": {
-					"autoSpace": "Auto (Space Page)",
-					"explicit": "Explicit (Configured Page)",
-					"firstPage": "First Page"
+					"autoSpace": "Auto",
+					"explicit": "Explicit"
 				}
 			},
 			"homePageId": {
-				"title": "Home Page",
+				"title": "Home page",
 				"placeholder": "Select home page",
-				"description": "The page to show when the display starts (only used when Home Page Mode is Explicit)"
+				"description": "The page to show when the display starts (only used when Home Page Mode is Explicit)",
+				"validation": {
+					"required": "Home page is required when Home Page Mode is Explicit"
+				}
+			},
+			"roomId": {
+				"title": "Assigned room",
+				"placeholder": "Select a room",
+				"description": "The room this display controls. Required for displays with Room role.",
+				"validation": {
+					"required": "Room assignment is required for displays with Room role"
+				}
 			}
 		}
 	},
 	"filters": {
 		"darkMode": {
-			"title": "Dark Mode",
+			"title": "Dark mode",
 			"values": {
 				"enabled": "Enabled",
 				"disabled": "Disabled",
@@ -193,7 +203,7 @@
 			}
 		},
 		"screenSaver": {
-			"title": "Screen Saver",
+			"title": "Screen saver",
 			"values": {
 				"enabled": "Enabled",
 				"disabled": "Disabled",
@@ -234,10 +244,10 @@
 			"title": "Filter"
 		},
 		"resetFilters": {
-			"title": "Reset Filters"
+			"title": "Reset filters"
 		},
 		"reset": {
-			"title": "Reset Filters"
+			"title": "Reset filters"
 		},
 		"yes": {
 			"title": "Yes"
@@ -258,59 +268,107 @@
 			"title": "Discard"
 		},
 		"permitJoin": {
-			"title": "Permit Join",
-			"disable": "Disable Join ({time})"
+			"title": "Permit join",
+			"disable": "Disable join ({time})"
+		}
+	},
+	"edit": {
+		"sections": {
+			"general": {
+				"title": "General"
+			},
+			"layout": {
+				"title": "Layout",
+				"badge": "Advanced",
+				"description": "Advanced settings that control how many tiles are shown on the screen and how they are arranged in the grid."
+			},
+			"appearance": {
+				"title": "Appearance"
+			},
+			"homePage": {
+				"title": "Home page",
+				"autoRoomHint": "In <strong>Auto mode</strong>, the display opens the default system view based on its role and assignment."
+			},
+			"audio": {
+				"title": "Audio",
+				"badge": "Advanced"
+			}
 		}
 	},
 	"detail": {
-		"title": "Display Detail",
+		"title": "Display detail",
 		"info": {
-			"title": "Display Information",
+			"title": "Display information",
 			"role": "Role",
-			"macAddress": "MAC Address",
+			"macAddress": "MAC address",
 			"version": "Version",
 			"build": "Build",
 			"resolution": "Resolution",
-			"pixelRatio": "Pixel Ratio",
-			"gridSize": "Grid Size",
+			"pixelRatio": "Pixel ratio",
+			"gridSize": "Grid size",
 			"registeredFromIp": "Registered IP",
 			"currentIpAddress": "Current IP",
-			"status": "Connection State"
+			"status": "Connection state"
 		},
 		"settings": {
-			"title": "Display Settings",
-			"gridSize": "Grid Size",
-			"darkMode": "Dark Mode",
+			"title": "Display settings",
+			"gridSize": "Grid size",
+			"darkMode": "Dark mode",
 			"brightness": "Brightness",
-			"screenLockDuration": "Screen Lock Duration",
-			"screenSaver": "Screen Saver",
-			"speakerEnabled": "Speaker Enabled",
-			"speakerVolume": "Speaker Volume",
-			"microphoneEnabled": "Microphone Enabled",
-			"microphoneVolume": "Microphone Volume"
+			"screenLockDuration": "Screen lock duration",
+			"screenSaver": "Screen saver",
+			"speakerEnabled": "Speaker enabled",
+			"speakerVolume": "Speaker volume",
+			"microphoneEnabled": "Microphone enabled",
+			"microphoneVolume": "Microphone volume"
 		},
 		"peripherals": {
 			"title": "Peripherals",
-			"audioOutput": "Audio Output",
-			"audioOutputVolume": "Audio Output Volume",
-			"audioInput": "Audio Input",
-			"audioInputVolume": "Audio Input Volume"
+			"audioOutput": "Audio output",
+			"audioOutputVolume": "Audio output volume",
+			"audioInput": "Audio input",
+			"audioInputVolume": "Audio input volume"
 		},
 		"audio": {
 			"speaker": {
-				"title": "Speaker (Audio Output)"
+				"title": "Speaker (audio output)"
 			},
 			"microphone": {
-				"title": "Microphone (Audio Input)"
+				"title": "Microphone (audio input)"
 			}
 		},
 		"tokens": {
-			"title": "Access Tokens",
+			"title": "Access tokens",
 			"subtitle": "Manage tokens",
 			"description": "Manage access tokens for this display. Each display should have at most one active token.",
 			"noTokens": "No active tokens",
 			"revokeConfirm": "Are you sure you want to revoke the access token? The display will need to re-register.",
 			"revoked": "Token revoked successfully"
+		},
+		"spaceContext": {
+			"title": "Space context",
+			"role": "Display role",
+			"homeMode": "Home page mode",
+			"assignedRoom": "Assigned room",
+			"notAssigned": "Not assigned",
+			"initialView": "Initial view",
+			"systemViews": "System views",
+			"selectedPage": "Selected page",
+			"hint": "This display's main views are generated automatically based on its role and assigned space.",
+			"homeModes": {
+				"auto_space": "Auto",
+				"explicit": "Explicit"
+			},
+			"initialViews": {
+				"roomOverview": "Room overview",
+				"houseOverview": "House overview",
+				"entryOverview": "Entry overview"
+			},
+			"views": {
+				"overview": "Overview",
+				"lights": "Lights",
+				"climate": "Climate"
+			}
 		}
 	},
 	"messages": {
@@ -334,7 +392,7 @@
 		}
 	},
 	"actions": {
-		"revokeToken": "Revoke Token",
-		"manageTokens": "Manage Tokens"
+		"revokeToken": "Revoke token",
+		"manageTokens": "Manage tokens"
 	}
 }

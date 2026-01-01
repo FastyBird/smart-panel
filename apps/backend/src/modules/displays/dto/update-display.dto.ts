@@ -184,11 +184,11 @@ export class UpdateDisplayDto {
 	})
 	role?: DisplayRole;
 
-	// === Space Assignment ===
+	// === Room Assignment (only for role=room displays) ===
 
 	@ApiPropertyOptional({
-		name: 'space_id',
-		description: 'Space (room/zone) this display belongs to',
+		name: 'room_id',
+		description: 'Room this display is assigned to (required for room role, must be null for master/entry roles)',
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
@@ -196,9 +196,9 @@ export class UpdateDisplayDto {
 	})
 	@Expose()
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
+	@IsUUID('4', { message: '[{"field":"room_id","reason":"Room ID must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => value !== null)
-	space_id?: string | null;
+	room_id?: string | null;
 
 	// === Home Page Configuration ===
 
