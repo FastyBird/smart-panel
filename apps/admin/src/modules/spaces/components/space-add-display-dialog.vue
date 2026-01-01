@@ -97,8 +97,8 @@
 
 			<el-table-column :label="t('spacesModule.onboarding.assignedSpace')" width="150">
 				<template #default="{ row }">
-					<el-tag v-if="row.spaceId" size="small" type="warning">
-						{{ getSpaceName(row.spaceId) }}
+					<el-tag v-if="row.roomId" size="small" type="warning">
+						{{ getSpaceName(row.roomId) }}
 					</el-tag>
 					<span v-else class="text-gray-400 text-sm">-</span>
 				</template>
@@ -107,16 +107,16 @@
 			<el-table-column label="" width="150" align="right">
 				<template #default="{ row }">
 					<el-button
-						:type="row.spaceId ? 'warning' : 'default'"
+						:type="row.roomId ? 'warning' : 'default'"
 						plain
 						size="small"
 						:loading="assigningDisplayId === row.id"
 						@click="onAssignDisplay(row)"
 					>
 						<template #icon>
-							<icon :icon="row.spaceId ? 'mdi:swap-horizontal' : 'mdi:plus'" />
+							<icon :icon="row.roomId ? 'mdi:swap-horizontal' : 'mdi:plus'" />
 						</template>
-						{{ row.spaceId ? t('spacesModule.detail.displays.reassign') : t('spacesModule.detail.displays.assign') }}
+						{{ row.roomId ? t('spacesModule.detail.displays.reassign') : t('spacesModule.detail.displays.assign') }}
 					</el-button>
 				</template>
 			</el-table-column>

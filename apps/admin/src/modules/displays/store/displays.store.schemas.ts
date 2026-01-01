@@ -6,7 +6,10 @@ export const DisplayIdSchema = z.string().uuid();
 // STORE STATE
 // ===========
 
-export const HomeModeSchema = z.enum(['auto_space', 'explicit']);
+// Accept legacy 'first_page' value for backward compatibility but normalize to 'auto_space'
+export const HomeModeSchema = z.enum(['auto_space', 'explicit', 'first_page']).transform((val) =>
+	val === 'first_page' ? 'auto_space' : val
+) as z.ZodType<'auto_space' | 'explicit'>;
 
 export const DisplayRoleSchema = z.enum(['room', 'master', 'entry']);
 
