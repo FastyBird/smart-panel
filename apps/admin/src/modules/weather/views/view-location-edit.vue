@@ -71,11 +71,6 @@
 				v-else-if="isLoading"
 				:rows="5"
 			/>
-
-			<el-empty
-				v-else
-				:description="t('weatherModule.messages.locations.notFound')"
-			/>
 		</el-scrollbar>
 
 		<div
@@ -134,7 +129,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElEmpty, ElIcon, ElMessageBox, ElScrollbar, ElSkeleton } from 'element-plus';
+import { ElAlert, ElButton, ElIcon, ElMessageBox, ElScrollbar, ElSkeleton } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -142,6 +137,7 @@ import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBrea
 import { useLocation } from '../composables';
 import { useWeatherLocationsPlugins } from '../composables/useWeatherLocationsPlugins';
 import { FormResult, type FormResultType, RouteNames } from '../weather.constants';
+import { WeatherException } from '../weather.exceptions';
 
 import type { IViewLocationEditProps } from './view-location-edit.types';
 
@@ -294,6 +290,15 @@ watch(
 	(): boolean => remoteFormChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
+	}
+);
+
+watch(
+	(): boolean => isLoading.value,
+	(val: boolean): void => {
+		if (!val && location.value === null) {
+			throw new WeatherException('Location not found');
+		}
 	}
 );
 </script>

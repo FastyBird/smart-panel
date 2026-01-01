@@ -44,22 +44,50 @@
 			</template>
 		</el-table-column>
 		<template #empty>
-			<el-empty :description="t('spacesModule.table.empty')">
-				<el-button type="primary" @click="onAdd">
-					{{ t('spacesModule.buttons.add.title') }}
-				</el-button>
-			</el-empty>
+			<div class="h-full w-full leading-normal">
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child :size="80">
+							<template #primary>
+								<icon icon="mdi:home-group" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:information" />
+							</template>
+						</icon-with-child>
+					</template>
+
+					<template #title>
+						<el-text class="block">
+							{{ t('spacesModule.table.empty') }}
+						</el-text>
+
+						<el-button
+							type="primary"
+							plain
+							class="mt-4"
+							@click="onAdd"
+						>
+							<template #icon>
+								<icon icon="mdi:plus" />
+							</template>
+
+							{{ t('spacesModule.buttons.add.title') }}
+						</el-button>
+					</template>
+				</el-result>
+			</div>
 		</template>
 	</el-table>
 </template>
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import { ElButton, ElButtonGroup, ElEmpty, ElIcon, ElMessageBox, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElButton, ElButtonGroup, ElIcon, ElMessageBox, ElResult, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { useFlashMessage } from '../../../common';
+import { IconWithChild, useFlashMessage } from '../../../common';
 import { useSpaces, useSpacesActions } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
