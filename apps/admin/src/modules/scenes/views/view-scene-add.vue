@@ -310,6 +310,18 @@ import { useScenesActions } from '../composables/useScenesActions';
 import { RouteNames, SCENE_CATEGORY_ICONS, SceneCategory } from '../scenes.constants';
 import type { ISceneActionAddForm } from '../schemas/scenes.types';
 
+import type { IViewSceneAddProps } from './view-scene-add.types';
+
+defineOptions({
+	name: 'ViewSceneAdd',
+});
+
+defineProps<IViewSceneAddProps>();
+
+defineEmits<{
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
+}>();
+
 interface ISceneActionData extends ISceneActionAddForm {
 	type: string;
 }

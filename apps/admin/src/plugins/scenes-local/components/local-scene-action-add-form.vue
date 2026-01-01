@@ -147,10 +147,11 @@ import {
 	useChannelsProperties,
 	useDevices,
 } from '../../../modules/devices';
-import { DevicesModuleChannelPropertyDataType, DevicesModuleChannelPropertyPermissions } from '../../../openapi.constants';
+import { DevicesModuleChannelPropertyDataType } from '../../../openapi.constants';
 import type { ISceneActionAddFormProps } from '../../../modules/scenes/components/actions/scene-action-add-form.types';
 import { FormResult, type FormResultType } from '../../../modules/scenes/scenes.constants';
 import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
+import { useWritableDevices } from '../composables/composables';
 import type { ILocalSceneActionAddForm } from '../schemas/actions.types';
 
 defineOptions({
@@ -190,7 +191,8 @@ const model = reactive<ILocalSceneActionAddForm>({
 const selectedChannelId = computed<string | undefined>(() => model.channelId ?? undefined);
 const selectedPropertyId = ref<string | null>(null);
 
-const { devices, fetchDevices, areLoading: loadingDevices } = useDevices();
+const { devices, fetchDevices, areLoading: loadingDevices, loaded: devicesLoaded } = useDevices();
+const { isPropertyWritable, hasWritableChannels, getChannelsWithWritableProperties, getWritableProperties } = useWritableDevices();
 const { channels, fetchChannels, areLoading: loadingChannels } = useChannels({
 	deviceId: computed<string>((): string => model.deviceId),
 });
@@ -284,27 +286,21 @@ const stringValue = computed<string>({
 	},
 });
 
-// Helper to check if a property is writable
-const isPropertyWritable = (property: IChannelProperty): boolean => {
-	return property.permissions.includes(DevicesModuleChannelPropertyPermissions.rw) || property.permissions.includes(DevicesModuleChannelPropertyPermissions.wo);
-};
-
-// Filter properties to only writable ones
-const writableProperties = computed<IChannelProperty[]>(() => {
-	return properties.value.filter(isPropertyWritable);
-});
-
 // Filter channels to only those with writable properties
 const channelsWithWritableProperties = computed<IChannel[]>(() => {
-	// For now, we show all channels and filter will happen when properties are loaded
-	// A more complete solution would require loading all properties for all channels upfront
-	return channels.value;
+	if (!model.deviceId) {
+		return [];
+	}
+	return getChannelsWithWritableProperties(model.deviceId);
 });
 
-// Filter devices - we show all devices and rely on channel/property filtering
-// A more complete solution would require loading all channels and properties for all devices upfront
+// Filter devices to only those with channels that have writable properties
+const devicesWithWritableChannels = computed<IDevice[]>(() => {
+	return devices.value.filter((device) => hasWritableChannels(device.id));
+});
+
 const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() => {
-	const sorted = orderBy<IDevice>(devices.value, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
+	const sorted = orderBy<IDevice>(devicesWithWritableChannels.value, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
 	return sorted.map((device) => ({
 		value: device.id,
 		label: device.name,
@@ -320,7 +316,11 @@ const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() 
 });
 
 const propertiesOptions = computed<{ value: IChannelProperty['id']; label: string }[]>(() => {
-	const sorted = orderBy<IChannelProperty>(writableProperties.value, [(prop: IChannelProperty) => (prop.name ?? prop.identifier ?? '').toLowerCase()], ['asc']);
+	if (!model.channelId) {
+		return [];
+	}
+	const writableProps = getWritableProperties(model.channelId);
+	const sorted = orderBy<IChannelProperty>(writableProps, [(prop: IChannelProperty) => (prop.name ?? prop.identifier ?? '').toLowerCase()], ['asc']);
 	return sorted.map((prop) => ({
 		value: prop.id,
 		label: prop.name ?? prop.identifier ?? prop.id,
@@ -383,7 +383,7 @@ const submit = async (): Promise<void> => {
 };
 
 onBeforeMount((): void => {
-	if (!loadingDevices.value) {
+	if (!devicesLoaded.value) {
 		fetchDevices().catch((error: unknown): void => {
 			const err = error as Error;
 			throw new DevicesException('Something went wrong', err);
