@@ -124,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
@@ -169,7 +169,10 @@ const isDetailRoute = computed<boolean>(
 );
 
 const locationId = computed(() => props.id);
-const { location, isLoading } = useLocation({ id: locationId });
+const { location, isLoading, fetchLocation } = useLocation({ id: locationId });
+
+// Track if location was previously loaded to detect deletion vs not found
+const wasLocationLoaded = ref<boolean>(false);
 
 const { getElement } = useWeatherLocationsPlugins();
 
@@ -261,6 +264,24 @@ const onClose = (): void => {
 	}
 };
 
+onBeforeMount((): void => {
+	fetchLocation()
+		.then((): void => {
+			// Mark as loaded if location was successfully fetched
+			if (location.value !== null) {
+				wasLocationLoaded.value = true;
+			}
+			if (!isLoading.value && location.value === null && !wasLocationLoaded.value) {
+				throw new WeatherException('Location not found');
+			}
+		})
+		.catch((error: unknown): void => {
+			const err = error as Error;
+
+			throw new WeatherException('Something went wrong', err);
+		});
+});
+
 onMounted((): void => {
 	emit('update:remote-form-changed', remoteFormChanged.value);
 });
@@ -296,10 +317,10 @@ watch(
 watch(
 	(): boolean => isLoading.value,
 	(val: boolean): void => {
-		if (!val && location.value === null) {
+		// Only throw error if location was never loaded (initial load failed)
+		if (!val && location.value === null && !wasLocationLoaded.value) {
 			throw new WeatherException('Location not found');
 		}
-	},
-	{ immediate: true }
+	}
 );
 </script>
