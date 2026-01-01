@@ -4,6 +4,7 @@ eslint-disable @typescript-eslint/no-empty-object-type
 import type { ComponentOptionsMixin, DefineComponent } from 'vue';
 
 import type { ISceneActionAddFormProps, sceneActionAddFormEmits } from './components/actions/scene-action-add-form.types';
+import type { ISceneActionCardProps } from './components/actions/scene-action-card.types';
 import type { ISceneActionEditFormProps, sceneActionEditFormEmits } from './components/actions/scene-action-edit-form.types';
 import type { ISceneAddFormProps, sceneAddFormEmits } from './components/scenes/scene-add-form.types';
 import type { ISceneEditFormProps, sceneEditFormEmits } from './components/scenes/scene-edit-form.types';
@@ -51,6 +52,7 @@ export type ISceneActionPluginsComponents = {
 		ComponentOptionsMixin,
 		typeof sceneActionEditFormEmits
 	>;
+	sceneActionCard?: DefineComponent<ISceneActionCardProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin>;
 };
 
 export type ISceneActionPluginsSchemas = {

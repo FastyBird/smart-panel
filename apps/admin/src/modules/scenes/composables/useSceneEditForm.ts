@@ -8,13 +8,14 @@ import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../.
 import { useSpaces } from '../../spaces/composables';
 import { SPACE_CATEGORY_TEMPLATES, SpaceType } from '../../spaces/spaces.constants';
 import { SceneEditFormSchema } from '../schemas/scenes.schemas';
-import type { ISceneEditForm } from '../schemas/scenes.types';
+import type { ISceneActionAddForm, ISceneEditForm } from '../schemas/scenes.types';
 import { FormResult, type FormResultType, SCENE_CATEGORY_ICONS, SceneCategory } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
 import { scenesStoreKey } from '../store/keys';
 import type { IScene } from '../store/scenes.store.types';
 
 import type { ISpaceOptionGroup, IUseSceneEditForm } from './types';
+import { useScenesActionPlugins } from './useScenesActionPlugins';
 
 interface IUseSceneEditFormProps {
 	scene: IScene;
@@ -103,7 +104,52 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		return groups;
 	});
 
-	const model = reactive<TForm>(scene as unknown as TForm);
+	// Convert scene actions to form format
+	const sceneActionsAsFormData = scene.actions.map((action) => ({
+		id: action.id,
+		type: action.type,
+		deviceId: action.deviceId,
+		channelId: action.channelId,
+		propertyId: action.propertyId,
+		value: action.value,
+		order: action.order,
+		enabled: action.enabled,
+	}));
+
+	const model = reactive<TForm>({
+		id: scene.id,
+		category: scene.category,
+		name: scene.name,
+		description: scene.description,
+		enabled: scene.enabled,
+		primarySpaceId: scene.primarySpaceId,
+		actions: sceneActionsAsFormData,
+	} as TForm);
+
+	const { options: actionPluginOptions, getElement } = useScenesActionPlugins();
+
+	const addAction = (action: ISceneActionAddForm & { type: string }): void => {
+		(model as ISceneEditForm).actions.push(action);
+	};
+
+	const removeAction = (index: number): void => {
+		(model as ISceneEditForm).actions.splice(index, 1);
+	};
+
+	const getActionCardComponent = (type: string) => {
+		const element = getElement(type);
+		return element?.components?.sceneActionCard ?? null;
+	};
+
+	const getActionFormComponent = (type: string) => {
+		const element = getElement(type);
+		return element?.components?.sceneActionAddForm ?? null;
+	};
+
+	const getPluginLabel = (type: string): string => {
+		const option = actionPluginOptions.value.find((o) => o.value === type);
+		return option?.label ?? type;
+	};
 
 	let initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
 
@@ -208,5 +254,12 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		formResult,
 		loadingSpaces: spacesLoading,
 		fetchSpaces,
+		// Action management
+		actionPluginOptions,
+		addAction,
+		removeAction,
+		getActionCardComponent,
+		getActionFormComponent,
+		getPluginLabel,
 	};
 };

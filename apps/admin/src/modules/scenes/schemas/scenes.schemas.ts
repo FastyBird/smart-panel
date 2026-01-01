@@ -42,6 +42,7 @@ export const SceneAddFormSchema = z.object({
 		.nullable()
 		.optional()
 		.transform((val) => (val === '' ? null : val)),
+	actions: z.array(SceneActionAddFormSchema).default([]),
 });
 
 export const SceneEditFormSchema = z.object({
@@ -62,4 +63,5 @@ export const SceneEditFormSchema = z.object({
 		.nullable()
 		.optional()
 		.transform((val) => (val === '' ? null : val)),
+	actions: z.array(SceneActionAddFormSchema).default([]),
 });

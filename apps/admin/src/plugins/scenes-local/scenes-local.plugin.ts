@@ -13,6 +13,7 @@ import {
 } from '../../modules/scenes';
 
 import LocalSceneActionAddForm from './components/local-scene-action-add-form.vue';
+import LocalSceneActionCard from './components/local-scene-action-card.vue';
 import LocalSceneActionEditForm from './components/local-scene-action-edit-form.vue';
 import enUS from './locales/en-US.json';
 import { LocalSceneActionAddFormSchema, LocalSceneActionEditFormSchema } from './schemas/actions.schemas';
@@ -52,6 +53,7 @@ export default {
 					components: {
 						sceneActionAddForm: LocalSceneActionAddForm,
 						sceneActionEditForm: LocalSceneActionEditForm,
+						sceneActionCard: LocalSceneActionCard,
 					},
 					schemas: {
 						sceneActionAddFormSchema: LocalSceneActionAddFormSchema,

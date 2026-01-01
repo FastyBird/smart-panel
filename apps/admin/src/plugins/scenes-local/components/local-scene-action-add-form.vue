@@ -46,7 +46,7 @@
 		>
 			<el-select
 				v-model="model.channelId"
-				:placeholder="channelsOptions.length === 0 && model.deviceId ? t('scenesLocalPlugin.fields.channel.noChannels') : t('scenesLocalPlugin.fields.channel.placeholder')"
+				:placeholder="channelsOptions.length === 0 && model.deviceId && !loadingChannels ? t('scenesLocalPlugin.fields.channel.noChannels') : t('scenesLocalPlugin.fields.channel.placeholder')"
 				name="channelId"
 				:loading="loadingChannels"
 				:disabled="!model.deviceId || channelsOptions.length === 0"
@@ -69,7 +69,7 @@
 		>
 			<el-select
 				v-model="model.propertyId"
-				:placeholder="propertiesOptions.length === 0 && model.channelId ? t('scenesLocalPlugin.fields.property.noProperties') : t('scenesLocalPlugin.fields.property.placeholder')"
+				:placeholder="propertiesOptions.length === 0 && model.channelId && !loadingProperties ? t('scenesLocalPlugin.fields.property.noProperties') : t('scenesLocalPlugin.fields.property.placeholder')"
 				name="propertyId"
 				:loading="loadingProperties"
 				:disabled="!model.channelId || propertiesOptions.length === 0"
@@ -147,11 +147,10 @@ import {
 	useChannelsProperties,
 	useDevices,
 } from '../../../modules/devices';
-import { DevicesModuleChannelPropertyDataType } from '../../../openapi.constants';
+import { DevicesModuleChannelPropertyDataType, DevicesModuleChannelPropertyPermissions } from '../../../openapi.constants';
 import type { ISceneActionAddFormProps } from '../../../modules/scenes/components/actions/scene-action-add-form.types';
 import { FormResult, type FormResultType } from '../../../modules/scenes/scenes.constants';
 import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
-import { useWritableDevices } from '../composables/composables';
 import type { ILocalSceneActionAddForm } from '../schemas/actions.types';
 
 defineOptions({
@@ -189,15 +188,34 @@ const model = reactive<ILocalSceneActionAddForm>({
 });
 
 const selectedChannelId = computed<string | undefined>(() => model.channelId ?? undefined);
-const selectedPropertyId = ref<string | null>(null);
 
 const { devices, fetchDevices, areLoading: loadingDevices, loaded: devicesLoaded } = useDevices();
-const { isPropertyWritable, hasWritableChannels, getChannelsWithWritableProperties, getWritableProperties } = useWritableDevices();
 const { channels, fetchChannels, areLoading: loadingChannels } = useChannels({
 	deviceId: computed<string>((): string => model.deviceId),
 });
 const { properties, fetchProperties, areLoading: loadingProperties } = useChannelsProperties({
 	channelId: selectedChannelId,
+});
+
+// Helper to check if a property is writable
+const isPropertyWritable = (property: IChannelProperty): boolean => {
+	return (
+		property.permissions.includes(DevicesModuleChannelPropertyPermissions.rw) ||
+		property.permissions.includes(DevicesModuleChannelPropertyPermissions.wo)
+	);
+};
+
+// Filter properties to only writable ones
+const writableProperties = computed<IChannelProperty[]>(() => {
+	return properties.value.filter(isPropertyWritable);
+});
+
+// Filter channels to only those with writable properties
+const channelsWithWritableProperties = computed<IChannel[]>(() => {
+	return channels.value.filter((channel) => {
+		const channelProps = properties.value.filter((p) => p.channel === channel.id);
+		return channelProps.some(isPropertyWritable);
+	});
 });
 
 const selectedProperty = computed<IChannelProperty | undefined>(() => {
@@ -286,21 +304,8 @@ const stringValue = computed<string>({
 	},
 });
 
-// Filter channels to only those with writable properties
-const channelsWithWritableProperties = computed<IChannel[]>(() => {
-	if (!model.deviceId) {
-		return [];
-	}
-	return getChannelsWithWritableProperties(model.deviceId);
-});
-
-// Filter devices to only those with channels that have writable properties
-const devicesWithWritableChannels = computed<IDevice[]>(() => {
-	return devices.value.filter((device) => hasWritableChannels(device.id));
-});
-
 const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() => {
-	const sorted = orderBy<IDevice>(devicesWithWritableChannels.value, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
+	const sorted = orderBy<IDevice>(devices.value, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
 	return sorted.map((device) => ({
 		value: device.id,
 		label: device.name,
@@ -308,7 +313,9 @@ const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() =>
 });
 
 const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() => {
-	const sorted = orderBy<IChannel>(channelsWithWritableProperties.value, [(channel: IChannel) => channel.name.toLowerCase()], ['asc']);
+	// Filter channels to only those with writable properties (if properties are loaded)
+	const channelsToShow = properties.value.length > 0 ? channelsWithWritableProperties.value : channels.value;
+	const sorted = orderBy<IChannel>(channelsToShow, [(channel: IChannel) => channel.name.toLowerCase()], ['asc']);
 	return sorted.map((channel) => ({
 		value: channel.id,
 		label: channel.name,
@@ -316,11 +323,7 @@ const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() 
 });
 
 const propertiesOptions = computed<{ value: IChannelProperty['id']; label: string }[]>(() => {
-	if (!model.channelId) {
-		return [];
-	}
-	const writableProps = getWritableProperties(model.channelId);
-	const sorted = orderBy<IChannelProperty>(writableProps, [(prop: IChannelProperty) => (prop.name ?? prop.identifier ?? '').toLowerCase()], ['asc']);
+	const sorted = orderBy<IChannelProperty>(writableProperties.value, [(prop: IChannelProperty) => (prop.name ?? prop.identifier ?? '').toLowerCase()], ['asc']);
 	return sorted.map((prop) => ({
 		value: prop.id,
 		label: prop.name ?? prop.identifier ?? prop.id,
@@ -356,8 +359,13 @@ const onChannelChange = async (): Promise<void> => {
 };
 
 const onPropertyChange = (): void => {
-	model.value = '';
-	selectedPropertyId.value = model.propertyId;
+	// Set default value based on property type
+	const property = properties.value.find((p) => p.id === model.propertyId);
+	if (property?.dataType === DevicesModuleChannelPropertyDataType.bool) {
+		model.value = false;
+	} else {
+		model.value = '';
+	}
 	formChanged.value = true;
 };
 
@@ -382,9 +390,9 @@ const submit = async (): Promise<void> => {
 	formResult.value = FormResult.OK;
 };
 
-onBeforeMount((): void => {
+onBeforeMount(async (): Promise<void> => {
 	if (!devicesLoaded.value) {
-		fetchDevices().catch((error: unknown): void => {
+		await fetchDevices().catch((error: unknown): void => {
 			const err = error as Error;
 			throw new DevicesException('Something went wrong', err);
 		});

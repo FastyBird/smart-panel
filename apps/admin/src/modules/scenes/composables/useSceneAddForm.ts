@@ -8,13 +8,14 @@ import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../.
 import { useSpaces } from '../../spaces/composables';
 import { SPACE_CATEGORY_TEMPLATES, SpaceType } from '../../spaces/spaces.constants';
 import { SceneAddFormSchema } from '../schemas/scenes.schemas';
-import type { ISceneAddForm } from '../schemas/scenes.types';
+import type { ISceneActionAddForm, ISceneAddForm } from '../schemas/scenes.types';
 import { FormResult, type FormResultType, SCENE_CATEGORY_ICONS, SceneCategory } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
 import { scenesStoreKey } from '../store/keys';
 import type { IScene } from '../store/scenes.store.types';
 
 import type { ISpaceOptionGroup, IUseSceneAddForm } from './types';
+import { useScenesActionPlugins } from './useScenesActionPlugins';
 
 interface IUseSceneAddFormProps {
 	id: IScene['id'];
@@ -106,7 +107,33 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 		description: null,
 		enabled: true,
 		primarySpaceId: null,
-	} as TForm);
+		actions: [],
+	} as unknown as TForm);
+
+	const { options: actionPluginOptions, getElement } = useScenesActionPlugins();
+
+	const addAction = (action: ISceneActionAddForm & { type: string }): void => {
+		(model as ISceneAddForm).actions.push(action);
+	};
+
+	const removeAction = (index: number): void => {
+		(model as ISceneAddForm).actions.splice(index, 1);
+	};
+
+	const getActionCardComponent = (type: string) => {
+		const element = getElement(type);
+		return element?.components?.sceneActionCard ?? null;
+	};
+
+	const getActionFormComponent = (type: string) => {
+		const element = getElement(type);
+		return element?.components?.sceneActionAddForm ?? null;
+	};
+
+	const getPluginLabel = (type: string): string => {
+		const option = actionPluginOptions.value.find((o) => o.value === type);
+		return option?.label ?? type;
+	};
 
 	const initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
 
@@ -183,5 +210,12 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 		formResult,
 		loadingSpaces: spacesLoading,
 		fetchSpaces,
+		// Action management
+		actionPluginOptions,
+		addAction,
+		removeAction,
+		getActionCardComponent,
+		getActionFormComponent,
+		getPluginLabel,
 	};
 };

@@ -166,11 +166,11 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessage, ElMessageBox } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useFlashMessage, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { ListScenes, ListScenesAdjust } from '../components/components';
@@ -190,6 +190,8 @@ const props = defineProps<IViewScenesProps>();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+
+const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('scenes.headings.list'),
@@ -325,11 +327,11 @@ const onSceneRemove = async (id: IScene['id']): Promise<void> => {
 		});
 
 		await removeScene(id);
-		ElMessage.success(t('scenes.messages.deleted'));
+		flashMessage.success(t('scenes.messages.deleted'));
 	} catch (error) {
 		// ElMessageBox.confirm rejects with 'cancel' when user cancels
 		if (error !== 'cancel') {
-			ElMessage.error(t('scenes.messages.deleteFailed'));
+			flashMessage.error(t('scenes.messages.deleteFailed'));
 		}
 	}
 };
@@ -345,9 +347,9 @@ const onSceneTrigger = async (id: IScene['id']): Promise<void> => {
 
 	try {
 		await triggerScene(id, 'admin');
-		ElMessage.success(t('scenes.messages.triggered', { name: scene.name }));
+		flashMessage.success(t('scenes.messages.triggered', { name: scene.name }));
 	} catch {
-		ElMessage.error(t('scenes.messages.triggerFailed'));
+		flashMessage.error(t('scenes.messages.triggerFailed'));
 	} finally {
 		triggering.value = triggering.value.filter((triggerId) => triggerId !== id);
 	}

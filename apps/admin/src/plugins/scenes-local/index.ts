@@ -4,4 +4,3 @@ import ScenesLocalPlugin from './scenes-local.plugin';
 export { ScenesLocalPlugin };
 
 export * from './scenes-local.constants';
-export * from './composables/composables';

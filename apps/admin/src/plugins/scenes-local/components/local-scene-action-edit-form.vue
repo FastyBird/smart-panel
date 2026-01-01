@@ -46,7 +46,7 @@
 		>
 			<el-select
 				v-model="model.channelId"
-				:placeholder="channelsOptions.length === 0 && model.deviceId ? t('scenesLocalPlugin.fields.channel.noChannels') : t('scenesLocalPlugin.fields.channel.placeholder')"
+				:placeholder="channelsOptions.length === 0 && model.deviceId && !loadingChannels ? t('scenesLocalPlugin.fields.channel.noChannels') : t('scenesLocalPlugin.fields.channel.placeholder')"
 				name="channelId"
 				:loading="loadingChannels"
 				:disabled="!model.deviceId || channelsOptions.length === 0"
@@ -69,7 +69,7 @@
 		>
 			<el-select
 				v-model="model.propertyId"
-				:placeholder="propertiesOptions.length === 0 && model.channelId ? t('scenesLocalPlugin.fields.property.noProperties') : t('scenesLocalPlugin.fields.property.placeholder')"
+				:placeholder="propertiesOptions.length === 0 && model.channelId && !loadingProperties ? t('scenesLocalPlugin.fields.property.noProperties') : t('scenesLocalPlugin.fields.property.placeholder')"
 				name="propertyId"
 				:loading="loadingProperties"
 				:disabled="!model.channelId || propertiesOptions.length === 0"
@@ -187,14 +187,34 @@ const model = reactive<ILocalSceneActionEditForm>({
 });
 
 const selectedChannelId = computed<string | undefined>(() => model.channelId ?? undefined);
-const selectedPropertyId = ref<string | null>(model.propertyId || null);
 
-const { devices, fetchDevices, areLoading: loadingDevices } = useDevices();
+const { devices, fetchDevices, areLoading: loadingDevices, loaded: devicesLoaded } = useDevices();
 const { channels, fetchChannels, areLoading: loadingChannels } = useChannels({
 	deviceId: computed<string>((): string => model.deviceId ?? ''),
 });
 const { properties, fetchProperties, areLoading: loadingProperties } = useChannelsProperties({
 	channelId: selectedChannelId,
+});
+
+// Helper to check if a property is writable
+const isPropertyWritable = (property: IChannelProperty): boolean => {
+	return (
+		property.permissions.includes(DevicesModuleChannelPropertyPermissions.rw) ||
+		property.permissions.includes(DevicesModuleChannelPropertyPermissions.wo)
+	);
+};
+
+// Filter properties to only writable ones
+const writableProperties = computed<IChannelProperty[]>(() => {
+	return properties.value.filter(isPropertyWritable);
+});
+
+// Filter channels to only those with writable properties
+const channelsWithWritableProperties = computed<IChannel[]>(() => {
+	return channels.value.filter((channel) => {
+		const channelProps = properties.value.filter((p) => p.channel === channel.id);
+		return channelProps.some(isPropertyWritable);
+	});
 });
 
 const selectedProperty = computed<IChannelProperty | undefined>(() => {
@@ -233,16 +253,6 @@ const selectedPropertyFormat = computed<string[] | null>(() => {
 });
 
 const enumOptions = computed<string[]>(() => selectedPropertyFormat.value || []);
-
-// Helper to check if a property is writable
-const isPropertyWritable = (property: IChannelProperty): boolean => {
-	return property.permissions.includes(DevicesModuleChannelPropertyPermissions.rw) || property.permissions.includes(DevicesModuleChannelPropertyPermissions.wo);
-};
-
-// Filter properties to only writable ones
-const writableProperties = computed<IChannelProperty[]>(() => {
-	return properties.value.filter(isPropertyWritable);
-});
 
 const numberMin = computed<number | undefined>(() => {
 	if (!selectedProperty.value) return undefined;
@@ -302,7 +312,9 @@ const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() =>
 });
 
 const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() => {
-	const sorted = orderBy<IChannel>(channels.value, [(channel: IChannel) => channel.name.toLowerCase()], ['asc']);
+	// Filter channels to only those with writable properties (if properties are loaded)
+	const channelsToShow = properties.value.length > 0 ? channelsWithWritableProperties.value : channels.value;
+	const sorted = orderBy<IChannel>(channelsToShow, [(channel: IChannel) => channel.name.toLowerCase()], ['asc']);
 	return sorted.map((channel) => ({
 		value: channel.id,
 		label: channel.name,
@@ -346,8 +358,13 @@ const onChannelChange = async (): Promise<void> => {
 };
 
 const onPropertyChange = (): void => {
-	model.value = '';
-	selectedPropertyId.value = model.propertyId || null;
+	// Set default value based on property type
+	const property = properties.value.find((p) => p.id === model.propertyId);
+	if (property?.dataType === DevicesModuleChannelPropertyDataType.bool) {
+		model.value = false;
+	} else {
+		model.value = '';
+	}
 	formChanged.value = true;
 };
 
@@ -373,7 +390,7 @@ const submit = async (): Promise<void> => {
 };
 
 onBeforeMount(async (): Promise<void> => {
-	if (!loadingDevices.value) {
+	if (!devicesLoaded.value) {
 		await fetchDevices().catch((error: unknown): void => {
 			const err = error as Error;
 			throw new DevicesException('Something went wrong', err);

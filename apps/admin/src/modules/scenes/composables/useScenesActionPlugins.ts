@@ -14,7 +14,7 @@ export const useScenesActionPlugins = (): IUseScenesActionPlugins => {
 
 	const { enabled } = useConfigPlugins();
 
-	const pluginComponents: (keyof ISceneActionPluginsComponents)[] = ['sceneActionAddForm', 'sceneActionEditForm'];
+	const pluginComponents: (keyof ISceneActionPluginsComponents)[] = ['sceneActionAddForm', 'sceneActionEditForm', 'sceneActionCard'];
 
 	const pluginSchemas: (keyof ISceneActionPluginsSchemas)[] = [
 		'sceneActionSchema',

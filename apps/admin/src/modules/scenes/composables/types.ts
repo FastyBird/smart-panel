@@ -1,4 +1,4 @@
-import type { ComputedRef, Reactive, Ref } from 'vue';
+import type { Component, ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 import { z } from 'zod';
@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { IPlugin, IPluginElement } from '../../../common';
 import type { SpaceType } from '../../spaces/spaces.constants';
 import type { ISpace } from '../../spaces/store/spaces.store.types';
-import type { ISceneAddForm, ISceneEditForm } from '../schemas/scenes.types';
+import type { ISceneActionAddForm, ISceneAddForm, ISceneEditForm } from '../schemas/scenes.types';
 import type { FormResultType, SceneCategory } from '../scenes.constants';
 import type { ISceneActionPluginsComponents, ISceneActionPluginsSchemas } from '../scenes.types';
 import type { IScene } from '../store/scenes.store.types';
@@ -44,6 +44,12 @@ export interface ICategoryOption {
 	icon: string;
 }
 
+export interface IActionPluginOption {
+	value: IPluginElement['type'];
+	label: string;
+	disabled: boolean;
+}
+
 export interface IUseSceneAddForm<TForm extends ISceneAddForm = ISceneAddForm> {
 	categoriesOptions: ComputedRef<ICategoryOption[]>;
 	spacesOptionsGrouped: ComputedRef<ISpaceOptionGroup[]>;
@@ -55,6 +61,13 @@ export interface IUseSceneAddForm<TForm extends ISceneAddForm = ISceneAddForm> {
 	formResult: Ref<FormResultType>;
 	loadingSpaces: ComputedRef<boolean>;
 	fetchSpaces: () => Promise<ISpace[]>;
+	// Action management
+	actionPluginOptions: ComputedRef<IActionPluginOption[]>;
+	addAction: (action: ISceneActionAddForm & { type: string }) => void;
+	removeAction: (index: number) => void;
+	getActionCardComponent: (type: string) => Component | null;
+	getActionFormComponent: (type: string) => Component | null;
+	getPluginLabel: (type: string) => string;
 }
 
 export interface IUseSceneEditForm<TForm extends ISceneEditForm = ISceneEditForm> {
@@ -68,6 +81,13 @@ export interface IUseSceneEditForm<TForm extends ISceneEditForm = ISceneEditForm
 	formResult: Ref<FormResultType>;
 	loadingSpaces: ComputedRef<boolean>;
 	fetchSpaces: () => Promise<ISpace[]>;
+	// Action management
+	actionPluginOptions: ComputedRef<IActionPluginOption[]>;
+	addAction: (action: ISceneActionAddForm & { type: string }) => void;
+	removeAction: (index: number) => void;
+	getActionCardComponent: (type: string) => Component | null;
+	getActionFormComponent: (type: string) => Component | null;
+	getPluginLabel: (type: string) => string;
 }
 
 export interface IUseScenesDataSource {

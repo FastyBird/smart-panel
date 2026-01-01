@@ -108,6 +108,7 @@
 			"save": "Save",
 			"yes": "Yes",
 			"no": "No",
+			"backToList": "Back to list",
 			"resetFilters": {
 				"title": "Reset filters"
 			}
@@ -122,6 +123,7 @@
 			"createFailed": "Failed to create scene",
 			"edited": "Scene \"{scene}\" updated successfully",
 			"editFailed": "Failed to update scene \"{scene}\"",
+			"notFound": "Scene not found",
 			"addFormPlaceholder": "Scene add form will be implemented here",
 			"editFormPlaceholder": "Scene edit form will be implemented here",
 			"requestError": "An error occurred while processing your request"
