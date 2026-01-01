@@ -44,7 +44,7 @@
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar class="grow-1 p-2 md:px-4">
-			<space-edit-form
+			<space-add-form
 				ref="formRef"
 				v-model:remote-form-changed="remoteFormChanged"
 				:hide-actions="isMDDevice"
@@ -103,11 +103,14 @@ import {
 	AppBarHeading,
 	AppBreadcrumbs,
 	useBreakpoints,
-	useFlashMessage,
 } from '../../../common';
-import { SpaceEditForm } from '../components/components';
+import { SpaceAddForm } from '../components/components';
 import { RouteNames } from '../spaces.constants';
 import type { ISpace } from '../store';
+
+defineOptions({
+	inheritAttrs: false,
+});
 
 const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
@@ -115,7 +118,6 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const { t } = useI18n();
-const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('spacesModule.meta.spaces.add.title'),
@@ -123,7 +125,7 @@ useMeta({
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const formRef = ref<InstanceType<typeof SpaceEditForm> | null>(null);
+const formRef = ref<InstanceType<typeof SpaceAddForm> | null>(null);
 const remoteFormChanged = ref(false);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -135,7 +137,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			},
 			{
 				label: t('spacesModule.breadcrumbs.spaces.add'),
-				route: router.resolve({ name: RouteNames.SPACES_EDIT }),
+				route: router.resolve({ name: RouteNames.SPACES_ADD }),
 			},
 		];
 	}
@@ -175,8 +177,7 @@ const onClose = (): void => {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onSaved = (_savedSpace: ISpace): void => {
-	flashMessage.success(t('spacesModule.messages.created'));
-
+	// Flash message is already shown by the composable, just handle navigation
 	if (isLGDevice.value) {
 		router.replace({ name: RouteNames.SPACES });
 	} else {

@@ -13,6 +13,33 @@
 		"discard": "Discard changes",
 		"adjustFilters": "Filter spaces"
 	},
+	"edit": {
+		"sections": {
+			"general": {
+				"title": "General"
+			},
+			"organization": {
+				"title": "Organization",
+				"hint": "Assign this room to a zone (e.g. \"Ground Floor\", \"Upstairs\") to group related rooms together."
+			},
+			"devicesDisplays": {
+				"title": "Devices & Displays",
+				"titleDevicesOnly": "Devices",
+				"summary": "{devices} devices and {displays} displays are currently assigned to this space.",
+				"summaryDevicesOnly": "{devices} devices are currently assigned to this space.",
+				"manageDevices": "Manage devices",
+				"manageDisplays": "Manage displays"
+			},
+			"smartOverrides": {
+				"title": "Smart overrides",
+				"badge": "Advanced",
+				"hint": "Optional settings to improve smart behavior and intent-based control.",
+				"climateOverrides": "Climate device overrides",
+				"lightingRoles": "Lighting roles",
+				"smartSuggestions": "Smart suggestions"
+			}
+		}
+	},
 	"subHeadings": {
 		"overview": "Dashboard view of your spaces",
 		"list": "Organize devices and displays by rooms or zones",
@@ -57,6 +84,7 @@
 		"columns": {
 			"name": "Name",
 			"type": "Type",
+			"category": "Category",
 			"description": "Description",
 			"order": "Order",
 			"devices": "Devices",
@@ -91,32 +119,60 @@
 				"options": {
 					"room": "Room",
 					"zone": "Zone"
+				},
+				"validation": {
+					"required": "Type is required"
 				}
 			},
 			"category": {
 				"title": "Category",
-				"placeholder": "Select a category (optional)",
-				"hint": "Selecting a category will auto-fill the icon and description with suggested defaults",
+				"placeholder": "Select a category",
+				"hint": "Choosing a category will automatically suggest an icon and description for this space. Available categories depend on whether this is a room or zone.",
+				"validation": {
+					"requiredForZone": "Category is required for zones"
+				},
+				"groups": {
+					"floors": "Floors",
+					"outdoor": "Outdoor areas",
+					"other": "Other"
+				},
 				"options": {
-					"living_room": "Living Room",
+					"living_room": "Living room",
 					"bedroom": "Bedroom",
 					"bathroom": "Bathroom",
+					"toilet": "Toilet",
 					"kitchen": "Kitchen",
-					"dining_room": "Dining Room",
+					"dining_room": "Dining room",
 					"office": "Office",
+					"entryway": "Entryway",
 					"garage": "Garage",
 					"hallway": "Hallway",
 					"laundry": "Laundry",
+					"utility_room": "Utility room",
 					"storage": "Storage",
-					"outdoor": "Outdoor",
-					"basement": "Basement",
-					"attic": "Attic",
+					"closet": "Closet",
+					"pantry": "Pantry",
 					"nursery": "Nursery",
-					"guest_room": "Guest Room",
+					"guest_room": "Guest room",
 					"gym": "Gym",
-					"media_room": "Media Room",
+					"media_room": "Media room",
 					"workshop": "Workshop",
-					"other": "Other"
+					"other": "Other",
+					"floor_ground": "Ground floor",
+					"floor_first": "First floor",
+					"floor_second": "Second floor",
+					"floor_basement": "Basement",
+					"floor_attic": "Attic",
+					"outdoor_front_yard": "Front yard",
+					"outdoor_backyard": "Backyard",
+					"outdoor_driveway": "Driveway",
+					"outdoor_garden": "Garden",
+					"outdoor_terrace": "Terrace",
+					"outdoor_balcony": "Balcony",
+					"outdoor_walkway": "Walkway",
+					"security_perimeter": "Security perimeter",
+					"utility": "Utility",
+					"zone_other": "Other"
 				}
 			},
 			"icon": {
@@ -126,6 +182,11 @@
 			"displayOrder": {
 				"title": "Display order",
 				"placeholder": "Order in lists"
+			},
+			"parentZone": {
+				"title": "Parent zone",
+				"placeholder": "Select a parent zone (optional)",
+				"hint": "You can organize this room by assigning it to a zone, like 'Ground Floor' or 'Upstairs'. This helps group related rooms together."
 			},
 			"climateOverrides": {
 				"title": "Climate device overrides"
@@ -142,7 +203,7 @@
 			},
 			"lightingRoles": {
 				"title": "Lighting roles",
-				"description": "Assign roles to lights for smart intent-based control (Work/Relax/Night modes)",
+				"description": "Assign roles to lights to help the panel understand how each light is typically used (Work, Relax, Night)",
 				"noLights": "No lights found in this space",
 				"role": {
 					"title": "Role",
@@ -156,7 +217,7 @@
 			},
 			"suggestionsEnabled": {
 				"title": "Enable suggestions",
-				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state"
+				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state."
 			}
 		}
 	},
@@ -167,7 +228,15 @@
 		"accent": "Accent",
 		"night": "Night",
 		"other": "Other",
-		"unassigned": "Unassigned"
+		"unassigned": "Unassigned",
+		"descriptions": {
+			"main": "Primary lighting for the space, typically overhead or central fixtures used for general illumination.",
+			"task": "Focused lighting for specific activities like reading, cooking, or working.",
+			"ambient": "Soft background lighting used to create atmosphere and comfort.",
+			"accent": "Decorative lighting used to highlight features or create visual interest.",
+			"night": "Low-level lighting for nighttime navigation and safety.",
+			"other": "Lighting that doesn't fit into standard categories."
+		}
 	},
 	"filters": {
 		"type": {
@@ -262,6 +331,19 @@
 	},
 	"detail": {
 		"title": "Space detail",
+		"lightingRoles": {
+			"title": "Lighting roles",
+			"lightsAssigned": "Lights assigned"
+		},
+		"climateOverrides": {
+			"title": "Climate",
+			"popoverTitle": "Climate overrides",
+			"popoverDescription": "These settings define which devices are used to control and measure climate in this space.",
+			"primaryThermostat": "Thermostat",
+			"temperatureSensor": "Temperature",
+			"autoDetected": "Auto-detected",
+			"notConfigured": "Not configured"
+		},
 		"info": {
 			"title": "Space information",
 			"name": "Name",
@@ -269,6 +351,43 @@
 			"type": "Type",
 			"icon": "Icon",
 			"displayOrder": "Display order"
+		},
+		"devices": {
+			"title": "Devices",
+			"add": "Add device",
+			"empty": "No devices assigned to this space",
+			"loading": "Loading devices...",
+			"remove": "Remove",
+			"removeHeading": "Remove device from space",
+			"reassign": "Reassign",
+			"assign": "Assign",
+			"selectDevice": "Select devices to add",
+			"confirmRemove": "Remove device \"{name}\" from this space?",
+			"selectRoom": "Select room for device",
+			"noAvailable": "No devices available to add",
+			"removed": "Device \"{name}\" was removed from this space.",
+			"removeCanceled": "Device removal was canceled."
+		},
+		"parentZone": {
+			"title": "Floor",
+			"none": "No floor assigned",
+			"select": "Select floor"
+		},
+		"displays": {
+			"title": "Displays",
+			"add": "Add display",
+			"empty": "No displays assigned to this space",
+			"loading": "Loading displays...",
+			"remove": "Remove",
+			"removeHeading": "Remove display from space",
+			"reassign": "Reassign",
+			"assign": "Assign",
+			"selectDisplay": "Select display to add",
+			"confirmRemove": "Remove display \"{name}\" from this space?",
+			"selectRoom": "Select the room for this display",
+			"noAvailable": "No displays available to add",
+			"removed": "Display \"{name}\" was removed from this space.",
+			"removeCanceled": "Display removal was canceled."
 		}
 	},
 	"messages": {
@@ -301,34 +420,53 @@
 		"devices": "devices",
 		"displays": "displays",
 		"selectSpace": "Select space",
+		"selectZones": "Select zones...",
 		"deviceName": "Device name",
 		"displayName": "Display name",
 		"assignedSpace": "Assigned space",
 		"spaceName": "Space name",
+		"zones": "Zones (optional)",
+		"advanced": "Advanced",
+		"basic": "Basic",
 		"steps": {
 			"spaces": {
 				"title": "Create spaces",
 				"description": "Spaces help you organize your devices and displays by rooms or zones (e.g., Living Room, Kitchen, Bedroom). We've automatically detected some spaces from your device names - review and select the ones you want to create, or add your own custom spaces below.",
+				"alertTitle": "Spaces represent rooms or areas in your home",
+				"alertDescription": "We've suggested some spaces based on your device names. You can adjust them now or change everything later.",
 				"proposed": "Proposed spaces",
 				"custom": "Custom spaces",
 				"existing": "Existing spaces",
+				"matchedExisting": "Using existing spaces",
+				"usingExisting": "Using existing",
+				"matchedWith": "Will use: {name}",
 				"addManual": "Add custom space",
 				"placeholder": "Enter space name (e.g., Living Room)",
-				"noProposals": "No spaces could be detected from your device names. Add spaces manually below."
+				"noProposals": "No spaces could be detected from your device names. Add spaces manually below.",
+				"duplicateWarning": "A space similar to \"{name}\" already exists.",
+				"convertedToMatch": "This space matches an existing space and has been moved to the 'Using existing spaces' section.",
+				"multipleMatchedWith": "{count} detected spaces will use existing space '{name}'",
+				"existingTag": "Existing"
 			},
 			"displays": {
 				"title": "Assign displays",
 				"description": "Assign each display to a space. This determines which space the display will show by default.",
+				"alertTitle": "Choose a default space for each display",
+				"alertDescription": "This only sets the initial view—you can switch spaces anytime from the display itself.",
 				"noDisplays": "No displays registered yet."
 			},
 			"devices": {
 				"title": "Assign devices",
 				"description": "Assign devices to spaces. Devices will be pre-assigned based on their names if detected.",
+				"alertTitle": "Connect your devices to rooms",
+				"alertDescription": "Some devices are pre-filled based on their names. Feel free to adjust—you can always change assignments later.",
 				"noDevices": "No devices found."
 			},
 			"summary": {
 				"title": "Summary",
-				"description": "Review your configuration before applying changes."
+				"description": "Review your configuration before applying changes.",
+				"alertTitle": "Summary of your setup",
+				"alertDescription": "You can still go back and adjust anything before finishing."
 			}
 		},
 		"summary": {
@@ -338,11 +476,16 @@
 			"unassignedDevices": "Unassigned devices",
 			"assignedDisplays": "Assigned displays",
 			"unassignedDisplays": "Unassigned displays",
-			"bySpace": "Assignments by space"
+			"bySpace": "Assignments by space",
+			"unassignedDevicesTitle": "Unassigned devices",
+			"unassignedDisplaysTitle": "Unassigned displays",
+			"noDevices": "No devices",
+			"clickToAssignDevices": "Click to assign devices",
+			"clickToAssignDisplays": "Click to assign displays"
 		},
 		"messages": {
 			"spacesCreated": "{count} space(s) created successfully",
-			"completed": "Onboarding complete! {devices} device(s) and {displays} display(s) assigned."
+			"completed": "Onboarding complete! {devices} device(s), {displays} display(s), and {zones} zone assignment(s)."
 		}
 	}
 }

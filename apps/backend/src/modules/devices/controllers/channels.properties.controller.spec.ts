@@ -24,7 +24,7 @@ import {
 } from '../devices.constants';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { ChannelsPropertiesTypeMapperService } from '../services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
@@ -39,7 +39,7 @@ describe('ChannelsPropertiesController', () => {
 	let mapper: ChannelsPropertiesTypeMapperService;
 	let propertyTimeseriesService: PropertyTimeseriesService;
 
-	const mockDevice: DeviceEntity = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -47,8 +47,9 @@ describe('ChannelsPropertiesController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
+		deviceZones: [],
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,
@@ -59,7 +60,7 @@ describe('ChannelsPropertiesController', () => {
 		channels: [],
 	};
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: ChannelCategory.GENERIC,
@@ -73,7 +74,7 @@ describe('ChannelsPropertiesController', () => {
 		properties: [],
 	};
 
-	const mockChannelProperty: ChannelPropertyEntity = {
+	const mockChannelProperty = {
 		id: uuid().toString(),
 		type: 'mock',
 		name: 'Test Property',

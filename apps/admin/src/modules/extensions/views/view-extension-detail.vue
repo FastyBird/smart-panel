@@ -143,7 +143,7 @@
 				<dl class="grid grid-cols-[auto_1fr_auto_1fr] m-0">
 					<!-- Row 1: Type | Kind -->
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.type') }}
@@ -152,7 +152,7 @@
 						<el-text>{{ extension.type }}</el-text>
 					</dd>
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.kind') }}
@@ -168,7 +168,7 @@
 
 					<!-- Row 2: Source | Status -->
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.source') }}
@@ -182,7 +182,7 @@
 						</el-tag>
 					</dd>
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.status') }}
@@ -198,7 +198,7 @@
 
 					<!-- Row 3: Version | Author -->
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.version') }}
@@ -207,7 +207,7 @@
 						<el-text>{{ extension.version ?? '-' }}</el-text>
 					</dd>
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.author') }}
@@ -219,7 +219,7 @@
 					<!-- Row 4: Description (full width) -->
 					<dt
 						v-if="extension.description"
-						class="b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.description') }}
@@ -336,7 +336,7 @@
 				<dl class="grid grid-cols-[auto_1fr_auto_1fr] m-0">
 					<!-- Row 1: Type | Kind -->
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.type') }}
@@ -345,7 +345,7 @@
 						<el-text>{{ extension.type }}</el-text>
 					</dd>
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.kind') }}
@@ -361,7 +361,7 @@
 
 					<!-- Row 2: Source | Status -->
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.source') }}
@@ -375,7 +375,7 @@
 						</el-tag>
 					</dd>
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.status') }}
@@ -391,7 +391,7 @@
 
 					<!-- Row 3: Version | Author -->
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.version') }}
@@ -400,7 +400,7 @@
 						<el-text>{{ extension.version ?? '-' }}</el-text>
 					</dd>
 					<dt
-						class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.author') }}
@@ -412,7 +412,7 @@
 					<!-- Row 4: Description (full width) -->
 					<dt
 						v-if="extension.description"
-						class="b-r b-r-solid py-1 px-2 flex items-center justify-end"
+						class="b-r b-r-solid py-3 px-2 flex items-center justify-end"
 						style="background: var(--el-fill-color-light)"
 					>
 						{{ t('extensionsModule.labels.description') }}
@@ -529,7 +529,7 @@ const { toggleEnabled } = useExtensionActions();
 const { modules: configurableModules } = useModules();
 const { plugins: configurablePlugins } = usePlugins();
 
-const activeTab = ref<string>('logs');
+const activeTab = ref<string>('readme');
 const logsLive = ref<boolean>(false);
 
 // Compute the default tab based on available content

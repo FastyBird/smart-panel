@@ -1,5 +1,9 @@
 import type { operations } from '../../../openapi';
-import { SpacesModuleCreateSpaceCategory, SpacesModuleCreateSpaceType } from '../../../openapi';
+import {
+	SpacesModuleCreateSpaceCategory,
+	SpacesModuleCreateSpaceType,
+	SpacesModuleDataSpaceCategory,
+} from '../../../openapi';
 
 import { SpaceCategory, SpaceType } from '../spaces.constants';
 
@@ -8,6 +12,9 @@ import type { ISpace, ISpaceCreateData, ISpaceEditData } from './spaces.store.ty
 export type ApiSpace = NonNullable<operations['get-spaces-module-spaces']['responses']['200']['content']['application/json']['data']>[number];
 type ApiSpaceCreate = operations['create-spaces-module-space']['requestBody']['content']['application/json']['data'];
 type ApiSpaceUpdate = NonNullable<operations['update-spaces-module-space']['requestBody']>['content']['application/json']['data'];
+
+// Union type for API category (covers both response and request types)
+type ApiSpaceCategory = SpacesModuleCreateSpaceCategory | SpacesModuleDataSpaceCategory;
 
 const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => {
 	switch (apiType) {
@@ -20,8 +27,7 @@ const apiTypeToSpaceType = (apiType: SpacesModuleCreateSpaceType): SpaceType => 
 	}
 };
 
-const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType | undefined => {
-	if (!spaceType) return undefined;
+const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreateSpaceType => {
 	switch (spaceType) {
 		case SpaceType.ROOM:
 			return SpacesModuleCreateSpaceType.room;
@@ -32,7 +38,7 @@ const spaceTypeToApiType = (spaceType: SpaceType | undefined): SpacesModuleCreat
 	}
 };
 
-const apiCategoryToSpaceCategory = (apiCategory: SpacesModuleCreateSpaceCategory | null | undefined): SpaceCategory | null => {
+const apiCategoryToSpaceCategory = (apiCategory: ApiSpaceCategory | null | undefined): SpaceCategory | null => {
 	if (!apiCategory) return null;
 	// API category values match SpaceCategory values (both are snake_case strings)
 	return apiCategory as unknown as SpaceCategory;
@@ -56,6 +62,7 @@ export const transformSpaceResponse = (response: ApiSpace): ISpace => {
 		category: apiCategoryToSpaceCategory(response.category),
 		icon: response.icon ?? null,
 		displayOrder: response.display_order ?? 0,
+		parentId: response.parent_id ?? null,
 		primaryThermostatId: response.primary_thermostat_id ?? null,
 		primaryTemperatureSensorId: response.primary_temperature_sensor_id ?? null,
 		suggestionsEnabled: response.suggestions_enabled ?? true,
@@ -73,6 +80,7 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 		category: spaceCategoryToApiCategory(data.category) ?? undefined,
 		icon: data.icon ?? undefined,
 		display_order: data.displayOrder,
+		parent_id: data.parentId ?? undefined,
 		primary_thermostat_id: data.primaryThermostatId ?? undefined,
 		primary_temperature_sensor_id: data.primaryTemperatureSensorId ?? undefined,
 		suggestions_enabled: data.suggestionsEnabled,
@@ -80,7 +88,7 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 };
 
 export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate => {
-	return {
+	const baseData: Record<string, unknown> = {
 		name: data.name,
 		description: data.description,
 		type: spaceTypeToApiType(data.type),
@@ -88,8 +96,23 @@ export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate 
 		category: spaceCategoryToApiCategory(data.category) as SpacesModuleCreateSpaceCategory | undefined,
 		icon: data.icon,
 		display_order: data.displayOrder,
-		primary_thermostat_id: data.primaryThermostatId,
-		primary_temperature_sensor_id: data.primaryTemperatureSensorId,
 		suggestions_enabled: data.suggestionsEnabled,
 	};
+
+	// Parent zone assignment - explicitly include null to unassign
+	if ('parentId' in data) {
+		baseData.parent_id = data.parentId ?? null;
+	}
+
+	// Primary thermostat ID - explicitly include null to unassign
+	if ('primaryThermostatId' in data) {
+		baseData.primary_thermostat_id = data.primaryThermostatId ?? null;
+	}
+
+	// Primary temperature sensor ID - explicitly include null to unassign
+	if ('primaryTemperatureSensorId' in data) {
+		baseData.primary_temperature_sensor_id = data.primaryTemperatureSensorId ?? null;
+	}
+
+	return baseData as ApiSpaceUpdate;
 };

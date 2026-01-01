@@ -1,6 +1,7 @@
 /*
 eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument,
-@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return,
+@typescript-eslint/no-unsafe-assignment
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -17,6 +18,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { ConnectionState, DeviceCategory, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
@@ -25,6 +27,7 @@ import { DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsService } from './channels.service';
 import { DeviceConnectionStateService } from './device-connection-state.service';
+import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
 import { DevicesService } from './devices.service';
@@ -63,7 +66,7 @@ describe('DevicesService', () => {
 	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
 
-	const mockDevice: MockDevice = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -71,8 +74,9 @@ describe('DevicesService', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
+		deviceZones: [],
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,
@@ -112,6 +116,14 @@ describe('DevicesService', () => {
 			providers: [
 				DevicesService,
 				{ provide: getRepositoryToken(DeviceEntity), useFactory: mockRepository },
+				{ provide: getRepositoryToken(SpaceEntity), useFactory: mockRepository },
+				{
+					provide: DeviceZonesService,
+					useValue: {
+						setDeviceZones: jest.fn().mockResolvedValue([]),
+						getDeviceZones: jest.fn().mockResolvedValue([]),
+					},
+				},
 				{
 					provide: DevicesTypeMapperService,
 					useValue: {
@@ -182,7 +194,7 @@ describe('DevicesService', () => {
 
 	describe('findAll', () => {
 		it('should return all devices', async () => {
-			const mockDevices: DeviceEntity[] = [mockDevice];
+			const mockDevices = [mockDevice];
 			jest.spyOn(repository, 'find').mockResolvedValue(mockDevices.map((entity) => toInstance(MockDevice, entity)));
 
 			const result = await service.findAll();
@@ -198,6 +210,7 @@ describe('DevicesService', () => {
 					'channels.controls.channel',
 					'channels.properties',
 					'channels.properties.channel',
+					'deviceZones',
 				],
 			});
 		});
@@ -252,7 +265,7 @@ describe('DevicesService', () => {
 				name: createDto.name,
 				mockValue: createDto.mock_value,
 			};
-			const mockCratedDevice: MockDevice = {
+			const mockCratedDevice = {
 				id: uuid().toString(),
 				type: mockCrateDevice.type,
 				category: mockCrateDevice.category,
@@ -260,8 +273,9 @@ describe('DevicesService', () => {
 				name: mockCrateDevice.name,
 				description: mockCrateDevice.description,
 				enabled: mockCrateDevice.enabled,
-				spaceId: null,
-				space: null,
+				roomId: null,
+				room: null,
+				deviceZones: [],
 				status: mockCrateDevice.status,
 				createdAt: new Date(),
 				updatedAt: null,
@@ -320,7 +334,7 @@ describe('DevicesService', () => {
 				name: 'Updated device',
 				mock_value: 'Changed text',
 			};
-			const mockUpdateDevice: MockDevice = {
+			const mockUpdateDevice = {
 				id: mockDevice.id,
 				type: mockDevice.type,
 				category: mockDevice.category,
@@ -328,8 +342,9 @@ describe('DevicesService', () => {
 				name: updateDto.name,
 				description: mockDevice.description,
 				enabled: mockDevice.enabled,
-				spaceId: null,
-				space: null,
+				roomId: null,
+				room: null,
+				deviceZones: [],
 				status: mockDevice.status,
 				controls: mockDevice.controls,
 				channels: mockDevice.channels,
@@ -337,7 +352,7 @@ describe('DevicesService', () => {
 				updatedAt: mockDevice.updatedAt,
 				mockValue: updateDto.mock_value,
 			};
-			const mockUpdatedDevice: MockDevice = {
+			const mockUpdatedDevice = {
 				id: mockUpdateDevice.id,
 				type: mockUpdateDevice.type,
 				category: mockUpdateDevice.category,
@@ -345,8 +360,9 @@ describe('DevicesService', () => {
 				name: mockUpdateDevice.name,
 				description: mockUpdateDevice.description,
 				enabled: mockUpdateDevice.enabled,
-				spaceId: null,
-				space: null,
+				roomId: null,
+				room: null,
+				deviceZones: [],
 				status: mockUpdateDevice.status,
 				createdAt: mockUpdateDevice.createdAt,
 				updatedAt: new Date(),

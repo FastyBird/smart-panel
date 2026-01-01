@@ -61,6 +61,8 @@
 				:space="space"
 				@saved="onSaved"
 				@cancel="onCancel"
+				@manage-devices="onManageDevices"
+				@manage-displays="onManageDisplays"
 			/>
 		</el-scrollbar>
 
@@ -118,8 +120,12 @@ import {
 } from '../../../common';
 import { SpaceEditForm } from '../components/components';
 import { useSpace } from '../composables';
-import { RouteNames } from '../spaces.constants';
+import { RouteNames, SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store';
+
+defineOptions({
+	inheritAttrs: false,
+});
 
 const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
@@ -145,18 +151,16 @@ const remoteFormChanged = ref(false);
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
 
-const isDetailRoute = computed<boolean>((): boolean => {
-	// Check if we came from the detail view via navigation state
-	// Since SPACE and SPACE_EDIT are now separate routes, we can't use route.matched
-	const fromDetail = (window.history.state as { fromDetail?: boolean } | undefined)?.fromDetail;
-	return fromDetail === true;
-});
+const isDetailRoute = computed<boolean>(
+	(): boolean =>
+		route.matched.find((matched) => matched.name === RouteNames.SPACE) !== undefined
+);
 
 const spaceIcon = computed<string>((): string => {
 	if (space.value?.icon) {
 		return space.value.icon;
 	}
-	return space.value?.type === 'room' ? 'mdi:door' : 'mdi:home-floor-1';
+	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -173,11 +177,16 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 				label: t('spacesModule.breadcrumbs.spaces.detail', { space: space.value?.name }),
 				route: router.resolve({ name: RouteNames.SPACE, params: { id: spaceId.value } }),
 			});
+			items.push({
+				label: t('spacesModule.breadcrumbs.spaces.edit', { space: space.value?.name }),
+				route: router.resolve({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } }),
+			});
+		} else {
+			items.push({
+				label: t('spacesModule.breadcrumbs.spaces.edit', { space: space.value?.name }),
+				route: router.resolve({ name: RouteNames.SPACES_EDIT, params: { id: spaceId.value } }),
+			});
 		}
-		items.push({
-			label: t('spacesModule.breadcrumbs.spaces.edit', { space: space.value?.name }),
-			route: router.resolve({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } }),
-		});
 
 		return items;
 	}
@@ -263,6 +272,22 @@ const onCancel = (): void => {
 			router.push({ name: RouteNames.SPACES });
 		}
 	}
+};
+
+const onManageDevices = (): void => {
+	router.push({
+		name: RouteNames.SPACE,
+		params: { id: spaceId.value },
+		state: { activeTab: 'devices' },
+	});
+};
+
+const onManageDisplays = (): void => {
+	router.push({
+		name: RouteNames.SPACE,
+		params: { id: spaceId.value },
+		state: { activeTab: 'displays' },
+	});
 };
 
 onBeforeMount(async (): Promise<void> => {

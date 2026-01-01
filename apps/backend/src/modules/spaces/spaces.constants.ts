@@ -17,29 +17,160 @@ export enum SpaceType {
 }
 
 /**
- * Space categories representing common room/area types
- * Used to provide default icons and descriptions for spaces
+ * Room categories for SpaceType.ROOM
+ * Represents physical rooms within a building
  */
-export enum SpaceCategory {
+export enum SpaceRoomCategory {
 	LIVING_ROOM = 'living_room',
 	BEDROOM = 'bedroom',
 	BATHROOM = 'bathroom',
+	TOILET = 'toilet',
 	KITCHEN = 'kitchen',
 	DINING_ROOM = 'dining_room',
 	OFFICE = 'office',
 	GARAGE = 'garage',
 	HALLWAY = 'hallway',
+	ENTRYWAY = 'entryway',
 	LAUNDRY = 'laundry',
+	UTILITY_ROOM = 'utility_room',
 	STORAGE = 'storage',
-	OUTDOOR = 'outdoor',
-	BASEMENT = 'basement',
-	ATTIC = 'attic',
+	CLOSET = 'closet',
+	PANTRY = 'pantry',
 	NURSERY = 'nursery',
 	GUEST_ROOM = 'guest_room',
 	GYM = 'gym',
 	MEDIA_ROOM = 'media_room',
 	WORKSHOP = 'workshop',
 	OTHER = 'other',
+}
+
+/**
+ * Zone categories for SpaceType.ZONE
+ * Represents logical groupings or areas that aggregate multiple rooms/spaces
+ */
+export enum SpaceZoneCategory {
+	// Floor zones
+	FLOOR_GROUND = 'floor_ground',
+	FLOOR_FIRST = 'floor_first',
+	FLOOR_SECOND = 'floor_second',
+	FLOOR_BASEMENT = 'floor_basement',
+	FLOOR_ATTIC = 'floor_attic',
+	// Outdoor areas
+	OUTDOOR_FRONT_YARD = 'outdoor_front_yard',
+	OUTDOOR_BACKYARD = 'outdoor_backyard',
+	OUTDOOR_DRIVEWAY = 'outdoor_driveway',
+	OUTDOOR_GARDEN = 'outdoor_garden',
+	OUTDOOR_TERRACE = 'outdoor_terrace',
+	OUTDOOR_BALCONY = 'outdoor_balcony',
+	OUTDOOR_WALKWAY = 'outdoor_walkway',
+	// Security
+	SECURITY_PERIMETER = 'security_perimeter',
+	// Utility
+	UTILITY = 'utility',
+	// Other
+	OTHER = 'zone_other',
+}
+
+/**
+ * Legacy category value that needs normalization.
+ * Maps to SpaceZoneCategory.OUTDOOR_GARDEN for backward compatibility.
+ */
+export const LEGACY_OUTDOOR_CATEGORY = 'outdoor';
+
+/**
+ * Combined SpaceCategory type for entity compatibility
+ * The actual validation is done based on SpaceType
+ * @deprecated Use SpaceRoomCategory or SpaceZoneCategory based on SpaceType
+ */
+export type SpaceCategory = SpaceRoomCategory | SpaceZoneCategory;
+
+/**
+ * SpaceCategory enum for backward compatibility with existing code
+ * Contains all values from both room and zone categories
+ * @deprecated Use SpaceRoomCategory or SpaceZoneCategory based on SpaceType
+ */
+export const SpaceCategory = {
+	...SpaceRoomCategory,
+	...SpaceZoneCategory,
+} as const;
+
+/**
+ * Array of all room category values for validation
+ */
+export const SPACE_ROOM_CATEGORIES = Object.values(SpaceRoomCategory);
+
+/**
+ * Array of all zone category values for validation
+ */
+export const SPACE_ZONE_CATEGORIES = Object.values(SpaceZoneCategory);
+
+/**
+ * Floor zone categories - zones that represent building floors
+ * Devices cannot be explicitly assigned to floor zones (membership is derived from room hierarchy)
+ */
+export const FLOOR_ZONE_CATEGORIES: SpaceZoneCategory[] = [
+	SpaceZoneCategory.FLOOR_GROUND,
+	SpaceZoneCategory.FLOOR_FIRST,
+	SpaceZoneCategory.FLOOR_SECOND,
+	SpaceZoneCategory.FLOOR_BASEMENT,
+	SpaceZoneCategory.FLOOR_ATTIC,
+];
+
+/**
+ * Check if a category is a floor zone category
+ * Floor zones cannot have devices explicitly assigned (membership is derived from room→zone hierarchy)
+ */
+export function isFloorZoneCategory(category: string | null): boolean {
+	if (category === null) {
+		return false;
+	}
+	return FLOOR_ZONE_CATEGORIES.includes(category as SpaceZoneCategory);
+}
+
+/**
+ * Array of all category values (room + zone) for validation
+ */
+export const ALL_SPACE_CATEGORIES = [...SPACE_ROOM_CATEGORIES, ...SPACE_ZONE_CATEGORIES];
+
+/**
+ * Check if a category is valid for a given space type
+ */
+export function isValidCategoryForType(category: string | null, type: SpaceType): boolean {
+	if (category === null) {
+		return true; // null is always valid
+	}
+
+	// Handle legacy 'outdoor' value for zones
+	if (category === LEGACY_OUTDOOR_CATEGORY && type === SpaceType.ZONE) {
+		return true;
+	}
+
+	if (type === SpaceType.ROOM) {
+		return SPACE_ROOM_CATEGORIES.includes(category as SpaceRoomCategory);
+	}
+
+	if (type === SpaceType.ZONE) {
+		return SPACE_ZONE_CATEGORIES.includes(category as SpaceZoneCategory);
+	}
+
+	return false;
+}
+
+/**
+ * Normalize legacy category values to current enum values
+ * Currently handles 'outdoor' -> 'outdoor_garden' for zones
+ */
+export function normalizeCategoryValue(category: string | null, type: SpaceType): SpaceCategory | null {
+	if (category === null) {
+		return null;
+	}
+
+	// Normalize legacy 'outdoor' to 'outdoor_garden' for zones
+	if (category === LEGACY_OUTDOOR_CATEGORY && type === SpaceType.ZONE) {
+		return SpaceZoneCategory.OUTDOOR_GARDEN;
+	}
+
+	return category as SpaceCategory;
 }
 
 /**
@@ -52,86 +183,173 @@ export interface SpaceCategoryTemplate {
 }
 
 /**
- * Default templates for each space category
- * Provides suggested icons and descriptions that can be used when creating spaces
+ * Default templates for room categories
  */
-export const SPACE_CATEGORY_TEMPLATES: Record<SpaceCategory, Omit<SpaceCategoryTemplate, 'category'>> = {
-	[SpaceCategory.LIVING_ROOM]: {
+export const SPACE_ROOM_CATEGORY_TEMPLATES: Record<SpaceRoomCategory, Omit<SpaceCategoryTemplate, 'category'>> = {
+	[SpaceRoomCategory.LIVING_ROOM]: {
 		icon: 'mdi:sofa',
 		description: 'Main living and entertainment area',
 	},
-	[SpaceCategory.BEDROOM]: {
+	[SpaceRoomCategory.BEDROOM]: {
 		icon: 'mdi:bed',
 		description: 'Sleeping and personal space',
 	},
-	[SpaceCategory.BATHROOM]: {
+	[SpaceRoomCategory.BATHROOM]: {
 		icon: 'mdi:shower',
-		description: 'Bathroom and hygiene area',
+		description: 'Full bathroom with shower or bathtub',
 	},
-	[SpaceCategory.KITCHEN]: {
+	[SpaceRoomCategory.TOILET]: {
+		icon: 'mdi:toilet',
+		description: 'Toilet or half bathroom',
+	},
+	[SpaceRoomCategory.KITCHEN]: {
 		icon: 'mdi:stove',
 		description: 'Food preparation and cooking area',
 	},
-	[SpaceCategory.DINING_ROOM]: {
+	[SpaceRoomCategory.DINING_ROOM]: {
 		icon: 'mdi:silverware-fork-knife',
 		description: 'Dining and eating area',
 	},
-	[SpaceCategory.OFFICE]: {
+	[SpaceRoomCategory.OFFICE]: {
 		icon: 'mdi:desk',
 		description: 'Home office or work space',
 	},
-	[SpaceCategory.GARAGE]: {
+	[SpaceRoomCategory.GARAGE]: {
 		icon: 'mdi:garage',
 		description: 'Vehicle storage and workshop area',
 	},
-	[SpaceCategory.HALLWAY]: {
-		icon: 'mdi:door',
+	[SpaceRoomCategory.HALLWAY]: {
+		icon: 'mdi:door-open',
 		description: 'Corridor and passage area',
 	},
-	[SpaceCategory.LAUNDRY]: {
+	[SpaceRoomCategory.ENTRYWAY]: {
+		icon: 'mdi:door',
+		description: 'Main entrance and foyer area',
+	},
+	[SpaceRoomCategory.LAUNDRY]: {
 		icon: 'mdi:washing-machine',
-		description: 'Laundry and utility area',
+		description: 'Laundry room with washer and dryer',
 	},
-	[SpaceCategory.STORAGE]: {
-		icon: 'mdi:archive',
-		description: 'Storage and closet space',
+	[SpaceRoomCategory.UTILITY_ROOM]: {
+		icon: 'mdi:water-boiler',
+		description: 'Utility room with mechanical systems',
 	},
-	[SpaceCategory.OUTDOOR]: {
-		icon: 'mdi:flower',
-		description: 'Outdoor garden, patio, or balcony',
+	[SpaceRoomCategory.STORAGE]: {
+		icon: 'mdi:package-variant-closed',
+		description: 'General storage space',
 	},
-	[SpaceCategory.BASEMENT]: {
-		icon: 'mdi:stairs-down',
-		description: 'Basement or cellar area',
+	[SpaceRoomCategory.CLOSET]: {
+		icon: 'mdi:wardrobe',
+		description: 'Walk-in closet or wardrobe room',
 	},
-	[SpaceCategory.ATTIC]: {
-		icon: 'mdi:stairs-up',
-		description: 'Attic or loft space',
+	[SpaceRoomCategory.PANTRY]: {
+		icon: 'mdi:food-variant',
+		description: 'Food storage and pantry',
 	},
-	[SpaceCategory.NURSERY]: {
+	[SpaceRoomCategory.NURSERY]: {
 		icon: 'mdi:baby-carriage',
 		description: 'Baby or child room',
 	},
-	[SpaceCategory.GUEST_ROOM]: {
+	[SpaceRoomCategory.GUEST_ROOM]: {
 		icon: 'mdi:account-multiple',
 		description: 'Guest bedroom or accommodation',
 	},
-	[SpaceCategory.GYM]: {
+	[SpaceRoomCategory.GYM]: {
 		icon: 'mdi:dumbbell',
 		description: 'Home gym or exercise area',
 	},
-	[SpaceCategory.MEDIA_ROOM]: {
+	[SpaceRoomCategory.MEDIA_ROOM]: {
 		icon: 'mdi:television',
 		description: 'Home theater or media room',
 	},
-	[SpaceCategory.WORKSHOP]: {
+	[SpaceRoomCategory.WORKSHOP]: {
 		icon: 'mdi:hammer-wrench',
 		description: 'DIY workshop or hobby area',
 	},
-	[SpaceCategory.OTHER]: {
+	[SpaceRoomCategory.OTHER]: {
 		icon: 'mdi:home',
-		description: 'Other or custom space',
+		description: 'Other or custom room',
 	},
+};
+
+/**
+ * Default templates for zone categories
+ */
+export const SPACE_ZONE_CATEGORY_TEMPLATES: Record<SpaceZoneCategory, Omit<SpaceCategoryTemplate, 'category'>> = {
+	// Floor zones
+	[SpaceZoneCategory.FLOOR_GROUND]: {
+		icon: 'mdi:home-floor-0',
+		description: 'Ground floor level',
+	},
+	[SpaceZoneCategory.FLOOR_FIRST]: {
+		icon: 'mdi:home-floor-1',
+		description: 'First floor level',
+	},
+	[SpaceZoneCategory.FLOOR_SECOND]: {
+		icon: 'mdi:home-floor-2',
+		description: 'Second floor level',
+	},
+	[SpaceZoneCategory.FLOOR_BASEMENT]: {
+		icon: 'mdi:home-floor-b',
+		description: 'Basement level',
+	},
+	[SpaceZoneCategory.FLOOR_ATTIC]: {
+		icon: 'mdi:home-roof',
+		description: 'Attic level',
+	},
+	// Outdoor areas
+	[SpaceZoneCategory.OUTDOOR_FRONT_YARD]: {
+		icon: 'mdi:home-import-outline',
+		description: 'Front yard area',
+	},
+	[SpaceZoneCategory.OUTDOOR_BACKYARD]: {
+		icon: 'mdi:home-export-outline',
+		description: 'Backyard area',
+	},
+	[SpaceZoneCategory.OUTDOOR_DRIVEWAY]: {
+		icon: 'mdi:road-variant',
+		description: 'Driveway and parking area',
+	},
+	[SpaceZoneCategory.OUTDOOR_GARDEN]: {
+		icon: 'mdi:flower',
+		description: 'Garden and landscaped area',
+	},
+	[SpaceZoneCategory.OUTDOOR_TERRACE]: {
+		icon: 'mdi:grill',
+		description: 'Terrace or patio area',
+	},
+	[SpaceZoneCategory.OUTDOOR_BALCONY]: {
+		icon: 'mdi:balcony',
+		description: 'Balcony or veranda',
+	},
+	[SpaceZoneCategory.OUTDOOR_WALKWAY]: {
+		icon: 'mdi:walk',
+		description: 'Outdoor walkway or path',
+	},
+	// Security
+	[SpaceZoneCategory.SECURITY_PERIMETER]: {
+		icon: 'mdi:shield-home',
+		description: 'Security perimeter zone',
+	},
+	// Utility
+	[SpaceZoneCategory.UTILITY]: {
+		icon: 'mdi:tools',
+		description: 'Utility and service zone',
+	},
+	// Other
+	[SpaceZoneCategory.OTHER]: {
+		icon: 'mdi:map-marker',
+		description: 'Other or custom zone',
+	},
+};
+
+/**
+ * Combined templates for all space categories (room + zone)
+ * For backward compatibility
+ */
+export const SPACE_CATEGORY_TEMPLATES: Record<string, Omit<SpaceCategoryTemplate, 'category'>> = {
+	...SPACE_ROOM_CATEGORY_TEMPLATES,
+	...SPACE_ZONE_CATEGORY_TEMPLATES,
 };
 
 // Lighting Intent Types

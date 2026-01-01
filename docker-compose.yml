@@ -20,6 +20,7 @@ services:
       FB_INFLUXDB_PASSWORD: ${FB_INFLUXDB_PASSWORD:-admin}
     volumes:
       - ./:/app:delegated
+      - server_node_modules:/app/node_modules
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     networks:
@@ -42,6 +43,7 @@ services:
       FB_CONFIG_PATH: ${FB_CONFIG_PATH:-/app/var/data}
     volumes:
       - ./:/app:delegated
+      - admin_node_modules:/app/node_modules
     ports:
       - "${ADMIN_PORT:-3003}:3003"
     networks:
@@ -88,3 +90,5 @@ networks:
 volumes:
   influxdb-dev-data:
   chronograf-dev-data:
+  server_node_modules:
+  admin_node_modules:

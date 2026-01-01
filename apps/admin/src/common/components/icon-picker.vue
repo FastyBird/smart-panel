@@ -91,4 +91,12 @@ watch(
 		emit('update:modelValue', typeof val === 'undefined' ? null : val);
 	}
 );
+
+// Watch for external changes to modelValue prop
+watch(
+	() => props.modelValue,
+	(newVal) => {
+		selectedIcon.value = newVal ?? '';
+	}
+);
 </script>

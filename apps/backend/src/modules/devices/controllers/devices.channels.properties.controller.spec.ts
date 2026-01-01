@@ -41,7 +41,7 @@ describe('DevicesChannelsPropertiesController', () => {
 	let mapper: ChannelsPropertiesTypeMapperService;
 	let propertyTimeseriesService: PropertyTimeseriesService;
 
-	const mockDevice: DeviceEntity = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -49,8 +49,9 @@ describe('DevicesChannelsPropertiesController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
+		deviceZones: [],
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,
@@ -61,7 +62,7 @@ describe('DevicesChannelsPropertiesController', () => {
 		channels: [],
 	};
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: ChannelCategory.GENERIC,
@@ -75,7 +76,7 @@ describe('DevicesChannelsPropertiesController', () => {
 		properties: [],
 	};
 
-	const mockChannelProperty: ChannelPropertyEntity = {
+	const mockChannelProperty = {
 		id: uuid().toString(),
 		type: 'mock',
 		name: 'Test Property',

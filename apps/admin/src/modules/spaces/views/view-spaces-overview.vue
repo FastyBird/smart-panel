@@ -167,7 +167,7 @@ const onViewSpaces = (): void => {
 };
 
 const onAddSpace = (): void => {
-	router.push({ name: RouteNames.SPACES_EDIT });
+	router.push({ name: RouteNames.SPACES_ADD });
 };
 
 const onSpaceDetail = (id: ISpace['id']): void => {

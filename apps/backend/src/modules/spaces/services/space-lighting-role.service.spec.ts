@@ -33,6 +33,9 @@ describe('SpaceLightingRoleService', () => {
 		primaryTemperatureSensorId: null,
 		suggestionsEnabled: true,
 		lastActivityAt: null,
+		parentId: null,
+		parent: null,
+		children: [],
 		createdAt: new Date(),
 		updatedAt: null,
 	};
@@ -87,7 +90,7 @@ describe('SpaceLightingRoleService', () => {
 		name: 'Ceiling Light',
 		category: DeviceCategory.LIGHTING,
 		type: 'shelly-ng',
-		spaceId: mockSpace.id,
+		roomId: mockSpace.id,
 		space: mockSpace,
 		channels: [{ ...mockChannel, properties: [mockOnProperty, mockBrightnessProperty] }],
 		createdAt: new Date(),
@@ -222,7 +225,7 @@ describe('SpaceLightingRoleService', () => {
 		});
 
 		it('should throw validation exception when device does not belong to space', async () => {
-			const otherDevice = { ...mockDevice, spaceId: uuid() } as unknown as DeviceEntity;
+			const otherDevice = { ...mockDevice, roomId: uuid() } as unknown as DeviceEntity;
 			deviceRepository.findOne.mockResolvedValue(otherDevice);
 
 			const dto = {

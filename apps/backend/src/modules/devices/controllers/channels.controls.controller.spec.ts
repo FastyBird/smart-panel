@@ -14,7 +14,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, DEVICES_MODULE_PREFIX, DeviceCategory } from '../devices.constants';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
-import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity';
 import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
 
@@ -25,7 +25,7 @@ describe('ChannelsControlsController', () => {
 	let channelsService: ChannelsService;
 	let channelsControlsService: ChannelsControlsService;
 
-	const mockDevice: DeviceEntity = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -33,8 +33,9 @@ describe('ChannelsControlsController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
+		deviceZones: [],
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,
@@ -45,7 +46,7 @@ describe('ChannelsControlsController', () => {
 		channels: [],
 	};
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: ChannelCategory.GENERIC,
@@ -59,7 +60,7 @@ describe('ChannelsControlsController', () => {
 		properties: [],
 	};
 
-	const mockChannelControl: ChannelControlEntity = {
+	const mockChannelControl = {
 		id: uuid().toString(),
 		name: 'Test Control',
 		channel: mockChannel,

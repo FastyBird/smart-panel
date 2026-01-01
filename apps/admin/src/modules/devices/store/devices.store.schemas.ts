@@ -31,6 +31,8 @@ export const DeviceSchema = z.object({
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	enabled: z.boolean().default(true),
+	roomId: z.string().uuid().nullable().default(null),
+	zoneIds: z.array(z.string().uuid()).default([]),
 	status: z.object({
 		online: z.boolean().default(false),
 		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus).default(DevicesModuleDeviceConnectionStatus.unknown),
@@ -78,6 +80,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 				.nullable()
 				.optional(),
 			enabled: z.boolean(),
+			roomId: z.string().uuid().nullable().optional(),
 			status: z.object({
 				online: z.boolean(),
 				status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),
@@ -110,6 +113,7 @@ export const DevicesAddActionPayloadSchema = z.object({
 				.nullable()
 				.optional(),
 			enabled: z.boolean().optional(),
+			roomId: z.string().uuid().nullable().optional(),
 		})
 		.passthrough(),
 });
@@ -128,6 +132,7 @@ export const DevicesEditActionPayloadSchema = z.object({
 				.nullable()
 				.optional(),
 			enabled: z.boolean().optional(),
+			roomId: z.string().uuid().nullable().optional(),
 		})
 		.passthrough(),
 });
@@ -156,6 +161,7 @@ export const DeviceCreateReqSchema: ZodType<ApiCreateDevice> = z.object({
 		.nullable()
 		.optional(),
 	enabled: z.boolean().optional(),
+	room_id: z.string().uuid().nullable().optional(),
 	controls: z.array(DeviceControlCreateReqSchema).optional(),
 	channels: z.array(ChannelCreateReqSchema).optional(),
 });
@@ -172,6 +178,7 @@ export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 		.nullable()
 		.optional(),
 	enabled: z.boolean().optional(),
+	room_id: z.string().uuid().nullable().optional(),
 });
 
 export const DeviceResSchema: ZodType<ApiDevice> = z.object({
@@ -182,6 +189,8 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	enabled: z.boolean(),
+	room_id: z.string().uuid().nullable(),
+	zone_ids: z.array(z.string().uuid()),
 	status: z.object({
 		online: z.boolean(),
 		status: z.nativeEnum(DevicesModuleDeviceConnectionStatus),

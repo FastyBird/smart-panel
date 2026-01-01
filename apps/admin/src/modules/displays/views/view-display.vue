@@ -45,6 +45,15 @@
 		<template #extra>
 			<div class="flex items-center">
 				<el-button
+					plain
+					class="px-4! ml-2!"
+					@click="onEdit"
+				>
+					<template #icon>
+						<icon icon="mdi:pencil" />
+					</template>
+				</el-button>
+				<el-button
 					type="warning"
 					plain
 					class="px-4! ml-2!"
@@ -226,6 +235,81 @@
 					</el-descriptions>
 				</el-card>
 			</el-col>
+
+			<!-- Space Context -->
+			<el-col
+				:xs="24"
+				:sm="12"
+				:md="8"
+			>
+				<el-card
+					class="md:m-2 xs:my-1"
+					body-class="p-0!"
+				>
+					<el-descriptions
+						:label-width="170"
+						:column="1"
+						border
+					>
+						<template #title>
+							<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
+								<el-icon
+									class="mr-2"
+									size="28"
+								>
+									<icon icon="mdi:home-map-marker" />
+								</el-icon>
+								{{ t('displaysModule.detail.spaceContext.title') }}
+							</div>
+						</template>
+
+						<!-- Display Role -->
+						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.role')">
+							{{ t(`displaysModule.roles.${display.role}`) }}
+						</el-descriptions-item>
+
+						<!-- Home Page Mode -->
+						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.homeMode')">
+							{{ t(`displaysModule.detail.spaceContext.homeModes.${display.homeMode}`) }}
+						</el-descriptions-item>
+
+						<!-- Assigned Room (only for room role) -->
+						<el-descriptions-item
+							v-if="display.role === 'room'"
+							:label="t('displaysModule.detail.spaceContext.assignedRoom')"
+						>
+							{{ assignedRoomName || t('displaysModule.detail.spaceContext.notAssigned') }}
+						</el-descriptions-item>
+
+						<!-- Initial View -->
+						<el-descriptions-item :label="t('displaysModule.detail.spaceContext.initialView')">
+							{{ initialViewLabel }}
+						</el-descriptions-item>
+
+						<!-- System Views (only for room role) -->
+						<el-descriptions-item
+							v-if="display.role === 'room'"
+							:label="t('displaysModule.detail.spaceContext.systemViews')"
+						>
+							<div class="flex flex-wrap gap-1">
+								<el-tag
+									v-for="view in systemViews"
+									:key="view"
+									size="small"
+									type="info"
+								>
+									{{ view }}
+								</el-tag>
+							</div>
+						</el-descriptions-item>
+					</el-descriptions>
+
+					<!-- Informational Hint -->
+					<div class="px-4 py-3 text-xs text-gray-400 border-t border-gray-100">
+						{{ t('displaysModule.detail.spaceContext.hint') }}
+					</div>
+				</el-card>
+			</el-col>
 		</el-row>
 
 		<div
@@ -290,6 +374,10 @@ import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElDrawer, 
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { usePages } from '../../dashboard/composables/composables';
+import { useDevices } from '../../devices/composables/useDevices';
+import { useSpaces } from '../../spaces/composables';
 import { useDisplay } from '../composables/composables';
 import { RouteNames } from '../displays.constants';
 import type { IDisplay } from '../store/displays.store.types';
@@ -311,6 +399,82 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const displayId = computed(() => props.id);
 const { display, isLoading } = useDisplay(displayId);
+
+// Space context data
+const { findById: findSpaceById, fetchSpaces, firstLoadFinished: spacesLoaded } = useSpaces();
+const { pages, fetchPages, loaded: pagesLoaded } = usePages();
+const { devices, fetchDevices, loaded: devicesLoaded } = useDevices();
+
+// Climate device categories
+const climateCategories = [
+	DevicesModuleDeviceCategory.thermostat,
+	DevicesModuleDeviceCategory.air_conditioner,
+	DevicesModuleDeviceCategory.heater,
+	DevicesModuleDeviceCategory.air_humidifier,
+	DevicesModuleDeviceCategory.air_dehumidifier,
+	DevicesModuleDeviceCategory.air_purifier,
+];
+
+const assignedRoomName = computed<string | null>(() => {
+	if (!display.value?.roomId) return null;
+	const room = findSpaceById(display.value.roomId);
+	return room?.name ?? null;
+});
+
+// Get devices in the assigned room
+const roomDevices = computed(() => {
+	if (!display.value?.roomId) return [];
+	return devices.value.filter((device) => device.roomId === display.value?.roomId);
+});
+
+// Check if the room has lighting devices
+const hasLightingDevices = computed(() => {
+	return roomDevices.value.some((device) => device.category === DevicesModuleDeviceCategory.lighting);
+});
+
+// Check if the room has climate devices
+const hasClimateDevices = computed(() => {
+	return roomDevices.value.some((device) => climateCategories.includes(device.category));
+});
+
+const initialViewLabel = computed<string>(() => {
+	if (!display.value) return '-';
+
+	// If explicit mode with a page selected
+	if (display.value.homeMode === 'explicit' && display.value.homePageId) {
+		const page = pages.value.find((p) => p.id === display.value?.homePageId);
+		return page?.title ?? t('displaysModule.detail.spaceContext.selectedPage');
+	}
+
+	// Auto mode - depends on role
+	switch (display.value.role) {
+		case 'room':
+			return t('displaysModule.detail.spaceContext.initialViews.roomOverview');
+		case 'master':
+			return t('displaysModule.detail.spaceContext.initialViews.houseOverview');
+		case 'entry':
+			return t('displaysModule.detail.spaceContext.initialViews.entryOverview');
+		default:
+			return '-';
+	}
+});
+
+// System views - only for room role, with conditional lights/climate
+const systemViews = computed<string[]>(() => {
+	if (!display.value || display.value.role !== 'room') return [];
+
+	const views = [t('displaysModule.detail.spaceContext.views.overview')];
+
+	if (hasLightingDevices.value) {
+		views.push(t('displaysModule.detail.spaceContext.views.lights'));
+	}
+
+	if (hasClimateDevices.value) {
+		views.push(t('displaysModule.detail.spaceContext.views.climate'));
+	}
+
+	return views;
+});
 
 // Track if display was previously loaded to detect deletion
 const wasDisplayLoaded = ref<boolean>(false);
@@ -358,6 +522,20 @@ const onCloseDrawer = (done?: () => void): void => {
 	done?.();
 };
 
+const onEdit = (): void => {
+	if (isLGDevice.value) {
+		router.replace({
+			name: RouteNames.DISPLAY_EDIT,
+			params: { id: props.id },
+		});
+	} else {
+		router.push({
+			name: RouteNames.DISPLAY_EDIT,
+			params: { id: props.id },
+		});
+	}
+};
+
 const onManageTokens = (): void => {
 	if (isLGDevice.value) {
 		router.replace({
@@ -372,7 +550,7 @@ const onManageTokens = (): void => {
 	}
 };
 
-onBeforeMount((): void => {
+onBeforeMount(async (): Promise<void> => {
 	// Mark as loaded if display was successfully fetched
 	if (display.value !== null) {
 		wasDisplayLoaded.value = true;
@@ -380,6 +558,17 @@ onBeforeMount((): void => {
 
 	showDrawer.value =
 		route.matched.find((matched) => matched.name === RouteNames.DISPLAY_EDIT || matched.name === RouteNames.DISPLAY_TOKENS) !== undefined;
+
+	// Fetch data for space context if not already loaded
+	if (!spacesLoaded.value) {
+		fetchSpaces();
+	}
+	if (!pagesLoaded.value) {
+		fetchPages();
+	}
+	if (!devicesLoaded.value) {
+		fetchDevices();
+	}
 });
 
 watch(

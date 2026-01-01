@@ -9,7 +9,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DISPLAYS_MODULE_NAME, EventType } from '../displays.constants';
+import { PageEntity } from '../../dashboard/entities/dashboard.entity';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
+import { SpaceType } from '../../spaces/spaces.constants';
+import { DISPLAYS_MODULE_NAME, DisplayRole, EventType, HomeMode } from '../displays.constants';
 import { DisplaysNotFoundException, DisplaysValidationException } from '../displays.exceptions';
 import { UpdateDisplayDto } from '../dto/update-display.dto';
 import { DisplayEntity } from '../entities/displays.entity';
@@ -21,6 +24,10 @@ export class DisplaysService {
 	constructor(
 		@InjectRepository(DisplayEntity)
 		private readonly repository: Repository<DisplayEntity>,
+		@InjectRepository(SpaceEntity)
+		private readonly spaceRepository: Repository<SpaceEntity>,
+		@InjectRepository(PageEntity)
+		private readonly pageRepository: Repository<PageEntity>,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -83,7 +90,29 @@ export class DisplaysService {
 
 		const dtoInstance = await this.validateDto(UpdateDisplayDto, updateDto);
 
+		// Determine the effective role and roomId after the update
+		const effectiveRole = dtoInstance.role ?? display.role;
+		const effectiveRoomId = dtoInstance.room_id !== undefined ? dtoInstance.room_id : display.roomId;
+		const effectiveHomeMode = dtoInstance.home_mode ?? display.homeMode;
+		const effectiveHomePageId = dtoInstance.home_page_id !== undefined ? dtoInstance.home_page_id : display.homePageId;
+
+		// Validate role/roomId combination
+		await this.validateRoleRoomCombination(effectiveRole, effectiveRoomId);
+
+		// Validate homeMode/homePageId combination
+		await this.validateHomeModePageCombination(effectiveHomeMode, effectiveHomePageId);
+
 		Object.assign(display, omitBy(toInstance(DisplayEntity, dtoInstance), isUndefined));
+
+		// Explicitly handle room_id being set to null (toInstance with exposeUnsetFields:false drops null values)
+		if (dtoInstance.room_id === null) {
+			display.roomId = null;
+		}
+
+		// Explicitly handle home_page_id being set to null
+		if (dtoInstance.home_page_id === null) {
+			display.homePageId = null;
+		}
 
 		await this.repository.save(display);
 
@@ -113,6 +142,75 @@ export class DisplaysService {
 		this.logger.debug(`Successfully removed display with id=${id}`);
 
 		this.eventEmitter.emit(EventType.DISPLAY_DELETED, { id });
+	}
+
+	/**
+	 * Validates the role/roomId combination:
+	 * - role=room requires roomId pointing to a space with type=room
+	 * - role=master/entry must not have roomId
+	 */
+	private async validateRoleRoomCombination(role: DisplayRole, roomId: string | null | undefined): Promise<void> {
+		if (role === DisplayRole.ROOM) {
+			// Room role requires a roomId
+			if (!roomId) {
+				throw new DisplaysValidationException(
+					'Display with role "room" requires a room assignment. Please select a room.',
+				);
+			}
+
+			// Validate the room exists and is of type 'room'
+			const space = await this.spaceRepository.findOne({ where: { id: roomId } });
+
+			if (!space) {
+				throw new DisplaysValidationException('The specified room does not exist.');
+			}
+
+			if (space.type !== SpaceType.ROOM) {
+				throw new DisplaysValidationException(
+					'Display with role "room" can only be assigned to a space of type "room", not a zone.',
+				);
+			}
+		} else {
+			// Master/Entry roles must not have a roomId
+			if (roomId) {
+				throw new DisplaysValidationException(
+					`Display with role "${role}" cannot be assigned to a room. Room assignment is only for displays with "room" role.`,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Validates the homeMode/homePageId combination:
+	 * - homeMode=explicit requires homePageId
+	 * - homeMode!=explicit must not have homePageId (or it should be null)
+	 */
+	private async validateHomeModePageCombination(
+		homeMode: HomeMode,
+		homePageId: string | null | undefined,
+	): Promise<void> {
+		if (homeMode === HomeMode.EXPLICIT) {
+			// Explicit mode requires a home page
+			if (!homePageId) {
+				throw new DisplaysValidationException(
+					'Home mode "explicit" requires a home page selection. Please select a page.',
+				);
+			}
+
+			// Validate the page exists
+			const page = await this.pageRepository.findOne({ where: { id: homePageId } });
+
+			if (!page) {
+				throw new DisplaysValidationException('The specified home page does not exist.');
+			}
+		} else {
+			// Non-explicit modes should not have a homePageId
+			if (homePageId) {
+				throw new DisplaysValidationException(
+					`Home mode "${homeMode}" does not use an explicit page selection. The home page will be determined automatically.`,
+				);
+			}
+		}
 	}
 
 	private async findByField(field: keyof DisplayEntity, value: string): Promise<DisplayEntity | null> {

@@ -60,8 +60,8 @@ const defaultSemaphore: IChannelsPropertiesStateSemaphore = {
 	deleting: [],
 };
 
-export const useChannelsProperties = defineStore<'devices_module-channel_properties', ChannelsPropertiesStoreSetup>(
-	'devices_module-channel_properties',
+export const useChannelsProperties = defineStore<'devices_module-channels_properties', ChannelsPropertiesStoreSetup>(
+	'devices_module-channels_properties',
 	(): ChannelsPropertiesStoreSetup => {
 		const backend = useBackend();
 		const logger = useLogger();

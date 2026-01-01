@@ -36,7 +36,7 @@
 			/>
 		</el-form-item>
 
-		<el-divider>{{ t('influxdbModule.headings.authentication') }}</el-divider>
+		<el-divider content-position="left" class="mt-6!">{{ t('influxdbModule.headings.authentication') }}</el-divider>
 
 		<el-form-item
 			:label="t('influxdbModule.fields.config.username.title')"

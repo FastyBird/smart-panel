@@ -65,15 +65,14 @@ import 'gridstack/dist/gridstack.min.css';
 
 import { Icon } from '@iconify/vue';
 
-import { injectStoresManager } from '../../../common';
 import {
 	DashboardException,
 	FormResult,
 	type FormResultType,
 	type IDataSource,
 	type ITile,
-	tilesStoreKey,
 	useTiles,
+	useTilesActions,
 } from '../../../modules/dashboard';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
 
@@ -118,10 +117,7 @@ const emit = defineEmits<{
 
 const { displays, fetchDisplays, isLoading: loadingDisplays } = useDisplays();
 const { tiles, fetchTiles, areLoading: loadingTiles } = useTiles({ parent: 'page', parentId: props.page.id });
-
-const storesManager = injectStoresManager();
-
-const tilesStore = storesManager.getStore(tilesStoreKey);
+const { findById: findTileById, edit: editTile, save: saveTile, removeDirectly: removeTile } = useTilesActions({ parent: 'page', parentId: props.page.id });
 
 let pageGrid: GridStack | undefined;
 
@@ -539,10 +535,10 @@ watch(
 					return;
 				}
 
-				let tile = tilesStore.findById('page', gridItem.id);
+				let tile = findTileById('page', gridItem.id);
 
 				if (tile) {
-					tile = await tilesStore.edit({
+					tile = await editTile({
 						id: tile.id,
 						parent: tile.parent,
 						data: {
@@ -556,7 +552,7 @@ watch(
 					});
 
 					if (tile.draft) {
-						await tilesStore.save({
+						await saveTile({
 							id: tile.id,
 							parent: tile.parent,
 						});
@@ -569,10 +565,10 @@ watch(
 					return;
 				}
 
-				let tile = tilesStore.findById('page', gridItem.id);
+				let tile = findTileById('page', gridItem.id);
 
 				if (tile) {
-					tile = await tilesStore.edit({
+					tile = await editTile({
 						id: tile.id,
 						parent: tile.parent,
 						data: {
@@ -582,7 +578,7 @@ watch(
 					});
 
 					if (tile.draft) {
-						await tilesStore.save({
+						await saveTile({
 							id: tile.id,
 							parent: tile.parent,
 						});
@@ -591,10 +587,10 @@ watch(
 			});
 
 			for (const tileId of removedTiles) {
-				const tile = tilesStore.findById('page', tileId);
+				const tile = findTileById('page', tileId);
 
 				if (tile) {
-					await tilesStore.remove({
+					await removeTile({
 						id: tileId,
 						parent: tile.parent,
 					});

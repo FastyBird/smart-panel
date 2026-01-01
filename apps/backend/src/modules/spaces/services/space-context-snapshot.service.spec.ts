@@ -31,6 +31,9 @@ describe('SpaceContextSnapshotService', () => {
 		primaryTemperatureSensorId: null,
 		suggestionsEnabled: true,
 		lastActivityAt: null,
+		parentId: null,
+		parent: null,
+		children: [],
 		createdAt: new Date(),
 		updatedAt: null,
 	});

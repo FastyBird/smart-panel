@@ -1,8 +1,9 @@
-import { Expose, Transform, Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
 	IsBoolean,
 	IsEnum,
 	IsInt,
+	IsNotEmpty,
 	IsOptional,
 	IsString,
 	IsUUID,
@@ -13,7 +14,8 @@ import {
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { ALL_SPACE_CATEGORIES, SpaceCategory, SpaceType } from '../spaces.constants';
+import { IsValidSpaceCategory } from '../validators/space-category-constraint.validator';
 
 @ApiSchema({ name: 'SpacesModuleUpdateSpace' })
 export class UpdateSpaceDto {
@@ -50,15 +52,18 @@ export class UpdateSpaceDto {
 	type?: SpaceType;
 
 	@ApiPropertyOptional({
-		description: 'Space category (room type template)',
-		enum: SpaceCategory,
+		description:
+			'Space category. For type=room: room categories (living_room, bedroom, etc.). For type=zone: zone categories (floor_ground, outdoor_garden, etc.). Required for zones.',
+		enum: ALL_SPACE_CATEGORIES,
 		nullable: true,
-		example: SpaceCategory.LIVING_ROOM,
+		example: 'living_room',
 	})
 	@Expose()
-	@IsOptional()
-	@IsEnum(SpaceCategory, { message: '[{"field":"category","reason":"Category must be a valid space category."}]' })
-	@ValidateIf((_, value) => value !== null)
+	@ValidateIf(
+		(obj: UpdateSpaceDto) => obj.type === SpaceType.ZONE || (obj.category !== null && obj.category !== undefined),
+	)
+	@IsNotEmpty({ message: '[{"field":"category","reason":"Category is required for zones."}]' })
+	@IsValidSpaceCategory()
 	category?: SpaceCategory | null;
 
 	@ApiPropertyOptional({
@@ -74,20 +79,30 @@ export class UpdateSpaceDto {
 	icon?: string | null;
 
 	@ApiPropertyOptional({
+		name: 'parent_id',
+		description: 'Parent zone ID (only for rooms). Rooms can optionally belong to a zone.',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"parent_id","reason":"Parent ID must be a valid UUID."}]' })
+	@ValidateIf((_, value) => value !== null)
+	parent_id?: string | null;
+
+	@ApiPropertyOptional({
 		name: 'display_order',
 		description: 'Display order for sorting spaces',
 		type: 'integer',
 		example: 0,
 	})
-	@Expose({ name: 'display_order' })
+	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"display_order","reason":"Display order must be an integer."}]' })
 	@Min(0, { message: '[{"field":"display_order","reason":"Display order must be at least 0."}]' })
-	@Transform(
-		({ obj }: { obj: { display_order?: number; displayOrder?: number } }) => obj.display_order ?? obj.displayOrder,
-		{ toClassOnly: true },
-	)
-	displayOrder?: number;
+	display_order?: number;
 
 	@ApiPropertyOptional({
 		name: 'primary_thermostat_id',
@@ -97,18 +112,13 @@ export class UpdateSpaceDto {
 		nullable: true,
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
-	@Expose({ name: 'primary_thermostat_id' })
+	@Expose()
 	@IsOptional()
 	@IsUUID('4', {
 		message: '[{"field":"primary_thermostat_id","reason":"Primary thermostat ID must be a valid UUID."}]',
 	})
 	@ValidateIf((_, value) => value !== null)
-	@Transform(
-		({ obj }: { obj: { primary_thermostat_id?: string | null; primaryThermostatId?: string | null } }) =>
-			obj.primary_thermostat_id !== undefined ? obj.primary_thermostat_id : obj.primaryThermostatId,
-		{ toClassOnly: true },
-	)
-	primaryThermostatId?: string | null;
+	primary_thermostat_id?: string | null;
 
 	@ApiPropertyOptional({
 		name: 'primary_temperature_sensor_id',
@@ -118,25 +128,14 @@ export class UpdateSpaceDto {
 		nullable: true,
 		example: 'a2b19ca3-521e-4d7b-b3fe-bcb7a8d5b9e7',
 	})
-	@Expose({ name: 'primary_temperature_sensor_id' })
+	@Expose()
 	@IsOptional()
 	@IsUUID('4', {
 		message:
 			'[{"field":"primary_temperature_sensor_id","reason":"Primary temperature sensor ID must be a valid UUID."}]',
 	})
 	@ValidateIf((_, value) => value !== null)
-	@Transform(
-		({
-			obj,
-		}: {
-			obj: { primary_temperature_sensor_id?: string | null; primaryTemperatureSensorId?: string | null };
-		}) =>
-			obj.primary_temperature_sensor_id !== undefined
-				? obj.primary_temperature_sensor_id
-				: obj.primaryTemperatureSensorId,
-		{ toClassOnly: true },
-	)
-	primaryTemperatureSensorId?: string | null;
+	primary_temperature_sensor_id?: string | null;
 
 	@ApiPropertyOptional({
 		name: 'suggestions_enabled',
@@ -144,15 +143,10 @@ export class UpdateSpaceDto {
 		type: 'boolean',
 		example: true,
 	})
-	@Expose({ name: 'suggestions_enabled' })
+	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"suggestions_enabled","reason":"Suggestions enabled must be a boolean."}]' })
-	@Transform(
-		({ obj }: { obj: { suggestions_enabled?: boolean; suggestionsEnabled?: boolean } }) =>
-			obj.suggestions_enabled !== undefined ? obj.suggestions_enabled : obj.suggestionsEnabled,
-		{ toClassOnly: true },
-	)
-	suggestionsEnabled?: boolean;
+	suggestions_enabled?: boolean;
 }
 
 @ApiSchema({ name: 'SpacesModuleReqUpdateSpace' })

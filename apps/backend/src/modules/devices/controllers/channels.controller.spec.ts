@@ -30,7 +30,7 @@ describe('ChannelsController', () => {
 	let service: ChannelsService;
 	let mapper: ChannelsTypeMapperService;
 
-	const mockDevice: DeviceEntity = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -38,8 +38,9 @@ describe('ChannelsController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
+		deviceZones: [],
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,
@@ -50,7 +51,7 @@ describe('ChannelsController', () => {
 		channels: [],
 	};
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: ChannelCategory.GENERIC,

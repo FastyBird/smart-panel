@@ -1,5 +1,5 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method,@typescript-eslint/no-unsafe-assignment
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -26,6 +26,7 @@ import {
 	LightingRole,
 	QuickActionType,
 	SpaceType,
+	SuggestionType,
 } from '../spaces.constants';
 import { SpacesNotFoundException, SpacesValidationException } from '../spaces.exceptions';
 
@@ -50,7 +51,7 @@ describe('SpacesController', () => {
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
 		name: 'Living Room Light',
-		spaceId: mockSpace.id,
+		roomId: mockSpace.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	} as DeviceEntity;
@@ -58,7 +59,7 @@ describe('SpacesController', () => {
 	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
 		name: 'Living Room Panel',
-		spaceId: mockSpace.id,
+		roomId: mockSpace.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	} as DisplayEntity;
@@ -83,6 +84,9 @@ describe('SpacesController', () => {
 							{ name: 'Living Room', deviceIds: [uuid()], deviceCount: 1 },
 							{ name: 'Bedroom', deviceIds: [uuid(), uuid()], deviceCount: 2 },
 						]),
+						getChildRooms: jest.fn().mockResolvedValue([]),
+						getParentZone: jest.fn().mockResolvedValue(null),
+						findAllZones: jest.fn().mockResolvedValue([]),
 					},
 				},
 				{
@@ -92,6 +96,22 @@ describe('SpacesController', () => {
 							success: true,
 							affectedDevices: 2,
 							failedDevices: 0,
+						}),
+						getClimateState: jest.fn().mockResolvedValue({
+							hasClimate: false,
+							currentTemperature: null,
+							targetTemperature: null,
+							minSetpoint: null,
+							maxSetpoint: null,
+							canSetSetpoint: false,
+							primaryThermostatId: null,
+							primarySensorId: null,
+						}),
+						executeClimateIntent: jest.fn().mockResolvedValue({
+							success: true,
+							affectedDevices: 1,
+							failedDevices: 0,
+							newSetpoint: 22.0,
 						}),
 					},
 				},
@@ -119,7 +139,7 @@ describe('SpacesController', () => {
 					provide: SpaceContextSnapshotService,
 					useValue: {
 						captureSnapshot: jest.fn().mockResolvedValue({
-							spaceId: uuid(),
+							roomId: uuid(),
 							spaceName: 'Test Space',
 							lighting: {
 								summary: { totalLights: 0, lightsOn: 0, averageBrightness: null },
@@ -402,6 +422,74 @@ describe('SpacesController', () => {
 		});
 	});
 
+	describe('getCategoryTemplates', () => {
+		it('should return category templates', () => {
+			const result = controller.getCategoryTemplates();
+
+			expect(result.data).toBeDefined();
+			expect(Array.isArray(result.data)).toBe(true);
+			expect(result.data.length).toBeGreaterThan(0);
+
+			// Each template should have category, icon, and description
+			result.data.forEach((template) => {
+				expect(template.category).toBeDefined();
+				expect(template.icon).toBeDefined();
+				expect(template.description).toBeDefined();
+			});
+		});
+	});
+
+	describe('findChildren', () => {
+		it('should return child rooms of a zone', async () => {
+			jest.spyOn(spacesService, 'getChildRooms').mockResolvedValue([toInstance(SpaceEntity, mockSpace)]);
+
+			const result = await controller.findChildren(mockSpace.id);
+
+			expect(result.data).toEqual([toInstance(SpaceEntity, mockSpace)]);
+			expect(spacesService.getChildRooms).toHaveBeenCalledWith(mockSpace.id);
+		});
+
+		it('should return empty array for room without children', async () => {
+			jest.spyOn(spacesService, 'getChildRooms').mockResolvedValue([]);
+
+			const result = await controller.findChildren(mockSpace.id);
+
+			expect(result.data).toEqual([]);
+		});
+	});
+
+	describe('findParent', () => {
+		it('should return parent zone of a room', async () => {
+			const parentZone = { ...mockSpace, type: SpaceType.ZONE, name: 'Ground Floor' };
+			jest.spyOn(spacesService, 'getParentZone').mockResolvedValue(toInstance(SpaceEntity, parentZone));
+
+			const result = await controller.findParent(mockSpace.id);
+
+			expect(result.data).toEqual(toInstance(SpaceEntity, parentZone));
+			expect(spacesService.getParentZone).toHaveBeenCalledWith(mockSpace.id);
+		});
+
+		it('should return null for room without parent', async () => {
+			jest.spyOn(spacesService, 'getParentZone').mockResolvedValue(null);
+
+			const result = await controller.findParent(mockSpace.id);
+
+			expect(result.data).toBeNull();
+		});
+	});
+
+	describe('findAllZones', () => {
+		it('should return all zones', async () => {
+			const zone = { ...mockSpace, type: SpaceType.ZONE, name: 'Ground Floor' };
+			jest.spyOn(spacesService, 'findAllZones').mockResolvedValue([toInstance(SpaceEntity, zone)]);
+
+			const result = await controller.findAllZones();
+
+			expect(result.data).toHaveLength(1);
+			expect(spacesService.findAllZones).toHaveBeenCalled();
+		});
+	});
+
 	describe('getIntentCatalog', () => {
 		it('should return the complete intent catalog', () => {
 			const result = controller.getIntentCatalog();
@@ -530,6 +618,389 @@ describe('SpacesController', () => {
 				expect(role.label).toBeDefined();
 				expect(role.label.length).toBeGreaterThan(0);
 			});
+		});
+	});
+
+	describe('getClimateState', () => {
+		it('should return climate state for a space', async () => {
+			const climateState = {
+				hasClimate: true,
+				currentTemperature: 22.5,
+				targetTemperature: 21.0,
+				minSetpoint: 16,
+				maxSetpoint: 30,
+				canSetSetpoint: true,
+				primaryThermostatId: uuid(),
+				primarySensorId: null,
+			};
+			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue(climateState);
+
+			const result = await controller.getClimateState(mockSpace.id);
+
+			expect(result.data.hasClimate).toBe(true);
+			expect(result.data.currentTemperature).toBe(22.5);
+			expect(result.data.targetTemperature).toBe(21.0);
+			expect(spaceIntentService.getClimateState).toHaveBeenCalledWith(mockSpace.id);
+		});
+
+		it('should return hasClimate false when no climate devices', async () => {
+			jest.spyOn(spaceIntentService, 'getClimateState').mockResolvedValue({
+				hasClimate: false,
+				currentTemperature: null,
+				targetTemperature: null,
+				minSetpoint: null,
+				maxSetpoint: null,
+				canSetSetpoint: false,
+				primaryThermostatId: null,
+				primarySensorId: null,
+			});
+
+			const result = await controller.getClimateState(mockSpace.id);
+
+			expect(result.data.hasClimate).toBe(false);
+		});
+	});
+
+	describe('executeClimateIntent', () => {
+		it('should execute climate intent', async () => {
+			jest.spyOn(spaceIntentService, 'executeClimateIntent').mockResolvedValue({
+				success: true,
+				affectedDevices: 1,
+				failedDevices: 0,
+				newSetpoint: 22.0,
+			});
+
+			const intentDto = {
+				data: {
+					type: 'setpoint_set',
+					value: 22.0,
+				},
+			};
+
+			const result = await controller.executeClimateIntent(mockSpace.id, intentDto as any);
+
+			expect(result.data.success).toBe(true);
+			expect(result.data.newSetpoint).toBe(22.0);
+			expect(spaceIntentService.executeClimateIntent).toHaveBeenCalledWith(mockSpace.id, intentDto.data);
+		});
+	});
+
+	describe('getLightTargets', () => {
+		let spaceLightingRoleService: SpaceLightingRoleService;
+
+		beforeEach(() => {
+			spaceLightingRoleService = controller['spaceLightingRoleService'];
+		});
+
+		it('should return light targets in a space', async () => {
+			const mockTargets = [
+				{
+					deviceId: uuid(),
+					deviceName: 'Living Room Light',
+					channelId: uuid(),
+					channelName: 'light',
+					role: LightingRole.MAIN,
+					priority: 1,
+					hasBrightness: true,
+					hasColorTemp: false,
+					hasColor: false,
+				},
+			];
+			jest.spyOn(spaceLightingRoleService, 'getLightTargetsInSpace').mockResolvedValue(mockTargets);
+
+			const result = await controller.getLightTargets(mockSpace.id);
+
+			expect(result.data).toHaveLength(1);
+			expect(result.data[0].deviceName).toBe('Living Room Light');
+			expect(result.data[0].role).toBe(LightingRole.MAIN);
+		});
+	});
+
+	describe('setLightingRole', () => {
+		let spaceLightingRoleService: SpaceLightingRoleService;
+
+		beforeEach(() => {
+			spaceLightingRoleService = controller['spaceLightingRoleService'];
+		});
+
+		it('should set lighting role for a light target', async () => {
+			const mockRole = {
+				id: uuid(),
+				spaceId: mockSpace.id,
+				deviceId: uuid(),
+				channelId: uuid(),
+				role: LightingRole.AMBIENT,
+				priority: 2,
+				space: null as any,
+				device: null as any,
+				channel: null as any,
+				createdAt: new Date(),
+				updatedAt: null,
+			};
+			jest.spyOn(spaceLightingRoleService, 'setRole').mockResolvedValue(mockRole as any);
+
+			const roleDto = {
+				data: {
+					deviceId: mockRole.deviceId,
+					channelId: mockRole.channelId,
+					role: LightingRole.AMBIENT,
+				},
+			};
+
+			const result = await controller.setLightingRole(mockSpace.id, roleDto as any);
+
+			expect(result.data).toEqual(mockRole);
+			expect(spaceLightingRoleService.setRole).toHaveBeenCalledWith(mockSpace.id, roleDto.data);
+		});
+	});
+
+	describe('bulkSetLightingRoles', () => {
+		let spaceLightingRoleService: SpaceLightingRoleService;
+
+		beforeEach(() => {
+			spaceLightingRoleService = controller['spaceLightingRoleService'];
+		});
+
+		it('should bulk set lighting roles', async () => {
+			jest.spyOn(spaceLightingRoleService, 'bulkSetRoles').mockResolvedValue(3);
+
+			const rolesDto = {
+				data: {
+					roles: [
+						{ deviceId: uuid(), channelId: uuid(), role: LightingRole.MAIN },
+						{ deviceId: uuid(), channelId: uuid(), role: LightingRole.AMBIENT },
+						{ deviceId: uuid(), channelId: uuid(), role: LightingRole.ACCENT },
+					],
+				},
+			};
+
+			const result = await controller.bulkSetLightingRoles(mockSpace.id, rolesDto as any);
+
+			expect(result.data.success).toBe(true);
+			expect(result.data.rolesUpdated).toBe(3);
+		});
+	});
+
+	describe('applyDefaultLightingRoles', () => {
+		let spaceLightingRoleService: SpaceLightingRoleService;
+
+		beforeEach(() => {
+			spaceLightingRoleService = controller['spaceLightingRoleService'];
+		});
+
+		it('should apply default lighting roles', async () => {
+			const defaultRoles = [
+				{ deviceId: uuid(), channelId: uuid(), role: LightingRole.MAIN },
+				{ deviceId: uuid(), channelId: uuid(), role: LightingRole.AMBIENT },
+			];
+			jest.spyOn(spaceLightingRoleService, 'inferDefaultLightingRoles').mockResolvedValue(defaultRoles);
+			jest.spyOn(spaceLightingRoleService, 'bulkSetRoles').mockResolvedValue(2);
+
+			const result = await controller.applyDefaultLightingRoles(mockSpace.id);
+
+			expect(result.data.success).toBe(true);
+			expect(result.data.rolesUpdated).toBe(2);
+			expect(spaceLightingRoleService.inferDefaultLightingRoles).toHaveBeenCalledWith(mockSpace.id);
+		});
+	});
+
+	describe('deleteLightingRole', () => {
+		let spaceLightingRoleService: SpaceLightingRoleService;
+
+		beforeEach(() => {
+			spaceLightingRoleService = controller['spaceLightingRoleService'];
+		});
+
+		it('should delete lighting role', async () => {
+			const deviceId = uuid();
+			const channelId = uuid();
+			jest.spyOn(spaceLightingRoleService, 'deleteRole').mockResolvedValue(undefined);
+
+			await controller.deleteLightingRole(mockSpace.id, deviceId, channelId);
+
+			expect(spaceLightingRoleService.deleteRole).toHaveBeenCalledWith(mockSpace.id, deviceId, channelId);
+		});
+	});
+
+	describe('getSuggestion', () => {
+		let spaceSuggestionService: SpaceSuggestionService;
+
+		beforeEach(() => {
+			spaceSuggestionService = controller['spaceSuggestionService'];
+		});
+
+		it('should return suggestion for a space', async () => {
+			const suggestion = {
+				type: SuggestionType.LIGHTING_RELAX,
+				title: 'Relax Mode',
+				reason: 'Evening time detected',
+				lightingMode: LightingMode.RELAX,
+			};
+			jest.spyOn(spaceSuggestionService, 'getSuggestion').mockResolvedValue(suggestion);
+
+			const result = await controller.getSuggestion(mockSpace.id);
+
+			expect(result.data).toBeDefined();
+			expect(result.data?.title).toBe('Relax Mode');
+		});
+
+		it('should return null when no suggestion available', async () => {
+			jest.spyOn(spaceSuggestionService, 'getSuggestion').mockResolvedValue(null);
+
+			const result = await controller.getSuggestion(mockSpace.id);
+
+			expect(result.data).toBeNull();
+		});
+	});
+
+	describe('submitSuggestionFeedback', () => {
+		let spaceSuggestionService: SpaceSuggestionService;
+
+		beforeEach(() => {
+			spaceSuggestionService = controller['spaceSuggestionService'];
+		});
+
+		it('should submit suggestion feedback', async () => {
+			jest.spyOn(spaceSuggestionService, 'recordFeedback').mockResolvedValue({
+				success: true,
+				intentExecuted: true,
+			});
+
+			const feedbackDto = {
+				data: {
+					suggestionType: 'lighting_mode',
+					feedback: 'applied',
+				},
+			};
+
+			const result = await controller.submitSuggestionFeedback(mockSpace.id, feedbackDto as any);
+
+			expect(result.data.success).toBe(true);
+			expect(result.data.intentExecuted).toBe(true);
+		});
+	});
+
+	describe('captureContextSnapshot', () => {
+		let spaceContextSnapshotService: SpaceContextSnapshotService;
+
+		beforeEach(() => {
+			spaceContextSnapshotService = controller['spaceContextSnapshotService'];
+		});
+
+		it('should capture context snapshot', async () => {
+			const snapshot = {
+				spaceId: mockSpace.id,
+				spaceName: 'Living Room',
+				capturedAt: new Date(),
+				lighting: {
+					summary: { totalLights: 2, lightsOn: 1, averageBrightness: 80 },
+					lights: [
+						{
+							deviceId: uuid(),
+							deviceName: 'Light 1',
+							channelId: uuid(),
+							channelName: 'light',
+							role: LightingRole.MAIN,
+							isOn: true,
+							brightness: 80,
+							colorTemperature: null,
+							color: null,
+						},
+					],
+				},
+				climate: {
+					hasClimate: false,
+					currentTemperature: null,
+					targetTemperature: null,
+					minSetpoint: null,
+					maxSetpoint: null,
+					canSetSetpoint: false,
+					primaryThermostatId: null,
+					primarySensorId: null,
+				},
+			};
+			jest.spyOn(spaceContextSnapshotService, 'captureSnapshot').mockResolvedValue(snapshot);
+
+			const result = await controller.captureContextSnapshot(mockSpace.id);
+
+			expect(result.data.spaceId).toBe(mockSpace.id);
+			expect(result.data.lighting.summary.totalLights).toBe(2);
+		});
+
+		it('should throw when space not found', async () => {
+			jest.spyOn(spaceContextSnapshotService, 'captureSnapshot').mockResolvedValue(null);
+
+			await expect(controller.captureContextSnapshot('non-existent')).rejects.toThrow(SpacesNotFoundException);
+		});
+	});
+
+	describe('getUndoState', () => {
+		let spaceUndoHistoryService: SpaceUndoHistoryService;
+
+		beforeEach(() => {
+			spaceUndoHistoryService = controller['spaceUndoHistoryService'];
+		});
+
+		it('should return undo state when entry exists', async () => {
+			const undoEntry = {
+				id: uuid(),
+				spaceId: mockSpace.id,
+				actionDescription: 'Set lighting to relax mode',
+				intentCategory: IntentCategory.LIGHTING,
+				capturedAt: new Date(),
+				snapshot: {} as any,
+			};
+			jest.spyOn(spaceUndoHistoryService, 'peekUndoEntry').mockReturnValue(undoEntry);
+
+			const result = await controller.getUndoState(mockSpace.id);
+
+			expect(result.data.canUndo).toBe(true);
+			expect(result.data.actionDescription).toBe('Set lighting to relax mode');
+		});
+
+		it('should return canUndo false when no entry', async () => {
+			jest.spyOn(spaceUndoHistoryService, 'peekUndoEntry').mockReturnValue(null);
+
+			const result = await controller.getUndoState(mockSpace.id);
+
+			expect(result.data.canUndo).toBe(false);
+			expect(result.data.actionDescription).toBeNull();
+		});
+	});
+
+	describe('executeUndo', () => {
+		let spaceUndoHistoryService: SpaceUndoHistoryService;
+
+		beforeEach(() => {
+			spaceUndoHistoryService = controller['spaceUndoHistoryService'];
+		});
+
+		it('should execute undo successfully', async () => {
+			jest.spyOn(spaceUndoHistoryService, 'executeUndo').mockResolvedValue({
+				success: true,
+				restoredDevices: 3,
+				failedDevices: 0,
+				message: 'Restored 3 devices',
+			});
+
+			const result = await controller.executeUndo(mockSpace.id);
+
+			expect(result.data.success).toBe(true);
+			expect(result.data.restoredDevices).toBe(3);
+		});
+
+		it('should handle partial failure', async () => {
+			jest.spyOn(spaceUndoHistoryService, 'executeUndo').mockResolvedValue({
+				success: false,
+				restoredDevices: 1,
+				failedDevices: 2,
+				message: 'Partial restore',
+			});
+
+			const result = await controller.executeUndo(mockSpace.id);
+
+			expect(result.data.success).toBe(false);
+			expect(result.data.failedDevices).toBe(2);
 		});
 	});
 });

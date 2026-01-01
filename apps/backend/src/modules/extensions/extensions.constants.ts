@@ -5,6 +5,7 @@ import { DEVICES_MODULE_NAME } from '../devices/devices.constants';
 import { DISPLAYS_MODULE_NAME } from '../displays/displays.constants';
 import { INFLUXDB_MODULE_NAME } from '../influxdb/influxdb.constants';
 import { MDNS_MODULE_NAME } from '../mdns/mdns.constants';
+import { SPACES_MODULE_NAME } from '../spaces/spaces.constants';
 import { SYSTEM_MODULE_NAME } from '../system/system.constants';
 import { USERS_MODULE_NAME } from '../users/users.constants';
 import { WEATHER_MODULE_NAME } from '../weather/weather.constants';
@@ -32,6 +33,7 @@ export const NON_TOGGLEABLE_MODULES: readonly string[] = [
 	INFLUXDB_MODULE_NAME,
 	EXTENSIONS_MODULE_NAME,
 	MDNS_MODULE_NAME,
+	SPACES_MODULE_NAME,
 	SYSTEM_MODULE_NAME,
 	USERS_MODULE_NAME,
 	WEATHER_MODULE_NAME,

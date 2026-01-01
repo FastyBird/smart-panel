@@ -93,7 +93,7 @@
 			},
 			"provider": {
 				"title": "Weather provider",
-				"placeholder": "c"
+				"placeholder": "Choose a weather data provider"
 			},
 			"name": {
 				"title": "Location name",

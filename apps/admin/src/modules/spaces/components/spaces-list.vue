@@ -1,5 +1,5 @@
 <template>
-	<el-table v-loading="fetching" :data="spaces" style="width: 100%">
+	<el-table v-loading="fetching" :data="spaces">
 		<el-table-column prop="name" :label="t('spacesModule.table.columns.name')" min-width="200">
 			<template #default="{ row }">
 				<div class="flex items-center gap-2">
@@ -12,7 +12,7 @@
 		</el-table-column>
 		<el-table-column prop="type" :label="t('spacesModule.table.columns.type')" width="120">
 			<template #default="{ row }">
-				<el-tag :type="row.type === 'room' ? 'primary' : 'info'" size="small">
+				<el-tag :type="row.type === SpaceType.ROOM ? 'primary' : 'info'" size="small">
 					{{ t(`spacesModule.misc.types.${row.type}`) }}
 				</el-tag>
 			</template>
@@ -59,23 +59,21 @@ import { ElButton, ElButtonGroup, ElEmpty, ElIcon, ElMessageBox, ElTable, ElTabl
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
-import { useSpaces } from '../composables';
-import { RouteNames } from '../spaces.constants';
+import { useFlashMessage } from '../../../common';
+import { useSpaces, useSpacesActions } from '../composables';
+import { RouteNames, SpaceType } from '../spaces.constants';
 import { SpacesApiException } from '../spaces.exceptions';
-import { spacesStoreKey, type ISpace } from '../store';
+import type { ISpace } from '../store';
 
 const { t } = useI18n();
 const router = useRouter();
 const flashMessage = useFlashMessage();
 
-const storesManager = injectStoresManager();
-const spacesStore = storesManager.getStore(spacesStoreKey);
-
 const { spaces, fetching } = useSpaces();
+const { remove } = useSpacesActions();
 
 const onAdd = (): void => {
-	router.push({ name: RouteNames.SPACES_EDIT });
+	router.push({ name: RouteNames.SPACES_ADD });
 };
 
 const onView = (space: ISpace): void => {
@@ -83,7 +81,7 @@ const onView = (space: ISpace): void => {
 };
 
 const onEdit = (space: ISpace): void => {
-	router.push({ name: RouteNames.SPACE_EDIT, params: { id: space.id } });
+	router.push({ name: RouteNames.SPACES_EDIT, params: { id: space.id } });
 };
 
 const onDelete = async (space: ISpace): Promise<void> => {
@@ -92,7 +90,7 @@ const onDelete = async (space: ISpace): Promise<void> => {
 			type: 'warning',
 		});
 
-		await spacesStore.remove({ id: space.id });
+		await remove(space.id);
 		flashMessage.success(t('spacesModule.messages.removed', { space: space.name }));
 	} catch (error: unknown) {
 		if (error instanceof SpacesApiException) {

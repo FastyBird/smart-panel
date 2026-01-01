@@ -163,11 +163,10 @@ export class DisplaysController {
 	}
 
 	@Get()
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'get-displays-module-displays',
 		summary: 'List all displays',
-		description: 'Retrieves a list of all registered displays. Requires owner or admin role.',
+		description: 'Retrieves a list of all registered displays.',
 	})
 	@ApiSuccessResponse(DisplaysResponseModel, 'Returns a list of displays')
 	async findAll(): Promise<DisplaysResponseModel> {
@@ -190,11 +189,10 @@ export class DisplaysController {
 	}
 
 	@Get(':id')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'get-displays-module-display',
 		summary: 'Get display by ID',
-		description: 'Retrieves a specific display by its unique identifier. Requires owner or admin role.',
+		description: 'Retrieves a specific display by its unique identifier.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Display ID' })
 	@ApiSuccessResponse(DisplayResponseModel, 'Returns the display')

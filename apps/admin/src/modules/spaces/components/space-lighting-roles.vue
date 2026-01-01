@@ -1,17 +1,24 @@
 <template>
 	<div class="mt-2">
-		<el-divider>{{ t('spacesModule.fields.spaces.lightingRoles.title') }}</el-divider>
+		<el-divider content-position="left" class="mt-6!">
+			{{ t('spacesModule.edit.sections.smartOverrides.lightingRoles') }}
+		</el-divider>
 
-		<div class="text-sm text-gray-500 mb-4">
+		<el-alert
+			type="info"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		>
 			{{ t('spacesModule.fields.spaces.lightingRoles.description') }}
-		</div>
+		</el-alert>
 
 		<div v-if="loading" class="flex justify-center py-4">
 			<icon icon="mdi:loading" class="animate-spin text-2xl" />
 		</div>
 
 		<template v-else-if="lightTargets.length > 0">
-			<el-table :data="lightTargets" style="width: 100%" border>
+			<el-table :data="lightTargets" border>
 				<el-table-column prop="deviceName" :label="t('spacesModule.onboarding.deviceName')" min-width="180">
 					<template #default="{ row }">
 						<div class="flex items-center gap-2">
@@ -27,7 +34,6 @@
 							:model-value="row.role ?? ''"
 							:placeholder="t('spacesModule.fields.spaces.lightingRoles.role.placeholder')"
 							clearable
-							style="width: 100%"
 							@update:model-value="onRoleChange(row, $event)"
 						>
 							<el-option
@@ -72,7 +78,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElButton, ElDivider, ElEmpty, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElEmpty, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { useBackend, useFlashMessage } from '../../../common';

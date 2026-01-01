@@ -289,14 +289,14 @@ const onSpaceDetail = (id: ISpace['id']): void => {
 const onSpaceEdit = (id: ISpace['id']): void => {
 	if (isLGDevice.value) {
 		router.replace({
-			name: RouteNames.SPACE_EDIT,
+			name: RouteNames.SPACES_EDIT,
 			params: {
 				id,
 			},
 		});
 	} else {
 		router.push({
-			name: RouteNames.SPACE_EDIT,
+			name: RouteNames.SPACES_EDIT,
 			params: {
 				id,
 			},
@@ -319,11 +319,11 @@ const onBulkAction = (action: string, items: ISpace[]): void => {
 const onAddSpace = (): void => {
 	if (isLGDevice.value) {
 		router.replace({
-			name: RouteNames.SPACES_EDIT,
+			name: RouteNames.SPACES_ADD,
 		});
 	} else {
 		router.push({
-			name: RouteNames.SPACES_EDIT,
+			name: RouteNames.SPACES_ADD,
 		});
 	}
 };
@@ -350,7 +350,7 @@ onBeforeMount((): void => {
 
 	showDrawer.value =
 		route.matched.find(
-			(matched) => matched.name === RouteNames.SPACES_EDIT || matched.name === RouteNames.SPACE_EDIT || matched.name === RouteNames.SPACE
+			(matched) => matched.name === RouteNames.SPACES_ADD || matched.name === RouteNames.SPACES_EDIT
 		) !== undefined;
 });
 
@@ -359,7 +359,7 @@ watch(
 	(): void => {
 		showDrawer.value =
 			route.matched.find(
-				(matched) => matched.name === RouteNames.SPACES_EDIT || matched.name === RouteNames.SPACE_EDIT || matched.name === RouteNames.SPACE
+				(matched) => matched.name === RouteNames.SPACES_ADD || matched.name === RouteNames.SPACES_EDIT
 			) !== undefined;
 	}
 );

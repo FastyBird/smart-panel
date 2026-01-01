@@ -1,5 +1,6 @@
-import { Expose, Transform, Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
+	IsArray,
 	IsBoolean,
 	IsEnum,
 	IsNotEmpty,
@@ -87,21 +88,31 @@ export class UpdateDeviceDto {
 	enabled?: boolean;
 
 	@ApiPropertyOptional({
-		name: 'space_id',
-		description: 'Space (room/zone) this device belongs to',
+		name: 'room_id',
+		description: 'Room ID where this device is physically located (must be a space with type=room)',
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
-	@Expose({ name: 'space_id' })
+	@Expose()
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
+	@IsUUID('4', { message: '[{"field":"room_id","reason":"Room ID must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => value !== null)
-	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
-		toClassOnly: true,
+	room_id?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'zone_ids',
+		description: 'Zone IDs this device belongs to (only non-floor zones allowed)',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6'],
 	})
-	spaceId?: string | null;
+	@Expose()
+	@IsOptional()
+	@IsArray({ message: '[{"field":"zone_ids","reason":"Zone IDs must be an array."}]' })
+	@IsUUID('4', { each: true, message: '[{"field":"zone_ids","reason":"Each zone ID must be a valid UUID."}]' })
+	zone_ids?: string[];
 }
 
 @ApiSchema({ name: 'DevicesModuleReqUpdateDevice' })

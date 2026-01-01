@@ -96,26 +96,26 @@ export class DeviceEntity extends BaseEntity {
 	enabled: boolean = true;
 
 	@ApiPropertyOptional({
-		name: 'space_id',
-		description: 'Space (room/zone) this device belongs to',
+		name: 'room_id',
+		description: 'Room this device is located in (must be a space with type=room)',
 		type: 'string',
 		format: 'uuid',
 		nullable: true,
 		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
 	})
-	@Expose({ name: 'space_id' })
+	@Expose({ name: 'room_id' })
 	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
+	@IsUUID('4', { message: '[{"field":"room_id","reason":"Room ID must be a valid UUID (version 4)."}]' })
+	@Transform(({ obj }: { obj: { room_id?: string; roomId?: string } }) => obj.room_id ?? obj.roomId, {
 		toClassOnly: true,
 	})
 	@Index()
 	@Column({ nullable: true, default: null })
-	spaceId: string | null;
+	roomId: string | null;
 
 	@ManyToOne(() => SpaceEntity, { nullable: true, onDelete: 'SET NULL' })
-	@JoinColumn({ name: 'spaceId' })
-	space: SpaceEntity | null;
+	@JoinColumn({ name: 'roomId' })
+	room: SpaceEntity | null;
 
 	@ApiProperty({
 		description: 'Device controls',
@@ -139,6 +139,21 @@ export class DeviceEntity extends BaseEntity {
 	@ValidateNested({ each: true })
 	@OneToMany(() => ChannelEntity, (channel) => channel.device, { cascade: true, onDelete: 'CASCADE' })
 	channels: ChannelEntity[];
+
+	@OneToMany('DeviceZoneEntity', 'device')
+	deviceZones: import('./device-zone.entity').DeviceZoneEntity[];
+
+	@ApiProperty({
+		name: 'zone_ids',
+		description: 'IDs of zones this device is assigned to',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['550e8400-e29b-41d4-a716-446655440000'],
+	})
+	@Expose({ name: 'zone_ids' })
+	get zoneIds(): string[] {
+		return (this.deviceZones ?? []).map((dz) => dz.zoneId);
+	}
 
 	@ApiProperty({ description: 'Device connection status', type: DeviceConnectionStatus })
 	@Expose()

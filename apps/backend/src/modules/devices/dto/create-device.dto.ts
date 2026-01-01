@@ -122,6 +122,33 @@ export class CreateDeviceDto {
 	@ValidateNested({ each: true })
 	@Type(() => CreateDeviceChannelDto)
 	channels?: CreateDeviceChannelDto[];
+
+	@ApiPropertyOptional({
+		name: 'room_id',
+		description: 'Room ID where this device is physically located (must be a space with type=room)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"room_id","reason":"Room ID must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => value !== null)
+	room_id?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'zone_ids',
+		description: 'Zone IDs this device belongs to (only non-floor zones allowed)',
+		type: 'array',
+		items: { type: 'string', format: 'uuid' },
+		example: ['f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6'],
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray({ message: '[{"field":"zone_ids","reason":"Zone IDs must be an array."}]' })
+	@IsUUID('4', { each: true, message: '[{"field":"zone_ids","reason":"Each zone ID must be a valid UUID."}]' })
+	zone_ids?: string[];
 }
 
 @ApiSchema({ name: 'DevicesModuleReqCreateDevice' })

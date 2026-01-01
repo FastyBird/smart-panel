@@ -45,7 +45,7 @@ describe('DevicesControlsService', () => {
 	let repository: Repository<DeviceControlEntity>;
 	let eventEmitter: EventEmitter2;
 
-	const mockDevice: MockDevice = {
+	const mockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
 		category: DeviceCategory.GENERIC,
@@ -53,8 +53,9 @@ describe('DevicesControlsService', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
-		spaceId: null,
-		space: null,
+		roomId: null,
+		room: null,
+		deviceZones: [],
 		status: {
 			online: false,
 			status: ConnectionState.UNKNOWN,

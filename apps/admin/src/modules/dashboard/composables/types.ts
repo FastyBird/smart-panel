@@ -128,7 +128,15 @@ export interface IUseTilesDataSource {
 }
 
 export interface IUseTilesActions {
+	findById: (parent: string, id: ITile['id']) => ITile | null;
+	edit: (payload: {
+		id: ITile['id'];
+		parent: { type: string; id: string };
+		data: { type: string } & Record<string, unknown>;
+	}) => Promise<ITile>;
+	save: (payload: { id: ITile['id']; parent: { type: string; id: string } }) => Promise<ITile>;
 	remove: (id: ITile['id']) => Promise<void>;
+	removeDirectly: (payload: { id: ITile['id']; parent: { type: string; id: string } }) => Promise<boolean>;
 }
 
 export interface IUseTileAddForm<TForm extends ITileAddForm = ITileAddForm> {

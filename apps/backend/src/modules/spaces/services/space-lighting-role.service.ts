@@ -84,7 +84,7 @@ export class SpaceLightingRoleService {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} not found`);
 		}
 
-		if (device.spaceId !== spaceId) {
+		if (device.roomId !== spaceId) {
 			throw new SpacesValidationException(`Device with id=${dto.deviceId} does not belong to space ${spaceId}`);
 		}
 

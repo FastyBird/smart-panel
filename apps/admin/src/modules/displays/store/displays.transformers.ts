@@ -33,6 +33,8 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		homeMode: response.home_mode ?? 'auto_space',
 		homePageId: response.home_page_id ?? null,
 		resolvedHomePageId: response.resolved_home_page_id ?? null,
+		// Room assignment (only for role=room displays)
+		roomId: response.room_id ?? null,
 		registeredFromIp: response.registered_from_ip ?? null,
 		currentIpAddress: response.current_ip_address ?? null,
 		online: response.online ?? false,
@@ -101,6 +103,11 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 	}
 	if (display.homePageId !== undefined) {
 		baseData.home_page_id = display.homePageId;
+	}
+
+	// Room assignment - explicitly include null to unassign
+	if ('roomId' in display) {
+		baseData.room_id = display.roomId ?? null;
 	}
 
 	const parsedRequest = DisplayUpdateReqSchema.safeParse(baseData);

@@ -23,6 +23,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
+import { SpacesResponseModel } from '../../spaces/models/spaces-response.model';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -32,13 +33,14 @@ import {
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
-import { DevicesException } from '../devices.exceptions';
+import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
 import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceValidationResponseModel, DevicesValidationResponseModel } from '../models/device-validation.model';
 import { DeviceResponseModel, DevicesResponseModel } from '../models/devices-response.model';
 import { DeviceValidationService } from '../services/device-validation.service';
+import { DeviceZonesService } from '../services/device-zones.service';
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
@@ -51,6 +53,7 @@ export class DevicesController {
 		private readonly devicesService: DevicesService,
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly deviceValidationService: DeviceValidationService,
+		private readonly deviceZonesService: DeviceZonesService,
 	) {}
 
 	@ApiOperation({
@@ -373,6 +376,101 @@ export class DevicesController {
 		await this.devicesService.remove(device.id);
 
 		this.logger.debug(`Successfully deleted device id=${id}`);
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Get zones a device belongs to',
+		description:
+			'Retrieves a list of zones that the specified device is a member of. This includes only explicitly assigned zones, not floor zones (which are derived from room hierarchy).',
+		operationId: 'get-devices-module-device-zones',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiSuccessResponse(SpacesResponseModel, 'List of zones the device belongs to')
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id/zones')
+	async getDeviceZones(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpacesResponseModel> {
+		this.logger.debug(`Fetching zones for device id=${id}`);
+
+		await this.getOneOrThrow(id);
+
+		const zones = await this.deviceZonesService.getDeviceZones(id);
+
+		this.logger.debug(`Found ${zones.length} zones for device id=${id}`);
+
+		const response = new SpacesResponseModel();
+
+		response.data = zones;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Add device to a zone',
+		description:
+			'Adds the specified device to a zone. Only non-floor zones can be explicitly assigned. Floor zone membership is derived from the room→zone hierarchy.',
+		operationId: 'add-devices-module-device-zone',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'zoneId', type: 'string', format: 'uuid', description: 'Zone ID' })
+	@ApiNoContentResponse({ description: 'Device successfully added to zone' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device or zone not found')
+	@ApiUnprocessableEntityResponse('Cannot add device to floor zone or non-zone space')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post(':id/zones/:zoneId')
+	@HttpCode(204)
+	async addDeviceToZone(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('zoneId', new ParseUUIDPipe({ version: '4' })) zoneId: string,
+	): Promise<void> {
+		this.logger.debug(`Adding device id=${id} to zone id=${zoneId}`);
+
+		await this.getOneOrThrow(id);
+
+		try {
+			await this.deviceZonesService.addDeviceToZone(id, zoneId);
+
+			this.logger.debug(`Successfully added device id=${id} to zone id=${zoneId}`);
+		} catch (error) {
+			if (error instanceof DevicesNotFoundException) {
+				throw new NotFoundException(error.message);
+			}
+			if (error instanceof DevicesValidationException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+			throw error;
+		}
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Remove device from a zone',
+		description: 'Removes the specified device from a zone membership.',
+		operationId: 'remove-devices-module-device-zone',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'zoneId', type: 'string', format: 'uuid', description: 'Zone ID' })
+	@ApiNoContentResponse({ description: 'Device successfully removed from zone' })
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Delete(':id/zones/:zoneId')
+	@HttpCode(204)
+	async removeDeviceFromZone(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('zoneId', new ParseUUIDPipe({ version: '4' })) zoneId: string,
+	): Promise<void> {
+		this.logger.debug(`Removing device id=${id} from zone id=${zoneId}`);
+
+		await this.getOneOrThrow(id);
+
+		await this.deviceZonesService.removeDeviceFromZone(id, zoneId);
+
+		this.logger.debug(`Successfully removed device id=${id} from zone id=${zoneId}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<DeviceEntity> {

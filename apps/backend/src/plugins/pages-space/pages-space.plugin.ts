@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ConfigModule } from '../../modules/config/config.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { CreatePageDto } from '../../modules/dashboard/dto/create-page.dto';
 import { UpdatePageDto } from '../../modules/dashboard/dto/update-page.dto';
@@ -16,8 +18,10 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { CreateSpacePageDto } from './dto/create-page.dto';
+import { SpaceUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateSpacePageDto } from './dto/update-page.dto';
 import { SpacePageEntity } from './entities/pages-space.entity';
+import { SpaceConfigModel } from './models/config.model';
 import { PAGES_SPACE_PLUGIN_NAME, PAGES_SPACE_TYPE } from './pages-space.constants';
 import { PAGES_SPACE_PLUGIN_SWAGGER_EXTRA_MODELS } from './pages-space.openapi';
 import { SpacePageNestedBuilderService } from './services/page-create-nested-builder.service';
@@ -29,12 +33,14 @@ import { PageRelationsLoaderService } from './services/page-relations-loader.ser
 		DashboardModule,
 		SpacesModule,
 		ExtensionsModule,
+		forwardRef(() => ConfigModule),
 		SwaggerModule,
 	],
 	providers: [PageRelationsLoaderService, SpacePageNestedBuilderService],
 })
 export class PagesSpacePlugin {
 	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
 		private readonly pagesMapper: PagesTypeMapperService,
 		private readonly pageRelationsLoaderRegistryService: PageRelationsLoaderRegistryService,
 		private readonly pageRelationsLoaderService: PageRelationsLoaderService,
@@ -46,6 +52,12 @@ export class PagesSpacePlugin {
 	) {}
 
 	onModuleInit() {
+		this.configMapper.registerMapping<SpaceConfigModel, SpaceUpdatePluginConfigDto>({
+			type: PAGES_SPACE_PLUGIN_NAME,
+			class: SpaceConfigModel,
+			configDto: SpaceUpdatePluginConfigDto,
+		});
+
 		this.pagesMapper.registerMapping<SpacePageEntity, CreateSpacePageDto, UpdateSpacePageDto>({
 			type: PAGES_SPACE_TYPE,
 			class: SpacePageEntity,

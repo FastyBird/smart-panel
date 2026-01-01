@@ -37,7 +37,6 @@ export enum ConnectionState {
 export enum HomeMode {
 	AUTO_SPACE = 'auto_space',
 	EXPLICIT = 'explicit',
-	FIRST_PAGE = 'first_page',
 }
 
 export enum DisplayRole {

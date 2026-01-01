@@ -27,11 +27,21 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		children: [
 			{
 				path: 'add',
-				name: RouteNames.SPACES_EDIT,
+				name: RouteNames.SPACES_ADD,
 				component: () => import('../views/view-space-add.vue'),
 				meta: {
 					guards: { authenticated: true },
 					title: 'Add space',
+				},
+			},
+			{
+				path: ':id',
+				name: RouteNames.SPACES_EDIT,
+				component: () => import('../views/view-space-edit.vue'),
+				props: true,
+				meta: {
+					guards: { authenticated: true },
+					title: 'Edit space',
 				},
 			},
 			{
@@ -43,23 +53,27 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					title: 'Spaces Onboarding',
 				},
 			},
-			{
-				path: ':id',
-				name: RouteNames.SPACE_EDIT,
-				component: () => import('../views/view-space-edit.vue'),
-				meta: {
-					guards: { authenticated: true },
-					title: 'Edit space',
-				},
-			},
 		],
 	},
 	{
 		path: 'space/:id',
 		name: RouteNames.SPACE,
 		component: () => import('../views/view-space.vue'),
+		props: true,
 		meta: {
 			guards: { authenticated: true },
 		},
+		children: [
+			{
+				path: 'edit',
+				name: RouteNames.SPACE_EDIT,
+				component: () => import('../views/view-space-edit.vue'),
+				props: true,
+				meta: {
+					guards: { authenticated: true },
+					title: 'Edit space',
+				},
+			},
+		],
 	},
 ];

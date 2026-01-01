@@ -1,6 +1,6 @@
-import { Expose, Transform } from 'class-transformer';
-import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
-import { Column, Entity } from 'typeorm';
+import { Expose, Transform, Type } from 'class-transformer';
+import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -60,6 +60,44 @@ export class SpaceEntity extends BaseEntity {
 		default: null,
 	})
 	category: SpaceCategory | null;
+
+	@ApiPropertyOptional({
+		name: 'parent_id',
+		description: 'Parent zone ID (only for rooms). Rooms can optionally belong to a zone.',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
+	@Expose({ name: 'parent_id' })
+	@IsOptional()
+	@IsUUID('4')
+	@Transform(
+		({ obj }: { obj: { parent_id?: string | null; parentId?: string | null } }) => obj.parent_id ?? obj.parentId,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Index()
+	@Column({ nullable: true, default: null })
+	parentId: string | null;
+
+	@ManyToOne(() => SpaceEntity, (space) => space.children, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'parentId' })
+	parent: SpaceEntity | null;
+
+	@ApiPropertyOptional({
+		description: 'Child spaces (rooms that belong to this zone)',
+		type: 'array',
+		items: { $ref: '#/components/schemas/SpacesModuleDataSpace' },
+		readOnly: true,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested({ each: true })
+	@Type(() => SpaceEntity)
+	@OneToMany(() => SpaceEntity, (space) => space.parent)
+	children: SpaceEntity[];
 
 	@ApiPropertyOptional({
 		description: 'Icon identifier for the space',

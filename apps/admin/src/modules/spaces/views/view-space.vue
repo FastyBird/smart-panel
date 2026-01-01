@@ -43,22 +43,37 @@
 		<template #extra>
 			<div class="flex items-center">
 				<el-button
+					type="primary"
 					plain
 					class="px-4! ml-2!"
-					@click="onEdit"
+					@click="onAddDevice"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+
+					{{ t('spacesModule.detail.devices.add') }}
+				</el-button>
+				<el-button
+					v-if="space?.type === SpaceType.ROOM"
+					type="primary"
+					plain
+					class="px-4! ml-2!"
+					@click="onAddDisplay"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+
+					{{ t('spacesModule.detail.displays.add') }}
+				</el-button>
+				<el-button
+					plain
+					class="px-4! ml-2!"
+					@click="onSpaceEdit"
 				>
 					<template #icon>
 						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-				<el-button
-					type="warning"
-					plain
-					class="px-4! ml-2!"
-					@click="onDelete"
-				>
-					<template #icon>
-						<icon icon="mdi:trash" />
 					</template>
 				</el-button>
 			</div>
@@ -72,33 +87,61 @@
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
 	>
 		<template v-if="space">
-			<el-descriptions
-				:column="1"
-				border
-				class="mt-2"
+			<space-detail :space="space" />
+
+			<!-- Tabs for Devices and Displays -->
+			<el-card
+				shadow="never"
+				class="flex-1 min-h-0 flex flex-col mt-4"
+				body-class="p-0! flex-1 min-h-0 flex flex-col"
 			>
-				<el-descriptions-item :label="t('spacesModule.fields.spaces.name.title')">
-					{{ space.name }}
-				</el-descriptions-item>
-				<el-descriptions-item :label="t('spacesModule.fields.spaces.type.title')">
-					{{ t(`spacesModule.misc.types.${space.type}`) }}
-				</el-descriptions-item>
-				<el-descriptions-item
-					v-if="space.description"
-					:label="t('spacesModule.fields.spaces.description.title')"
+				<el-tabs
+					v-model="activeTab"
+					:class="['flex-1 min-h-0 flex flex-col', ns.e('tabs')]"
 				>
-					{{ space.description }}
-				</el-descriptions-item>
-				<el-descriptions-item
-					v-if="space.icon"
-					:label="t('spacesModule.fields.spaces.icon.title')"
-				>
-					<el-icon>
-						<icon :icon="space.icon" />
-					</el-icon>
-					{{ space.icon }}
-				</el-descriptions-item>
-			</el-descriptions>
+					<el-tab-pane
+						name="devices"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:devices" />
+								{{ t('spacesModule.detail.devices.title') }}
+							</div>
+						</template>
+
+						<el-scrollbar class="h-full">
+							<space-devices-section
+								ref="devicesSectionRef"
+								:space-id="space.id"
+								:space-type="space.type"
+								@open-add-dialog="onAddDevice"
+							/>
+						</el-scrollbar>
+					</el-tab-pane>
+
+					<el-tab-pane
+						v-if="space?.type === SpaceType.ROOM"
+						name="displays"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:monitor" />
+								{{ t('spacesModule.detail.displays.title') }}
+							</div>
+						</template>
+
+						<el-scrollbar class="h-full">
+							<space-displays-section
+								ref="displaysSectionRef"
+								:space-id="space.id"
+								@open-add-dialog="onAddDisplay"
+							/>
+						</el-scrollbar>
+					</el-tab-pane>
+				</el-tabs>
+			</el-card>
 		</template>
 	</el-scrollbar>
 
@@ -109,6 +152,23 @@
 	>
 		<component :is="Component" />
 	</router-view>
+
+	<!-- Add Device Dialog -->
+	<space-add-device-dialog
+		v-if="space"
+		v-model:visible="showAddDeviceDialog"
+		:space-id="space.id"
+		:space-type="space.type"
+		@device-added="onDeviceAdded"
+	/>
+
+	<!-- Add Display Dialog -->
+	<space-add-display-dialog
+		v-if="space && space.type === SpaceType.ROOM"
+		v-model:visible="showAddDisplayDialog"
+		:space-id="space.id"
+		@display-added="onDisplayAdded"
+	/>
 
 	<el-drawer
 		v-if="isLGDevice"
@@ -162,19 +222,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, onMounted, ref, watch, withDefaults } from 'vue';
+import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import {
 	ElButton,
-	ElDescriptions,
-	ElDescriptionsItem,
+	ElCard,
 	ElDrawer,
 	ElIcon,
 	ElMessageBox,
 	ElScrollbar,
+	ElTabPane,
+	ElTabs,
+	useNamespace,
 	vLoading,
 } from 'element-plus';
 
@@ -186,15 +248,21 @@ import {
 	AppBarButtonAlign,
 	AppBarHeading,
 	AppBreadcrumbs,
-	ViewError,
-	ViewHeader,
 	useBreakpoints,
 	useFlashMessage,
+	ViewError,
+	ViewHeader,
 } from '../../../common';
+import {
+	SpaceAddDeviceDialog,
+	SpaceAddDisplayDialog,
+	SpaceDetail,
+	SpaceDevicesSection,
+	SpaceDisplaysSection,
+} from '../components/components';
 import { useSpace } from '../composables';
-import { RouteNames } from '../spaces.constants';
-import { SpacesApiException } from '../spaces.exceptions';
-import type { ISpace } from '../store';
+import { RouteNames, SpaceType } from '../spaces.constants';
+import { type ISpace } from '../store';
 
 import type { IViewSpaceProps } from './view-space.types';
 
@@ -214,9 +282,11 @@ const flashMessage = useFlashMessage();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
+const ns = useNamespace('view-space');
+
 const spaceId = computed(() => (props.id || route.params.id) as string | undefined);
 
-const { space, fetching, fetchSpace, removeSpace } = useSpace(spaceId);
+const { space, fetching, fetchSpace } = useSpace(spaceId);
 
 const isLoading = computed<boolean>(() => fetching.value);
 
@@ -226,6 +296,17 @@ const wasSpaceLoaded = ref<boolean>(false);
 const showDrawer = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
+// Tabs
+const activeTab = ref<string>('devices');
+
+// Dialog visibility
+const showAddDeviceDialog = ref<boolean>(false);
+const showAddDisplayDialog = ref<boolean>(false);
+
+// Component refs
+const devicesSectionRef = ref<InstanceType<typeof SpaceDevicesSection> | null>(null);
+const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);
+
 const isSpaceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SPACE;
 });
@@ -234,7 +315,7 @@ const spaceIcon = computed<string>((): string => {
 	if (space.value?.icon) {
 		return space.value.icon;
 	}
-	return space.value?.type === 'room' ? 'mdi:door' : 'mdi:home-floor-1';
+	return space.value?.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1';
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -263,16 +344,12 @@ const onCloseDrawer = (done?: () => void): void => {
 				if (isLGDevice.value) {
 					router.replace({
 						name: RouteNames.SPACE,
-						params: {
-							id: spaceId.value,
-						},
+						params: { id: spaceId.value },
 					});
 				} else {
 					router.push({
 						name: RouteNames.SPACE,
-						params: {
-							id: spaceId.value,
-						},
+						params: { id: spaceId.value },
 					});
 				}
 
@@ -285,16 +362,12 @@ const onCloseDrawer = (done?: () => void): void => {
 		if (isLGDevice.value) {
 			router.replace({
 				name: RouteNames.SPACE,
-				params: {
-					id: spaceId.value,
-				},
+				params: { id: spaceId.value },
 			});
 		} else {
 			router.push({
 				name: RouteNames.SPACE,
-				params: {
-					id: spaceId.value,
-				},
+				params: { id: spaceId.value },
 			});
 		}
 
@@ -302,50 +375,22 @@ const onCloseDrawer = (done?: () => void): void => {
 	}
 };
 
-const onEdit = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.SPACE_EDIT,
-			params: {
-				id: spaceId.value,
-			},
-			state: {
-				fromDetail: true,
-			},
-		});
-	} else {
-		router.push({
-			name: RouteNames.SPACE_EDIT,
-			params: {
-				id: spaceId.value,
-			},
-			state: {
-				fromDetail: true,
-			},
-		});
-	}
+const onAddDevice = (): void => {
+	showAddDeviceDialog.value = true;
 };
 
-const onDelete = async (): Promise<void> => {
-	try {
-		await ElMessageBox.confirm(t('spacesModule.messages.confirmDelete'), {
-			type: 'warning',
-		});
+const onAddDisplay = (): void => {
+	showAddDisplayDialog.value = true;
+};
 
-		await removeSpace();
-		flashMessage.success(t('spacesModule.messages.removed', { space: space.value?.name }));
+const onDeviceAdded = (): void => {
+	// Store is already updated by addDevice() which re-fetches the single device
+	// The computed devices list will automatically update from the store
+};
 
-		if (isLGDevice.value) {
-			router.replace({ name: RouteNames.SPACES });
-		} else {
-			router.push({ name: RouteNames.SPACES });
-		}
-	} catch (error: unknown) {
-		if (error instanceof SpacesApiException) {
-			flashMessage.error(error.message);
-		}
-		// Otherwise user cancelled - ignore
-	}
+const onDisplayAdded = (): void => {
+	// Refresh displays list
+	displaysSectionRef.value?.fetchDisplays();
 };
 
 const onClose = (): void => {
@@ -353,6 +398,14 @@ const onClose = (): void => {
 		router.replace({ name: RouteNames.SPACES });
 	} else {
 		router.push({ name: RouteNames.SPACES });
+	}
+};
+
+const onSpaceEdit = (): void => {
+	if (isLGDevice.value) {
+		router.replace({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } });
+	} else {
+		router.push({ name: RouteNames.SPACE_EDIT, params: { id: spaceId.value } });
 	}
 };
 
@@ -367,18 +420,23 @@ onBeforeMount(async (): Promise<void> => {
 	}
 
 	showDrawer.value =
-		route.matched.find((matched) => matched.name === RouteNames.SPACE_EDIT) !== undefined;
+		route.matched.find(
+			(matched) => matched.name === RouteNames.SPACE_EDIT
+		) !== undefined;
 });
 
 onMounted((): void => {
 	// Component mounted
 });
 
+
 watch(
 	(): string => route.path,
 	(): void => {
 		showDrawer.value =
-			route.matched.find((matched) => matched.name === RouteNames.SPACE_EDIT) !== undefined;
+			route.matched.find(
+				(matched) => matched.name === RouteNames.SPACE_EDIT
+			) !== undefined;
 	}
 );
 

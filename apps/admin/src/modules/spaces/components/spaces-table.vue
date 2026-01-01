@@ -109,7 +109,7 @@
 			<template #default="scope">
 				<el-avatar :size="32">
 					<icon
-						:icon="scope.row.icon || (scope.row.type === 'room' ? 'mdi:door' : 'mdi:home-floor-1')"
+						:icon="scope.row.icon || (scope.row.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:home-floor-1')"
 						class="w[20px] h[20px]"
 					/>
 				</el-avatar>
@@ -146,11 +146,33 @@
 		>
 			<template #default="scope">
 				<el-tag
-					:type="scope.row.type === 'room' ? 'primary' : 'info'"
+					:type="scope.row.type === SpaceType.ROOM ? 'primary' : 'info'"
 					size="small"
 				>
 					{{ t(`spacesModule.misc.types.${scope.row.type}`) }}
 				</el-tag>
+			</template>
+		</el-table-column>
+
+		<el-table-column
+			:label="t('spacesModule.table.columns.category')"
+			prop="category"
+			:width="150"
+		>
+			<template #default="scope">
+				<el-text
+					v-if="scope.row.category"
+					size="small"
+				>
+					{{ t(`spacesModule.fields.spaces.category.options.${scope.row.category}`) }}
+				</el-text>
+				<el-text
+					v-else
+					size="small"
+					type="info"
+				>
+					—
+				</el-text>
 			</template>
 		</el-table-column>
 
@@ -223,6 +245,7 @@ import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElTag, ElText, vL
 import { Icon } from '@iconify/vue';
 
 import { IconWithChild, useBreakpoints } from '../../../common';
+import { SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';
 
 import type { ISpacesTableProps } from './spaces-table.types';

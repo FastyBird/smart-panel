@@ -4,12 +4,14 @@ import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
+import { SpaceType } from '../../spaces/spaces.constants';
 import { DEVICES_MODULE_NAME, EventType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
@@ -17,6 +19,7 @@ import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsService } from './channels.service';
+import { DeviceZonesService } from './device-zones.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
 
@@ -27,9 +30,13 @@ export class DevicesService {
 	constructor(
 		@InjectRepository(DeviceEntity)
 		private readonly repository: Repository<DeviceEntity>,
+		@InjectRepository(SpaceEntity)
+		private readonly spaceRepository: Repository<SpaceEntity>,
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly channelsService: ChannelsService,
 		private readonly devicesControlsService: DevicesControlsService,
+		@Inject(forwardRef(() => DeviceZonesService))
+		private readonly deviceZonesService: DeviceZonesService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -66,6 +73,7 @@ export class DevicesService {
 				'channels.controls.channel',
 				'channels.properties',
 				'channels.properties.channel',
+				'deviceZones',
 			],
 		})) as TDevice[];
 
@@ -91,6 +99,7 @@ export class DevicesService {
 			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
 			.leftJoinAndSelect('channels.properties', 'channelProperties')
 			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
 			.where('device.id = :id', { id })
 			.getOne()) as TDevice | null;
 
@@ -126,6 +135,7 @@ export class DevicesService {
 			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
 			.leftJoinAndSelect('channels.properties', 'channelProperties')
 			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
+			.leftJoinAndSelect('device.deviceZones', 'deviceZones')
 			.where(`device.${column} = :filterBy`, { filterBy: value })
 			.getOne()) as TDevice | null;
 
@@ -156,6 +166,15 @@ export class DevicesService {
 		const mapping = this.devicesMapperService.getMapping<TDevice, TCreateDTO, any>(type);
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
+
+		// Validate room assignment if provided
+		if (dtoInstance.room_id) {
+			await this.validateRoomAssignment(dtoInstance.room_id);
+		}
+
+		// Extract zone IDs before processing
+		const zoneIds = dtoInstance.zone_ids || [];
+		delete dtoInstance.zone_ids;
 
 		(dtoInstance.channels || []).forEach((channel) => {
 			channel.id = channel.id ?? uuid().toString();
@@ -197,6 +216,11 @@ export class DevicesService {
 			});
 		}
 
+		// Set zone memberships if provided
+		if (zoneIds.length > 0) {
+			await this.deviceZonesService.setDeviceZones(raw.id, zoneIds);
+		}
+
 		// Retrieve the saved device with its full relations
 		let savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 
@@ -226,11 +250,30 @@ export class DevicesService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
+		// Validate room assignment if provided (only validate if it's a non-null UUID)
+		if (dtoInstance.room_id !== undefined && dtoInstance.room_id !== null) {
+			await this.validateRoomAssignment(dtoInstance.room_id);
+		}
+
+		// Handle zone assignments if provided
+		const zoneIds = dtoInstance.zone_ids;
+		delete dtoInstance.zone_ids;
+
 		const repository: Repository<TDevice> = this.dataSource.getRepository(mapping.class);
 
 		Object.assign(device, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
 
+		// Explicitly handle room_id being set to null (toInstance with exposeUnsetFields:false drops null values)
+		if (dtoInstance.room_id === null) {
+			device.roomId = null;
+		}
+
 		await repository.save(device as TDevice);
+
+		// Update zone memberships if zone_ids was explicitly provided
+		if (zoneIds !== undefined) {
+			await this.deviceZonesService.setDeviceZones(device.id, zoneIds);
+		}
 
 		let updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 
@@ -307,5 +350,33 @@ export class DevicesService {
 		}
 
 		return dtoInstance;
+	}
+
+	/**
+	 * Validates that the given room ID references a space with type=ROOM
+	 * @param roomId - The room ID to validate
+	 * @throws DevicesNotFoundException if room does not exist
+	 * @throws DevicesValidationException if space is not a room
+	 */
+	private async validateRoomAssignment(roomId: string): Promise<void> {
+		this.logger.debug(`Validating room assignment for roomId=${roomId}`);
+
+		const space = await this.spaceRepository.findOne({ where: { id: roomId } });
+
+		if (!space) {
+			this.logger.error(`Space with id=${roomId} not found`);
+
+			throw new DevicesNotFoundException(`Room with id=${roomId} not found`);
+		}
+
+		if (space.type !== SpaceType.ROOM) {
+			this.logger.error(`Space with id=${roomId} is not a room, it is a ${space.type}`);
+
+			throw new DevicesValidationException(
+				'Device can only be assigned to a room, not a zone. Use zone_ids for zone membership.',
+			);
+		}
+
+		this.logger.debug(`Room assignment validated for roomId=${roomId}`);
 	}
 }

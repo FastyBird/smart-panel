@@ -6,7 +6,10 @@ export const DisplayIdSchema = z.string().uuid();
 // STORE STATE
 // ===========
 
-export const HomeModeSchema = z.enum(['auto_space', 'explicit', 'first_page']);
+// Accept legacy 'first_page' value for backward compatibility but normalize to 'auto_space'
+export const HomeModeSchema = z.enum(['auto_space', 'explicit', 'first_page']).transform((val) =>
+	val === 'first_page' ? 'auto_space' : val
+) as z.ZodType<'auto_space' | 'explicit'>;
 
 export const DisplayRoleSchema = z.enum(['room', 'master', 'entry']);
 
@@ -40,6 +43,8 @@ export const DisplaySchema = z.object({
 	homeMode: HomeModeSchema.default('auto_space'),
 	homePageId: z.string().uuid().nullable().default(null),
 	resolvedHomePageId: z.string().uuid().nullable().optional().default(null),
+	// Room assignment (only for role=room displays)
+	roomId: z.string().uuid().nullable().default(null),
 	registeredFromIp: z.string().nullable().default(null),
 	currentIpAddress: z.string().nullable().default(null),
 	online: z.boolean().default(false),
@@ -146,6 +151,8 @@ export const DisplaysEditActionPayloadSchema = z.object({
 		// Home page configuration
 		homeMode: HomeModeSchema.optional(),
 		homePageId: z.string().uuid().nullable().optional(),
+		// Room assignment (only for role=room displays)
+		roomId: z.string().uuid().nullable().optional(),
 	}),
 });
 
@@ -194,6 +201,8 @@ export const DisplayUpdateReqSchema = z.object({
 	// Home page configuration
 	home_mode: HomeModeSchema.optional(),
 	home_page_id: z.string().uuid().nullable().optional(),
+	// Room assignment (only for role=room displays)
+	room_id: z.string().uuid().nullable().optional(),
 });
 
 export const DisplayResSchema = z.object({
@@ -225,6 +234,8 @@ export const DisplayResSchema = z.object({
 	home_mode: HomeModeSchema.optional().default('auto_space'),
 	home_page_id: z.string().uuid().nullable().optional().default(null),
 	resolved_home_page_id: z.string().uuid().nullable().optional().default(null),
+	// Room assignment (only for role=room displays)
+	room_id: z.string().uuid().nullable().optional().default(null),
 	registered_from_ip: z.string().nullable().optional().default(null),
 	current_ip_address: z.string().nullable().optional().default(null),
 	online: z.boolean().optional().default(false),

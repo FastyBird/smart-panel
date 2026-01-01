@@ -1,4 +1,4 @@
-enum HomeMode { autoSpace, explicit, firstPage }
+enum HomeMode { autoSpace, explicit }
 
 enum DisplayRole { room, master, entry }
 
@@ -114,8 +114,6 @@ class DisplayModel {
     switch (mode) {
       case 'explicit':
         return HomeMode.explicit;
-      case 'first_page':
-        return HomeMode.firstPage;
       case 'auto_space':
       default:
         return HomeMode.autoSpace;

@@ -1,4 +1,4 @@
-import { Expose, Transform, Type } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
 	IsBoolean,
 	IsInt,
@@ -21,12 +21,9 @@ export class RegisterDisplayDto {
 		format: 'mac',
 		example: '00:1A:2B:3C:4D:5E',
 	})
-	@Expose({ name: 'mac_address' })
+	@Expose()
 	@IsMACAddress({ message: '[{"field":"mac_address","reason":"MAC address must be a valid MAC address format."}]' })
-	@Transform(({ obj }: { obj: { mac_address?: string; macAddress?: string } }) => obj.mac_address ?? obj.macAddress, {
-		toClassOnly: true,
-	})
-	macAddress: string;
+	mac_address: string;
 
 	@ApiProperty({
 		description: 'Application version running on the display',
@@ -54,16 +51,10 @@ export class RegisterDisplayDto {
 		type: 'integer',
 		example: 1920,
 	})
-	@Expose({ name: 'screen_width' })
+	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"screen_width","reason":"Screen width must be an integer."}]' })
-	@Transform(
-		({ obj }: { obj: { screen_width?: number; screenWidth?: number } }) => obj.screen_width ?? obj.screenWidth,
-		{
-			toClassOnly: true,
-		},
-	)
-	screenWidth?: number;
+	screen_width?: number;
 
 	@ApiPropertyOptional({
 		name: 'screen_height',
@@ -71,14 +62,10 @@ export class RegisterDisplayDto {
 		type: 'integer',
 		example: 1080,
 	})
-	@Expose({ name: 'screen_height' })
+	@Expose()
 	@IsOptional()
 	@IsInt({ message: '[{"field":"screen_height","reason":"Screen height must be an integer."}]' })
-	@Transform(
-		({ obj }: { obj: { screen_height?: number; screenHeight?: number } }) => obj.screen_height ?? obj.screenHeight,
-		{ toClassOnly: true },
-	)
-	screenHeight?: number;
+	screen_height?: number;
 
 	@ApiPropertyOptional({
 		name: 'pixel_ratio',
@@ -86,13 +73,10 @@ export class RegisterDisplayDto {
 		type: 'number',
 		example: 1.5,
 	})
-	@Expose({ name: 'pixel_ratio' })
+	@Expose()
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"pixel_ratio","reason":"Pixel ratio must be a number."}]' })
-	@Transform(({ obj }: { obj: { pixel_ratio?: number; pixelRatio?: number } }) => obj.pixel_ratio ?? obj.pixelRatio, {
-		toClassOnly: true,
-	})
-	pixelRatio?: number;
+	pixel_ratio?: number;
 
 	@ApiPropertyOptional({
 		name: 'unit_size',
@@ -100,13 +84,10 @@ export class RegisterDisplayDto {
 		type: 'number',
 		example: 8,
 	})
-	@Expose({ name: 'unit_size' })
+	@Expose()
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"unit_size","reason":"Unit size must be a number."}]' })
-	@Transform(({ obj }: { obj: { unit_size?: number; unitSize?: number } }) => obj.unit_size ?? obj.unitSize, {
-		toClassOnly: true,
-	})
-	unitSize?: number;
+	unit_size?: number;
 
 	@ApiPropertyOptional({
 		description: 'Number of grid rows',
@@ -134,15 +115,10 @@ export class RegisterDisplayDto {
 		type: 'boolean',
 		example: true,
 	})
-	@Expose({ name: 'audio_output_supported' })
+	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"audio_output_supported","reason":"Audio output supported must be a boolean."}]' })
-	@Transform(
-		({ obj }: { obj: { audio_output_supported?: boolean; audioOutputSupported?: boolean } }) =>
-			obj.audio_output_supported ?? obj.audioOutputSupported,
-		{ toClassOnly: true },
-	)
-	audioOutputSupported?: boolean;
+	audio_output_supported?: boolean;
 
 	@ApiPropertyOptional({
 		name: 'audio_input_supported',
@@ -150,15 +126,10 @@ export class RegisterDisplayDto {
 		type: 'boolean',
 		example: false,
 	})
-	@Expose({ name: 'audio_input_supported' })
+	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"audio_input_supported","reason":"Audio input supported must be a boolean."}]' })
-	@Transform(
-		({ obj }: { obj: { audio_input_supported?: boolean; audioInputSupported?: boolean } }) =>
-			obj.audio_input_supported ?? obj.audioInputSupported,
-		{ toClassOnly: true },
-	)
-	audioInputSupported?: boolean;
+	audio_input_supported?: boolean;
 }
 
 @ApiSchema({ name: 'DisplaysModuleReqRegisterDisplay' })

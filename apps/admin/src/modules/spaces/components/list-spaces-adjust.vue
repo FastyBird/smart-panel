@@ -33,11 +33,11 @@
 						<el-radio-group v-model="innerFilters.type">
 							<el-radio-button
 								:label="t('spacesModule.misc.types.room')"
-								value="room"
+								:value="SpaceType.ROOM"
 							/>
 							<el-radio-button
 								:label="t('spacesModule.misc.types.zone')"
-								value="zone"
+								:value="SpaceType.ZONE"
 							/>
 							<el-radio-button
 								:label="t('spacesModule.filters.type.all')"
@@ -74,6 +74,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../common';
+import { SpaceType } from '../spaces.constants';
 import type { ISpacesFilter } from '../composables/types';
 
 interface IListSpacesAdjustProps {

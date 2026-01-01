@@ -4,7 +4,7 @@
 		:key="property.id"
 	>
 		<dt
-			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			class="b-b b-b-solid b-r b-r-solid py-3 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
 			{{ t(`devicesModule.categories.channelsProperties.${property.category}`) }}

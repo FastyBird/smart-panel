@@ -344,6 +344,16 @@
         "title": "Enabled",
         "placeholder": "Enable or disable device"
       },
+      "room": {
+        "title": "Room",
+        "placeholder": "Select a room (optional)",
+        "hint": "Assign this device to a physical room location"
+      },
+      "zones": {
+        "title": "Zones",
+        "placeholder": "Select zones (optional)",
+        "hint": "Assign this device to logical zones (e.g., Security, Outdoor). Floor zone membership is derived from room assignment."
+      },
       "validation": {
         "title": "Validation"
       }
