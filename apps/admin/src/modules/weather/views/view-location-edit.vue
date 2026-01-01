@@ -341,18 +341,10 @@ watch(
 			// Location was previously loaded but is now null - it was deleted
 			flashMessage.warning(t('weatherModule.messages.locations.deletedWhileEditing'), { duration: 0 });
 			// Redirect to locations list
-			if (isDetailRoute.value) {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
-				} else {
-					router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
-				}
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.WEATHER_LOCATIONS });
 			} else {
-				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.WEATHER_LOCATIONS });
-				} else {
-					router.push({ name: RouteNames.WEATHER_LOCATIONS });
-				}
+				router.push({ name: RouteNames.WEATHER_LOCATIONS });
 			}
 		} else if (!isLoading.value && val === null && !wasLocationLoaded.value) {
 			// Location was never loaded - initial load failed
