@@ -133,11 +133,12 @@ import { ElAlert, ElButton, ElIcon, ElMessageBox, ElScrollbar, ElSkeleton } from
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints } from '../../../common';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useFlashMessage } from '../../../common';
 import { useLocation } from '../composables';
 import { useWeatherLocationsPlugins } from '../composables/useWeatherLocationsPlugins';
 import { FormResult, type FormResultType, RouteNames } from '../weather.constants';
-import { WeatherException } from '../weather.exceptions';
+import { WeatherApiException, WeatherException } from '../weather.exceptions';
+import type { IWeatherLocation } from '../store/locations.store.types';
 
 import type { IViewLocationEditProps } from './view-location-edit.types';
 
@@ -154,6 +155,7 @@ const emit = defineEmits<{
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+const flashMessage = useFlashMessage();
 
 useMeta({
 	title: t('weatherModule.meta.locations.edit.title'),
@@ -278,7 +280,13 @@ onBeforeMount((): void => {
 		.catch((error: unknown): void => {
 			const err = error as Error;
 
-			throw new WeatherException('Something went wrong', err);
+			if (err instanceof WeatherApiException && err.code === 404) {
+				throw new WeatherException('Location not found');
+			} else if (err instanceof WeatherException) {
+				throw err;
+			} else {
+				throw new WeatherException('Something went wrong', err);
+			}
 		});
 });
 
@@ -319,6 +327,35 @@ watch(
 	(val: boolean): void => {
 		// Only throw error if location was never loaded (initial load failed)
 		if (!val && location.value === null && !wasLocationLoaded.value) {
+			throw new WeatherException('Location not found');
+		}
+	}
+);
+
+watch(
+	(): IWeatherLocation | null => location.value,
+	(val: IWeatherLocation | null): void => {
+		if (val !== null) {
+			wasLocationLoaded.value = true;
+		} else if (wasLocationLoaded.value && !isLoading.value) {
+			// Location was previously loaded but is now null - it was deleted
+			flashMessage.warning(t('weatherModule.messages.locations.deletedWhileEditing'), { duration: 0 });
+			// Redirect to locations list
+			if (isDetailRoute.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+				} else {
+					router.push({ name: RouteNames.WEATHER_LOCATION, params: { id: props.id } });
+				}
+			} else {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.WEATHER_LOCATIONS });
+				} else {
+					router.push({ name: RouteNames.WEATHER_LOCATIONS });
+				}
+			}
+		} else if (!isLoading.value && val === null && !wasLocationLoaded.value) {
+			// Location was never loaded - initial load failed
 			throw new WeatherException('Location not found');
 		}
 	}

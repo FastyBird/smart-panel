@@ -48,7 +48,8 @@
 			"bulkDeleteCanceled": "Bulk location deletion was canceled",
 			"noLocations": "No locations configured. Add a location to get weather data.",
 			"notFound": "Location not found",
-			"confirmDeleteLocation": "Are you sure you want to delete location \"{name}\"?"
+			"confirmDeleteLocation": "Are you sure you want to delete location \"{name}\"?",
+			"deletedWhileEditing": "The location was deleted. Redirecting..."
 		}
 	},
 	"buttons": {
