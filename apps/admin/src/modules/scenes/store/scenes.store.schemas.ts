@@ -34,16 +34,14 @@ export const SceneActionSchema = z.object({
 export const SceneSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
-	type: z.string().trim().nonempty(),
-	spaceId: ItemIdSchema,
+	primarySpaceId: ItemIdSchema.nullable().default(null),
 	category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
-	icon: z.string().trim().nullable().default(null),
-	displayOrder: z.number().int().min(0).default(0),
+	order: z.number().int().min(0).default(0),
 	enabled: z.boolean().default(true),
-	isTriggerable: z.boolean().default(true),
-	isEditable: z.boolean().default(true),
+	triggerable: z.boolean().default(true),
+	editable: z.boolean().default(true),
 	lastTriggeredAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
 		.transform((date) => (date instanceof Date ? date : new Date(date)))
@@ -75,7 +73,6 @@ export const ScenesStateSemaphoreSchema = z.object({
 
 export const ScenesOnEventActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	type: z.string().trim().nonempty(),
 	data: z.object({}),
 });
 
@@ -83,8 +80,7 @@ export const ScenesSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	data: z
 		.object({
-			type: z.string().trim().nonempty(),
-			spaceId: ItemIdSchema,
+			primarySpaceId: ItemIdSchema.nullable(),
 			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 			name: z.string().trim().nonempty(),
 			description: z
@@ -93,16 +89,10 @@ export const ScenesSetActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
-			icon: z
-				.string()
-				.trim()
-				.transform((val) => (val === '' ? null : val))
-				.nullable()
-				.optional(),
-			displayOrder: z.number().int().min(0).optional(),
+			order: z.number().int().min(0).optional(),
 			enabled: z.boolean(),
-			isTriggerable: z.boolean(),
-			isEditable: z.boolean(),
+			triggerable: z.boolean(),
+			editable: z.boolean(),
 			lastTriggeredAt: z.date().nullable().optional(),
 		})
 		.passthrough(),
@@ -121,8 +111,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 	draft: z.boolean().optional().default(false),
 	data: z
 		.object({
-			type: z.string().trim().nonempty(),
-			spaceId: ItemIdSchema,
+			primarySpaceId: ItemIdSchema.nullable().optional(),
 			category: z.nativeEnum(SceneCategory).default(SceneCategory.GENERIC),
 			name: z.string().trim().nonempty(),
 			description: z
@@ -131,13 +120,7 @@ export const ScenesAddActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
-			icon: z
-				.string()
-				.trim()
-				.transform((val) => (val === '' ? null : val))
-				.nullable()
-				.optional(),
-			displayOrder: z.number().int().min(0).optional(),
+			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
 		.passthrough(),
@@ -147,8 +130,7 @@ export const ScenesEditActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	data: z
 		.object({
-			type: z.string().trim().nonempty(),
-			spaceId: ItemIdSchema.optional(),
+			primarySpaceId: ItemIdSchema.nullable().optional(),
 			name: z.string().trim().optional(),
 			description: z
 				.string()
@@ -156,13 +138,7 @@ export const ScenesEditActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
-			icon: z
-				.string()
-				.trim()
-				.transform((val) => (val === '' ? null : val))
-				.nullable()
-				.optional(),
-			displayOrder: z.number().int().min(0).optional(),
+			order: z.number().int().min(0).optional(),
 			enabled: z.boolean().optional(),
 		})
 		.passthrough(),
@@ -226,8 +202,7 @@ export const SceneActionResSchema = z.object({
 
 export const SceneCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
-	type: z.string().trim().nonempty(),
-	space_id: z.string().uuid(),
+	primary_space_id: z.string().uuid().nullable().optional(),
 	category: z.nativeEnum(SceneCategory).optional(),
 	name: z.string().trim().nonempty(),
 	description: z
@@ -236,21 +211,14 @@ export const SceneCreateReqSchema = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	icon: z
-		.string()
-		.trim()
-		.transform((val) => (val === '' ? null : val))
-		.nullable()
-		.optional(),
-	display_order: z.number().int().min(0).optional(),
+	order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
-	is_triggerable: z.boolean().optional(),
+	triggerable: z.boolean().optional(),
 	actions: z.array(SceneActionCreateReqSchema).optional(),
 });
 
 export const SceneUpdateReqSchema = z.object({
-	type: z.string().trim().nonempty(),
-	space_id: z.string().uuid().optional(),
+	primary_space_id: z.string().uuid().optional(),
 	category: z.nativeEnum(SceneCategory).optional(),
 	name: z.string().trim().nonempty().optional(),
 	description: z
@@ -259,29 +227,21 @@ export const SceneUpdateReqSchema = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	icon: z
-		.string()
-		.trim()
-		.transform((val) => (val === '' ? null : val))
-		.nullable()
-		.optional(),
-	display_order: z.number().int().min(0).optional(),
+	order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
-	is_triggerable: z.boolean().optional(),
+	triggerable: z.boolean().optional(),
 });
 
 export const SceneResSchema = z.object({
 	id: z.string().uuid(),
-	type: z.string(),
-	space_id: z.string().uuid(),
+	primary_space_id: z.string().uuid().nullable(),
 	category: z.nativeEnum(SceneCategory),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
-	icon: z.string().trim().nullable(),
-	display_order: z.number().int().min(0),
+	order: z.number().int().min(0),
 	enabled: z.boolean(),
-	is_triggerable: z.boolean(),
-	is_editable: z.boolean(),
+	triggerable: z.boolean(),
+	editable: z.boolean(),
 	last_triggered_at: z.string().nullable(),
 	created_at: z.string(),
 	updated_at: z.string().nullable(),

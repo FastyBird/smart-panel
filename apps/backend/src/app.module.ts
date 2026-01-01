@@ -63,7 +63,6 @@ import { PagesHouseModesPlugin } from './plugins/pages-house-modes/pages-house-m
 import { PagesHousePlugin } from './plugins/pages-house/pages-house.plugin';
 import { PagesSpacePlugin } from './plugins/pages-space/pages-space.plugin';
 import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
-import { SCENES_LOCAL_PLUGIN_PREFIX } from './plugins/scenes-local/scenes-local.constants';
 import { ScenesLocalPlugin } from './plugins/scenes-local/scenes-local.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
@@ -225,10 +224,6 @@ export class AppModule {
 							{
 								path: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX,
 								module: WeatherOpenweathermapOnecallPlugin,
-							},
-							{
-								path: SCENES_LOCAL_PLUGIN_PREFIX,
-								module: ScenesLocalPlugin,
 							},
 							...pluginRoutes,
 						],

@@ -66,8 +66,8 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 
 	const findById = (id: IScene['id']): IScene | null => data.value.get(id) ?? null;
 
-	const findBySpace = (spaceId: IScene['spaceId']): IScene[] => {
-		return Array.from(data.value.values()).filter((scene) => scene.spaceId === spaceId);
+	const findBySpace = (primarySpaceId: IScene['primarySpaceId']): IScene[] => {
+		return Array.from(data.value.values()).filter((scene) => scene.primarySpaceId === primarySpaceId);
 	};
 
 	const pendingGetPromises: Record<string, Promise<IScene>> = {};
@@ -236,9 +236,10 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 				...sceneData,
 				id,
 				draft,
+				primarySpaceId: sceneData.primarySpaceId ?? null,
 				enabled: sceneData.enabled ?? true,
-				isTriggerable: true,
-				isEditable: true,
+				triggerable: true,
+				editable: true,
 				lastTriggeredAt: null,
 				createdAt: new Date(),
 				updatedAt: null,
@@ -437,7 +438,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 			throw new ScenesApiException('Scene not found.');
 		}
 
-		if (!existingRecord.isTriggerable) {
+		if (!existingRecord.triggerable) {
 			throw new ScenesApiException('Scene is not triggerable.');
 		}
 

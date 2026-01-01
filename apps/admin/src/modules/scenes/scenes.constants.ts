@@ -1,4 +1,4 @@
-export const SCENES_MODULE_PREFIX = 'scenes-module';
+export const SCENES_MODULE_PREFIX = 'scenes';
 
 export const SCENES_MODULE_NAME = 'scenes-module';
 
@@ -21,13 +21,17 @@ export enum SceneCategory {
 	GENERIC = 'generic',
 	LIGHTING = 'lighting',
 	CLIMATE = 'climate',
-	SECURITY = 'security',
-	ENTERTAINMENT = 'entertainment',
+	MEDIA = 'media',
+	WORK = 'work',
+	RELAX = 'relax',
+	NIGHT = 'night',
 	MORNING = 'morning',
-	EVENING = 'evening',
+	PARTY = 'party',
+	MOVIE = 'movie',
 	AWAY = 'away',
 	HOME = 'home',
-	SLEEP = 'sleep',
+	SECURITY = 'security',
+	ENERGY = 'energy',
 	CUSTOM = 'custom',
 }
 
@@ -56,15 +60,19 @@ export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 10;
 
 export const SCENE_CATEGORY_ICONS: Record<SceneCategory, string> = {
-	[SceneCategory.GENERIC]: 'mdi:play-circle',
-	[SceneCategory.LIGHTING]: 'mdi:lightbulb',
-	[SceneCategory.CLIMATE]: 'mdi:thermometer',
+	[SceneCategory.GENERIC]: 'mdi:playlist-play',
+	[SceneCategory.LIGHTING]: 'mdi:lightbulb-group',
+	[SceneCategory.CLIMATE]: 'mdi:thermostat',
+	[SceneCategory.MEDIA]: 'mdi:television-play',
+	[SceneCategory.WORK]: 'mdi:briefcase',
+	[SceneCategory.RELAX]: 'mdi:sofa',
+	[SceneCategory.NIGHT]: 'mdi:weather-night',
+	[SceneCategory.MORNING]: 'mdi:weather-sunset-up',
+	[SceneCategory.PARTY]: 'mdi:party-popper',
+	[SceneCategory.MOVIE]: 'mdi:movie-open',
+	[SceneCategory.AWAY]: 'mdi:home-export-outline',
+	[SceneCategory.HOME]: 'mdi:home-import-outline',
 	[SceneCategory.SECURITY]: 'mdi:shield-home',
-	[SceneCategory.ENTERTAINMENT]: 'mdi:television',
-	[SceneCategory.MORNING]: 'mdi:weather-sunny',
-	[SceneCategory.EVENING]: 'mdi:weather-night',
-	[SceneCategory.AWAY]: 'mdi:exit-run',
-	[SceneCategory.HOME]: 'mdi:home',
-	[SceneCategory.SLEEP]: 'mdi:sleep',
-	[SceneCategory.CUSTOM]: 'mdi:cog',
+	[SceneCategory.ENERGY]: 'mdi:flash',
+	[SceneCategory.CUSTOM]: 'mdi:shape-outline',
 };

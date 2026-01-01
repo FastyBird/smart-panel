@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
+import { ExtensionsModule } from '../extensions/extensions.module';
+import { ExtensionsService } from '../extensions/services/extensions.service';
 import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
@@ -23,7 +25,6 @@ import { ScenesModuleResetService } from './services/module-reset.service';
 import { SceneActionsTypeMapperService } from './services/scene-actions-type-mapper.service';
 import { SceneActionsService } from './services/scene-actions.service';
 import { SceneExecutorService } from './services/scene-executor.service';
-import { ScenesTypeMapperService } from './services/scenes-type-mapper.service';
 import { ScenesService } from './services/scenes.service';
 
 @ApiTag({
@@ -35,6 +36,7 @@ import { ScenesService } from './services/scenes.service';
 	imports: [
 		TypeOrmModule.forFeature([SceneEntity, SceneActionEntity]),
 		ConfigModule,
+		ExtensionsModule,
 		forwardRef(() => SystemModule),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => SpacesModule),
@@ -45,8 +47,7 @@ import { ScenesService } from './services/scenes.service';
 		// Core services
 		ScenesService,
 		SceneActionsService,
-		// Type mappers for plugin system
-		ScenesTypeMapperService,
+		// Type mapper for plugin system (actions only)
 		SceneActionsTypeMapperService,
 		// Execution service
 		SceneExecutorService,
@@ -58,7 +59,6 @@ import { ScenesService } from './services/scenes.service';
 	exports: [
 		ScenesService,
 		SceneActionsService,
-		ScenesTypeMapperService,
 		SceneActionsTypeMapperService,
 		SceneExecutorService,
 		ScenesModuleResetService,
@@ -70,6 +70,7 @@ export class ScenesModule implements OnModuleInit {
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
+		private readonly extensionsService: ExtensionsService,
 	) {}
 
 	onModuleInit(): void {
@@ -93,5 +94,42 @@ export class ScenesModule implements OnModuleInit {
 		for (const model of SCENES_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register module metadata for extensions discovery
+		this.extensionsService.registerModuleMetadata({
+			type: SCENES_MODULE_NAME,
+			name: 'Scenes',
+			description: 'Automation scenes for controlling multiple devices with a single trigger',
+			author: 'FastyBird',
+			readme: `# Scenes Module
+
+The Scenes module provides automation capabilities for the Smart Panel, allowing you to control multiple devices with a single action.
+
+## Features
+
+- **Scene Management** - Create, edit, and delete automation scenes
+- **Action Sequencing** - Define ordered sequences of device commands
+- **Space Assignment** - Associate scenes with rooms or zones
+- **Category Organization** - Categorize scenes (morning, evening, movie, etc.)
+- **Trigger Support** - Execute scenes manually or via triggers
+- **Plugin System** - Extensible action types through plugins
+
+## How It Works
+
+Scenes consist of one or more actions that are executed in sequence when the scene is triggered. Each action is handled by a registered plugin (e.g., local device control, third-party integrations).
+
+## API Endpoints
+
+- \`GET /v1/modules/scenes/scenes\` - List all scenes
+- \`POST /v1/modules/scenes/scenes\` - Create a new scene
+- \`GET /v1/modules/scenes/scenes/{id}\` - Get scene details
+- \`PATCH /v1/modules/scenes/scenes/{id}\` - Update a scene
+- \`DELETE /v1/modules/scenes/scenes/{id}\` - Delete a scene
+- \`POST /v1/modules/scenes/scenes/{id}/trigger\` - Trigger scene execution`,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				repository: 'https://github.com/FastyBird/smart-panel',
+			},
+		});
 	}
 }

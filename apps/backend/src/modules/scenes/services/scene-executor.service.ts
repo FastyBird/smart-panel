@@ -77,7 +77,7 @@ export class SceneExecutorService {
 		const scene = await this.scenesService.getOneOrThrow(sceneId);
 
 		// Check if scene is triggerable
-		if (!scene.isTriggerable) {
+		if (!scene.triggerable) {
 			this.logger.error(`[TRIGGER] Scene with id=${sceneId} is not triggerable`);
 			throw new ScenesNotTriggerableException(`Scene with id=${sceneId} cannot be triggered.`);
 		}

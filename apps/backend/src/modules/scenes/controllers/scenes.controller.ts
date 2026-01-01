@@ -2,7 +2,6 @@ import { validate } from 'class-validator';
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import {
-	BadRequestException,
 	Body,
 	Controller,
 	Delete,
@@ -41,7 +40,6 @@ import { SceneExecutionResponseModel, SceneResponseModel, ScenesResponseModel } 
 import { SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesException, ScenesNotEditableException, ScenesNotTriggerableException } from '../scenes.exceptions';
 import { SceneExecutorService } from '../services/scene-executor.service';
-import { SceneTypeMapping, ScenesTypeMapperService } from '../services/scenes-type-mapper.service';
 import { ScenesService } from '../services/scenes.service';
 
 @ApiTags(SCENES_MODULE_API_TAG_NAME)
@@ -51,7 +49,6 @@ export class ScenesController {
 
 	constructor(
 		private readonly scenesService: ScenesService,
-		private readonly scenesMapperService: ScenesTypeMapperService,
 		private readonly sceneExecutorService: SceneExecutorService,
 	) {}
 
@@ -122,9 +119,9 @@ export class ScenesController {
 	@ApiCreatedSuccessResponse(
 		SceneResponseModel,
 		'The scene was successfully created. The response includes the complete details of the newly created scene, such as its unique identifier, name, category, and timestamps.',
-		'/api/v1/scenes-module/scenes/123e4567-e89b-12d3-a456-426614174000',
+		'/api/v1/scenes/scenes/123e4567-e89b-12d3-a456-426614174000',
 	)
-	@ApiBadRequestResponse('Invalid request data or unsupported scene type')
+	@ApiBadRequestResponse('Invalid request data')
 	@ApiUnprocessableEntityResponse('Scene could not be created')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post()
@@ -135,30 +132,7 @@ export class ScenesController {
 	): Promise<SceneResponseModel> {
 		this.logger.debug('[CREATE] Incoming request to create a new scene');
 
-		const type: string | undefined =
-			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
-
-		if (!type) {
-			this.logger.error('[VALIDATION] Missing required field: type');
-			throw new BadRequestException([JSON.stringify({ field: 'type', reason: 'Scene type attribute is required.' })]);
-		}
-
-		let mapping: SceneTypeMapping<SceneEntity, CreateSceneDto, UpdateSceneDto>;
-
-		try {
-			mapping = this.scenesMapperService.getMapping<SceneEntity, CreateSceneDto, UpdateSceneDto>(type);
-		} catch (error) {
-			const err = error as Error;
-			this.logger.error(`[ERROR] Unsupported scene type: ${type}`, { message: err.message, stack: err.stack });
-
-			if (error instanceof ScenesException) {
-				throw new BadRequestException([JSON.stringify({ field: 'type', reason: `Unsupported scene type: ${type}` })]);
-			}
-
-			throw error;
-		}
-
-		const dtoInstance = toInstance(mapping.createDto, createDto.data, {
+		const dtoInstance = toInstance(CreateSceneDto, createDto.data, {
 			excludeExtraneousValues: false,
 		});
 
@@ -220,30 +194,7 @@ export class ScenesController {
 
 		await this.getOneOrThrow(id);
 
-		const type: string | undefined =
-			'type' in updateDto.data && typeof updateDto.data.type === 'string' ? updateDto.data.type : undefined;
-
-		if (!type) {
-			this.logger.error('[VALIDATION] Missing required field: type');
-			throw new BadRequestException([JSON.stringify({ field: 'type', reason: 'Scene type attribute is required.' })]);
-		}
-
-		let mapping: SceneTypeMapping<SceneEntity, CreateSceneDto, UpdateSceneDto>;
-
-		try {
-			mapping = this.scenesMapperService.getMapping<SceneEntity, CreateSceneDto, UpdateSceneDto>(type);
-		} catch (error) {
-			const err = error as Error;
-			this.logger.error(`[ERROR] Unsupported scene type: ${type}`, { message: err.message, stack: err.stack });
-
-			if (error instanceof ScenesException) {
-				throw new BadRequestException([JSON.stringify({ field: 'type', reason: `Unsupported scene type: ${type}` })]);
-			}
-
-			throw error;
-		}
-
-		const dtoInstance = toInstance(mapping.updateDto, updateDto.data, {
+		const dtoInstance = toInstance(UpdateSceneDto, updateDto.data, {
 			excludeExtraneousValues: false,
 		});
 

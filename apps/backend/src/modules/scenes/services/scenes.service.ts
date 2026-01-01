@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, type FindOptionsOrder, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -10,13 +10,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SpacesService } from '../../spaces/services/spaces.service';
-import { SpaceType } from '../../spaces/spaces.constants';
 import { CreateSceneDto } from '../dto/create-scene.dto';
 import { UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
 import { EventType } from '../scenes.constants';
 import {
-	ScenesException,
 	ScenesNotEditableException,
 	ScenesNotFoundException,
 	ScenesSpaceValidationException,
@@ -24,7 +22,6 @@ import {
 } from '../scenes.exceptions';
 
 import { SceneActionsService } from './scene-actions.service';
-import { ScenesTypeMapperService } from './scenes-type-mapper.service';
 
 @Injectable()
 export class ScenesService {
@@ -33,7 +30,6 @@ export class ScenesService {
 	constructor(
 		@InjectRepository(SceneEntity)
 		private readonly repository: Repository<SceneEntity>,
-		private readonly scenesMapperService: ScenesTypeMapperService,
 		private readonly sceneActionsService: SceneActionsService,
 		private readonly spacesService: SpacesService,
 		private readonly dataSource: DataSource,
@@ -41,89 +37,71 @@ export class ScenesService {
 	) {}
 
 	/**
-	 * Validate that space exists and is of type ROOM
+	 * Validate that space exists
 	 */
-	private async validateSpace(spaceId: string): Promise<void> {
-		const space = await this.spacesService.findOne(spaceId);
+	private async validateSpace(primarySpaceId: string): Promise<void> {
+		const space = await this.spacesService.findOne(primarySpaceId);
 
 		if (!space) {
-			throw new ScenesSpaceValidationException(`Space with id=${spaceId} not found.`);
-		}
-
-		if (space.type !== SpaceType.ROOM) {
-			throw new ScenesSpaceValidationException(
-				`Space with id=${spaceId} is not a room. Scenes can only be assigned to rooms.`,
-			);
+			throw new ScenesSpaceValidationException(`Space with id=${primarySpaceId} not found.`);
 		}
 	}
 
 	/**
-	 * Find all scenes for a specific space (room)
+	 * Find all scenes for a specific space
 	 */
-	async findBySpace<TScene extends SceneEntity>(spaceId: string): Promise<TScene[]> {
-		this.logger.debug(`[LOOKUP] Fetching scenes for spaceId=${spaceId}`);
+	async findBySpace(primarySpaceId: string): Promise<SceneEntity[]> {
+		this.logger.debug(`[LOOKUP] Fetching scenes for primarySpaceId=${primarySpaceId}`);
 
-		const scenes = (await this.repository
+		const scenes = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
 			.leftJoinAndSelect('actions.scene', 'actionScene')
-			.where('scene.spaceId = :spaceId', { spaceId })
-			.orderBy('scene.displayOrder', 'ASC')
+			.where('scene.primarySpaceId = :primarySpaceId', { primarySpaceId })
+			.orderBy('scene.order', 'ASC')
 			.addOrderBy('scene.name', 'ASC')
-			.getMany()) as TScene[];
+			.getMany();
 
-		this.logger.debug(`[LOOKUP] Found ${scenes.length} scenes for spaceId=${spaceId}`);
+		this.logger.debug(`[LOOKUP] Found ${scenes.length} scenes for primarySpaceId=${primarySpaceId}`);
 
 		return scenes;
 	}
 
-	async getCount<TScene extends SceneEntity>(type?: string): Promise<number> {
-		const mapping = type ? this.scenesMapperService.getMapping<TScene, any, any>(type) : null;
-
-		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
-
+	async getCount(): Promise<number> {
 		this.logger.debug('[LOOKUP ALL] Fetching all scenes count');
 
-		const count = await repository.count();
+		const count = await this.repository.count();
 
 		this.logger.debug(`[LOOKUP ALL] Found that in system is ${count} scenes`);
 
 		return count;
 	}
 
-	async findAll<TScene extends SceneEntity>(type?: string): Promise<TScene[]> {
-		const mapping = type ? this.scenesMapperService.getMapping<TScene, any, any>(type) : null;
-
-		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
-
+	async findAll(): Promise<SceneEntity[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all scenes');
 
-		const scenes = (await repository.find({
+		const scenes = await this.repository.find({
 			relations: ['actions', 'actions.scene'],
 			order: {
 				name: 'ASC',
-			} as unknown as FindOptionsOrder<TScene>,
-		})) as TScene[];
+			},
+		});
 
 		this.logger.debug(`[LOOKUP ALL] Found ${scenes.length} scenes`);
 
 		return scenes;
 	}
 
-	async findOne<TScene extends SceneEntity>(id: string, type?: string): Promise<TScene | null> {
-		const mapping = type ? this.scenesMapperService.getMapping<TScene, any, any>(type) : null;
-
-		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
-
+	async findOne(id: string): Promise<SceneEntity | null> {
 		this.logger.debug(`[LOOKUP] Fetching scene with id=${id}`);
 
-		const scene = (await repository
+		const scene = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
 			.leftJoinAndSelect('actions.scene', 'actionScene')
 			.where('scene.id = :id', { id })
 			.orderBy('actions.order', 'ASC')
-			.getOne()) as TScene | null;
+			.getOne();
 
 		if (!scene) {
 			this.logger.debug(`[LOOKUP] Scene with id=${id} not found`);
@@ -135,24 +113,16 @@ export class ScenesService {
 		return scene;
 	}
 
-	async findOneBy<TScene extends SceneEntity>(
-		column: 'id' | 'category' | 'name',
-		value: string | number | boolean,
-		type?: string,
-	): Promise<TScene | null> {
-		const mapping = type ? this.scenesMapperService.getMapping<TScene, any, any>(type) : null;
-
-		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
-
+	async findOneBy(column: 'id' | 'category' | 'name', value: string | number | boolean): Promise<SceneEntity | null> {
 		this.logger.debug(`[LOOKUP] Fetching scene with ${column}=${value}`);
 
-		const scene = (await repository
+		const scene = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
 			.leftJoinAndSelect('actions.scene', 'actionScene')
 			.where(`scene.${column} = :filterBy`, { filterBy: value })
 			.orderBy('actions.order', 'ASC')
-			.getOne()) as TScene | null;
+			.getOne();
 
 		if (!scene) {
 			this.logger.debug(`[LOOKUP] Scene with ${column}=${value} not found`);
@@ -164,22 +134,17 @@ export class ScenesService {
 		return scene;
 	}
 
-	async create<TScene extends SceneEntity, TCreateDTO extends CreateSceneDto>(createDto: TCreateDTO): Promise<TScene> {
+	async create(createDto: CreateSceneDto): Promise<SceneEntity> {
 		this.logger.debug('[CREATE] Creating new scene');
 
-		const { type, spaceId } = createDto;
+		const { primary_space_id } = createDto;
 
-		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" attribute in data.');
-			throw new ScenesException('Scene type attribute is required.');
+		// Validate that space exists if provided
+		if (primary_space_id) {
+			await this.validateSpace(primary_space_id);
 		}
 
-		// Validate that space exists and is a room
-		await this.validateSpace(spaceId);
-
-		const mapping = this.scenesMapperService.getMapping<TScene, TCreateDTO, any>(type);
-
-		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
+		const dtoInstance = await this.validateDto(CreateSceneDto, createDto);
 
 		// Generate IDs for actions if not provided
 		(dtoInstance.actions || []).forEach((action, index) => {
@@ -203,9 +168,9 @@ export class ScenesService {
 
 		// Use transaction to ensure scene and actions are created atomically
 		const savedScene = await this.dataSource.transaction(async (transactionalEntityManager) => {
-			const repository: Repository<TScene> = transactionalEntityManager.getRepository(mapping.class);
+			const repository: Repository<SceneEntity> = transactionalEntityManager.getRepository(SceneEntity);
 
-			const scene = repository.create(toInstance(mapping.class, dtoInstance));
+			const scene = repository.create(toInstance(SceneEntity, dtoInstance));
 
 			// Save the scene
 			const raw = await repository.save(scene);
@@ -227,13 +192,7 @@ export class ScenesService {
 		});
 
 		// Retrieve the saved scene with its full relations
-		let fullScene = await this.getOneOrThrow<TScene>(savedScene.id);
-
-		// Call afterCreate hook if defined
-		if (mapping.afterCreate) {
-			await mapping.afterCreate(fullScene);
-			fullScene = await this.getOneOrThrow<TScene>(savedScene.id);
-		}
+		const fullScene = await this.getOneOrThrow(savedScene.id);
 
 		this.logger.debug(`[CREATE] Successfully created new scene with id=${fullScene.id}`);
 
@@ -242,34 +201,24 @@ export class ScenesService {
 		return fullScene;
 	}
 
-	async update<TScene extends SceneEntity, TUpdateDTO extends UpdateSceneDto>(
-		id: string,
-		updateDto: TUpdateDTO,
-	): Promise<TScene> {
+	async update(id: string, updateDto: UpdateSceneDto): Promise<SceneEntity> {
 		this.logger.debug(`[UPDATE] Updating scene with id=${id}`);
 
-		const existingScene = await this.getOneOrThrow<TScene>(id);
+		const existingScene = await this.getOneOrThrow(id);
 
-		if (!existingScene.isEditable) {
+		if (!existingScene.editable) {
 			this.logger.error(`[UPDATE] Scene with id=${id} is not editable`);
 			throw new ScenesNotEditableException(`Scene with id=${id} cannot be edited.`);
 		}
 
-		const { type, spaceId } = updateDto;
-
-		if (!type) {
-			this.logger.error('[UPDATE] Validation failed: Missing required "type" attribute in data.');
-			throw new ScenesException('Scene type attribute is required.');
-		}
+		const { primary_space_id } = updateDto;
 
 		// Validate space if being updated
-		if (spaceId) {
-			await this.validateSpace(spaceId);
+		if (primary_space_id) {
+			await this.validateSpace(primary_space_id);
 		}
 
-		const mapping = this.scenesMapperService.getMapping<TScene, any, TUpdateDTO>(type);
-
-		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
+		const dtoInstance = await this.validateDto(UpdateSceneDto, updateDto);
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
@@ -283,24 +232,16 @@ export class ScenesService {
 			throw new ScenesValidationException('Provided scene data are invalid.');
 		}
 
-		const repository: Repository<TScene> = this.dataSource.getRepository(mapping.class);
-
 		const filteredUpdate = omitBy(dtoInstance, isUndefined);
 
 		// Apply updates to existing scene
-		const mergedScene = repository.merge(existingScene, filteredUpdate as any);
+		const mergedScene = this.repository.merge(existingScene, filteredUpdate as any);
 		mergedScene.updatedAt = new Date();
 
-		const savedScene = await repository.save(mergedScene);
+		const savedScene = await this.repository.save(mergedScene);
 
 		// Retrieve the updated scene with its full relations
-		let updatedScene = await this.getOneOrThrow<TScene>(savedScene.id);
-
-		// Call afterUpdate hook if defined
-		if (mapping.afterUpdate) {
-			await mapping.afterUpdate(updatedScene);
-			updatedScene = await this.getOneOrThrow<TScene>(savedScene.id);
-		}
+		const updatedScene = await this.getOneOrThrow(savedScene.id);
 
 		this.logger.debug(`[UPDATE] Successfully updated scene with id=${updatedScene.id}`);
 
@@ -314,16 +255,9 @@ export class ScenesService {
 
 		const scene = await this.getOneOrThrow(id);
 
-		if (!scene.isEditable) {
+		if (!scene.editable) {
 			this.logger.error(`[DELETE] Scene with id=${id} is not editable/deletable`);
 			throw new ScenesNotEditableException(`Scene with id=${id} cannot be deleted.`);
-		}
-
-		const mapping = this.scenesMapperService.getMapping(scene.type);
-
-		// Call beforeDelete hook if defined
-		if (mapping?.beforeDelete) {
-			await mapping.beforeDelete(scene);
 		}
 
 		await this.repository.remove(scene);
@@ -341,8 +275,8 @@ export class ScenesService {
 		});
 	}
 
-	async getOneOrThrow<TScene extends SceneEntity>(id: string, type?: string): Promise<TScene> {
-		const scene = await this.findOne<TScene>(id, type);
+	async getOneOrThrow(id: string): Promise<SceneEntity> {
+		const scene = await this.findOne(id);
 
 		if (!scene) {
 			this.logger.error(`[ERROR] Scene with id=${id} was not found.`);

@@ -73,7 +73,15 @@
 								:key="index"
 								:label="t(`scenes.categories.${category}`)"
 								:value="category"
-							/>
+							>
+								<div class="flex items-center gap-2">
+									<icon
+										:icon="SCENE_CATEGORY_ICONS[category as SceneCategory]"
+										class="text-lg"
+									/>
+									<span>{{ t(`scenes.categories.${category}`) }}</span>
+								</div>
+							</el-option>
 						</el-select>
 					</div>
 				</el-collapse-item>
@@ -117,7 +125,7 @@ import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import type { IScenesFilter } from '../../composables/types';
-import { SceneCategory } from '../../scenes.constants';
+import { SCENE_CATEGORY_ICONS, SceneCategory } from '../../scenes.constants';
 
 import type { IListScenesAdjustProps } from './list-scenes-adjust.types';
 

@@ -97,14 +97,12 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				data: {
 					scenes: scenes.map((scene) => ({
 						id: scene.id,
-						type: scene.type,
 						category: scene.category,
 						name: scene.name,
 						description: scene.description,
-						icon: scene.icon,
 						enabled: scene.enabled,
-						isTriggerable: scene.isTriggerable,
-						isEditable: scene.isEditable,
+						triggerable: scene.triggerable,
+						editable: scene.editable,
 						lastTriggeredAt:
 							scene.lastTriggeredAt instanceof Date
 								? scene.lastTriggeredAt.toISOString()
@@ -145,14 +143,12 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				data: {
 					scene: {
 						id: scene.id,
-						type: scene.type,
 						category: scene.category,
 						name: scene.name,
 						description: scene.description,
-						icon: scene.icon,
 						enabled: scene.enabled,
-						isTriggerable: scene.isTriggerable,
-						isEditable: scene.isEditable,
+						triggerable: scene.triggerable,
+						editable: scene.editable,
 						lastTriggeredAt:
 							scene.lastTriggeredAt instanceof Date
 								? scene.lastTriggeredAt.toISOString()

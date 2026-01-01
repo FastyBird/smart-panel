@@ -2,5 +2,40 @@
 	"plugin": {
 		"name": "Local Scenes",
 		"description": "Execute scenes locally by controlling device properties"
+	},
+	"fields": {
+		"device": {
+			"title": "Device",
+			"placeholder": "Select a device",
+			"validation": {
+				"required": "Device is required"
+			}
+		},
+		"channel": {
+			"title": "Channel",
+			"placeholder": "Select a channel",
+			"noChannels": "No channels available",
+			"validation": {
+				"required": "Channel is required"
+			}
+		},
+		"property": {
+			"title": "Property",
+			"placeholder": "Select a property",
+			"noProperties": "No writable properties",
+			"validation": {
+				"required": "Property is required"
+			}
+		},
+		"value": {
+			"title": "Value",
+			"placeholder": "Enter a value",
+			"validation": {
+				"required": "Value is required"
+			}
+		}
+	},
+	"messages": {
+		"noDevices": "No devices available. Please add devices first in the Devices section."
 	}
 }

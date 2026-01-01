@@ -16,12 +16,12 @@ import type { IScenesFilter, IUseScenesDataSource } from './types';
 export const defaultScenesFilter: IScenesFilter = {
 	search: undefined,
 	categories: [],
-	spaceId: undefined,
+	primarySpaceId: undefined,
 	enabled: 'all',
 };
 
 export const defaultScenesSort: ISortEntry = {
-	by: 'displayOrder',
+	by: 'order',
 	dir: 'asc',
 };
 
@@ -60,7 +60,7 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 		return (
 			filters.value.search !== defaultScenesFilter.search ||
 			!isEqual(filters.value.categories, defaultScenesFilter.categories) ||
-			filters.value.spaceId !== defaultScenesFilter.spaceId ||
+			filters.value.primarySpaceId !== defaultScenesFilter.primarySpaceId ||
 			filters.value.enabled !== defaultScenesFilter.enabled
 		);
 	});
@@ -69,8 +69,8 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
-	const sortBy = ref<'name' | 'category' | 'displayOrder' | undefined>(
-		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'category' | 'displayOrder') : undefined
+	const sortBy = ref<'name' | 'category' | 'order' | undefined>(
+		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'category' | 'order') : undefined
 	);
 
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
@@ -86,14 +86,14 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 						scene.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
 						scene.description?.toLowerCase().includes(filters.value.search.toLowerCase())) &&
 					(filters.value.categories.length === 0 || filters.value.categories.includes(scene.category)) &&
-					(!filters.value.spaceId || scene.spaceId === filters.value.spaceId) &&
+					(!filters.value.primarySpaceId || scene.primarySpaceId === filters.value.primarySpaceId) &&
 					(filters.value.enabled === 'all' ||
 						(filters.value.enabled === 'enabled' && scene.enabled) ||
 						(filters.value.enabled === 'disabled' && !scene.enabled))
 			);
 
-		// When sorting is disabled (sortBy undefined or sortDir null), fall back to displayOrder ascending
-		const effectiveSortBy = sortBy.value ?? 'displayOrder';
+		// When sorting is disabled (sortBy undefined or sortDir null), fall back to order ascending
+		const effectiveSortBy = sortBy.value ?? 'order';
 		const effectiveSortDir = sortDir.value ?? 'asc';
 
 		return orderBy<IScene>(filtered, [(scene: IScene) => scene[effectiveSortBy as keyof IScene] ?? ''], [effectiveSortDir]);
@@ -160,8 +160,8 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 	);
 
 	watch(
-		(): 'name' | 'category' | 'displayOrder' | undefined => sortBy.value,
-		(val: 'name' | 'category' | 'displayOrder' | undefined): void => {
+		(): 'name' | 'category' | 'order' | undefined => sortBy.value,
+		(val: 'name' | 'category' | 'order' | undefined): void => {
 			if (typeof val === 'undefined' || sortDir.value === null) {
 				sort.value = [];
 			} else {

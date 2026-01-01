@@ -9,6 +9,6 @@ export interface IScenesTableProps {
 	tableHeight: number;
 	loading: boolean;
 	triggering: string[];
-	sortBy: 'name' | 'category' | 'displayOrder' | undefined;
+	sortBy: 'name' | 'category' | 'order' | undefined;
 	sortDir: 'asc' | 'desc' | null;
 }

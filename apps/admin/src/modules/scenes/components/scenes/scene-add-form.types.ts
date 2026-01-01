@@ -2,7 +2,7 @@ import type { FormResultType } from '../../scenes.constants';
 import type { IScene } from '../../store/scenes.store.types';
 
 export interface ISceneAddFormProps {
-	id?: IScene['id'];
+	id: IScene['id'];
 	remoteFormSubmit?: boolean;
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;

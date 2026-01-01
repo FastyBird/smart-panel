@@ -204,14 +204,20 @@ describe('ChannelsService', () => {
 		it('should return all channels', async () => {
 			const mockChannels: MockChannel[] = [mockChannel];
 
-			jest.spyOn(repository, 'find').mockResolvedValue(mockChannels.map((entity) => toInstance(MockChannel, entity)));
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue(mockChannels.map((entity) => toInstance(MockChannel, entity))),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findAll();
 
 			expect(result).toEqual(mockChannels.map((entity) => toInstance(MockChannel, entity)));
-			expect(repository.find).toHaveBeenCalledWith({
-				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
-			});
+			expect(repository.createQueryBuilder).toHaveBeenCalledWith('channel');
+			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('channel.device', 'device');
+			expect(queryBuilderMock.getMany).toHaveBeenCalled();
 		});
 	});
 

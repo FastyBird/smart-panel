@@ -137,20 +137,20 @@
 		</el-table-column>
 
 		<el-table-column
-			:label="t('scenes.fields.room')"
-			prop="spaceId"
+			:label="t('scenes.fields.space')"
+			prop="primarySpaceId"
 			:width="150"
 		>
 			<template #default="scope">
 				<el-link
-					:type="innerFilters.spaceId === scope.row.spaceId ? 'danger' : undefined"
+					:type="innerFilters.primarySpaceId === scope.row.primarySpaceId ? 'danger' : undefined"
 					underline="never"
 					class="font-400!"
-					@click.stop="onFilterBySpace(scope.row.spaceId)"
+					@click.stop="onFilterBySpace(scope.row.primarySpaceId)"
 				>
 					<el-icon class="el-icon--left">
 						<icon
-							v-if="innerFilters.spaceId === scope.row.spaceId"
+							v-if="innerFilters.primarySpaceId === scope.row.primarySpaceId"
 							icon="mdi:filter-minus"
 						/>
 						<icon
@@ -158,7 +158,7 @@
 							icon="mdi:filter-plus"
 						/>
 					</el-icon>
-					{{ getSpaceName(scope.row.spaceId) }}
+					{{ getSpaceName(scope.row.primarySpaceId) }}
 				</el-link>
 			</template>
 		</el-table-column>
@@ -198,7 +198,7 @@
 		>
 			<template #default="scope">
 				<el-button
-					v-if="scope.row.isTriggerable"
+					v-if="scope.row.triggerable"
 					size="small"
 					type="success"
 					plain
@@ -211,7 +211,7 @@
 					</template>
 				</el-button>
 				<el-button
-					v-if="scope.row.isEditable"
+					v-if="scope.row.editable"
 					size="small"
 					plain
 					class="ml-1!"
@@ -223,7 +223,7 @@
 					</template>
 				</el-button>
 				<el-button
-					v-if="scope.row.isEditable"
+					v-if="scope.row.editable"
 					size="small"
 					type="warning"
 					plain
@@ -269,7 +269,7 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 	(e: 'selected-changes', selected: IScene[]): void;
 	(e: 'update:filters', filters: IScenesFilter): void;
-	(e: 'update:sort-by', by: 'name' | 'category' | 'displayOrder' | undefined): void;
+	(e: 'update:sort-by', by: 'name' | 'category' | 'order' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
@@ -295,28 +295,32 @@ const getCategoryType = (category: SceneCategory): 'success' | 'warning' | 'info
 		[SceneCategory.GENERIC]: undefined,
 		[SceneCategory.LIGHTING]: 'warning',
 		[SceneCategory.CLIMATE]: 'info',
-		[SceneCategory.SECURITY]: 'danger',
-		[SceneCategory.ENTERTAINMENT]: 'primary',
+		[SceneCategory.MEDIA]: 'primary',
+		[SceneCategory.WORK]: undefined,
+		[SceneCategory.RELAX]: 'success',
+		[SceneCategory.NIGHT]: 'info',
 		[SceneCategory.MORNING]: 'warning',
-		[SceneCategory.EVENING]: 'info',
+		[SceneCategory.PARTY]: 'danger',
+		[SceneCategory.MOVIE]: 'primary',
 		[SceneCategory.AWAY]: undefined,
 		[SceneCategory.HOME]: 'success',
-		[SceneCategory.SLEEP]: 'info',
+		[SceneCategory.SECURITY]: 'danger',
+		[SceneCategory.ENERGY]: 'warning',
 		[SceneCategory.CUSTOM]: undefined,
 	};
 	return typeMap[category];
 };
 
-const getSpaceName = (spaceId: string): string => {
-	const space = spaces.value.find((s) => s.id === spaceId);
-	return space?.name || t('scenes.fields.unknownRoom');
+const getSpaceName = (primarySpaceId: string): string => {
+	const space = spaces.value.find((s) => s.id === primarySpaceId);
+	return space?.name || t('scenes.fields.unknownSpace');
 };
 
 const onSortData = ({
 	prop,
 	order,
 }: {
-	prop: 'name' | 'category' | 'displayOrder';
+	prop: 'name' | 'category' | 'order';
 	order: 'ascending' | 'descending' | null;
 }): void => {
 	emit('update:sort-by', order === null ? undefined : prop);
@@ -328,16 +332,16 @@ const onSelectionChange = (selected: IScene[]): void => {
 };
 
 const onRowClick = (row: IScene): void => {
-	if (row.isEditable) {
+	if (row.editable) {
 		emit('edit', row.id);
 	}
 };
 
-const onFilterBySpace = (spaceId: string): void => {
-	if (innerFilters.value.spaceId === spaceId) {
-		innerFilters.value.spaceId = undefined;
+const onFilterBySpace = (primarySpaceId: string): void => {
+	if (innerFilters.value.primarySpaceId === primarySpaceId) {
+		innerFilters.value.primarySpaceId = undefined;
 	} else {
-		innerFilters.value.spaceId = spaceId;
+		innerFilters.value.primarySpaceId = primarySpaceId;
 	}
 };
 </script>

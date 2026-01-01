@@ -1,37 +1,38 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 
+import { ConfigModule } from '../../modules/config/config.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { CreateSceneActionDto } from '../../modules/scenes/dto/create-scene-action.dto';
-import { CreateSceneDto } from '../../modules/scenes/dto/create-scene.dto';
 import { UpdateSceneActionDto } from '../../modules/scenes/dto/update-scene-action.dto';
-import { UpdateSceneDto } from '../../modules/scenes/dto/update-scene.dto';
-import { SceneActionEntity, SceneEntity } from '../../modules/scenes/entities/scenes.entity';
+import { SceneActionEntity } from '../../modules/scenes/entities/scenes.entity';
 import { ScenesModule } from '../../modules/scenes/scenes.module';
 import { SceneActionsTypeMapperService } from '../../modules/scenes/services/scene-actions-type-mapper.service';
 import { SceneExecutorService } from '../../modules/scenes/services/scene-executor.service';
-import { ScenesTypeMapperService } from '../../modules/scenes/services/scenes-type-mapper.service';
 import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { CreateLocalSceneActionDto } from './dto/create-local-scene-action.dto';
+import { ScenesLocalUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateLocalSceneActionDto } from './dto/update-local-scene-action.dto';
 import { LocalSceneActionEntity } from './entities/scenes-local.entity';
+import { ScenesLocalConfigModel } from './models/config.model';
 import { LocalScenePlatform } from './platforms/local-scene.platform';
 import { SCENES_LOCAL_PLUGIN_NAME, SCENES_LOCAL_TYPE } from './scenes-local.constants';
 import { SCENES_LOCAL_PLUGIN_SWAGGER_EXTRA_MODELS } from './scenes-local.openapi';
 
 @Module({
-	imports: [ScenesModule, DevicesModule, SpacesModule, SwaggerModule, ExtensionsModule],
+	imports: [ScenesModule, DevicesModule, SpacesModule, ConfigModule, SwaggerModule, ExtensionsModule],
 	providers: [LocalScenePlatform],
 	exports: [LocalScenePlatform],
 })
-export class ScenesLocalPlugin {
+export class ScenesLocalPlugin implements OnModuleInit {
 	constructor(
-		private readonly scenesMapper: ScenesTypeMapperService,
+		private readonly configMapper: PluginsTypeMapperService,
 		private readonly sceneActionsMapper: SceneActionsTypeMapperService,
 		private readonly sceneExecutor: SceneExecutorService,
 		private readonly localScenePlatform: LocalScenePlatform,
@@ -41,12 +42,11 @@ export class ScenesLocalPlugin {
 	) {}
 
 	onModuleInit() {
-		// Register scene type mapping for local scenes
-		this.scenesMapper.registerMapping<SceneEntity, CreateSceneDto, UpdateSceneDto>({
-			type: SCENES_LOCAL_TYPE,
-			class: SceneEntity,
-			createDto: CreateSceneDto,
-			updateDto: UpdateSceneDto,
+		// Register plugin configuration mapping
+		this.configMapper.registerMapping<ScenesLocalConfigModel, ScenesLocalUpdatePluginConfigDto>({
+			type: SCENES_LOCAL_PLUGIN_NAME,
+			class: ScenesLocalConfigModel,
+			configDto: ScenesLocalUpdatePluginConfigDto,
 		});
 
 		// Register scene action type mapping for local actions
@@ -70,27 +70,6 @@ export class ScenesLocalPlugin {
 		}
 
 		// Register discriminator mappings for OpenAPI
-		this.discriminatorRegistry.register({
-			parentClass: SceneEntity,
-			discriminatorProperty: 'type',
-			discriminatorValue: SCENES_LOCAL_TYPE,
-			modelClass: SceneEntity,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: CreateSceneDto,
-			discriminatorProperty: 'type',
-			discriminatorValue: SCENES_LOCAL_TYPE,
-			modelClass: CreateSceneDto,
-		});
-
-		this.discriminatorRegistry.register({
-			parentClass: UpdateSceneDto,
-			discriminatorProperty: 'type',
-			discriminatorValue: SCENES_LOCAL_TYPE,
-			modelClass: UpdateSceneDto,
-		});
-
 		this.discriminatorRegistry.register({
 			parentClass: SceneActionEntity,
 			discriminatorProperty: 'type',

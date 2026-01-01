@@ -2,11 +2,11 @@
 	"scenes": {
 		"headings": {
 			"list": "Scenes",
-			"add": "Add Scene",
-			"edit": "Edit Scene",
-			"delete": "Delete Scene",
-			"discard": "Discard Changes",
-			"adjustFilters": "Adjust Filters"
+			"add": "Add scene",
+			"edit": "Edit scene",
+			"delete": "Delete scene",
+			"discard": "Discard changes",
+			"adjustFilters": "Adjust filters"
 		},
 		"subHeadings": {
 			"list": "Manage automation scenes for your smart home",
@@ -16,7 +16,7 @@
 			"scenes": "Scenes"
 		},
 		"filters": {
-			"allRooms": "All Rooms",
+			"allSpaces": "All Spaces",
 			"enabled": {
 				"title": "Status",
 				"values": {
@@ -33,10 +33,10 @@
 		"fields": {
 			"name": "Name",
 			"category": "Category",
-			"room": "Room",
+			"space": "Space",
 			"enabled": "Enabled",
 			"actions": "Actions",
-			"unknownRoom": "Unknown Room",
+			"unknownSpace": "Unknown Space",
 			"search": {
 				"placeholder": "Search scenes..."
 			}
@@ -45,20 +45,40 @@
 			"loadingScenes": "Loading scenes...",
 			"noScenes": "No scenes found",
 			"noFilteredScenes": "No scenes match your filters",
-			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+			"actionsCount": "No actions | {count} action | {count} actions",
+			"lastTriggered": "Last Triggered",
+			"order": "#"
+		},
+		"edit": {
+			"sections": {
+				"general": {
+					"title": "General",
+					"hint": "Scenes are manual presets that apply multiple device actions at once. They do not run automatically and have no conditions."
+				},
+				"actions": {
+					"title": "Actions",
+					"emptyTitle": "No actions added yet",
+					"emptyDescription": "Add one or more device actions that will run when this scene is activated.",
+					"helperText": "You can control lights, switches, climate devices, and more."
+				}
+			}
 		},
 		"form": {
-			"room": "Room",
-			"selectRoom": "Select a room",
-			"roomRequired": "Room is required",
-			"name": "Scene Name",
+			"space": "Space",
+			"selectSpace": "Whole home",
+			"spaceGroups": {
+				"rooms": "Rooms",
+				"zones": "Zones"
+			},
+			"name": "Scene name",
 			"namePlaceholder": "Enter scene name",
 			"nameRequired": "Scene name is required",
 			"category": "Category",
 			"categoryRequired": "Category is required",
 			"description": "Description",
 			"descriptionPlaceholder": "Optional description for this scene",
-			"actionsSection": "Scene Actions",
+			"actionsSection": "Scene actions",
 			"noActions": "No actions defined. Add actions to control devices when this scene is triggered.",
 			"actionsRequired": "At least one action is required",
 			"actionNumber": "Action {number}",
@@ -77,11 +97,11 @@
 			"valuePlaceholder": "Enter value",
 			"valueRequired": "Value is required",
 			"actionValueRequired": "Action {number}: Value is required",
-			"addAction": "Add Action"
+			"addAction": "Add action"
 		},
 		"buttons": {
 			"add": {
-				"title": "Add Scene"
+				"title": "Add scene"
 			},
 			"delete": "Delete",
 			"cancel": "Cancel",
@@ -89,7 +109,7 @@
 			"yes": "Yes",
 			"no": "No",
 			"resetFilters": {
-				"title": "Reset Filters"
+				"title": "Reset filters"
 			}
 		},
 		"messages": {
@@ -100,6 +120,8 @@
 			"deleteFailed": "Failed to delete scene",
 			"created": "Scene created successfully",
 			"createFailed": "Failed to create scene",
+			"edited": "Scene \"{scene}\" updated successfully",
+			"editFailed": "Failed to update scene \"{scene}\"",
 			"addFormPlaceholder": "Scene add form will be implemented here",
 			"editFormPlaceholder": "Scene edit form will be implemented here",
 			"requestError": "An error occurred while processing your request"
@@ -108,13 +130,17 @@
 			"generic": "Generic",
 			"lighting": "Lighting",
 			"climate": "Climate",
-			"security": "Security",
-			"entertainment": "Entertainment",
+			"media": "Media",
+			"work": "Work",
+			"relax": "Relax",
+			"night": "Night",
 			"morning": "Morning",
-			"evening": "Evening",
+			"party": "Party",
+			"movie": "Movie",
 			"away": "Away",
 			"home": "Home",
-			"sleep": "Sleep",
+			"security": "Security",
+			"energy": "Energy",
 			"custom": "Custom"
 		}
 	}

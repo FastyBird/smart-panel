@@ -21,23 +21,30 @@ import { SceneCategory } from '../scenes.constants';
 
 @ApiSchema({ name: 'ScenesModuleDataScene' })
 @Entity('scenes_module_scenes')
-@TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class SceneEntity extends BaseEntity {
-	@ApiProperty({
-		name: 'space_id',
-		description: 'Room space identifier this scene belongs to',
+	@ApiPropertyOptional({
+		name: 'primary_space_id',
+		description: 'Primary space identifier this scene belongs to',
 		type: 'string',
 		format: 'uuid',
+		nullable: true,
 		example: '550e8400-e29b-41d4-a716-446655440000',
 	})
-	@Expose({ name: 'space_id' })
-	@IsUUID('4', { message: '[{"field":"space_id","reason":"Space ID must be a valid UUID (version 4)."}]' })
-	@Transform(({ obj }: { obj: { space_id?: string; spaceId?: string } }) => obj.space_id ?? obj.spaceId, {
-		toClassOnly: true,
+	@Expose({ name: 'primary_space_id' })
+	@IsOptional()
+	@IsUUID('4', {
+		message: '[{"field":"primary_space_id","reason":"Primary space ID must be a valid UUID (version 4)."}]',
 	})
+	@Transform(
+		({ obj }: { obj: { primary_space_id?: string; primarySpaceId?: string } }) =>
+			obj.primary_space_id ?? obj.primarySpaceId ?? null,
+		{
+			toClassOnly: true,
+		},
+	)
 	@Index()
-	@Column({ type: 'varchar', length: 36 })
-	spaceId: string;
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	primarySpaceId: string | null;
 
 	@ApiProperty({ description: 'Scene category', enum: SceneCategory, example: SceneCategory.GENERIC })
 	@Expose()
@@ -67,36 +74,17 @@ export class SceneEntity extends BaseEntity {
 	@Column({ nullable: true })
 	description: string | null;
 
-	@ApiPropertyOptional({
-		description: 'Scene icon identifier for UI',
-		type: 'string',
-		example: 'mdi:movie',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString()
-	@Column({ nullable: true })
-	icon: string | null;
-
 	@ApiProperty({
-		name: 'display_order',
 		description: 'Display order for UI',
 		type: 'integer',
 		minimum: 0,
 		example: 0,
 	})
-	@Expose({ name: 'display_order' })
+	@Expose()
 	@IsInt()
 	@Min(0)
-	@Transform(
-		({ obj }: { obj: { display_order?: number; displayOrder?: number } }) => obj.display_order ?? obj.displayOrder ?? 0,
-		{
-			toClassOnly: true,
-		},
-	)
 	@Column({ type: 'int', default: 0 })
-	displayOrder: number = 0;
+	order: number = 0;
 
 	@ApiProperty({ description: 'Scene enabled status', type: 'boolean', example: true })
 	@Expose()
@@ -106,35 +94,24 @@ export class SceneEntity extends BaseEntity {
 	enabled: boolean = true;
 
 	@ApiProperty({
-		name: 'is_triggerable',
 		description: 'Whether scene can be manually triggered',
 		type: 'boolean',
 		example: true,
 	})
-	@Expose({ name: 'is_triggerable' })
+	@Expose()
 	@IsBoolean()
-	@Transform(
-		({ obj }: { obj: { is_triggerable?: boolean; isTriggerable?: boolean } }) =>
-			obj.is_triggerable ?? obj.isTriggerable ?? true,
-		{ toClassOnly: true },
-	)
 	@Column({ nullable: false, default: true })
-	isTriggerable: boolean = true;
+	triggerable: boolean = true;
 
 	@ApiProperty({
-		name: 'is_editable',
-		description: 'Whether scene can be edited (plugin-dependent)',
+		description: 'Whether scene can be edited',
 		type: 'boolean',
 		example: true,
 	})
-	@Expose({ name: 'is_editable' })
+	@Expose()
 	@IsBoolean()
-	@Transform(
-		({ obj }: { obj: { is_editable?: boolean; isEditable?: boolean } }) => obj.is_editable ?? obj.isEditable ?? true,
-		{ toClassOnly: true },
-	)
 	@Column({ nullable: false, default: true })
-	isEditable: boolean = true;
+	editable: boolean = true;
 
 	@ApiPropertyOptional({
 		name: 'last_triggered_at',
@@ -170,13 +147,6 @@ export class SceneEntity extends BaseEntity {
 	@Type(() => SceneActionEntity)
 	@OneToMany(() => SceneActionEntity, (action) => action.scene, { cascade: true, onDelete: 'CASCADE' })
 	actions: SceneActionEntity[];
-
-	@ApiProperty({ description: 'Scene type (plugin identifier)', type: 'string', example: 'local' })
-	@Expose()
-	@IsString()
-	@Index()
-	@Column({ type: 'varchar', length: 100, default: 'local' })
-	type: string = 'local';
 }
 
 @ApiSchema({ name: 'ScenesModuleDataSceneAction' })

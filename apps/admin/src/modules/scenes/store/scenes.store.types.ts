@@ -66,7 +66,7 @@ export interface IScenesStoreActions {
 	fetching: () => boolean;
 	findAll: () => IScene[];
 	findById: (id: IScene['id']) => IScene | null;
-	findBySpace: (spaceId: IScene['spaceId']) => IScene[];
+	findBySpace: (primarySpaceId: IScene['primarySpaceId']) => IScene[];
 	// Actions
 	onEvent: (payload: IScenesOnEventActionPayload) => IScene;
 	set: (payload: IScenesSetActionPayload) => IScene;

@@ -86,7 +86,7 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: IScenesFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;
-	(e: 'update:sort-by', dir: 'name' | 'category' | 'displayOrder' | undefined): void;
+	(e: 'update:sort-by', dir: 'name' | 'category' | 'order' | undefined): void;
 	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
@@ -99,7 +99,7 @@ const paginator = ref<HTMLElement | null>(null);
 
 const innerFilters = useVModel(props, 'filters', emit);
 
-const sortBy = ref<'name' | 'category' | 'displayOrder' | undefined>(props.sortBy);
+const sortBy = ref<'name' | 'category' | 'order' | undefined>(props.sortBy);
 
 const sortDir = ref<'asc' | 'desc' | null>(props.sortDir);
 
@@ -164,8 +164,8 @@ onBeforeUnmount((): void => {
 });
 
 watch(
-	(): 'name' | 'category' | 'displayOrder' | undefined => sortBy.value,
-	(val: 'name' | 'category' | 'displayOrder' | undefined): void => {
+	(): 'name' | 'category' | 'order' | undefined => sortBy.value,
+	(val: 'name' | 'category' | 'order' | undefined): void => {
 		emit('update:sort-by', val);
 	}
 );
@@ -199,8 +199,8 @@ watch(
 );
 
 watch(
-	(): 'name' | 'category' | 'displayOrder' | undefined => props.sortBy,
-	(val: 'name' | 'category' | 'displayOrder' | undefined): void => {
+	(): 'name' | 'category' | 'order' | undefined => props.sortBy,
+	(val: 'name' | 'category' | 'order' | undefined): void => {
 		sortBy.value = val;
 	}
 );

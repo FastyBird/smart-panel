@@ -71,7 +71,6 @@ export default {
 					try {
 						scenesStore.onEvent({
 							id: data.payload.id,
-							type: 'type' in data.payload ? String(data.payload.type) : 'unknown',
 							data: data.payload,
 						});
 					} catch (error) {

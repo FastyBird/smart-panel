@@ -1,165 +1,274 @@
 <template>
-	<el-drawer v-model="isOpen" :title="t('scenes.headings.add')" direction="rtl" size="600px" @closed="onClose">
-		<el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="scene-form">
-			<!-- Room Selection -->
-			<el-form-item :label="t('scenes.form.room')" prop="spaceId">
-				<el-select
-					v-model="form.spaceId"
-					:placeholder="t('scenes.form.selectRoom')"
-					:loading="spacesLoading"
-					style="width: 100%"
-				>
-					<el-option v-for="room in rooms" :key="room.id" :label="room.name" :value="room.id" />
-				</el-select>
-			</el-form-item>
-
-			<!-- Scene Name -->
-			<el-form-item :label="t('scenes.form.name')" prop="name">
-				<el-input v-model="form.name" :placeholder="t('scenes.form.namePlaceholder')" />
-			</el-form-item>
-
-			<!-- Category -->
-			<el-form-item :label="t('scenes.form.category')" prop="category">
-				<el-select v-model="form.category" style="width: 100%">
-					<el-option
-						v-for="cat in categories"
-						:key="cat"
-						:label="t(`scenes.categories.${cat}`)"
-						:value="cat"
-					/>
-				</el-select>
-			</el-form-item>
-
-			<!-- Description -->
-			<el-form-item :label="t('scenes.form.description')">
-				<el-input
-					v-model="form.description"
-					type="textarea"
-					:rows="2"
-					:placeholder="t('scenes.form.descriptionPlaceholder')"
-				/>
-			</el-form-item>
-
-			<!-- Actions Section -->
-			<el-divider>{{ t('scenes.form.actionsSection') }}</el-divider>
-
-			<div v-if="form.actions.length === 0" class="empty-actions">
-				<el-empty :description="t('scenes.form.noActions')" :image-size="60" />
-			</div>
-
-			<div v-for="(action, index) in form.actions" :key="index" class="action-card">
-				<div class="action-header">
-					<span class="action-number">{{ t('scenes.form.actionNumber', { number: index + 1 }) }}</span>
-					<el-button type="danger" size="small" text @click="removeAction(index)">
-						<icon icon="mdi:delete" />
-					</el-button>
-				</div>
-
-				<!-- Device Selection -->
-				<el-form-item :label="t('scenes.form.device')" :prop="`actions.${index}.deviceId`" :rules="actionRules.deviceId">
-					<el-select
-						v-model="action.deviceId"
-						:placeholder="t('scenes.form.selectDevice')"
-						:loading="devicesLoading"
-						style="width: 100%"
-						@change="onDeviceChange(index)"
-					>
-						<el-option v-for="device in devices" :key="device.id" :label="device.name" :value="device.id" />
-					</el-select>
-				</el-form-item>
-
-				<!-- Channel Selection -->
-				<el-form-item
-					v-if="action.deviceId"
-					:label="t('scenes.form.channel')"
-				>
-					<el-select
-						v-model="action.channelId"
-						:placeholder="t('scenes.form.selectChannel')"
-						style="width: 100%"
-						@change="onChannelChange(index)"
-					>
-						<el-option
-							v-for="channel in getChannelsForDevice(action.deviceId)"
-							:key="channel.id"
-							:label="channel.name ?? channel.identifier ?? channel.id"
-							:value="channel.id"
-						/>
-					</el-select>
-				</el-form-item>
-
-				<!-- Property Selection -->
-				<el-form-item
-					v-if="action.channelId !== ''"
-					:label="t('scenes.form.property')"
-					:prop="`actions.${index}.propertyId`"
-					:rules="actionRules.propertyId"
-				>
-					<el-select
-						v-model="action.propertyId"
-						:placeholder="t('scenes.form.selectProperty')"
-						style="width: 100%"
-						@change="onPropertyChange(index)"
-					>
-						<el-option
-							v-for="prop in getWritablePropertiesForChannel(action.channelId)"
-							:key="prop.id"
-							:label="prop.name ?? prop.identifier ?? prop.id"
-							:value="prop.id"
-						/>
-					</el-select>
-				</el-form-item>
-
-				<!-- Value Input -->
-				<el-form-item
-					v-if="action.propertyId"
-					:label="t('scenes.form.value')"
-					:prop="`actions.${index}.value`"
-					:rules="actionRules.value"
-				>
-					<template v-if="getPropertyDataType(action.propertyId) === 'boolean'">
-						<el-switch v-model="(action.value as boolean)" />
-					</template>
-					<template v-else-if="getPropertyDataType(action.propertyId) === 'number'">
-						<el-input-number
-							v-model="(action.value as number)"
-							:min="getPropertyMin(action.propertyId)"
-							:max="getPropertyMax(action.propertyId)"
-							:step="getPropertyStep(action.propertyId)"
-							style="width: 100%"
-						/>
-					</template>
-					<template v-else-if="getPropertyFormat(action.propertyId)?.length">
-						<el-select v-model="action.value" style="width: 100%">
-							<el-option
-								v-for="option in getPropertyFormat(action.propertyId)"
-								:key="String(option)"
-								:label="String(option)"
-								:value="option"
-							/>
-						</el-select>
-					</template>
-					<template v-else>
-						<el-input v-model="(action.value as string)" :placeholder="t('scenes.form.valuePlaceholder')" />
-					</template>
-				</el-form-item>
-			</div>
-
-			<el-button type="primary" plain style="width: 100%" @click="addAction">
-				<template #icon>
-					<icon icon="mdi:plus" />
-				</template>
-				{{ t('scenes.form.addAction') }}
-			</el-button>
-		</el-form>
-
-		<template #footer>
-			<el-button @click="onClose">{{ t('scenes.buttons.cancel') }}</el-button>
-			<el-button type="primary" :loading="saving" @click="onSave">
-				{{ t('scenes.buttons.save') }}
-			</el-button>
+	<app-bar-heading teleport>
+		<template #icon>
+			<icon
+				icon="mdi:plus"
+				class="w[20px] h[20px]"
+			/>
 		</template>
-	</el-drawer>
+
+		<template #title>
+			{{ t('scenes.headings.add') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('scenes.subHeadings.list') }}
+		</template>
+	</app-bar-heading>
+
+	<app-bar-button
+		v-if="!isMDDevice"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="onClose"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+	</app-bar-button>
+
+	<app-bar-button
+		v-if="!isMDDevice"
+		:align="AppBarButtonAlign.RIGHT"
+		teleport
+		small
+		@click="onSave"
+	>
+		<span class="uppercase">{{ t('scenes.buttons.save') }}</span>
+	</app-bar-button>
+
+	<div class="flex flex-col overflow-hidden h-full">
+		<el-scrollbar class="grow-1 p-2 md:px-4">
+			<el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+				<el-collapse v-model="activeCollapses">
+					<!-- 1. General Section -->
+					<el-collapse-item name="general">
+						<template #title>
+							<div class="flex items-center gap-2">
+								<el-icon :size="20">
+									<icon icon="mdi:information" />
+								</el-icon>
+								<span class="font-medium">{{ t('scenes.edit.sections.general.title') }}</span>
+							</div>
+						</template>
+
+						<div class="px-2">
+							<el-alert
+								:title="t('scenes.edit.sections.general.hint')"
+								type="info"
+								:closable="false"
+								show-icon
+								class="!mb-4"
+							/>
+
+							<!-- Scene Name -->
+							<el-form-item :label="t('scenes.form.name')" prop="name">
+								<el-input v-model="form.name" :placeholder="t('scenes.form.namePlaceholder')" />
+							</el-form-item>
+
+							<!-- Category -->
+							<el-form-item :label="t('scenes.form.category')" prop="category">
+								<el-select v-model="form.category" style="width: 100%">
+									<template #prefix>
+										<icon :icon="SCENE_CATEGORY_ICONS[form.category]" class="text-lg" />
+									</template>
+									<el-option
+										v-for="cat in categories"
+										:key="cat"
+										:label="t(`scenes.categories.${cat}`)"
+										:value="cat"
+									>
+										<div class="flex items-center gap-2">
+											<icon :icon="SCENE_CATEGORY_ICONS[cat]" class="text-lg" />
+											<span>{{ t(`scenes.categories.${cat}`) }}</span>
+										</div>
+									</el-option>
+								</el-select>
+							</el-form-item>
+
+							<!-- Space Selection -->
+							<el-form-item :label="t('scenes.form.space')" prop="primarySpaceId">
+								<el-select
+									v-model="form.primarySpaceId"
+									:placeholder="t('scenes.form.selectSpace')"
+									:loading="spacesLoading"
+									clearable
+									filterable
+									style="width: 100%"
+								>
+									<template #prefix>
+										<icon v-if="form.primarySpaceId" :icon="getSelectedSpaceIcon()" class="text-lg" />
+									</template>
+									<el-option-group
+										v-for="group in spacesOptionsGrouped"
+										:key="group.type"
+										:label="group.label"
+									>
+										<template #default>
+											<el-option
+												v-for="item in group.options"
+												:key="item.value"
+												:label="item.label"
+												:value="item.value"
+											>
+												<div class="flex items-center gap-2">
+													<icon :icon="item.icon" class="text-lg" />
+													<span>{{ item.label }}</span>
+												</div>
+											</el-option>
+										</template>
+									</el-option-group>
+								</el-select>
+							</el-form-item>
+
+							<!-- Description -->
+							<el-form-item :label="t('scenes.form.description')">
+								<el-input
+									v-model="form.description"
+									type="textarea"
+									:rows="2"
+									:placeholder="t('scenes.form.descriptionPlaceholder')"
+								/>
+							</el-form-item>
+						</div>
+					</el-collapse-item>
+
+					<!-- 2. Actions Section -->
+					<el-collapse-item name="actions">
+						<template #title>
+							<div class="flex items-center gap-2">
+								<el-icon :size="20">
+									<icon icon="mdi:play-box-multiple" />
+								</el-icon>
+								<span class="font-medium">{{ t('scenes.edit.sections.actions.title') }}</span>
+								<el-tag v-if="form.actions.length > 0" size="small" type="info">
+									{{ form.actions.length }}
+								</el-tag>
+							</div>
+						</template>
+
+						<div class="px-2">
+							<!-- Empty State -->
+							<div v-if="form.actions.length === 0" class="empty-actions-state">
+								<el-icon :size="48" class="text-gray-300 mb-3">
+									<icon icon="mdi:playlist-plus" />
+								</el-icon>
+								<div class="text-gray-600 font-medium mb-1">
+									{{ t('scenes.edit.sections.actions.emptyTitle') }}
+								</div>
+								<div class="text-gray-400 text-sm mb-4">
+									{{ t('scenes.edit.sections.actions.emptyDescription') }}
+								</div>
+							</div>
+
+							<!-- Action Cards -->
+							<el-card
+								v-for="(action, index) in form.actions"
+								:key="action.id || index"
+								class="action-card mb-3"
+								shadow="never"
+							>
+								<div class="flex justify-between items-start">
+									<div>
+										<div class="font-medium mb-1">
+											{{ t('scenes.form.actionNumber', { number: index + 1 }) }}
+										</div>
+										<div class="text-sm text-gray-500">
+											{{ getPluginLabel(action.type) }}
+										</div>
+									</div>
+									<el-button type="danger" size="small" text @click="removeAction(index)">
+										<icon icon="mdi:delete" />
+									</el-button>
+								</div>
+							</el-card>
+
+							<!-- Add Action Dropdown -->
+							<el-dropdown trigger="click" style="width: 100%" @command="onPluginSelected">
+								<el-button type="primary" plain style="width: 100%">
+									<template #icon>
+										<icon icon="mdi:plus" />
+									</template>
+									{{ t('scenes.form.addAction') }}
+									<el-icon class="el-icon--right">
+										<icon icon="mdi:chevron-down" />
+									</el-icon>
+								</el-button>
+								<template #dropdown>
+									<el-dropdown-menu>
+										<el-dropdown-item
+											v-for="option in actionPluginOptions"
+											:key="option.value"
+											:command="option.value"
+											:disabled="option.disabled"
+										>
+											<div class="flex items-center gap-2">
+												<el-icon :size="18">
+													<icon icon="mdi:cog" />
+												</el-icon>
+												<span>{{ option.label }}</span>
+											</div>
+										</el-dropdown-item>
+									</el-dropdown-menu>
+								</template>
+							</el-dropdown>
+
+							<!-- Helper Text -->
+							<div class="text-gray-400 text-xs mt-2 text-center">
+								{{ t('scenes.edit.sections.actions.helperText') }}
+							</div>
+						</div>
+					</el-collapse-item>
+				</el-collapse>
+			</el-form>
+		</el-scrollbar>
+
+		<div
+			v-if="isMDDevice"
+			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
+			style="background-color: var(--el-drawer-bg-color)"
+		>
+			<div class="p-2">
+				<el-button link class="mr-2" @click="onClose">
+					{{ t('scenes.buttons.cancel') }}
+				</el-button>
+
+				<el-button :loading="saving" type="primary" @click="onSave">
+					{{ t('scenes.buttons.save') }}
+				</el-button>
+			</div>
+		</div>
+
+		<!-- Action Form Dialog -->
+		<el-dialog
+			v-model="showActionForm"
+			title="Add action"
+			width="500px"
+			:close-on-click-modal="false"
+			@close="onActionFormCancel"
+		>
+			<component
+				:is="currentActionFormComponent"
+				v-if="currentActionFormComponent"
+				:id="uuid()"
+				:scene-id="''"
+				:remote-form-submit="actionFormSubmit"
+				@update:remote-form-submit="actionFormSubmit = $event"
+				@submit="onActionFormSubmit"
+			/>
+			<template #footer>
+				<el-button @click="onActionFormCancel">
+					{{ t('scenes.buttons.cancel') }}
+				</el-button>
+				<el-button type="primary" @click="actionFormSubmit = true">
+					{{ t('scenes.buttons.save') }}
+				</el-button>
+			</template>
+		</el-dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -168,76 +277,74 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import {
+	ElAlert,
 	ElButton,
-	ElDivider,
-	ElDrawer,
-	ElEmpty,
+	ElCard,
+	ElCollapse,
+	ElCollapseItem,
+	ElDialog,
+	ElDropdown,
+	ElDropdownItem,
+	ElDropdownMenu,
 	ElForm,
 	ElFormItem,
+	ElIcon,
 	ElInput,
-	ElInputNumber,
 	ElMessage,
 	ElOption,
+	ElOptionGroup,
+	ElScrollbar,
 	ElSelect,
-	ElSwitch,
+	ElTag,
 	type FormInstance,
 	type FormRules,
 } from 'element-plus';
 import { Icon } from '@iconify/vue';
 import { v4 as uuid } from 'uuid';
 
-import { injectStoresManager } from '../../../common';
-import { DevicesModuleChannelPropertyPermissions } from '../../../openapi.constants';
-import { useChannels, useDevices } from '../../devices/composables/composables';
-import type { IChannelProperty } from '../../devices/store/channels.properties.store.types';
-import type { IChannel } from '../../devices/store/channels.store.types';
-import { channelsPropertiesStoreKey } from '../../devices/store/keys';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
-import { SpaceType } from '../../spaces/spaces.constants';
+import { SPACE_CATEGORY_TEMPLATES, SpaceType } from '../../spaces/spaces.constants';
+import { useScenesActionPlugins } from '../composables/useScenesActionPlugins';
 import { useScenesActions } from '../composables/useScenesActions';
-import { RouteNames, SceneCategory } from '../scenes.constants';
+import { RouteNames, SCENE_CATEGORY_ICONS, SceneCategory } from '../scenes.constants';
+import type { ISceneActionAddForm } from '../schemas/scenes.types';
 
-interface IActionForm {
-	deviceId: string;
-	channelId: string;
-	propertyId: string;
-	value: string | number | boolean;
+interface ISceneActionData extends ISceneActionAddForm {
+	type: string;
 }
 
 interface ISceneForm {
-	spaceId: string;
+	primarySpaceId: string | null;
 	name: string;
 	category: SceneCategory;
 	description: string;
-	actions: IActionForm[];
+	actions: ISceneActionData[];
 }
-
-const LOCAL_SCENE_TYPE = 'local';
 
 const { t } = useI18n();
 const router = useRouter();
 
-const storesManager = injectStoresManager();
-const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { addScene } = useScenesActions();
 const { spaces, fetching: spacesLoading, fetchSpaces } = useSpaces();
-const { devices, areLoading: devicesLoading, fetchDevices } = useDevices();
-const { channels, fetchChannels } = useChannels();
+const { options: actionPluginOptions, getElement } = useScenesActionPlugins();
 
-const properties = computed<IChannelProperty[]>(() => propertiesStore.findAll());
-
-const fetchPropertiesForChannel = async (channelId: string): Promise<void> => {
-	if (!channelId) return;
-	await propertiesStore.fetch({ channelId });
-};
-
-const isOpen = ref(false);
 const saving = ref(false);
 const formRef = ref<FormInstance>();
 
+// Collapse state - both sections open by default
+const activeCollapses = ref<string[]>(['general', 'actions']);
+
+// Action form state
+const selectedPluginType = ref<string | null>(null);
+const editingActionIndex = ref<number | null>(null);
+const showActionForm = ref(false);
+const actionFormSubmit = ref(false);
+
 const form = reactive<ISceneForm>({
-	spaceId: '',
+	primarySpaceId: null,
 	name: '',
 	category: SceneCategory.GENERIC,
 	description: '',
@@ -246,136 +353,142 @@ const form = reactive<ISceneForm>({
 
 const categories = Object.values(SceneCategory);
 
-const rooms = computed(() => {
-	return spaces.value.filter((space) => space.type === SpaceType.ROOM).sort((a, b) => a.name.localeCompare(b.name));
+const currentActionFormComponent = computed(() => {
+	if (!selectedPluginType.value) return null;
+	const element = getElement(selectedPluginType.value);
+	return element?.components?.sceneActionAddForm ?? null;
 });
 
+interface ISpaceOption {
+	value: string;
+	label: string;
+	icon: string;
+}
+
+interface ISpaceOptionGroup {
+	type: SpaceType;
+	label: string;
+	icon: string;
+	options: ISpaceOption[];
+}
+
+const getSpaceIcon = (space: (typeof spaces.value)[0]): string => {
+	// Use custom icon if available
+	if (space.icon) {
+		return space.icon;
+	}
+	// Use category template icon if category is set
+	if (space.category && SPACE_CATEGORY_TEMPLATES[space.category]) {
+		return SPACE_CATEGORY_TEMPLATES[space.category].icon;
+	}
+	// Default icons based on type
+	return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:map-marker-radius';
+};
+
+const spacesOptionsGrouped = computed<ISpaceOptionGroup[]>(() => {
+	const rooms = spaces.value
+		.filter((space) => space.type === SpaceType.ROOM)
+		.map((space) => ({
+			value: space.id,
+			label: space.name,
+			icon: getSpaceIcon(space),
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label));
+
+	const zones = spaces.value
+		.filter((space) => space.type === SpaceType.ZONE)
+		.map((space) => ({
+			value: space.id,
+			label: space.name,
+			icon: getSpaceIcon(space),
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label));
+
+	const groups: ISpaceOptionGroup[] = [];
+
+	if (rooms.length > 0) {
+		groups.push({
+			type: SpaceType.ROOM,
+			label: t('scenes.form.spaceGroups.rooms'),
+			icon: 'mdi:door',
+			options: rooms,
+		});
+	}
+
+	if (zones.length > 0) {
+		groups.push({
+			type: SpaceType.ZONE,
+			label: t('scenes.form.spaceGroups.zones'),
+			icon: 'mdi:map-marker-radius',
+			options: zones,
+		});
+	}
+
+	return groups;
+});
+
+const getSelectedSpaceIcon = (): string => {
+	for (const group of spacesOptionsGrouped.value) {
+		const found = group.options.find((o) => o.value === form.primarySpaceId);
+		if (found) {
+			return found.icon;
+		}
+	}
+	return 'mdi:map-marker';
+};
+
 const rules: FormRules = {
-	spaceId: [{ required: true, message: t('scenes.form.roomRequired'), trigger: 'change' }],
 	name: [{ required: true, message: t('scenes.form.nameRequired'), trigger: 'blur' }],
 	category: [{ required: true, message: t('scenes.form.categoryRequired'), trigger: 'change' }],
 };
 
-const actionRules = {
-	deviceId: [{ required: true, message: t('scenes.form.deviceRequired'), trigger: 'change' }],
-	propertyId: [{ required: true, message: t('scenes.form.propertyRequired'), trigger: 'change' }],
-	value: [{ required: true, message: t('scenes.form.valueRequired'), trigger: 'change' }],
+const onPluginSelected = (pluginType: string): void => {
+	selectedPluginType.value = pluginType;
+	editingActionIndex.value = null;
+	showActionForm.value = true;
 };
 
-const getChannelsForDevice = (deviceId: string): IChannel[] => {
-	return channels.value.filter((channel) => channel.device === deviceId);
-};
-
-const getWritablePropertiesForChannel = (channelId: string): IChannelProperty[] => {
-	return properties.value.filter(
-		(prop) =>
-			prop.channel === channelId &&
-			(prop.permissions.includes(DevicesModuleChannelPropertyPermissions.rw) ||
-				prop.permissions.includes(DevicesModuleChannelPropertyPermissions.wo))
-	);
-};
-
-const getProperty = (propertyId: string): IChannelProperty | undefined => {
-	return properties.value.find((p) => p.id === propertyId);
-};
-
-const getPropertyDataType = (propertyId: string): string => {
-	const prop = getProperty(propertyId);
-	if (!prop) return 'string';
-
-	const dt = prop.dataType?.toLowerCase();
-	if (dt === 'bool' || dt === 'boolean') return 'boolean';
-	if (['int', 'uint', 'float', 'short', 'ushort', 'char', 'uchar'].includes(dt || '')) return 'number';
-	return 'string';
-};
-
-const getPropertyFormat = (propertyId: string): (string | number)[] | null => {
-	const prop = getProperty(propertyId);
-	const format = prop?.format;
-	if (!format || !Array.isArray(format)) return null;
-	return format.filter((f): f is string | number => f !== null);
-};
-
-const getPropertyMin = (propertyId: string): number | undefined => {
-	const prop = getProperty(propertyId);
-	const format = prop?.format;
-	if (format && Array.isArray(format) && format.length >= 2) {
-		const min = format[0];
-		return typeof min === 'number' ? min : undefined;
-	}
-	return undefined;
-};
-
-const getPropertyMax = (propertyId: string): number | undefined => {
-	const prop = getProperty(propertyId);
-	const format = prop?.format;
-	if (format && Array.isArray(format) && format.length >= 2) {
-		const max = format[1];
-		return typeof max === 'number' ? max : undefined;
-	}
-	return undefined;
-};
-
-const getPropertyStep = (propertyId: string): number => {
-	const prop = getProperty(propertyId);
-	return prop?.step || 1;
-};
-
-const onDeviceChange = (index: number): void => {
-	form.actions[index].channelId = '';
-	form.actions[index].propertyId = '';
-	form.actions[index].value = '';
-
-	// Fetch channels for the selected device
-	const deviceId = form.actions[index].deviceId;
-	if (deviceId) {
-		fetchChannels();
-	}
-};
-
-const onChannelChange = async (index: number): Promise<void> => {
-	form.actions[index].propertyId = '';
-	form.actions[index].value = '';
-
-	// Fetch properties for the selected channel
-	const channelId = form.actions[index].channelId;
-	if (channelId) {
-		await fetchPropertiesForChannel(channelId);
-	}
-};
-
-const onPropertyChange = (index: number): void => {
-	// Reset value when property changes
-	const propertyId = form.actions[index].propertyId;
-	const dataType = getPropertyDataType(propertyId);
-
-	if (dataType === 'boolean') {
-		form.actions[index].value = false;
-	} else if (dataType === 'number') {
-		// Use property minimum if defined, otherwise default to 0
-		const min = getPropertyMin(propertyId);
-		form.actions[index].value = min ?? 0;
+const onActionFormSubmit = (data: ISceneActionAddForm & { type: string }): void => {
+	if (editingActionIndex.value !== null) {
+		// Editing existing action
+		form.actions[editingActionIndex.value] = {
+			...data,
+			type: selectedPluginType.value!,
+		};
 	} else {
-		form.actions[index].value = '';
+		// Adding new action
+		form.actions.push({
+			...data,
+			type: selectedPluginType.value!,
+		});
 	}
+
+	showActionForm.value = false;
+	selectedPluginType.value = null;
+	editingActionIndex.value = null;
 };
 
-const addAction = (): void => {
-	form.actions.push({
-		deviceId: '',
-		channelId: '',
-		propertyId: '',
-		value: '',
-	});
+const onActionFormCancel = (): void => {
+	showActionForm.value = false;
+	selectedPluginType.value = null;
+	editingActionIndex.value = null;
 };
 
 const removeAction = (index: number): void => {
 	form.actions.splice(index, 1);
 };
 
+const getPluginLabel = (type: string): string => {
+	const option = actionPluginOptions.value.find((o) => o.value === type);
+	return option?.label ?? type;
+};
+
 const onClose = (): void => {
-	isOpen.value = false;
-	router.push({ name: RouteNames.SCENES });
+	if (isLGDevice.value) {
+		router.replace({ name: RouteNames.SCENES });
+	} else {
+		router.push({ name: RouteNames.SCENES });
+	}
 };
 
 const validateActions = (): boolean => {
@@ -384,32 +497,7 @@ const validateActions = (): boolean => {
 		return false;
 	}
 
-	for (let i = 0; i < form.actions.length; i++) {
-		const action = form.actions[i];
-		const actionNum = i + 1;
-
-		if (!action.deviceId) {
-			ElMessage.error(t('scenes.form.actionDeviceRequired', { number: actionNum }));
-			return false;
-		}
-
-		if (!action.channelId) {
-			ElMessage.error(t('scenes.form.actionChannelRequired', { number: actionNum }));
-			return false;
-		}
-
-		if (!action.propertyId) {
-			ElMessage.error(t('scenes.form.actionPropertyRequired', { number: actionNum }));
-			return false;
-		}
-
-		// Check value is set (handle boolean false as valid)
-		if (action.value === '' || action.value === undefined || action.value === null) {
-			ElMessage.error(t('scenes.form.actionValueRequired', { number: actionNum }));
-			return false;
-		}
-	}
-
+	// Actions are validated by their respective plugin forms
 	return true;
 };
 
@@ -434,21 +522,20 @@ const onSave = async (): Promise<void> => {
 			id: uuid(),
 			draft: false,
 			data: {
-				type: LOCAL_SCENE_TYPE,
-				spaceId: form.spaceId,
+				primarySpaceId: form.primarySpaceId,
 				category: form.category,
 				name: form.name,
 				description: form.description || null,
 				enabled: true,
 				actions: form.actions.map((action, index) => ({
-					id: uuid(),
-					type: LOCAL_SCENE_TYPE,
+					id: action.id ?? uuid(),
+					type: action.type,
 					deviceId: action.deviceId,
 					channelId: action.channelId || null,
 					propertyId: action.propertyId,
 					value: action.value,
 					order: index,
-					enabled: true,
+					enabled: action.enabled ?? true,
 				})),
 			},
 		});
@@ -463,36 +550,17 @@ const onSave = async (): Promise<void> => {
 };
 
 onMounted(async () => {
-	isOpen.value = true;
-	await Promise.all([fetchSpaces(), fetchDevices(), fetchChannels()]);
+	await fetchSpaces();
 });
 </script>
 
 <style scoped>
-.scene-form {
-	padding: 0 20px;
-}
-
-.empty-actions {
-	margin: 20px 0;
-}
-
-.action-card {
-	background: var(--el-fill-color-light);
-	border-radius: 8px;
-	padding: 16px;
-	margin-bottom: 16px;
-}
-
-.action-header {
+.empty-actions-state {
 	display: flex;
-	justify-content: space-between;
+	flex-direction: column;
 	align-items: center;
-	margin-bottom: 12px;
-}
-
-.action-number {
-	font-weight: 600;
-	color: var(--el-color-primary);
+	justify-content: center;
+	padding: 24px 16px;
+	text-align: center;
 }
 </style>

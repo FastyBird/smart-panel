@@ -4,12 +4,24 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
-import { SCENES_MODULE_NAME, type IScenePluginsComponents, type IScenePluginsSchemas } from '../../modules/scenes';
+import {
+	SCENES_MODULE_NAME,
+	type ISceneActionPluginsComponents,
+	type ISceneActionPluginsSchemas,
+	type IScenePluginsComponents,
+	type IScenePluginsSchemas,
+} from '../../modules/scenes';
 
-import { SCENES_LOCAL_PLUGIN_NAME, SCENES_LOCAL_TYPE } from './scenes-local.constants';
+import LocalSceneActionAddForm from './components/local-scene-action-add-form.vue';
+import LocalSceneActionEditForm from './components/local-scene-action-edit-form.vue';
 import enUS from './locales/en-US.json';
+import { LocalSceneActionAddFormSchema, LocalSceneActionEditFormSchema } from './schemas/actions.schemas';
+import { SCENES_LOCAL_PLUGIN_NAME, SCENES_LOCAL_TYPE } from './scenes-local.constants';
 
-export const scenesLocalPluginKey: PluginInjectionKey<IPlugin<IScenePluginsComponents, IScenePluginsSchemas>> =
+type IScenesLocalPluginsComponents = IScenePluginsComponents & ISceneActionPluginsComponents;
+type IScenesLocalPluginsSchemas = IScenePluginsSchemas & ISceneActionPluginsSchemas;
+
+export const scenesLocalPluginKey: PluginInjectionKey<IPlugin<IScenesLocalPluginsComponents, IScenesLocalPluginsSchemas>> =
 	Symbol('FB-Plugin-ScenesLocal');
 
 export default {
@@ -25,7 +37,7 @@ export default {
 
 		pluginsManager.addPlugin(scenesLocalPluginKey, {
 			type: SCENES_LOCAL_PLUGIN_NAME,
-			source: 'com.fastybird.smart-panel.plugin.scenes-local',
+			source: 'com.fastybird.smart-panel.plugin.scenes-local-plugin',
 			name: 'Local Scenes',
 			description: 'Execute scenes locally by controlling device properties',
 			links: {
@@ -36,11 +48,14 @@ export default {
 			elements: [
 				{
 					type: SCENES_LOCAL_TYPE,
+					name: 'Device property action',
 					components: {
-						// Uses default scene add/edit forms from the scenes module
+						sceneActionAddForm: LocalSceneActionAddForm,
+						sceneActionEditForm: LocalSceneActionEditForm,
 					},
 					schemas: {
-						// Uses default scene schemas from the scenes module
+						sceneActionAddFormSchema: LocalSceneActionAddFormSchema,
+						sceneActionEditFormSchema: LocalSceneActionEditFormSchema,
 					},
 				},
 			],

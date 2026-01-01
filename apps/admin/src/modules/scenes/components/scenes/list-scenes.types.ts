@@ -9,7 +9,7 @@ export interface IListScenesProps {
 	filtersActive: boolean;
 	paginateSize: number;
 	paginatePage: number;
-	sortBy: 'name' | 'category' | 'displayOrder' | undefined;
+	sortBy: 'name' | 'category' | 'order' | undefined;
 	sortDir: 'asc' | 'desc' | null;
 	loading: boolean;
 	triggering: IScene['id'][];

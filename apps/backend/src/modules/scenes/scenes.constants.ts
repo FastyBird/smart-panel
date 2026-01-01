@@ -1,4 +1,4 @@
-export const SCENES_MODULE_PREFIX = 'scenes-module';
+export const SCENES_MODULE_PREFIX = 'scenes';
 
 export const SCENES_MODULE_NAME = 'scenes-module';
 
@@ -25,13 +25,17 @@ export enum SceneCategory {
 	GENERIC = 'generic',
 	LIGHTING = 'lighting',
 	CLIMATE = 'climate',
-	SECURITY = 'security',
-	ENTERTAINMENT = 'entertainment',
+	MEDIA = 'media',
+	WORK = 'work',
+	RELAX = 'relax',
+	NIGHT = 'night',
 	MORNING = 'morning',
-	EVENING = 'evening',
+	PARTY = 'party',
+	MOVIE = 'movie',
 	AWAY = 'away',
 	HOME = 'home',
-	SLEEP = 'sleep',
+	SECURITY = 'security',
+	ENERGY = 'energy',
 	CUSTOM = 'custom',
 }
 
