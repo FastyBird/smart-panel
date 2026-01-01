@@ -169,11 +169,15 @@ const {
 	reassignDisplay,
 } = useSpaceDisplays(computed(() => props.spaceId));
 
-// Get available displays (not assigned to current space)
+// Get available displays (not assigned to current space, and only 'room' role displays)
 const availableDisplays = computed(() => {
 	return allDisplays.value
 		.filter((display) => {
-			// Show all displays that are not in the current space
+			// Only show displays with 'room' role - master/entry displays shouldn't be assigned to rooms
+			if (display.role !== 'room') {
+				return false;
+			}
+			// Show displays that are not in the current space
 			return display.roomId !== props.spaceId;
 		})
 		.sort((a, b) => {

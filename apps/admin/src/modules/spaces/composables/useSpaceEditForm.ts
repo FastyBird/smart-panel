@@ -1,4 +1,4 @@
-import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
+import { type ComputedRef, type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
@@ -13,12 +13,18 @@ import { SpaceEditFormSchema } from './schemas';
 import type { ISpaceEditForm, IUseSpaceEditForm } from './types';
 
 interface IUseSpaceEditFormProps {
-	space: ISpace;
+	space: ISpace | ComputedRef<ISpace>;
 }
 
 export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>({
-	space,
+	space: spaceProp,
 }: IUseSpaceEditFormProps): IUseSpaceEditForm<TForm> => {
+	// Resolve the space - can be a value or a computed ref
+	const getSpace = (): ISpace => {
+		return 'value' in spaceProp ? spaceProp.value : spaceProp;
+	};
+
+	const space = getSpace();
 	const storesManager = injectStoresManager();
 	const spacesStore = storesManager.getStore(spacesStoreKey);
 
@@ -114,8 +120,9 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 	});
 
 	// Watch for space prop changes to update model
+	// Use getSpace() to reactively access the space from computed ref or track changes
 	watch(
-		() => space,
+		() => getSpace(),
 		(newSpace) => {
 			if (newSpace) {
 				model.id = newSpace.id as TForm['id'];
@@ -131,6 +138,7 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 				model.suggestionsEnabled = newSpace.suggestionsEnabled as TForm['suggestionsEnabled'];
 
 				initialModel = deepClone<Reactive<TForm>>(toRaw(model));
+				formChanged.value = false;
 			}
 		},
 		{ deep: true }

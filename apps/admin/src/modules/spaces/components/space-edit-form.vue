@@ -351,14 +351,14 @@ const { t } = useI18n();
 const backend = useBackend();
 const { zoneSpaces, findById } = useSpaces();
 
-// Use the form composable
+// Use the form composable - pass space as computed to enable reactivity when prop changes
 const {
 	model,
 	formEl,
 	formChanged,
 	submit,
 	formResult,
-} = useSpaceEditForm({ space: props.space });
+} = useSpaceEditForm({ space: computed(() => props.space) });
 
 // Local ref for template, synced with composable's formEl
 const formRef = ref<FormInstance>();
