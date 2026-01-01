@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SpaceCategory, SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store/spaces.store.types';

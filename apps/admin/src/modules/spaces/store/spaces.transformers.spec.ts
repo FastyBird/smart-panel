@@ -1,7 +1,11 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
 
-import { SpacesModuleCreateSpaceCategory, SpacesModuleCreateSpaceType } from '../../../openapi';
+import {
+	SpacesModuleCreateSpaceCategory,
+	SpacesModuleCreateSpaceType,
+	SpacesModuleDataSpaceCategory,
+} from '../../../openapi';
 import { SpaceCategory, SpaceType } from '../spaces.constants';
 
 import type { ISpaceCreateData, ISpaceEditData } from './spaces.store.types';
@@ -32,7 +36,7 @@ const validRoomResponse: ApiSpace = {
 	name: 'Living Room',
 	description: 'Main living area',
 	type: SpacesModuleCreateSpaceType.room,
-	category: SpacesModuleCreateSpaceCategory.living_room,
+	category: SpacesModuleDataSpaceCategory.living_room,
 	icon: 'mdi:sofa',
 	display_order: 1,
 	parent_id: parentId.toString(),
@@ -48,7 +52,7 @@ const validZoneResponse: ApiSpace = {
 	name: 'Ground Floor',
 	description: 'First level of the house',
 	type: SpacesModuleCreateSpaceType.zone,
-	category: SpacesModuleCreateSpaceCategory.floor_ground,
+	category: SpacesModuleDataSpaceCategory.floor_ground,
 	icon: 'mdi:home-floor-0',
 	display_order: 0,
 	parent_id: null,
@@ -116,18 +120,18 @@ describe('Spaces Transformers', (): void => {
 		});
 
 		it('should handle null optional fields', (): void => {
-			const responseWithNulls: ApiSpace = {
+			const responseWithNulls = {
 				...validRoomResponse,
 				description: null,
-				category: null,
+				category: undefined,
 				icon: null,
-				display_order: null,
+				display_order: undefined,
 				parent_id: null,
 				primary_thermostat_id: null,
 				primary_temperature_sensor_id: null,
-				suggestions_enabled: null,
+				suggestions_enabled: undefined,
 				updated_at: null,
-			};
+			} as unknown as ApiSpace;
 
 			const result = transformSpaceResponse(responseWithNulls);
 
@@ -230,7 +234,8 @@ describe('Spaces Transformers', (): void => {
 
 			const result = transformSpaceEditRequest(payloadWithNullParent);
 
-			expect(result.parent_id).toBeNull();
+			expect(result).toBeDefined();
+			expect(result!.parent_id).toBeNull();
 		});
 
 		it('should include null for primaryThermostatId when explicitly set', (): void => {
@@ -241,7 +246,8 @@ describe('Spaces Transformers', (): void => {
 
 			const result = transformSpaceEditRequest(payloadWithNullThermostat);
 
-			expect(result.primary_thermostat_id).toBeNull();
+			expect(result).toBeDefined();
+			expect(result!.primary_thermostat_id).toBeNull();
 		});
 
 		it('should include null for primaryTemperatureSensorId when explicitly set', (): void => {
@@ -252,7 +258,8 @@ describe('Spaces Transformers', (): void => {
 
 			const result = transformSpaceEditRequest(payloadWithNullSensor);
 
-			expect(result.primary_temperature_sensor_id).toBeNull();
+			expect(result).toBeDefined();
+			expect(result!.primary_temperature_sensor_id).toBeNull();
 		});
 
 		it('should not include parent_id when not in data', (): void => {
@@ -262,7 +269,8 @@ describe('Spaces Transformers', (): void => {
 
 			const result = transformSpaceEditRequest(payloadWithoutParent);
 
-			expect('parent_id' in result).toBe(false);
+			expect(result).toBeDefined();
+			expect('parent_id' in result!).toBe(false);
 		});
 
 		it('should handle category being set to null', (): void => {
@@ -273,7 +281,8 @@ describe('Spaces Transformers', (): void => {
 
 			const result = transformSpaceEditRequest(payloadWithNullCategory);
 
-			expect(result.category).toBeNull();
+			expect(result).toBeDefined();
+			expect(result!.category).toBeNull();
 		});
 	});
 });
