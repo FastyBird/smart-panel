@@ -299,6 +299,7 @@ watch(
 		if (!val && location.value === null) {
 			throw new WeatherException('Location not found');
 		}
-	}
+	},
+	{ immediate: true }
 );
 </script>
