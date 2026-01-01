@@ -24,16 +24,7 @@ export const useLocations = (): IUseWeatherLocations => {
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
-		if (semaphore.value.fetching.items) {
-			return true;
-		}
-
-		if (firstLoad.value) {
-			return false;
-		}
-
-		// First load not complete yet, show loading state
-		return true;
+		return semaphore.value.fetching.items || !firstLoad.value;
 	});
 
 	const loaded = computed<boolean>((): boolean => {

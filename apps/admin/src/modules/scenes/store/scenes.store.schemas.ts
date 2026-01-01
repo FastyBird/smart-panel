@@ -185,6 +185,10 @@ export const ScenesTriggerActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
+// Note: These schemas are for local scene actions (type: "local") which use flat fields.
+// Other scene plugins may use the `configuration` object instead.
+// The backend type mapper routes to the correct DTO based on the `type` field.
+
 export const SceneActionCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),

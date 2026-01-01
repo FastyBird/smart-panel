@@ -111,15 +111,7 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
-		if (semaphore.value.fetching.items) {
-			return true;
-		}
-
-		if (firstLoad.value) {
-			return false;
-		}
-
-		return semaphore.value.fetching.items;
+		return semaphore.value.fetching.items || !firstLoad.value;
 	});
 
 	const loaded = computed<boolean>((): boolean => {

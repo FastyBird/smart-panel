@@ -379,22 +379,33 @@ const onClose = (): void => {
 };
 
 const validateActions = (): boolean => {
+	if (form.actions.length === 0) {
+		ElMessage.error(t('scenes.form.actionsRequired'));
+		return false;
+	}
+
 	for (let i = 0; i < form.actions.length; i++) {
 		const action = form.actions[i];
+		const actionNum = i + 1;
 
 		if (!action.deviceId) {
-			ElMessage.error(t('scenes.form.deviceRequired'));
+			ElMessage.error(t('scenes.form.actionDeviceRequired', { number: actionNum }));
+			return false;
+		}
+
+		if (!action.channelId) {
+			ElMessage.error(t('scenes.form.actionChannelRequired', { number: actionNum }));
 			return false;
 		}
 
 		if (!action.propertyId) {
-			ElMessage.error(t('scenes.form.propertyRequired'));
+			ElMessage.error(t('scenes.form.actionPropertyRequired', { number: actionNum }));
 			return false;
 		}
 
 		// Check value is set (handle boolean false as valid)
 		if (action.value === '' || action.value === undefined || action.value === null) {
-			ElMessage.error(t('scenes.form.valueRequired'));
+			ElMessage.error(t('scenes.form.actionValueRequired', { number: actionNum }));
 			return false;
 		}
 	}
