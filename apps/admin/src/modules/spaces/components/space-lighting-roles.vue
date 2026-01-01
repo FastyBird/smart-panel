@@ -66,11 +66,22 @@
 			</div>
 		</template>
 
-		<el-empty
-			v-else
-			:description="t('spacesModule.fields.spaces.lightingRoles.noLights')"
-			:image-size="60"
-		/>
+		<el-result v-else>
+			<template #icon>
+				<icon-with-child :size="80">
+					<template #primary>
+						<icon icon="mdi:lightbulb" />
+					</template>
+					<template #secondary>
+						<icon icon="mdi:information" />
+					</template>
+				</icon-with-child>
+			</template>
+
+			<template #title>
+				{{ t('spacesModule.fields.spaces.lightingRoles.noLights') }}
+			</template>
+		</el-result>
 	</div>
 </template>
 
@@ -78,10 +89,10 @@
 import { computed, onMounted, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElAlert, ElButton, ElDivider, ElEmpty, ElOption, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElOption, ElResult, ElSelect, ElTable, ElTableColumn, ElTag } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { useBackend, useFlashMessage } from '../../../common';
+import { IconWithChild, useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { LightingRole, SPACES_MODULE_PREFIX } from '../spaces.constants';
 import type { ISpace } from '../store';
