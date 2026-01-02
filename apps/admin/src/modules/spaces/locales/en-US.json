@@ -388,6 +388,32 @@
 			"noAvailable": "No displays available to add",
 			"removed": "Display \"{name}\" was removed from this space.",
 			"removeCanceled": "Display removal was canceled."
+		},
+		"scenes": {
+			"title": "Scenes",
+			"add": "Add scene",
+			"empty": "No scenes assigned to this space",
+			"loading": "Loading scenes...",
+			"name": "Scene name",
+			"category": "Category",
+			"status": "Status",
+			"enabled": "Enabled",
+			"disabled": "Disabled",
+			"remove": "Remove",
+			"removeHeading": "Remove scene from space",
+			"reassign": "Reassign",
+			"reassigned": "Scene \"{name}\" was reassigned successfully.",
+			"assign": "Assign",
+			"selectScene": "Select scene to add",
+			"selectSpace": "Select space for scene",
+			"searchPlaceholder": "Search scenes...",
+			"confirmRemove": "Remove scene \"{name}\" from this space?",
+			"assignedSpace": "Assigned space",
+			"noAvailable": "No scenes available to add",
+			"noFilteredScenes": "No scenes match your search",
+			"assigned": "Scene \"{name}\" was assigned to this space.",
+			"removed": "Scene \"{name}\" was removed from this space.",
+			"removeCanceled": "Scene removal was canceled."
 		}
 	},
 	"messages": {
