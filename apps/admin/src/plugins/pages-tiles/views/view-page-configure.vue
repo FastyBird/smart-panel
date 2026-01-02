@@ -109,7 +109,7 @@
 			<template v-if="showDrawer">
 				<view-error>
 					<template #icon>
-						<icon icon="mdi:power-plug" />
+						<icon icon="mdi:devices" />
 					</template>
 					<template #message>
 						{{ t('pagesTilesPlugin.messages.misc.requestError') }}

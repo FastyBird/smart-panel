@@ -31,7 +31,7 @@
 						<template #icon>
 							<icon-with-child :size="80">
 								<template #primary>
-									<icon icon="mdi:power-plug" />
+									<icon icon="mdi:devices" />
 								</template>
 								<template #secondary>
 									<icon icon="mdi:information" />
@@ -53,7 +53,7 @@
 						<template #icon>
 							<icon-with-child :size="80">
 								<template #primary>
-									<icon icon="mdi:power-plug" />
+									<icon icon="mdi:devices" />
 								</template>
 								<template #secondary>
 									<icon icon="mdi:filter-multiple" />
@@ -208,7 +208,7 @@ const filteredAvailableDevices = computed(() => {
 const getDeviceIcon = (device: IDevice): string => {
 	// Simple category-based icons
 	const categoryIcons: Record<string, string> = {
-		generic: 'mdi:power-plug',
+		generic: 'mdi:devices',
 		lighting: 'mdi:lightbulb',
 		switcher: 'mdi:toggle-switch',
 		thermostat: 'mdi:thermostat',
@@ -221,7 +221,7 @@ const getDeviceIcon = (device: IDevice): string => {
 		window_covering: 'mdi:blinds',
 	};
 
-	return categoryIcons[device.category] || 'mdi:power-plug';
+	return categoryIcons[device.category] || 'mdi:devices';
 };
 
 const getSpaceName = (spaceId: string): string => {

@@ -34,7 +34,7 @@
 				v-loading="isLoadingTokens"
 				:element-loading-text="t('displaysModule.texts.loadingDisplays')"
 				:data="tokens"
-				style="width: 100%"
+				class="w-full"
 			>
 				<template #empty>
 					<div

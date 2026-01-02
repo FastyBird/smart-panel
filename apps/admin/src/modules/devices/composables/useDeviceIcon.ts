@@ -20,7 +20,7 @@ export const useDeviceIcon = ({ id }: IUseDeviceIconProps): IUseDeviceIcon => {
 
 		switch (device?.category) {
 			default:
-				return 'mdi:power-plug';
+				return 'mdi:devices';
 		}
 	});
 

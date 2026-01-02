@@ -223,7 +223,7 @@ const isReassigning = ref(false);
 const getDeviceCategoryIcon = (category: string): string => {
 	// Simple category-based icons
 	const categoryIcons: Record<string, string> = {
-		generic: 'mdi:power-plug',
+		generic: 'mdi:devices',
 		lighting: 'mdi:lightbulb',
 		switcher: 'mdi:toggle-switch',
 		thermostat: 'mdi:thermostat',
@@ -236,7 +236,7 @@ const getDeviceCategoryIcon = (category: string): string => {
 		window_covering: 'mdi:blinds',
 	};
 
-	return categoryIcons[category] || 'mdi:power-plug';
+	return categoryIcons[category] || 'mdi:devices';
 };
 
 const openAddDialog = (): void => {

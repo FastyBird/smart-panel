@@ -1,22 +1,33 @@
 <template>
+	<!-- Empty state when no devices available -->
+	<el-result
+		v-if="!loadingDevices && devicesOptions.length === 0"
+		class="h-full w-full"
+	>
+		<template #icon>
+			<icon-with-child :size="80">
+				<template #primary>
+					<icon icon="mdi:devices" />
+				</template>
+				<template #secondary>
+					<icon icon="mdi:information" />
+				</template>
+			</icon-with-child>
+		</template>
+
+		<template #title>
+			{{ t('scenesLocalPlugin.messages.noDevices') }}
+		</template>
+	</el-result>
+
 	<el-form
+		v-else
 		ref="formEl"
 		:model="model"
 		:rules="rules"
 		label-position="top"
 		status-icon
 	>
-		<!-- Empty state when no devices available -->
-		<el-alert
-			v-if="!loadingDevices && devicesOptions.length === 0"
-			type="info"
-			:closable="false"
-			show-icon
-			style="margin-bottom: 16px"
-		>
-			{{ t('scenesLocalPlugin.messages.noDevices') }}
-		</el-alert>
-
 		<template v-if="hasRecommendedCategories">
 			<el-alert
 				v-if="!showAllDevices"
@@ -63,7 +74,7 @@
 				:loading="loadingDevices"
 				:disabled="devicesOptions.length === 0"
 				filterable
-				style="width: 100%"
+				class="w-full"
 				@change="onDeviceChange"
 			>
 				<template v-if="!showAllDevices && hasRecommendedCategories && recommendedDevicesOptions.length > 0">
@@ -121,7 +132,7 @@
 				:loading="loadingChannels"
 				:disabled="!model.deviceId || channelsOptions.length === 0"
 				filterable
-				style="width: 100%"
+				class="w-full"
 				@change="onChannelChange"
 			>
 				<el-option
@@ -144,7 +155,7 @@
 				:loading="loadingProperties"
 				:disabled="!model.channelId || propertiesOptions.length === 0"
 				filterable
-				style="width: 100%"
+				class="w-full"
 				@change="onPropertyChange"
 			>
 				<el-option
@@ -168,7 +179,7 @@
 					v-model="model.value"
 					:placeholder="t('scenesLocalPlugin.fields.value.placeholder')"
 					name="value"
-					style="width: 100%"
+					class="w-full"
 				>
 					<el-option
 						v-for="item in enumOptions"
@@ -186,7 +197,7 @@
 					:min="numberMin"
 					:max="numberMax"
 					:step="numberStep"
-					style="width: 100%"
+					class="w-full"
 				/>
 			</template>
 			<template v-else>
@@ -213,6 +224,7 @@ import {
 	ElInputNumber,
 	ElOption,
 	ElOptionGroup,
+	ElResult,
 	ElSelect,
 	ElSwitch,
 	type FormInstance,
@@ -222,6 +234,9 @@ import {
 import { orderBy } from 'natural-orderby';
 import { v4 as uuid } from 'uuid';
 
+import { Icon } from '@iconify/vue';
+
+import { IconWithChild } from '../../../common';
 import {
 	DevicesException,
 	type IChannel,

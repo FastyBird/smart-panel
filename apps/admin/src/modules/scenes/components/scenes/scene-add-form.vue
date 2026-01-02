@@ -37,7 +37,7 @@
 
 					<!-- Category -->
 					<el-form-item :label="t('scenes.form.category')" prop="category">
-						<el-select v-model="model.category" style="width: 100%">
+						<el-select v-model="model.category" class="w-full">
 							<template #prefix>
 								<icon
 									v-if="model.category"
@@ -67,7 +67,7 @@
 							:loading="loadingSpaces"
 							clearable
 							filterable
-							style="width: 100%"
+							class="w-full"
 						>
 							<template #prefix>
 								<icon v-if="model.primarySpaceId" :icon="getSelectedSpaceIcon()" class="text-lg" />
@@ -167,8 +167,8 @@
 					</el-card>
 
 					<!-- Add Action Dropdown -->
-					<el-dropdown trigger="click" style="width: 100%" @command="onPluginSelected">
-						<el-button type="primary" plain style="width: 100%">
+					<el-dropdown trigger="click" class="w-full" @command="onPluginSelected">
+						<el-button type="primary" plain class="w-full">
 							<template #icon>
 								<icon icon="mdi:plus" />
 							</template>
@@ -251,7 +251,7 @@
 			@submit="onEditActionFormSubmit"
 		/>
 		<template #footer>
-			<el-button plain @click="onEditActionFormCancel">
+			<el-button link class="mr-2" @click="onEditActionFormCancel">
 				{{ t('scenes.buttons.close.title') }}
 			</el-button>
 			<el-button type="primary" @click="editActionFormSubmit = true">

@@ -109,7 +109,7 @@
 				name="roomId"
 				clearable
 				filterable
-				style="width: 100%"
+				class="w-full"
 			>
 				<el-option
 					v-for="room in availableRooms"

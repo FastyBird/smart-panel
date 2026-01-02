@@ -7,7 +7,7 @@
 	>
 		<template #icon>
 			<icon
-				icon="mdi:power-plug"
+				icon="mdi:devices"
 				class="w[20px] h[20px]"
 			/>
 		</template>
@@ -50,7 +50,7 @@
 	<view-header
 		:heading="t('devicesModule.headings.devices.list')"
 		:sub-heading="t('devicesModule.subHeadings.devices.list')"
-		icon="mdi:power-plug"
+		icon="mdi:devices"
 	>
 		<template #extra>
 			<div class="flex items-center">
@@ -137,7 +137,7 @@
 
 				<view-error v-else>
 					<template #icon>
-						<icon icon="mdi:power-plug" />
+						<icon icon="mdi:devices" />
 					</template>
 					<template #message>
 						{{ t('devicesModule.messages.misc.requestError') }}

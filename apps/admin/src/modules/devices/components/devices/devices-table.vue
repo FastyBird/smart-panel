@@ -25,7 +25,7 @@
 					<template #icon>
 						<icon-with-child :size="80">
 							<template #primary>
-								<icon icon="mdi:power-plug" />
+								<icon icon="mdi:devices" />
 							</template>
 							<template #secondary>
 								<icon icon="mdi:database-refresh" />
@@ -43,7 +43,7 @@
 					<template #icon>
 						<icon-with-child :size="80">
 							<template #primary>
-								<icon icon="mdi:power-plug" />
+								<icon icon="mdi:devices" />
 							</template>
 							<template #secondary>
 								<icon icon="mdi:information" />
@@ -65,7 +65,7 @@
 					<template #icon>
 						<icon-with-child :size="80">
 							<template #primary>
-								<icon icon="mdi:power-plug" />
+								<icon icon="mdi:devices" />
 							</template>
 							<template #secondary>
 								<icon icon="mdi:filter-multiple" />

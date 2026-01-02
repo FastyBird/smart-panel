@@ -494,7 +494,7 @@
 									<template #icon>
 										<icon-with-child :size="80">
 											<template #primary>
-												<icon icon="mdi:power-plug" />
+												<icon icon="mdi:devices" />
 											</template>
 											<template #secondary>
 												<icon icon="mdi:information" />

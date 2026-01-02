@@ -53,7 +53,7 @@
 		>
 			<template #icon>
 				<el-icon :size="20">
-					<icon icon="mdi:power-plug" />
+					<icon icon="mdi:devices" />
 				</el-icon>
 			</template>
 

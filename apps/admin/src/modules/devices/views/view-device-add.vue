@@ -2,7 +2,7 @@
 	<app-bar-heading teleport>
 		<template #icon>
 			<icon
-				icon="mdi:power-plug"
+				icon="mdi:devices"
 				class="w[20px] h[20px]"
 			/>
 		</template>
