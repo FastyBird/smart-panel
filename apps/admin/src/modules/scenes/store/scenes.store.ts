@@ -3,8 +3,8 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { MODULES_PREFIX } from '../../../app.constants';
-import { useBackend, useLogger } from '../../../common';
-import { SCENES_MODULE_PREFIX } from '../scenes.constants';
+import { useBackend, useLogger, useSockets } from '../../../common';
+import { CommandHandlerName, CommandType, SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
 
 import { useScenesActionsStore } from './scenes.actions.store';
@@ -53,6 +53,7 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 	const backend = useBackend();
 	const actionsStore = useScenesActionsStore();
 	const logger = useLogger();
+	const { sendCommand } = useSockets();
 
 	const semaphore = ref<IScenesStateSemaphore>(createDefaultSemaphore());
 
@@ -482,20 +483,16 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 		semaphore.value.triggering.push(payload.id);
 
 		try {
-			const response = await backend.client.POST(`/${MODULES_PREFIX}/${SCENES_MODULE_PREFIX}/scenes/{id}/trigger` as never, {
-				params: { path: { id: payload.id } },
-				body: {
-					data: {
-						source: payload.source,
-						context: payload.context,
-					},
+			const result = await sendCommand(
+				CommandType.TRIGGER_SCENE,
+				{
+					sceneId: payload.id,
 				},
-			} as never);
+				CommandHandlerName.TRIGGER_SCENE
+			);
 
-			const responseData = (response as { data?: { data: ISceneExecutionResult } }).data;
-
-			if (typeof responseData === 'undefined') {
-				throw new ScenesApiException('Received unexpected response.');
+			if (result !== true) {
+				throw new ScenesApiException(typeof result === 'string' ? result : 'Failed to trigger scene.');
 			}
 
 			// Update lastTriggeredAt
@@ -507,7 +504,20 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 				},
 			});
 
-			return responseData.data;
+			const actions = actionsStore.findForScene(payload.id);
+
+			return {
+				scene_id: payload.id,
+				status: 'completed',
+				triggered_at: new Date().toISOString(),
+				completed_at: new Date().toISOString(),
+				triggered_by: payload.source || 'websocket',
+				total_actions: actions.length,
+				successful_actions: actions.length,
+				failed_actions: 0,
+				action_results: [],
+				error: null,
+			};
 		} catch (e) {
 			throw new ScenesApiException('Failed to trigger scene.', null, e as Error);
 		} finally {

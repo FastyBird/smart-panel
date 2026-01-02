@@ -4,6 +4,14 @@ export const SCENES_MODULE_NAME = 'scenes-module';
 
 export const SCENES_MODULE_EVENT_PREFIX = 'ScenesModule.';
 
+export enum CommandType {
+	TRIGGER_SCENE = 'ScenesModule.TriggerScene',
+}
+
+export enum CommandHandlerName {
+	TRIGGER_SCENE = 'ScenesModule.TriggerSceneHandler',
+}
+
 export enum EventType {
 	SCENE_CREATED = 'ScenesModule.Scene.Created',
 	SCENE_UPDATED = 'ScenesModule.Scene.Updated',
