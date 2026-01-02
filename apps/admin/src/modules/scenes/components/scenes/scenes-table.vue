@@ -107,7 +107,7 @@
 			align="center"
 		>
 			<template #default="scope">
-				<icon :icon="getCategoryIcon(scope.row.category)" class="text-xl text-primary" />
+				<scenes-table-column-icon :scene="scope.row" />
 			</template>
 		</el-table-column>
 
@@ -143,14 +143,14 @@
 		>
 			<template #default="scope">
 				<el-link
-					:type="innerFilters.primarySpaceId === scope.row.primarySpaceId ? 'danger' : undefined"
+					:type="isSpaceFilterActive(scope.row.primarySpaceId) ? 'danger' : undefined"
 					underline="never"
 					class="font-400!"
 					@click.stop="onFilterBySpace(scope.row.primarySpaceId)"
 				>
 					<el-icon class="el-icon--left">
 						<icon
-							v-if="innerFilters.primarySpaceId === scope.row.primarySpaceId"
+							v-if="isSpaceFilterActive(scope.row.primarySpaceId)"
 							icon="mdi:filter-minus"
 						/>
 						<icon
@@ -180,15 +180,47 @@
 		<el-table-column
 			:label="t('scenes.fields.enabled')"
 			prop="enabled"
-			:width="100"
-			align="center"
+			:width="110"
 		>
 			<template #default="scope">
-				<icon
-					:icon="scope.row.enabled ? 'mdi:check-circle' : 'mdi:close-circle'"
-					:class="scope.row.enabled ? 'text-success' : 'text-danger'"
-					class="text-xl"
-				/>
+				<el-link
+					:type="innerFilters.enabled === (scope.row.enabled ? 'enabled' : 'disabled') ? 'danger' : undefined"
+					underline="never"
+					class="font-400!"
+					@click.stop="onFilterByEnabled(scope.row.enabled)"
+				>
+					<el-icon class="el-icon--left">
+						<icon
+							v-if="innerFilters.enabled === (scope.row.enabled ? 'enabled' : 'disabled')"
+							icon="mdi:filter-minus"
+						/>
+						<icon
+							v-else
+							icon="mdi:filter-plus"
+						/>
+					</el-icon>
+
+					{{
+						scope.row.enabled
+							? t('scenes.filters.enabled.values.enabled')
+							: t('scenes.filters.enabled.values.disabled')
+					}}
+				</el-link>
+			</template>
+		</el-table-column>
+
+		<el-table-column
+			:label="t('scenes.fields.lastTriggered')"
+			prop="lastTriggeredAt"
+			:width="160"
+		>
+			<template #default="scope">
+				<el-text v-if="scope.row.lastTriggeredAt" size="small">
+					{{ formatDate(scope.row.lastTriggeredAt) }}
+				</el-text>
+				<el-text v-else size="small" type="info">
+					{{ t('scenes.fields.neverTriggered') }}
+				</el-text>
 			</template>
 		</el-table-column>
 
@@ -250,10 +282,11 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
-import { SceneCategory, SCENE_CATEGORY_ICONS } from '../../scenes.constants';
+import { SceneCategory } from '../../scenes.constants';
 import type { IScenesFilter } from '../../composables/types';
 import type { IScene } from '../../store/scenes.store.types';
 
+import ScenesTableColumnIcon from './scenes-table-column-icon.vue';
 import type { IScenesTableProps } from './scenes-table.types';
 
 defineOptions({
@@ -286,10 +319,6 @@ const innerFilters = useVModel(props, 'filters', emit);
 
 const tableHeight = computed<number>(() => props.tableHeight);
 
-const getCategoryIcon = (category: SceneCategory): string => {
-	return SCENE_CATEGORY_ICONS[category] || 'mdi:play-circle';
-};
-
 const getCategoryType = (category: SceneCategory): 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined => {
 	const typeMap: Record<SceneCategory, 'success' | 'warning' | 'info' | 'primary' | 'danger' | undefined> = {
 		[SceneCategory.GENERIC]: undefined,
@@ -311,9 +340,19 @@ const getCategoryType = (category: SceneCategory): 'success' | 'warning' | 'info
 	return typeMap[category];
 };
 
-const getSpaceName = (primarySpaceId: string): string => {
+const getSpaceName = (primarySpaceId: string | null | undefined): string => {
+	if (!primarySpaceId) {
+		return t('scenes.fields.wholeHome');
+	}
 	const space = spaces.value.find((s) => s.id === primarySpaceId);
-	return space?.name || t('scenes.fields.unknownSpace');
+	return space?.name || t('scenes.fields.wholeHome');
+};
+
+const formatDate = (date: Date): string => {
+	return new Intl.DateTimeFormat(undefined, {
+		dateStyle: 'medium',
+		timeStyle: 'short',
+	}).format(date);
 };
 
 const onSortData = ({
@@ -337,11 +376,26 @@ const onRowClick = (row: IScene): void => {
 	}
 };
 
-const onFilterBySpace = (primarySpaceId: string): void => {
-	if (innerFilters.value.primarySpaceId === primarySpaceId) {
+const isSpaceFilterActive = (primarySpaceId: string | null | undefined): boolean => {
+	const spaceFilter = primarySpaceId || 'whole_home';
+	return innerFilters.value.primarySpaceId === spaceFilter;
+};
+
+const onFilterBySpace = (primarySpaceId: string | null | undefined): void => {
+	const spaceFilter = primarySpaceId || 'whole_home';
+	if (innerFilters.value.primarySpaceId === spaceFilter) {
 		innerFilters.value.primarySpaceId = undefined;
 	} else {
-		innerFilters.value.primarySpaceId = primarySpaceId;
+		innerFilters.value.primarySpaceId = spaceFilter;
+	}
+};
+
+const onFilterByEnabled = (enabled: boolean): void => {
+	const enabledValue = enabled ? 'enabled' : 'disabled';
+	if (innerFilters.value.enabled === enabledValue) {
+		innerFilters.value.enabled = 'all';
+	} else {
+		innerFilters.value.enabled = enabledValue;
 	}
 };
 </script>

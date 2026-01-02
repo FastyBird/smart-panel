@@ -28,41 +28,53 @@ defineOptions({
 
 const props = defineProps<ISceneActionCardProps>();
 
+// Extract values from root level (camelCase) with fallback to configuration (snake_case) for backwards compatibility
+const deviceId = computed(
+	() => (props.action.deviceId as string | undefined) ?? (props.action.configuration?.device_id as string) ?? ''
+);
+const channelId = computed(
+	() => (props.action.channelId as string | undefined) ?? (props.action.configuration?.channel_id as string | null) ?? null
+);
+const propertyId = computed(
+	() => (props.action.propertyId as string | undefined) ?? (props.action.configuration?.property_id as string) ?? ''
+);
+const value = computed(() => props.action.value ?? props.action.configuration?.value);
+
 const { devices, fetchDevices, loaded: devicesLoaded } = useDevices();
 const { channels, fetchChannels } = useChannels({
-	deviceId: computed(() => props.action.deviceId ?? ''),
+	deviceId,
 });
 const { properties, fetchProperties } = useChannelsProperties({
-	channelId: computed(() => props.action.channelId ?? undefined),
+	channelId: computed(() => channelId.value ?? undefined),
 });
 
 const deviceName = computed<string>(() => {
-	const device = devices.value.find((d) => d.id === props.action.deviceId);
+	const device = devices.value.find((d) => d.id === deviceId.value);
 	return device?.name ?? 'Unknown device';
 });
 
 const channelName = computed<string>(() => {
-	const channel = channels.value.find((c) => c.id === props.action.channelId);
+	const channel = channels.value.find((c) => c.id === channelId.value);
 	return channel?.name ?? 'Unknown channel';
 });
 
 const propertyName = computed<string>(() => {
-	const property = properties.value.find((p) => p.id === props.action.propertyId);
+	const property = properties.value.find((p) => p.id === propertyId.value);
 	return property?.name ?? property?.identifier ?? 'Unknown property';
 });
 
 const formattedValue = computed<string>(() => {
-	const value = props.action.value;
-	if (typeof value === 'boolean') {
-		return value ? 'ON' : 'OFF';
+	const v = value.value;
+	if (typeof v === 'boolean') {
+		return v ? 'ON' : 'OFF';
 	}
-	return String(value);
+	return String(v ?? '');
 });
 
 const valueTagType = computed<'success' | 'danger' | 'info'>(() => {
-	const value = props.action.value;
-	if (typeof value === 'boolean') {
-		return value ? 'success' : 'danger';
+	const v = value.value;
+	if (typeof v === 'boolean') {
+		return v ? 'success' : 'danger';
 	}
 	return 'info';
 });
@@ -72,11 +84,11 @@ onBeforeMount(async (): Promise<void> => {
 		await fetchDevices();
 	}
 
-	if (props.action.deviceId) {
+	if (deviceId.value) {
 		await fetchChannels();
 	}
 
-	if (props.action.channelId) {
+	if (channelId.value) {
 		await fetchProperties();
 	}
 });

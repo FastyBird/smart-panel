@@ -26,6 +26,16 @@ export class CreateSceneActionDto {
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
 
+	@ApiPropertyOptional({
+		description: 'Scene ID this action belongs to (set internally)',
+		type: 'string',
+		format: 'uuid',
+	})
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"scene","reason":"Scene must be a valid UUID (version 4)."}]' })
+	scene?: string;
+
 	@ApiProperty({ description: 'Action type (plugin identifier)', type: 'string', example: 'local' })
 	@Expose()
 	@IsNotEmpty({

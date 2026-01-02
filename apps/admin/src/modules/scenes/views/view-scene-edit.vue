@@ -21,7 +21,7 @@
 		:align="AppBarButtonAlign.LEFT"
 		teleport
 		small
-		@click="onClose"
+		@click="formChanged ? onDiscard() : onClose()"
 	>
 		<template #icon>
 			<el-icon :size="24">
@@ -37,12 +37,12 @@
 		small
 		@click="remoteFormSubmit = true"
 	>
-		<span class="uppercase">{{ t('scenes.buttons.save') }}</span>
+		<span class="uppercase">{{ t('scenes.buttons.save.title') }}</span>
 	</app-bar-button>
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<!-- Loading State -->
-		<div v-if="isLoading" class="flex items-center justify-center h-full">
+		<div v-if="isLoading || !sceneReady" class="flex items-center justify-center h-full">
 			<el-icon class="is-loading" :size="32">
 				<icon icon="mdi:loading" />
 			</el-icon>
@@ -55,7 +55,7 @@
 			</el-icon>
 			<div class="text-gray-500">{{ t('scenes.messages.notFound') }}</div>
 			<el-button type="primary" @click="onClose">
-				{{ t('scenes.buttons.backToList') }}
+				{{ t('scenes.buttons.backToList.title') }}
 			</el-button>
 		</div>
 
@@ -63,12 +63,11 @@
 		<template v-else>
 			<el-scrollbar class="grow-1 p-2 md:px-4">
 				<scene-edit-form
+					:key="scene.id"
 					:scene="scene"
-					:remote-form-submit="remoteFormSubmit"
-					:remote-form-result="remoteFormResult"
-					@update:remote-form-submit="remoteFormSubmit = $event"
-					@update:remote-form-result="onFormResult"
-					@update:remote-form-changed="remoteFormChanged = $event"
+					v-model:remote-form-submit="remoteFormSubmit"
+					v-model:remote-form-result="remoteFormResult"
+					v-model:remote-form-changed="formChanged"
 				/>
 			</el-scrollbar>
 
@@ -78,12 +77,30 @@
 				style="background-color: var(--el-drawer-bg-color)"
 			>
 				<div class="p-2">
-					<el-button link class="mr-2" @click="onClose">
-						{{ t('scenes.buttons.cancel') }}
+					<el-button
+						v-if="formChanged"
+						link
+						class="mr-2"
+						@click="onDiscard"
+					>
+						{{ t('scenes.buttons.discard.title') }}
+					</el-button>
+					<el-button
+						v-if="!formChanged"
+						link
+						class="mr-2"
+						@click="onClose"
+					>
+						{{ t('scenes.buttons.close.title') }}
 					</el-button>
 
-					<el-button :loading="saving" type="primary" @click="remoteFormSubmit = true">
-						{{ t('scenes.buttons.save') }}
+					<el-button
+						:loading="remoteFormResult === FormResult.WORKING"
+						:disabled="remoteFormResult === FormResult.WORKING || !formChanged"
+						type="primary"
+						@click="remoteFormSubmit = true"
+					>
+						{{ t('scenes.buttons.save.title') }}
 					</el-button>
 				</div>
 			</div>
@@ -92,11 +109,11 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, ref } from 'vue';
+import { onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElScrollbar } from 'element-plus';
+import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
@@ -106,6 +123,7 @@ import { FormResult, type FormResultType, RouteNames } from '../scenes.constants
 
 interface IViewSceneEditProps {
 	id: string;
+	remoteFormChanged?: boolean;
 }
 
 defineOptions({
@@ -114,7 +132,7 @@ defineOptions({
 
 const props = defineProps<IViewSceneEditProps>();
 
-defineEmits<{
+const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
 
@@ -125,22 +143,29 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { scene, isLoading, fetchScene } = useScene({ id: props.id });
 
+// Track if we've finished loading the full scene for editing
+const sceneReady = ref<boolean>(false);
+
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
-const remoteFormChanged = ref<boolean>(false);
-const saving = ref<boolean>(false);
+const formChanged = ref<boolean>(props.remoteFormChanged ?? false);
 
-const onFormResult = (result: FormResultType): void => {
-	remoteFormResult.value = result;
-
-	if (result === FormResult.WORKING) {
-		saving.value = true;
-	} else if (result === FormResult.OK) {
-		saving.value = false;
-		onClose();
-	} else if (result === FormResult.ERROR) {
-		saving.value = false;
-	}
+const onDiscard = (): void => {
+	ElMessageBox.confirm(t('scenes.texts.confirmDiscard'), t('scenes.headings.discard'), {
+		confirmButtonText: t('scenes.buttons.yes.title'),
+		cancelButtonText: t('scenes.buttons.no.title'),
+		type: 'warning',
+	})
+		.then((): void => {
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.SCENES });
+			} else {
+				router.push({ name: RouteNames.SCENES });
+			}
+		})
+		.catch((): void => {
+			// Just ignore it
+		});
 };
 
 const onClose = (): void => {
@@ -151,7 +176,38 @@ const onClose = (): void => {
 	}
 };
 
+watch(
+	(): FormResultType => remoteFormResult.value,
+	(val: FormResultType): void => {
+		if (val === FormResult.OK) {
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.SCENES });
+			} else {
+				router.push({ name: RouteNames.SCENES });
+			}
+		}
+	}
+);
+
+watch(
+	(): boolean => props.remoteFormChanged,
+	(val: boolean): void => {
+		if (val !== undefined) {
+			formChanged.value = val;
+		}
+	},
+	{ immediate: true }
+);
+
+watch(
+	(): boolean => formChanged.value,
+	(val: boolean): void => {
+		emit('update:remote-form-changed', val);
+	}
+);
+
 onBeforeMount(async () => {
 	await fetchScene();
+	sceneReady.value = true;
 });
 </script>

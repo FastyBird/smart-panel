@@ -12,7 +12,9 @@ import type {
 } from './scenes.store.types';
 
 export const transformSceneResponse = <T extends IScene = IScene>(response: ISceneRes, schema: typeof SceneSchema): T => {
-	const parsed = schema.safeParse(snakeToCamel(response));
+	const camelCaseResponse = snakeToCamel(response);
+
+	const parsed = schema.safeParse(camelCaseResponse);
 
 	if (!parsed.success) {
 		logger.error('Schema validation failed with:', parsed.error);

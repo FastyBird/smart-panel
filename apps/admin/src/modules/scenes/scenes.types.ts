@@ -3,20 +3,16 @@ eslint-disable @typescript-eslint/no-empty-object-type
 */
 import type { ComponentOptionsMixin, DefineComponent } from 'vue';
 
+import type { ZodTypeAny } from 'zod';
+
 import type { ISceneActionAddFormProps, sceneActionAddFormEmits } from './components/actions/scene-action-add-form.types';
 import type { ISceneActionCardProps } from './components/actions/scene-action-card.types';
 import type { ISceneActionEditFormProps, sceneActionEditFormEmits } from './components/actions/scene-action-edit-form.types';
 import type { ISceneAddFormProps, sceneAddFormEmits } from './components/scenes/scene-add-form.types';
 import type { ISceneEditFormProps, sceneEditFormEmits } from './components/scenes/scene-edit-form.types';
-import type { SceneActionAddFormSchema, SceneActionEditFormSchema, SceneAddFormSchema, SceneEditFormSchema } from './schemas/scenes.schemas';
-import type {
-	SceneActionCreateReqSchema,
-	SceneActionSchema,
-	SceneActionUpdateReqSchema,
-	SceneCreateReqSchema,
-	SceneSchema,
-	SceneUpdateReqSchema,
-} from './store/scenes.store.schemas';
+import type { SceneAddFormSchema, SceneEditFormSchema } from './schemas/scenes.schemas';
+import type { SceneActionSchema } from './store/scenes.actions.store.schemas';
+import type { SceneCreateReqSchema, SceneSchema, SceneUpdateReqSchema } from './store/scenes.store.schemas';
 
 export type IScenePluginsComponents = {
 	sceneAddForm?: DefineComponent<ISceneAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof sceneAddFormEmits>;
@@ -57,8 +53,9 @@ export type ISceneActionPluginsComponents = {
 
 export type ISceneActionPluginsSchemas = {
 	sceneActionSchema?: typeof SceneActionSchema;
-	sceneActionAddFormSchema?: typeof SceneActionAddFormSchema;
-	sceneActionEditFormSchema?: typeof SceneActionEditFormSchema;
-	sceneActionCreateReqSchema?: typeof SceneActionCreateReqSchema;
-	sceneActionUpdateReqSchema?: typeof SceneActionUpdateReqSchema;
+	// Plugin form schemas can have their own internal structure
+	sceneActionAddFormSchema?: ZodTypeAny;
+	sceneActionEditFormSchema?: ZodTypeAny;
+	sceneActionCreateReqSchema?: ZodTypeAny;
+	sceneActionUpdateReqSchema?: ZodTypeAny;
 };

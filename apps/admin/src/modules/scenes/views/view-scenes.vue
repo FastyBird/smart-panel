@@ -258,8 +258,8 @@ const onCloseDrawer = (done?: () => void): void => {
 	} else {
 		if (remoteFormChanged.value) {
 			ElMessageBox.confirm(t('scenes.texts.confirmDiscard'), t('scenes.headings.discard'), {
-				confirmButtonText: t('scenes.buttons.yes'),
-				cancelButtonText: t('scenes.buttons.no'),
+			confirmButtonText: t('scenes.buttons.yes.title'),
+			cancelButtonText: t('scenes.buttons.no.title'),
 				type: 'warning',
 			})
 				.then((): void => {
@@ -321,8 +321,8 @@ const onSceneRemove = async (id: IScene['id']): Promise<void> => {
 
 	try {
 		await ElMessageBox.confirm(t('scenes.messages.confirmDelete', { name: scene.name }), t('scenes.headings.delete'), {
-			confirmButtonText: t('scenes.buttons.delete'),
-			cancelButtonText: t('scenes.buttons.cancel'),
+		confirmButtonText: t('scenes.buttons.delete.title'),
+		cancelButtonText: t('scenes.buttons.cancel.title'),
 			type: 'warning',
 		});
 

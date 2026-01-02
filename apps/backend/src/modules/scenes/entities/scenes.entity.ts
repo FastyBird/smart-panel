@@ -1,4 +1,4 @@
-import { Expose, Transform, Type } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
@@ -144,7 +144,6 @@ export class SceneEntity extends BaseEntity {
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => SceneActionEntity)
 	@OneToMany(() => SceneActionEntity, (action) => action.scene, { cascade: true, onDelete: 'CASCADE' })
 	actions: SceneActionEntity[];
 }

@@ -75,6 +75,19 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
 
+	const matchSpaceFilter = (scenePrimarySpaceId: string | null, filterSpaceId: string | undefined): boolean => {
+		// No filter set - match all
+		if (!filterSpaceId) {
+			return true;
+		}
+		// "whole_home" filter - match scenes with no space assigned
+		if (filterSpaceId === 'whole_home') {
+			return !scenePrimarySpaceId;
+		}
+		// Match specific space
+		return scenePrimarySpaceId === filterSpaceId;
+	};
+
 	const scenes = computed<IScene[]>((): IScene[] => {
 		const filtered = scenesStore
 			.findAll()
@@ -86,7 +99,7 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 						scene.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
 						scene.description?.toLowerCase().includes(filters.value.search.toLowerCase())) &&
 					(filters.value.categories.length === 0 || filters.value.categories.includes(scene.category)) &&
-					(!filters.value.primarySpaceId || scene.primarySpaceId === filters.value.primarySpaceId) &&
+					matchSpaceFilter(scene.primarySpaceId, filters.value.primarySpaceId) &&
 					(filters.value.enabled === 'all' ||
 						(filters.value.enabled === 'enabled' && scene.enabled) ||
 						(filters.value.enabled === 'disabled' && !scene.enabled))

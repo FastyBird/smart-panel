@@ -85,6 +85,41 @@
 						</el-select>
 					</div>
 				</el-collapse-item>
+
+				<el-collapse-item
+					name="spaces"
+					:class="[ns.e('filter-item')]"
+				>
+					<template #title>
+						<el-text class="!px-2">
+							{{ t('scenes.filters.space.title') }}
+						</el-text>
+					</template>
+					<div class="px-2">
+						<el-select
+							v-model="innerFilters.primarySpaceId"
+							:placeholder="t('scenes.filters.space.placeholder')"
+							name="spaces"
+							filterable
+							clearable
+						>
+							<el-option
+								v-for="space in spacesOptions"
+								:key="space.value"
+								:label="space.label"
+								:value="space.value"
+							>
+								<div class="flex items-center gap-2">
+									<icon
+										:icon="space.icon"
+										class="text-lg"
+									/>
+									<span>{{ space.label }}</span>
+								</div>
+							</el-option>
+						</el-select>
+					</div>
+				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
 
@@ -104,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -124,6 +159,8 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
+import { useSpaces } from '../../../spaces/composables';
+import { SpaceType } from '../../../spaces/spaces.constants';
 import type { IScenesFilter } from '../../composables/types';
 import { SCENE_CATEGORY_ICONS, SceneCategory } from '../../scenes.constants';
 
@@ -145,7 +182,31 @@ const { t } = useI18n();
 
 const categories: string[] = Object.values(SceneCategory);
 
-const activeBoxes = ref<string[]>(['enabled', 'categories']);
+const { spaces } = useSpaces();
+
+const spacesOptions = computed(() => {
+	const options: { value: string; label: string; icon: string }[] = [
+		{
+			value: 'whole_home',
+			label: t('scenes.fields.wholeHome'),
+			icon: 'mdi:home',
+		},
+	];
+
+	// Add rooms
+	const rooms = spaces.value.filter((s) => s.type === SpaceType.ROOM);
+	rooms.forEach((room) => {
+		options.push({
+			value: room.id,
+			label: room.name,
+			icon: 'mdi:door',
+		});
+	});
+
+	return options;
+});
+
+const activeBoxes = ref<string[]>(['enabled', 'categories', 'spaces']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>

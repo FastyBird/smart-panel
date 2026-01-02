@@ -98,7 +98,6 @@ import type { IViewPagePluginProps } from './view-page-plugin.types';
 
 defineOptions({
 	name: 'ViewPagePlugin',
-	inheritAttrs: false,
 });
 
 const props = defineProps<IViewPagePluginProps>();

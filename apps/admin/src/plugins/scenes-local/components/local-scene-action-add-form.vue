@@ -149,6 +149,7 @@ import {
 } from '../../../modules/devices';
 import { DevicesModuleChannelPropertyDataType, DevicesModuleChannelPropertyPermissions } from '../../../openapi.constants';
 import type { ISceneActionAddFormProps } from '../../../modules/scenes/components/actions/scene-action-add-form.types';
+import type { ISceneActionAddForm } from '../../../modules/scenes/schemas/scenes.types';
 import { FormResult, type FormResultType } from '../../../modules/scenes/scenes.constants';
 import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
 import type { ILocalSceneActionAddForm } from '../schemas/actions.types';
@@ -168,7 +169,7 @@ const emit = defineEmits<{
 	(e: 'update:remote-form-result', remoteFormResult: FormResultType): void;
 	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
-	(e: 'submit', data: ILocalSceneActionAddForm): void;
+	(e: 'submit', data: ISceneActionAddForm & { type: string }): void;
 }>();
 
 const { t } = useI18n();
@@ -386,7 +387,18 @@ const submit = async (): Promise<void> => {
 		throw new Error('Form not valid');
 	}
 
-	emit('submit', { ...model });
+	// Emit with plugin-specific fields at root level (using camelCase for form model)
+	emit('submit', {
+		id: model.id,
+		type: model.type,
+		configuration: {},
+		deviceId: model.deviceId,
+		channelId: model.channelId,
+		propertyId: model.propertyId,
+		value: model.value,
+		order: model.order,
+		enabled: model.enabled,
+	});
 	formResult.value = FormResult.OK;
 };
 

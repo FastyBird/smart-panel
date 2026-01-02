@@ -225,10 +225,12 @@ export class ScenesService {
 			throw new ScenesValidationException('Provided scene data are invalid.');
 		}
 
-		const filteredUpdate = omitBy(dtoInstance, isUndefined);
+		// Convert DTO to entity format (snake_case to camelCase) and filter undefined values
+		const entityUpdate = toInstance(SceneEntity, dtoInstance);
+		const filteredUpdate = omitBy(entityUpdate, isUndefined);
 
 		// Apply updates to existing scene
-		const mergedScene = this.repository.merge(existingScene, filteredUpdate as any);
+		const mergedScene = this.repository.merge(existingScene, filteredUpdate as Partial<SceneEntity>);
 		mergedScene.updatedAt = new Date();
 
 		const savedScene = await this.repository.save(mergedScene);

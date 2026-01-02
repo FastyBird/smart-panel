@@ -7,6 +7,9 @@ import { useBackend, useLogger } from '../../../common';
 import { SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
 
+import { useScenesActionsStore } from './scenes.actions.store';
+import type { ISceneActionRes } from './scenes.actions.store.types';
+import { transformSceneActionResponse } from './scenes.actions.transformers';
 import {
 	SceneCreateReqSchema,
 	SceneSchema,
@@ -48,6 +51,7 @@ const createDefaultSemaphore = (): IScenesStateSemaphore => ({
 
 export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSetup>('scenes_module-scenes', (): ScenesStoreSetup => {
 	const backend = useBackend();
+	const actionsStore = useScenesActionsStore();
 	const logger = useLogger();
 
 	const semaphore = ref<IScenesStateSemaphore>(createDefaultSemaphore());
@@ -138,12 +142,30 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 					throw new ScenesApiException('Received unexpected response.');
 				}
 
-				const transformed = transformSceneResponse(responseData.data, SceneSchema);
+				const sceneData = responseData.data;
+				const transformed = transformSceneResponse(sceneData, SceneSchema);
 
-				return set({
+				const scene = set({
 					id: transformed.id,
 					data: transformed,
 				});
+
+				// Store actions in the actions store
+				if (sceneData.actions && Array.isArray(sceneData.actions)) {
+					for (const actionData of sceneData.actions as ISceneActionRes[]) {
+						try {
+							const transformedAction = transformSceneActionResponse(actionData);
+							actionsStore.set({
+								id: transformedAction.id,
+								data: transformedAction,
+							});
+						} catch (e) {
+							logger.error('Failed to transform scene action:', e);
+						}
+					}
+				}
+
+				return scene;
 			} catch (e) {
 				if (existingRecord) {
 					return existingRecord;
@@ -198,6 +220,21 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 					});
 
 					scenes.push(transformed);
+
+					// Store actions in the actions store
+					if (sceneData.actions && Array.isArray(sceneData.actions)) {
+						for (const actionData of sceneData.actions as ISceneActionRes[]) {
+							try {
+								const transformedAction = transformSceneActionResponse(actionData);
+								actionsStore.set({
+									id: transformedAction.id,
+									data: transformedAction,
+								});
+							} catch (e) {
+								logger.error('Failed to transform scene action:', e);
+							}
+						}
+					}
 				}
 
 				firstLoad.value = true;

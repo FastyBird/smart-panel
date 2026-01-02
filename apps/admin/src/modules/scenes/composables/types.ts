@@ -65,8 +65,10 @@ export interface IUseSceneAddForm<TForm extends ISceneAddForm = ISceneAddForm> {
 	actionPluginOptions: ComputedRef<IActionPluginOption[]>;
 	addAction: (action: ISceneActionAddForm & { type: string }) => void;
 	removeAction: (index: number) => void;
+	updateAction: (index: number, action: ISceneActionAddForm & { type: string }) => void;
 	getActionCardComponent: (type: string) => Component | null;
 	getActionFormComponent: (type: string) => Component | null;
+	getActionEditFormComponent: (type: string) => Component | null;
 	getPluginLabel: (type: string) => string;
 }
 
@@ -85,8 +87,10 @@ export interface IUseSceneEditForm<TForm extends ISceneEditForm = ISceneEditForm
 	actionPluginOptions: ComputedRef<IActionPluginOption[]>;
 	addAction: (action: ISceneActionAddForm & { type: string }) => void;
 	removeAction: (index: number) => void;
+	updateAction: (index: number, action: ISceneActionAddForm & { type: string }) => void;
 	getActionCardComponent: (type: string) => Component | null;
 	getActionFormComponent: (type: string) => Component | null;
+	getActionEditFormComponent: (type: string) => Component | null;
 	getPluginLabel: (type: string) => string;
 }
 

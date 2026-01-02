@@ -28,6 +28,10 @@
 			"category": {
 				"title": "Category",
 				"placeholder": "Select categories"
+			},
+			"space": {
+				"title": "Space",
+				"placeholder": "All spaces"
 			}
 		},
 		"fields": {
@@ -37,6 +41,9 @@
 			"enabled": "Enabled",
 			"actions": "Actions",
 			"unknownSpace": "Unknown Space",
+			"wholeHome": "Whole home",
+			"lastTriggered": "Last Triggered",
+			"neverTriggered": "Never",
 			"search": {
 				"placeholder": "Search scenes..."
 			}
@@ -97,18 +104,37 @@
 			"valuePlaceholder": "Enter value",
 			"valueRequired": "Value is required",
 			"actionValueRequired": "Action {number}: Value is required",
-			"addAction": "Add action"
+			"addAction": "Add action",
+			"editAction": "Edit action"
 		},
 		"buttons": {
 			"add": {
 				"title": "Add scene"
 			},
-			"delete": "Delete",
-			"cancel": "Cancel",
-			"save": "Save",
-			"yes": "Yes",
-			"no": "No",
-			"backToList": "Back to list",
+			"delete": {
+				"title": "Delete"
+			},
+			"cancel": {
+				"title": "Cancel"
+			},
+			"save": {
+				"title": "Save"
+			},
+			"yes": {
+				"title": "Yes"
+			},
+			"no": {
+				"title": "No"
+			},
+			"close": {
+				"title": "Close"
+			},
+			"discard": {
+				"title": "Discard"
+			},
+			"backToList": {
+				"title": "Back to list"
+			},
 			"resetFilters": {
 				"title": "Reset filters"
 			}

@@ -2,27 +2,25 @@ import { z } from 'zod';
 
 import { SceneCategory } from '../scenes.constants';
 
-export const SceneActionAddFormSchema = z.object({
-	id: z.string().uuid().optional(),
-	type: z.string().trim().nonempty(),
-	deviceId: z.string().uuid(),
-	channelId: z.string().uuid().nullable().optional(),
-	propertyId: z.string().uuid(),
-	value: z.union([z.string(), z.number(), z.boolean()]),
-	order: z.number().int().min(0).optional(),
-	enabled: z.boolean().default(true),
-});
+export const SceneActionAddFormSchema = z
+	.object({
+		id: z.string().uuid().optional(),
+		type: z.string().trim().nonempty(),
+		configuration: z.record(z.unknown()).default({}),
+		order: z.number().int().min(0).optional(),
+		enabled: z.boolean().default(true),
+	})
+	.passthrough();
 
-export const SceneActionEditFormSchema = z.object({
-	id: z.string().uuid(),
-	type: z.string().trim().nonempty(),
-	deviceId: z.string().uuid().optional(),
-	channelId: z.string().uuid().nullable().optional(),
-	propertyId: z.string().uuid().optional(),
-	value: z.union([z.string(), z.number(), z.boolean()]).optional(),
-	order: z.number().int().min(0).optional(),
-	enabled: z.boolean().optional(),
-});
+export const SceneActionEditFormSchema = z
+	.object({
+		id: z.string().uuid(),
+		type: z.string().trim().nonempty(),
+		configuration: z.record(z.unknown()).optional(),
+		order: z.number().int().min(0).optional(),
+		enabled: z.boolean().optional(),
+	})
+	.passthrough();
 
 export const SceneAddFormSchema = z.object({
 	id: z.string().uuid().optional(),

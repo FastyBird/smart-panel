@@ -37,7 +37,7 @@
 		small
 		@click="remoteFormSubmit = true"
 	>
-		<span class="uppercase">{{ t('scenes.buttons.save') }}</span>
+		<span class="uppercase">{{ t('scenes.buttons.save.title') }}</span>
 	</app-bar-button>
 
 	<div class="flex flex-col overflow-hidden h-full">
@@ -59,11 +59,11 @@
 		>
 			<div class="p-2">
 				<el-button link class="mr-2" @click="onClose">
-					{{ t('scenes.buttons.cancel') }}
+					{{ t('scenes.buttons.cancel.title') }}
 				</el-button>
 
 				<el-button :loading="saving" type="primary" @click="remoteFormSubmit = true">
-					{{ t('scenes.buttons.save') }}
+					{{ t('scenes.buttons.save.title') }}
 				</el-button>
 			</div>
 		</div>
@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -89,9 +89,16 @@ defineOptions({
 	name: 'ViewSceneAdd',
 });
 
-defineProps<IViewSceneAddProps>();
+const props = withDefaults(
+	defineProps<{
+		remoteFormChanged?: boolean;
+	}>(),
+	{
+		remoteFormChanged: false,
+	}
+);
 
-defineEmits<{
+const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
 
@@ -103,7 +110,7 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 const sceneId = ref<string>(uuid());
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
-const remoteFormChanged = ref<boolean>(false);
+const remoteFormChanged = ref<boolean>(props.remoteFormChanged);
 const saving = ref<boolean>(false);
 
 const onFormResult = (result: FormResultType): void => {
@@ -126,4 +133,19 @@ const onClose = (): void => {
 		router.push({ name: RouteNames.SCENES });
 	}
 };
+
+watch(
+	(): boolean => props.remoteFormChanged,
+	(val: boolean): void => {
+		remoteFormChanged.value = val;
+	},
+	{ immediate: true }
+);
+
+watch(
+	(): boolean => remoteFormChanged.value,
+	(val: boolean): void => {
+		emit('update:remote-form-changed', val);
+	}
+);
 </script>

@@ -3,33 +3,11 @@ import { z } from 'zod';
 
 import { SceneCategory } from '../scenes.constants';
 
+import { SceneActionResSchema } from './scenes.actions.store.schemas';
 import { ItemIdSchema } from './types';
 
 // STORE STATE
 // ===========
-
-export const SceneActionSchema = z.object({
-	id: ItemIdSchema,
-	type: z.string().trim().nonempty(),
-	deviceId: ItemIdSchema,
-	channelId: ItemIdSchema.nullable().default(null),
-	propertyId: ItemIdSchema,
-	value: z.union([z.string(), z.number(), z.boolean()]),
-	order: z.number().int().min(0).default(0),
-	enabled: z.boolean().default(true),
-	scene: ItemIdSchema.optional(),
-	createdAt: z
-		.union([z.string().datetime({ offset: true }), z.date()])
-		.transform((date) => (date instanceof Date ? date : new Date(date)))
-		.optional()
-		.default(() => new Date()),
-	updatedAt: z
-		.union([z.string().datetime({ offset: true }), z.date()])
-		.transform((date) => (date instanceof Date ? date : new Date(date)))
-		.optional()
-		.nullable()
-		.default(null),
-});
 
 export const SceneSchema = z.object({
 	id: ItemIdSchema,
@@ -54,7 +32,6 @@ export const SceneSchema = z.object({
 		.optional()
 		.nullable()
 		.default(null),
-	actions: z.array(SceneActionSchema).default([]),
 });
 
 export const ScenesStateSemaphoreSchema = z.object({
@@ -161,45 +138,6 @@ export const ScenesTriggerActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 
-// Note: These schemas are for local scene actions (type: "local") which use flat fields.
-// Other scene plugins may use the `configuration` object instead.
-// The backend type mapper routes to the correct DTO based on the `type` field.
-
-export const SceneActionCreateReqSchema = z.object({
-	id: z.string().uuid().optional(),
-	type: z.string().trim().nonempty(),
-	device_id: z.string().uuid(),
-	channel_id: z.string().uuid().nullable().optional(),
-	property_id: z.string().uuid(),
-	value: z.union([z.string(), z.number(), z.boolean()]),
-	order: z.number().int().min(0).optional(),
-	enabled: z.boolean().optional(),
-});
-
-export const SceneActionUpdateReqSchema = z.object({
-	type: z.string().trim().nonempty(),
-	device_id: z.string().uuid().optional(),
-	channel_id: z.string().uuid().nullable().optional(),
-	property_id: z.string().uuid().optional(),
-	value: z.union([z.string(), z.number(), z.boolean()]).optional(),
-	order: z.number().int().min(0).optional(),
-	enabled: z.boolean().optional(),
-});
-
-export const SceneActionResSchema = z.object({
-	id: z.string().uuid(),
-	type: z.string(),
-	device_id: z.string().uuid(),
-	channel_id: z.string().uuid().nullable(),
-	property_id: z.string().uuid(),
-	value: z.union([z.string(), z.number(), z.boolean()]),
-	order: z.number(),
-	enabled: z.boolean(),
-	scene: z.string().uuid(),
-	created_at: z.string(),
-	updated_at: z.string().nullable(),
-});
-
 export const SceneCreateReqSchema = z.object({
 	id: z.string().uuid().optional(),
 	primary_space_id: z.string().uuid().nullable().optional(),
@@ -214,11 +152,10 @@ export const SceneCreateReqSchema = z.object({
 	order: z.number().int().min(0).optional(),
 	enabled: z.boolean().optional(),
 	triggerable: z.boolean().optional(),
-	actions: z.array(SceneActionCreateReqSchema).optional(),
 });
 
 export const SceneUpdateReqSchema = z.object({
-	primary_space_id: z.string().uuid().optional(),
+	primary_space_id: z.string().uuid().nullable().optional(),
 	category: z.nativeEnum(SceneCategory).optional(),
 	name: z.string().trim().nonempty().optional(),
 	description: z

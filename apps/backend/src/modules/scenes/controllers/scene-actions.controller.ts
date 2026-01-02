@@ -35,6 +35,7 @@ import { ReqUpdateSceneActionDto, UpdateSceneActionDto } from '../dto/update-sce
 import { SceneActionResponseModel, SceneActionsResponseModel } from '../models/scenes-response.model';
 import { SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesException } from '../scenes.exceptions';
+import { SceneActionsTypeMapperService } from '../services/scene-actions-type-mapper.service';
 import { SceneActionsService } from '../services/scene-actions.service';
 import { ScenesService } from '../services/scenes.service';
 
@@ -46,6 +47,7 @@ export class SceneActionsController {
 	constructor(
 		private readonly sceneActionsService: SceneActionsService,
 		private readonly scenesService: ScenesService,
+		private readonly typeMapper: SceneActionsTypeMapperService,
 	) {}
 
 	@ApiOperation({
@@ -137,7 +139,16 @@ export class SceneActionsController {
 
 		await this.getSceneOrThrow(sceneId);
 
-		const dtoInstance = toInstance(CreateSceneActionDto, createDto.data, {
+		// Get the plugin-specific DTO class based on action type
+		const actionType = createDto.data?.type;
+		let DtoClass: new (...args: unknown[]) => CreateSceneActionDto = CreateSceneActionDto;
+
+		if (actionType && this.typeMapper.hasMapping(actionType)) {
+			const mapping = this.typeMapper.getMapping(actionType);
+			DtoClass = mapping.createDto;
+		}
+
+		const dtoInstance = toInstance(DtoClass, createDto.data, {
 			excludeExtraneousValues: false,
 		});
 
@@ -200,7 +211,16 @@ export class SceneActionsController {
 		await this.getSceneOrThrow(sceneId);
 		await this.getActionOrThrow(id, sceneId);
 
-		const dtoInstance = toInstance(UpdateSceneActionDto, updateDto.data, {
+		// Get the plugin-specific DTO class based on action type
+		const actionType = updateDto.data?.type;
+		let DtoClass: new (...args: unknown[]) => UpdateSceneActionDto = UpdateSceneActionDto;
+
+		if (actionType && this.typeMapper.hasMapping(actionType)) {
+			const mapping = this.typeMapper.getMapping(actionType);
+			DtoClass = mapping.updateDto;
+		}
+
+		const dtoInstance = toInstance(DtoClass, updateDto.data, {
 			excludeExtraneousValues: false,
 		});
 

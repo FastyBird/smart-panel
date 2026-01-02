@@ -135,7 +135,6 @@ import type { IViewDisplayEditProps } from './view-display-edit.types';
 
 defineOptions({
 	name: 'ViewDisplayEdit',
-	inheritAttrs: false,
 });
 
 const props = defineProps<IViewDisplayEditProps>();

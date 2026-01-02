@@ -148,6 +148,7 @@ import {
 } from '../../../modules/devices';
 import { DevicesModuleChannelPropertyDataType, DevicesModuleChannelPropertyPermissions } from '../../../openapi.constants';
 import type { ISceneActionEditFormProps } from '../../../modules/scenes/components/actions/scene-action-edit-form.types';
+import type { ISceneActionEditForm } from '../../../modules/scenes/schemas/scenes.types';
 import { FormResult, type FormResultType } from '../../../modules/scenes/scenes.constants';
 import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
 import type { ILocalSceneActionEditForm } from '../schemas/actions.types';
@@ -167,7 +168,7 @@ const emit = defineEmits<{
 	(e: 'update:remote-form-result', remoteFormResult: FormResultType): void;
 	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
-	(e: 'submit', data: ILocalSceneActionEditForm): void;
+	(e: 'submit', data: ISceneActionEditForm & { type: string }): void;
 }>();
 
 const { t } = useI18n();
@@ -176,13 +177,14 @@ const formEl = ref<FormInstance | undefined>(undefined);
 const formResult = ref<FormResultType>(FormResult.NONE);
 const formChanged = ref<boolean>(false);
 
+// Read values from root level (camelCase) with fallback to configuration (snake_case) for backwards compatibility
 const model = reactive<ILocalSceneActionEditForm>({
 	id: props.action.id,
 	type: SCENES_LOCAL_TYPE,
-	deviceId: props.action.deviceId,
-	channelId: props.action.channelId,
-	propertyId: props.action.propertyId,
-	value: props.action.value,
+	deviceId: (props.action.deviceId as string | undefined) ?? (props.action.configuration?.device_id as string) ?? '',
+	channelId: (props.action.channelId as string | undefined) ?? (props.action.configuration?.channel_id as string | null) ?? null,
+	propertyId: (props.action.propertyId as string | undefined) ?? (props.action.configuration?.property_id as string) ?? '',
+	value: (props.action.value as string | number | boolean | undefined) ?? (props.action.configuration?.value as string | number | boolean) ?? '',
 	enabled: props.action.enabled,
 });
 
@@ -385,7 +387,18 @@ const submit = async (): Promise<void> => {
 		throw new Error('Form not valid');
 	}
 
-	emit('submit', { ...model });
+	// Emit with plugin-specific fields at root level (using camelCase for form model)
+	emit('submit', {
+		id: model.id,
+		type: model.type,
+		configuration: {},
+		deviceId: model.deviceId,
+		channelId: model.channelId,
+		propertyId: model.propertyId,
+		value: model.value,
+		order: model.order,
+		enabled: model.enabled,
+	});
 	formResult.value = FormResult.OK;
 };
 

@@ -123,9 +123,15 @@ import { useSpace } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
 import type { ISpace } from '../store';
 
-defineOptions({
-	inheritAttrs: false,
-});
+const props = withDefaults(
+	defineProps<{
+		id?: string;
+		remoteFormChanged?: boolean;
+	}>(),
+	{
+		remoteFormChanged: false,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
@@ -139,14 +145,14 @@ const flashMessage = useFlashMessage();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const spaceId = computed(() => route.params.id as string | undefined);
+const spaceId = computed(() => (props.id ?? route.params.id) as string | undefined);
 
 const { space, fetching, fetchSpace } = useSpace(spaceId);
 
 const isLoading = computed<boolean>(() => fetching.value);
 
 const formRef = ref<InstanceType<typeof SpaceEditForm> | null>(null);
-const remoteFormChanged = ref(false);
+const remoteFormChanged = ref(props.remoteFormChanged);
 
 // Track if space was previously loaded to detect deletion
 const wasSpaceLoaded = ref<boolean>(false);
@@ -335,6 +341,14 @@ watch(
 			// Space not found
 		}
 	}
+);
+
+watch(
+	(): boolean => props.remoteFormChanged,
+	(val: boolean): void => {
+		remoteFormChanged.value = val;
+	},
+	{ immediate: true }
 );
 
 watch(

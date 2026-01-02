@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { scenesStoreKey } from '../store/keys';
+import { scenesActionsStoreKey, scenesStoreKey } from '../store/keys';
 import type { IScene } from '../store/scenes.store.types';
 
 import type { IUseScene } from './types';
@@ -16,6 +16,7 @@ export const useScene = ({ id }: IUseSceneProps): IUseScene => {
 	const storesManager = injectStoresManager();
 
 	const scenesStore = storesManager.getStore(scenesStoreKey);
+	const actionsStore = storesManager.getStore(scenesActionsStoreKey);
 
 	const { data, semaphore } = storeToRefs(scenesStore);
 
@@ -35,6 +36,8 @@ export const useScene = ({ id }: IUseSceneProps): IUseScene => {
 		}
 
 		await scenesStore.get({ id });
+		// Also fetch actions for this scene
+		await actionsStore.fetch({ sceneId: id });
 	};
 
 	const isLoading = computed<boolean>((): boolean => {

@@ -120,6 +120,12 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 		(model as ISceneAddForm).actions.splice(index, 1);
 	};
 
+	const updateAction = (index: number, action: ISceneActionAddForm & { type: string }): void => {
+		if (index >= 0 && index < (model as ISceneAddForm).actions.length) {
+			(model as ISceneAddForm).actions[index] = action;
+		}
+	};
+
 	const getActionCardComponent = (type: string) => {
 		const element = getElement(type);
 		return element?.components?.sceneActionCard ?? null;
@@ -128,6 +134,11 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 	const getActionFormComponent = (type: string) => {
 		const element = getElement(type);
 		return element?.components?.sceneActionAddForm ?? null;
+	};
+
+	const getActionEditFormComponent = (type: string) => {
+		const element = getElement(type);
+		return element?.components?.sceneActionEditForm ?? null;
 	};
 
 	const getPluginLabel = (type: string): string => {
@@ -214,8 +225,10 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 		actionPluginOptions,
 		addAction,
 		removeAction,
+		updateAction,
 		getActionCardComponent,
 		getActionFormComponent,
+		getActionEditFormComponent,
 		getPluginLabel,
 	};
 };

@@ -3,7 +3,6 @@ import type { Ref } from 'vue';
 import type { z } from 'zod';
 
 import type {
-	SceneActionSchema,
 	SceneCreateReqSchema,
 	SceneExecutionResSchema,
 	SceneResSchema,
@@ -22,8 +21,6 @@ import type {
 } from './scenes.store.schemas';
 
 export type IScene = z.infer<typeof SceneSchema>;
-
-export type ISceneAction = z.infer<typeof SceneActionSchema>;
 
 export type IScenesStateSemaphore = z.infer<typeof ScenesStateSemaphoreSchema>;
 

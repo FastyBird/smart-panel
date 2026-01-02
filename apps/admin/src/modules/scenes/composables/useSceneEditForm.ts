@@ -1,4 +1,4 @@
-import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
+import { onBeforeUnmount, type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
@@ -11,7 +11,8 @@ import { SceneEditFormSchema } from '../schemas/scenes.schemas';
 import type { ISceneActionAddForm, ISceneEditForm } from '../schemas/scenes.types';
 import { FormResult, type FormResultType, SCENE_CATEGORY_ICONS, SceneCategory } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
-import { scenesStoreKey } from '../store/keys';
+import { scenesActionsStoreKey, scenesStoreKey } from '../store/keys';
+import type { ISceneAction } from '../store/scenes.actions.store.types';
 import type { IScene } from '../store/scenes.store.types';
 
 import type { ISpaceOptionGroup, IUseSceneEditForm } from './types';
@@ -29,6 +30,7 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 	const storesManager = injectStoresManager();
 
 	const scenesStore = storesManager.getStore(scenesStoreKey);
+	const actionsStore = storesManager.getStore(scenesActionsStoreKey);
 
 	const { t } = useI18n();
 
@@ -38,6 +40,12 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 	const { spaces, fetching: spacesLoading, fetchSpaces } = useSpaces();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
+
+	// Get actions from the actions store
+	const sceneActions = computed(() => actionsStore.findForScene(scene.id));
+
+	// Store original actions for comparison when saving
+	const originalActions = ref<ISceneAction[]>(deepClone(sceneActions.value));
 
 	let timer: number;
 
@@ -104,17 +112,12 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		return groups;
 	});
 
-	// Convert scene actions to form format
-	const sceneActionsAsFormData = scene.actions.map((action) => ({
-		id: action.id,
-		type: action.type,
-		deviceId: action.deviceId,
-		channelId: action.channelId,
-		propertyId: action.propertyId,
-		value: action.value,
-		order: action.order,
-		enabled: action.enabled,
-	}));
+	// Convert scene actions to form format (spread all properties including plugin-specific ones)
+	const sceneActionsAsFormData = computed(() =>
+		sceneActions.value.map((action: ISceneAction) => ({
+			...action,
+		}))
+	);
 
 	const model = reactive<TForm>({
 		id: scene.id,
@@ -123,8 +126,8 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		description: scene.description,
 		enabled: scene.enabled,
 		primarySpaceId: scene.primarySpaceId,
-		actions: sceneActionsAsFormData,
-	} as TForm);
+		actions: sceneActionsAsFormData.value,
+	} as unknown as TForm);
 
 	const { options: actionPluginOptions, getElement } = useScenesActionPlugins();
 
@@ -134,6 +137,12 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 
 	const removeAction = (index: number): void => {
 		(model as ISceneEditForm).actions.splice(index, 1);
+	};
+
+	const updateAction = (index: number, action: ISceneActionAddForm & { type: string }): void => {
+		if (index >= 0 && index < (model as ISceneEditForm).actions.length) {
+			(model as ISceneEditForm).actions[index] = action;
+		}
 	};
 
 	const getActionCardComponent = (type: string) => {
@@ -146,16 +155,82 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		return element?.components?.sceneActionAddForm ?? null;
 	};
 
+	const getActionEditFormComponent = (type: string) => {
+		const element = getElement(type);
+		return element?.components?.sceneActionEditForm ?? null;
+	};
+
 	const getPluginLabel = (type: string): string => {
 		const option = actionPluginOptions.value.find((o) => o.value === type);
 		return option?.label ?? type;
 	};
 
-	let initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
-
 	const formEl = ref<FormInstance | undefined>(undefined);
 
 	const formChanged = ref<boolean>(false);
+
+	// Initialize initialModel after model is created
+	let initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
+
+	/**
+	 * Sync actions with the backend after scene update
+	 */
+	const syncActions = async (sceneId: string, currentActions: ISceneActionAddForm[]): Promise<void> => {
+		try {
+			const originalActionIds = new Set(originalActions.value.map((a: ISceneAction) => a.id));
+			const currentActionIds = new Set(currentActions.filter((a) => a.id).map((a) => a.id));
+
+			// Delete removed actions
+			for (const original of originalActions.value) {
+				if (!currentActionIds.has(original.id)) {
+					await actionsStore.remove({ id: original.id, sceneId });
+				}
+			}
+
+			// Create or update actions
+			for (let i = 0; i < currentActions.length; i++) {
+				const action = currentActions[i];
+				const actionId = action.id;
+
+				if (!actionId || !originalActionIds.has(actionId)) {
+					// New action - create it (spread all properties including plugin-specific fields)
+					await actionsStore.add({
+						sceneId,
+						data: {
+							...action,
+							order: i,
+							enabled: action.enabled ?? true,
+						},
+					});
+				} else {
+					// Existing action - check if modified
+					const original = originalActions.value.find((a: ISceneAction) => a.id === actionId);
+					if (original) {
+						// Compare relevant fields (excluding internal metadata)
+						const internalFields = new Set(['id', 'draft', 'createdAt', 'updatedAt', 'scene']);
+						const pickRelevant = (obj: Record<string, unknown>): Record<string, unknown> => {
+							return Object.fromEntries(Object.entries(obj).filter(([key]) => !internalFields.has(key)));
+						};
+						const isModified = !isEqual(pickRelevant(original), { ...pickRelevant(action), order: i });
+
+						if (isModified) {
+							await actionsStore.edit({
+								id: actionId,
+								sceneId,
+								data: {
+									...action,
+									order: i,
+								},
+							});
+						}
+					}
+				}
+			}
+		} catch (error: unknown) {
+			logger.error('Error syncing scene actions:', error);
+			throw error;
+		}
+	};
 
 	const submit = async (): Promise<'added' | 'saved'> => {
 		formResult.value = FormResult.WORKING;
@@ -169,30 +244,43 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 					? t('scenes.messages.createFailed')
 					: t('scenes.messages.editFailed', { scene: scene.name });
 
-		formEl.value!.clearValidate();
-
-		const valid = await formEl.value!.validate();
-
-		if (!valid) throw new ScenesValidationException('Form not valid');
-
-		const parsedModel = SceneEditFormSchema.safeParse(model);
-
-		if (!parsedModel.success) {
-			logger.error('Schema validation failed with:', parsedModel.error);
-
-			throw new ScenesValidationException('Failed to validate edit scene model.');
-		}
-
 		try {
+			formEl.value!.clearValidate();
+
+			const valid = await formEl.value!.validate();
+
+			if (!valid) throw new ScenesValidationException('Form not valid');
+
+			const parsedModel = SceneEditFormSchema.safeParse(model);
+
+			if (!parsedModel.success) {
+				logger.error('Schema validation failed with:', parsedModel.error);
+
+				throw new ScenesValidationException('Failed to validate edit scene model.');
+			}
+
 			await scenesStore.edit({
 				id: scene.id,
 				data: parsedModel.data,
 			});
 
 			if (scene.draft) {
-				await scenesStore.save({
+				const updatedScene = await scenesStore.save({
 					id: scene.id,
 				});
+
+				// Update model with refreshed scene data
+				model.id = updatedScene.id;
+				model.category = updatedScene.category;
+				model.name = updatedScene.name;
+				model.description = updatedScene.description;
+				model.enabled = updatedScene.enabled;
+				model.primarySpaceId = updatedScene.primarySpaceId;
+			}
+
+			// Sync actions with backend (only for non-draft scenes)
+			if (!scene.draft) {
+				await syncActions(scene.id, parsedModel.data.actions);
 			}
 		} catch (error: unknown) {
 			formResult.value = FormResult.ERROR;
@@ -201,8 +289,10 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 
 			if (error instanceof ScenesApiException && error.code === 422) {
 				flashMessage.error(error.message);
-			} else {
+			} else if (!(error instanceof ScenesValidationException)) {
+				// Only show error message for non-validation errors (validation is shown by form)
 				flashMessage.error(errorMessage);
+				logger.error('Scene edit failed:', error);
 			}
 
 			throw error;
@@ -213,9 +303,7 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		timer = window.setTimeout(clear, 2000);
 
 		if (isDraft) {
-			flashMessage.success(
-				t(messages && messages.success ? messages.success : 'scenes.messages.created')
-			);
+			flashMessage.success(t(messages && messages.success ? messages.success : 'scenes.messages.created'));
 
 			return 'added';
 		}
@@ -243,6 +331,10 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
+	onBeforeUnmount(() => {
+		clear();
+	});
+
 	return {
 		categoriesOptions,
 		spacesOptionsGrouped,
@@ -258,8 +350,10 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 		actionPluginOptions,
 		addAction,
 		removeAction,
+		updateAction,
 		getActionCardComponent,
 		getActionFormComponent,
+		getActionEditFormComponent,
 		getPluginLabel,
 	};
 };

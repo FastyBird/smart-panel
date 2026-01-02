@@ -56,10 +56,10 @@
 				<el-text>
 					<i18n-t
 						keypath="scenes.texts.actionsCount"
-						:plural="scene.actions.length"
+						:plural="actions.length"
 					>
 						<template #count>
-							<strong>{{ scene.actions.length }}</strong>
+							<strong>{{ actions.length }}</strong>
 						</template>
 					</i18n-t>
 				</el-text>
@@ -97,7 +97,7 @@
 
 	<!-- Actions Section -->
 	<el-card
-		v-if="scene.actions.length > 0"
+		v-if="actions.length > 0"
 		class="mt-4"
 		body-class="p-0!"
 		shadow="never"
@@ -112,13 +112,13 @@
 					type="info"
 					size="small"
 				>
-					{{ scene.actions.length }}
+					{{ actions.length }}
 				</el-tag>
 			</div>
 		</template>
 
 		<el-table
-			:data="scene.actions"
+			:data="actions"
 			size="small"
 			class="w-full"
 		>
@@ -137,7 +137,7 @@
 				prop="deviceId"
 			>
 				<template #default="scope">
-					{{ getDeviceName(scope.row.deviceId) }}
+					{{ getDeviceName(getConfigValue(scope.row, 'device_id')) }}
 				</template>
 			</el-table-column>
 			<el-table-column
@@ -145,7 +145,7 @@
 				prop="propertyId"
 			>
 				<template #default="scope">
-					{{ getPropertyName(scope.row.propertyId) }}
+					{{ getPropertyName(getConfigValue(scope.row, 'property_id')) }}
 				</template>
 			</el-table-column>
 			<el-table-column
@@ -155,7 +155,7 @@
 			>
 				<template #default="scope">
 					<el-tag size="small">
-						{{ formatValue(scope.row.value) }}
+						{{ formatValue(getConfigValue(scope.row, 'value')) }}
 					</el-tag>
 				</template>
 			</el-table-column>
@@ -189,6 +189,8 @@ import { useDevices } from '../../../devices/composables/composables';
 import { channelsPropertiesStoreKey } from '../../../devices/store/keys';
 import { useSpaces } from '../../../spaces/composables';
 import { SCENE_CATEGORY_ICONS, SceneCategory } from '../../scenes.constants';
+import { scenesActionsStoreKey } from '../../store/keys';
+import type { ISceneAction } from '../../store/scenes.actions.store.types';
 
 import type { ISceneDetailProps } from './scene-detail.types';
 
@@ -202,30 +204,44 @@ const { t } = useI18n();
 
 const storesManager = injectStoresManager();
 const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+const actionsStore = storesManager.getStore(scenesActionsStoreKey);
 
 const { spaces } = useSpaces();
 const { devices } = useDevices();
+
+// Get actions from the actions store
+const actions = computed(() => actionsStore.findForScene(props.scene.id));
 
 const categoryIcon = computed<string>(() => {
 	return SCENE_CATEGORY_ICONS[props.scene.category] || SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
 });
 
 const spaceName = computed<string>(() => {
+	if (!props.scene.primarySpaceId) {
+		return t('scenes.fields.wholeHome');
+	}
 	const space = spaces.value.find((s) => s.id === props.scene.primarySpaceId);
-	return space?.name || t('scenes.fields.unknownSpace');
+	return space?.name || t('scenes.fields.wholeHome');
 });
 
+const getConfigValue = (action: ISceneAction, key: string): string => {
+	return (action.configuration?.[key] as string) ?? '';
+};
+
 const getDeviceName = (deviceId: string): string => {
+	if (!deviceId) return '-';
 	const device = devices.value.find((d) => d.id === deviceId);
 	return device?.name || deviceId;
 };
 
 const getPropertyName = (propertyId: string): string => {
+	if (!propertyId) return '-';
 	const property = propertiesStore.findById(propertyId);
 	return property?.name || property?.identifier || propertyId;
 };
 
-const formatValue = (value: string | number | boolean): string => {
+const formatValue = (value: unknown): string => {
+	if (value === undefined || value === null || value === '') return '-';
 	if (typeof value === 'boolean') {
 		return value ? 'ON' : 'OFF';
 	}

@@ -143,11 +143,18 @@
 						<template #header>
 							<div class="flex justify-between items-center">
 								<span class="text-sm font-medium">{{ getPluginLabel(action.type) }}</span>
-								<el-button type="warning" size="small" plain @click="onRemoveAction(index)">
-									<template #icon>
-										<icon icon="mdi:trash" />
-									</template>
-								</el-button>
+								<div class="flex gap-1">
+									<el-button size="small" plain @click="onEditAction(index)">
+										<template #icon>
+											<icon icon="mdi:pencil" />
+										</template>
+									</el-button>
+									<el-button type="warning" size="small" plain @click="onRemoveAction(index)">
+										<template #icon>
+											<icon icon="mdi:trash" />
+										</template>
+									</el-button>
+								</div>
 							</div>
 						</template>
 						<component
@@ -195,7 +202,7 @@
 		</el-collapse>
 	</el-form>
 
-	<!-- Action Form Dialog -->
+	<!-- Action Add Form Dialog -->
 	<el-dialog
 		v-model="showActionForm"
 		:title="t('scenes.form.addAction')"
@@ -214,10 +221,37 @@
 		/>
 		<template #footer>
 			<el-button @click="onActionFormCancel">
-				{{ t('scenes.buttons.cancel') }}
+				{{ t('scenes.buttons.cancel.title') }}
 			</el-button>
 			<el-button type="primary" @click="actionFormSubmit = true">
-				{{ t('scenes.buttons.save') }}
+				{{ t('scenes.buttons.save.title') }}
+			</el-button>
+		</template>
+	</el-dialog>
+
+	<!-- Action Edit Form Dialog -->
+	<el-dialog
+		v-model="showEditActionForm"
+		:title="t('scenes.form.editAction')"
+		width="500px"
+		:close-on-click-modal="false"
+		@close="onEditActionFormCancel"
+	>
+		<component
+			:is="currentEditActionFormComponent"
+			v-if="currentEditActionFormComponent && editingAction"
+			:action="editingAction"
+			:scene-id="''"
+			:remote-form-submit="editActionFormSubmit"
+			@update:remote-form-submit="editActionFormSubmit = $event"
+			@submit="onEditActionFormSubmit"
+		/>
+		<template #footer>
+			<el-button @click="onEditActionFormCancel">
+				{{ t('scenes.buttons.cancel.title') }}
+			</el-button>
+			<el-button type="primary" @click="editActionFormSubmit = true">
+				{{ t('scenes.buttons.save.title') }}
 			</el-button>
 		</template>
 	</el-dialog>
@@ -291,8 +325,10 @@ const {
 	actionPluginOptions,
 	addAction,
 	removeAction,
+	updateAction,
 	getActionCardComponent,
 	getActionFormComponent,
+	getActionEditFormComponent,
 	getPluginLabel,
 } = useSceneAddForm({
 	id: props.id,
@@ -301,15 +337,26 @@ const {
 // Collapse state - both sections open by default
 const activeCollapses = ref<string[]>(['general', 'actions']);
 
-// Action form state
+// Action add form state
 const selectedPluginType = ref<string | null>(null);
 const showActionForm = ref(false);
 const actionFormSubmit = ref(false);
 const newActionId = ref<string>(uuid());
 
+// Action edit form state
+const showEditActionForm = ref(false);
+const editActionFormSubmit = ref(false);
+const editingActionIndex = ref<number | null>(null);
+const editingAction = ref<ISceneActionAddForm | null>(null);
+
 const currentActionFormComponent = computed(() => {
 	if (!selectedPluginType.value) return null;
 	return getActionFormComponent(selectedPluginType.value);
+});
+
+const currentEditActionFormComponent = computed(() => {
+	if (!editingAction.value) return null;
+	return getActionEditFormComponent(editingAction.value.type);
 });
 
 const getSelectedSpaceIcon = (): string => {
@@ -350,6 +397,31 @@ const onActionFormCancel = (): void => {
 
 const onRemoveAction = (index: number): void => {
 	removeAction(index);
+};
+
+const onEditAction = (index: number): void => {
+	const action = model.actions[index];
+	if (!action) return;
+
+	editingActionIndex.value = index;
+	editingAction.value = { ...action };
+	showEditActionForm.value = true;
+};
+
+const onEditActionFormSubmit = (data: ISceneActionAddForm & { type: string }): void => {
+	if (editingActionIndex.value !== null) {
+		updateAction(editingActionIndex.value, data);
+	}
+
+	showEditActionForm.value = false;
+	editingActionIndex.value = null;
+	editingAction.value = null;
+};
+
+const onEditActionFormCancel = (): void => {
+	showEditActionForm.value = false;
+	editingActionIndex.value = null;
+	editingAction.value = null;
 };
 
 const validateAndSubmit = async (): Promise<void> => {

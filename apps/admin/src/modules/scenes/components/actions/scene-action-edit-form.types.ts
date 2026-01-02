@@ -1,6 +1,6 @@
 import type { FormResultType } from '../../scenes.constants';
 import type { ISceneActionEditForm } from '../../schemas/scenes.types';
-import type { ISceneAction } from '../../store/scenes.store.types';
+import type { ISceneAction } from '../../store/scenes.actions.store.types';
 
 export interface ISceneActionEditFormProps {
 	action: ISceneAction;

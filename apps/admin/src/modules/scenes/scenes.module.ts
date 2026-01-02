@@ -16,8 +16,9 @@ import {
 import { SCENES_MODULE_EVENT_PREFIX, SCENES_MODULE_NAME, EventType } from './scenes.constants';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
+import { registerScenesActionsStore } from './store/scenes.actions.store';
 import { registerScenesStore } from './store/scenes.store';
-import { scenesStoreKey } from './store/keys';
+import { scenesActionsStoreKey, scenesStoreKey } from './store/keys';
 
 const scenesAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Scenes');
 
@@ -35,9 +36,13 @@ export default {
 		}
 
 		const scenesStore = registerScenesStore(options.store);
+		const scenesActionsStore = registerScenesActionsStore(options.store);
 
 		app.provide(scenesStoreKey, scenesStore);
 		storesManager.addStore(scenesStoreKey, scenesStore);
+
+		app.provide(scenesActionsStoreKey, scenesActionsStore);
+		storesManager.addStore(scenesActionsStoreKey, scenesActionsStore);
 
 		modulesManager.addModule(scenesAdminModuleKey, {
 			type: SCENES_MODULE_NAME,
