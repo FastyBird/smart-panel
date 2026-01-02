@@ -232,11 +232,11 @@
 			@submit="onActionFormSubmit"
 		/>
 		<template #footer>
-			<el-button @click="onActionFormCancel">
-				{{ t('scenes.buttons.cancel.title') }}
+			<el-button plain @click="onActionFormCancel">
+				{{ t('scenes.buttons.close.title') }}
 			</el-button>
 			<el-button type="primary" @click="actionFormSubmit = true">
-				{{ t('scenes.buttons.save.title') }}
+				{{ t('scenes.buttons.add.title') }}
 			</el-button>
 		</template>
 	</el-dialog>
@@ -259,8 +259,8 @@
 			@submit="onEditActionFormSubmit"
 		/>
 		<template #footer>
-			<el-button @click="onEditActionFormCancel">
-				{{ t('scenes.buttons.cancel.title') }}
+			<el-button plain @click="onEditActionFormCancel">
+				{{ t('scenes.buttons.close.title') }}
 			</el-button>
 			<el-button type="primary" @click="editActionFormSubmit = true">
 				{{ t('scenes.buttons.save.title') }}
