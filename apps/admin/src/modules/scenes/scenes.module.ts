@@ -13,7 +13,12 @@ import {
 	type ModuleInjectionKey,
 } from '../../common';
 
+import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
+
+import { ScenesConfigForm } from './components/components';
 import { SCENES_MODULE_EVENT_PREFIX, SCENES_MODULE_NAME, EventType } from './scenes.constants';
+import { ScenesConfigEditFormSchema } from './schemas/config.schemas';
+import { ScenesConfigSchema, ScenesConfigUpdateReqSchema } from './store/config.store.schemas';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import { registerScenesActionsStore } from './store/scenes.actions.store';
@@ -48,8 +53,21 @@ export default {
 			type: SCENES_MODULE_NAME,
 			name: 'Scenes',
 			description: 'Manage automation scenes for your smart home.',
-			elements: [],
-			modules: [],
+			elements: [
+				{
+					type: CONFIG_MODULE_MODULE_TYPE,
+					components: {
+						moduleConfigEditForm: ScenesConfigForm,
+					},
+					schemas: {
+						moduleConfigSchema: ScenesConfigSchema,
+						moduleConfigEditFormSchema: ScenesConfigEditFormSchema,
+						moduleConfigUpdateReqSchema: ScenesConfigUpdateReqSchema,
+					},
+					modules: [CONFIG_MODULE_NAME],
+				},
+			],
+			modules: [CONFIG_MODULE_NAME],
 			isCore: true,
 		});
 

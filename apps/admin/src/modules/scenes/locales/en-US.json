@@ -49,6 +49,26 @@
 			"neverTriggered": "Never",
 			"search": {
 				"placeholder": "Search scenes..."
+			},
+			"config": {
+				"executionTimeoutMs": {
+					"title": "Execution timeout (ms)",
+					"hint": "Maximum time in milliseconds to wait for scene execution to complete (1000-300000).",
+					"validation": {
+						"range": "Execution timeout must be between 1000 and 300000 ms"
+					}
+				},
+				"maxConcurrentExecutions": {
+					"title": "Max concurrent executions",
+					"hint": "Maximum number of scenes that can run at the same time (1-100).",
+					"validation": {
+						"range": "Max concurrent executions must be between 1 and 100"
+					}
+				},
+				"continueOnActionFailure": {
+					"title": "Continue on action failure",
+					"hint": "When enabled, remaining actions will continue executing even if one fails."
+				}
 			}
 		},
 		"texts": {
@@ -146,6 +166,10 @@
 			}
 		},
 		"messages": {
+			"config": {
+				"edited": "Scenes module configuration updated successfully",
+				"notEdited": "Failed to update scenes module configuration"
+			},
 			"triggered": "Scene \"{name}\" triggered successfully",
 			"triggerFailed": "Failed to trigger scene",
 			"confirmDelete": "Are you sure you want to delete scene \"{name}\"?",
