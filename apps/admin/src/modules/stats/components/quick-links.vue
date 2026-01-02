@@ -10,6 +10,13 @@
 		<div class="flex flex-row items-center justify-between">
 			<el-button
 				class="px-4!"
+				@click="onOpenSpaces"
+			>
+				{{ t('statsModule.buttons.spaces.title') }}
+			</el-button>
+
+			<el-button
+				class="px-4!"
 				@click="onOpenPages"
 			>
 				{{ t('statsModule.buttons.pages.title') }}
@@ -45,6 +52,7 @@ import { useRouter } from 'vue-router';
 
 import { ElButton, ElCard } from 'element-plus';
 
+import { RouteNames as SpacesModuleRouteNames } from '../../spaces';
 import { RouteNames as ConfigModuleRouteNames } from '../../config';
 import { RouteNames as DashboardModuleRouteNames } from '../../dashboard';
 import { RouteNames as DevicesModuleRouteNames } from '../../devices';
@@ -56,6 +64,12 @@ defineOptions({
 const router = useRouter();
 
 const { t } = useI18n();
+
+const onOpenSpaces = (): void => {
+	router.push({
+		name: SpacesModuleRouteNames.SPACES,
+	});
+};
 
 const onOpenPages = (): void => {
 	router.push({

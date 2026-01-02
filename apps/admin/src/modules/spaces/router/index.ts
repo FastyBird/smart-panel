@@ -4,17 +4,6 @@ import { RouteNames } from '../spaces.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
 	{
-		path: 'spaces/overview',
-		name: RouteNames.SPACES_OVERVIEW,
-		component: () => import('../views/view-spaces-overview.vue'),
-		meta: {
-			guards: { authenticated: true },
-			title: 'Spaces Overview',
-			icon: 'mdi:view-dashboard',
-			menu: 6000,
-		},
-	},
-	{
 		path: 'spaces',
 		name: RouteNames.SPACES,
 		component: () => import('../views/view-spaces.vue'),

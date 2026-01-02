@@ -20,11 +20,5 @@ export { default as SpaceAddDeviceDialog } from './space-add-device-dialog.vue';
 export { default as SpaceAddSceneDialog } from './space-add-scene-dialog.vue';
 export { default as SpaceAddDisplayDialog } from './space-add-display-dialog.vue';
 
-// Overview components
-export { default as SpacesOverviewStats } from './spaces-overview-stats.vue';
-export { default as SpacesOverviewCategories } from './spaces-overview-categories.vue';
-export { default as SpacesOverviewQuickActions } from './spaces-overview-quick-actions.vue';
-export { default as SpacesOverviewRecent } from './spaces-overview-recent.vue';
-
 // Deprecated - use ListSpaces instead
 export { default as SpacesList } from './spaces-list.vue';

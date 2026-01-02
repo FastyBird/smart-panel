@@ -2,7 +2,6 @@
 	"title": "Spaces",
 	"description": "Manage your spaces (rooms and zones)",
 	"headings": {
-		"overview": "Spaces overview",
 		"list": "Spaces",
 		"spaces": "Spaces",
 		"detail": "Space detail",
@@ -41,7 +40,6 @@
 		}
 	},
 	"subHeadings": {
-		"overview": "Dashboard view of your spaces",
 		"list": "Organize devices and displays by rooms or zones",
 		"adjustFilters": "Adjust display filters",
 		"add": "Add new space",
@@ -50,7 +48,6 @@
 	},
 	"breadcrumbs": {
 		"spaces": {
-			"overview": "spaces overview",
 			"list": "spaces",
 			"detail": "space: {space}",
 			"edit": "edit space",
@@ -60,9 +57,6 @@
 	},
 	"meta": {
 		"spaces": {
-			"overview": {
-				"title": "Spaces overview"
-			},
 			"list": {
 				"title": "List spaces"
 			},
@@ -305,28 +299,6 @@
 		},
 		"viewAll": {
 			"title": "View all"
-		}
-	},
-	"overview": {
-		"stats": {
-			"title": "Space statistics",
-			"total": "Total spaces",
-			"rooms": "Rooms",
-			"zones": "Zones"
-		},
-		"categories": {
-			"title": "Spaces by category",
-			"empty": "No spaces with categories"
-		},
-		"quickActions": {
-			"title": "Quick actions",
-			"addSpace": "Add new space",
-			"onboarding": "Setup wizard",
-			"viewAll": "View all spaces"
-		},
-		"recent": {
-			"title": "Recently updated",
-			"empty": "No spaces yet"
 		}
 	},
 	"detail": {

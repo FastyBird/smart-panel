@@ -18,7 +18,8 @@
 		"logs": "Logs",
 		"dashboard": "Smart Panel Pages",
 		"devices": "Connected devices",
-		"devicesCommunication": "Device updates today"
+		"devicesCommunication": "Device updates today",
+		"spaces": "Smart Panel Spaces"
 	},
 	"subHeadings": {
 		"stats": "Smart panel system statistics"
@@ -76,6 +77,10 @@
 			"process": {
 				"title": "Process {uptime}"
 			}
+		},
+		"spaces": {
+			"rooms": "{count} rooms",
+			"zones": "{count} zones"
 		}
 	},
 	"texts": {
@@ -86,6 +91,9 @@
 	"buttons": {
 		"copy": {
 			"title": "Copy"
+		},
+		"spaces": {
+			"title": "Spaces"
 		},
 		"pages": {
 			"title": "Pages"

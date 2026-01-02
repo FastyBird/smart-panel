@@ -7,6 +7,7 @@ export { default as StatsDashboard } from './stats-dashboard.vue';
 export { default as StatsDevices } from './stats-devices.vue';
 export { default as StatsDevicesCommunication } from './stats-devices-communication.vue';
 export { default as StatsMemory } from './stats-memory.vue';
+export { default as StatsSpaces } from './stats-spaces.vue';
 export { default as StatsUptime } from './stats-uptime.vue';
 
 export * from './types';
