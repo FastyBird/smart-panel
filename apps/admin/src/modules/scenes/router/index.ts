@@ -13,7 +13,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			guards: { authenticated: true, roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner] },
 			title: 'Scenes',
 			icon: 'mdi:play-box-multiple',
-			menu: 5000,
+			menu: 6000,
 		},
 		children: [
 			{
