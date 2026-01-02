@@ -3,10 +3,25 @@
 		"name": "Local Scenes",
 		"description": "Execute scenes locally by controlling device properties"
 	},
+	"actionCard": {
+		"device": "Device",
+		"channel": "Channel",
+		"property": "Property",
+		"value": "Value"
+	},
 	"fields": {
 		"device": {
 			"title": "Device",
 			"placeholder": "Select a device",
+			"showAll": "Show all devices",
+			"hints": {
+				"recommended": "Showing devices recommended for this scene category.",
+				"allDevices": "You are selecting devices outside the recommended category."
+			},
+			"groups": {
+				"recommended": "Recommended",
+				"other": "Other devices"
+			},
 			"validation": {
 				"required": "Device is required"
 			}

@@ -20,12 +20,15 @@
 
 				<div class="px-2">
 					<el-alert
-						:title="t('scenes.edit.sections.general.hint')"
 						type="info"
 						:closable="false"
 						show-icon
 						class="!mb-4"
-					/>
+					>
+						<template #title>
+							<span v-html="t('scenes.edit.sections.general.hint')" />
+						</template>
+					</el-alert>
 
 					<!-- Scene Name -->
 					<el-form-item :label="t('scenes.form.name')" prop="name">
@@ -223,6 +226,7 @@
 			v-if="currentActionFormComponent"
 			:id="newActionId"
 			:scene-id="model.id"
+			:scene-category="model.category"
 			:remote-form-submit="actionFormSubmit"
 			@update:remote-form-submit="actionFormSubmit = $event"
 			@submit="onActionFormSubmit"

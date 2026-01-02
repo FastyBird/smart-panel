@@ -298,8 +298,13 @@ export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions',
 						},
 					});
 
-					if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					if (typeof responseData !== 'undefined') {
 						const transformed = transformSceneActionResponse(responseData.data);
+
+						// Remove the temporary client-side entry if the server returned a different ID
+						if (transformed.id !== parsedNewItem.data.id) {
+							delete data.value[parsedNewItem.data.id];
+						}
 
 						data.value[transformed.id] = transformed;
 

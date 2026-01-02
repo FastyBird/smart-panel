@@ -7,8 +7,11 @@
 		<scenes-filter
 			v-model:filters="innerFilters"
 			:filters-active="props.filtersActive"
+			:selected-count="selectedItems.length"
+			:bulk-actions="bulkActions"
 			@reset-filters="emit('reset-filters')"
 			@adjust-list="emit('adjust-list')"
+			@bulk-action="onBulkAction"
 		/>
 	</el-card>
 
@@ -35,7 +38,7 @@
 				@remove="onRemove"
 				@trigger="onTrigger"
 				@reset-filters="onResetFilters"
-				@selected-changes="onSelectedChanges"
+				@selected-changes="onSelectionChange"
 			/>
 
 			<div
@@ -56,13 +59,14 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElCard, ElPagination } from 'element-plus';
 
 import { useVModel } from '@vueuse/core';
 
-import { useBreakpoints } from '../../../../common';
+import { type IBulkAction, useBreakpoints } from '../../../../common';
 import type { IScenesFilter } from '../../composables/types';
 import type { IScene } from '../../store/scenes.store.types';
 
@@ -82,7 +86,7 @@ const emit = defineEmits<{
 	(e: 'trigger', id: IScene['id']): void;
 	(e: 'adjust-list'): void;
 	(e: 'reset-filters'): void;
-	(e: 'selected-changes', selected: IScene[]): void;
+	(e: 'bulk-action', action: string, items: IScene[]): void;
 	(e: 'update:filters', filters: IScenesFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;
@@ -91,6 +95,16 @@ const emit = defineEmits<{
 }>();
 
 const { isMDDevice } = useBreakpoints();
+
+const { t } = useI18n();
+
+const selectedItems = ref<IScene[]>([]);
+
+const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
+	{ key: 'enable', label: t('application.bulkActions.enable'), icon: 'mdi:check-circle-outline', type: 'success' },
+	{ key: 'disable', label: t('application.bulkActions.disable'), icon: 'mdi:close-circle-outline', type: 'warning' },
+	{ key: 'delete', label: t('application.bulkActions.delete'), icon: 'mdi:trash', type: 'danger' },
+]);
 
 let observer: ResizeObserver | null = null;
 
@@ -125,8 +139,12 @@ const onResetFilters = (): void => {
 	emit('reset-filters');
 };
 
-const onSelectedChanges = (selected: IScene[]): void => {
-	emit('selected-changes', selected);
+const onSelectionChange = (selected: IScene[]): void => {
+	selectedItems.value = selected;
+};
+
+const onBulkAction = (action: string): void => {
+	emit('bulk-action', action, selectedItems.value);
 };
 
 const onPaginatePageSize = (size: number): void => {
@@ -202,6 +220,15 @@ watch(
 	(): 'name' | 'category' | 'order' | undefined => props.sortBy,
 	(val: 'name' | 'category' | 'order' | undefined): void => {
 		sortBy.value = val;
+	}
+);
+
+watch(
+	(): boolean => isMDDevice.value,
+	(val: boolean): void => {
+		if (!val) {
+			selectedItems.value = [];
+		}
 	}
 );
 </script>

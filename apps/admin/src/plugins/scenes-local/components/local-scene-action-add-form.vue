@@ -17,10 +17,45 @@
 			{{ t('scenesLocalPlugin.messages.noDevices') }}
 		</el-alert>
 
+		<template v-if="hasRecommendedCategories">
+			<el-alert
+				v-if="!showAllDevices"
+				type="info"
+				:closable="false"
+				show-icon
+				class="mb-2!"
+			>
+				{{ t('scenesLocalPlugin.fields.device.hints.recommended') }}
+			</el-alert>
+			<el-alert
+				v-else
+				type="warning"
+				:closable="false"
+				show-icon
+				class="mb-2!"
+			>
+				{{ t('scenesLocalPlugin.fields.device.hints.allDevices') }}
+			</el-alert>
+		</template>
+
 		<el-form-item
-			:label="t('scenesLocalPlugin.fields.device.title')"
+			:class="[ns.e('device-field')]"
 			prop="deviceId"
 		>
+			<template #label>
+				<div class="grow-1">
+					{{  t('scenesLocalPlugin.fields.device.title')  }}
+				</div>
+
+				<el-checkbox
+					v-if="hasRecommendedCategories"
+					v-model="showAllDevices"
+					size="small"
+				>
+					{{ t('scenesLocalPlugin.fields.device.showAll') }}
+				</el-checkbox>
+			</template>
+
 			<el-select
 				v-model="model.deviceId"
 				:placeholder="t('scenesLocalPlugin.fields.device.placeholder')"
@@ -31,12 +66,39 @@
 				style="width: 100%"
 				@change="onDeviceChange"
 			>
-				<el-option
-					v-for="item in devicesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
+				<template v-if="!showAllDevices && hasRecommendedCategories && recommendedDevicesOptions.length > 0">
+					<el-option
+						v-for="item in recommendedDevicesOptions"
+						:key="item.value"
+						:label="item.label"
+						:value="item.value"
+					/>
+				</template>
+
+				<template v-else>
+					<el-option-group
+						v-if="hasRecommendedCategories && recommendedDevicesOptions.length > 0"
+						:label="t('scenesLocalPlugin.fields.device.groups.recommended')"
+					>
+						<el-option
+							v-for="item in recommendedDevicesOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-option-group>
+					<el-option-group
+						v-if="hasRecommendedCategories && otherDevicesOptions.length > 0"
+						:label="t('scenesLocalPlugin.fields.device.groups.other')"
+					>
+						<el-option
+							v-for="item in otherDevicesOptions"
+							:key="item.value"
+							:label="item.label"
+							:value="item.value"
+						/>
+					</el-option-group>
+				</template>
 			</el-select>
 		</el-form-item>
 
@@ -134,7 +196,21 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
+import {
+	ElAlert,
+	ElCheckbox,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElInputNumber,
+	ElOption,
+	ElOptionGroup,
+	ElSelect,
+	ElSwitch,
+	type FormInstance,
+	type FormRules,
+	useNamespace,
+} from 'element-plus';
 import { orderBy } from 'natural-orderby';
 import { v4 as uuid } from 'uuid';
 
@@ -151,14 +227,17 @@ import { DevicesModuleChannelPropertyDataType, DevicesModuleChannelPropertyPermi
 import type { ISceneActionAddFormProps } from '../../../modules/scenes/components/actions/scene-action-add-form.types';
 import type { ISceneActionAddForm } from '../../../modules/scenes/schemas/scenes.types';
 import { FormResult, type FormResultType } from '../../../modules/scenes/scenes.constants';
-import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
+import { SCENE_CATEGORY_DEVICE_RECOMMENDATIONS, SCENES_LOCAL_TYPE } from '../scenes-local.constants';
 import type { ILocalSceneActionAddForm } from '../schemas/actions.types';
 
 defineOptions({
 	name: 'LocalSceneActionAddForm',
 });
 
+const ns = useNamespace('local-scene-action-add-form');
+
 const props = withDefaults(defineProps<ISceneActionAddFormProps>(), {
+	sceneCategory: undefined,
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
@@ -177,18 +256,29 @@ const { t } = useI18n();
 const formEl = ref<FormInstance | undefined>(undefined);
 const formResult = ref<FormResultType>(FormResult.NONE);
 const formChanged = ref<boolean>(false);
+const showAllDevices = ref<boolean>(false);
 
 const model = reactive<ILocalSceneActionAddForm>({
 	id: props.id || uuid(),
 	type: SCENES_LOCAL_TYPE,
 	deviceId: '',
 	channelId: null,
-	propertyId: '',
+	propertyId: null,
 	value: '',
 	enabled: true,
 });
 
 const selectedChannelId = computed<string | undefined>(() => model.channelId ?? undefined);
+
+// Device filtering based on scene category recommendations
+const recommendedCategories = computed<string[] | null>(() => {
+	if (!props.sceneCategory) return null;
+	return SCENE_CATEGORY_DEVICE_RECOMMENDATIONS[props.sceneCategory] ?? null;
+});
+
+const hasRecommendedCategories = computed<boolean>(() => {
+	return recommendedCategories.value !== null && recommendedCategories.value.length > 0;
+});
 
 const { devices, fetchDevices, areLoading: loadingDevices, loaded: devicesLoaded } = useDevices();
 const { channels, fetchChannels, areLoading: loadingChannels } = useChannels({
@@ -313,6 +403,30 @@ const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() =>
 	}));
 });
 
+const recommendedDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() => {
+	if (!hasRecommendedCategories.value || !recommendedCategories.value) {
+		return devicesOptions.value;
+	}
+	const recommended = devices.value.filter((device) => recommendedCategories.value!.includes(device.category));
+	const sorted = orderBy<IDevice>(recommended, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
+	return sorted.map((device) => ({
+		value: device.id,
+		label: device.name,
+	}));
+});
+
+const otherDevicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() => {
+	if (!hasRecommendedCategories.value || !recommendedCategories.value) {
+		return [];
+	}
+	const other = devices.value.filter((device) => !recommendedCategories.value!.includes(device.category));
+	const sorted = orderBy<IDevice>(other, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
+	return sorted.map((device) => ({
+		value: device.id,
+		label: device.name,
+	}));
+});
+
 const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() => {
 	// Filter channels to only those with writable properties (if properties are loaded)
 	const channelsToShow = properties.value.length > 0 ? channelsWithWritableProperties.value : channels.value;
@@ -340,7 +454,7 @@ const rules = reactive<FormRules<ILocalSceneActionAddForm>>({
 
 const onDeviceChange = async (): Promise<void> => {
 	model.channelId = null;
-	model.propertyId = '';
+	model.propertyId = null;
 	model.value = '';
 	formChanged.value = true;
 
@@ -350,7 +464,7 @@ const onDeviceChange = async (): Promise<void> => {
 };
 
 const onChannelChange = async (): Promise<void> => {
-	model.propertyId = '';
+	model.propertyId = null;
 	model.value = '';
 	formChanged.value = true;
 
@@ -451,3 +565,7 @@ watch(
 	}
 );
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'local-scene-action-add-form.scss';
+</style>

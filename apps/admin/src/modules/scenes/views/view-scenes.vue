@@ -91,6 +91,7 @@
 			@trigger="onSceneTrigger"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
+			@bulk-action="onBulkAction"
 		/>
 	</div>
 
@@ -174,7 +175,7 @@ import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs,
 import { useSpaces } from '../../spaces/composables';
 import { SpaceType } from '../../spaces/spaces.constants';
 import { ListScenes, ListScenesAdjust } from '../components/components';
-import { useScenesDataSource, useScenes } from '../composables/composables';
+import { useScenesActions, useScenesDataSource, useScenes } from '../composables/composables';
 import { RouteNames } from '../scenes.constants';
 import { ScenesException } from '../scenes.exceptions';
 import type { IScene } from '../store/scenes.store.types';
@@ -216,6 +217,8 @@ const {
 
 const { triggerScene, removeScene } = useScenes();
 const { spaces, fetchSpaces } = useSpaces();
+
+const sceneActions = useScenesActions();
 
 // Provide spaces to child components (for table room display)
 const rooms = computed(() => {
@@ -374,6 +377,20 @@ const onSceneCreate = (): void => {
 const onAdjustList = (): void => {
 	showDrawer.value = true;
 	adjustList.value = true;
+};
+
+const onBulkAction = (action: string, items: IScene[]): void => {
+	switch (action) {
+		case 'delete':
+			sceneActions.bulkRemove(items);
+			break;
+		case 'enable':
+			sceneActions.bulkEnable(items);
+			break;
+		case 'disable':
+			sceneActions.bulkDisable(items);
+			break;
+	}
 };
 
 onBeforeMount((): void => {

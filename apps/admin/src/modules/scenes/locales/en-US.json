@@ -6,7 +6,10 @@
 			"edit": "Edit scene",
 			"delete": "Delete scene",
 			"discard": "Discard changes",
-			"adjustFilters": "Adjust filters"
+			"adjustFilters": "Adjust filters",
+			"bulkRemove": "Delete scenes",
+			"bulkEnable": "Enable scenes",
+			"bulkDisable": "Disable scenes"
 		},
 		"subHeadings": {
 			"list": "Manage automation scenes for your smart home",
@@ -53,6 +56,9 @@
 			"noScenes": "No scenes found",
 			"noFilteredScenes": "No scenes match your filters",
 			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+			"confirmBulkRemove": "Are you sure you want to delete {count} selected scene(s)?",
+			"confirmBulkEnable": "Are you sure you want to enable {count} selected scene(s)?",
+			"confirmBulkDisable": "Are you sure you want to disable {count} selected scene(s)?",
 			"actionsCount": "No actions | {count} action | {count} actions",
 			"lastTriggered": "Last Triggered",
 			"order": "#"
@@ -61,7 +67,7 @@
 			"sections": {
 				"general": {
 					"title": "General",
-					"hint": "Scenes are manual presets that apply multiple device actions at once. They do not run automatically and have no conditions."
+					"hint": "<strong>Scenes are manual presets</strong> that apply multiple device actions at once. They never run automatically and have no conditions."
 				},
 				"actions": {
 					"title": "Actions",
@@ -152,7 +158,15 @@
 			"notFound": "Scene not found",
 			"addFormPlaceholder": "Scene add form will be implemented here",
 			"editFormPlaceholder": "Scene edit form will be implemented here",
-			"requestError": "An error occurred while processing your request"
+			"requestError": "An error occurred while processing your request",
+			"bulkRemoved": "Successfully deleted {count} scene(s)",
+			"bulkRemoveFailed": "Failed to delete {count} scene(s)",
+			"bulkEnabled": "Successfully enabled {count} scene(s)",
+			"bulkEnableFailed": "Failed to enable {count} scene(s)",
+			"bulkEnableCanceled": "Enable operation canceled",
+			"bulkDisabled": "Successfully disabled {count} scene(s)",
+			"bulkDisableFailed": "Failed to disable {count} scene(s)",
+			"bulkDisableCanceled": "Disable operation canceled"
 		},
 		"categories": {
 			"generic": "Generic",

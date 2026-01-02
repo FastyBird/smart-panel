@@ -1,10 +1,11 @@
-import type { FormResultType } from '../../scenes.constants';
+import type { FormResultType, SceneCategory } from '../../scenes.constants';
 import type { ISceneActionAddForm } from '../../schemas/scenes.types';
 import type { ISceneAction } from '../../store/scenes.actions.store.types';
 
 export interface ISceneActionAddFormProps {
 	id: ISceneAction['id'];
 	sceneId: string;
+	sceneCategory?: SceneCategory;
 	remoteFormSubmit?: boolean;
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;
