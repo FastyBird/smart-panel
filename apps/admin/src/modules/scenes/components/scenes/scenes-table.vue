@@ -116,7 +116,7 @@
 			prop="name"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="200"
+			:min-width="180"
 			class-name="py-0!"
 		>
 			<template #default="scope">

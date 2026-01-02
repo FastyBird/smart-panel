@@ -160,7 +160,8 @@ import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import { useSpaces } from '../../../spaces/composables';
-import { SpaceType } from '../../../spaces/spaces.constants';
+import { SPACE_CATEGORY_TEMPLATES, SpaceType } from '../../../spaces/spaces.constants';
+import type { ISpace } from '../../../spaces/store/spaces.store.types';
 import type { IScenesFilter } from '../../composables/types';
 import { SCENE_CATEGORY_ICONS, SceneCategory } from '../../scenes.constants';
 
@@ -184,6 +185,19 @@ const categories: string[] = Object.values(SceneCategory);
 
 const { spaces } = useSpaces();
 
+const getSpaceIcon = (space: ISpace): string => {
+	// Use custom icon if available
+	if (space.icon) {
+		return space.icon;
+	}
+	// Use category template icon if category is set
+	if (space.category && SPACE_CATEGORY_TEMPLATES[space.category]) {
+		return SPACE_CATEGORY_TEMPLATES[space.category].icon;
+	}
+	// Default icons based on type
+	return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:map-marker-radius';
+};
+
 const spacesOptions = computed(() => {
 	const options: { value: string; label: string; icon: string }[] = [
 		{
@@ -199,7 +213,17 @@ const spacesOptions = computed(() => {
 		options.push({
 			value: room.id,
 			label: room.name,
-			icon: 'mdi:door',
+			icon: getSpaceIcon(room),
+		});
+	});
+
+	// Add zones
+	const zones = spaces.value.filter((s) => s.type === SpaceType.ZONE);
+	zones.forEach((zone) => {
+		options.push({
+			value: zone.id,
+			label: zone.name,
+			icon: getSpaceIcon(zone),
 		});
 	});
 
