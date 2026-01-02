@@ -63,7 +63,7 @@ export interface IUseSceneAddForm<TForm extends ISceneAddForm = ISceneAddForm> {
 	fetchSpaces: () => Promise<ISpace[]>;
 	// Action management
 	actionPluginOptions: ComputedRef<IActionPluginOption[]>;
-	addAction: (action: ISceneActionAddForm & { type: string }) => void;
+	addAction: (action: ISceneActionAddForm & { type: string }) => boolean;
 	removeAction: (index: number) => void;
 	updateAction: (index: number, action: ISceneActionAddForm & { type: string }) => void;
 	getActionCardComponent: (type: string) => Component | null;
@@ -85,7 +85,7 @@ export interface IUseSceneEditForm<TForm extends ISceneEditForm = ISceneEditForm
 	fetchSpaces: () => Promise<ISpace[]>;
 	// Action management
 	actionPluginOptions: ComputedRef<IActionPluginOption[]>;
-	addAction: (action: ISceneActionAddForm & { type: string }) => void;
+	addAction: (action: ISceneActionAddForm & { type: string }) => boolean;
 	removeAction: (index: number) => void;
 	updateAction: (index: number, action: ISceneActionAddForm & { type: string }) => void;
 	getActionCardComponent: (type: string) => Component | null;

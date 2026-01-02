@@ -11,7 +11,7 @@ import { SceneAddFormSchema } from '../schemas/scenes.schemas';
 import type { ISceneActionAddForm, ISceneAddForm } from '../schemas/scenes.types';
 import { FormResult, type FormResultType, SCENE_CATEGORY_ICONS, SceneCategory } from '../scenes.constants';
 import { ScenesApiException, ScenesValidationException } from '../scenes.exceptions';
-import { scenesStoreKey } from '../store/keys';
+import { scenesActionsStoreKey, scenesStoreKey } from '../store/keys';
 import type { IScene } from '../store/scenes.store.types';
 
 import type { ISpaceOptionGroup, IUseSceneAddForm } from './types';
@@ -25,6 +25,7 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 	const storesManager = injectStoresManager();
 
 	const scenesStore = storesManager.getStore(scenesStoreKey);
+	const actionsStore = storesManager.getStore(scenesActionsStoreKey);
 
 	const { t } = useI18n();
 
@@ -112,8 +113,23 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 
 	const { options: actionPluginOptions, getElement } = useScenesActionPlugins();
 
-	const addAction = (action: ISceneActionAddForm & { type: string }): void => {
+	const addAction = (action: ISceneActionAddForm & { type: string }): boolean => {
+		// Check for duplicate action (same propertyId)
+		const propertyId = (action as Record<string, unknown>).propertyId as string | undefined;
+
+		if (propertyId) {
+			const existingAction = (model as ISceneAddForm).actions.find(
+				(a) => (a as Record<string, unknown>).propertyId === propertyId
+			);
+
+			if (existingAction) {
+				flashMessage.warning(t('scenes.messages.duplicateAction'));
+				return false;
+			}
+		}
+
 		(model as ISceneAddForm).actions.push(action);
+		return true;
 	};
 
 	const removeAction = (index: number): void => {
@@ -152,6 +168,30 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 
 	const formChanged = ref<boolean>(false);
 
+	/**
+	 * Sync actions with the backend after scene creation
+	 */
+	const syncActions = async (sceneId: string, actions: ISceneActionAddForm[]): Promise<void> => {
+		try {
+			// Create all actions for the new scene
+			for (let i = 0; i < actions.length; i++) {
+				const action = actions[i];
+
+				await actionsStore.add({
+					sceneId,
+					data: {
+						...action,
+						order: i,
+						enabled: action.enabled ?? true,
+					},
+				});
+			}
+		} catch (error: unknown) {
+			logger.error('Error syncing scene actions:', error);
+			throw error;
+		}
+	};
+
 	const submit = async (): Promise<'added'> => {
 		formEl.value!.clearValidate();
 
@@ -172,11 +212,16 @@ export const useSceneAddForm = <TForm extends ISceneAddForm = ISceneAddForm>({ i
 		const errorMessage = t('scenes.messages.createFailed');
 
 		try {
-			await scenesStore.add({
+			const scene = await scenesStore.add({
 				id,
 				draft: false,
 				data: parsedModel.data,
 			});
+
+			// Sync actions with backend after scene is created
+			if (parsedModel.data.actions.length > 0) {
+				await syncActions(scene.id, parsedModel.data.actions);
+			}
 		} catch (error: unknown) {
 			formResult.value = FormResult.ERROR;
 

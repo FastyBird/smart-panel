@@ -156,6 +156,7 @@
 			"edited": "Scene \"{scene}\" updated successfully",
 			"editFailed": "Failed to update scene \"{scene}\"",
 			"notFound": "Scene not found",
+			"duplicateAction": "An action for this property already exists in this scene",
 			"addFormPlaceholder": "Scene add form will be implemented here",
 			"editFormPlaceholder": "Scene edit form will be implemented here",
 			"requestError": "An error occurred while processing your request",

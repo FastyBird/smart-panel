@@ -139,7 +139,7 @@
 		<el-table-column
 			:label="t('scenes.fields.space')"
 			prop="primarySpaceId"
-			:width="150"
+			:width="200"
 		>
 			<template #default="scope">
 				<el-link

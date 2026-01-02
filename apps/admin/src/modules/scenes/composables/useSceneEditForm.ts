@@ -131,8 +131,23 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 
 	const { options: actionPluginOptions, getElement } = useScenesActionPlugins();
 
-	const addAction = (action: ISceneActionAddForm & { type: string }): void => {
+	const addAction = (action: ISceneActionAddForm & { type: string }): boolean => {
+		// Check for duplicate action (same propertyId)
+		const propertyId = (action as Record<string, unknown>).propertyId as string | undefined;
+
+		if (propertyId) {
+			const existingAction = (model as ISceneEditForm).actions.find(
+				(a) => (a as Record<string, unknown>).propertyId === propertyId
+			);
+
+			if (existingAction) {
+				flashMessage.warning(t('scenes.messages.duplicateAction'));
+				return false;
+			}
+		}
+
 		(model as ISceneEditForm).actions.push(action);
+		return true;
 	};
 
 	const removeAction = (index: number): void => {

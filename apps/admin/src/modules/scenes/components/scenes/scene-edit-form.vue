@@ -394,13 +394,15 @@ const onPluginSelected = (pluginType: string): void => {
 };
 
 const onActionFormSubmit = (data: ISceneActionAddForm & { type: string }): void => {
-	addAction({
+	const added = addAction({
 		...data,
 		type: selectedPluginType.value!,
 	});
 
-	showActionForm.value = false;
-	selectedPluginType.value = null;
+	if (added) {
+		showActionForm.value = false;
+		selectedPluginType.value = null;
+	}
 };
 
 const onActionFormCancel = (): void => {
