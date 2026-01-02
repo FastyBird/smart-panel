@@ -56,12 +56,12 @@ export class ScenesController {
 		tags: [SCENES_MODULE_API_TAG_NAME],
 		summary: 'Retrieve a list of available scenes',
 		description:
-			'Fetches a list of all scenes currently registered in the system. Each scene includes its metadata (e.g., ID, name, and category), along with associated actions, conditions, and triggers.',
+			'Fetches a list of all scenes currently registered in the system. Each scene includes its metadata (e.g., ID, name, and category), along with associated actions.',
 		operationId: 'get-scenes-module-scenes',
 	})
 	@ApiSuccessResponse(
 		ScenesResponseModel,
-		'A list of scenes successfully retrieved. Each scene includes its metadata (ID, name, category), associated actions, conditions, and triggers.',
+		'A list of scenes successfully retrieved. Each scene includes its metadata (ID, name, category) and associated actions.',
 	)
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
@@ -83,13 +83,13 @@ export class ScenesController {
 		tags: [SCENES_MODULE_API_TAG_NAME],
 		summary: 'Retrieve details of a specific scene',
 		description:
-			"Fetches the details of a specific scene using its unique ID. The response includes the scene's metadata (e.g., ID, name, and category), associated actions, conditions, and triggers.",
+			"Fetches the details of a specific scene using its unique ID. The response includes the scene's metadata (e.g., ID, name, and category) and associated actions.",
 		operationId: 'get-scenes-module-scene',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Scene ID' })
 	@ApiSuccessResponse(
 		SceneResponseModel,
-		"The scene details were successfully retrieved. The response includes the scene's metadata (ID, name, category), associated actions, conditions, and triggers.",
+		"The scene details were successfully retrieved. The response includes the scene's metadata (ID, name, category) and associated actions.",
 	)
 	@ApiBadRequestResponse('Invalid UUID format')
 	@ApiNotFoundResponse('Scene not found')
@@ -112,7 +112,7 @@ export class ScenesController {
 		tags: [SCENES_MODULE_API_TAG_NAME],
 		summary: 'Create a new scene',
 		description:
-			'Creates a new scene resource in the system. The request requires scene-specific attributes such as category and name. The response includes the full representation of the created scene, including its associated actions, conditions, and triggers. Additionally, a Location header is provided with the URI of the newly created resource.',
+			'Creates a new scene resource in the system. The request requires scene-specific attributes such as category and name. The response includes the full representation of the created scene, including its associated actions. Additionally, a Location header is provided with the URI of the newly created resource.',
 		operationId: 'create-scenes-module-scene',
 	})
 	@ApiBody({ type: ReqCreateSceneDto, description: 'The data required to create a new scene' })
@@ -277,8 +277,7 @@ export class ScenesController {
 	@ApiOperation({
 		tags: [SCENES_MODULE_API_TAG_NAME],
 		summary: 'Trigger a scene',
-		description:
-			'Manually triggers a scene execution. The scene actions will be executed in order if all conditions are met.',
+		description: 'Manually triggers a scene execution. The scene actions will be executed in order.',
 		operationId: 'trigger-scenes-module-scene',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Scene ID' })

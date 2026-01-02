@@ -99,24 +99,24 @@ export class ScenesModule implements OnModuleInit {
 		this.extensionsService.registerModuleMetadata({
 			type: SCENES_MODULE_NAME,
 			name: 'Scenes',
-			description: 'Automation scenes for controlling multiple devices with a single trigger',
+			description: 'Scenes for controlling multiple devices with a single action',
 			author: 'FastyBird',
 			readme: `# Scenes Module
 
-The Scenes module provides automation capabilities for the Smart Panel, allowing you to control multiple devices with a single action.
+The Scenes module allows you to control multiple devices with a single action, perfect for creating quick shortcuts like "Movie Mode" or "Good Night".
 
 ## Features
 
-- **Scene Management** - Create, edit, and delete automation scenes
+- **Scene Management** - Create, edit, and delete scenes
 - **Action Sequencing** - Define ordered sequences of device commands
 - **Space Assignment** - Associate scenes with rooms or zones
 - **Category Organization** - Categorize scenes (morning, evening, movie, etc.)
-- **Trigger Support** - Execute scenes manually or via triggers
+- **Manual Execution** - Execute scenes via API or admin UI
 - **Plugin System** - Extensible action types through plugins
 
 ## How It Works
 
-Scenes consist of one or more actions that are executed in sequence when the scene is triggered. Each action is handled by a registered plugin (e.g., local device control, third-party integrations).
+Scenes consist of one or more actions that are executed in sequence when manually triggered. Each action is handled by a registered plugin (e.g., local device control, third-party integrations).
 
 ## API Endpoints
 

@@ -111,19 +111,6 @@ export class SceneExecutorService {
 		};
 
 		try {
-			// Evaluate conditions (if any)
-			const conditionsMet = this.evaluateConditions(scene);
-
-			if (!conditionsMet) {
-				result.status = SceneExecutionStatus.FAILED;
-				result.error = 'Scene conditions not met';
-				result.completedAt = new Date().toISOString();
-
-				this.eventEmitter.emit(EventType.SCENE_EXECUTION_FAILED, result);
-
-				return result;
-			}
-
 			// Execute actions
 			const actionResults = await this.executeActions(scene);
 
@@ -180,16 +167,6 @@ export class SceneExecutorService {
 
 			throw new ScenesExecutionException(`Scene execution failed: ${err.message}`);
 		}
-	}
-
-	/**
-	 * Evaluate scene conditions
-	 * Note: Conditions are not supported in the current implementation.
-	 * This method always returns true.
-	 */
-	private evaluateConditions(_scene: SceneEntity): boolean {
-		// Conditions are not implemented - always execute
-		return true;
 	}
 
 	/**
