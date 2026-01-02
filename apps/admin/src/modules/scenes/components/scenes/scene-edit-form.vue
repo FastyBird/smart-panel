@@ -259,7 +259,7 @@
 			@submit="onEditActionFormSubmit"
 		/>
 		<template #footer>
-			<el-button plain @click="onEditActionFormCancel">
+			<el-button link class="mr-2" @click="onEditActionFormCancel">
 				{{ t('scenes.buttons.close.title') }}
 			</el-button>
 			<el-button type="primary" @click="editActionFormSubmit = true">
