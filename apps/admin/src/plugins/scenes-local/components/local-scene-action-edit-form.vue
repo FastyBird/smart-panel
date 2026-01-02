@@ -324,10 +324,14 @@ const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() 
 });
 
 const propertiesOptions = computed<{ value: IChannelProperty['id']; label: string }[]>(() => {
-	const sorted = orderBy<IChannelProperty>(writableProperties.value, [(prop: IChannelProperty) => (prop.name ?? prop.identifier ?? '').toLowerCase()], ['asc']);
+	const sorted = orderBy<IChannelProperty>(
+		writableProperties.value,
+		[(prop: IChannelProperty) => (prop.name ?? t(`devicesModule.categories.channelsProperties.${prop.category}`)).toLowerCase()],
+		['asc']
+	);
 	return sorted.map((prop) => ({
 		value: prop.id,
-		label: prop.name ?? prop.identifier ?? prop.id,
+		label: prop.name ?? t(`devicesModule.categories.channelsProperties.${prop.category}`),
 	}));
 });
 

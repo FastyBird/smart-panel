@@ -125,7 +125,8 @@ const channelName = computed<string>(() => {
 
 const propertyName = computed<string>(() => {
 	const property = properties.value.find((p) => p.id === propertyId.value);
-	return property?.name ?? property?.identifier ?? 'Unknown property';
+	if (!property) return t('scenesLocalPlugin.actionCard.unknownProperty');
+	return property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`);
 });
 
 // Hide channel if it has the same name as the device (common pattern)

@@ -75,9 +75,9 @@
 					/>
 				</template>
 
-				<template v-else>
+				<template v-else-if="hasRecommendedCategories">
 					<el-option-group
-						v-if="hasRecommendedCategories && recommendedDevicesOptions.length > 0"
+						v-if="recommendedDevicesOptions.length > 0"
 						:label="t('scenesLocalPlugin.fields.device.groups.recommended')"
 					>
 						<el-option
@@ -88,7 +88,7 @@
 						/>
 					</el-option-group>
 					<el-option-group
-						v-if="hasRecommendedCategories && otherDevicesOptions.length > 0"
+						v-if="otherDevicesOptions.length > 0"
 						:label="t('scenesLocalPlugin.fields.device.groups.other')"
 					>
 						<el-option
@@ -98,6 +98,14 @@
 							:value="item.value"
 						/>
 					</el-option-group>
+				</template>
+				<template v-else>
+					<el-option
+						v-for="item in devicesOptions"
+						:key="item.value"
+						:label="item.label"
+						:value="item.value"
+					/>
 				</template>
 			</el-select>
 		</el-form-item>
@@ -438,10 +446,14 @@ const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() 
 });
 
 const propertiesOptions = computed<{ value: IChannelProperty['id']; label: string }[]>(() => {
-	const sorted = orderBy<IChannelProperty>(writableProperties.value, [(prop: IChannelProperty) => (prop.name ?? prop.identifier ?? '').toLowerCase()], ['asc']);
+	const sorted = orderBy<IChannelProperty>(
+		writableProperties.value,
+		[(prop: IChannelProperty) => (prop.name ?? t(`devicesModule.categories.channelsProperties.${prop.category}`)).toLowerCase()],
+		['asc']
+	);
 	return sorted.map((prop) => ({
 		value: prop.id,
-		label: prop.name ?? prop.identifier ?? prop.id,
+		label: prop.name ?? t(`devicesModule.categories.channelsProperties.${prop.category}`),
 	}));
 });
 

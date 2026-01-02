@@ -53,7 +53,7 @@
 		},
 		"texts": {
 			"loadingScenes": "Loading scenes...",
-			"noScenes": "No scenes found",
+			"noScenes": "You don't have configured any scene",
 			"noFilteredScenes": "No scenes match your filters",
 			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
 			"confirmBulkRemove": "Are you sure you want to delete {count} selected scene(s)?",
