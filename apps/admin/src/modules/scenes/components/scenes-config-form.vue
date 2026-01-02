@@ -6,6 +6,16 @@
 		label-position="top"
 		status-icon
 	>
+		<el-alert
+			:title="t('scenes.fields.config.executionTimeoutMs.alertTitle')"
+			type="info"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		>
+			{{ t('scenes.fields.config.executionTimeoutMs.hint') }}
+		</el-alert>
+
 		<el-form-item
 			:label="t('scenes.fields.config.executionTimeoutMs.title')"
 			prop="executionTimeoutMs"
@@ -17,12 +27,17 @@
 				:step="1000"
 				name="executionTimeoutMs"
 			/>
-			<template #extra>
-				<span class="el-form-item__extra">
-					{{ t('scenes.fields.config.executionTimeoutMs.hint') }}
-				</span>
-			</template>
 		</el-form-item>
+
+		<el-alert
+			:title="t('scenes.fields.config.maxConcurrentExecutions.alertTitle')"
+			type="info"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		>
+			{{ t('scenes.fields.config.maxConcurrentExecutions.hint') }}
+		</el-alert>
 
 		<el-form-item
 			:label="t('scenes.fields.config.maxConcurrentExecutions.title')"
@@ -35,12 +50,17 @@
 				:step="1"
 				name="maxConcurrentExecutions"
 			/>
-			<template #extra>
-				<span class="el-form-item__extra">
-					{{ t('scenes.fields.config.maxConcurrentExecutions.hint') }}
-				</span>
-			</template>
 		</el-form-item>
+
+		<el-alert
+			:title="t('scenes.fields.config.continueOnActionFailure.alertTitle')"
+			type="info"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		>
+			{{ t('scenes.fields.config.continueOnActionFailure.hint') }}
+		</el-alert>
 
 		<el-form-item
 			:label="t('scenes.fields.config.continueOnActionFailure.title')"
@@ -50,11 +70,6 @@
 				v-model="model.continueOnActionFailure"
 				name="continueOnActionFailure"
 			/>
-			<template #extra>
-				<span class="el-form-item__extra">
-					{{ t('scenes.fields.config.continueOnActionFailure.hint') }}
-				</span>
-			</template>
 		</el-form-item>
 	</el-form>
 </template>
@@ -63,7 +78,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { IScenesConfigEditForm } from '../schemas/config.types';
