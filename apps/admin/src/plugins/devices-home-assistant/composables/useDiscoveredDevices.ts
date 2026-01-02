@@ -24,7 +24,7 @@ export const useDiscoveredDevices = (): IUseDiscoveredDevices => {
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
-		return semaphore.value.fetching.items || !firstLoad.value;
+		return !!semaphore.value.fetching.items || !firstLoad.value;
 	});
 
 	const loaded = computed<boolean>((): boolean => {

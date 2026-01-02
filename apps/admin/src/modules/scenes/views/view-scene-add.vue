@@ -83,8 +83,6 @@ import { AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '
 import SceneAddForm from '../components/scenes/scene-add-form.vue';
 import { FormResult, type FormResultType, RouteNames } from '../scenes.constants';
 
-import type { IViewSceneAddProps } from './view-scene-add.types';
-
 defineOptions({
 	name: 'ViewSceneAdd',
 });
