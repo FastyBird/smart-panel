@@ -30,6 +30,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart
 import 'package:fastybird_smart_panel/modules/devices/repositories/device_controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/displays/module.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -568,6 +569,10 @@ class StartupManagerService {
     // Scenes service
     var scenesService = ScenesService(dio: _apiIoService);
     locator.registerSingleton(scenesService);
+
+    // Property timeseries service
+    var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);
+    locator.registerSingleton(propertyTimeseriesService);
 
     // Api client
     locator.registerSingleton(_apiIoService);

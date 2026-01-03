@@ -58,6 +58,7 @@ dependencies:
   flutterpi_tool: ^0.6.0
   dropdown_button2: ^2.3.9
   event_bus: ^2.0.1
+  fl_chart: ^0.69.0
   bonsoir: ^5.1.4
 
 dev_dependencies:
