@@ -400,10 +400,6 @@ class _WindowCoveringStatus extends StatelessWidget {
 }
 
 class _WindowCoveringCommandButtons extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final WindowCoveringDeviceView _device;
   final ValueChanged<WindowCoveringCommandValue> _onCommand;
 
@@ -1235,10 +1231,6 @@ class _WindowCoveringTiltControl extends StatelessWidget {
 }
 
 class _WindowCoveringWarnings extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final WindowCoveringDeviceView _device;
 
   _WindowCoveringWarnings({
@@ -1291,10 +1283,6 @@ class _WindowCoveringWarnings extends StatelessWidget {
 }
 
 class _WarningTile extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final IconData _icon;
   final String _message;
   final Color _color;
