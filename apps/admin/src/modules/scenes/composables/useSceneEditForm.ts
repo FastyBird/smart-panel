@@ -202,6 +202,9 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 				}
 			}
 
+			// Track newly created action IDs to update model
+			const newActionIds: Map<number, string> = new Map();
+
 			// Create or update actions
 			for (let i = 0; i < currentActions.length; i++) {
 				const action = currentActions[i];
@@ -209,7 +212,7 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 
 				if (!actionId || !originalActionIds.has(actionId)) {
 					// New action - create it (spread all properties including plugin-specific fields)
-					await actionsStore.add({
+					const createdAction = await actionsStore.add({
 						sceneId,
 						data: {
 							...action,
@@ -217,6 +220,8 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 							enabled: action.enabled ?? true,
 						},
 					});
+					// Track the server-assigned ID
+					newActionIds.set(i, createdAction.id);
 				} else {
 					// Existing action - check if modified
 					const original = originalActions.value.find((a: ISceneAction) => a.id === actionId);
@@ -241,6 +246,16 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 					}
 				}
 			}
+
+			// Update model.actions with server-assigned IDs
+			for (const [index, newId] of newActionIds) {
+				if ((model as ISceneEditForm).actions[index]) {
+					(model as ISceneEditForm).actions[index].id = newId;
+				}
+			}
+
+			// Refresh originalActions from the store to reflect current state
+			originalActions.value = deepClone(actionsStore.findForScene(sceneId));
 		} catch (error: unknown) {
 			logger.error('Error syncing scene actions:', error);
 			throw error;
