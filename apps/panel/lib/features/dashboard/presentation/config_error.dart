@@ -110,7 +110,7 @@ class ConfigErrorScreen extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: onRetry,
                     icon: Icon(MdiIcons.refresh),
-                    label: Text(localizations?.retry ?? 'Retry'),
+                    label: Text(localizations?.button_retry ?? 'Retry'),
                   ),
                 ],
               ],

@@ -116,7 +116,7 @@ class IntentsService extends ChangeNotifier {
     }
 
     try {
-      final result = await _scenesService!.triggerScene(sceneId);
+      final result = await _scenesService.triggerScene(sceneId);
 
       if (result.success) {
         if (result.failureCount > 0) {
@@ -172,7 +172,7 @@ class IntentsService extends ChangeNotifier {
     }
 
     try {
-      final success = await _channelPropertiesRepository!.setValue(
+      final success = await _channelPropertiesRepository.setValue(
         propertyId,
         value,
       );
@@ -212,7 +212,7 @@ class IntentsService extends ChangeNotifier {
     }
 
     try {
-      final success = await _channelPropertiesRepository!.toggleValue(
+      final success = await _channelPropertiesRepository.toggleValue(
         propertyId,
       );
 

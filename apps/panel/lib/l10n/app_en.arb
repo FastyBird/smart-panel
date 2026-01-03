@@ -1203,5 +1203,29 @@
   "battery_title": "Battery",
   "@battery_title": {
     "description": "Title label for battery level display"
+  },
+  "config_error_title": "Configuration Required",
+  "@config_error_title": {
+    "description": "Title shown when display configuration is invalid"
+  },
+  "config_error_hint": "Configure this display in Admin > Displays",
+  "@config_error_hint": {
+    "description": "Hint text explaining how to fix configuration error"
+  },
+  "button_retry": "Retry",
+  "@button_retry": {
+    "description": "Text for Retry button"
+  },
+  "system_view_room": "Room",
+  "@system_view_room": {
+    "description": "Title for room system view in deck navigation"
+  },
+  "system_view_master": "Home",
+  "@system_view_master": {
+    "description": "Title for master/home system view in deck navigation"
+  },
+  "system_view_entry": "Entry",
+  "@system_view_entry": {
+    "description": "Title for entry system view in deck navigation"
   }
 }

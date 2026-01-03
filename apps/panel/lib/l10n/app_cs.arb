@@ -296,5 +296,11 @@
   "window_covering_tilt_description": "Úprava úhlu lamel",
   "window_covering_obstruction_warning": "Zjištěna překážka",
   "window_covering_fault_warning": "Zjištěna závada",
-  "battery_title": "Baterie"
+  "battery_title": "Baterie",
+  "config_error_title": "Vyžadována konfigurace",
+  "config_error_hint": "Nakonfigurujte tento displej v Správci > Displeje",
+  "button_retry": "Opakovat",
+  "system_view_room": "Místnost",
+  "system_view_master": "Domov",
+  "system_view_entry": "Vstup"
 }

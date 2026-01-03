@@ -895,4 +895,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get battery_title => 'Battery';
+
+  @override
+  String get config_error_title => 'Configuration Required';
+
+  @override
+  String get config_error_hint => 'Configure this display in Admin > Displays';
+
+  @override
+  String get button_retry => 'Retry';
+
+  @override
+  String get system_view_room => 'Room';
+
+  @override
+  String get system_view_master => 'Home';
+
+  @override
+  String get system_view_entry => 'Entry';
 }

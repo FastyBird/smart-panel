@@ -1745,7 +1745,7 @@ abstract class AppLocalizations {
   /// **'Scene partially activated'**
   String get space_scene_partial_success;
 
-  /// Status when the window covering is fully open
+/// Status when the window covering is fully open
   ///
   /// In en, this message translates to:
   /// **'Open'**
@@ -1858,6 +1858,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Battery'**
   String get battery_title;
+
+  /// Title shown when display configuration is invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration Required'**
+  String get config_error_title;
+
+  /// Hint text explaining how to fix configuration error
+  ///
+  /// In en, this message translates to:
+  /// **'Configure this display in Admin > Displays'**
+  String get config_error_hint;
+
+  /// Text for Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get button_retry;
+
+  /// Title for room system view in deck navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Room'**
+  String get system_view_room;
+
+  /// Title for master/home system view in deck navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get system_view_master;
+
+  /// Title for entry system view in deck navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Entry'**
+  String get system_view_entry;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

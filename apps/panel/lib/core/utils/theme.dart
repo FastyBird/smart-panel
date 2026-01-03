@@ -436,6 +436,9 @@ class AppFontSize {
   static final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
+  static double get extraLarge =>
+      _screenService.scale(18.0, density: _visualDensityService.density);
+
   static double get large =>
       _screenService.scale(16.0, density: _visualDensityService.density);
 

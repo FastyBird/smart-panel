@@ -895,4 +895,22 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get battery_title => 'Baterie';
+
+  @override
+  String get config_error_title => 'Vyžadována konfigurace';
+
+  @override
+  String get config_error_hint => 'Nakonfigurujte tento displej v Správci > Displeje';
+
+  @override
+  String get button_retry => 'Opakovat';
+
+  @override
+  String get system_view_room => 'Místnost';
+
+  @override
+  String get system_view_master => 'Domov';
+
+  @override
+  String get system_view_entry => 'Vstup';
 }
