@@ -21,7 +21,7 @@ export const defaultScenesFilter: IScenesFilter = {
 };
 
 export const defaultScenesSort: ISortEntry = {
-	by: 'order',
+	by: 'name',
 	dir: 'asc',
 };
 

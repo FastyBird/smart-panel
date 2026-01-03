@@ -20,7 +20,7 @@ export const defaultPagesFilter: IPagesFilter = {
 };
 
 export const defaultPagesSort: ISortEntry = {
-	by: 'order',
+	by: 'title',
 	dir: 'asc',
 };
 
