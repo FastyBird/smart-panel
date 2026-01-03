@@ -294,7 +294,9 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 				data: parsedModel.data,
 			});
 
-			if (scene.draft) {
+			let sceneId = scene.id;
+
+			if (isDraft) {
 				const updatedScene = await scenesStore.save({
 					id: scene.id,
 				});
@@ -306,12 +308,13 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 				model.description = updatedScene.description;
 				model.enabled = updatedScene.enabled;
 				model.primarySpaceId = updatedScene.primarySpaceId;
+
+				// Use the server-assigned ID for syncing actions
+				sceneId = updatedScene.id;
 			}
 
-			// Sync actions with backend (only for non-draft scenes)
-			if (!scene.draft) {
-				await syncActions(scene.id, parsedModel.data.actions);
-			}
+			// Sync actions with backend (scene is now saved, either was non-draft or just saved from draft)
+			await syncActions(sceneId, parsedModel.data.actions);
 		} catch (error: unknown) {
 			formResult.value = FormResult.ERROR;
 
