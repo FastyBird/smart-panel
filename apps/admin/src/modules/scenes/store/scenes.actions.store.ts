@@ -38,7 +38,7 @@ import type {
 import { transformSceneActionResponse } from './scenes.actions.transformers';
 import type { IScene } from './scenes.store.types';
 
-const defaultSemaphore: IScenesActionsStateSemaphore = {
+const createDefaultSemaphore = (): IScenesActionsStateSemaphore => ({
 	fetching: {
 		items: [],
 		item: [],
@@ -46,7 +46,7 @@ const defaultSemaphore: IScenesActionsStateSemaphore = {
 	creating: [],
 	updating: [],
 	deleting: [],
-};
+});
 
 export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions', ScenesActionsStoreSetup>(
 	'scenes_module-scenes_actions',
@@ -54,7 +54,7 @@ export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions',
 		const backend = useBackend();
 		const logger = useLogger();
 
-		const semaphore = ref<IScenesActionsStateSemaphore>(defaultSemaphore);
+		const semaphore = ref<IScenesActionsStateSemaphore>(createDefaultSemaphore());
 
 		const firstLoad = ref<IScene['id'][]>([]);
 
