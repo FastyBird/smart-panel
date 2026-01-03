@@ -838,4 +838,58 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get space_scene_partial_success => 'Scéna částečně aktivována';
+
+  @override
+  String get window_covering_status_open => 'Otevřeno';
+
+  @override
+  String get window_covering_status_closed => 'Zavřeno';
+
+  @override
+  String get window_covering_status_opening => 'Otevírání';
+
+  @override
+  String get window_covering_status_closing => 'Zavírání';
+
+  @override
+  String get window_covering_status_stopped => 'Zastaveno';
+
+  @override
+  String get window_covering_type_curtain => 'Záclona';
+
+  @override
+  String get window_covering_type_blind => 'Žaluzie';
+
+  @override
+  String get window_covering_type_roller => 'Roleta';
+
+  @override
+  String get window_covering_type_outdoor_blind => 'Venkovní žaluzie';
+
+  @override
+  String get window_covering_command_open => 'Otevřít';
+
+  @override
+  String get window_covering_command_close => 'Zavřít';
+
+  @override
+  String get window_covering_command_stop => 'Zastavit';
+
+  @override
+  String get window_covering_position_label => 'Pozice';
+
+  @override
+  String get window_covering_position_description => 'Aktuální pozice';
+
+  @override
+  String get window_covering_tilt_label => 'Náklon';
+
+  @override
+  String get window_covering_tilt_description => 'Úprava úhlu lamel';
+
+  @override
+  String get window_covering_obstruction_warning => 'Zjištěna překážka';
+
+  @override
+  String get window_covering_fault_warning => 'Zjištěna závada';
 }

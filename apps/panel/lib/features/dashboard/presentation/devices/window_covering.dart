@@ -34,9 +34,6 @@ class WindowCoveringDeviceDetailPage extends StatefulWidget {
 class _WindowCoveringDeviceDetailPageState
     extends State<WindowCoveringDeviceDetailPage>
     with SingleTickerProviderStateMixin {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
 
   late int _position;
@@ -403,7 +400,7 @@ class _WindowCoveringCommandButtons extends StatelessWidget {
   final WindowCoveringDeviceView _device;
   final ValueChanged<WindowCoveringCommandValue> _onCommand;
 
-  _WindowCoveringCommandButtons({
+  const _WindowCoveringCommandButtons({
     required WindowCoveringDeviceView device,
     required ValueChanged<WindowCoveringCommandValue> onCommand,
   })  : _device = device,
@@ -561,7 +558,7 @@ class _CommandButtonState extends State<_CommandButton>
           boxShadow: widget._isActive
               ? [
                   BoxShadow(
-                    color: primaryColor.withOpacity(0.3),
+                    color: primaryColor.withValues(alpha: 0.3),
                     blurRadius: AppSpacings.pMd,
                     offset: Offset(0, AppSpacings.pXs),
                   ),
@@ -643,8 +640,6 @@ class _WindowCoveringPositionSliderState
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
     final int min = widget._device.windowCoveringMinPercentage;
     final int max = widget._device.windowCoveringMaxPercentage;
 
@@ -866,13 +861,13 @@ class _WindowCoveringPainter extends CustomPainter {
         ? AppColorsLight.info
         : AppColorsDark.info;
 
-    return baseColor.withOpacity(0.7);
+    return baseColor.withValues(alpha: 0.7);
   }
 
   Color _getAccentColor() {
     return brightness == Brightness.light
-        ? AppBorderColorLight.base.withOpacity(0.5)
-        : AppBorderColorDark.base.withOpacity(0.5);
+        ? AppBorderColorLight.base.withValues(alpha: 0.5)
+        : AppBorderColorDark.base.withValues(alpha: 0.5);
   }
 
   void _drawCurtain(
@@ -1003,8 +998,8 @@ class _WindowCoveringPainter extends CustomPainter {
     // Draw tube highlight
     final highlightPaint = Paint()
       ..color = brightness == Brightness.light
-          ? Colors.white.withOpacity(0.3)
-          : Colors.white.withOpacity(0.2)
+          ? Colors.white.withValues(alpha: 0.3)
+          : Colors.white.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(
@@ -1029,7 +1024,7 @@ class _WindowCoveringPainter extends CustomPainter {
 
       // Draw subtle horizontal texture lines
       final texturePaint = Paint()
-        ..color = _getAccentColor().withOpacity(0.3)
+        ..color = _getAccentColor().withValues(alpha: 0.3)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.5;
 
@@ -1074,7 +1069,7 @@ class _WindowCoveringPainter extends CustomPainter {
 
     // Pulsing glow effect
     final glowPaint = Paint()
-      ..color = infoColor.withOpacity(0.2 + 0.3 * animationValue)
+      ..color = infoColor.withValues(alpha: 0.2 + 0.3 * animationValue)
       ..style = PaintingStyle.fill
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
 
@@ -1090,7 +1085,7 @@ class _WindowCoveringPainter extends CustomPainter {
 
     // Solid indicator line
     final indicatorPaint = Paint()
-      ..color = infoColor.withOpacity(0.6 + 0.4 * animationValue)
+      ..color = infoColor.withValues(alpha: 0.6 + 0.4 * animationValue)
       ..style = PaintingStyle.fill;
 
     canvas.drawRect(
@@ -1144,7 +1139,7 @@ class _WindowCoveringTiltControl extends StatelessWidget {
         Row(
           children: [
             Icon(
-              MdiIcons.angleSteering,
+              MdiIcons.rotateLeft,
               size: AppFontSize.base,
             ),
             SizedBox(width: AppSpacings.pXs),
@@ -1197,7 +1192,7 @@ class _WindowCoveringTiltControl extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${min}°',
+              '$min°',
               style: TextStyle(
                 fontSize: AppFontSize.extraSmall,
                 color: Theme.of(context).brightness == Brightness.light
@@ -1215,7 +1210,7 @@ class _WindowCoveringTiltControl extends StatelessWidget {
               ),
             ),
             Text(
-              '${max}°',
+              '$max°',
               style: TextStyle(
                 fontSize: AppFontSize.extraSmall,
                 color: Theme.of(context).brightness == Brightness.light
@@ -1233,7 +1228,7 @@ class _WindowCoveringTiltControl extends StatelessWidget {
 class _WindowCoveringWarnings extends StatelessWidget {
   final WindowCoveringDeviceView _device;
 
-  _WindowCoveringWarnings({
+  const _WindowCoveringWarnings({
     required WindowCoveringDeviceView device,
   }) : _device = device;
 
@@ -1287,7 +1282,7 @@ class _WarningTile extends StatelessWidget {
   final String _message;
   final Color _color;
 
-  _WarningTile({
+  const _WarningTile({
     required IconData icon,
     required String message,
     required Color color,
@@ -1304,10 +1299,10 @@ class _WarningTile extends StatelessWidget {
         vertical: AppSpacings.pXs,
       ),
       decoration: BoxDecoration(
-        color: _color.withOpacity(0.1),
+        color: _color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
-          color: _color.withOpacity(0.3),
+          color: _color.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -1369,7 +1364,7 @@ class _WindowCoveringTiles extends StatelessWidget {
       _TileItem(
         icon: _getBatteryIcon(level),
         title: 'Battery',
-        trailingText: NumberUtils.formatNumber(level, 0),
+        trailingText: NumberUtils.formatNumber(level.toDouble(), 0),
         unit: '%',
       ),
     ]);

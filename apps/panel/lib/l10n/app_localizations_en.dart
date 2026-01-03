@@ -838,4 +838,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get space_scene_partial_success => 'Scene partially activated';
+
+  @override
+  String get window_covering_status_open => 'Open';
+
+  @override
+  String get window_covering_status_closed => 'Closed';
+
+  @override
+  String get window_covering_status_opening => 'Opening';
+
+  @override
+  String get window_covering_status_closing => 'Closing';
+
+  @override
+  String get window_covering_status_stopped => 'Stopped';
+
+  @override
+  String get window_covering_type_curtain => 'Curtain';
+
+  @override
+  String get window_covering_type_blind => 'Blind';
+
+  @override
+  String get window_covering_type_roller => 'Roller';
+
+  @override
+  String get window_covering_type_outdoor_blind => 'Outdoor Blind';
+
+  @override
+  String get window_covering_command_open => 'Open';
+
+  @override
+  String get window_covering_command_close => 'Close';
+
+  @override
+  String get window_covering_command_stop => 'Stop';
+
+  @override
+  String get window_covering_position_label => 'Position';
+
+  @override
+  String get window_covering_position_description => 'Current position';
+
+  @override
+  String get window_covering_tilt_label => 'Tilt';
+
+  @override
+  String get window_covering_tilt_description => 'Adjust slat angle';
+
+  @override
+  String get window_covering_obstruction_warning => 'Obstruction detected';
+
+  @override
+  String get window_covering_fault_warning => 'Fault detected';
 }
