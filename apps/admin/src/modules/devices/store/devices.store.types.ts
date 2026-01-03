@@ -10,10 +10,12 @@ import {
 	DeviceSchema,
 	DeviceUpdateReqSchema,
 	DevicesAddActionPayloadSchema,
+	DevicesAddZoneActionPayloadSchema,
 	DevicesEditActionPayloadSchema,
 	DevicesGetActionPayloadSchema,
 	DevicesOnEventActionPayloadSchema,
 	DevicesRemoveActionPayloadSchema,
+	DevicesRemoveZoneActionPayloadSchema,
 	DevicesSaveActionPayloadSchema,
 	DevicesSetActionPayloadSchema,
 	DevicesStateSemaphoreSchema,
@@ -46,6 +48,10 @@ export type IDevicesSaveActionPayload = z.infer<typeof DevicesSaveActionPayloadS
 
 export type IDevicesRemoveActionPayload = z.infer<typeof DevicesRemoveActionPayloadSchema>;
 
+export type IDevicesAddZoneActionPayload = z.infer<typeof DevicesAddZoneActionPayloadSchema>;
+
+export type IDevicesRemoveZoneActionPayload = z.infer<typeof DevicesRemoveZoneActionPayloadSchema>;
+
 // STORE
 // =====
 
@@ -72,6 +78,8 @@ export interface IDevicesStoreActions {
 	edit: (payload: IDevicesEditActionPayload) => Promise<IDevice>;
 	save: (payload: IDevicesSaveActionPayload) => Promise<IDevice>;
 	remove: (payload: IDevicesRemoveActionPayload) => Promise<boolean>;
+	addZone: (payload: IDevicesAddZoneActionPayload) => Promise<IDevice>;
+	removeZone: (payload: IDevicesRemoveZoneActionPayload) => Promise<IDevice>;
 }
 
 export type DevicesStoreSetup = IDevicesStoreState & IDevicesStoreActions;

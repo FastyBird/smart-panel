@@ -130,16 +130,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAvatar, ElButton, ElDialog, ElInput, ElResult, ElTable, ElTableColumn, ElTag, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { IconWithChild, injectStoresManager, useFlashMessage } from '../../../common';
+import { IconWithChild, useFlashMessage } from '../../../common';
+import { useScenes, useScenesActions } from '../../scenes/composables/composables';
 import { SCENE_CATEGORY_ICONS, SceneCategory } from '../../scenes/scenes.constants';
-import { scenesStoreKey } from '../../scenes/store/keys';
 import type { IScene } from '../../scenes/store/scenes.store.types';
 import { useSpaces } from '../composables';
 
@@ -158,10 +158,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
-const storesManager = injectStoresManager();
 
-const scenesStore = storesManager.getStore(scenesStoreKey);
-
+const { scenes: allScenes, loaded: scenesLoaded, fetchScenes } = useScenes();
+const { editScene } = useScenesActions();
 const { findById } = useSpaces();
 
 const searchQuery = ref('');
@@ -169,7 +168,7 @@ const assigningSceneId = ref<string | null>(null);
 
 // Get available scenes (not assigned to current space)
 const availableScenes = computed(() => {
-	return scenesStore.findAll()
+	return allScenes.value
 		.filter((scene) => {
 			// Filter out drafts
 			if (scene.draft) return false;
@@ -215,7 +214,7 @@ const onClose = (): void => {
 const onAssignScene = async (scene: IScene): Promise<void> => {
 	assigningSceneId.value = scene.id;
 	try {
-		await scenesStore.edit({
+		await editScene({
 			id: scene.id,
 			data: {
 				primarySpaceId: props.spaceId,
@@ -229,6 +228,13 @@ const onAssignScene = async (scene: IScene): Promise<void> => {
 		assigningSceneId.value = null;
 	}
 };
+
+onMounted(async () => {
+	// Fetch scenes if not already loaded
+	if (!scenesLoaded.value) {
+		await fetchScenes();
+	}
+});
 
 watch(
 	() => props.visible,

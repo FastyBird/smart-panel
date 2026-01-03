@@ -318,27 +318,23 @@ import {
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { IconPicker, useBackend } from '../../../common';
-import { MODULES_PREFIX } from '../../../app.constants';
+import { IconPicker } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { useDevices } from '../../devices/composables/composables';
+import type { IDevice } from '../../devices/store/devices.store.types';
+import { useDisplays } from '../../displays/composables/composables';
+import type { IDisplay } from '../../displays/store/displays.store.types';
 import { useSpaceCategories, useSpaceEditForm, useSpaces } from '../composables';
 import {
 	FormResult,
 	isValidCategoryForType,
 	type SpaceCategory,
 	SpaceType,
-	SPACES_MODULE_PREFIX,
 } from '../spaces.constants';
 
 import SpaceEditSummarySection from './space-edit-summary-section.vue';
 import SpaceLightingRoles from './space-lighting-roles.vue';
 import { type ISpaceEditFormProps, spaceEditFormEmits } from './space-edit-form.types';
-
-interface ISpaceDevice {
-	id: string;
-	name: string;
-	category: DevicesModuleDeviceCategory;
-}
 
 const props = withDefaults(defineProps<ISpaceEditFormProps>(), {
 	hideActions: false,
@@ -348,8 +344,9 @@ const emit = defineEmits(spaceEditFormEmits);
 
 const { t } = useI18n();
 
-const backend = useBackend();
 const { zoneSpaces, findById } = useSpaces();
+const { devices: allDevices, areLoading: loadingDevices, loaded: devicesLoaded, fetchDevices } = useDevices();
+const { displays: allDisplays, isLoaded: displaysLoaded, fetchDisplays } = useDisplays();
 
 // Use the form composable - pass space as computed to enable reactivity when prop changes
 const {
@@ -367,15 +364,24 @@ watch(formRef, (newVal) => {
 	formEl.value = newVal;
 }, { immediate: true });
 
-const loadingDevices = ref(false);
-const spaceDevices = ref<ISpaceDevice[]>([]);
-
 // Collapse state - General and Organization open by default
 const activeCollapses = ref<string[]>(['general', 'organization']);
 
+// Devices filtered by this space (room)
+const spaceDevices = computed<IDevice[]>(() => {
+	if (!props.space?.id) return [];
+	return allDevices.value.filter((device) => device.roomId === props.space.id);
+});
+
+// Displays filtered by this space (room)
+const spaceDisplays = computed<IDisplay[]>(() => {
+	if (!props.space?.id) return [];
+	return allDisplays.value.filter((display) => display.roomId === props.space.id);
+});
+
 // Device and display counts for summary section
-const deviceCount = ref<number>(0);
-const displayCount = ref<number>(0);
+const deviceCount = computed<number>(() => spaceDevices.value.length);
+const displayCount = computed<number>(() => spaceDisplays.value.length);
 
 // Track values that were auto-populated from templates (not manually entered)
 const autoPopulatedValues = reactive({
@@ -455,29 +461,26 @@ const rules = computed<FormRules>(() => ({
 
 // Filter devices by category
 const thermostatDevices = computed(() =>
-	spaceDevices.value.filter(d => d.category === DevicesModuleDeviceCategory.thermostat)
+	spaceDevices.value.filter((d) => d.category === DevicesModuleDeviceCategory.thermostat)
 );
 
 const sensorDevices = computed(() =>
-	spaceDevices.value.filter(d => d.category === DevicesModuleDeviceCategory.sensor)
+	spaceDevices.value.filter((d) => d.category === DevicesModuleDeviceCategory.sensor)
 );
 
 // Temperature sensor options include both thermostats (which have temp sensors) and standalone sensors
 const temperatureSensorDevices = computed(() =>
-	spaceDevices.value.filter(d =>
-		d.category === DevicesModuleDeviceCategory.thermostat ||
-		d.category === DevicesModuleDeviceCategory.sensor
+	spaceDevices.value.filter(
+		(d) => d.category === DevicesModuleDeviceCategory.thermostat || d.category === DevicesModuleDeviceCategory.sensor
 	)
 );
 
 // All climate-capable devices (for showing/hiding the section)
-const climateDevices = computed(() =>
-	[...thermostatDevices.value, ...sensorDevices.value]
-);
+const climateDevices = computed(() => [...thermostatDevices.value, ...sensorDevices.value]);
 
 // Check if there are lighting devices in this space
 const hasLightingDevices = computed(() =>
-	spaceDevices.value.some(d => d.category === DevicesModuleDeviceCategory.lighting)
+	spaceDevices.value.some((d) => d.category === DevicesModuleDeviceCategory.lighting)
 );
 
 watch(
@@ -488,7 +491,7 @@ watch(
 	{ immediate: true }
 );
 
-// Watch for space prop changes to reload devices
+// Watch for space prop changes to reset auto-populated values
 watch(
 	() => props.space,
 	(space) => {
@@ -496,60 +499,19 @@ watch(
 			// Reset auto-populated tracking for the new space
 			autoPopulatedValues.icon = null;
 			autoPopulatedValues.description = null;
-			// Reload devices for the new space
-			loadSpaceDevices();
 		}
 	}
 );
 
-// Load devices for the space
-const loadSpaceDevices = async (): Promise<void> => {
-	loadingDevices.value = true;
-
-	try {
-		const { data: responseData, error } = await backend.client.GET(
-			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/devices`,
-			{ params: { path: { id: props.space.id } } }
-		);
-
-		if (error || !responseData) {
-			return;
-		}
-
-		spaceDevices.value = (responseData.data ?? []).map((device) => ({
-			id: device.id,
-			name: device.name,
-			category: device.category as DevicesModuleDeviceCategory,
-		}));
-
-		// Update device count for summary
-		deviceCount.value = spaceDevices.value.length;
-	} finally {
-		loadingDevices.value = false;
+onMounted(async () => {
+	// Fetch devices if not already loaded
+	if (!devicesLoaded.value) {
+		await fetchDevices();
 	}
-};
-
-// Load display count for the space
-const loadDisplayCount = async (): Promise<void> => {
-	try {
-		const { data: responseData, error } = await backend.client.GET(
-			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/displays`,
-			{ params: { path: { id: props.space.id } } }
-		);
-
-		if (error || !responseData) {
-			return;
-		}
-
-		displayCount.value = (responseData.data ?? []).length;
-	} catch {
-		// Silently fail - display count is not critical
+	// Fetch displays if not already loaded
+	if (!displaysLoaded.value) {
+		await fetchDisplays();
 	}
-};
-
-onMounted(() => {
-	loadSpaceDevices();
-	loadDisplayCount();
 });
 
 const onSubmit = async (): Promise<void> => {

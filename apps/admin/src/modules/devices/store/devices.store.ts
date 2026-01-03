@@ -39,10 +39,12 @@ import type {
 	IDeviceRes,
 	IDeviceUpdateReq,
 	IDevicesAddActionPayload,
+	IDevicesAddZoneActionPayload,
 	IDevicesEditActionPayload,
 	IDevicesGetActionPayload,
 	IDevicesOnEventActionPayload,
 	IDevicesRemoveActionPayload,
+	IDevicesRemoveZoneActionPayload,
 	IDevicesSaveActionPayload,
 	IDevicesSetActionPayload,
 	IDevicesStateSemaphore,
@@ -537,6 +539,66 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		return true;
 	};
 
+	const addZone = async (payload: IDevicesAddZoneActionPayload): Promise<IDevice> => {
+		const device = data.value[payload.id];
+
+		if (!device) {
+			throw new DevicesException(`Device [${payload.id}] not found.`);
+		}
+
+		semaphore.value.updating.push(payload.id);
+
+		try {
+			const { response } = await backend.client.POST(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}/zones/{zoneId}`, {
+				params: {
+					path: {
+						id: payload.id,
+						zoneId: payload.zoneId,
+					},
+				},
+			});
+
+			if (!response.ok) {
+				throw new DevicesApiException('Failed to add device to zone.', response.status);
+			}
+
+			// Re-fetch the device to update store with new zoneIds
+			return await get({ id: payload.id });
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+		}
+	};
+
+	const removeZone = async (payload: IDevicesRemoveZoneActionPayload): Promise<IDevice> => {
+		const device = data.value[payload.id];
+
+		if (!device) {
+			throw new DevicesException(`Device [${payload.id}] not found.`);
+		}
+
+		semaphore.value.updating.push(payload.id);
+
+		try {
+			const { response } = await backend.client.DELETE(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}/zones/{zoneId}`, {
+				params: {
+					path: {
+						id: payload.id,
+						zoneId: payload.zoneId,
+					},
+				},
+			});
+
+			if (!response.ok) {
+				throw new DevicesApiException('Failed to remove device from zone.', response.status);
+			}
+
+			// Re-fetch the device to update store with new zoneIds
+			return await get({ id: payload.id });
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+		}
+	};
+
 	const insertDeviceControlsRelations = (device: IDevice, controls: IDeviceControlRes[]): void => {
 		const devicesControlsStore = storesManager.getStore(devicesControlsStoreKey);
 
@@ -605,6 +667,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		edit,
 		save,
 		remove,
+		addZone,
+		removeZone,
 	};
 });
 

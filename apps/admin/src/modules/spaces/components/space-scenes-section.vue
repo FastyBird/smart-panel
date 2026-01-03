@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, toRef } from 'vue';
+import { onMounted, ref, toRef } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import {
@@ -180,11 +180,10 @@ import {
 } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { IconWithChild, injectStoresManager, useFlashMessage } from '../../../common';
+import { IconWithChild, useFlashMessage } from '../../../common';
 import { SCENE_CATEGORY_ICONS, SceneCategory } from '../../scenes/scenes.constants';
-import { scenesStoreKey } from '../../scenes/store/keys';
 import type { IScene } from '../../scenes/store/scenes.store.types';
-import { useSpaces } from '../composables';
+import { useSpaceScenes, useSpaces } from '../composables';
 
 import type { ISpaceScenesSectionProps } from './space-scenes-section.types';
 
@@ -200,27 +199,24 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
-const storesManager = injectStoresManager();
-
-const scenesStore = storesManager.getStore(scenesStoreKey);
 
 const { spaces: allSpaces } = useSpaces();
 
 const spaceIdRef = toRef(props, 'spaceId');
-const loading = ref<boolean>(false);
+
+const {
+	scenes,
+	loading,
+	firstLoadFinished,
+	fetchScenes,
+	reassignScene,
+	removeScene,
+} = useSpaceScenes(spaceIdRef);
 
 const showReassignDialog = ref(false);
 const selectedScene = ref<IScene | null>(null);
 const selectedTargetSpace = ref<string | null>(null);
 const isReassigning = ref(false);
-
-const scenes = computed<IScene[]>(() => {
-	if (!spaceIdRef.value) return [];
-
-	return scenesStore.findBySpace(spaceIdRef.value)
-		.filter((scene) => !scene.draft)
-		.sort((a, b) => a.name.localeCompare(b.name));
-});
 
 const getSceneCategoryIcon = (category: SceneCategory): string => {
 	return SCENE_CATEGORY_ICONS[category] || SCENE_CATEGORY_ICONS[SceneCategory.GENERIC];
@@ -242,12 +238,7 @@ const confirmReassign = async (): Promise<void> => {
 	isReassigning.value = true;
 
 	try {
-		await scenesStore.edit({
-			id: selectedScene.value.id,
-			data: {
-				primarySpaceId: selectedTargetSpace.value,
-			},
-		});
+		await reassignScene(selectedScene.value.id, selectedTargetSpace.value);
 		showReassignDialog.value = false;
 		flashMessage.success(t('spacesModule.detail.scenes.reassigned', { name: selectedScene.value.name }));
 	} catch {
@@ -269,13 +260,7 @@ const onRemoveScene = (scene: IScene): void => {
 	)
 		.then(async (): Promise<void> => {
 			try {
-				// Remove space assignment by editing scene's primarySpaceId to null
-				await scenesStore.edit({
-					id: scene.id,
-					data: {
-						primarySpaceId: null,
-					},
-				});
+				await removeScene(scene.id);
 				flashMessage.success(t('spacesModule.detail.scenes.removed', { name: scene.name }));
 			} catch {
 				flashMessage.error(t('spacesModule.messages.saveError'));
@@ -286,19 +271,9 @@ const onRemoveScene = (scene: IScene): void => {
 		});
 };
 
-const fetchScenes = async (): Promise<void> => {
-	loading.value = true;
-
-	try {
-		await scenesStore.fetch();
-	} finally {
-		loading.value = false;
-	}
-};
-
 onMounted(async () => {
 	// Only fetch if scenes haven't been loaded yet
-	if (!scenesStore.firstLoadFinished()) {
+	if (!firstLoadFinished.value) {
 		await fetchScenes();
 	}
 });
