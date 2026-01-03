@@ -20,4 +20,6 @@ abstract class DashboardPageView<M extends PageModel> {
   IconData? get icon => _pageModel.icon;
 
   bool get showTopBar => _pageModel.showTopBar;
+
+  int get order => _pageModel.order;
 }

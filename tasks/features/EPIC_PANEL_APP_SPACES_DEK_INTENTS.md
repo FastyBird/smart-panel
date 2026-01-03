@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: (none)
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -53,12 +53,12 @@ I want the Panel App to automatically present meaningful “system views” (Roo
 
 ## 4. Acceptance criteria
 
-- [ ] Panel App builds the deck as `systemViews[] + dashboardPages[]` for any display.
-- [ ] System views are role-dependent (Room/Master/Entry) and exactly one system view is included per display.
-- [ ] `homeMode=auto` starts on the system view; `homeMode=explicit` starts on the chosen dashboard page (or a safe fallback).
-- [ ] The set and order of dashboard pages matches existing backend ordering rules (global + per-display).
-- [ ] No “legacy first page” logic remains anywhere in Panel App.
-- [ ] Core navigation, state hydration, and intent routing are covered by tests.
+- [x] Panel App builds the deck as `systemViews[] + dashboardPages[]` for any display.
+- [x] System views are role-dependent (Room/Master/Entry) and exactly one system view is included per display.
+- [x] `homeMode=auto` starts on the system view; `homeMode=explicit` starts on the chosen dashboard page (or a safe fallback).
+- [x] The set and order of dashboard pages matches existing backend ordering rules (global + per-display).
+- [x] No "legacy first page" logic remains anywhere in Panel App.
+- [x] Core navigation, state hydration, and intent routing are covered by tests.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

@@ -44,6 +44,7 @@ import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart
 import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:fastybird_smart_panel/modules/scenes/services/scenes_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
@@ -486,6 +487,18 @@ class StartupManagerService {
       } catch (_) {}
     }
 
+    // Deck services
+    if (locator.isRegistered<DeckService>()) {
+      try {
+        locator.unregister<DeckService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<IntentsService>()) {
+      try {
+        locator.unregister<IntentsService>();
+      } catch (_) {}
+    }
+
     // Unregister API client and Dio instance
     if (locator.isRegistered<ApiClient>()) {
       try {
@@ -573,6 +586,19 @@ class StartupManagerService {
     // Property timeseries service
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);
     locator.registerSingleton(propertyTimeseriesService);
+
+    // Deck navigation services
+    var deckService = DeckService(
+      dashboardService: locator<DashboardService>(),
+    );
+    locator.registerSingleton(deckService);
+
+    var intentsService = IntentsService(
+      eventBus: _eventBus,
+      scenesService: scenesService,
+      channelPropertiesRepository: locator<ChannelPropertiesRepository>(),
+    );
+    locator.registerSingleton(intentsService);
 
     // Api client
     locator.registerSingleton(_apiIoService);

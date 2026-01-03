@@ -1,0 +1,717 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/scenes/models/scene.dart';
+import 'package:fastybird_smart_panel/modules/scenes/services/scenes_service.dart';
+import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+/// Room summary data for master overview.
+class RoomSummary {
+  final String id;
+  final String name;
+  final IconData icon;
+  final int onlineDevices;
+  final int totalDevices;
+  final double? temperature;
+
+  const RoomSummary({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.onlineDevices,
+    required this.totalDevices,
+    this.temperature,
+  });
+}
+
+/// Master system view - shows whole-house overview.
+///
+/// This is the primary view for displays with role=master. It provides:
+/// - Summary counts (rooms, devices, alerts, scenes)
+/// - Room list with status cards
+/// - Global scenes (Away, Home, Night, etc.)
+class MasterOverviewPage extends StatefulWidget {
+  final SystemViewItem viewItem;
+
+  const MasterOverviewPage({super.key, required this.viewItem});
+
+  @override
+  State<MasterOverviewPage> createState() => _MasterOverviewPageState();
+}
+
+class _MasterOverviewPageState extends State<MasterOverviewPage> {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+  late final IntentsService _intentsService;
+  ScenesService? _scenesService;
+
+  // Loading states
+  bool _isLoading = true;
+  bool _isScenesLoading = false;
+  bool _isSceneTriggering = false;
+  String? _triggeringSceneId;
+
+  // House data
+  int _roomsCount = 0;
+  int _totalDevices = 0;
+  int _onlineDevices = 0;
+  int _alertsCount = 0;
+  List<RoomSummary> _rooms = [];
+
+  // Global scenes
+  List<SceneModel> _globalScenes = [];
+
+  // Error state
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _intentsService = locator<IntentsService>();
+    try {
+      _scenesService = locator<ScenesService>();
+    } catch (_) {}
+
+    _loadHouseData();
+  }
+
+  Future<void> _loadHouseData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // TODO: Call actual spaces API when available
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
+
+      // Set house info (simulated for now)
+      setState(() {
+        _roomsCount = 5;
+        _totalDevices = 24;
+        _onlineDevices = 22;
+        _alertsCount = 1;
+        _rooms = [
+          const RoomSummary(
+            id: 'living-room',
+            name: 'Living Room',
+            icon: MdiIcons.sofa,
+            onlineDevices: 6,
+            totalDevices: 6,
+            temperature: 21.5,
+          ),
+          const RoomSummary(
+            id: 'bedroom',
+            name: 'Bedroom',
+            icon: MdiIcons.bedKingOutline,
+            onlineDevices: 4,
+            totalDevices: 4,
+            temperature: 20.0,
+          ),
+          const RoomSummary(
+            id: 'kitchen',
+            name: 'Kitchen',
+            icon: MdiIcons.stove,
+            onlineDevices: 5,
+            totalDevices: 5,
+            temperature: 22.0,
+          ),
+          const RoomSummary(
+            id: 'bathroom',
+            name: 'Bathroom',
+            icon: MdiIcons.showerHead,
+            onlineDevices: 3,
+            totalDevices: 4,
+          ),
+          const RoomSummary(
+            id: 'office',
+            name: 'Office',
+            icon: MdiIcons.deskLamp,
+            onlineDevices: 4,
+            totalDevices: 5,
+            temperature: 21.0,
+          ),
+        ];
+        _isLoading = false;
+      });
+
+      // Load global scenes (whole-home scenes)
+      _loadGlobalScenes();
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Failed to load house data';
+      });
+    }
+  }
+
+  Future<void> _loadGlobalScenes() async {
+    if (_scenesService == null) return;
+
+    setState(() {
+      _isScenesLoading = true;
+    });
+
+    try {
+      // Fetch global/whole-home scenes
+      // TODO: Use actual API - for now simulate with a "home" space ID
+      final scenes = await _scenesService!.fetchScenesForSpace('home');
+
+      if (!mounted) return;
+
+      setState(() {
+        _globalScenes = scenes;
+        _isScenesLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _globalScenes = [];
+        _isScenesLoading = false;
+      });
+    }
+  }
+
+  Future<void> _triggerScene(SceneModel scene) async {
+    if (_isSceneTriggering) return;
+
+    setState(() {
+      _isSceneTriggering = true;
+      _triggeringSceneId = scene.id;
+    });
+
+    try {
+      final result = await _intentsService.activateScene(scene.id);
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSceneTriggering = false;
+        _triggeringSceneId = null;
+      });
+
+      if (result.isSuccess) {
+        final localizations = AppLocalizations.of(context);
+        AlertBar.showSuccess(
+          context,
+          message: localizations?.space_scene_triggered ?? 'Scene activated',
+        );
+      } else if (result.isPartialSuccess) {
+        final localizations = AppLocalizations.of(context);
+        AlertBar.showInfo(
+          context,
+          message: localizations?.space_scene_partial_success ??
+              'Scene partially activated',
+        );
+      } else {
+        final localizations = AppLocalizations.of(context);
+        AlertBar.showError(
+          context,
+          message: result.message ?? localizations?.action_failed ?? 'Failed',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isSceneTriggering = false;
+        _triggeringSceneId = null;
+      });
+
+      final localizations = AppLocalizations.of(context);
+      AlertBar.showError(
+        context,
+        message: localizations?.action_failed ?? 'Failed to activate scene',
+      );
+    }
+  }
+
+  void _onRoomTap(RoomSummary room) {
+    // Navigate to room context via intent
+    _intentsService.setRoomContextIntent(room.id);
+
+    // TODO: Navigate to room detail or room page when available
+    debugPrint('Navigate to room: ${room.name}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
+    return Scaffold(
+      appBar: AppTopBar(
+        title: widget.viewItem.title,
+        icon: MdiIcons.home,
+        actions: _buildStatusBadges(context),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: AppSpacings.paddingMd,
+          child: _isLoading
+              ? _buildLoadingState()
+              : _errorMessage != null
+                  ? _buildErrorState()
+                  : _buildContent(context, localizations),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildStatusBadges(BuildContext context) {
+    final badges = <Widget>[];
+
+    // Devices status badge
+    badges.add(_buildDevicesBadge(context));
+
+    // Alerts badge
+    if (_alertsCount > 0) {
+      badges.add(AppSpacings.spacingSmHorizontal);
+      badges.add(_buildAlertsBadge(context));
+    }
+
+    return badges;
+  }
+
+  Widget _buildDevicesBadge(BuildContext context) {
+    final iconSize = _screenService.scale(
+      14,
+      density: _visualDensityService.density,
+    );
+    final allOnline = _onlineDevices == _totalDevices;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pSm,
+        vertical: AppSpacings.pXs,
+      ),
+      decoration: BoxDecoration(
+        color: allOnline
+            ? (Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.success.withValues(alpha: 0.15)
+                : AppColorsDark.success.withValues(alpha: 0.2))
+            : (Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.warning.withValues(alpha: 0.15)
+                : AppColorsDark.warning.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            allOnline ? MdiIcons.checkCircleOutline : MdiIcons.alertOutline,
+            size: iconSize,
+            color: allOnline
+                ? (Theme.of(context).brightness == Brightness.light
+                    ? AppColorsLight.success
+                    : AppColorsDark.success)
+                : (Theme.of(context).brightness == Brightness.light
+                    ? AppColorsLight.warning
+                    : AppColorsDark.warning),
+          ),
+          SizedBox(width: AppSpacings.pXs),
+          Text(
+            '$_onlineDevices/$_totalDevices',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w500,
+              color: allOnline
+                  ? (Theme.of(context).brightness == Brightness.light
+                      ? AppColorsLight.successDark2
+                      : AppColorsDark.successDark2)
+                  : (Theme.of(context).brightness == Brightness.light
+                      ? AppColorsLight.warningDark2
+                      : AppColorsDark.warningDark2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlertsBadge(BuildContext context) {
+    final iconSize = _screenService.scale(
+      14,
+      density: _visualDensityService.density,
+    );
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pSm,
+        vertical: AppSpacings.pXs,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.light
+            ? AppColorsLight.danger.withValues(alpha: 0.15)
+            : AppColorsDark.danger.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            MdiIcons.alertCircle,
+            size: iconSize,
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.danger
+                : AppColorsDark.danger,
+          ),
+          SizedBox(width: AppSpacings.pXs),
+          Text(
+            '$_alertsCount',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppColorsLight.dangerDark2
+                  : AppColorsDark.dangerDark2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: CircularProgressIndicator(
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            MdiIcons.alertCircleOutline,
+            size: _screenService.scale(64, density: _visualDensityService.density),
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.danger
+                : AppColorsDark.danger,
+          ),
+          AppSpacings.spacingMdVertical,
+          Text(
+            _errorMessage!,
+            style: TextStyle(
+              fontSize: AppFontSize.base,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          AppSpacings.spacingMdVertical,
+          FilledButton.icon(
+            onPressed: _loadHouseData,
+            icon: Icon(MdiIcons.refresh),
+            label: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, AppLocalizations? localizations) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Summary stats
+        _buildSummarySection(context, localizations),
+        AppSpacings.spacingMdVertical,
+
+        // Global scenes
+        if (_globalScenes.isNotEmpty || _isScenesLoading) ...[
+          _buildScenesSection(context, localizations),
+          AppSpacings.spacingMdVertical,
+        ],
+
+        // Rooms list
+        Expanded(
+          child: _buildRoomsSection(context, localizations),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummarySection(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _buildSummaryCard(
+          context,
+          icon: MdiIcons.homeGroup,
+          value: '$_roomsCount',
+          label: localizations?.master_rooms ?? 'Rooms',
+        ),
+        _buildSummaryCard(
+          context,
+          icon: MdiIcons.devicesOutline,
+          value: '$_totalDevices',
+          label: localizations?.master_devices ?? 'Devices',
+        ),
+        _buildSummaryCard(
+          context,
+          icon: MdiIcons.movieOpenPlay,
+          value: '${_globalScenes.length}',
+          label: localizations?.master_scenes ?? 'Scenes',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard(
+    BuildContext context, {
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    final iconSize = _screenService.scale(
+      28,
+      density: _visualDensityService.density,
+    );
+
+    return Container(
+      padding: AppSpacings.paddingSm,
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.light
+            ? AppBgColorLight.page.withValues(alpha: 0.5)
+            : AppBgColorDark.overlay.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: iconSize,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          AppSpacings.spacingXsVertical,
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: AppFontSize.large,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScenesSection(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              MdiIcons.movieOpenPlay,
+              size: _screenService.scale(
+                20,
+                density: _visualDensityService.density,
+              ),
+            ),
+            AppSpacings.spacingSmHorizontal,
+            Text(
+              localizations?.master_quick_actions ?? 'Quick Actions',
+              style: TextStyle(
+                fontSize: AppFontSize.base,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        AppSpacings.spacingSmVertical,
+        if (_isScenesLoading)
+          Center(
+            child: SizedBox(
+              width: _screenService.scale(
+                24,
+                density: _visualDensityService.density,
+              ),
+              height: _screenService.scale(
+                24,
+                density: _visualDensityService.density,
+              ),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          )
+        else
+          Wrap(
+            spacing: AppSpacings.pSm,
+            runSpacing: AppSpacings.pSm,
+            children: _globalScenes
+                .map((scene) => _buildSceneChip(context, scene))
+                .toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSceneChip(BuildContext context, SceneModel scene) {
+    final isTriggering = _triggeringSceneId == scene.id;
+
+    return ActionChip(
+      avatar: isTriggering
+          ? SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            )
+          : Icon(scene.iconData, size: 18),
+      label: Text(scene.name),
+      onPressed: _isSceneTriggering ? null : () => _triggerScene(scene),
+    );
+  }
+
+  Widget _buildRoomsSection(
+    BuildContext context,
+    AppLocalizations? localizations,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              MdiIcons.homeGroup,
+              size: _screenService.scale(
+                20,
+                density: _visualDensityService.density,
+              ),
+            ),
+            AppSpacings.spacingSmHorizontal,
+            Text(
+              localizations?.master_rooms ?? 'Rooms',
+              style: TextStyle(
+                fontSize: AppFontSize.base,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        AppSpacings.spacingSmVertical,
+        Expanded(
+          child: ListView.separated(
+            itemCount: _rooms.length,
+            separatorBuilder: (context, index) => AppSpacings.spacingSmVertical,
+            itemBuilder: (context, index) => _buildRoomCard(context, _rooms[index]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoomCard(BuildContext context, RoomSummary room) {
+    final iconSize = _screenService.scale(
+      32,
+      density: _visualDensityService.density,
+    );
+    final allOnline = room.onlineDevices == room.totalDevices;
+
+    return InkWell(
+      onTap: () => _onRoomTap(room),
+      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+      child: Container(
+        padding: AppSpacings.paddingSm,
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppBgColorLight.page.withValues(alpha: 0.5)
+              : AppBgColorDark.overlay.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              room.icon,
+              size: iconSize,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            AppSpacings.spacingMdHorizontal,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    room.name,
+                    style: TextStyle(
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    '${room.onlineDevices}/${room.totalDevices} devices',
+                    style: TextStyle(
+                      fontSize: AppFontSize.extraSmall,
+                      color: allOnline
+                          ? (Theme.of(context).brightness == Brightness.light
+                              ? AppColorsLight.success
+                              : AppColorsDark.success)
+                          : (Theme.of(context).brightness == Brightness.light
+                              ? AppColorsLight.warning
+                              : AppColorsDark.warning),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (room.temperature != null) ...[
+              Text(
+                '${room.temperature!.toStringAsFixed(1)}°',
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular,
+                ),
+              ),
+              AppSpacings.spacingSmHorizontal,
+            ],
+            Icon(
+              MdiIcons.chevronRight,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.placeholder
+                  : AppTextColorDark.placeholder,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
