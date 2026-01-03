@@ -65,6 +65,8 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
   }
 
   void _onNavigateToPage(NavigateToPageEvent event) {
+    if (!mounted) return;
+
     final deckService = context.read<DeckService>();
     final index = deckService.indexOfItem(event.pageId);
 
@@ -78,6 +80,8 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
   }
 
   void _onNavigateToDeckItem(NavigateToDeckItemEvent event) {
+    if (!mounted) return;
+
     final deckService = context.read<DeckService>();
     final index = deckService.indexOfItem(event.itemId);
 
