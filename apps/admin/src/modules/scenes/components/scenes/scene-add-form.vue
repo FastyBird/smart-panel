@@ -432,6 +432,7 @@ const onEditActionFormCancel = (): void => {
 
 const validateAndSubmit = async (): Promise<void> => {
 	if (model.actions.length === 0) {
+		formResult.value = FormResult.ERROR;
 		flashMessage.error(t('scenes.form.actionsRequired'));
 		throw new Error('No actions');
 	}
