@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -46,13 +46,13 @@ I want to create, manage and trigger Scenes that are scoped to Spaces (Rooms) an
 
 ## 4. Acceptance criteria
 
-- [ ] A new core `scenes` module exists with a plugin-based scene type registry and a stable core schema.
-- [ ] At least one scene type plugin exists: `simple-scene`, able to apply a list of property value sets via the Devices module.
-- [ ] Scenes are **room-scoped** (bound to one `Space` of type `room`) and validated server-side.
-- [ ] Admin can create/edit/delete scenes and trigger them (“Apply”) from admin UI.
-- [ ] Panel can display scenes for the current room and trigger them.
-- [ ] Unit tests exist for scene type registry + apply delegation + basic validation.
-- [ ] OpenAPI models and client code stay in sync; changes are covered by tests.
+- [x] A new core `scenes` module exists with a plugin-based scene type registry and a stable core schema.
+- [x] At least one scene type plugin exists: `simple-scene` (scenes-local plugin), able to apply a list of property value sets via the Devices module.
+- [x] Scenes are **room-scoped** (bound to one `Space` of type `room`) and validated server-side.
+- [x] Admin can create/edit/delete scenes and trigger them ("Apply") from admin UI.
+- [x] Panel can display scenes for the current room and trigger them.
+- [x] Unit tests exist for scene type registry + apply delegation + basic validation.
+- [x] OpenAPI models and client code stay in sync; changes are covered by tests.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

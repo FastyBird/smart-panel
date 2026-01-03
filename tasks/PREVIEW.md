@@ -6,9 +6,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 50 |
+| Done | 62 |
 | Planned | 6 |
-| **Total** | **56** |
+| **Total** | **68** |
 
 ---
 
@@ -20,6 +20,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 |----|-------|-------|------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | Display roles & House control | backend, admin, panel | large |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | Display roles & House control v2 (refined specification) | backend, admin, panel | large |
+| EPIC-SCENES-MVP | Scenes module MVP (room-scoped scenes) | backend, admin, panel | large |
+| EPIC-SCENES-PLUGIN-MVP | Scenes module (plugin-based) MVP | backend, admin, panel | large |
 | EPIC-SPACES-FIRST-UX | Spaces-first UX (Spaces module + Space pages + onboarding + MVP intents) | backend, admin, panel | large |
 
 ### Planned
@@ -57,6 +59,13 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-ZIGBEE2MQTT | Zigbee2MQTT Plugin | backend, admin | large |
 | FEATURE-Z2M-CONVERTER-ARCHITECTURE | Zigbee2MQTT Modular Converter Architecture | backend | large |
 | FEATURE-PROPERTY-TIMESERIES | Property Timeseries Endpoint | backend | medium |
+| FEATURE-SCENES-ADMIN-ROOM | Admin UI — Room scenes list + create/edit/apply | admin | medium |
+| FEATURE-SCENES-ADMIN-UI | Scenes Admin UI (CRUD + action editor) | admin | medium |
+| FEATURE-SCENES-BACKEND-CORE | Scenes backend module (core CRUD + apply) | backend | medium |
+| FEATURE-SCENES-CORE-REGISTRY | Core Scenes module skeleton + type registry | backend | medium |
+| FEATURE-SCENES-PANEL-QUICK-ACTIONS | Panel – show room scenes as quick actions | panel | medium |
+| FEATURE-SCENES-PANEL-ROOM-ACTIONS | Panel UI — Room quick actions for Scenes | panel | medium |
+| FEATURE-SCENES-PLUGIN-SIMPLE | Simple Scene type plugin (apply via Devices) | backend | medium |
 | FEATURE-SPACE-CLIMATE-MVP | MVP Climate controls for Space pages | backend, panel | medium |
 | FEATURE-SPACE-INTENTS-LIGHTING-MVP | MVP intent-based lighting for Space pages | backend, panel | medium |
 | FEATURE-SPACE-INTENTS-LIGHTING-ROLES | Intent-based lighting with roles | backend, panel | medium |
@@ -99,7 +108,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECH-SPACES-ONBOARDING-WIZARD | Spaces onboarding and assignment wizard | admin, backend | medium |
 | TECHNICAL-OPENAPI-SPECIFICATION | Backend as Source of Truth for OpenAPI | backend | large |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | Display Token Revocation & Multi-Backend | backend, admin, panel | large |
+| TECHNICAL-SCENES-ACTION-VALIDATION | Scene action validation & typing | backend | small |
 | TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | Align implementation to v2 specification | backend, admin, panel | small |
+| TECH-SCENES-OPENAPI-SYNC | Scenes — OpenAPI models + client sync tests | backend, admin, panel | small |
 
 ### Planned
 
@@ -115,6 +126,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 |----|-------|-------|
 | CHORE-CODEBASE-TODO-CLEANUP | Codebase TODO Cleanup | backend, admin, panel |
 | CHORE-EXTENSIONS-CORE-CONTROL | Extensions Core Control Implementation | backend, admin |
+| CHORE-SCENES-APPLY-FEEDBACK | Apply scene feedback & idempotency | backend, panel |
 
 ### Planned
 
@@ -135,6 +147,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Type | Status |
 |----|------|--------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
+| EPIC-SCENES-MVP | epic | done |
+| EPIC-SCENES-PLUGIN-MVP | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
@@ -152,6 +166,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-ZIGBEE2MQTT | feature | done |
 | FEATURE-Z2M-CONVERTER-ARCHITECTURE | feature | done |
 | FEATURE-PROPERTY-TIMESERIES | feature | done |
+| FEATURE-SCENES-BACKEND-CORE | feature | done |
+| FEATURE-SCENES-CORE-REGISTRY | feature | done |
+| FEATURE-SCENES-PLUGIN-SIMPLE | feature | done |
 | FEATURE-SPACE-CLIMATE-MVP | feature | done |
 | FEATURE-SPACE-INTENTS-LIGHTING-MVP | feature | done |
 | FEATURE-SPACE-INTENTS-LIGHTING-ROLES | feature | done |
@@ -172,8 +189,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
 | CHORE-CODEBASE-TODO-CLEANUP | chore | done |
 | CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
+| CHORE-SCENES-APPLY-FEEDBACK | chore | done |
 | TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
+| TECH-SCENES-OPENAPI-SYNC | technical | done |
 | TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
+| TECHNICAL-SCENES-ACTION-VALIDATION | technical | done |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
 | FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
 | FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
@@ -188,8 +208,12 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Type | Status |
 |----|------|--------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
+| EPIC-SCENES-MVP | epic | done |
+| EPIC-SCENES-PLUGIN-MVP | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
 | FEATURE-ADMIN-PLUGIN-SERVICES | feature | done |
+| FEATURE-SCENES-ADMIN-ROOM | feature | done |
+| FEATURE-SCENES-ADMIN-UI | feature | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
 | FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
@@ -217,6 +241,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
 | FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
 | FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
+| TECH-SCENES-OPENAPI-SYNC | technical | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
@@ -226,6 +251,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | ID | Type | Status |
 |----|------|--------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
+| EPIC-SCENES-MVP | epic | done |
+| EPIC-SCENES-PLUGIN-MVP | epic | done |
 | EPIC-SPACES-FIRST-UX | epic | done |
 | FEATURE-CONFIG-CONSOLIDATION | feature | done |
 | FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
@@ -237,6 +264,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-MULTI-LOCATION-WEATHER | feature | done |
 | FEATURE-PANEL-IDLE-MODE-SPACE-AWARE | feature | done |
 | FEATURE-PLUGIN-SHELLY-V1-UI | feature | done |
+| FEATURE-SCENES-PANEL-QUICK-ACTIONS | feature | done |
+| FEATURE-SCENES-PANEL-ROOM-ACTIONS | feature | done |
 | FEATURE-SPACE-CLIMATE-MVP | feature | done |
 | FEATURE-SPACE-INTENTS-LIGHTING-MVP | feature | done |
 | FEATURE-SPACE-INTENTS-LIGHTING-ROLES | feature | done |
@@ -248,7 +277,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECH-DISPLAY-HOME-RESOLUTION | technical | done |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
 | TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
+| TECH-SCENES-OPENAPI-SYNC | technical | done |
 | CHORE-CODEBASE-TODO-CLEANUP | chore | done |
+| CHORE-SCENES-APPLY-FEEDBACK | chore | done |
 | TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
 | FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
@@ -308,6 +339,20 @@ FEATURE-PLUGIN-SHELLY-V1 (done)
 FEATURE-PLUGIN-ZIGBEE2MQTT (done)
 ├── FEATURE-Z2M-CONVERTER-ARCHITECTURE (done)
 └── FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS (planned)
+
+EPIC-SCENES-MVP (done)
+├── FEATURE-SCENES-BACKEND-CORE (done)
+├── FEATURE-SCENES-ADMIN-UI (done)
+├── FEATURE-SCENES-PANEL-QUICK-ACTIONS (done)
+├── TECHNICAL-SCENES-ACTION-VALIDATION (done)
+├── TECH-SCENES-OPENAPI-SYNC (done)
+└── CHORE-SCENES-APPLY-FEEDBACK (done)
+
+EPIC-SCENES-PLUGIN-MVP (done)
+├── FEATURE-SCENES-CORE-REGISTRY (done)
+├── FEATURE-SCENES-PLUGIN-SIMPLE (done)
+├── FEATURE-SCENES-ADMIN-ROOM (done)
+└── FEATURE-SCENES-PANEL-ROOM-ACTIONS (done)
 ```
 
 ---
@@ -324,8 +369,11 @@ tasks/
 │   ├── CHORE-CODEBASE-TODO-CLEANUP.md
 │   └── CHORE-EXTENSIONS-CORE-CONTROL.md
 ├── features/               # Feature implementations
+│   ├── CHORE-SCENES-APPLY-FEEDBACK.md
 │   ├── EPIC-DISPLAY-ROLES-HOUSE-CONTROL.md
 │   ├── EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2.md
+│   ├── EPIC-SCENES-MVP.md
+│   ├── EPIC-SCENES-PLUGIN-MVP.md
 │   ├── EPIC-SPACES-FIRST-UX.md
 │   ├── FEATURE-ADMIN-PLUGIN-SERVICES.md
 │   ├── FEATURE-APP-UPDATES.md
@@ -355,6 +403,13 @@ tasks/
 │   ├── FEATURE-PLUGIN-ZIGBEE2MQTT.md
 │   ├── FEATURE-Z2M-CONVERTER-ARCHITECTURE.md
 │   ├── FEATURE-PROPERTY-TIMESERIES.md
+│   ├── FEATURE-SCENES-ADMIN-ROOM.md
+│   ├── FEATURE-SCENES-ADMIN-UI.md
+│   ├── FEATURE-SCENES-BACKEND-CORE.md
+│   ├── FEATURE-SCENES-CORE-REGISTRY.md
+│   ├── FEATURE-SCENES-PANEL-QUICK-ACTIONS.md
+│   ├── FEATURE-SCENES-PANEL-ROOM-ACTIONS.md
+│   ├── FEATURE-SCENES-PLUGIN-SIMPLE.md
 │   ├── FEATURE-SPACE-CLIMATE-MVP.md
 │   ├── FEATURE-SPACE-INTENTS-LIGHTING-MVP.md
 │   ├── FEATURE-SPACE-INTENTS-LIGHTING-ROLES.md
@@ -375,14 +430,16 @@ tasks/
 │   ├── TECH-EPIC-HOUSE-CONTROL-ALIGNMENT.md
 │   ├── TECH-HOUSE-CONTROL-SMOKE-TESTS.md
 │   ├── TECH-INTENT-CATALOG.md
+│   ├── TECH-SCENES-OPENAPI-SYNC.md
 │   ├── TECH-SPACE-CONTEXT-SNAPSHOT.md
 │   ├── TECH-SPACE-LAST-ACTIVITY-TRACKING.md
 │   └── TECH-SPACES-ONBOARDING-WIZARD.md
 └── technical/              # Technical refactors
     ├── TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND.md
-    └── TECHNICAL-OPENAPI-SPECIFICATION.md
+    ├── TECHNICAL-OPENAPI-SPECIFICATION.md
+    └── TECHNICAL-SCENES-ACTION-VALIDATION.md
 ```
 
 ---
 
-*Last updated: 2025-12-28*
+*Last updated: 2026-01-03*
