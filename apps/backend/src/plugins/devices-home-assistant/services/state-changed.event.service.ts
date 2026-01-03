@@ -109,12 +109,6 @@ export class StateChangedEventService implements WsEventService {
 			entityId,
 			setTimeout(() => {
 				void (async () => {
-					this.logger.debug(
-						`[STATE CHANGED] Processing state for ${entityId}, ` +
-							`state=${event.data.new_state.state}, ` +
-							`brightness=${JSON.stringify(event.data.new_state.attributes?.brightness ?? 'N/A')}`,
-					);
-
 					const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [event.data.new_state]);
 
 					for (const map of resultMaps) {
@@ -123,16 +117,10 @@ export class StateChangedEventService implements WsEventService {
 
 							if (!property) {
 								this.logger.warn(
-									`[STATE CHANGED] Property ${propertyId} not found in cache, ` +
-										`cache has ${this.properties.length} properties`,
+									`Property ${propertyId} not found in cache, ` + `cache has ${this.properties.length} properties`,
 								);
 								continue;
 							}
-
-							this.logger.debug(
-								`[STATE CHANGED] Updating property ${property.category} (${property.id}) ` +
-									`with value=${String(value)}`,
-							);
 
 							await this.channelsPropertiesService.update(
 								property.id,

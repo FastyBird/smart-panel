@@ -163,8 +163,6 @@ export class CardsService {
 
 		await this.repository.remove(card);
 
-		this.logger.log(`[PAGES CARDS][CARDS SERVICE] Successfully removed card with id=${id} for pageId=${pageId}`);
-
 		// Emit event with the card entity captured before removal to preserve ID
 		this.eventEmitter.emit(EventType.CARD_DELETED, cardForEvent);
 	}
