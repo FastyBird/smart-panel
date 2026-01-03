@@ -1199,5 +1199,9 @@
   "window_covering_fault_warning": "Fault detected",
   "@window_covering_fault_warning": {
     "description": "Warning message when a fault is detected"
+  },
+  "battery_title": "Battery",
+  "@battery_title": {
+    "description": "Title label for battery level display"
   }
 }

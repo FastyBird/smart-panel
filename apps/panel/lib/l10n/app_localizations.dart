@@ -1852,6 +1852,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fault detected'**
   String get window_covering_fault_warning;
+
+  /// Title label for battery level display
+  ///
+  /// In en, this message translates to:
+  /// **'Battery'**
+  String get battery_title;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -892,4 +892,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get window_covering_fault_warning => 'Zjištěna závada';
+
+  @override
+  String get battery_title => 'Baterie';
 }

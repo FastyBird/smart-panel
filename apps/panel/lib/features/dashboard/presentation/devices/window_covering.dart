@@ -58,7 +58,21 @@ class _WindowCoveringDeviceDetailPageState
   void didUpdateWidget(covariant WindowCoveringDeviceDetailPage oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    _initializeWidget();
+    // Only sync state from device when device's actual values changed
+    // This prevents resetting local state during async operations
+    if (oldWidget._device.isWindowCoveringPercentage !=
+        widget._device.isWindowCoveringPercentage) {
+      _position = widget._device.isWindowCoveringPercentage;
+    }
+
+    if (widget._device.hasWindowCoveringTilt) {
+      if (!oldWidget._device.hasWindowCoveringTilt ||
+          oldWidget._device.isWindowCoveringTilt !=
+              widget._device.isWindowCoveringTilt) {
+        _tilt = widget._device.isWindowCoveringTilt;
+      }
+    }
+
     _updateAnimation();
   }
 
@@ -1109,16 +1123,12 @@ class _WindowCoveringPainter extends CustomPainter {
   }
 }
 
-class _WindowCoveringTiltControl extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
+class _WindowCoveringTiltControl extends StatefulWidget {
   final WindowCoveringDeviceView _device;
   final int _tilt;
   final ValueChanged<int> _onTiltChanged;
 
-  _WindowCoveringTiltControl({
+  const _WindowCoveringTiltControl({
     required WindowCoveringDeviceView device,
     required int tilt,
     required ValueChanged<int> onTiltChanged,
@@ -1127,11 +1137,43 @@ class _WindowCoveringTiltControl extends StatelessWidget {
         _onTiltChanged = onTiltChanged;
 
   @override
+  State<_WindowCoveringTiltControl> createState() =>
+      _WindowCoveringTiltControlState();
+}
+
+class _WindowCoveringTiltControlState extends State<_WindowCoveringTiltControl> {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  late int _tilt;
+
+  @override
+  void initState() {
+    super.initState();
+    _tilt = _clampTilt(widget._tilt);
+  }
+
+  @override
+  void didUpdateWidget(covariant _WindowCoveringTiltControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget._tilt != widget._tilt) {
+      _tilt = _clampTilt(widget._tilt);
+    }
+  }
+
+  int _clampTilt(int value) {
+    final int min = widget._device.windowCoveringMinTilt;
+    final int max = widget._device.windowCoveringMaxTilt;
+    return value.clamp(min, max);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final int min = _device.windowCoveringMinTilt;
-    final int max = _device.windowCoveringMaxTilt;
+    final int min = widget._device.windowCoveringMinTilt;
+    final int max = widget._device.windowCoveringMaxTilt;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1183,7 +1225,11 @@ class _WindowCoveringTiltControl extends StatelessWidget {
               min: min.toDouble(),
               max: max.toDouble(),
               onChanged: (value) {
-                _onTiltChanged(value.round());
+                final int newTilt = value.round();
+                setState(() {
+                  _tilt = newTilt;
+                });
+                widget._onTiltChanged(newTilt);
               },
             ),
           ),
@@ -1193,15 +1239,6 @@ class _WindowCoveringTiltControl extends StatelessWidget {
           children: [
             Text(
               '$min°',
-              style: TextStyle(
-                fontSize: AppFontSize.extraSmall,
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.placeholder
-                    : AppTextColorDark.placeholder,
-              ),
-            ),
-            Text(
-              '0°',
               style: TextStyle(
                 fontSize: AppFontSize.extraSmall,
                 color: Theme.of(context).brightness == Brightness.light
@@ -1358,12 +1395,13 @@ class _WindowCoveringTiles extends StatelessWidget {
       return [];
     }
 
+    final localizations = AppLocalizations.of(context)!;
     final int level = _device.batteryPercentage;
 
     return _renderTiles(context, [
       _TileItem(
         icon: _getBatteryIcon(level),
-        title: 'Battery',
+        title: localizations.battery_title,
         trailingText: NumberUtils.formatNumber(level.toDouble(), 0),
         unit: '%',
       ),

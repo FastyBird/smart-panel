@@ -295,5 +295,6 @@
   "window_covering_tilt_label": "Náklon",
   "window_covering_tilt_description": "Úprava úhlu lamel",
   "window_covering_obstruction_warning": "Zjištěna překážka",
-  "window_covering_fault_warning": "Zjištěna závada"
+  "window_covering_fault_warning": "Zjištěna závada",
+  "battery_title": "Baterie"
 }
