@@ -99,6 +99,11 @@ export type TilesDevicePreviewPluginCreateDevicePreviewTileSchema = components['
 export type TilesDevicePreviewPluginUpdateDevicePreviewTileSchema = components['schemas']['TilesDevicePreviewPluginUpdateDevicePreviewTile'];
 export type TilesDevicePreviewPluginDevicePreviewTileSchema = components['schemas']['TilesDevicePreviewPluginDataDevicePreviewTile'];
 
+// Tiles Scene Plugin Schemas
+export type TilesScenePluginCreateSceneTileSchema = components['schemas']['TilesScenePluginCreateSceneTile'];
+export type TilesScenePluginUpdateSceneTileSchema = components['schemas']['TilesScenePluginUpdateSceneTile'];
+export type TilesScenePluginSceneTileSchema = components['schemas']['TilesScenePluginDataSceneTile'];
+
 // Pages Device Detail Plugin Schemas
 export type PagesDeviceDetailPluginCreateDeviceDetailPageSchema = components['schemas']['PagesDeviceDetailPluginCreateDeviceDetailPage'];
 export type PagesDeviceDetailPluginUpdateDeviceDetailPageSchema = components['schemas']['PagesDeviceDetailPluginUpdateDeviceDetailPage'];

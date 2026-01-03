@@ -26,6 +26,7 @@ import { SceneActionsTypeMapperService } from './services/scene-actions-type-map
 import { SceneActionsService } from './services/scene-actions.service';
 import { SceneExecutorService } from './services/scene-executor.service';
 import { ScenesService } from './services/scenes.service';
+import { SceneExistsConstraintValidator } from './validators/scene-exists-constraint.validator';
 
 @ApiTag({
 	tagName: SCENES_MODULE_NAME,
@@ -55,6 +56,8 @@ import { ScenesService } from './services/scenes.service';
 		ScenesModuleResetService,
 		// WebSocket listener
 		WebsocketExchangeListener,
+		// Validators
+		SceneExistsConstraintValidator,
 	],
 	exports: [
 		ScenesService,
@@ -62,6 +65,7 @@ import { ScenesService } from './services/scenes.service';
 		SceneActionsTypeMapperService,
 		SceneExecutorService,
 		ScenesModuleResetService,
+		SceneExistsConstraintValidator,
 	],
 })
 export class ScenesModule implements OnModuleInit {

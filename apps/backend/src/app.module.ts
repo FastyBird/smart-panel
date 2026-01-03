@@ -65,6 +65,7 @@ import { PagesSpacePlugin } from './plugins/pages-space/pages-space.plugin';
 import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
 import { ScenesLocalPlugin } from './plugins/scenes-local/scenes-local.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
+import { TilesScenePlugin } from './plugins/tiles-scene/tiles-scene.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
 import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin';
 import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX } from './plugins/weather-openweathermap-onecall/weather-openweathermap-onecall.constants';
@@ -260,6 +261,7 @@ export class AppModule {
 				PagesTilesPlugin,
 				PagesSpacePlugin,
 				TilesDevicePreviewPlugin,
+				TilesScenePlugin,
 				TilesTimePlugin,
 				TilesWeatherPlugin,
 				DataSourcesDeviceChannelPlugin,
