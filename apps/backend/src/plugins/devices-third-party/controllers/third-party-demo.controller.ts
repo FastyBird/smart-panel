@@ -84,8 +84,6 @@ export class ThirdPartyDemoController {
 	@Put('webhook')
 	@HttpCode(HttpStatus.NO_CONTENT)
 	async controlDevice(@Body() body: ReqUpdatePropertiesDto, @Res() res: FastifyReply): Promise<void> {
-		this.logger.debug('Execute demo property update');
-
 		const results: PropertyUpdateResultModel[] = [];
 		let hasErrors = false;
 
@@ -121,10 +119,6 @@ export class ThirdPartyDemoController {
 
 			this.queue[property.id] = setTimeout(() => {
 				void (async () => {
-					this.logger.debug(`Updating property ${property.id} with value ${update.value}`, {
-						resource: update.device,
-					});
-
 					await this.channelsPropertiesService.update(property.id, {
 						type: property.type,
 						value: update.value,

@@ -56,8 +56,6 @@ export class DeviceAdoptionService {
 	 * Adopt a Home Assistant device into the Smart Panel system
 	 */
 	async adoptDevice(request: AdoptDeviceRequestDto): Promise<HomeAssistantDeviceEntity> {
-		this.logger.debug(`[DEVICE ADOPTION] Adopting HA device: ${request.haDeviceId}`);
-
 		// Validate HA device exists
 		const devicesRegistry = await this.homeAssistantWsService.getDevicesRegistry();
 		const haDevice = devicesRegistry.find((d) => d.id === request.haDeviceId);
@@ -114,8 +112,6 @@ export class DeviceAdoptionService {
 			createDeviceDto,
 		);
 
-		this.logger.debug(`[DEVICE ADOPTION] Created device: ${device.id}`, { resource: device.id });
-
 		try {
 			// Log all incoming channels for debugging
 			this.logger.debug(
@@ -129,11 +125,6 @@ export class DeviceAdoptionService {
 				(ch) => ch.category === ChannelCategory.DEVICE_INFORMATION,
 			);
 			const otherChannels = request.channels.filter((ch) => ch.category !== ChannelCategory.DEVICE_INFORMATION);
-
-			this.logger.debug(
-				`[DEVICE ADOPTION] Found ${deviceInformationChannels.length} device_information channels to merge, ${otherChannels.length} other channels to create`,
-				{ resource: device.id },
-			);
 
 			// Log device_information channel details
 			for (const diChannel of deviceInformationChannels) {
@@ -158,8 +149,6 @@ export class DeviceAdoptionService {
 			// Sync initial states from Home Assistant to populate property values
 			// This also updates virtual property values and sets device connection state
 			await this.homeAssistantHttpService.syncDeviceStates(device.id);
-
-			this.logger.debug(`[DEVICE ADOPTION] Device ${device.id} adopted successfully`, { resource: device.id });
 
 			// Return the fully loaded device
 			return await this.devicesService.findOne<HomeAssistantDeviceEntity>(device.id, DEVICES_HOME_ASSISTANT_TYPE);
@@ -272,11 +261,6 @@ export class DeviceAdoptionService {
 		const existingDeviceInfoChannel = existingChannels.find((ch) => ch.category === ChannelCategory.DEVICE_INFORMATION);
 
 		if (existingDeviceInfoChannel) {
-			this.logger.debug(
-				`[DEVICE ADOPTION] Device information channel already exists for device ${device.id}, adding base properties and merging mapping properties`,
-				{ resource: device.id },
-			);
-
 			// Add base properties from HA registry to existing channel
 			await this.addBasePropertiesToExistingChannel(
 				existingDeviceInfoChannel.id,
@@ -346,16 +330,7 @@ export class DeviceAdoptionService {
 		// Merge properties from mapping channels (these may have HA entity bindings)
 		// Include properties even if they're not in the spec (e.g., link_quality from RSSI sensors)
 		for (const mappingChannel of mappingDeviceInfoChannels) {
-			this.logger.debug(
-				`[DEVICE ADOPTION] Processing mapping device_information channel: ${mappingChannel.entityId} with ${mappingChannel.properties.length} properties`,
-				{ resource: device.id },
-			);
 			for (const propDef of mappingChannel.properties) {
-				this.logger.debug(
-					`[DEVICE ADOPTION] Processing property: category=${propDef.category}, dataType=${propDef.dataType}, haAttribute=${propDef.haAttribute}`,
-					{ resource: device.id },
-				);
-
 				const spec = categorySpec.properties.find((p) => p.category === propDef.category);
 
 				// Check if property category is valid (exists in PropertyCategory enum)
@@ -370,11 +345,6 @@ export class DeviceAdoptionService {
 					);
 					continue;
 				}
-
-				this.logger.debug(
-					`[DEVICE ADOPTION] Property ${propDef.category} is valid, spec found: ${spec ? 'yes' : 'no'}`,
-					{ resource: device.id },
-				);
 
 				// Use spec if available, otherwise use defaults
 				const formatValue = propDef.format ?? spec?.format ?? null;
@@ -415,13 +385,7 @@ export class DeviceAdoptionService {
 			{ resource: device.id },
 		);
 
-		// Log each property in detail for debugging
-		for (const prop of mergedProperties) {
-			this.logger.debug(
-				`[DEVICE ADOPTION] Property: ${prop.category}, dataType: ${prop.data_type}, ha_entity_id: ${prop.ha_entity_id}, ha_attribute: ${prop.ha_attribute}`,
-				{ resource: device.id },
-			);
-		}
+		// Reserved for future property detail logging
 
 		const createChannelDto = toInstance(CreateHomeAssistantChannelDto, {
 			device: device.id,
@@ -430,11 +394,6 @@ export class DeviceAdoptionService {
 			name: 'Device information',
 			properties: mergedProperties,
 		});
-
-		this.logger.debug(
-			`[DEVICE ADOPTION] CreateChannelDto has ${createChannelDto.properties?.length ?? 0} properties after transformation`,
-			{ resource: device.id },
-		);
 
 		const channelValidationErrors = await validate(createChannelDto, { skipMissingProperties: true });
 
@@ -454,10 +413,6 @@ export class DeviceAdoptionService {
 		}
 
 		await this.channelsService.create(createChannelDto);
-
-		this.logger.debug(`[DEVICE ADOPTION] Created device information channel for device: ${device.id}`, {
-			resource: device.id,
-		});
 	}
 
 	/**
@@ -474,14 +429,9 @@ export class DeviceAdoptionService {
 
 		// Process mapping channels and add missing properties
 		for (const mappingChannel of mappingDeviceInfoChannels) {
-			this.logger.debug(
-				`[DEVICE ADOPTION] Merging properties from mapping channel ${mappingChannel.entityId} into existing device_information channel`,
-			);
-
 			for (const propDef of mappingChannel.properties) {
 				// Skip if property already exists
 				if (existingPropertyCategories.has(propDef.category)) {
-					this.logger.debug(`[DEVICE ADOPTION] Property ${propDef.category} already exists in channel, skipping`);
 					continue;
 				}
 
@@ -520,9 +470,6 @@ export class DeviceAdoptionService {
 
 				try {
 					await this.channelsPropertiesService.create(channelId, createPropertyDto);
-					this.logger.debug(
-						`[DEVICE ADOPTION] Added property ${propDef.category} to existing device_information channel`,
-					);
 				} catch (error) {
 					this.logger.error(
 						`[DEVICE ADOPTION] Failed to add property ${propDef.category} to channel ${channelId}:`,
@@ -554,13 +501,11 @@ export class DeviceAdoptionService {
 
 			// Skip if property already exists
 			if (existingPropertyCategories.has(category as PropertyCategory)) {
-				this.logger.debug(`[DEVICE ADOPTION] Property ${category} already exists in channel, skipping`);
 				continue;
 			}
 
 			const spec = categorySpec.properties.find((p) => p.category === (category as PropertyCategory));
 			if (!spec) {
-				this.logger.debug(`[DEVICE ADOPTION] Property ${category} not found in spec, skipping`);
 				continue;
 			}
 
@@ -598,9 +543,6 @@ export class DeviceAdoptionService {
 
 			try {
 				await this.channelsPropertiesService.create(channelId, createPropertyDto);
-				this.logger.debug(
-					`[DEVICE ADOPTION] Added base property ${category} with value "${stringValue}" to existing device_information channel`,
-				);
 			} catch (error) {
 				this.logger.error(`[DEVICE ADOPTION] Failed to add base property ${category} to channel ${channelId}:`, error);
 			}
@@ -658,10 +600,6 @@ export class DeviceAdoptionService {
 		}
 
 		await this.channelsService.create(createChannelDto);
-
-		this.logger.debug(`[DEVICE ADOPTION] Created channel ${channelDef.category} for device: ${device.id}`, {
-			resource: device.id,
-		});
 	}
 
 	/**
@@ -680,8 +618,6 @@ export class DeviceAdoptionService {
 			connections: [string, string][];
 		},
 	): Promise<void> {
-		this.logger.debug(`[DEVICE ADOPTION] Pre-validating device structure before creation`);
-
 		const validationErrors: string[] = [];
 		const deviceInformationChannels = request.channels.filter(
 			(ch) => ch.category === ChannelCategory.DEVICE_INFORMATION,
@@ -910,8 +846,6 @@ export class DeviceAdoptionService {
 			const formattedErrors = this.formatValidationErrorsForDisplay(validationErrors);
 			throw new DevicesHomeAssistantValidationException(`Device structure validation failed:\n\n${formattedErrors}`);
 		}
-
-		this.logger.debug(`[DEVICE ADOPTION] Pre-validation passed - device structure is valid`);
 	}
 
 	/**
@@ -1009,8 +943,6 @@ export class DeviceAdoptionService {
 	 * Validate the complete device structure against specifications before finalizing
 	 */
 	private async validateDeviceStructure(deviceId: string): Promise<void> {
-		this.logger.debug(`[DEVICE ADOPTION] Validating device structure for device: ${deviceId}`, { resource: deviceId });
-
 		const device = await this.devicesService.findOne<HomeAssistantDeviceEntity>(deviceId, DEVICES_HOME_ASSISTANT_TYPE);
 		if (!device) {
 			throw new DevicesHomeAssistantValidationException(`Device ${deviceId} not found for validation`);
@@ -1098,9 +1030,5 @@ export class DeviceAdoptionService {
 				`Device structure validation failed:\n${validationErrors.join('\n')}`,
 			);
 		}
-
-		this.logger.debug(`[DEVICE ADOPTION] Device structure validation passed for device: ${deviceId}`, {
-			resource: deviceId,
-		});
 	}
 }

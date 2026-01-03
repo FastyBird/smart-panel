@@ -65,13 +65,9 @@ export class SceneActionsController {
 	async findAll(
 		@Param('sceneId', new ParseUUIDPipe({ version: '4' })) sceneId: string,
 	): Promise<SceneActionsResponseModel> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all actions for scene id=${sceneId}`);
-
 		await this.getSceneOrThrow(sceneId);
 
 		const actions = await this.sceneActionsService.findAllForScene(sceneId);
-
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${actions.length} actions for scene id=${sceneId}`);
 
 		const response = new SceneActionsResponseModel();
 		response.data = actions;
@@ -96,14 +92,10 @@ export class SceneActionsController {
 		@Param('sceneId', new ParseUUIDPipe({ version: '4' })) sceneId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<SceneActionResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching action id=${id} for scene id=${sceneId}`);
-
 		await this.getSceneOrThrow(sceneId);
 		await this.getActionOrThrow(id, sceneId);
 
 		const action = await this.sceneActionsService.findOne(id);
-
-		this.logger.debug(`[LOOKUP] Found action id=${action?.id}`);
 
 		const response = new SceneActionResponseModel();
 		response.data = action;
@@ -135,8 +127,6 @@ export class SceneActionsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<SceneActionResponseModel> {
-		this.logger.debug(`[CREATE] Incoming request to create action for scene id=${sceneId}`);
-
 		await this.getSceneOrThrow(sceneId);
 
 		// Get the plugin-specific DTO class based on action type
@@ -168,8 +158,6 @@ export class SceneActionsController {
 				...dtoInstance,
 				scene: sceneId,
 			});
-
-			this.logger.debug(`[CREATE] Successfully created action id=${action.id}`);
 
 			setLocationHeader(req, res, SCENES_MODULE_PREFIX, `scenes/${sceneId}/actions`, action.id);
 
@@ -206,8 +194,6 @@ export class SceneActionsController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: UpdateSceneActionDto },
 	): Promise<SceneActionResponseModel> {
-		this.logger.debug(`[UPDATE] Incoming request to update action id=${id} for scene id=${sceneId}`);
-
 		await this.getSceneOrThrow(sceneId);
 		await this.getActionOrThrow(id, sceneId);
 
@@ -238,8 +224,6 @@ export class SceneActionsController {
 
 		try {
 			const action = await this.sceneActionsService.update(id, dtoInstance);
-
-			this.logger.debug(`[UPDATE] Successfully updated action id=${action.id}`);
 
 			const response = new SceneActionResponseModel();
 			response.data = action;
@@ -272,14 +256,10 @@ export class SceneActionsController {
 		@Param('sceneId', new ParseUUIDPipe({ version: '4' })) sceneId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete action id=${id} for scene id=${sceneId}`);
-
 		await this.getSceneOrThrow(sceneId);
 		await this.getActionOrThrow(id, sceneId);
 
 		await this.sceneActionsService.remove(id);
-
-		this.logger.debug(`[DELETE] Successfully deleted action id=${id}`);
 	}
 
 	private async getSceneOrThrow(sceneId: string): Promise<void> {

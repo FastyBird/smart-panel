@@ -41,10 +41,6 @@ export class CoverEntityMapperService extends EntityMapper {
 		state: HomeAssistantStateDto,
 	): Promise<Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean | null>> {
 		const mapped: Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean | null> = new Map();
-
-		this.logger.debug(
-			`[COVER ENTITY MAPPER] mapFromHA called with ${properties.length} properties for entity ${state.entity_id}`,
-		);
 		this.logger.debug(
 			`[COVER ENTITY MAPPER] Properties: ${properties.map((p) => `${p.category}:${p.haAttribute}`).join(', ')}`,
 		);
@@ -61,7 +57,6 @@ export class CoverEntityMapperService extends EntityMapper {
 		if (statusProp) {
 			const statusValue = HA_STATE_TO_STATUS[state.state.toLowerCase()] ?? 'stopped';
 			mapped.set(statusProp.id, statusValue);
-			this.logger.debug(`[COVER ENTITY MAPPER] Mapped status: ${state.state} -> ${statusValue}`);
 		}
 
 		// Map current_position to POSITION property
@@ -77,7 +72,6 @@ export class CoverEntityMapperService extends EntityMapper {
 
 			if (positionProp) {
 				mapped.set(positionProp.id, currentPosition);
-				this.logger.debug(`[COVER ENTITY MAPPER] Mapped position: ${currentPosition}%`);
 			}
 		}
 
@@ -94,11 +88,8 @@ export class CoverEntityMapperService extends EntityMapper {
 
 			if (tiltProp) {
 				mapped.set(tiltProp.id, currentTilt);
-				this.logger.debug(`[COVER ENTITY MAPPER] Mapped tilt: ${currentTilt}%`);
 			}
 		}
-
-		this.logger.debug(`[COVER ENTITY MAPPER] Mapped ${mapped.size} properties from HA state`);
 
 		return mapped;
 	}
@@ -111,10 +102,6 @@ export class CoverEntityMapperService extends EntityMapper {
 		service: string;
 		attributes?: Map<string, string | number | number[] | boolean | null>;
 	} | null> {
-		this.logger.debug(
-			`[COVER ENTITY MAPPER] mapToHA called with ${properties.length} properties, ${values.size} values`,
-		);
-
 		// Check for position change
 		const positionProp = await this.getValidProperty(
 			properties,
@@ -127,8 +114,6 @@ export class CoverEntityMapperService extends EntityMapper {
 			const position = this.toNumber(values.get(positionProp.id));
 
 			if (position !== null) {
-				this.logger.debug(`[COVER ENTITY MAPPER] Setting position to ${position}%`);
-
 				const attributes = new Map<string, string | number | number[] | boolean | null>();
 				attributes.set('position', position);
 
@@ -152,8 +137,6 @@ export class CoverEntityMapperService extends EntityMapper {
 			const tilt = this.toNumber(values.get(tiltProp.id));
 
 			if (tilt !== null) {
-				this.logger.debug(`[COVER ENTITY MAPPER] Setting tilt to ${tilt}%`);
-
 				const attributes = new Map<string, string | number | number[] | boolean | null>();
 				attributes.set('tilt_position', tilt);
 

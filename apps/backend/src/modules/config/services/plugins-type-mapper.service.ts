@@ -49,8 +49,6 @@ export class PluginsTypeMapperService {
 	getMapping<TPlugin extends PluginConfigModel, TConfigDTO extends UpdatePluginConfigDto>(
 		type: string,
 	): PluginTypeMapping<TPlugin, TConfigDTO> {
-		this.logger.debug(`Attempting to find mapping for config type: '${type}'`, { data: 'type' });
-
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -60,8 +58,6 @@ export class PluginsTypeMapperService {
 
 			throw new ConfigException(`Unsupported plugin type: ${type}`);
 		}
-
-		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for plugin type: '${type}'`);
 
 		return mapping as PluginTypeMapping<TPlugin, TConfigDTO>;
 	}

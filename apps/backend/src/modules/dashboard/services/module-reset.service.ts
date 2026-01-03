@@ -24,8 +24,6 @@ export class ModuleResetService {
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			this.logger.debug(`[RESET] Resetting all module data`);
-
 			await this.dataSourcesRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.DATA_SOURCE_RESET, null);

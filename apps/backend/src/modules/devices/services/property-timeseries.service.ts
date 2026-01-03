@@ -70,8 +70,6 @@ export class PropertyTimeseriesService {
 		const effectiveBucket = bucket ?? this.getDefaultBucket(from, to);
 		const query = this.buildQuery(property.id, from, to, effectiveBucket);
 
-		this.logger.debug(`[TIMESERIES] Executing query: ${query}`);
-
 		const result = await this.influxDbService.query<{
 			time: { _nanoISO: string };
 			stringValue?: string;
@@ -80,8 +78,6 @@ export class PropertyTimeseriesService {
 		}>(query);
 
 		if (!result.length) {
-			this.logger.debug(`[TIMESERIES] No data found for property id=${property.id}`);
-
 			return [];
 		}
 
@@ -92,8 +88,6 @@ export class PropertyTimeseriesService {
 
 			return { time, value };
 		});
-
-		this.logger.debug(`[TIMESERIES] Retrieved ${points.length} points for property id=${property.id}`);
 
 		return points;
 	}

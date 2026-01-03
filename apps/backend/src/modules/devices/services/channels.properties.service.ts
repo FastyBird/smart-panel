@@ -41,8 +41,6 @@ export class ChannelsPropertiesService {
 
 		if (channelId) {
 			if (Array.isArray(channelId)) {
-				this.logger.debug(`Fetching all properties for channelIds=${channelId.join(', ')}`);
-
 				const properties = (await repository
 					.createQueryBuilder('property')
 					.innerJoinAndSelect('property.channel', 'channel')
@@ -50,12 +48,8 @@ export class ChannelsPropertiesService {
 					.where('channel.id IN (:...channelIds)', { channelIds: channelId })
 					.getMany()) as TProperty[];
 
-				this.logger.debug(`Found ${properties.length} properties for channelIds=${channelId.join(', ')}`);
-
 				return properties;
 			} else {
-				this.logger.debug(`Fetching all properties for channelId=${channelId}`);
-
 				const properties = (await repository
 					.createQueryBuilder('property')
 					.innerJoinAndSelect('property.channel', 'channel')
@@ -63,17 +57,11 @@ export class ChannelsPropertiesService {
 					.where('channel.id = :channelId', { channelId })
 					.getMany()) as TProperty[];
 
-				this.logger.debug(`Found ${properties.length} properties for channelId=${channelId}`);
-
 				return properties;
 			}
 		}
 
-		this.logger.debug('Fetching all properties');
-
 		const properties = (await repository.find({ relations: ['channel', 'channel.device'] })) as TProperty[];
-
-		this.logger.debug(`Found ${properties.length} properties`);
 
 		return properties;
 	}
@@ -90,8 +78,6 @@ export class ChannelsPropertiesService {
 		let property: TProperty | null;
 
 		if (channelId) {
-			this.logger.debug(`Fetching property with id=${id} for channelId=${channelId}`);
-
 			property = (await repository
 				.createQueryBuilder('property')
 				.innerJoinAndSelect('property.channel', 'channel')
@@ -101,12 +87,8 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.debug(`Property with id=${id} for channelId=${channelId} not found`);
-
 				return null;
 			}
-
-			this.logger.debug(`Successfully fetched property with id=${id} for channelId=${channelId}`);
 		} else {
 			property = (await repository
 				.createQueryBuilder('property')
@@ -116,12 +98,8 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.debug(`Property with id=${id} not found`);
-
 				return null;
 			}
-
-			this.logger.debug(`Successfully fetched property with id=${id}`);
 		}
 
 		return property;
@@ -140,8 +118,6 @@ export class ChannelsPropertiesService {
 		let property: TProperty | null;
 
 		if (channelId) {
-			this.logger.debug(`Fetching property with ${column}=${value} for channelId=${channelId}`);
-
 			property = (await repository
 				.createQueryBuilder('property')
 				.innerJoinAndSelect('property.channel', 'channel')
@@ -151,12 +127,8 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.debug(`Property with ${column}=${value} for channelId=${channelId} not found`);
-
 				return null;
 			}
-
-			this.logger.debug(`Successfully fetched property with ${column}=${value} for channelId=${channelId}`);
 		} else {
 			property = (await repository
 				.createQueryBuilder('property')
@@ -166,12 +138,8 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.debug(`Property with ${column}=${value} not found`);
-
 				return null;
 			}
-
-			this.logger.debug(`Successfully fetched property with ${column}=${value}`);
 		}
 
 		return property;
@@ -181,8 +149,6 @@ export class ChannelsPropertiesService {
 		channelId: string,
 		createDto: TCreateDTO,
 	): Promise<TProperty> {
-		this.logger.debug(`Creating new property for channelId=${channelId}`);
-
 		const { type } = createDto;
 
 		if (!type) {
@@ -233,8 +199,6 @@ export class ChannelsPropertiesService {
 			savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
 		}
 
-		this.logger.debug(`Successfully created property with id=${savedProperty.id} for channelId=${channelId}`);
-
 		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
 
 		return savedProperty;
@@ -244,8 +208,6 @@ export class ChannelsPropertiesService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TProperty> {
-		this.logger.debug(`Updating data source with id=${id}`);
-
 		const property = await this.getOneOrThrow(id);
 
 		const mapping = this.propertiesMapperService.getMapping<TProperty, any, TUpdateDTO>(property.type);
@@ -270,16 +232,12 @@ export class ChannelsPropertiesService {
 			updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
 		}
 
-		this.logger.debug(`Successfully updated property with id=${updatedProperty.id}`);
-
 		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
 
 		return updatedProperty;
 	}
 
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
-		this.logger.debug(`Removing property with id=${id}`);
-
 		const property = await manager.findOneOrFail<ChannelPropertyEntity>(ChannelPropertyEntity, {
 			where: { id },
 		});

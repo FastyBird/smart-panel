@@ -67,11 +67,7 @@ export class ScenesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<ScenesResponseModel> {
-		this.logger.debug('[LOOKUP ALL] Fetching all scenes');
-
 		const scenes = await this.scenesService.findAll();
-
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${scenes.length} scenes`);
 
 		const response = new ScenesResponseModel();
 		response.data = scenes;
@@ -96,11 +92,7 @@ export class ScenesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SceneResponseModel> {
-		this.logger.debug(`[LOOKUP] Fetching scene id=${id}`);
-
 		const scene = await this.getOneOrThrow(id);
-
-		this.logger.debug(`[LOOKUP] Found scene id=${scene.id}`);
 
 		const response = new SceneResponseModel();
 		response.data = scene;
@@ -130,8 +122,6 @@ export class ScenesController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<SceneResponseModel> {
-		this.logger.debug('[CREATE] Incoming request to create a new scene');
-
 		// Extract actions before validation - they will be validated by the service
 		// using plugin-specific DTOs via the type mapper
 		const rawData = createDto.data as Record<string, unknown>;
@@ -159,8 +149,6 @@ export class ScenesController {
 
 		try {
 			const scene = await this.scenesService.create(dtoInstance);
-
-			this.logger.debug(`[CREATE] Successfully created scene id=${scene.id}`);
 
 			setLocationHeader(req, res, SCENES_MODULE_PREFIX, 'scenes', scene.id);
 
@@ -200,8 +188,6 @@ export class ScenesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<SceneResponseModel> {
-		this.logger.debug(`[UPDATE] Incoming request to update scene id=${id}`);
-
 		await this.getOneOrThrow(id);
 
 		const dtoInstance = toInstance(UpdateSceneDto, updateDto.data, {
@@ -222,8 +208,6 @@ export class ScenesController {
 
 		try {
 			const scene = await this.scenesService.update(id, dtoInstance);
-
-			this.logger.debug(`[UPDATE] Successfully updated scene id=${scene.id}`);
 
 			const response = new SceneResponseModel();
 			response.data = scene;
@@ -257,14 +241,10 @@ export class ScenesController {
 	@Delete(':id')
 	@HttpCode(204)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete scene id=${id}`);
-
 		await this.getOneOrThrow(id);
 
 		try {
 			await this.scenesService.remove(id);
-
-			this.logger.debug(`[DELETE] Successfully deleted scene id=${id}`);
 		} catch (error) {
 			if (error instanceof ScenesNotEditableException) {
 				throw new ForbiddenException('Scene cannot be deleted');
@@ -295,14 +275,10 @@ export class ScenesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() triggerDto: { data?: TriggerSceneDto },
 	): Promise<SceneExecutionResponseModel> {
-		this.logger.debug(`[TRIGGER] Incoming request to trigger scene id=${id}`);
-
 		await this.getOneOrThrow(id);
 
 		try {
 			const result = await this.sceneExecutorService.triggerScene(id, triggerDto.data?.source || 'manual');
-
-			this.logger.debug(`[TRIGGER] Successfully triggered scene id=${id}`);
 
 			const response = new SceneExecutionResponseModel();
 			response.data = result;

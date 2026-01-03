@@ -47,8 +47,6 @@ export class SystemService {
 			const systemInfo = await this.getSystemInfo();
 
 			this.eventEmitter.emit(EventType.SYSTEM_INFO, systemInfo);
-
-			this.logger.debug('System info broadcasted successfully');
 		} catch (error) {
 			const err = error as Error;
 

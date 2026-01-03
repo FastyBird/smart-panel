@@ -65,11 +65,7 @@ export class LocationsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<LocationsResponseModel> {
-		this.logger.debug('Fetching all locations');
-
 		const locations = await this.locationsService.findAll();
-
-		this.logger.debug(`Retrieved ${locations.length} locations`);
 
 		const response = new LocationsResponseModel();
 
@@ -95,11 +91,7 @@ export class LocationsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<LocationResponseModel> {
-		this.logger.debug(`Fetching location id=${id}`);
-
 		const location = await this.getOneOrThrow(id);
-
-		this.logger.debug(`Found location id=${location.id}`);
 
 		const response = new LocationResponseModel();
 
@@ -130,8 +122,6 @@ export class LocationsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<LocationResponseModel> {
-		this.logger.debug('Incoming request to create a new location');
-
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
@@ -182,8 +172,6 @@ export class LocationsController {
 		try {
 			const location = await this.locationsService.create(dtoInstance);
 
-			this.logger.debug(`Successfully created location id=${location.id}`);
-
 			setLocationHeader(req, res, WEATHER_MODULE_PREFIX, 'locations', location.id);
 
 			const response = new LocationResponseModel();
@@ -222,8 +210,6 @@ export class LocationsController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<LocationResponseModel> {
-		this.logger.debug(`Incoming update request for location id=${id}`);
-
 		const location = await this.getOneOrThrow(id);
 
 		let mapping: LocationTypeMapping<WeatherLocationEntity, CreateLocationDto, UpdateLocationDto>;
@@ -268,8 +254,6 @@ export class LocationsController {
 		try {
 			const updatedLocation = await this.locationsService.update(location.id, dtoInstance);
 
-			this.logger.debug(`Successfully updated location id=${updatedLocation.id}`);
-
 			const response = new LocationResponseModel();
 
 			response.data = updatedLocation;
@@ -299,18 +283,12 @@ export class LocationsController {
 	@Delete(':id')
 	@HttpCode(204)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`Incoming request to delete location id=${id}`);
-
 		const location = await this.getOneOrThrow(id);
 
 		await this.locationsService.remove(location.id);
-
-		this.logger.debug(`Successfully deleted location id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<WeatherLocationEntity> {
-		this.logger.debug(`Checking existence of location id=${id}`);
-
 		const location = await this.locationsService.findOne(id);
 
 		if (!location) {

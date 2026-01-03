@@ -132,8 +132,6 @@ export class DiscoveredExtensionsController {
 	@Public()
 	@Get(':name')
 	async findOne(@Param('name') name: string): Promise<DiscoveredExtensionsResponseModel> {
-		this.logger.debug(`Fetching extension name=${name}`);
-
 		const { admin, backend } = await getDiscoveredExtensions();
 
 		const bundledSet = this.loadBundledSet();
@@ -177,8 +175,6 @@ export class DiscoveredExtensionsController {
 				}),
 			);
 		}
-
-		this.logger.debug(`Found extension name=${name}`);
 
 		const response = new DiscoveredExtensionsResponseModel();
 		response.data = out;

@@ -35,10 +35,6 @@ export class DeviceConnectionStateService {
 		this.statusPropertyMap.set(device.id, property.id);
 
 		if (!this.influxDbService.isConnected()) {
-			this.logger.debug(`InfluxDB not connected, skipping status write for id=${device.id}`, {
-				resource: device.id,
-			});
-
 			return;
 		}
 
@@ -55,8 +51,6 @@ export class DeviceConnectionStateService {
 					timestamp: new Date(),
 				},
 			]);
-
-			this.logger.debug(`Status saved id=${device.id} status=${status}`, { resource: device.id });
 		} catch (error) {
 			const err = error as Error;
 
@@ -94,8 +88,6 @@ export class DeviceConnectionStateService {
         LIMIT 1
       `;
 
-			this.logger.debug(`Fetching latest status id=${device.id}`, { resource: device.id });
-
 			const result = await this.influxDbService.query<{
 				online: boolean;
 				onlineI: number;
@@ -105,8 +97,6 @@ export class DeviceConnectionStateService {
 			}>(query);
 
 			if (!result.length) {
-				this.logger.debug(`No stored status found for id=${device.id}`, { resource: device.id });
-
 				return {
 					online: false,
 					status: ConnectionState.UNKNOWN,
@@ -114,8 +104,6 @@ export class DeviceConnectionStateService {
 			}
 
 			const latest = result[0];
-
-			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`, { resource: device.id });
 
 			this.statusMap.set(device.id, { online: latest.online, status: latest.status });
 			this.statusPropertyMap.set(device.id, latest.propertyId);
@@ -153,8 +141,6 @@ export class DeviceConnectionStateService {
 		const result = await this.influxDbService.query<{ sum: number }>(query);
 
 		if (!result.length) {
-			this.logger.debug('No stored statuses found');
-
 			return 0;
 		}
 

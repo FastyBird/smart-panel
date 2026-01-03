@@ -73,8 +73,6 @@ export class MappingPreviewService {
 	 * Generate a mapping preview for a Home Assistant device
 	 */
 	async generatePreview(haDeviceId: string, options?: MappingPreviewRequestDto): Promise<MappingPreviewModel> {
-		this.logger.debug(`[MAPPING PREVIEW] Generating preview for HA device: ${haDeviceId}`);
-
 		// Fetch device information and states
 		const [devicesRegistry, entitiesRegistry, discoveredDevice] = await Promise.all([
 			this.homeAssistantWsService.getDevicesRegistry(),
@@ -200,14 +198,7 @@ export class MappingPreviewService {
 		);
 
 		if (unmappedCount > 0) {
-			const unmappedDomains = entityPreviews
-				.filter((e) => e.status === 'unmapped')
-				.map((e) => `${e.domain}${e.deviceClass ? '.' + e.deviceClass : ''}`)
-				.join(', ');
-			this.logger.debug(
-				`[MAPPING PREVIEW] ${unmappedCount} entities could not be mapped. ` +
-					`Consider adding mapping rules for: ${unmappedDomains}`,
-			);
+			// Intentionally empty - reserved for future logging
 		}
 
 		// Filter out only generic channels from the preview
@@ -580,7 +571,6 @@ export class MappingPreviewService {
 		if (channelCategory === ChannelCategory.THERMOSTAT && propertyCategory === PropertyCategory.MODE) {
 			const hvacModes = attrs.hvac_modes;
 			if (Array.isArray(hvacModes) && hvacModes.length > 0) {
-				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided hvac_modes: ${hvacModes.join(', ')}`);
 				return hvacModes as string[];
 			}
 		}
@@ -589,7 +579,6 @@ export class MappingPreviewService {
 		if (channelCategory === ChannelCategory.FAN && propertyCategory === PropertyCategory.SPEED) {
 			const speedList = attrs.speed_list;
 			if (Array.isArray(speedList) && speedList.length > 0) {
-				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided speed_list: ${speedList.join(', ')}`);
 				return speedList as string[];
 			}
 		}
@@ -598,7 +587,6 @@ export class MappingPreviewService {
 		if (channelCategory === ChannelCategory.FAN && propertyCategory === PropertyCategory.MODE) {
 			const fanModes = attrs.fan_modes ?? attrs.preset_modes;
 			if (Array.isArray(fanModes) && fanModes.length > 0) {
-				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided fan_modes: ${fanModes.join(', ')}`);
 				return fanModes as string[];
 			}
 		}
@@ -607,7 +595,6 @@ export class MappingPreviewService {
 		if (channelCategory === ChannelCategory.THERMOSTAT && propertyCategory === PropertyCategory.SWING) {
 			const swingModes = attrs.swing_modes;
 			if (Array.isArray(swingModes) && swingModes.length > 0) {
-				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided swing_modes: ${swingModes.join(', ')}`);
 				return swingModes as string[];
 			}
 		}
@@ -619,7 +606,6 @@ export class MappingPreviewService {
 		) {
 			const sourceList = attrs.source_list;
 			if (Array.isArray(sourceList) && sourceList.length > 0) {
-				this.logger.debug(`[MAPPING PREVIEW] Using HA-provided source_list: ${sourceList.join(', ')}`);
 				return sourceList as string[];
 			}
 		}
@@ -1023,12 +1009,6 @@ export class MappingPreviewService {
 				if (missingIndex >= 0) {
 					entityPreview.missingRequiredProperties.splice(missingIndex, 1);
 				}
-
-				this.logger.debug(
-					`[MAPPING PREVIEW] Added virtual property: channel=${channelCategory}, ` +
-						`property=${virtualDef.property_category}, type=${virtualDef.virtual_type}, ` +
-						`value=${resolved.value}`,
-				);
 			}
 
 			// Update status if all missing properties are now filled
@@ -1177,9 +1157,6 @@ export class MappingPreviewService {
 				case ValidationIssueType.INVALID_PERMISSIONS:
 				case ValidationIssueType.INVALID_FORMAT:
 					// Log these but they're less common in mapping preview
-					this.logger.debug(
-						`[VALIDATION] ${issue.type}: ${issue.message} (channel=${issue.channelCategory}, property=${issue.propertyCategory})`,
-					);
 					break;
 			}
 		}
@@ -1206,12 +1183,6 @@ export class MappingPreviewService {
 		const fillableWithVirtualCount = Object.values(autoFilledVirtual).reduce((sum, arr) => sum + arr.length, 0);
 
 		// Log validation summary for observability
-		this.logger.debug(
-			`[VALIDATION] Summary for ${deviceCategory}: isValid=${validationResult.isValid}, ` +
-				`missingChannels=${missingChannels.length}, missingProperties=${missingPropertiesCount}, ` +
-				`unknownChannels=${unknownChannels.length}, duplicateChannels=${duplicateChannels.length}, ` +
-				`constraintViolations=${constraintViolations.length}, virtualFilled=${fillableWithVirtualCount}`,
-		);
 
 		return {
 			isValid: validationResult.isValid,

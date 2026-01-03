@@ -267,10 +267,6 @@ export class LocalScenePlatform implements IScenePlatform {
 					error: success ? null : 'Command execution failed',
 					executionTimeMs: Date.now() - startTime,
 				});
-
-				this.logger.debug(
-					`[EXECUTE] Action ${action.id}: device=${device.id}, property=${property.id}, value=${action.value}, success=${success}`,
-				);
 			} catch (error) {
 				const err = error as Error;
 

@@ -17,8 +17,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	) {}
 
 	onModuleInit(): void {
-		this.logger.debug('[WS EXCHANGE LISTENER] Registering scenes module command handlers');
-
 		// Register command handler for triggering scenes
 		this.commandEventRegistry.register(
 			'ScenesModule.TriggerScene',
@@ -39,8 +37,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			'ScenesModule.GetSceneHandler',
 			this.handleGetScene.bind(this),
 		);
-
-		this.logger.debug('[WS EXCHANGE LISTENER] Scenes module command handlers registered');
 	}
 
 	private async handleTriggerScene(
@@ -55,8 +51,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			}
 
 			const triggeredBy = user?.id || 'websocket';
-
-			this.logger.debug(`[WS EXCHANGE LISTENER] Triggering scene id=${sceneId} by=${triggeredBy}`);
 
 			const result = await this.sceneExecutorService.triggerScene(sceneId, triggeredBy);
 
@@ -88,8 +82,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 		_payload: Record<string, unknown>,
 	): Promise<{ success: boolean; reason?: string; data?: Record<string, unknown> } | null> {
 		try {
-			this.logger.debug('[WS EXCHANGE LISTENER] Getting all scenes');
-
 			const scenes = await this.scenesService.findAll();
 
 			return {
@@ -129,8 +121,6 @@ export class WebsocketExchangeListener implements OnModuleInit {
 			if (!sceneId) {
 				return { success: false, reason: 'Scene ID is required' };
 			}
-
-			this.logger.debug(`[WS EXCHANGE LISTENER] Getting scene id=${sceneId}`);
 
 			const scene = await this.scenesService.findOne(sceneId);
 

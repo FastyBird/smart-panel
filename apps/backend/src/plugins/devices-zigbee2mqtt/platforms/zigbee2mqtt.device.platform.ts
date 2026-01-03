@@ -109,7 +109,6 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		for (const { device, channels } of byDevice.values()) {
 			// Check if device is enabled
 			if (!device.enabled) {
-				this.logger.debug(`Device ${device.identifier} is disabled, ignoring command`);
 				results.push(false);
 				continue;
 			}
@@ -166,9 +165,6 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 					);
 
 					if (translation) {
-						this.logger.debug(
-							`Translating virtual command: ${property.identifier}=${value} -> ${translation.targetProperty}=${translation.translatedValue}`,
-						);
 						payload[translation.targetProperty] = translation.translatedValue;
 						continue;
 					} else {
@@ -207,11 +203,9 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 				colorPayload.saturation = colorSaturation;
 			}
 			payload.color = colorPayload;
-			this.logger.debug(`Building color payload: ${JSON.stringify(colorPayload)}`);
 		}
 
 		if (Object.keys(payload).length === 0) {
-			this.logger.debug('No valid properties to update');
 			return false;
 		}
 
@@ -220,7 +214,7 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		const success = await this.mqttAdapter.publishCommand(friendlyName, payload);
 
 		if (success) {
-			this.logger.debug(`Command sent successfully to ${friendlyName}`);
+			// Intentionally empty - command sent successfully
 		} else {
 			this.logger.warn(`Failed to send command to ${friendlyName}`);
 		}
@@ -242,7 +236,6 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 		if (property.category === PropertyCategory.BRIGHTNESS) {
 			const percentage = this.coerceNumber(value, 0, 100);
 			const z2mValue = Math.round((percentage / 100) * 254);
-			this.logger.debug(`Converting brightness: ${percentage}% -> ${z2mValue} (Z2M range)`);
 			return z2mValue;
 		}
 
@@ -256,7 +249,6 @@ export class Zigbee2mqttDevicePlatform implements IDevicePlatform {
 
 			const kelvin = this.coerceNumber(value, minKelvin, maxKelvin);
 			const mired = Math.round(1000000 / kelvin);
-			this.logger.debug(`Converting color_temp: ${kelvin} K -> ${mired} mired`);
 			return mired;
 		}
 

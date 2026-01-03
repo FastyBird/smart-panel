@@ -92,9 +92,6 @@ export class VirtualPropertyService {
 			const virtualDef = virtualProps.find((vp) => vp.property_category === required);
 			if (virtualDef) {
 				missingVirtuals.push(virtualDef);
-				this.logger.debug(
-					`[VIRTUAL] Found virtual property for missing required: channel=${channelCategory}, property=${required}, type=${virtualDef.virtual_type}`,
-				);
 			}
 		}
 

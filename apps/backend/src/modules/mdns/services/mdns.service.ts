@@ -132,7 +132,6 @@ export class MdnsService implements OnApplicationShutdown {
 			this.logger.log(
 				`Service advertised successfully: ${serviceName} (_${serviceType}._${MDNS_DEFAULT_PROTOCOL}) on port ${port}`,
 			);
-			this.logger.debug(`TXT records: ${JSON.stringify(txtRecord)}`);
 		} catch (error) {
 			const err = error as Error;
 
@@ -164,8 +163,6 @@ export class MdnsService implements OnApplicationShutdown {
 							if (error) {
 								this.logger.warn(`Error during unpublishAll: ${error.message}`);
 								// Continue with cleanup even if unpublishAll had an error
-							} else {
-								this.logger.debug('All services unpublished');
 							}
 							resolve();
 						});

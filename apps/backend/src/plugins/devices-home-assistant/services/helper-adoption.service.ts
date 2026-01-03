@@ -60,8 +60,6 @@ export class HelperAdoptionService {
 	 * Adopt a Home Assistant helper into the Smart Panel system
 	 */
 	async adoptHelper(request: AdoptHelperRequestDto): Promise<HomeAssistantDeviceEntity> {
-		this.logger.debug(`[HELPER ADOPTION] Adopting helper: ${request.entityId}`);
-
 		// Validate helper exists
 		const helper = await this.homeAssistantHttpService.getDiscoveredHelper(request.entityId);
 
@@ -123,8 +121,6 @@ export class HelperAdoptionService {
 			createDeviceDto,
 		);
 
-		this.logger.debug(`[HELPER ADOPTION] Created device: ${device.id}`, { resource: device.id });
-
 		try {
 			// Create device information channel
 			await this.createDeviceInformationChannel(device, helper);
@@ -140,10 +136,6 @@ export class HelperAdoptionService {
 			// Set device connection state to connected (helper is available if we got here)
 			await this.deviceConnectivityService.setConnectionState(device.id, {
 				state: ConnectionState.CONNECTED,
-			});
-
-			this.logger.debug(`[HELPER ADOPTION] Helper ${request.entityId} adopted successfully as device ${device.id}`, {
-				resource: device.id,
 			});
 
 			// Return the fully loaded device
@@ -244,10 +236,6 @@ export class HelperAdoptionService {
 
 			await this.channelsPropertiesService.create(channel.id, createPropertyDto);
 		}
-
-		this.logger.debug(`[HELPER ADOPTION] Created device_information channel with ${properties.length} properties`, {
-			resource: device.id,
-		});
 	}
 
 	/**
@@ -299,10 +287,6 @@ export class HelperAdoptionService {
 		try {
 			const state = await this.homeAssistantHttpService.getState(entityId);
 
-			this.logger.debug(`[HELPER ADOPTION] Fetched state for helper ${entityId}: ${state.state}`, {
-				resource: deviceId,
-			});
-
 			// Load all properties for this device's channels
 			const allProperties = await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
 				undefined,
@@ -319,16 +303,8 @@ export class HelperAdoptionService {
 			);
 
 			if (deviceProperties.length === 0) {
-				this.logger.debug(`[HELPER ADOPTION] No matching properties found for helper ${entityId}`, {
-					resource: deviceId,
-				});
 				return;
 			}
-
-			this.logger.debug(
-				`[HELPER ADOPTION] Found ${deviceProperties.length} properties to sync for helper ${entityId}`,
-				{ resource: deviceId },
-			);
 
 			// Update each property based on its ha_attribute mapping
 			for (const property of deviceProperties) {
@@ -359,10 +335,6 @@ export class HelperAdoptionService {
 								value: newValue,
 							}),
 						);
-
-						this.logger.debug(`[HELPER ADOPTION] Updated property ${property.category} = ${String(newValue)}`, {
-							resource: deviceId,
-						});
 					} catch (updateError) {
 						const updateErr = updateError as Error;
 
@@ -373,10 +345,6 @@ export class HelperAdoptionService {
 					}
 				}
 			}
-
-			this.logger.debug(`[HELPER ADOPTION] Synced initial state for helper ${entityId}`, {
-				resource: deviceId,
-			});
 		} catch (error) {
 			const err = error as Error;
 

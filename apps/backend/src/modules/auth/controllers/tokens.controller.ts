@@ -61,11 +61,7 @@ export class TokensController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<TokensResponseModel> {
-		this.logger.debug('Fetching all tokens');
-
 		const tokens = await this.tokensService.findAll<TokenEntity>();
-
-		this.logger.debug(`Retrieved ${tokens.length} tokens`);
 		const response = new TokensResponseModel();
 		response.data = tokens;
 
@@ -84,11 +80,7 @@ export class TokensController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TokenResponseModel> {
-		this.logger.debug(`Fetching token id=${id}`);
-
 		const token = await this.getOneOrThrow(id);
-
-		this.logger.debug(`Found token id=${token.id}`);
 
 		const response = new TokenResponseModel();
 		response.data = token;
@@ -119,8 +111,6 @@ export class TokensController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<TokenResponseModel> {
-		this.logger.debug('Incoming request to create a new token');
-
 		const type: string | undefined = createDto.data.type;
 
 		if (!type) {
@@ -163,8 +153,6 @@ export class TokensController {
 
 		const token = await this.tokensService.create(createDto.data);
 
-		this.logger.debug(`Successfully created token id=${token.id}`);
-
 		setLocationHeader(req, res, AUTH_MODULE_PREFIX, 'auth', token.id);
 
 		const response = new TokenResponseModel();
@@ -194,8 +182,6 @@ export class TokensController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateTokenDto,
 	): Promise<TokenResponseModel> {
-		this.logger.debug(`Incoming update request for token id=${id}`);
-
 		const token = await this.getOneOrThrow(id);
 
 		let mapping: TokenTypeMapping<TokenEntity, CreateTokenDto, UpdateTokenDto>;
@@ -237,8 +223,6 @@ export class TokensController {
 
 		const updatedToken = await this.tokensService.update(token.id, updateDto.data);
 
-		this.logger.debug(`Successfully updated token id=${updatedToken.id}`);
-
 		const response = new TokenResponseModel();
 
 		response.data = updatedToken;
@@ -263,8 +247,6 @@ export class TokensController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Req() req: AuthenticatedRequest,
 	): Promise<void> {
-		this.logger.debug(`Incoming request to delete token id=${id}`);
-
 		const token = await this.getOneOrThrow(id);
 
 		const { auth } = req;
@@ -275,13 +257,9 @@ export class TokensController {
 		}
 
 		await this.tokensService.remove(token.id);
-
-		this.logger.debug(`Successfully deleted token id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<TokenEntity> {
-		this.logger.debug(`Checking existence of token id=${id}`);
-
 		const token = await this.tokensService.findOne<TokenEntity>(id);
 
 		if (!token) {

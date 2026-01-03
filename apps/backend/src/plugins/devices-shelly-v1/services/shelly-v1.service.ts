@@ -216,7 +216,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			}
 
 			// Config didn't change for this plugin, no restart needed
-			this.logger.debug('Config event received but no relevant changes for this plugin');
 			return Promise.resolve({ restartRequired: false });
 		}
 
@@ -244,12 +243,8 @@ export class ShellyV1Service implements IManagedPluginService {
 				);
 
 				if (!existingDevice) {
-					this.logger.debug(`Discovery is disabled, ignoring new device: ${event.id} (${event.type})`);
-
 					return;
 				}
-
-				this.logger.debug(`Discovery is disabled, but device ${event.id} already exists, processing update`);
 			}
 
 			// Map and create the device with its channels and properties
@@ -269,15 +264,11 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_CHANGED)
 	async handleDeviceChanged(event: NormalizedDeviceChangeEvent): Promise<void> {
-		this.logger.debug(`Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`);
-
 		try {
 			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`Device ${event.id} is disabled, ignoring property change`);
-
 				return;
 			}
 
@@ -289,8 +280,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping property update`);
-
 				return;
 			}
 
@@ -298,10 +287,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			const binding = await this.findPropertyBinding(device, event.property);
 
 			if (!binding) {
-				this.logger.debug(`No binding found for property: ${event.property} on device ${device.identifier}, skipping`, {
-					resource: device.id,
-				});
-
 				return;
 			}
 
@@ -317,10 +302,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			if (!channel) {
-				this.logger.debug(
-					`Channel not found: ${channelIdentifier} for device ${device.identifier}, skipping property update`,
-					{ resource: device.id },
-				);
 				return;
 			}
 
@@ -333,10 +314,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			if (!property) {
-				this.logger.debug(
-					`Property not found: ${propertyIdentifier} for channel ${channel.identifier}, skipping property update`,
-					{ resource: device.id },
-				);
 				return;
 			}
 
@@ -366,15 +343,11 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_OFFLINE)
 	async handleDeviceOffline(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.debug(`Device went offline: ${event.id}`);
-
 		try {
 			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`Device ${event.id} is disabled, ignoring offline event`);
-
 				return;
 			}
 
@@ -386,8 +359,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping offline state update`);
-
 				return;
 			}
 
@@ -395,8 +366,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			await this.deviceConnectivityService.setConnectionState(device.id, {
 				state: ConnectionState.DISCONNECTED,
 			});
-
-			this.logger.debug(`Device ${device.identifier} marked as offline`, { resource: device.id });
 		} catch (error) {
 			this.logger.error(`Failed to mark device ${event.id} as offline:`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -410,15 +379,11 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_ONLINE)
 	async handleDeviceOnline(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.debug(`Device came online: ${event.id}`);
-
 		try {
 			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
-				this.logger.debug(`Device ${event.id} is disabled, ignoring online event`);
-
 				return;
 			}
 
@@ -430,8 +395,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			);
 
 			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping online state update`);
-
 				return;
 			}
 
@@ -439,8 +402,6 @@ export class ShellyV1Service implements IManagedPluginService {
 			await this.deviceConnectivityService.setConnectionState(device.id, {
 				state: ConnectionState.CONNECTED,
 			});
-
-			this.logger.debug(`Device ${device.identifier} marked as online`, { resource: device.id });
 		} catch (error) {
 			this.logger.error(`Failed to mark device ${event.id} as online:`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -505,10 +466,6 @@ export class ShellyV1Service implements IManagedPluginService {
 		const binding = bindings.find((b) => b.shelliesProperty === shelliesProperty);
 
 		if (!binding) {
-			this.logger.debug(`No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`, {
-				resource: device.id,
-			});
-
 			return null;
 		}
 
@@ -668,8 +625,6 @@ export class ShellyV1Service implements IManagedPluginService {
 				return;
 			}
 
-			this.logger.debug(`Updating device information for ${registeredDevices.length} devices`);
-
 			for (const registeredDevice of registeredDevices) {
 				// Skip disabled devices
 				if (!registeredDevice.enabled) {
@@ -739,10 +694,6 @@ export class ShellyV1Service implements IManagedPluginService {
 								type: DEVICES_SHELLY_V1_TYPE,
 								value: status.wifi_sta.rssi,
 							});
-
-							this.logger.debug(`Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`, {
-								resource: device.id,
-							});
 						}
 					}
 
@@ -762,10 +713,6 @@ export class ShellyV1Service implements IManagedPluginService {
 							>(firmwareProperty.id, {
 								type: DEVICES_SHELLY_V1_TYPE,
 								value: info.fw,
-							});
-
-							this.logger.debug(`Updated firmware version for ${registeredDevice.id}: ${info.fw}`, {
-								resource: device.id,
 							});
 						}
 					}

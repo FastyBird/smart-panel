@@ -41,8 +41,6 @@ export class SpaceLightingRoleService {
 	 * Get all lighting role assignments for a space
 	 */
 	async findBySpace(spaceId: string): Promise<SpaceLightingRoleEntity[]> {
-		this.logger.debug(`Fetching lighting roles for space id=${spaceId}`);
-
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
@@ -50,8 +48,6 @@ export class SpaceLightingRoleService {
 			where: { spaceId },
 			order: { role: 'ASC', priority: 'ASC' },
 		});
-
-		this.logger.debug(`Found ${roles.length} lighting roles for space id=${spaceId}`);
 
 		return roles;
 	}
@@ -69,8 +65,6 @@ export class SpaceLightingRoleService {
 	 * Set or update a lighting role assignment
 	 */
 	async setRole(spaceId: string, dto: SetLightingRoleDto): Promise<SpaceLightingRoleEntity> {
-		this.logger.debug(`Setting lighting role for space=${spaceId} device=${dto.deviceId} channel=${dto.channelId}`);
-
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
@@ -120,8 +114,6 @@ export class SpaceLightingRoleService {
 			);
 		}
 
-		this.logger.debug(`Successfully set lighting role=${dto.role} for device=${dto.deviceId} channel=${dto.channelId}`);
-
 		return roleEntity;
 	}
 
@@ -129,8 +121,6 @@ export class SpaceLightingRoleService {
 	 * Bulk set/update lighting role assignments
 	 */
 	async bulkSetRoles(spaceId: string, roles: SetLightingRoleDto[]): Promise<number> {
-		this.logger.debug(`Bulk setting ${roles.length} lighting roles for space id=${spaceId}`);
-
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
@@ -145,8 +135,6 @@ export class SpaceLightingRoleService {
 			}
 		}
 
-		this.logger.debug(`Successfully bulk set ${updatedCount}/${roles.length} lighting roles for space id=${spaceId}`);
-
 		return updatedCount;
 	}
 
@@ -154,8 +142,6 @@ export class SpaceLightingRoleService {
 	 * Delete a lighting role assignment
 	 */
 	async deleteRole(spaceId: string, deviceId: string, channelId: string): Promise<void> {
-		this.logger.debug(`Deleting lighting role for space=${spaceId} device=${deviceId} channel=${channelId}`);
-
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
@@ -163,7 +149,6 @@ export class SpaceLightingRoleService {
 
 		if (role) {
 			await this.repository.remove(role);
-			this.logger.debug(`Successfully deleted lighting role for device=${deviceId} channel=${channelId}`);
 		}
 	}
 
@@ -172,8 +157,6 @@ export class SpaceLightingRoleService {
 	 * This combines device/channel info with role data
 	 */
 	async getLightTargetsInSpace(spaceId: string): Promise<LightTargetInfo[]> {
-		this.logger.debug(`Getting light targets for space id=${spaceId}`);
-
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
@@ -234,8 +217,6 @@ export class SpaceLightingRoleService {
 			}
 		}
 
-		this.logger.debug(`Found ${lightTargets.length} light targets in space id=${spaceId}`);
-
 		return lightTargets;
 	}
 
@@ -245,8 +226,6 @@ export class SpaceLightingRoleService {
 	 * - Remaining lights become AMBIENT
 	 */
 	async inferDefaultLightingRoles(spaceId: string): Promise<SetLightingRoleDto[]> {
-		this.logger.debug(`Inferring default lighting roles for space id=${spaceId}`);
-
 		const lightTargets = await this.getLightTargetsInSpace(spaceId);
 
 		if (lightTargets.length === 0) {
@@ -272,8 +251,6 @@ export class SpaceLightingRoleService {
 				priority: i,
 			});
 		}
-
-		this.logger.debug(`Inferred ${defaultRoles.length} default lighting roles for space id=${spaceId}`);
 
 		return defaultRoles;
 	}

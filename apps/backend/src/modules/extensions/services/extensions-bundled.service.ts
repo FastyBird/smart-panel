@@ -133,14 +133,10 @@ export class ExtensionsBundledService {
 			const manifestPath = path.resolve(this.configPath, 'extensions.manifest.json');
 
 			if (!fs.existsSync(manifestPath)) {
-				this.logger.debug(`Bundled manifest not found at ${manifestPath}`);
-
 				return null;
 			}
 
 			this.manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as BundledManifest;
-
-			this.logger.debug(`Loaded bundled manifest with ${this.manifest.bundled.length} extensions`);
 
 			return this.manifest;
 		} catch (error) {

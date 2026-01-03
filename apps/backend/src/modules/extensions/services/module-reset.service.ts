@@ -14,8 +14,6 @@ export class ModuleResetService {
 
 	reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			this.logger.debug('Resetting extensions module caches');
-
 			// Clear the discovery cache to force re-discovery of extensions
 			clearDiscoveryCache();
 

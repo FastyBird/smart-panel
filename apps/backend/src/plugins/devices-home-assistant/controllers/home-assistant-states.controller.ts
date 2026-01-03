@@ -47,12 +47,8 @@ export class HomeAssistantStatesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<HomeAssistantStatesResponseModel> {
-		this.logger.debug('Fetching all Home Assistant entities states');
-
 		try {
 			const states = await this.homeAssistantHttpService.getStates();
-
-			this.logger.debug(`Retrieved ${states.length} entities states`);
 
 			const response = new HomeAssistantStatesResponseModel();
 			response.data = states;
@@ -94,12 +90,8 @@ export class HomeAssistantStatesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':entityId')
 	async findOne(@Param('entityId') entityId: string): Promise<HomeAssistantStateResponseModel> {
-		this.logger.debug(`Fetching Home Assistant entity state id=${entityId}`);
-
 		try {
 			const state = await this.homeAssistantHttpService.getState(entityId);
-
-			this.logger.debug(`Found Home Assistant entity state entityId=${state.entityId}`);
 
 			const response = new HomeAssistantStateResponseModel();
 			response.data = state;

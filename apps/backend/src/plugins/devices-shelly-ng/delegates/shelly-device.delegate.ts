@@ -234,8 +234,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		this.emit('connected', false);
 	};
 
-	private handleRequest = (method: string): void => {
-		this.logger.debug('Received device event:', method);
+	private handleRequest = (_method: string): void => {
+		// Intentionally empty
 	};
 
 	private handleChange = (compKey: string, char: string, val: CharacteristicValue): void => {

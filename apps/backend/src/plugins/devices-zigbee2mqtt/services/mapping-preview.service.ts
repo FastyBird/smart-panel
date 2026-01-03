@@ -56,8 +56,6 @@ export class Z2mMappingPreviewService {
 	 * Generate a mapping preview for a Z2M device
 	 */
 	async generatePreview(ieeeAddress: string, request?: MappingPreviewRequestDto): Promise<Z2mMappingPreviewModel> {
-		this.logger.debug(`[MAPPING PREVIEW] Generating preview for device: ${ieeeAddress}`);
-
 		// Get device from Z2M registry
 		const registeredDevices = this.zigbee2mqttService.getRegisteredDevices();
 		const z2mDevice = registeredDevices.find((d) => d.ieeeAddress === ieeeAddress);
@@ -83,8 +81,6 @@ export class Z2mMappingPreviewService {
 
 		// If still no state, request it from Z2M and wait briefly
 		if (Object.keys(currentState).length === 0) {
-			this.logger.debug(`[MAPPING PREVIEW] Device ${z2mDevice.friendlyName} has no state, requesting from Z2M`);
-
 			const stateRequested = await this.zigbee2mqttService.requestDeviceState(z2mDevice.friendlyName);
 
 			if (stateRequested) {
@@ -94,10 +90,6 @@ export class Z2mMappingPreviewService {
 				// Get updated state from cache (stateCache is always updated by handleDeviceStateMessage)
 				const updatedCachedState = this.zigbee2mqttService.getCachedState(z2mDevice.friendlyName);
 				Object.assign(currentState, updatedCachedState);
-
-				this.logger.debug(
-					`[MAPPING PREVIEW] After state request, device has ${Object.keys(currentState).length} state keys`,
-				);
 			}
 		}
 
@@ -161,11 +153,6 @@ export class Z2mMappingPreviewService {
 			warnings,
 			readyToAdopt,
 		};
-
-		this.logger.debug(
-			`[MAPPING PREVIEW] Generated preview: ${exposePreviews.length} exposes, ` +
-				`${warnings.length} warnings, ready=${readyToAdopt}`,
-		);
 
 		return preview;
 	}

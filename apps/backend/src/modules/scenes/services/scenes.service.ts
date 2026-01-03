@@ -52,8 +52,6 @@ export class ScenesService {
 	 * Find all scenes for a specific space
 	 */
 	async findBySpace(primarySpaceId: string): Promise<SceneEntity[]> {
-		this.logger.debug(`[LOOKUP] Fetching scenes for primarySpaceId=${primarySpaceId}`);
-
 		const scenes = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
@@ -63,24 +61,16 @@ export class ScenesService {
 			.addOrderBy('scene.name', 'ASC')
 			.getMany();
 
-		this.logger.debug(`[LOOKUP] Found ${scenes.length} scenes for primarySpaceId=${primarySpaceId}`);
-
 		return scenes;
 	}
 
 	async getCount(): Promise<number> {
-		this.logger.debug('[LOOKUP ALL] Fetching all scenes count');
-
 		const count = await this.repository.count();
-
-		this.logger.debug(`[LOOKUP ALL] Found that in system is ${count} scenes`);
 
 		return count;
 	}
 
 	async findAll(): Promise<SceneEntity[]> {
-		this.logger.debug('[LOOKUP ALL] Fetching all scenes');
-
 		const scenes = await this.repository.find({
 			relations: ['actions', 'actions.scene'],
 			order: {
@@ -88,14 +78,10 @@ export class ScenesService {
 			},
 		});
 
-		this.logger.debug(`[LOOKUP ALL] Found ${scenes.length} scenes`);
-
 		return scenes;
 	}
 
 	async findOne(id: string): Promise<SceneEntity | null> {
-		this.logger.debug(`[LOOKUP] Fetching scene with id=${id}`);
-
 		const scene = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
@@ -105,18 +91,13 @@ export class ScenesService {
 			.getOne();
 
 		if (!scene) {
-			this.logger.debug(`[LOOKUP] Scene with id=${id} not found`);
 			return null;
 		}
-
-		this.logger.debug(`[LOOKUP] Successfully fetched scene with id=${id}`);
 
 		return scene;
 	}
 
 	async findOneBy(column: 'id' | 'category' | 'name', value: string | number | boolean): Promise<SceneEntity | null> {
-		this.logger.debug(`[LOOKUP] Fetching scene with ${column}=${value}`);
-
 		const scene = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
@@ -126,18 +107,13 @@ export class ScenesService {
 			.getOne();
 
 		if (!scene) {
-			this.logger.debug(`[LOOKUP] Scene with ${column}=${value} not found`);
 			return null;
 		}
-
-		this.logger.debug(`[LOOKUP] Successfully fetched scene with ${column}=${value}`);
 
 		return scene;
 	}
 
 	async create(createDto: CreateSceneDto): Promise<SceneEntity> {
-		this.logger.debug('[CREATE] Creating new scene');
-
 		const { primary_space_id } = createDto;
 
 		// Validate that space exists if provided
@@ -170,8 +146,6 @@ export class ScenesService {
 
 			// Create actions within the same transaction
 			for (const actionDto of actions) {
-				this.logger.debug(`[CREATE] Creating new action for sceneId=${raw.id}`);
-
 				await this.sceneActionsService.createWithEntityManager(
 					{
 						...actionDto,
@@ -187,16 +161,12 @@ export class ScenesService {
 		// Retrieve the saved scene with its full relations
 		const fullScene = await this.getOneOrThrow(savedScene.id);
 
-		this.logger.debug(`[CREATE] Successfully created new scene with id=${fullScene.id}`);
-
 		this.eventEmitter.emit(EventType.SCENE_CREATED, fullScene);
 
 		return fullScene;
 	}
 
 	async update(id: string, updateDto: UpdateSceneDto): Promise<SceneEntity> {
-		this.logger.debug(`[UPDATE] Updating scene with id=${id}`);
-
 		const existingScene = await this.getOneOrThrow(id);
 
 		if (!existingScene.editable) {
@@ -238,16 +208,12 @@ export class ScenesService {
 		// Retrieve the updated scene with its full relations
 		const updatedScene = await this.getOneOrThrow(savedScene.id);
 
-		this.logger.debug(`[UPDATE] Successfully updated scene with id=${updatedScene.id}`);
-
 		this.eventEmitter.emit(EventType.SCENE_UPDATED, updatedScene);
 
 		return updatedScene;
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing scene with id=${id}`);
-
 		const scene = await this.getOneOrThrow(id);
 
 		if (!scene.editable) {
@@ -257,14 +223,10 @@ export class ScenesService {
 
 		await this.repository.remove(scene);
 
-		this.logger.debug(`[DELETE] Successfully removed scene with id=${id}`);
-
 		this.eventEmitter.emit(EventType.SCENE_DELETED, { id });
 	}
 
 	async updateLastTriggered(id: string): Promise<void> {
-		this.logger.debug(`[UPDATE] Updating last triggered timestamp for scene with id=${id}`);
-
 		await this.repository.update(id, {
 			lastTriggeredAt: new Date(),
 		});

@@ -29,8 +29,6 @@ export class ShellyV1ProbeService {
 		const { hostname, password } = request;
 		const host = hostname;
 
-		this.logger.debug(`Probing device at ${host}`);
-
 		const response: ShellyV1DeviceInfoModel = {
 			reachable: false,
 			authRequired: false,
@@ -48,8 +46,6 @@ export class ShellyV1ProbeService {
 			response.mac = shellyInfo.mac;
 			response.model = shellyInfo.type;
 			response.firmware = shellyInfo.fw;
-
-			this.logger.debug(`Device at ${host} is reachable. Type: ${shellyInfo.type}, Auth: ${shellyInfo.auth}`);
 		} catch (error) {
 			this.logger.warn(`Failed to reach device at ${host}: ${error instanceof Error ? error.message : String(error)}`);
 
@@ -64,8 +60,6 @@ export class ShellyV1ProbeService {
 					statusInfo = await this.httpClient.getDeviceStatus(host, undefined, SHELLY_AUTH_USERNAME, password);
 					response.authValid = true;
 					response.ip = statusInfo.wifi_sta.ip;
-
-					this.logger.debug(`Auth credentials valid for ${host}`);
 				} catch (error) {
 					response.authValid = false;
 
@@ -80,16 +74,12 @@ export class ShellyV1ProbeService {
 			} else {
 				// Auth required but no password provided
 				response.authValid = undefined; // Cannot validate
-
-				this.logger.debug(`Auth required for ${host} but no password provided`);
 			}
 		} else {
 			// No auth required, fetch /status and /settings without credentials
 			try {
 				statusInfo = await this.httpClient.getDeviceStatus(host);
 				response.ip = statusInfo.wifi_sta.ip;
-
-				this.logger.debug(`Status fetched for ${host}`);
 			} catch (error) {
 				this.logger.warn(
 					`Failed to fetch status for ${host}: ${error instanceof Error ? error.message : String(error)}`,
@@ -104,8 +94,6 @@ export class ShellyV1ProbeService {
 			if (descriptorMatch) {
 				response.deviceType = descriptorMatch.descriptor.name;
 				response.description = `${descriptorMatch.descriptor.name} (${shellyInfo.type})`;
-
-				this.logger.debug(`Device ${host} matched to descriptor: ${descriptorMatch.key}`);
 			} else {
 				this.logger.warn(`No descriptor found for device type: ${shellyInfo.type}`);
 			}

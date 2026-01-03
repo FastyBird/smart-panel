@@ -88,14 +88,10 @@ export class DevicesChannelsPropertiesController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 	): Promise<ChannelPropertiesResponseModel> {
-		this.logger.debug(`Fetching all data sources for deviceId=${deviceId} channelId=${channelId}`);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 
 		const properties = await this.channelsPropertiesService.findAll(channel.id);
-
-		this.logger.debug(`Retrieved ${properties.length} data sources for deviceId=${device.id} channelId=${channel.id}`);
 
 		const response = new ChannelPropertiesResponseModel();
 
@@ -127,14 +123,10 @@ export class DevicesChannelsPropertiesController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<ChannelPropertyResponseModel> {
-		this.logger.debug(`Fetching device id=${id} for deviceId=${deviceId} channelId=${channelId}`);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 
 		const property = await this.getOneOrThrow(id, channel.id);
-
-		this.logger.debug(`Found channel id=${property.id} for deviceId=${device.id} channelId=${channel.id}`);
 
 		const response = new ChannelPropertyResponseModel();
 
@@ -170,10 +162,6 @@ export class DevicesChannelsPropertiesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Query() query: QueryPropertyTimeseriesDto,
 	): Promise<PropertyTimeseriesResponseModel> {
-		this.logger.debug(
-			`[TIMESERIES] Fetching timeseries for property id=${id} deviceId=${deviceId} channelId=${channelId} from=${query.from ?? 'default'} to=${query.to ?? 'default'} bucket=${query.bucket ?? 'auto'}`,
-		);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 		const property = await this.getOneOrThrow(id, channel.id);
@@ -191,10 +179,6 @@ export class DevicesChannelsPropertiesController {
 		}
 
 		const result = await this.propertyTimeseriesService.queryTimeseries(property, from, to, query.bucket);
-
-		this.logger.debug(
-			`[TIMESERIES] Retrieved ${result.points.length} points for property id=${property.id} deviceId=${device.id} channelId=${channel.id}`,
-		);
 
 		const response = new PropertyTimeseriesResponseModel();
 
@@ -230,8 +214,6 @@ export class DevicesChannelsPropertiesController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<ChannelPropertyResponseModel> {
-		this.logger.debug(`Incoming request to create a new data source for deviceId=${deviceId} channelId=${channelId}`);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 
@@ -292,10 +274,6 @@ export class DevicesChannelsPropertiesController {
 		try {
 			const property = await this.channelsPropertiesService.create(channel.id, dtoInstance);
 
-			this.logger.debug(
-				`Successfully created data source id=${property.id} for deviceId=${device.id} channelId=${channel.id}`,
-			);
-
 			setLocationHeader(
 				req,
 				res,
@@ -348,10 +326,6 @@ export class DevicesChannelsPropertiesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<ChannelPropertyResponseModel> {
-		this.logger.debug(
-			`Incoming update request for data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
-		);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 		const property = await this.getOneOrThrow(id, channel.id);
@@ -405,10 +379,6 @@ export class DevicesChannelsPropertiesController {
 		try {
 			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance);
 
-			this.logger.debug(
-				`Successfully updated channel id=${updatedProperty.id} for deviceId=${device.id} channelId=${channel.id}`,
-			);
-
 			const response = new ChannelPropertyResponseModel();
 
 			response.data = updatedProperty;
@@ -444,22 +414,14 @@ export class DevicesChannelsPropertiesController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<void> {
-		this.logger.debug(
-			`Incoming request to delete data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
-		);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 		const property = await this.getOneOrThrow(id, channel.id);
 
 		await this.channelsPropertiesService.remove(property.id);
-
-		this.logger.debug(`Successfully deleted channel id=${id} for deviceId=${device.id} channelId=${channel.id}`);
 	}
 
 	private async getOneOrThrow(id: string, channelId: string): Promise<ChannelPropertyEntity> {
-		this.logger.debug(`Checking existence of data source id=${id} for channelId=${channelId}`);
-
 		const property = await this.channelsPropertiesService.findOne(id, channelId);
 
 		if (!property) {
@@ -472,8 +434,6 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	private async getChannelOrThrow(deviceId: string, channelId: string): Promise<ChannelEntity> {
-		this.logger.debug(`Checking existence of channel id=${channelId} for deviceId=${deviceId}`);
-
 		const channel = await this.channelsService.findOne(channelId, deviceId);
 
 		if (!channel) {
@@ -486,8 +446,6 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	private async getDeviceOrThrow(deviceId: string): Promise<DeviceEntity> {
-		this.logger.debug(`Checking existence of device id=${deviceId}`);
-
 		const device = await this.devicesService.findOne(deviceId);
 
 		if (!device) {

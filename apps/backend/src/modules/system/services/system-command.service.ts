@@ -128,11 +128,7 @@ export class SystemCommandService {
 						reason: result?.reason ?? `Factory reset failed in handler: ${name}`,
 					};
 				}
-
-				this.logger.debug(`Handler "${name}" completed successfully`);
 			}
-
-			this.logger.debug('Factory reset was successful');
 
 			await this.platformService.reboot();
 

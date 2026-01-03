@@ -146,11 +146,9 @@ export class LogsController {
 
 					case LogEntryType.DEBUG:
 					case LogEntryType.TRACE:
-						this.logger.debug(`${prefix} ${message} ${extra}`, { ...event.context, source: event.source });
 						break;
 
 					default:
-						this.logger.debug(`${prefix} ${message} ${extra}`, { ...event.context, source: event.source });
 						break;
 				}
 

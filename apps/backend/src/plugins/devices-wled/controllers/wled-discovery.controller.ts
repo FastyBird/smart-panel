@@ -38,8 +38,6 @@ export class WledDiscoveryController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async getDiscoveredDevices(): Promise<WledDiscoveredDevicesResponseModel> {
-		this.logger.debug('Incoming request to get discovered WLED devices');
-
 		const discoveredDevices = await this.wledService.getUnadedDiscoveredDevices();
 
 		const devices: WledDiscoveredDeviceModel[] = discoveredDevices.map((device) =>

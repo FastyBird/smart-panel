@@ -67,8 +67,6 @@ export class Z2mDeviceAdoptionService {
 	 * Adopt a Z2M device into Smart Panel (or re-adopt if already exists)
 	 */
 	async adoptDevice(request: AdoptDeviceRequestDto): Promise<Zigbee2mqttDeviceEntity> {
-		this.logger.debug(`[DEVICE ADOPTION] Adopting Z2M device: ${request.ieeeAddress}`);
-
 		// Validate Z2M device exists
 		const registeredDevices = this.zigbee2mqttService.getRegisteredDevices();
 		const z2mDevice = registeredDevices.find((d) => d.ieeeAddress === request.ieeeAddress);
@@ -85,7 +83,6 @@ export class Z2mDeviceAdoptionService {
 		// Check by friendly_name identifier
 		const existingByIdentifier = existingDevices.find((d) => d.identifier === z2mDevice.friendlyName);
 		if (existingByIdentifier) {
-			this.logger.debug(`[DEVICE ADOPTION] Re-adopting device: removing existing device ${existingByIdentifier.id}`);
 			await this.devicesService.remove(existingByIdentifier.id);
 		}
 
@@ -102,9 +99,6 @@ export class Z2mDeviceAdoptionService {
 				const properties = await this.channelsPropertiesService.findAll(infoChannel.id, DEVICES_ZIGBEE2MQTT_TYPE);
 				const serialProp = properties.find((p) => p.category === PropertyCategory.SERIAL_NUMBER);
 				if (serialProp?.value === request.ieeeAddress) {
-					this.logger.debug(
-						`[DEVICE ADOPTION] Re-adopting device: removing existing device ${device.id} (matched by IEEE address)`,
-					);
 					await this.devicesService.remove(device.id);
 					break; // Only one device should match
 				}
@@ -140,8 +134,6 @@ export class Z2mDeviceAdoptionService {
 			createDeviceDto,
 		);
 
-		this.logger.debug(`[DEVICE ADOPTION] Created device: ${device.id}`);
-
 		try {
 			// Create device information channel
 			await this.createDeviceInformationChannel(device, z2mDevice);
@@ -164,7 +156,7 @@ export class Z2mDeviceAdoptionService {
 			// This triggers Z2M to publish the device's current state, which will be processed by updateDeviceState
 			const stateRequested = await this.zigbee2mqttService.requestDeviceState(z2mDevice.friendlyName);
 			if (stateRequested) {
-				this.logger.debug(`[DEVICE ADOPTION] Requested current state for device: ${z2mDevice.friendlyName}`);
+				// Intentionally empty - state requested successfully
 			} else {
 				this.logger.warn(
 					`[DEVICE ADOPTION] Failed to request state for device: ${z2mDevice.friendlyName} (MQTT may not be connected)`,
@@ -278,8 +270,6 @@ export class Z2mDeviceAdoptionService {
 				CreateZigbee2mqttChannelPropertyDto
 			>(channel.id, createPropertyDto);
 		}
-
-		this.logger.debug(`[DEVICE ADOPTION] Created device information channel for device: ${device.id}`);
 	}
 
 	/**
@@ -342,7 +332,6 @@ export class Z2mDeviceAdoptionService {
 
 				if (virtualDef) {
 					initialValue = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
-					this.logger.debug(`[DEVICE ADOPTION] Resolved virtual property ${propDef.category} = ${initialValue}`);
 				}
 			} else {
 				// For properties that share the same z2mProperty (like hue and saturation both mapping to "color"),
@@ -384,7 +373,7 @@ export class Z2mDeviceAdoptionService {
 						}
 
 						if (initialValue !== null) {
-							this.logger.debug(`[DEVICE ADOPTION] Extracted ${propDef.category} from color object = ${initialValue}`);
+							// Intentionally empty - initial value extracted
 						}
 					} else if (
 						propDef.z2mProperty === 'color_temp' &&
@@ -395,7 +384,6 @@ export class Z2mDeviceAdoptionService {
 						// Convert mired to Kelvin for color temperature
 						// Device-specific range is already set in property format by exposes-mapper
 						initialValue = Math.round(1000000 / cachedValue);
-						this.logger.debug(`[DEVICE ADOPTION] Converted color_temp: ${cachedValue} mired -> ${initialValue} K`);
 					} else if (
 						typeof cachedValue === 'boolean' ||
 						typeof cachedValue === 'number' ||
@@ -403,13 +391,9 @@ export class Z2mDeviceAdoptionService {
 					) {
 						// Convert value to appropriate type
 						initialValue = cachedValue;
-						this.logger.debug(
-							`[DEVICE ADOPTION] Using cached state for ${propDef.z2mProperty} = ${JSON.stringify(initialValue)}`,
-						);
 					} else if (cachedValue !== null) {
 						// For complex values (objects), stringify them
 						initialValue = JSON.stringify(cachedValue);
-						this.logger.debug(`[DEVICE ADOPTION] Using cached state (stringified) for ${propDef.z2mProperty}`);
 					}
 				}
 			}
@@ -449,16 +433,12 @@ export class Z2mDeviceAdoptionService {
 				CreateZigbee2mqttChannelPropertyDto
 			>(channel.id, createPropertyDto);
 		}
-
-		this.logger.debug(`[DEVICE ADOPTION] Created channel ${channelDef.category} for device: ${device.id}`);
 	}
 
 	/**
 	 * Pre-validate device structure before creation using the DeviceValidationService
 	 */
 	private preValidateDeviceStructure(request: AdoptDeviceRequestDto): void {
-		this.logger.debug(`[DEVICE ADOPTION] Pre-validating device structure using DeviceValidationService`);
-
 		// Check that at least one channel is provided
 		if (!request.channels.length) {
 			throw new DevicesZigbee2mqttValidationException('At least one channel must be defined');
@@ -518,8 +498,6 @@ export class Z2mDeviceAdoptionService {
 		if (warnings.length > 0) {
 			this.logger.warn(`[DEVICE ADOPTION] Pre-validation warnings: ${warnings.map((w) => w.message).join(', ')}`);
 		}
-
-		this.logger.debug(`[DEVICE ADOPTION] Pre-validation passed`);
 	}
 
 	/**

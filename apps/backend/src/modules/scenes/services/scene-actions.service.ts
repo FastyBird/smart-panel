@@ -33,15 +33,11 @@ export class SceneActionsService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug(`[LOOKUP ALL] Fetching all actions for scene id=${sceneId}`);
-
 		const actions = (await repository.find({
 			where: { scene: { id: sceneId } } as unknown as FindOptionsWhere<TAction>,
 			relations: ['scene'],
 			order: { order: 'ASC' } as unknown as FindOptionsOrder<TAction>,
 		})) as TAction[];
-
-		this.logger.debug(`[LOOKUP ALL] Found ${actions.length} actions for scene id=${sceneId}`);
 
 		return actions;
 	}
@@ -51,19 +47,14 @@ export class SceneActionsService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		this.logger.debug(`[LOOKUP] Fetching action with id=${id}`);
-
 		const action = (await repository.findOne({
 			where: { id } as unknown as FindOptionsWhere<TAction>,
 			relations: ['scene'],
 		})) as TAction | null;
 
 		if (!action) {
-			this.logger.debug(`[LOOKUP] Action with id=${id} not found`);
 			return null;
 		}
-
-		this.logger.debug(`[LOOKUP] Successfully fetched action with id=${id}`);
 
 		return action;
 	}
@@ -71,8 +62,6 @@ export class SceneActionsService {
 	async create<TAction extends SceneActionEntity>(
 		createDto: CreateSceneActionDto & { scene: string },
 	): Promise<TAction> {
-		this.logger.debug('[CREATE] Creating new scene action');
-
 		const { type } = createDto;
 
 		const mapping = type ? this.actionsMapperService.getMapping<TAction, any, any>(type) : null;
@@ -101,8 +90,6 @@ export class SceneActionsService {
 		// Retrieve with relations
 		const result = await this.getOneOrThrow<TAction>(savedAction.id);
 
-		this.logger.debug(`[CREATE] Successfully created new action with id=${result.id}`);
-
 		this.eventEmitter.emit(EventType.SCENE_ACTION_CREATED, result);
 
 		return result;
@@ -115,8 +102,6 @@ export class SceneActionsService {
 		createDto: CreateSceneActionDto & { scene: string },
 		entityManager: EntityManager,
 	): Promise<TAction> {
-		this.logger.debug('[CREATE] Creating new scene action within transaction');
-
 		const { type } = createDto;
 
 		const mapping = type ? this.actionsMapperService.getMapping<TAction, any, any>(type) : null;
@@ -142,14 +127,10 @@ export class SceneActionsService {
 
 		const savedAction = await repository.save(action);
 
-		this.logger.debug(`[CREATE] Successfully created new action with id=${savedAction.id} within transaction`);
-
 		return savedAction;
 	}
 
 	async update<TAction extends SceneActionEntity>(id: string, updateDto: UpdateSceneActionDto): Promise<TAction> {
-		this.logger.debug(`[UPDATE] Updating action with id=${id}`);
-
 		const existingAction = await this.getOneOrThrow<TAction>(id);
 
 		const { type } = updateDto;
@@ -183,21 +164,15 @@ export class SceneActionsService {
 
 		const result = await this.getOneOrThrow<TAction>(savedAction.id);
 
-		this.logger.debug(`[UPDATE] Successfully updated action with id=${result.id}`);
-
 		this.eventEmitter.emit(EventType.SCENE_ACTION_UPDATED, result);
 
 		return result;
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing action with id=${id}`);
-
 		const action = await this.getOneOrThrow(id);
 
 		await this.repository.remove(action);
-
-		this.logger.debug(`[DELETE] Successfully removed action with id=${id}`);
 
 		this.eventEmitter.emit(EventType.SCENE_ACTION_DELETED, { id });
 	}

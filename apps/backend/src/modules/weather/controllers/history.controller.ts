@@ -74,8 +74,6 @@ export class HistoryController {
 		@Query('endTime') endTime?: string,
 		@Query('limit') limit?: string,
 	): Promise<WeatherHistoryResponseModel> {
-		this.logger.debug(`Fetching weather history for location=${locationId}`);
-
 		// Verify location exists
 		const location = await this.locationsService.findOne(locationId);
 
@@ -154,8 +152,6 @@ export class HistoryController {
 		@Query('startTime') startTime?: string,
 		@Query('endTime') endTime?: string,
 	): Promise<WeatherStatisticsResponseModel> {
-		this.logger.debug(`Fetching weather statistics for location=${locationId}`);
-
 		// Verify location exists
 		const location = await this.locationsService.findOne(locationId);
 

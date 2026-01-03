@@ -137,8 +137,6 @@ export class DeviceValidationService {
 	 * Validate all devices against their specifications
 	 */
 	async validateAllDevices(): Promise<ValidationResponse> {
-		this.logger.debug('Validating all devices');
-
 		const devices = await this.devicesService.findAll();
 		const results: DeviceValidationResult[] = [];
 
@@ -148,8 +146,6 @@ export class DeviceValidationService {
 
 		const summary = this.calculateSummary(results);
 
-		this.logger.debug(`Validation complete: ${summary.validDevices}/${summary.totalDevices} devices valid`);
-
 		return { summary, devices: results };
 	}
 
@@ -157,8 +153,6 @@ export class DeviceValidationService {
 	 * Validate devices of a specific plugin type
 	 */
 	async validatePluginDevices(pluginType: string): Promise<ValidationResponse> {
-		this.logger.debug(`Validating devices for plugin: ${pluginType}`);
-
 		const devices = await this.devicesService.findAll(pluginType);
 		const results: DeviceValidationResult[] = [];
 
@@ -175,8 +169,6 @@ export class DeviceValidationService {
 	 * Validate a single device by ID
 	 */
 	async validateDeviceById(deviceId: string): Promise<DeviceValidationResult | null> {
-		this.logger.debug(`Validating device: ${deviceId}`);
-
 		const device = await this.devicesService.findOne(deviceId);
 
 		if (!device) {

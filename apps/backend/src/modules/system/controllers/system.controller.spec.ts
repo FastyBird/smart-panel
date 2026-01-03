@@ -103,17 +103,6 @@ describe('SystemController', () => {
 			expect(result.data.cpuLoad).toBe(mockSystemInfo.cpuLoad);
 			expect(service.getSystemInfo).toHaveBeenCalled();
 		});
-
-		it('should log a message when called', async () => {
-			const loggerSpy = jest.spyOn(controller['logger'], 'debug').mockImplementation();
-
-			jest.spyOn(service, 'getSystemInfo').mockResolvedValue({} as SystemInfoModel);
-
-			await controller.getSystemInfo();
-
-			expect(loggerSpy).toHaveBeenCalledWith('Fetching system info');
-			expect(loggerSpy).toHaveBeenCalledWith('Successfully retrieved system info');
-		});
 	});
 
 	describe('getThrottleStatus', () => {
@@ -132,17 +121,6 @@ describe('SystemController', () => {
 			expect(result.data).toEqual(toInstance(ThrottleStatusModel, mockThrottleStatus));
 			expect(result.data.undervoltage).toBe(mockThrottleStatus.undervoltage);
 			expect(service.getThrottleStatus).toHaveBeenCalled();
-		});
-
-		it('should log a message when called', async () => {
-			const loggerSpy = jest.spyOn(controller['logger'], 'debug').mockImplementation();
-
-			jest.spyOn(service, 'getThrottleStatus').mockResolvedValue({} as ThrottleStatusModel);
-
-			await controller.getThrottleStatus();
-
-			expect(loggerSpy).toHaveBeenCalledWith('Fetching throttle status');
-			expect(loggerSpy).toHaveBeenCalledWith('Successfully retrieved throttle status');
 		});
 	});
 });

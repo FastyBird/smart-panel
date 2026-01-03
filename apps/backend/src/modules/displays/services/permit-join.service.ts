@@ -50,8 +50,6 @@ export class PermitJoinService {
 
 		this.permitJoinActive = true;
 		this.permitJoinExpiresAt = new Date(Date.now() + duration);
-
-		this.logger.debug(`Activated for ${duration}ms, expires at ${this.permitJoinExpiresAt.toISOString()}`);
 	}
 
 	/**
@@ -64,7 +62,6 @@ export class PermitJoinService {
 
 		// Check if expired
 		if (Date.now() >= this.permitJoinExpiresAt.getTime()) {
-			this.logger.debug('Expired');
 			this.permitJoinActive = false;
 			this.permitJoinExpiresAt = null;
 			return false;
@@ -77,7 +74,6 @@ export class PermitJoinService {
 	 * Deactivate permit join immediately
 	 */
 	deactivatePermitJoin(): void {
-		this.logger.debug('Deactivated');
 		this.permitJoinActive = false;
 		this.permitJoinExpiresAt = null;
 	}

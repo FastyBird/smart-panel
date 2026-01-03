@@ -67,8 +67,6 @@ export class SpaceContextSnapshotService {
 	 * Includes lighting state and climate state.
 	 */
 	async captureSnapshot(spaceId: string): Promise<SpaceContextSnapshot | null> {
-		this.logger.debug(`Capturing context snapshot for space id=${spaceId}`);
-
 		// Verify space exists
 		const space = await this.spacesService.findOne(spaceId);
 
@@ -91,11 +89,6 @@ export class SpaceContextSnapshotService {
 			lighting,
 			climate,
 		};
-
-		this.logger.debug(
-			`Context snapshot captured for space id=${spaceId} ` +
-				`lights=${lighting.summary.totalLights} lightsOn=${lighting.summary.lightsOn}`,
-		);
 
 		return snapshot;
 	}
