@@ -88,9 +88,16 @@ export class ChannelsService {
 
 		this.logger.debug('Fetching all channels');
 
-		const channels = (await repository.find({
-			relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
-		})) as TChannel[];
+		// Use QueryBuilder instead of find() to ensure device relation is properly loaded
+		// with STI (Single Table Inheritance) subclasses
+		const channels = (await repository
+			.createQueryBuilder('channel')
+			.innerJoinAndSelect('channel.device', 'device')
+			.leftJoinAndSelect('channel.controls', 'controls')
+			.leftJoinAndSelect('controls.channel', 'controlChannel')
+			.leftJoinAndSelect('channel.properties', 'properties')
+			.leftJoinAndSelect('properties.channel', 'propertyChannel')
+			.getMany()) as TChannel[];
 
 		this.logger.debug(`Found ${channels.length} channels`);
 

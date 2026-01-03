@@ -98,6 +98,23 @@
 		/>
 
 		<el-table-column
+			:width="60"
+			align="center"
+		>
+			<template #default>
+				<el-avatar
+					:size="32"
+					class="bg-primary-light!"
+				>
+					<icon
+						icon="mdi:map-marker"
+						class="w-[20px] h-[20px]"
+					/>
+				</el-avatar>
+			</template>
+		</el-table-column>
+
+		<el-table-column
 			:label="t('weatherModule.table.columns.name.title')"
 			prop="name"
 			sortable="custom"
@@ -212,7 +229,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElResult, ElTable, ElTableColumn, ElTag, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';

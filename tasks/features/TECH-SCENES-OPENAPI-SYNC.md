@@ -4,7 +4,7 @@ Type: technical
 Scope: backend, admin, panel
 Size: small
 Parent: EPIC-SCENES-PLUGIN-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -30,9 +30,9 @@ I want OpenAPI models for Scenes and automated tests that detect schema drift.
 
 ## 4. Acceptance criteria
 
-- [ ] OpenAPI spec includes Scenes endpoints and models.
-- [ ] Types are regenerated (or build pipeline remains green).
-- [ ] A test exists that detects model drift for scenes.
+- [x] OpenAPI spec includes Scenes endpoints and models.
+- [x] Types are regenerated (or build pipeline remains green).
+- [x] A test exists that detects model drift for scenes.
 
 ## 6. Technical constraints
 

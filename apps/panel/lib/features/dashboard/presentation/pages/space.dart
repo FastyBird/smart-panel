@@ -20,6 +20,8 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/space_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/space.dart';
+import 'package:fastybird_smart_panel/modules/scenes/models/scene.dart';
+import 'package:fastybird_smart_panel/modules/scenes/services/scenes_service.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -79,6 +81,7 @@ class _SpacePageState extends State<SpacePage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   final SpacesModuleClient _spacesApi = locator<SpacesModuleClient>();
+  ScenesService? _scenesService;
 
   bool _isLoading = false;
   LightingMode? _activeMode;
@@ -98,6 +101,12 @@ class _SpacePageState extends State<SpacePage> {
 
   // Devices state
   DevicesState _devicesState = DevicesState.loading;
+
+  // Scenes state
+  List<SceneModel> _scenes = [];
+  bool _isScenesLoading = false;
+  bool _isSceneTriggering = false;
+  String? _triggeringSceneId;
 
   // Lighting status (for header badge)
   int _lightsOnCount = 0;
@@ -155,15 +164,29 @@ class _SpacePageState extends State<SpacePage> {
   String get _sensorsOnlyDescription =>
       AppLocalizations.of(context)?.space_sensors_only_description ??
       'This space only has sensors — no controllable devices';
+  String get _scenesTitle =>
+      AppLocalizations.of(context)?.space_scenes_title ?? 'Quick Scenes';
+  String get _sceneTriggered =>
+      AppLocalizations.of(context)?.space_scene_triggered ?? 'Scene activated';
+  String get _scenePartialSuccess =>
+      AppLocalizations.of(context)?.space_scene_partial_success ??
+      'Scene partially activated';
 
   @override
   void initState() {
     super.initState();
+    // Try to get scenes service if registered
+    try {
+      _scenesService = locator<ScenesService>();
+    } catch (_) {
+      // Scenes service not available
+    }
     _loadLightingState();
     _loadClimateState();
     _loadDevicesState();
     _loadSuggestion();
     _loadUndoState();
+    _loadScenes();
   }
 
   Future<void> _loadLightingState() async {
@@ -510,6 +533,94 @@ class _SpacePageState extends State<SpacePage> {
     }
   }
 
+  Future<void> _loadScenes() async {
+    if (_scenesService == null) return;
+
+    setState(() {
+      _isScenesLoading = true;
+    });
+
+    try {
+      final scenes = await _scenesService!.fetchScenesForSpace(widget.page.spaceId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _scenes = scenes;
+        _isScenesLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _scenes = [];
+        _isScenesLoading = false;
+      });
+    }
+  }
+
+  Future<void> _triggerScene(SceneModel scene) async {
+    if (_scenesService == null || _isSceneTriggering) return;
+
+    setState(() {
+      _isSceneTriggering = true;
+      _triggeringSceneId = scene.id;
+    });
+
+    try {
+      final result = await _scenesService!.triggerScene(scene.id);
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSceneTriggering = false;
+        _triggeringSceneId = null;
+      });
+
+      if (result.success) {
+        // Refresh undo state after successful scene trigger
+        await _loadUndoState();
+
+        if (mounted) {
+          if (result.failureCount > 0) {
+            AlertBar.showInfo(
+              context,
+              message: _scenePartialSuccess,
+            );
+          } else {
+            AlertBar.showSuccess(
+              context,
+              message: _sceneTriggered,
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          final localizations = AppLocalizations.of(context)!;
+          AlertBar.showError(
+            context,
+            message: result.errorMessage ?? localizations.action_failed,
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isSceneTriggering = false;
+        _triggeringSceneId = null;
+      });
+
+      if (mounted) {
+        final localizations = AppLocalizations.of(context)!;
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
+        );
+      }
+    }
+  }
+
   Future<void> _executeUndo() async {
     if (!_canUndo || _isUndoLoading) return;
 
@@ -703,9 +814,13 @@ class _SpacePageState extends State<SpacePage> {
   /// Returns true if space has sensors (read-only devices)
   bool get _hasSensors => _devicesState == DevicesState.sensorsOnly;
 
+  /// Returns true if space has scenes available
+  bool get _hasScenes => _scenes.isNotEmpty;
+
   /// Returns true if space has no controllable sections (empty state)
   /// Note: Spaces with sensors should show content with "Sensors Only" message
-  bool get _hasNoControls => !_hasLighting && !_hasClimate && !_hasSensors;
+  bool get _hasNoControls =>
+      !_hasLighting && !_hasClimate && !_hasSensors && !_hasScenes;
 
   /// Builds the status badges for the header
   List<Widget> _buildStatusBadges(BuildContext context) {
@@ -1047,6 +1162,11 @@ class _SpacePageState extends State<SpacePage> {
           _buildSuggestionBanner(context),
           AppSpacings.spacingMdVertical,
         ],
+        // Scenes section (shown when scenes are available for this room)
+        if (_hasScenes) ...[
+          _buildScenesSection(context),
+          AppSpacings.spacingMdVertical,
+        ],
         // Lighting controls section (only shown if space has lighting devices)
         if (_hasLighting) ...[
           _buildLightingControlsSection(context),
@@ -1057,12 +1177,167 @@ class _SpacePageState extends State<SpacePage> {
           _buildClimateControlsSection(context),
         ],
         // Add spacing before devices section only when control sections are displayed
-        if (_hasLighting || _hasClimate) AppSpacings.spacingLgVertical,
+        if (_hasLighting || _hasClimate || _hasScenes) AppSpacings.spacingLgVertical,
         // Placeholder for device list
         Expanded(
           child: _buildDevicesSection(context),
         ),
       ],
+    );
+  }
+
+  Widget _buildScenesSection(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).brightness == Brightness.light
+          ? AppBgColorLight.page.withValues(alpha: 0.5)
+          : AppBgColorDark.overlay.withValues(alpha: 0.5),
+      child: Padding(
+        padding: AppSpacings.paddingMd,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  MdiIcons.movieOpenPlay,
+                  size: _screenService.scale(
+                    24,
+                    density: _visualDensityService.density,
+                  ),
+                ),
+                AppSpacings.spacingSmHorizontal,
+                Text(
+                  _scenesTitle,
+                  style: TextStyle(
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            AppSpacings.spacingMdVertical,
+            if (_isScenesLoading)
+              Center(
+                child: SizedBox(
+                  width: _screenService.scale(
+                    24,
+                    density: _visualDensityService.density,
+                  ),
+                  height: _screenService.scale(
+                    24,
+                    density: _visualDensityService.density,
+                  ),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              )
+            else
+              _buildScenesRow(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScenesRow(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacings.pSm,
+      runSpacing: AppSpacings.pSm,
+      children: _scenes.map((scene) => _buildSceneButton(context, scene)).toList(),
+    );
+  }
+
+  Widget _buildSceneButton(BuildContext context, SceneModel scene) {
+    final isTriggering = _triggeringSceneId == scene.id;
+    final buttonWidth = _screenService.scale(
+      80,
+      density: _visualDensityService.density,
+    );
+    final buttonHeight = _screenService.scale(
+      60,
+      density: _visualDensityService.density,
+    );
+
+    return SizedBox(
+      width: buttonWidth,
+      child: Column(
+        children: [
+          SizedBox(
+            width: buttonHeight,
+            height: buttonHeight,
+            child: isTriggering
+                ? Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppBgColorLight.page.withValues(alpha: 0.7)
+                          : AppBgColorDark.overlay.withValues(alpha: 0.7),
+                    ),
+                    child: Center(
+                      child: SizedBox(
+                        width: _screenService.scale(
+                          20,
+                          density: _visualDensityService.density,
+                        ),
+                        height: _screenService.scale(
+                          20,
+                          density: _visualDensityService.density,
+                        ),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  )
+                : Theme(
+                    data: ThemeData(
+                      filledButtonTheme:
+                          Theme.of(context).brightness == Brightness.light
+                              ? AppFilledButtonsLightThemes.primary
+                              : AppFilledButtonsDarkThemes.primary,
+                    ),
+                    child: FilledButton(
+                      onPressed: _isSceneTriggering
+                          ? null
+                          : () => _triggerScene(scene),
+                      style: ButtonStyle(
+                        padding: WidgetStateProperty.all(EdgeInsets.zero),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppBorderRadius.base),
+                          ),
+                        ),
+                      ),
+                      child: Icon(
+                        scene.iconData,
+                        size: _screenService.scale(
+                          28,
+                          density: _visualDensityService.density,
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+          AppSpacings.spacingXsVertical,
+          Text(
+            scene.name,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 

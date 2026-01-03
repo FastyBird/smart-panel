@@ -273,5 +273,8 @@
   "house_modes_changed_success": "Režim domu byl úspěšně změněn",
   "house_modes_changed_error": "Změna režimu domu se nezdařila",
   "house_modes_confirm_title": "Potvrdit změnu režimu",
-  "house_modes_confirm_away_description": "Opravdu chcete nastavit dům do režimu Pryč? To může ovlivnit pravidla automatizace a nastavení zabezpečení."
+  "house_modes_confirm_away_description": "Opravdu chcete nastavit dům do režimu Pryč? To může ovlivnit pravidla automatizace a nastavení zabezpečení.",
+  "space_scenes_title": "Rychlé scény",
+  "space_scene_triggered": "Scéna aktivována",
+  "space_scene_partial_success": "Scéna částečně aktivována"
 }

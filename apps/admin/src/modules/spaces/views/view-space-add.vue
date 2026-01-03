@@ -108,9 +108,14 @@ import { SpaceAddForm } from '../components/components';
 import { RouteNames } from '../spaces.constants';
 import type { ISpace } from '../store';
 
-defineOptions({
-	inheritAttrs: false,
-});
+const props = withDefaults(
+	defineProps<{
+		remoteFormChanged?: boolean;
+	}>(),
+	{
+		remoteFormChanged: false,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
@@ -126,7 +131,7 @@ useMeta({
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const formRef = ref<InstanceType<typeof SpaceAddForm> | null>(null);
-const remoteFormChanged = ref(false);
+const remoteFormChanged = ref(props.remoteFormChanged);
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -192,6 +197,14 @@ const onCancel = (): void => {
 		router.push({ name: RouteNames.SPACES });
 	}
 };
+
+watch(
+	(): boolean => props.remoteFormChanged,
+	(val: boolean): void => {
+		remoteFormChanged.value = val;
+	},
+	{ immediate: true }
+);
 
 onMounted((): void => {
 	emit('update:remote-form-changed', remoteFormChanged.value);

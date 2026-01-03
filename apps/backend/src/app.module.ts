@@ -26,6 +26,8 @@ import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.consta
 import { ExtensionsModule } from './modules/extensions/extensions.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { PlatformModule } from './modules/platform/platform.module';
+import { SCENES_MODULE_PREFIX } from './modules/scenes/scenes.constants';
+import { ScenesModule } from './modules/scenes/scenes.module';
 import { SeedModule } from './modules/seed/seeding.module';
 import { SPACES_MODULE_PREFIX } from './modules/spaces/spaces.constants';
 import { SpacesModule } from './modules/spaces/spaces.module';
@@ -61,7 +63,9 @@ import { PagesHouseModesPlugin } from './plugins/pages-house-modes/pages-house-m
 import { PagesHousePlugin } from './plugins/pages-house/pages-house.plugin';
 import { PagesSpacePlugin } from './plugins/pages-space/pages-space.plugin';
 import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
+import { ScenesLocalPlugin } from './plugins/scenes-local/scenes-local.plugin';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
+import { TilesScenePlugin } from './plugins/tiles-scene/tiles-scene.plugin';
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
 import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin';
 import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX } from './plugins/weather-openweathermap-onecall/weather-openweathermap-onecall.constants';
@@ -173,6 +177,10 @@ export class AppModule {
 								module: StatsModule,
 							},
 							{
+								path: SCENES_MODULE_PREFIX,
+								module: ScenesModule,
+							},
+							{
 								path: AUTH_MODULE_PREFIX,
 								module: ApiModule,
 							},
@@ -230,6 +238,7 @@ export class AppModule {
 				DisplaysModule,
 				ExtensionsModule,
 				PlatformModule,
+				ScenesModule,
 				SpacesModule,
 				SeedModule,
 				StatsModule,
@@ -252,6 +261,7 @@ export class AppModule {
 				PagesTilesPlugin,
 				PagesSpacePlugin,
 				TilesDevicePreviewPlugin,
+				TilesScenePlugin,
 				TilesTimePlugin,
 				TilesWeatherPlugin,
 				DataSourcesDeviceChannelPlugin,
@@ -259,6 +269,7 @@ export class AppModule {
 				LoggerRotatingFilePlugin,
 				WeatherOpenweathermapPlugin,
 				WeatherOpenweathermapOnecallPlugin,
+				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
 					inject: [NestConfigService],

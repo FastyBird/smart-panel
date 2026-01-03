@@ -44,7 +44,7 @@ describe('useDeviceIcon', () => {
 
 		const { icon } = useDeviceIcon({ id: deviceId });
 
-		expect(icon.value).toBe('mdi:power-plug');
+		expect(icon.value).toBe('mdi:devices');
 	});
 
 	it('returns default icon if device is null', () => {
@@ -52,7 +52,7 @@ describe('useDeviceIcon', () => {
 
 		const { icon } = useDeviceIcon({ id: deviceId });
 
-		expect(icon.value).toBe('mdi:power-plug');
+		expect(icon.value).toBe('mdi:devices');
 	});
 
 	it('returns default icon for unknown category', () => {
@@ -60,6 +60,6 @@ describe('useDeviceIcon', () => {
 
 		const { icon } = useDeviceIcon({ id: deviceId });
 
-		expect(icon.value).toBe('mdi:power-plug');
+		expect(icon.value).toBe('mdi:devices');
 	});
 });

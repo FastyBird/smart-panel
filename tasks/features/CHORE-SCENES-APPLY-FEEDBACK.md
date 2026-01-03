@@ -5,7 +5,7 @@ Type: chore
 Scope: backend, panel
 Size: small
 Parent: EPIC-SCENES-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -37,9 +37,9 @@ I want applying a scene multiple times to be safe and to receive clear feedback.
 
 ## 4. Acceptance criteria
 
-- [ ] Apply response includes per-action status
-- [ ] Panel renders partial success state clearly
-- [ ] Backend response formatting has unit tests
+- [x] Apply response includes per-action status
+- [x] Panel renders partial success state clearly
+- [x] Backend response formatting has unit tests
 
 ## 6. Technical constraints
 

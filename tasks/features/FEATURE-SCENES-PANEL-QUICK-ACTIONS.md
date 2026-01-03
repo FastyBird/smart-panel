@@ -5,7 +5,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-SCENES-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -38,10 +38,10 @@ I want scenes to appear as quick action tiles/buttons in the room view and be ex
 
 ## 4. Acceptance criteria
 
-- [ ] Room view shows scenes associated with that room
-- [ ] Tapping a scene triggers apply call
-- [ ] UI shows feedback on success/failure
-- [ ] Handles offline/backend error gracefully
+- [x] Room view shows scenes associated with that room
+- [x] Tapping a scene triggers apply call
+- [x] UI shows feedback on success/failure
+- [x] Handles offline/backend error gracefully
 
 ## 6. Technical constraints
 

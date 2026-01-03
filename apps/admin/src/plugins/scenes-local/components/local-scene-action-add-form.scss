@@ -1,0 +1,11 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+
+@include b(local-scene-action-add-form) {
+	@include e(device-field) {
+		:deep(.el-form-item__label) {
+			width: 100%;
+			display: flex;
+			padding: 0;
+		}
+	}
+}

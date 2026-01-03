@@ -55,6 +55,18 @@
 					{{ t('spacesModule.detail.devices.add') }}
 				</el-button>
 				<el-button
+					type="primary"
+					plain
+					class="px-4! ml-2!"
+					@click="onAddScene"
+				>
+					<template #icon>
+						<icon icon="mdi:plus" />
+					</template>
+
+					{{ t('spacesModule.detail.scenes.add') }}
+				</el-button>
+				<el-button
 					v-if="space?.type === SpaceType.ROOM"
 					type="primary"
 					plain
@@ -121,6 +133,26 @@
 					</el-tab-pane>
 
 					<el-tab-pane
+						name="scenes"
+						class="h-full overflow-hidden"
+					>
+						<template #label>
+							<div class="flex items-center gap-2 px-4">
+								<icon icon="mdi:play-box-multiple" />
+								{{ t('spacesModule.detail.scenes.title') }}
+							</div>
+						</template>
+
+						<el-scrollbar class="h-full">
+							<space-scenes-section
+								ref="scenesSectionRef"
+								:space-id="space.id"
+								@open-add-dialog="onAddScene"
+							/>
+						</el-scrollbar>
+					</el-tab-pane>
+
+					<el-tab-pane
 						v-if="space?.type === SpaceType.ROOM"
 						name="displays"
 						class="h-full overflow-hidden"
@@ -160,6 +192,14 @@
 		:space-id="space.id"
 		:space-type="space.type"
 		@device-added="onDeviceAdded"
+	/>
+
+	<!-- Add Scene Dialog -->
+	<space-add-scene-dialog
+		v-if="space"
+		v-model:visible="showAddSceneDialog"
+		:space-id="space.id"
+		@scene-added="onSceneAdded"
 	/>
 
 	<!-- Add Display Dialog -->
@@ -256,9 +296,11 @@ import {
 import {
 	SpaceAddDeviceDialog,
 	SpaceAddDisplayDialog,
+	SpaceAddSceneDialog,
 	SpaceDetail,
 	SpaceDevicesSection,
 	SpaceDisplaysSection,
+	SpaceScenesSection,
 } from '../components/components';
 import { useSpace } from '../composables';
 import { RouteNames, SpaceType } from '../spaces.constants';
@@ -301,10 +343,12 @@ const activeTab = ref<string>('devices');
 
 // Dialog visibility
 const showAddDeviceDialog = ref<boolean>(false);
+const showAddSceneDialog = ref<boolean>(false);
 const showAddDisplayDialog = ref<boolean>(false);
 
 // Component refs
 const devicesSectionRef = ref<InstanceType<typeof SpaceDevicesSection> | null>(null);
+const scenesSectionRef = ref<InstanceType<typeof SpaceScenesSection> | null>(null);
 const displaysSectionRef = ref<InstanceType<typeof SpaceDisplaysSection> | null>(null);
 
 const isSpaceRoute = computed<boolean>((): boolean => {
@@ -379,6 +423,10 @@ const onAddDevice = (): void => {
 	showAddDeviceDialog.value = true;
 };
 
+const onAddScene = (): void => {
+	showAddSceneDialog.value = true;
+};
+
 const onAddDisplay = (): void => {
 	showAddDisplayDialog.value = true;
 };
@@ -386,6 +434,10 @@ const onAddDisplay = (): void => {
 const onDeviceAdded = (): void => {
 	// Store is already updated by addDevice() which re-fetches the single device
 	// The computed devices list will automatically update from the store
+};
+
+const onSceneAdded = (): void => {
+	// Store is already updated by edit() - computed scenes list will update from the store
 };
 
 const onDisplayAdded = (): void => {

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-SCENES-PLUGIN-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -45,11 +45,11 @@ I want a “Simple Scene” type that sets a list of device properties to specif
 
 ## 4. Acceptance criteria
 
-- [ ] `simple-scene` handler is discoverable via `GET /scene-types`.
-- [ ] Create/update validates action list and rejects invalid properties.
-- [ ] Apply triggers Devices command dispatch for each action.
-- [ ] Apply returns per-action result details.
-- [ ] Unit tests cover at least: valid apply, invalid property, invalid value.
+- [x] `simple-scene` handler is discoverable via `GET /scene-types` (implemented as scenes-local plugin).
+- [x] Create/update validates action list and rejects invalid properties.
+- [x] Apply triggers Devices command dispatch for each action.
+- [x] Apply returns per-action result details.
+- [x] Unit tests cover at least: valid apply, invalid property, invalid value.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

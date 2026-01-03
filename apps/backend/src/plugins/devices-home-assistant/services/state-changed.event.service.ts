@@ -288,6 +288,14 @@ export class StateChangedEventService implements WsEventService {
 			this.properties = properties;
 
 			return true;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.warn('Failed to initialize mappings, Home Assistant may be unavailable', {
+				message: err.message,
+			});
+
+			return false;
 		} finally {
 			this.isMappingLoading = false;
 		}

@@ -1,0 +1,57 @@
+{
+	"plugin": {
+		"name": "Local Scenes",
+		"description": "Execute scenes locally by controlling device properties"
+	},
+	"actionCard": {
+		"device": "Device",
+		"channel": "Channel",
+		"property": "Property",
+		"value": "Value",
+		"unknownProperty": "Unknown property"
+	},
+	"fields": {
+		"device": {
+			"title": "Device",
+			"placeholder": "Select a device",
+			"showAll": "Show all devices",
+			"hints": {
+				"recommended": "Showing devices recommended for this scene category.",
+				"allDevices": "You are selecting devices outside the recommended category."
+			},
+			"groups": {
+				"recommended": "Recommended",
+				"other": "Other devices"
+			},
+			"validation": {
+				"required": "Device is required"
+			}
+		},
+		"channel": {
+			"title": "Channel",
+			"placeholder": "Select a channel",
+			"noChannels": "No channels available",
+			"validation": {
+				"required": "Channel is required"
+			}
+		},
+		"property": {
+			"title": "Property",
+			"placeholder": "Select a property",
+			"noProperties": "No writable properties",
+			"validation": {
+				"required": "Property is required"
+			}
+		},
+		"value": {
+			"title": "Value",
+			"placeholder": "Enter a value",
+			"validation": {
+				"required": "Value is required"
+			}
+		}
+	},
+	"messages": {
+		"noDevices": "No devices available. Please add devices first in the Devices section."
+	}
+}

@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-SCENES-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -42,14 +42,14 @@ I want a backend Scenes module with CRUD and an “apply scene” endpoint.
 
 ## 4. Acceptance criteria
 
-- [ ] Scene persistence includes: id, name, description?, icon?, order, spaceId (room), enabled?
-- [ ] Scene actions support: deviceId, channelId (optional if resolvable), propertyId, value (typed)
-- [ ] Backend validates:
+- [x] Scene persistence includes: id, name, description?, icon?, order, spaceId (room), enabled?
+- [x] Scene actions support: deviceId, channelId (optional if resolvable), propertyId, value (typed)
+- [x] Backend validates:
   - space exists and is type room
   - referenced device/property exist
   - value type matches property spec (best-effort)
-- [ ] Apply endpoint dispatches commands using existing Devices services
-- [ ] Errors are returned with consistent API error format
+- [x] Apply endpoint dispatches commands using existing Devices services
+- [x] Errors are returned with consistent API error format
 
 ## 5. Example scenarios
 

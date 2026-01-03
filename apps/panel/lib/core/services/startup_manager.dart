@@ -42,6 +42,7 @@ import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart'
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
+import 'package:fastybird_smart_panel/modules/scenes/services/scenes_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
@@ -477,6 +478,13 @@ class StartupManagerService {
       } catch (_) {}
     }
 
+    // Scenes service
+    if (locator.isRegistered<ScenesService>()) {
+      try {
+        locator.unregister<ScenesService>();
+      } catch (_) {}
+    }
+
     // Unregister API client and Dio instance
     if (locator.isRegistered<ApiClient>()) {
       try {
@@ -556,6 +564,10 @@ class StartupManagerService {
     locator.registerSingleton(weatherModuleService);
     locator.registerSingleton(devicesModuleService);
     locator.registerSingleton(dashboardModuleService);
+
+    // Scenes service
+    var scenesService = ScenesService(dio: _apiIoService);
+    locator.registerSingleton(scenesService);
 
     // Api client
     locator.registerSingleton(_apiIoService);

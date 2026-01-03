@@ -1,0 +1,475 @@
+<template>
+	<!-- Empty state when no devices available -->
+	<el-result
+		v-if="!loadingDevices && devicesOptions.length === 0"
+		class="h-full w-full"
+	>
+		<template #icon>
+			<icon-with-child :size="80">
+				<template #primary>
+					<icon icon="mdi:devices" />
+				</template>
+				<template #secondary>
+					<icon icon="mdi:information" />
+				</template>
+			</icon-with-child>
+		</template>
+
+		<template #title>
+			{{ t('scenesLocalPlugin.messages.noDevices') }}
+		</template>
+	</el-result>
+
+	<el-form
+		ref="formEl"
+		:model="model"
+		:rules="rules"
+		label-position="top"
+		status-icon
+	>
+		<el-form-item
+			:label="t('scenesLocalPlugin.fields.device.title')"
+			prop="deviceId"
+		>
+			<el-select
+				v-model="model.deviceId"
+				:placeholder="t('scenesLocalPlugin.fields.device.placeholder')"
+				name="deviceId"
+				:loading="loadingDevices"
+				:disabled="devicesOptions.length === 0"
+				filterable
+				class="w-full"
+				@change="onDeviceChange"
+			>
+				<el-option
+					v-for="item in devicesOptions"
+					:key="item.value"
+					:label="item.label"
+					:value="item.value"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('scenesLocalPlugin.fields.channel.title')"
+			prop="channelId"
+		>
+			<el-select
+				v-model="model.channelId"
+				:placeholder="channelsOptions.length === 0 && model.deviceId && !loadingChannels ? t('scenesLocalPlugin.fields.channel.noChannels') : t('scenesLocalPlugin.fields.channel.placeholder')"
+				name="channelId"
+				:loading="loadingChannels"
+				:disabled="!model.deviceId || channelsOptions.length === 0"
+				filterable
+				class="w-full"
+				@change="onChannelChange"
+			>
+				<el-option
+					v-for="item in channelsOptions"
+					:key="item.value"
+					:label="item.label"
+					:value="item.value"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('scenesLocalPlugin.fields.property.title')"
+			prop="propertyId"
+		>
+			<el-select
+				v-model="model.propertyId"
+				:placeholder="propertiesOptions.length === 0 && model.channelId && !loadingProperties ? t('scenesLocalPlugin.fields.property.noProperties') : t('scenesLocalPlugin.fields.property.placeholder')"
+				name="propertyId"
+				:loading="loadingProperties"
+				:disabled="!model.channelId || propertiesOptions.length === 0"
+				filterable
+				class="w-full"
+				@change="onPropertyChange"
+			>
+				<el-option
+					v-for="item in propertiesOptions"
+					:key="item.value"
+					:label="item.label"
+					:value="item.value"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('scenesLocalPlugin.fields.value.title')"
+			prop="value"
+		>
+			<template v-if="selectedPropertyType === 'boolean'">
+				<el-switch v-model="booleanValue" />
+			</template>
+			<template v-else-if="selectedPropertyType === 'enum' && selectedPropertyFormat">
+				<el-select
+					v-model="model.value"
+					:placeholder="t('scenesLocalPlugin.fields.value.placeholder')"
+					name="value"
+					class="w-full"
+				>
+					<el-option
+						v-for="item in enumOptions"
+						:key="item"
+						:label="item"
+						:value="item"
+					/>
+				</el-select>
+			</template>
+			<template v-else-if="selectedPropertyType === 'number'">
+				<el-input-number
+					v-model="numberValue"
+					:placeholder="t('scenesLocalPlugin.fields.value.placeholder')"
+					name="value"
+					:min="numberMin"
+					:max="numberMax"
+					:step="numberStep"
+					class="w-full"
+				/>
+			</template>
+			<template v-else>
+				<el-input
+					v-model="stringValue"
+					:placeholder="t('scenesLocalPlugin.fields.value.placeholder')"
+					name="value"
+				/>
+			</template>
+		</el-form-item>
+	</el-form>
+</template>
+
+<script setup lang="ts">
+import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+import { ElResult, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, type FormInstance, type FormRules } from 'element-plus';
+import { orderBy } from 'natural-orderby';
+
+import {
+	DevicesException,
+	type IChannel,
+	type IChannelProperty,
+	type IDevice,
+	useChannels,
+	useChannelsProperties,
+	useDevices,
+} from '../../../modules/devices';
+import { DevicesModuleChannelPropertyDataType, DevicesModuleChannelPropertyPermissions } from '../../../openapi.constants';
+import type { ISceneActionEditFormProps } from '../../../modules/scenes/components/actions/scene-action-edit-form.types';
+import type { ISceneActionEditForm } from '../../../modules/scenes/schemas/scenes.types';
+import { FormResult, type FormResultType } from '../../../modules/scenes/scenes.constants';
+import { SCENES_LOCAL_TYPE } from '../scenes-local.constants';
+import type { ILocalSceneActionEditForm } from '../schemas/actions.types';
+
+defineOptions({
+	name: 'LocalSceneActionEditForm',
+});
+
+const props = withDefaults(defineProps<ISceneActionEditFormProps>(), {
+	remoteFormResult: FormResult.NONE,
+	remoteFormReset: false,
+	remoteFormChanged: false,
+});
+
+const emit = defineEmits<{
+	(e: 'update:remote-form-submit', remoteFormSubmit: boolean): void;
+	(e: 'update:remote-form-result', remoteFormResult: FormResultType): void;
+	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
+	(e: 'submit', data: ISceneActionEditForm & { type: string }): void;
+}>();
+
+const { t } = useI18n();
+
+const formEl = ref<FormInstance | undefined>(undefined);
+const formResult = ref<FormResultType>(FormResult.NONE);
+const formChanged = ref<boolean>(false);
+
+// Read values from root level (camelCase) with fallback to configuration (snake_case) for backwards compatibility
+const model = reactive<ILocalSceneActionEditForm>({
+	id: props.action.id,
+	type: SCENES_LOCAL_TYPE,
+	deviceId: (props.action.deviceId as string | undefined) ?? (props.action.configuration?.device_id as string) ?? '',
+	channelId: (props.action.channelId as string | undefined) ?? (props.action.configuration?.channel_id as string | null) ?? null,
+	propertyId: (props.action.propertyId as string | undefined) ?? (props.action.configuration?.property_id as string) ?? '',
+	value: (props.action.value as string | number | boolean | undefined) ?? (props.action.configuration?.value as string | number | boolean) ?? '',
+	enabled: props.action.enabled,
+});
+
+const selectedChannelId = computed<string | undefined>(() => model.channelId ?? undefined);
+
+const { devices, fetchDevices, areLoading: loadingDevices, loaded: devicesLoaded } = useDevices();
+const { channels, fetchChannels, areLoading: loadingChannels } = useChannels({
+	deviceId: computed<string>((): string => model.deviceId ?? ''),
+});
+const { properties, fetchProperties, areLoading: loadingProperties } = useChannelsProperties({
+	channelId: selectedChannelId,
+});
+
+// Helper to check if a property is writable
+const isPropertyWritable = (property: IChannelProperty): boolean => {
+	return (
+		property.permissions.includes(DevicesModuleChannelPropertyPermissions.rw) ||
+		property.permissions.includes(DevicesModuleChannelPropertyPermissions.wo)
+	);
+};
+
+// Filter properties to only writable ones
+const writableProperties = computed<IChannelProperty[]>(() => {
+	return properties.value.filter(isPropertyWritable);
+});
+
+// Filter channels to only those with writable properties
+const channelsWithWritableProperties = computed<IChannel[]>(() => {
+	return channels.value.filter((channel) => {
+		const channelProps = properties.value.filter((p) => p.channel === channel.id);
+		return channelProps.some(isPropertyWritable);
+	});
+});
+
+const selectedProperty = computed<IChannelProperty | undefined>(() => {
+	if (!model.propertyId) return undefined;
+	return properties.value.find((p) => p.id === model.propertyId);
+});
+
+const selectedPropertyType = computed<'string' | 'number' | 'boolean' | 'enum'>(() => {
+	if (!selectedProperty.value) return 'string';
+	const dataType = selectedProperty.value.dataType;
+	if (dataType === DevicesModuleChannelPropertyDataType.bool) return 'boolean';
+	if (dataType === DevicesModuleChannelPropertyDataType.enum) return 'enum';
+	if (
+		[
+			DevicesModuleChannelPropertyDataType.int,
+			DevicesModuleChannelPropertyDataType.uint,
+			DevicesModuleChannelPropertyDataType.float,
+			DevicesModuleChannelPropertyDataType.char,
+			DevicesModuleChannelPropertyDataType.uchar,
+			DevicesModuleChannelPropertyDataType.short,
+			DevicesModuleChannelPropertyDataType.ushort,
+		].includes(dataType)
+	) {
+		return 'number';
+	}
+	return 'string';
+});
+
+const selectedPropertyFormat = computed<string[] | null>(() => {
+	if (!selectedProperty.value) return null;
+	const format = selectedProperty.value.format;
+	if (!Array.isArray(format)) return null;
+	// Filter to only string values for enum options
+	const stringValues = format.filter((v): v is string => typeof v === 'string');
+	return stringValues.length > 0 ? stringValues : null;
+});
+
+const enumOptions = computed<string[]>(() => selectedPropertyFormat.value || []);
+
+const numberMin = computed<number | undefined>(() => {
+	if (!selectedProperty.value) return undefined;
+	const format = selectedProperty.value.format;
+	if (!Array.isArray(format) || format.length < 1) return undefined;
+	const min = format[0];
+	return typeof min === 'number' ? min : undefined;
+});
+
+const numberMax = computed<number | undefined>(() => {
+	if (!selectedProperty.value) return undefined;
+	const format = selectedProperty.value.format;
+	if (!Array.isArray(format) || format.length < 2) return undefined;
+	const max = format[1];
+	return typeof max === 'number' ? max : undefined;
+});
+
+const numberStep = computed<number>(() => {
+	if (!selectedProperty.value) return 1;
+	// Use step property from the channel property if available
+	if (selectedProperty.value.step !== null && selectedProperty.value.step !== undefined) {
+		return selectedProperty.value.step;
+	}
+	return 1;
+});
+
+const booleanValue = computed<boolean>({
+	get: () => model.value === true || model.value === 'true' || model.value === 1,
+	set: (val: boolean) => {
+		model.value = val;
+		formChanged.value = true;
+	},
+});
+
+const numberValue = computed<number>({
+	get: () => (typeof model.value === 'number' ? model.value : parseFloat(String(model.value)) || 0),
+	set: (val: number) => {
+		model.value = val;
+		formChanged.value = true;
+	},
+});
+
+const stringValue = computed<string>({
+	get: () => String(model.value),
+	set: (val: string) => {
+		model.value = val;
+		formChanged.value = true;
+	},
+});
+
+const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>(() => {
+	const sorted = orderBy<IDevice>(devices.value, [(device: IDevice) => device.name.toLowerCase()], ['asc']);
+	return sorted.map((device) => ({
+		value: device.id,
+		label: device.name,
+	}));
+});
+
+const channelsOptions = computed<{ value: IChannel['id']; label: string }[]>(() => {
+	// Filter channels to only those with writable properties (if properties are loaded)
+	const channelsToShow = properties.value.length > 0 ? channelsWithWritableProperties.value : channels.value;
+	const sorted = orderBy<IChannel>(channelsToShow, [(channel: IChannel) => channel.name.toLowerCase()], ['asc']);
+	return sorted.map((channel) => ({
+		value: channel.id,
+		label: channel.name,
+	}));
+});
+
+const propertiesOptions = computed<{ value: IChannelProperty['id']; label: string }[]>(() => {
+	const sorted = orderBy<IChannelProperty>(
+		writableProperties.value,
+		[(prop: IChannelProperty) => (prop.name ?? t(`devicesModule.categories.channelsProperties.${prop.category}`)).toLowerCase()],
+		['asc']
+	);
+	return sorted.map((prop) => ({
+		value: prop.id,
+		label: prop.name ?? t(`devicesModule.categories.channelsProperties.${prop.category}`),
+	}));
+});
+
+const rules = reactive<FormRules<ILocalSceneActionEditForm>>({
+	deviceId: [{ required: true, message: t('scenesLocalPlugin.fields.device.validation.required'), trigger: 'change' }],
+	channelId: [{ required: true, message: t('scenesLocalPlugin.fields.channel.validation.required'), trigger: 'change' }],
+	propertyId: [{ required: true, message: t('scenesLocalPlugin.fields.property.validation.required'), trigger: 'change' }],
+	value: [{ required: true, message: t('scenesLocalPlugin.fields.value.validation.required'), trigger: 'change' }],
+});
+
+const onDeviceChange = async (): Promise<void> => {
+	model.channelId = null;
+	model.propertyId = '';
+	model.value = '';
+	formChanged.value = true;
+
+	if (model.deviceId) {
+		await fetchChannels();
+	}
+};
+
+const onChannelChange = async (): Promise<void> => {
+	model.propertyId = '';
+	model.value = '';
+	formChanged.value = true;
+
+	if (model.channelId) {
+		await fetchProperties();
+	}
+};
+
+const onPropertyChange = (): void => {
+	// Set default value based on property type
+	const property = properties.value.find((p) => p.id === model.propertyId);
+	if (property?.dataType === DevicesModuleChannelPropertyDataType.bool) {
+		model.value = false;
+	} else {
+		model.value = '';
+	}
+	formChanged.value = true;
+};
+
+const submit = async (): Promise<void> => {
+	formResult.value = FormResult.WORKING;
+
+	if (!formEl.value) {
+		formResult.value = FormResult.ERROR;
+		return;
+	}
+
+	formEl.value.clearValidate();
+
+	const valid = await formEl.value.validate().catch(() => false);
+
+	if (!valid) {
+		formResult.value = FormResult.ERROR;
+		throw new Error('Form not valid');
+	}
+
+	// Emit with plugin-specific fields at root level (using camelCase for form model)
+	emit('submit', {
+		id: model.id,
+		type: model.type,
+		configuration: {},
+		deviceId: model.deviceId,
+		channelId: model.channelId,
+		propertyId: model.propertyId,
+		value: model.value,
+		order: model.order,
+		enabled: model.enabled,
+	});
+	formResult.value = FormResult.OK;
+};
+
+onBeforeMount(async (): Promise<void> => {
+	if (!devicesLoaded.value) {
+		await fetchDevices().catch((error: unknown): void => {
+			const err = error as Error;
+			throw new DevicesException('Something went wrong', err);
+		});
+	}
+
+	if (model.deviceId) {
+		await fetchChannels();
+	}
+
+	if (model.channelId) {
+		await fetchProperties();
+	}
+});
+
+watch(
+	(): FormResultType => formResult.value,
+	async (val: FormResultType): Promise<void> => {
+		emit('update:remote-form-result', val);
+	}
+);
+
+watch(
+	(): boolean => props.remoteFormSubmit,
+	async (val: boolean): Promise<void> => {
+		if (val) {
+			emit('update:remote-form-submit', false);
+
+			submit().catch(() => {
+				// The form is not valid
+			});
+		}
+	}
+);
+
+watch(
+	(): boolean => props.remoteFormReset,
+	(val: boolean): void => {
+		emit('update:remote-form-reset', false);
+
+		if (val) {
+			if (!formEl.value) return;
+
+			formEl.value.resetFields();
+		}
+	}
+);
+
+watch(
+	(): boolean => formChanged.value,
+	(val: boolean): void => {
+		emit('update:remote-form-changed', val);
+	}
+);
+</script>

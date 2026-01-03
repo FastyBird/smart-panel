@@ -19,7 +19,7 @@ export const defaultSpacesFilter: ISpacesFilter = {
 };
 
 export const defaultSpacesSort: ISortEntry = {
-	by: 'displayOrder',
+	by: 'name',
 	dir: 'asc',
 };
 

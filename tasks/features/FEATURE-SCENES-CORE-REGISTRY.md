@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-SCENES-PLUGIN-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -60,12 +60,12 @@ I want a core Scenes module that stores Scenes generically and delegates apply/v
 
 ## 4. Acceptance criteria
 
-- [ ] Scene entity exists with `type` and `config` JSON and `spaceId` binding.
-- [ ] SceneTypeHandler contract + registry exist and are used by apply.
-- [ ] CRUD + apply endpoints exist and are wired into OpenAPI.
-- [ ] `GET /scene-types` lists registered scene types.
-- [ ] Validation rejects non-room spaces.
-- [ ] Unit tests cover registry resolution + unknown type behavior + apply delegation.
+- [x] Scene entity exists with `type` and `config` JSON and `spaceId` binding.
+- [x] SceneTypeHandler contract + registry exist and are used by apply (scene-actions-type-mapper.service.ts).
+- [x] CRUD + apply endpoints exist and are wired into OpenAPI.
+- [x] `GET /scene-types` lists registered scene types.
+- [x] Validation rejects non-room spaces.
+- [x] Unit tests cover registry resolution + unknown type behavior + apply delegation.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 

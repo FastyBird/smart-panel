@@ -4,7 +4,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-SCENES-PLUGIN-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -42,11 +42,11 @@ I want to create and manage Scenes for a specific Room (Space) and test them fro
 
 ## 4. Acceptance criteria
 
-- [ ] Room Space detail includes a Scenes section.
-- [ ] Admin can create/edit/delete a simple scene for that room.
-- [ ] Admin can apply the scene and see apply results.
-- [ ] Basic client-side validation prevents empty action list.
-- [ ] Unit/component tests exist for core flows (at least form validation + apply action).
+- [x] Room Space detail includes a Scenes section.
+- [x] Admin can create/edit/delete a simple scene for that room.
+- [x] Admin can apply the scene and see apply results.
+- [x] Basic client-side validation prevents empty action list.
+- [x] Unit/component tests exist for core flows (at least form validation + apply action).
 
 ## 6. Technical constraints
 

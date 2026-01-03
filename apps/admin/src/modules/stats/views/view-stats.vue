@@ -69,7 +69,15 @@
 						<el-col
 							:xs="24"
 							:sm="12"
-							:md="8"
+							:md="6"
+						>
+							<stats-spaces :loading="isLoadingStats" />
+						</el-col>
+
+						<el-col
+							:xs="24"
+							:sm="12"
+							:md="6"
 						>
 							<stats-dashboard
 								:dashboard-module-section="dashboardModuleSection"
@@ -80,7 +88,7 @@
 						<el-col
 							:xs="24"
 							:sm="12"
-							:md="8"
+							:md="6"
 						>
 							<stats-devices
 								:devices-module-section="devicesModuleSection"
@@ -91,7 +99,7 @@
 						<el-col
 							:xs="24"
 							:sm="12"
-							:md="8"
+							:md="6"
 						>
 							<stats-devices-communication
 								:devices-module-section="devicesModuleSection"
@@ -136,6 +144,7 @@ import {
 	StatsDevices,
 	StatsDevicesCommunication,
 	StatsMemory,
+	StatsSpaces,
 	StatsUptime,
 	SystemInformation,
 } from '../components/components';

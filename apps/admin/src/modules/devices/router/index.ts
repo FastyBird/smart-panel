@@ -15,7 +15,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Devices',
-			icon: 'mdi:power-plug',
+			icon: 'mdi:devices',
 			menu: 8000,
 		},
 		children: [
@@ -60,7 +60,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Device detail',
-			icon: 'mdi:power-plug',
+			icon: 'mdi:devices',
 		},
 		children: [
 			{

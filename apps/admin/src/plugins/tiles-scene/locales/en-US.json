@@ -1,0 +1,11 @@
+{
+	"fields": {
+		"scene": {
+			"title": "Scene",
+			"placeholder": "Select scene",
+			"validation": {
+				"required": "Please select a scene"
+			}
+		}
+	}
+}

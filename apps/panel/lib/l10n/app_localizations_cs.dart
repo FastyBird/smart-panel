@@ -829,4 +829,13 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get house_modes_confirm_away_description => 'Opravdu chcete nastavit dům do režimu Pryč? To může ovlivnit pravidla automatizace a nastavení zabezpečení.';
+
+  @override
+  String get space_scenes_title => 'Rychlé scény';
+
+  @override
+  String get space_scene_triggered => 'Scéna aktivována';
+
+  @override
+  String get space_scene_partial_success => 'Scéna částečně aktivována';
 }

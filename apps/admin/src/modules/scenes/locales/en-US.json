@@ -1,0 +1,217 @@
+{
+	"scenes": {
+		"headings": {
+			"list": "Scenes",
+			"add": "Add scene",
+			"edit": "Edit scene",
+			"delete": "Delete scene",
+			"discard": "Discard changes",
+			"adjustFilters": "Adjust filters",
+			"bulkRemove": "Delete scenes",
+			"bulkEnable": "Enable scenes",
+			"bulkDisable": "Disable scenes"
+		},
+		"subHeadings": {
+			"list": "Manage automation scenes for your smart home",
+			"adjustFilters": "Filter scenes by various criteria"
+		},
+		"breadcrumbs": {
+			"scenes": "Scenes"
+		},
+		"filters": {
+			"allSpaces": "All Spaces",
+			"enabled": {
+				"title": "Status",
+				"values": {
+					"enabled": "Enabled",
+					"disabled": "Disabled",
+					"all": "All"
+				}
+			},
+			"category": {
+				"title": "Category",
+				"placeholder": "Select categories"
+			},
+			"space": {
+				"title": "Space",
+				"placeholder": "All spaces"
+			}
+		},
+		"fields": {
+			"name": "Name",
+			"category": "Category",
+			"space": "Space",
+			"enabled": "Enabled",
+			"actions": "Actions",
+			"unknownSpace": "Unknown Space",
+			"wholeHome": "Whole home",
+			"lastTriggered": "Last Triggered",
+			"neverTriggered": "Never",
+			"search": {
+				"placeholder": "Search scenes..."
+			},
+			"config": {
+				"executionTimeoutMs": {
+					"title": "Execution timeout (ms)",
+					"alertTitle": "Execution timeout",
+					"hint": "Maximum time allowed for a scene execution before it is considered failed. If the timeout is reached, remaining actions may be cancelled depending on failure handling.",
+					"validation": {
+						"range": "Execution timeout must be between 1000 and 300000 ms"
+					}
+				},
+				"maxConcurrentExecutions": {
+					"title": "Max concurrent executions",
+					"alertTitle": "Max concurrent executions",
+					"hint": "Limits how many scene executions can run at the same time. Helps prevent overload when scenes are triggered repeatedly or in parallel.",
+					"validation": {
+						"range": "Max concurrent executions must be between 1 and 100"
+					}
+				},
+				"continueOnActionFailure": {
+					"title": "Continue on action failure",
+					"alertTitle": "Continue on action failure",
+					"hint": "When enabled, the scene will continue executing remaining actions even if one action fails. When disabled, the scene stops immediately on the first failure."
+				}
+			}
+		},
+		"texts": {
+			"loadingScenes": "Loading scenes...",
+			"noScenes": "You don't have configured any scene",
+			"noFilteredScenes": "No scenes match your filters",
+			"confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+			"confirmBulkRemove": "Are you sure you want to delete {count} selected scene(s)?",
+			"confirmBulkEnable": "Are you sure you want to enable {count} selected scene(s)?",
+			"confirmBulkDisable": "Are you sure you want to disable {count} selected scene(s)?",
+			"actionsCount": "No actions | {count} action | {count} actions",
+			"lastTriggered": "Last Triggered",
+			"order": "#"
+		},
+		"edit": {
+			"sections": {
+				"general": {
+					"title": "General",
+					"hint": "<strong>Scenes are manual presets</strong> that apply multiple device actions at once. They never run automatically and have no conditions."
+				},
+				"actions": {
+					"title": "Actions",
+					"emptyTitle": "No actions added yet",
+					"emptyDescription": "Add one or more device actions that will run when this scene is activated.",
+					"helperText": "You can control lights, switches, climate devices, and more."
+				}
+			}
+		},
+		"form": {
+			"space": "Space",
+			"selectSpace": "Whole home",
+			"spaceGroups": {
+				"rooms": "Rooms",
+				"zones": "Zones"
+			},
+			"name": "Scene name",
+			"namePlaceholder": "Enter scene name",
+			"nameRequired": "Scene name is required",
+			"category": "Category",
+			"categoryRequired": "Category is required",
+			"description": "Description",
+			"descriptionPlaceholder": "Optional description for this scene",
+			"actionsSection": "Scene actions",
+			"noActions": "No actions defined. Add actions to control devices when this scene is triggered.",
+			"actionsRequired": "At least one action is required",
+			"actionNumber": "Action {number}",
+			"device": "Device",
+			"selectDevice": "Select a device",
+			"deviceRequired": "Device is required",
+			"actionDeviceRequired": "Action {number}: Device is required",
+			"channel": "Channel",
+			"selectChannel": "Select a channel",
+			"actionChannelRequired": "Action {number}: Channel is required",
+			"property": "Property",
+			"selectProperty": "Select a property",
+			"propertyRequired": "Property is required",
+			"actionPropertyRequired": "Action {number}: Property is required",
+			"value": "Value",
+			"valuePlaceholder": "Enter value",
+			"valueRequired": "Value is required",
+			"actionValueRequired": "Action {number}: Value is required",
+			"addAction": "Add action",
+			"editAction": "Edit action"
+		},
+		"buttons": {
+			"add": {
+				"title": "Add scene"
+			},
+			"delete": {
+				"title": "Delete"
+			},
+			"cancel": {
+				"title": "Cancel"
+			},
+			"save": {
+				"title": "Save"
+			},
+			"yes": {
+				"title": "Yes"
+			},
+			"no": {
+				"title": "No"
+			},
+			"close": {
+				"title": "Close"
+			},
+			"discard": {
+				"title": "Discard"
+			},
+			"backToList": {
+				"title": "Back to list"
+			},
+			"resetFilters": {
+				"title": "Reset filters"
+			}
+		},
+		"messages": {
+			"config": {
+				"edited": "Scenes module configuration updated successfully",
+				"notEdited": "Failed to update scenes module configuration"
+			},
+			"triggered": "Scene \"{name}\" triggered successfully",
+			"triggerFailed": "Failed to trigger scene",
+			"confirmDelete": "Are you sure you want to delete scene \"{name}\"?",
+			"deleted": "Scene deleted successfully",
+			"deleteFailed": "Failed to delete scene",
+			"created": "Scene created successfully",
+			"createFailed": "Failed to create scene",
+			"edited": "Scene \"{scene}\" updated successfully",
+			"editFailed": "Failed to update scene \"{scene}\"",
+			"notFound": "Scene not found",
+			"duplicateAction": "An action for this property already exists in this scene",
+			"addFormPlaceholder": "Scene add form will be implemented here",
+			"editFormPlaceholder": "Scene edit form will be implemented here",
+			"requestError": "An error occurred while processing your request",
+			"bulkRemoved": "Successfully deleted {count} scene(s)",
+			"bulkRemoveFailed": "Failed to delete {count} scene(s)",
+			"bulkEnabled": "Successfully enabled {count} scene(s)",
+			"bulkEnableFailed": "Failed to enable {count} scene(s)",
+			"bulkEnableCanceled": "Enable operation canceled",
+			"bulkDisabled": "Successfully disabled {count} scene(s)",
+			"bulkDisableFailed": "Failed to disable {count} scene(s)",
+			"bulkDisableCanceled": "Disable operation canceled"
+		},
+		"categories": {
+			"generic": "Generic",
+			"lighting": "Lighting",
+			"climate": "Climate",
+			"media": "Media",
+			"work": "Work",
+			"relax": "Relax",
+			"night": "Night",
+			"morning": "Morning",
+			"party": "Party",
+			"movie": "Movie",
+			"away": "Away",
+			"home": "Home",
+			"security": "Security",
+			"energy": "Energy",
+			"custom": "Custom"
+		}
+	}
+}

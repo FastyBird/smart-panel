@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -43,13 +43,13 @@ I want to define and manage **Scenes** and expose them on the wall panels as sim
 
 ## 4. Acceptance criteria
 
-- [ ] Scenes module exists and is wired into the backend application (routes, DI, config).
-- [ ] Scenes are room-scoped: each scene references exactly one Room space.
-- [ ] Admin UI can CRUD scenes and manage scene actions.
-- [ ] Applying a scene sends commands to devices via existing Devices services.
-- [ ] Panel shows room scenes as tappable actions and triggers apply.
-- [ ] Backend validation prevents invalid actions (unknown device/property, incompatible value type).
-- [ ] Unit tests cover: apply ordering, validation errors, and persistence rules.
+- [x] Scenes module exists and is wired into the backend application (routes, DI, config).
+- [x] Scenes are room-scoped: each scene references exactly one Room space.
+- [x] Admin UI can CRUD scenes and manage scene actions.
+- [x] Applying a scene sends commands to devices via existing Devices services.
+- [x] Panel shows room scenes as tappable actions and triggers apply.
+- [x] Backend validation prevents invalid actions (unknown device/property, incompatible value type).
+- [x] Unit tests cover: apply ordering, validation errors, and persistence rules.
 
 ## 5. Example scenarios
 

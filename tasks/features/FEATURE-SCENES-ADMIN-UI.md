@@ -5,7 +5,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-SCENES-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -43,12 +43,12 @@ I want an Admin UI to create and manage room scenes and their actions.
 
 ## 4. Acceptance criteria
 
-- [ ] Scenes list page exists and loads data from backend
-- [ ] Create/Edit Scene works end-to-end
-- [ ] Action editor prevents obviously invalid inputs (basic client-side checks)
-- [ ] Room selector only shows room spaces
-- [ ] Apply button triggers apply endpoint and shows result feedback
-- [ ] Unit tests for stores (CRUD + apply action) where you already test stores
+- [x] Scenes list page exists and loads data from backend
+- [x] Create/Edit Scene works end-to-end
+- [x] Action editor prevents obviously invalid inputs (basic client-side checks)
+- [x] Room selector only shows room spaces
+- [x] Apply button triggers apply endpoint and shows result feedback
+- [x] Unit tests for stores (CRUD + apply action) where you already test stores
 
 ## 6. Technical constraints
 

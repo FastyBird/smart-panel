@@ -28,10 +28,7 @@ export const useExtension = (props: IUseExtensionProps): IUseExtension => {
 	});
 
 	const isLoading = computed<boolean>(() => {
-		if (firstLoad.value) {
-			return false;
-		}
-		return semaphore.value.fetching.items;
+		return semaphore.value.fetching.items || !firstLoad.value;
 	});
 
 	const fetchExtension = async (): Promise<void> => {

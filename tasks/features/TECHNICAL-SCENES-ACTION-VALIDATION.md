@@ -5,7 +5,7 @@ Type: technical
 Scope: backend
 Size: small
 Parent: EPIC-SCENES-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -38,10 +38,10 @@ I want strong validation for scene actions (references + value typing) at API bo
 
 ## 4. Acceptance criteria
 
-- [ ] Invalid references return 400 with clear field errors
-- [ ] Non-writable property action is rejected
-- [ ] Value type mismatch is rejected with an explicit reason
-- [ ] Validation is covered by unit tests
+- [x] Invalid references return 400 with clear field errors
+- [x] Non-writable property action is rejected
+- [x] Value type mismatch is rejected with an explicit reason
+- [x] Validation is covered by unit tests
 
 ## 6. Technical constraints
 

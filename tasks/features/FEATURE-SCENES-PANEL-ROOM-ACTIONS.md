@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-SCENES-PLUGIN-MVP
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -33,10 +33,10 @@ I want to see and trigger Scenes as quick actions for the current Room.
 
 ## 4. Acceptance criteria
 
-- [ ] Scenes appear on the room screen as quick actions.
-- [ ] Triggering a scene calls backend apply endpoint.
-- [ ] User gets feedback for success/partial/failure.
-- [ ] Integration is covered by at least one widget/unit test (where applicable).
+- [x] Scenes appear on the room screen as quick actions.
+- [x] Triggering a scene calls backend apply endpoint.
+- [x] User gets feedback for success/partial/failure.
+- [x] Integration is covered by at least one widget/unit test (where applicable).
 
 ## 6. Technical constraints
 

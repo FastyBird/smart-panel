@@ -42,6 +42,7 @@ import { DisplaysModule } from './modules/displays';
 import { ExtensionsModule, installRemoteExtensions, installStaticExtensions } from './modules/extensions';
 import { InfluxDbModule } from './modules/influxdb';
 import { MdnsModule } from './modules/mdns';
+import { ScenesModule } from './modules/scenes';
 import { SpacesModule } from './modules/spaces';
 import { StatsModule } from './modules/stats';
 import { SystemModule } from './modules/system';
@@ -63,7 +64,9 @@ import { PagesHousePlugin } from './plugins/pages-house';
 import { PagesHouseModesPlugin } from './plugins/pages-house-modes';
 import { PagesSpacePlugin } from './plugins/pages-space';
 import { PagesTilesPlugin } from './plugins/pages-tiles';
+import { ScenesLocalPlugin } from './plugins/scenes-local';
 import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview';
+import { TilesScenePlugin } from './plugins/tiles-scene';
 import { TilesTimePlugin } from './plugins/tiles-time';
 import { TilesWeatherPlugin } from './plugins/tiles-weather';
 import { WeatherOpenweathermapPlugin } from './plugins/weather-openweathermap';
@@ -141,6 +144,7 @@ app.use(UsersModule, moduleOptions);
 app.use(StatsModule, moduleOptions);
 app.use(WeatherModule, moduleOptions);
 app.use(MdnsModule, moduleOptions);
+app.use(ScenesModule, moduleOptions);
 app.use(InfluxDbModule, moduleOptions);
 
 // Plugins
@@ -163,6 +167,7 @@ app.use(PagesHouseModesPlugin, pluginOptions);
 app.use(PagesSpacePlugin, pluginOptions);
 app.use(PagesTilesPlugin, pluginOptions);
 app.use(TilesDevicePreviewPlugin, pluginOptions);
+app.use(TilesScenePlugin, pluginOptions);
 app.use(TilesTimePlugin);
 app.use(TilesWeatherPlugin, pluginOptions);
 app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
@@ -170,6 +175,7 @@ app.use(DataSourcesWeatherPlugin, pluginOptions);
 app.use(LoggerRotatingFilePlugin, pluginOptions);
 app.use(WeatherOpenweathermapPlugin, pluginOptions);
 app.use(WeatherOpenweathermapOnecallPlugin, pluginOptions);
+app.use(ScenesLocalPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 
