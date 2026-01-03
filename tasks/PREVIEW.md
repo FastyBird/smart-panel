@@ -7,8 +7,8 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | Status | Count |
 |--------|-------|
 | Done | 62 |
-| Planned | 6 |
-| **Total** | **68** |
+| Planned | 11 |
+| **Total** | **73** |
 
 ---
 
@@ -26,7 +26,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 ### Planned
 
-*No planned epics.*
+| ID | Title | Scope | Size |
+|----|-------|-------|------|
+| EPIC-APP-ONBOARDING | App Onboarding Wizard | backend, admin | large |
 
 ---
 
@@ -86,6 +88,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 |----|-------|-------|------|--------|
 | FEATURE-APP-UPDATES | Application Updates Mechanism | backend, admin | large | FEATURE-LINUX-DEVICE-INSTALLATION |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | Linux Installation Enhancements | backend, admin | medium | FEATURE-LINUX-DEVICE-INSTALLATION |
+| FEATURE-ONBOARDING-BACKEND | Onboarding status backend API | backend | small | EPIC-APP-ONBOARDING |
+| FEATURE-ONBOARDING-INTEGRATIONS | Integrations discovery step | backend, admin | medium | EPIC-APP-ONBOARDING |
+| FEATURE-ONBOARDING-WIZARD | Onboarding wizard UI | admin | medium | EPIC-APP-ONBOARDING |
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | Sensor Device Detail Page | panel | large | - |
 | FEATURE-PLUGIN-MATTER | Matter Plugin | backend | large | - |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | Zigbee2MQTT Adoption Improvements | backend, admin | large | FEATURE-PLUGIN-ZIGBEE2MQTT |
@@ -114,7 +119,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 ### Planned
 
-*No planned technical tasks.*
+| ID | Title | Scope | Size | Parent |
+|----|-------|-------|------|--------|
+| TECH-ONBOARDING-ROUTER-GUARDS | Router guards for onboarding flow | admin | small | EPIC-APP-ONBOARDING |
 
 ---
 
@@ -200,8 +207,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
+| FEATURE-ONBOARDING-BACKEND | feature | planned |
+| FEATURE-ONBOARDING-INTEGRATIONS | feature | planned |
 | FEATURE-PLUGIN-MATTER | feature | planned |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
+| EPIC-APP-ONBOARDING | epic | planned |
 
 ### Admin
 
@@ -244,7 +254,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECH-SCENES-OPENAPI-SYNC | technical | done |
 | FEATURE-APP-UPDATES | feature | planned |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
+| FEATURE-ONBOARDING-INTEGRATIONS | feature | planned |
+| FEATURE-ONBOARDING-WIZARD | feature | planned |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
+| TECH-ONBOARDING-ROUTER-GUARDS | technical | planned |
+| EPIC-APP-ONBOARDING | epic | planned |
 
 ### Panel
 
@@ -353,6 +367,12 @@ EPIC-SCENES-PLUGIN-MVP (done)
 ├── FEATURE-SCENES-PLUGIN-SIMPLE (done)
 ├── FEATURE-SCENES-ADMIN-ROOM (done)
 └── FEATURE-SCENES-PANEL-ROOM-ACTIONS (done)
+
+EPIC-APP-ONBOARDING (planned)
+├── FEATURE-ONBOARDING-BACKEND (planned)
+├── TECH-ONBOARDING-ROUTER-GUARDS (planned)
+├── FEATURE-ONBOARDING-WIZARD (planned)
+└── FEATURE-ONBOARDING-INTEGRATIONS (planned)
 ```
 
 ---
@@ -370,6 +390,7 @@ tasks/
 │   └── CHORE-EXTENSIONS-CORE-CONTROL.md
 ├── features/               # Feature implementations
 │   ├── CHORE-SCENES-APPLY-FEEDBACK.md
+│   ├── EPIC-APP-ONBOARDING.md
 │   ├── EPIC-DISPLAY-ROLES-HOUSE-CONTROL.md
 │   ├── EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2.md
 │   ├── EPIC-SCENES-MVP.md
@@ -391,6 +412,9 @@ tasks/
 │   ├── FEATURE-MDNS-BACKEND-DISCOVERY.md
 │   ├── FEATURE-MODULE-CONFIG.md
 │   ├── FEATURE-MULTI-LOCATION-WEATHER.md
+│   ├── FEATURE-ONBOARDING-BACKEND.md
+│   ├── FEATURE-ONBOARDING-INTEGRATIONS.md
+│   ├── FEATURE-ONBOARDING-WIZARD.md
 │   ├── FEATURE-PANEL-IDLE-MODE-SPACE-AWARE.md
 │   ├── FEATURE-PANEL-SENSOR-DEVICE-PAGE.md
 │   ├── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS.md
@@ -430,6 +454,7 @@ tasks/
 │   ├── TECH-EPIC-HOUSE-CONTROL-ALIGNMENT.md
 │   ├── TECH-HOUSE-CONTROL-SMOKE-TESTS.md
 │   ├── TECH-INTENT-CATALOG.md
+│   ├── TECH-ONBOARDING-ROUTER-GUARDS.md
 │   ├── TECH-SCENES-OPENAPI-SYNC.md
 │   ├── TECH-SPACE-CONTEXT-SNAPSHOT.md
 │   ├── TECH-SPACE-LAST-ACTIVITY-TRACKING.md
