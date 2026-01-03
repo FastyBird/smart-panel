@@ -292,6 +292,8 @@ export class WeatherHistoryService implements OnModuleInit {
 				undefined,
 				'RESAMPLE EVERY 1m FOR 2h',
 			);
+
+			// Continuous queries set up successfully
 		} catch (error) {
 			const err = error as Error;
 			this.logger.warn('Failed to set up continuous queries', { message: err.message });

@@ -21,7 +21,9 @@ export class SpaceActivityListener implements OnModuleInit {
 		private readonly channelRepository: Repository<ChannelEntity>,
 	) {}
 
-	onModuleInit() {}
+	onModuleInit() {
+		// Listener initialized
+	}
 
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	async handlePropertyUpdated(property: ChannelPropertyEntity): Promise<void> {
