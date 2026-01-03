@@ -122,8 +122,10 @@ String _getSystemViewTitle(SystemViewType type, DeckBuildInput input) {
 /// Returns a validation error message if the configuration is invalid,
 /// or null if the configuration is valid.
 String? validateDisplayConfig(DisplayModel display) {
-  // Room role requires a spaceId
-  if (display.role == DisplayRole.room && display.spaceId == null) {
+  // Room role requires a non-empty spaceId
+  final spaceId = display.spaceId;
+  if (display.role == DisplayRole.room &&
+      (spaceId == null || spaceId.isEmpty)) {
     return 'Room display requires a space (room) to be assigned. '
         'Please configure this in Admin > Displays.';
   }
