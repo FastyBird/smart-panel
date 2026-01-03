@@ -71,7 +71,7 @@ describe('LayoutDefault', () => {
 	});
 
 	it('renders AppSidebar when in non-mobile mode', async () => {
-		mockBreakpoints.isMDDevice.value = true;
+		mockBreakpoints.isMDDevice!.value = true;
 
 		await wrapper.vm.$nextTick();
 
@@ -79,7 +79,7 @@ describe('LayoutDefault', () => {
 	});
 
 	it('does not render AppSidebar in mobile mode', async () => {
-		mockBreakpoints.isMDDevice.value = false;
+		mockBreakpoints.isMDDevice!.value = false;
 
 		await wrapper.vm.$nextTick();
 
@@ -97,7 +97,7 @@ describe('LayoutDefault', () => {
 	});
 
 	it('renders AppNavigation inside mobile drawer', async () => {
-		mockBreakpoints.isMDDevice.value = false;
+		mockBreakpoints.isMDDevice!.value = false;
 
 		await wrapper.vm.$nextTick();
 
@@ -109,7 +109,7 @@ describe('LayoutDefault', () => {
 	});
 
 	it('renders AppTopBar component in desktop mode', async () => {
-		mockBreakpoints.isMDDevice.value = true;
+		mockBreakpoints.isMDDevice!.value = true;
 
 		await wrapper.vm.$nextTick();
 
@@ -117,7 +117,7 @@ describe('LayoutDefault', () => {
 	});
 
 	it('does not render AppTopBar component in mobile mode', async () => {
-		mockBreakpoints.isMDDevice.value = false;
+		mockBreakpoints.isMDDevice!.value = false;
 
 		await wrapper.vm.$nextTick();
 
@@ -127,7 +127,7 @@ describe('LayoutDefault', () => {
 	it('updates mainMenuCollapsed state when isXLDevice changes', async () => {
 		expect(wrapper.vm.mainMenuCollapsed).toBe(false);
 
-		mockBreakpoints.isXLDevice.value = false;
+		mockBreakpoints.isXLDevice!.value = false;
 
 		await wrapper.vm.$nextTick();
 

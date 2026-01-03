@@ -83,7 +83,7 @@ describe('usePage', () => {
 	});
 
 	it('should not call get() if page is a draft', async () => {
-		data[pageId].draft = true;
+		data[pageId]!.draft = true;
 
 		const { fetchPage } = usePage({ id: pageId });
 

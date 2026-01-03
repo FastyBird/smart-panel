@@ -96,7 +96,7 @@ describe('AppTopBar.vue', () => {
 	it('calls sign out method when clicking sign out', async () => {
 		const dropdownItems = wrapper.findAllComponents(ElDropdownItem);
 
-		await dropdownItems[1].find('div').trigger('click');
+		await dropdownItems[1]?.find('div').trigger('click');
 		await nextTick();
 
 		expect(injectAccountManager()?.signOut).toHaveBeenCalled();

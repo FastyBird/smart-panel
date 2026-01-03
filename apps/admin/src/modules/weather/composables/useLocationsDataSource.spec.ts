@@ -119,7 +119,7 @@ describe('useLocationsDataSource', () => {
 		filters.value.search = 'home';
 
 		expect(locations.value).toHaveLength(1);
-		expect(locations.value[0].name).toBe('Home');
+		expect(locations.value[0]?.name).toBe('Home');
 	});
 
 	it('should filter locations by type', () => {
@@ -128,7 +128,7 @@ describe('useLocationsDataSource', () => {
 		filters.value.types = ['weather-buienradar'];
 
 		expect(locations.value).toHaveLength(1);
-		expect(locations.value[0].type).toBe('weather-buienradar');
+		expect(locations.value[0]?.type).toBe('weather-buienradar');
 	});
 
 	it('should filter primary locations', () => {
@@ -137,7 +137,7 @@ describe('useLocationsDataSource', () => {
 		filters.value.primary = 'primary';
 
 		expect(locations.value).toHaveLength(1);
-		expect(locations.value[0].id).toBe('123e4567-e89b-12d3-a456-426614174000');
+		expect(locations.value[0]?.id).toBe('123e4567-e89b-12d3-a456-426614174000');
 	});
 
 	it('should filter secondary locations', () => {
@@ -155,9 +155,9 @@ describe('useLocationsDataSource', () => {
 		sortBy.value = 'name';
 		sortDir.value = 'ascending';
 
-		expect(locations.value[0].name).toBe('Apartment');
-		expect(locations.value[1].name).toBe('Home');
-		expect(locations.value[2].name).toBe('Office');
+		expect(locations.value[0]?.name).toBe('Apartment');
+		expect(locations.value[1]?.name).toBe('Home');
+		expect(locations.value[2]?.name).toBe('Office');
 	});
 
 	it('should sort locations by name descending', () => {
@@ -166,8 +166,8 @@ describe('useLocationsDataSource', () => {
 		sortBy.value = 'name';
 		sortDir.value = 'descending';
 
-		expect(locations.value[0].name).toBe('Office');
-		expect(locations.value[2].name).toBe('Apartment');
+		expect(locations.value[0]?.name).toBe('Office');
+		expect(locations.value[2]?.name).toBe('Apartment');
 	});
 
 	it('should paginate locations', () => {

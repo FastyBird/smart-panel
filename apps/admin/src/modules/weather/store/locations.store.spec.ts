@@ -116,7 +116,7 @@ describe('WeatherLocations Store', () => {
 			const result = store.set({ id: mockLocation.id, data: updatedData });
 
 			expect(result.name).toBe('Updated Home');
-			expect(store.data[mockLocation.id].name).toBe('Updated Home');
+			expect(store.data[mockLocation.id]?.name).toBe('Updated Home');
 		});
 
 		it('should throw validation error for invalid data', () => {

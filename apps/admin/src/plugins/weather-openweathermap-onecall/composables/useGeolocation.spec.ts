@@ -84,9 +84,9 @@ describe('useGeolocation', () => {
 		const result = await searchCities('London');
 
 		expect(result).toHaveLength(2);
-		expect(result[0].name).toBe('London');
-		expect(result[0].country).toBe('GB');
-		expect(result[1].country).toBe('CA');
+		expect(result[0]?.name).toBe('London');
+		expect(result[0]?.country).toBe('GB');
+		expect(result[1]?.country).toBe('CA');
 		expect(backendClient.GET).toHaveBeenCalled();
 	});
 

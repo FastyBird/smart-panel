@@ -65,11 +65,7 @@ export const useChannelAddForm = <TForm extends IChannelAddForm = IChannelAddFor
 				return null;
 			}
 
-			if (!(device.value.category in deviceChannelsSpecificationMappers)) {
-				return null;
-			}
-
-			return deviceChannelsSpecificationMappers[device.value.category];
+			return deviceChannelsSpecificationMappers[device.value.category] ?? null;
 		}
 	);
 
@@ -192,10 +188,10 @@ export const useChannelAddForm = <TForm extends IChannelAddForm = IChannelAddFor
 	watch(
 		() => categoriesOptions.value,
 		(categories): void => {
-			if (categories.length) {
-				model.category = categoriesOptions.value[0].value;
+			if (categories.length && categories[0]) {
+				model.category = categories[0].value;
 
-				initialModel.category = categoriesOptions.value[0].value;
+				initialModel.category = categories[0].value;
 			}
 		},
 		{ immediate: true }

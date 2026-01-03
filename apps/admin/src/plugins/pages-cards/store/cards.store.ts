@@ -86,7 +86,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 	const findForPage = (pageId: ICardsPage['id']): ICard[] => Object.values(data.value ?? {}).filter((card: ICard): boolean => card.page === pageId);
 
-	const findById = (id: ICard['id']): ICard | null => (id in data.value ? data.value[id] : null);
+	const findById = (id: ICard['id']): ICard | null => data.value[id] ?? null;
 
 	const pendingGetPromises: Record<string, Promise<ICard>> = {};
 
@@ -150,8 +150,9 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 	};
 
 	const get = async (payload: ICardsGetActionPayload): Promise<ICard> => {
-		if (payload.id in pendingGetPromises) {
-			return pendingGetPromises[payload.id];
+		const existingGetPromise = pendingGetPromises[payload.id];
+		if (existingGetPromise) {
+			return existingGetPromise;
 		}
 
 		const fetchPromise = (async (): Promise<ICard> => {
@@ -203,8 +204,9 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 	};
 
 	const fetch = async (payload: ICardsFetchActionPayload): Promise<ICard[]> => {
-		if (payload.pageId in pendingFetchPromises) {
-			return pendingFetchPromises[payload.pageId];
+		const existingFetchPromise = pendingFetchPromises[payload.pageId];
+		if (existingFetchPromise) {
+			return existingFetchPromise;
 		}
 
 		const fetchPromise = (async (): Promise<ICard[]> => {
@@ -482,7 +484,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 		delete data.value[payload.id];
 
-		if (recordToRemove.draft) {
+		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {

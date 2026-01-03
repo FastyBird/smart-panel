@@ -91,11 +91,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 				return null;
 			}
 
-			if (!(channel.value.category in channelChannelsPropertiesSpecificationMappers)) {
-				return null;
-			}
-
-			return channelChannelsPropertiesSpecificationMappers[channel.value.category];
+			return channelChannelsPropertiesSpecificationMappers[channel.value.category] ?? null;
 		}
 	);
 

@@ -86,7 +86,7 @@ describe('useCard', () => {
 	});
 
 	it('should not call fetch if item is a draft', async () => {
-		data[fakeCardId].draft = true;
+		data[fakeCardId]!.draft = true;
 
 		const { fetchCard } = useCard({ id: fakeCardId, pageId: fakePageId });
 
@@ -96,7 +96,7 @@ describe('useCard', () => {
 	});
 
 	it('should call fetch if item is not a draft', async () => {
-		data[fakeCardId].draft = false;
+		data[fakeCardId]!.draft = false;
 
 		const { fetchCard } = useCard({ id: fakeCardId, pageId: fakePageId });
 

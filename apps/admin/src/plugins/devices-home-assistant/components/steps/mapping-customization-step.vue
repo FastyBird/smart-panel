@@ -266,7 +266,7 @@ const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 		// Enable: remove skip flag and ensure there's a valid category
 			if (existingIndex >= 0) {
 				const override = currentOverrides[existingIndex];
-				if (override.channelCategory) {
+				if (override?.channelCategory) {
 					// Keep existing custom category, just remove skip
 					currentOverrides[existingIndex] = { entityId, channelCategory: override.channelCategory };
 					// Update form model
@@ -301,7 +301,9 @@ const toggleEntityEnabled = (entityId: string, enabled: boolean): void => {
 		// Disable: set skip flag
 		if (existingIndex >= 0) {
 			const override = currentOverrides[existingIndex];
-			currentOverrides[existingIndex] = { ...override, skip: true };
+			if (override) {
+				currentOverrides[existingIndex] = { ...override, skip: true };
+			}
 		} else {
 			currentOverrides.push({ entityId, skip: true });
 		}
@@ -322,7 +324,10 @@ const updateEntityChannelCategory = (entityId: string, category: DevicesModuleCh
 	const existingIndex = currentOverrides.findIndex((o) => o.entityId === entityId);
 
 	if (existingIndex >= 0) {
-		currentOverrides[existingIndex] = { ...currentOverrides[existingIndex], channelCategory: category, skip: false };
+		const existing = currentOverrides[existingIndex];
+		if (existing) {
+			currentOverrides[existingIndex] = { ...existing, channelCategory: category, skip: false };
+		}
 	} else {
 		currentOverrides.push({ entityId, channelCategory: category });
 	}

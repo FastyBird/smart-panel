@@ -110,7 +110,7 @@ describe('Pages Store', () => {
 		const result = await store.fetch();
 
 		expect(store.findAll()).toHaveLength(1);
-		expect(result[0].id).toBe(pageId);
+		expect(result[0]?.id).toBe(pageId);
 		expect(store.firstLoadFinished()).toBe(true);
 		expect(store.findById(pageId)).not.toBeNull();
 	});

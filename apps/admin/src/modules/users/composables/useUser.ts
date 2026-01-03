@@ -24,11 +24,11 @@ export const useUser = ({ id }: IUseUserProps): IUseUser => {
 			return null;
 		}
 
-		return id in data.value ? data.value[id] : null;
+		return data.value[id] ?? null;
 	});
 
 	const fetchUser = async (): Promise<void> => {
-		const item = id in data.value ? data.value[id] : null;
+		const item = data.value[id];
 
 		if (item?.draft) {
 			return;
@@ -42,9 +42,9 @@ export const useUser = ({ id }: IUseUserProps): IUseUser => {
 			return true;
 		}
 
-		const item = id in data.value ? data.value[id] : null;
+		const item = data.value[id];
 
-		if (item !== null) {
+		if (item !== undefined) {
 			return false;
 		}
 

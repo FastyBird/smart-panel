@@ -423,6 +423,10 @@ const onPreviousStep = (): void => {
 		const previousStep = stepOrder[currentIndex - 1];
 		const currentStep = activeStep.value;
 
+		if (!previousStep) {
+			return;
+		}
+
 		reachedSteps.value.delete(currentStep);
 		if (currentIndex < stepOrder.length - 1) {
 			stepOrder.slice(currentIndex + 1).forEach((step) => {

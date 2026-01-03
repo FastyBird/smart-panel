@@ -89,7 +89,7 @@ describe('useDataSource', () => {
 	});
 
 	it('should not call get() if data source is a draft', async () => {
-		data[dataSourceId].draft = true;
+		data[dataSourceId]!.draft = true;
 
 		const { fetchDataSource } = useDataSource({ parent: 'page', parentId, id: dataSourceId });
 

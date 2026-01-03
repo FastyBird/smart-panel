@@ -54,7 +54,7 @@ export const useHomeAssistantDiscoveredHelpers = defineStore<
 	const findAll = (): IHomeAssistantDiscoveredHelper[] => Object.values(data.value);
 
 	const findByEntityId = (entityId: IHomeAssistantDiscoveredHelper['entityId']): IHomeAssistantDiscoveredHelper | null =>
-		entityId in data.value ? data.value[entityId] : null;
+		data.value[entityId] ?? null;
 
 	const pendingGetPromises: Record<string, Promise<IHomeAssistantDiscoveredHelper>> = {};
 
@@ -95,8 +95,9 @@ export const useHomeAssistantDiscoveredHelpers = defineStore<
 	};
 
 	const get = async (payload: IHomeAssistantDiscoveredHelpersGetActionPayload): Promise<IHomeAssistantDiscoveredHelper> => {
-		if (payload.entityId in pendingGetPromises) {
-			return pendingGetPromises[payload.entityId];
+		const existingPromise = pendingGetPromises[payload.entityId];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const fetchPromise = (async (): Promise<IHomeAssistantDiscoveredHelper> => {
@@ -149,8 +150,9 @@ export const useHomeAssistantDiscoveredHelpers = defineStore<
 	};
 
 	const fetch = async (): Promise<IHomeAssistantDiscoveredHelper[]> => {
-		if ('all' in pendingFetchPromises) {
-			return pendingFetchPromises['all'];
+		const existingPromise = pendingFetchPromises['all'];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const fetchPromise = (async (): Promise<IHomeAssistantDiscoveredHelper[]> => {

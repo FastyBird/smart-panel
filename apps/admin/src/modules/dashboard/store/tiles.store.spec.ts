@@ -112,7 +112,7 @@ describe('Tiles Store', () => {
 		const result = await store.fetch({ parent: { type: 'page', id: parentId } } satisfies ITilesFetchActionPayload);
 
 		expect(store.findForParent('page', parentId)).toHaveLength(1);
-		expect(result[0].id).toBe(tileId);
+		expect(result[0]?.id).toBe(tileId);
 		expect(store.firstLoadFinished(parentId)).toBe(true);
 		expect(store.findAll('page')).toHaveLength(1);
 		expect(store.findById('page', tileId)).not.toBeNull();

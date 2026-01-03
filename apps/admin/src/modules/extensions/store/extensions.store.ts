@@ -60,7 +60,7 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 
 		const findByKind = (kind: ExtensionKind): IExtension[] => Object.values(data.value).filter((ext) => ext.kind === kind);
 
-		const findByType = (type: IExtension['type']): IExtension | null => (type in data.value ? data.value[type] : null);
+		const findByType = (type: IExtension['type']): IExtension | null => data.value[type] ?? null;
 
 		const set = (payload: IExtensionsSetActionPayload): IExtension => {
 			if (payload.type && data.value && payload.type in data.value) {
@@ -89,8 +89,9 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 		};
 
 		const get = async (payload: IExtensionsGetActionPayload): Promise<IExtension> => {
-			if (payload.type in pendingGetPromises) {
-				return pendingGetPromises[payload.type];
+			const existingPromise = pendingGetPromises[payload.type];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IExtension> => {
@@ -143,8 +144,9 @@ export const useExtensions = defineStore<'extensions_module-extensions', Extensi
 		const fetch = async (payload?: IExtensionsFetchActionPayload): Promise<IExtension[]> => {
 			const cacheKey = payload?.kind ?? 'all';
 
-			if (cacheKey in pendingFetchPromises) {
-				return pendingFetchPromises[cacheKey];
+			const existingPromise = pendingFetchPromises[cacheKey];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<IExtension[]> => {

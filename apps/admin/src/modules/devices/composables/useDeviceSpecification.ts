@@ -26,11 +26,7 @@ export const useDeviceSpecification = ({ id }: IUseDeviceSpecificationProps): IU
 	const getDeviceSpecification = (
 		device: IDevice
 	): { required: DevicesModuleChannelCategory[]; optional: DevicesModuleChannelCategory[]; multiple?: DevicesModuleChannelCategory[] } | null => {
-		if (!(device.category in deviceChannelsSpecificationMappers)) {
-			return null;
-		}
-
-		return deviceChannelsSpecificationMappers[device.category];
+		return deviceChannelsSpecificationMappers[device.category] ?? null;
 	};
 
 	const canAddAnotherChannel = computed<boolean>((): boolean => {

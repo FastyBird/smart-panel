@@ -61,7 +61,7 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 
 		const findAll = (): IConfigModule[] => Object.values(data.value);
 
-		const findByType = (type: IConfigModule['type']): IConfigModule | null => (type in data.value ? data.value[type] : null);
+		const findByType = (type: IConfigModule['type']): IConfigModule | null => data.value[type] ?? null;
 
 		const pendingGetPromises: Record<string, Promise<IConfigModule>> = {};
 
@@ -106,8 +106,9 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 		};
 
 		const get = async (payload: IConfigModulesGetActionPayload): Promise<IConfigModule> => {
-			if (payload.type in pendingGetPromises) {
-				return pendingGetPromises[payload.type];
+			const existingPromise = pendingGetPromises[payload.type];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IConfigModule> => {

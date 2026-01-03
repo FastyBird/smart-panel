@@ -121,7 +121,7 @@ describe('useChannelsDataSource', () => {
 		const { channels } = useChannelsDataSource({ deviceId: 'device-1' });
 
 		expect(channels.value.length).toBe(1);
-		expect(channels.value[0].id).toBe('1');
+		expect(channels.value[0]?.id).toBe('1');
 	});
 
 	it('filtersActive is false by default', () => {

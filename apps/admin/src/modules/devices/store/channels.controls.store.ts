@@ -66,7 +66,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 		const findForChannel = (channelId: IChannel['id']): IChannelControl[] =>
 			Object.values(data.value ?? {}).filter((control: IChannelControl): boolean => control.channel === channelId);
 
-		const findById = (id: IChannelControl['id']): IChannelControl | null => (id in data.value ? data.value[id] : null);
+		const findById = (id: IChannelControl['id']): IChannelControl | null => data.value[id] ?? null;
 
 		const pendingGetPromises: Record<string, Promise<IChannelControl>> = {};
 
@@ -130,8 +130,9 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 		};
 
 		const get = async (payload: IChannelsControlsGetActionPayload): Promise<IChannelControl> => {
-			if (payload.id in pendingGetPromises) {
-				return pendingGetPromises[payload.id];
+			const existingPromise = pendingGetPromises[payload.id];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IChannelControl> => {
@@ -182,8 +183,9 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 		};
 
 		const fetch = async (payload: IChannelsControlsFetchActionPayload): Promise<IChannelControl[]> => {
-			if (payload.channelId && payload.channelId in pendingFetchPromises) {
-				return pendingFetchPromises[payload.channelId];
+			const existingPromise = pendingFetchPromises[payload.channelId];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<IChannelControl[]> => {
@@ -383,7 +385,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 
 			delete data.value[payload.id];
 
-			if (recordToRemove.draft) {
+			if (recordToRemove?.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {

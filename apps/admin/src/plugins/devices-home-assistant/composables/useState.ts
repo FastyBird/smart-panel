@@ -24,7 +24,7 @@ export const useState = ({ entityId }: IUseDeviceProps): IUseState => {
 			return null;
 		}
 
-		return entityId in data.value ? data.value[entityId] : null;
+		return data.value[entityId] ?? null;
 	});
 
 	const fetchState = async (): Promise<void> => {
@@ -36,9 +36,9 @@ export const useState = ({ entityId }: IUseDeviceProps): IUseState => {
 			return true;
 		}
 
-		const item = entityId in data.value ? data.value[entityId] : null;
+		const item = data.value[entityId];
 
-		if (item !== null) {
+		if (item !== undefined) {
 			return false;
 		}
 

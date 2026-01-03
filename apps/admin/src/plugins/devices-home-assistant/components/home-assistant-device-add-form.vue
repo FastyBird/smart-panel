@@ -471,7 +471,11 @@ const onPreviousStep = (): void => {
 	if (currentIndex > 0) {
 		const previousStep = stepOrder[currentIndex - 1];
 		const currentStep = activeStep.value;
-		
+
+		if (!previousStep) {
+			return;
+		}
+
 		// Remove current step and all following steps from reachedSteps
 		reachedSteps.value.delete(currentStep);
 		if (currentIndex < stepOrder.length - 1) {
@@ -479,7 +483,7 @@ const onPreviousStep = (): void => {
 				reachedSteps.value.delete(step);
 			});
 		}
-		
+
 		// Clear step-dependent state when going back to earlier steps
 		// This prevents stale mapping data from being used after changing earlier choices
 		if (previousStep === 'one' || previousStep === 'two') {
@@ -493,7 +497,7 @@ const onPreviousStep = (): void => {
 			entityOverrides.value = [];
 		}
 		// Going back to step 4: keep entityOverrides (they're still valid for current preview)
-		
+
 		// Move to previous step
 		activeStep.value = previousStep;
 	}

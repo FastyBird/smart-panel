@@ -76,12 +76,16 @@ const filterRouteTree = (routes: { [key: string]: RouteRecord }): { [key: string
 
 	mainLoop: for (const search of Object.keys(routes)) {
 		for (const name of Object.keys(routes)) {
-			if (name !== search && routes[name].children && findRoute(search, routes[name].children)) {
+			const routeChildren = routes[name]?.children;
+			if (name !== search && routeChildren && findRoute(search, routeChildren)) {
 				continue mainLoop;
 			}
 		}
 
-		routeMap[search] = routes[search];
+		const route = routes[search];
+		if (route) {
+			routeMap[search] = route;
+		}
 	}
 
 	return routeMap;
@@ -93,8 +97,9 @@ const findRoute = (search: string, routes: { [key: string]: RouteRecord }): bool
 			return true;
 		}
 
-		if (routes[route].children) {
-			if (findRoute(search, routes[route].children)) {
+		const children = routes[route]?.children;
+		if (children) {
+			if (findRoute(search, children)) {
 				return true;
 			}
 		}

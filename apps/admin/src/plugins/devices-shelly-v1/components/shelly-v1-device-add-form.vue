@@ -320,7 +320,7 @@ watch(
 watch(
 	(): { value: DevicesModuleDeviceCategory; label: string }[] => categoriesOptions.value,
 	(val: { value: DevicesModuleDeviceCategory; label: string }[]): void => {
-		if (val.length > 0) {
+		if (val.length > 0 && val[0]) {
 			model.category = val[0].value;
 		}
 	}

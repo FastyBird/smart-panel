@@ -63,8 +63,9 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 			return space.icon;
 		}
 		// Use category template icon if category is set
-		if (space.category && SPACE_CATEGORY_TEMPLATES[space.category]) {
-			return SPACE_CATEGORY_TEMPLATES[space.category].icon;
+		const categoryTemplate = space.category ? SPACE_CATEGORY_TEMPLATES[space.category] : undefined;
+		if (categoryTemplate) {
+			return categoryTemplate.icon;
 		}
 		// Default icons based on type
 		return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:map-marker-radius';
@@ -208,6 +209,11 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 			// Create or update actions
 			for (let i = 0; i < currentActions.length; i++) {
 				const action = currentActions[i];
+
+				if (!action) {
+					continue;
+				}
+
 				const actionId = action.id;
 
 				if (!actionId || !originalActionIds.has(actionId)) {
@@ -249,8 +255,9 @@ export const useSceneEditForm = <TForm extends ISceneEditForm = ISceneEditForm>(
 
 			// Update model.actions with server-assigned IDs
 			for (const [index, newId] of newActionIds) {
-				if ((model as ISceneEditForm).actions[index]) {
-					(model as ISceneEditForm).actions[index].id = newId;
+				const modelAction = (model as ISceneEditForm).actions[index];
+				if (modelAction) {
+					modelAction.id = newId;
 				}
 			}
 

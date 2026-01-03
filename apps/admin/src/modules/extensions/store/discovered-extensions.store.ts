@@ -43,15 +43,16 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 		const findAll = (): { admin?: IDiscoveredExtension; backend?: IDiscoveredExtension }[] => Object.values(data.value);
 
 		const findByName = (name: IDiscoveredExtension['name']): { admin?: IDiscoveredExtension; backend?: IDiscoveredExtension } | null =>
-			name in data.value ? data.value[name] : null;
+			data.value[name] ?? null;
 
 		const pendingGetPromises: Record<IDiscoveredExtension['name'], Promise<{ admin?: IDiscoveredExtension; backend?: IDiscoveredExtension }>> = {};
 
 		const pendingFetchPromises: Record<string, Promise<{ admin?: IDiscoveredExtension; backend?: IDiscoveredExtension }[]>> = {};
 
 		const get = async (payload: IDiscoveredExtensionsGetActionPayload): Promise<{ admin?: IDiscoveredExtension; backend?: IDiscoveredExtension }> => {
-			if (payload.name in pendingGetPromises) {
-				return pendingGetPromises[payload.name];
+			const existingPromise = pendingGetPromises[payload.name];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<{ admin?: IDiscoveredExtension; backend?: IDiscoveredExtension }> => {
@@ -83,16 +84,19 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 								throw new ExtensionsApiException('Received extension name is different');
 							}
 
-							if (transformedExtension.surface === 'admin') {
-								merged[transformedExtension.name].admin = transformedExtension;
-							} else {
-								merged[transformedExtension.name].backend = transformedExtension;
+							const mergedItem = merged[transformedExtension.name];
+							if (mergedItem) {
+								if (transformedExtension.surface === 'admin') {
+									mergedItem.admin = transformedExtension;
+								} else {
+									mergedItem.backend = transformedExtension;
+								}
 							}
 						}
 
 						data.value = { ...data.value, ...merged };
 
-						return merged[payload.name];
+						return merged[payload.name] ?? { admin: undefined, backend: undefined };
 					}
 
 					const errorReason = 'Failed to fetch discovered extension.';
@@ -113,8 +117,9 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 		};
 
 		const fetch = async (): Promise<{ admin?: IDiscoveredExtension; backend?: IDiscoveredExtension }[]> => {
-			if ('all' in pendingFetchPromises) {
-				return pendingFetchPromises['all'];
+			const existingPromise = pendingFetchPromises['all'];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<{ admin?: IDiscoveredExtension; backend?: IDiscoveredExtension }[]> => {
@@ -137,10 +142,13 @@ export const useDiscoveredExtensions = defineStore<'extensions_module-discovered
 								merged[transformedExtension.name] = {};
 							}
 
-							if (transformedExtension.surface === 'admin') {
-								merged[transformedExtension.name].admin = transformedExtension;
-							} else if (transformedExtension.surface === 'backend') {
-								merged[transformedExtension.name].backend = transformedExtension;
+							const mergedItem = merged[transformedExtension.name];
+							if (mergedItem) {
+								if (transformedExtension.surface === 'admin') {
+									mergedItem.admin = transformedExtension;
+								} else if (transformedExtension.surface === 'backend') {
+									mergedItem.backend = transformedExtension;
+								}
 							}
 						}
 

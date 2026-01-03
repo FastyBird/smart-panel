@@ -42,19 +42,19 @@ describe('ManageSystem.vue', () => {
 	});
 
 	it('calls onRestart when restart row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[0].trigger('click');
+		await wrapper.findAllComponents({ name: 'ElRow' })[0]?.trigger('click');
 
 		expect(onRestart).toHaveBeenCalled();
 	});
 
 	it('calls onPowerOff when power-off row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[1].trigger('click');
+		await wrapper.findAllComponents({ name: 'ElRow' })[1]?.trigger('click');
 
 		expect(onPowerOff).toHaveBeenCalled();
 	});
 
 	it('calls onFactoryReset when factory reset row is clicked', async () => {
-		await wrapper.findAllComponents({ name: 'ElRow' })[2].trigger('click');
+		await wrapper.findAllComponents({ name: 'ElRow' })[2]?.trigger('click');
 
 		expect(onFactoryReset).toHaveBeenCalled();
 	});

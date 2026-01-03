@@ -75,10 +75,10 @@ export const useChannelsDataSource = (props: IUseChannelsDataSourceProps = {}): 
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
 	const sortBy = ref<'name' | 'description' | 'category' | undefined>(
-		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'description' | 'category') : undefined
+		sort.value.length > 0 ? (sort.value[0]?.by as 'name' | 'description' | 'category') : undefined
 	);
 
-	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
 
 	const channels = computed<IChannel[]>((): IChannel[] => {
 		return orderBy<IChannel>(

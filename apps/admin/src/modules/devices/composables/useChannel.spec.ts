@@ -84,7 +84,7 @@ describe('useChannel', () => {
 	});
 
 	it('should not call fetch if item is a draft', async () => {
-		data[fakeId].draft = true;
+		data[fakeId]!.draft = true;
 
 		const { fetchChannel } = useChannel({ id: fakeId });
 
@@ -94,7 +94,7 @@ describe('useChannel', () => {
 	});
 
 	it('should call fetch if item is not a draft', async () => {
-		data[fakeId].draft = false;
+		data[fakeId]!.draft = false;
 
 		const { fetchChannel } = useChannel({ id: fakeId });
 

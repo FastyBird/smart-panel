@@ -46,7 +46,7 @@ describe('useModules', () => {
 	it('returns only modules related to config module', () => {
 		const { modules } = useModules();
 		expect(modules.value.length).toBe(1);
-		expect(modules.value[0].type).toBe('test-module');
+		expect(modules.value[0]?.type).toBe('test-module');
 	});
 
 	it('returns correct options list', () => {

@@ -14,12 +14,11 @@ export class GenericPlatform extends Platform {
 	private cachedNpmVersion: string | null = null;
 
 	async getSystemInfo() {
-		const [cpu, memory, storage, os, time, temp, network, graphics, networkInterface]: [
+		const [cpu, memory, storage, os, temp, network, graphics, networkInterface]: [
 			Systeminformation.CurrentLoadData,
 			Systeminformation.MemData,
 			Systeminformation.FsSizeData[],
 			Systeminformation.OsData,
-			Systeminformation.TimeData,
 			Systeminformation.CpuTemperatureData,
 			Systeminformation.NetworkStatsData[],
 			Systeminformation.GraphicsData,
@@ -29,12 +28,13 @@ export class GenericPlatform extends Platform {
 			si.mem(),
 			si.fsSize(),
 			si.osInfo(),
-			si.time(),
 			si.cpuTemperature(),
 			si.networkStats(),
 			si.graphics(),
 			si.networkInterfaces('default'),
 		]);
+
+		const time = si.time();
 
 		const defaultNetworkInterface = (
 			Array.isArray(networkInterface) ? networkInterface[0] : networkInterface

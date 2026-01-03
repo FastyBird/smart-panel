@@ -68,11 +68,7 @@ export const useChannelEditForm = <TForm extends IChannelEditForm = IChannelEdit
 				return null;
 			}
 
-			if (!(device.value.category in deviceChannelsSpecificationMappers)) {
-				return null;
-			}
-
-			return deviceChannelsSpecificationMappers[device.value.category];
+			return deviceChannelsSpecificationMappers[device.value.category] ?? null;
 		}
 	);
 

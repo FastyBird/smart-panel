@@ -24,11 +24,11 @@ export const useChannel = ({ id }: IUseChannelProps): IUseChannel => {
 			return null;
 		}
 
-		return id in data.value ? data.value[id] : null;
+		return data.value[id] ?? null;
 	});
 
 	const fetchChannel = async (): Promise<void> => {
-		const item = id in data.value ? data.value[id] : null;
+		const item = data.value[id] ?? null;
 
 		if (item?.draft) {
 			return;
@@ -42,7 +42,7 @@ export const useChannel = ({ id }: IUseChannelProps): IUseChannel => {
 			return true;
 		}
 
-		const item = id in data.value ? data.value[id] : null;
+		const item = data.value[id] ?? null;
 
 		if (item !== null) {
 			return false;

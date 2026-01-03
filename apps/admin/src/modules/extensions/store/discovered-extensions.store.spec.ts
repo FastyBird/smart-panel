@@ -88,8 +88,8 @@ describe('Discovered Extensions Store', () => {
 			const all = store.findAll();
 
 			expect(all).toHaveLength(1);
-			expect(all[0].admin).toBeDefined();
-			expect(all[0].backend).toBeDefined();
+			expect(all[0]?.admin).toBeDefined();
+			expect(all[0]?.backend).toBeDefined();
 		});
 	});
 
@@ -170,8 +170,8 @@ describe('Discovered Extensions Store', () => {
 			expect(result).toHaveLength(1);
 			expect(store.firstLoadFinished()).toBe(true);
 			expect(store.data['test-module']).toBeDefined();
-			expect(store.data['test-module'].admin).toBeDefined();
-			expect(store.data['test-module'].backend).toBeDefined();
+			expect(store.data['test-module']?.admin).toBeDefined();
+			expect(store.data['test-module']?.backend).toBeDefined();
 			expect(backendClient.GET).toHaveBeenCalledWith(`/${MODULES_PREFIX}/${EXTENSIONS_MODULE_PREFIX}/discovered`);
 		});
 
@@ -195,8 +195,8 @@ describe('Discovered Extensions Store', () => {
 			await store.fetch();
 
 			expect(Object.keys(store.data)).toHaveLength(1);
-			expect(store.data['devices-module'].admin).toBeDefined();
-			expect(store.data['devices-module'].backend).toBeDefined();
+			expect(store.data['devices-module']?.admin).toBeDefined();
+			expect(store.data['devices-module']?.backend).toBeDefined();
 		});
 
 		it('should throw error on fetch failure', async () => {

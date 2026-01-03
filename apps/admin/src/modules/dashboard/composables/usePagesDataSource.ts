@@ -67,9 +67,9 @@ export const usePagesDataSource = (): IUsePagesDataSource => {
 
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
-	const sortBy = ref<'title' | 'order' | 'type' | undefined>(sort.value.length > 0 ? (sort.value[0].by as 'title' | 'order' | 'type') : undefined);
+	const sortBy = ref<'title' | 'order' | 'type' | undefined>(sort.value.length > 0 ? (sort.value[0]?.by as 'title' | 'order' | 'type') : undefined);
 
-	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
 
 	const pages = computed<IPage[]>((): IPage[] => {
 		return orderBy<IPage>(

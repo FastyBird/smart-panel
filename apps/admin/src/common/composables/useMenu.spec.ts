@@ -108,10 +108,10 @@ describe('useMenu', () => {
 		expect(Object.keys(mainMenuItems)).toContain('Settings');
 		expect(Object.keys(mainMenuItems)).toContain('Logout');
 
-		expect(mainMenuItems.Dashboard.children).toHaveProperty('Analytics');
-		expect(mainMenuItems.Dashboard.children).toHaveProperty('Reports');
-		expect(mainMenuItems.Settings.children).toHaveProperty('Profile');
-		expect(mainMenuItems.Settings.children).toHaveProperty('Security');
+		expect(mainMenuItems.Dashboard?.children).toHaveProperty('Analytics');
+		expect(mainMenuItems.Dashboard?.children).toHaveProperty('Reports');
+		expect(mainMenuItems.Settings?.children).toHaveProperty('Profile');
+		expect(mainMenuItems.Settings?.children).toHaveProperty('Security');
 	});
 
 	it('should correctly filter out nested routes', () => {
@@ -136,6 +136,6 @@ describe('useMenu', () => {
 
 		expect(mainMenuItems).toBeDefined();
 		expect(mainMenuItems).toHaveProperty('Parent');
-		expect(mainMenuItems.Parent.children).not.toHaveProperty('Child');
+		expect(mainMenuItems.Parent?.children).not.toHaveProperty('Child');
 	});
 });

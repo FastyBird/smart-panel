@@ -72,10 +72,10 @@ export const useDisplaysDataSource = (): IUseDisplaysDataSource => {
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
 	const sortBy = ref<'name' | 'version' | 'screenWidth' | 'status' | undefined>(
-		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'version' | 'screenWidth' | 'status') : undefined
+		sort.value.length > 0 ? (sort.value[0]?.by as 'name' | 'version' | 'screenWidth' | 'status') : undefined
 	);
 
-	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
 
 	const displays = computed<IDisplay[]>((): IDisplay[] => {
 		return orderBy<IDisplay>(

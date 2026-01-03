@@ -104,7 +104,7 @@ describe('Services Store', () => {
 			});
 
 			expect(updated.state).toBe(ExtensionsModuleServiceState.stopped);
-			expect(store.data['test-plugin:main'].state).toBe(ExtensionsModuleServiceState.stopped);
+			expect(store.data['test-plugin:main']?.state).toBe(ExtensionsModuleServiceState.stopped);
 		});
 
 		it('should throw validation error for invalid data', () => {

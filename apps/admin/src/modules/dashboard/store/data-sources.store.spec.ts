@@ -90,7 +90,7 @@ describe('DataSources Store', () => {
 		const result = await store.fetch({ parent: { type: 'page', id: parentId } } satisfies IDataSourcesFetchActionPayload);
 
 		expect(store.findForParent('page', parentId)).toHaveLength(1);
-		expect(result[0].id).toBe(dsId);
+		expect(result[0]?.id).toBe(dsId);
 		expect(store.firstLoadFinished(parentId)).toBe(true);
 		expect(store.findAll('page')).toHaveLength(1);
 		expect(store.findById('page', dsId)).not.toBeNull();

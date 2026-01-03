@@ -82,10 +82,10 @@ export const useExtensionsDataSource = (): IUseExtensionsDataSource => {
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
 	const sortBy = ref<'name' | 'type' | 'kind' | 'enabled' | undefined>(
-		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'type' | 'kind' | 'enabled') : undefined
+		sort.value.length > 0 ? (sort.value[0]?.by as 'name' | 'type' | 'kind' | 'enabled') : undefined
 	);
 
-	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
 
 	const allExtensions = computed<IExtension[]>((): IExtension[] => {
 		return Object.values(extensionsStore.data);

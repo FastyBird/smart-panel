@@ -236,7 +236,7 @@ const toggleExposeEnabled = (exposeName: string, enabled: boolean): void => {
 	if (enabled) {
 		if (existingIndex >= 0) {
 			const override = currentOverrides[existingIndex];
-			if (override.channelCategory) {
+			if (override?.channelCategory) {
 				currentOverrides[existingIndex] = { exposeName, channelCategory: override.channelCategory };
 				formModel[`category_${sanitizeExposeNameForForm(exposeName)}`] = override.channelCategory;
 			} else if (isValidSuggestedCategory) {
@@ -257,7 +257,9 @@ const toggleExposeEnabled = (exposeName: string, enabled: boolean): void => {
 	} else {
 		if (existingIndex >= 0) {
 			const override = currentOverrides[existingIndex];
-			currentOverrides[existingIndex] = { ...override, skip: true };
+			if (override) {
+				currentOverrides[existingIndex] = { ...override, skip: true };
+			}
 		} else {
 			currentOverrides.push({ exposeName, skip: true });
 		}
@@ -277,7 +279,10 @@ const updateExposeChannelCategory = (exposeName: string, category: DevicesModule
 	const existingIndex = currentOverrides.findIndex((o) => o.exposeName === exposeName);
 
 	if (existingIndex >= 0) {
-		currentOverrides[existingIndex] = { ...currentOverrides[existingIndex], channelCategory: category, skip: false };
+		const existing = currentOverrides[existingIndex];
+		if (existing) {
+			currentOverrides[existingIndex] = { ...existing, channelCategory: category, skip: false };
+		}
 	} else {
 		currentOverrides.push({ exposeName, channelCategory: category });
 	}

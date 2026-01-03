@@ -85,14 +85,14 @@ describe('PasswordEditForm', (): void => {
 		const form = wrapper.findComponent(ElForm);
 
 		const passwordInput = form.findAllComponents(ElInput)[0];
-		expect(passwordInput.exists()).toBe(true);
+		expect(passwordInput?.exists()).toBe(true);
 
 		const repeatPasswordInput = form.findAllComponents(ElInput)[1];
-		expect(repeatPasswordInput.exists()).toBe(true);
+		expect(repeatPasswordInput?.exists()).toBe(true);
 
-		await passwordInput.setValue('password123');
+		await passwordInput?.setValue('password123');
 
-		await repeatPasswordInput.setValue('password123');
+		await repeatPasswordInput?.setValue('password123');
 
 		await wrapper.setProps({ remoteFormSubmit: true });
 
@@ -107,13 +107,13 @@ describe('PasswordEditForm', (): void => {
 		const form = wrapper.findComponent(ElForm);
 
 		const passwordInput = form.findAllComponents(ElInput)[0];
-		expect(passwordInput.exists()).toBe(true);
+		expect(passwordInput?.exists()).toBe(true);
 
 		const repeatPasswordInput = form.findAllComponents(ElInput)[1];
-		expect(repeatPasswordInput.exists()).toBe(true);
+		expect(repeatPasswordInput?.exists()).toBe(true);
 
-		await passwordInput.setValue('password123');
-		await repeatPasswordInput.setValue('password123');
+		await passwordInput?.setValue('password123');
+		await repeatPasswordInput?.setValue('password123');
 
 		await wrapper.setProps({ remoteFormSubmit: true });
 
