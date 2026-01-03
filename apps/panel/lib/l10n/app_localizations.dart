@@ -1744,6 +1744,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scene partially activated'**
   String get space_scene_partial_success;
+
+  /// Status when the window covering is fully open
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get window_covering_status_open;
+
+  /// Status when the window covering is fully closed
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get window_covering_status_closed;
+
+  /// Status when the window covering is opening
+  ///
+  /// In en, this message translates to:
+  /// **'Opening'**
+  String get window_covering_status_opening;
+
+  /// Status when the window covering is closing
+  ///
+  /// In en, this message translates to:
+  /// **'Closing'**
+  String get window_covering_status_closing;
+
+  /// Status when the window covering is stopped mid-way
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get window_covering_status_stopped;
+
+  /// Type label for curtain window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Curtain'**
+  String get window_covering_type_curtain;
+
+  /// Type label for blind window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Blind'**
+  String get window_covering_type_blind;
+
+  /// Type label for roller window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Roller'**
+  String get window_covering_type_roller;
+
+  /// Type label for outdoor blind window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Outdoor Blind'**
+  String get window_covering_type_outdoor_blind;
+
+  /// Button label to open the window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get window_covering_command_open;
+
+  /// Button label to close the window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get window_covering_command_close;
+
+  /// Button label to stop the window covering
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get window_covering_command_stop;
+
+  /// Label for position control
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get window_covering_position_label;
+
+  /// Description for the current position value
+  ///
+  /// In en, this message translates to:
+  /// **'Current position'**
+  String get window_covering_position_description;
+
+  /// Label for tilt control
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt'**
+  String get window_covering_tilt_label;
+
+  /// Description for the tilt control
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust slat angle'**
+  String get window_covering_tilt_description;
+
+  /// Warning message when obstruction is detected
+  ///
+  /// In en, this message translates to:
+  /// **'Obstruction detected'**
+  String get window_covering_obstruction_warning;
+
+  /// Warning message when a fault is detected
+  ///
+  /// In en, this message translates to:
+  /// **'Fault detected'**
+  String get window_covering_fault_warning;
+
+  /// Title label for battery level display
+  ///
+  /// In en, this message translates to:
+  /// **'Battery'**
+  String get battery_title;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
