@@ -63,6 +63,8 @@ export class PropertyValueService {
 					timestamp: new Date(),
 				},
 			]);
+
+			// Value saved - only log at trace level (too verbose for debug)
 		} catch (error) {
 			const err = error as Error;
 

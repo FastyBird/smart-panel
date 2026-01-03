@@ -80,6 +80,8 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
+			this.logger.debug('Fetching single Home Assistant discovered device');
+
 			const [device, states] = await Promise.all([this.fetchSingleHaDevice(id), this.fetchListHaStates()]);
 
 			if (device && states) {
@@ -296,6 +298,8 @@ export class HomeAssistantHttpService {
 		}
 
 		try {
+			// Automatic sync started - too verbose for debug level
+
 			const [states, haDevices, devices, properties] = await Promise.all([
 				this.fetchListHaStates(),
 				this.fetchListHaDevices(),
@@ -307,6 +311,7 @@ export class HomeAssistantHttpService {
 			]);
 
 			if (!states?.length || !haDevices?.length || !devices?.length || !properties?.length) {
+				// Missing data - too verbose for debug level
 				return;
 			}
 
@@ -389,12 +394,11 @@ export class HomeAssistantHttpService {
 						state: isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
 					});
 
-					this.logger.debug(
-						`Device ${device.name} (${device.id}) marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,
-						{ resource: device.id },
-					);
+					// Device connectivity change - too verbose for debug level
 				}
 			}
+
+			// Automatic sync completed - too verbose for debug level
 		} catch (error) {
 			const err = error as Error;
 
@@ -411,10 +415,13 @@ export class HomeAssistantHttpService {
 	 */
 	async syncDeviceStates(deviceId: string): Promise<void> {
 		if (this.apiKey === null || this.enabled !== true) {
+			this.logger.debug(`[SYNC] Skipping sync for device ${deviceId} - HA not configured`, { resource: deviceId });
 			return;
 		}
 
 		try {
+			this.logger.debug(`[SYNC] Syncing states for device ${deviceId}`, { resource: deviceId });
+
 			// Load the device
 			const device = await this.devicesService.findOne<HomeAssistantDeviceEntity>(
 				deviceId,
@@ -430,6 +437,7 @@ export class HomeAssistantHttpService {
 			const [haDevices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
 
 			if (!haDevices?.length || !states?.length) {
+				this.logger.debug(`[SYNC] Missing HA data for device ${deviceId}`, { resource: deviceId });
 				return;
 			}
 
@@ -444,6 +452,7 @@ export class HomeAssistantHttpService {
 			const deviceStates = states.filter((s) => haDevice.entities.includes(s.entity_id));
 
 			if (!deviceStates.length) {
+				this.logger.debug(`[SYNC] No states found for device ${deviceId}`, { resource: deviceId });
 				return;
 			}
 
@@ -461,6 +470,7 @@ export class HomeAssistantHttpService {
 			);
 
 			if (!deviceProperties.length) {
+				this.logger.debug(`[SYNC] No properties found for device ${deviceId}`, { resource: deviceId });
 				return;
 			}
 
@@ -520,6 +530,8 @@ export class HomeAssistantHttpService {
 		try {
 			const devices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
 
+			this.logger.debug(`[CONNECTIVITY] Marking ${devices.length} HA devices as disconnected`);
+
 			for (const device of devices) {
 				try {
 					await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -534,6 +546,8 @@ export class HomeAssistantHttpService {
 					});
 				}
 			}
+
+			this.logger.debug('[CONNECTIVITY] All HA devices marked as disconnected');
 		} catch (error) {
 			const err = error as Error;
 
@@ -552,6 +566,8 @@ export class HomeAssistantHttpService {
 		try {
 			const devices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
 
+			this.logger.debug(`[CONNECTIVITY] Marking ${devices.length} HA devices as connected`);
+
 			for (const device of devices) {
 				try {
 					await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -566,6 +582,8 @@ export class HomeAssistantHttpService {
 					});
 				}
 			}
+
+			this.logger.debug('[CONNECTIVITY] All HA devices marked as connected');
 		} catch (error) {
 			const err = error as Error;
 
@@ -672,6 +690,10 @@ export class HomeAssistantHttpService {
 							...instanceToPlain(virtualProp),
 							value: resolved.value,
 						}),
+					);
+
+					this.logger.debug(
+						`[SYNC] Updated virtual property ${virtualProp.category} = ${String(resolved.value)} for channel ${channel.category}`,
 					);
 				}
 			}

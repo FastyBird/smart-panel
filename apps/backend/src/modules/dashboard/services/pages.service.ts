@@ -45,9 +45,7 @@ export class PagesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		const pages = await repository.count();
-
-		return pages;
+		return repository.count();
 	}
 
 	async findAll<TPage extends PageEntity>(type?: string): Promise<TPage[]> {
@@ -87,6 +85,8 @@ export class PagesService {
 	}
 
 	async create<TPage extends PageEntity, TCreateDTO extends CreatePageDto>(createDto: CreatePageDto): Promise<TPage> {
+		this.logger.debug('Creating new page');
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -159,6 +159,8 @@ export class PagesService {
 		// Retrieve the saved page with its full relations
 		const savedPage = await this.getOneOrThrow<TPage>(created.id);
 
+		this.logger.debug(`Successfully created page with id=${savedPage.id}`);
+
 		this.eventEmitter.emit(EventType.PAGE_CREATED, savedPage);
 
 		return savedPage;
@@ -226,6 +228,8 @@ export class PagesService {
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing page with id=${id}`);
+
 		const fullPage = await this.getOneOrThrow<PageEntity>(id);
 
 		await this.dataSource.transaction(async (manager) => {

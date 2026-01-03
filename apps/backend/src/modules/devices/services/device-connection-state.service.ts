@@ -64,11 +64,6 @@ export class DeviceConnectionStateService {
 	async readLatest(device: DeviceEntity): Promise<{ online: boolean; status: ConnectionState }> {
 		// Check local cache first
 		if (this.statusMap.has(device.id)) {
-			this.logger.debug(
-				`Loaded cached status for device id=${device.id}, status=${this.statusMap.get(device.id)?.status}`,
-				{ resource: device.id },
-			);
-
 			return this.statusMap.get(device.id);
 		}
 

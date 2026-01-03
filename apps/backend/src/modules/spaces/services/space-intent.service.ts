@@ -166,8 +166,6 @@ export class SpaceIntentService {
 		const space = await this.spacesService.findOne(spaceId);
 
 		if (!space) {
-			this.logger.warn(`Space not found id=${spaceId}`);
-
 			return { success: false, affectedDevices: 0, failedDevices: 0 };
 		}
 
@@ -508,8 +506,6 @@ export class SpaceIntentService {
 		const space = await this.spacesService.findOne(spaceId);
 
 		if (!space) {
-			this.logger.warn(`Space not found id=${spaceId}`);
-
 			return defaultState;
 		}
 
@@ -617,8 +613,6 @@ export class SpaceIntentService {
 		const space = await this.spacesService.findOne(spaceId);
 
 		if (!space) {
-			this.logger.warn(`Space not found id=${spaceId}`);
-
 			return defaultResult;
 		}
 

@@ -86,6 +86,8 @@ export class SpacesService {
 	}
 
 	async create(createDto: CreateSpaceDto): Promise<SpaceEntity> {
+		this.logger.debug('Creating new space');
+
 		const dtoInstance = await this.validateDto(CreateSpaceDto, createDto);
 
 		// Check for existing space with same canonical name (deduplication)
@@ -93,6 +95,9 @@ export class SpacesService {
 		const existingSpace = await this.findByCanonicalName(canonicalName);
 
 		if (existingSpace) {
+			this.logger.debug(
+				`Space with canonical name "${canonicalName}" already exists (id=${existingSpace.id}), returning existing`,
+			);
 			return existingSpace;
 		}
 
@@ -120,6 +125,8 @@ export class SpacesService {
 
 		// Re-fetch to get database default values populated
 		const savedSpace = await this.getOneOrThrow(space.id);
+
+		this.logger.debug(`Successfully created space with id=${savedSpace.id}`);
 
 		this.eventEmitter.emit(EventType.SPACE_CREATED, savedSpace);
 
@@ -195,6 +202,8 @@ export class SpacesService {
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing space with id=${id}`);
+
 		const space = await this.getOneOrThrow(id);
 
 		await this.dataSource.transaction(async (manager) => {
@@ -225,6 +234,8 @@ export class SpacesService {
 			await manager.remove(space);
 		});
 
+		this.logger.debug(`Successfully removed space with id=${id}`);
+
 		this.eventEmitter.emit(EventType.SPACE_DELETED, { id });
 	}
 
@@ -240,12 +251,14 @@ export class SpacesService {
 				order: { name: 'ASC' },
 			});
 
-			return devices;
+			// Always return an array, never null/undefined
+			return devices ?? [];
 		} else {
 			// Zones have devices via junction table
 			const devices = await this.deviceZonesService.getZoneDevices(spaceId);
 
-			return devices;
+			// Always return an array, never null/undefined
+			return devices ?? [];
 		}
 	}
 
@@ -265,6 +278,8 @@ export class SpacesService {
 		spaceId: string,
 		bulkAssignDto: BulkAssignDto,
 	): Promise<{ devicesAssigned: number; displaysAssigned: number }> {
+		this.logger.debug(`Bulk assigning to space with id=${spaceId}`);
+
 		// Verify space exists
 		const space = await this.getOneOrThrow(spaceId);
 
@@ -287,6 +302,7 @@ export class SpacesService {
 				.execute();
 
 			devicesAssigned = result.affected || 0;
+			this.logger.debug(`Assigned ${devicesAssigned} devices to space`);
 		}
 
 		// Assign displays
@@ -299,12 +315,15 @@ export class SpacesService {
 				.execute();
 
 			displaysAssigned = result.affected || 0;
+			this.logger.debug(`Assigned ${displaysAssigned} displays to space`);
 		}
 
 		return { devicesAssigned, displaysAssigned };
 	}
 
 	async unassignDevices(deviceIds: string[]): Promise<number> {
+		this.logger.debug(`Unassigning ${deviceIds.length} devices from their rooms`);
+
 		if (deviceIds.length === 0) {
 			return 0;
 		}
@@ -316,10 +335,15 @@ export class SpacesService {
 			.where('id IN (:...ids)', { ids: deviceIds })
 			.execute();
 
-		return result.affected || 0;
+		const unassigned = result.affected || 0;
+		this.logger.debug(`Unassigned ${unassigned} devices`);
+
+		return unassigned;
 	}
 
 	async unassignDisplays(displayIds: string[]): Promise<number> {
+		this.logger.debug(`Unassigning ${displayIds.length} displays from their rooms`);
+
 		if (displayIds.length === 0) {
 			return 0;
 		}
@@ -331,7 +355,10 @@ export class SpacesService {
 			.where('id IN (:...ids)', { ids: displayIds })
 			.execute();
 
-		return result.affected || 0;
+		const unassigned = result.affected || 0;
+		this.logger.debug(`Unassigned ${unassigned} displays`);
+
+		return unassigned;
 	}
 
 	async proposeSpaces(): Promise<
@@ -466,7 +493,6 @@ export class SpacesService {
 		const zone = await this.getOneOrThrow(zoneId);
 
 		if (zone.type !== SpaceType.ZONE) {
-			this.logger.warn(`Space ${zoneId} is not a zone, returning empty list`);
 			return [];
 		}
 

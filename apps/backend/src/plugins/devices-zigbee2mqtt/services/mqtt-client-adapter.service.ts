@@ -246,6 +246,8 @@ export class Z2mMqttClientAdapterService {
 		const topic = `${this.baseTopic}/${friendlyName}/set`;
 		const message = JSON.stringify(payload);
 
+		this.logger.debug(`Publishing to ${topic}: ${message}`);
+
 		return new Promise((resolve) => {
 			this.client?.publish(topic, message, { qos: 1 }, (error) => {
 				if (error) {
@@ -310,7 +312,7 @@ export class Z2mMqttClientAdapterService {
 						message: error.message,
 					});
 				} else {
-					// Intentionally empty - subscription successful
+					this.logger.debug(`Subscribed to ${topic}`);
 				}
 			});
 		}
@@ -546,6 +548,7 @@ export class Z2mMqttClientAdapterService {
 		for (const [friendlyName, device] of this.deviceRegistry.entries()) {
 			// Check if device has any state values
 			if (Object.keys(device.currentState).length === 0) {
+				this.logger.debug(`Requesting state for device without current state: ${friendlyName}`);
 				// Fire and forget - responses will be handled by handleDeviceStateMessage
 				this.requestState(friendlyName).catch(() => {
 					// Ignore errors - device might be offline
@@ -588,6 +591,7 @@ export class Z2mMqttClientAdapterService {
 					break;
 
 				case 'device_interview':
+					this.logger.debug(`Device interview: ${event.data.friendly_name} - ${event.data.status}`);
 					break;
 			}
 		} catch (error) {
@@ -618,8 +622,6 @@ export class Z2mMqttClientAdapterService {
 			if (device) {
 				device.currentState = { ...device.currentState, ...state };
 				device.lastSeen = new Date();
-			} else {
-				// Intentionally empty - device not in registry
 			}
 
 			// Emit state changed event

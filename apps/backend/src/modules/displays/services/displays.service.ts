@@ -33,9 +33,7 @@ export class DisplaysService {
 	) {}
 
 	async findAll(): Promise<DisplayEntity[]> {
-		const displays = await this.repository.find();
-
-		return displays;
+		return this.repository.find();
 	}
 
 	async findOne(id: string): Promise<DisplayEntity | null> {
@@ -63,12 +61,16 @@ export class DisplaysService {
 	}
 
 	async create(data: Partial<DisplayEntity>): Promise<DisplayEntity> {
+		this.logger.debug('Creating new display');
+
 		const display = this.repository.create(data);
 
 		await this.repository.save(display);
 
 		// Re-fetch to get database default values populated
 		const savedDisplay = await this.getOneOrThrow(display.id);
+
+		this.logger.debug(`Successfully created display with id=${savedDisplay.id}`);
 
 		this.eventEmitter.emit(EventType.DISPLAY_CREATED, savedDisplay);
 
@@ -112,6 +114,8 @@ export class DisplaysService {
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing display with id=${id}`);
+
 		const display = await this.getOneOrThrow(id);
 
 		// Explicitly clean up page-display relations in the join table
@@ -124,6 +128,8 @@ export class DisplaysService {
 			.execute();
 
 		await this.repository.remove(display);
+
+		this.logger.debug(`Successfully removed display with id=${id}`);
 
 		this.eventEmitter.emit(EventType.DISPLAY_DELETED, { id });
 	}
@@ -198,15 +204,7 @@ export class DisplaysService {
 	}
 
 	private async findByField(field: keyof DisplayEntity, value: string): Promise<DisplayEntity | null> {
-		const display = await this.repository.findOne({ where: { [field]: value } });
-
-		if (!display) {
-			this.logger.warn(`Display not found by ${field}`);
-
-			return null;
-		}
-
-		return display;
+		return this.repository.findOne({ where: { [field]: value } });
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

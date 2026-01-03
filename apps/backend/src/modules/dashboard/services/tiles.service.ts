@@ -49,18 +49,14 @@ export class TilesService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (relation) {
-			const tiles = await repository
+			return repository
 				.createQueryBuilder('tile')
 				.where('tile.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
 				.getCount();
-
-			return tiles;
 		}
 
-		const tiles = await repository.count();
-
-		return tiles;
+		return repository.count();
 	}
 
 	async findAll<TTile extends TileEntity>(relation?: Relation, type?: string): Promise<TTile[]> {
@@ -68,21 +64,17 @@ export class TilesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		let tiles: TileEntity[];
+
 		if (relation) {
-			const tiles = await repository
+			tiles = await repository
 				.createQueryBuilder('tile')
 				.where('tile.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
 				.getMany();
-
-			for (const tile of tiles) {
-				await this.loadRelations(tile);
-			}
-
-			return tiles as TTile[];
+		} else {
+			tiles = await repository.find();
 		}
-
-		const tiles = await repository.find();
 
 		for (const tile of tiles) {
 			await this.loadRelations(tile);
@@ -105,16 +97,12 @@ export class TilesService {
 				.andWhere('tile.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
 				.getOne();
-
-			if (!tile) {
-				return null;
-			}
 		} else {
 			tile = await repository.createQueryBuilder('tile').where('tile.id = :id', { id }).getOne();
+		}
 
-			if (!tile) {
-				return null;
-			}
+		if (!tile) {
+			return null;
 		}
 
 		await this.loadRelations(tile);
@@ -126,6 +114,8 @@ export class TilesService {
 		createDto: CreateTileDto,
 		relation: Relation,
 	): Promise<TTile> {
+		this.logger.debug(`Creating new tile for parentType=${relation.parentType} and parentId=${relation.parentId}`);
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -170,6 +160,8 @@ export class TilesService {
 		// Retrieve the saved tile with its full relations
 		const savedTile = await this.getOneOrThrow<TTile>(created.id, relation);
 
+		this.logger.debug(`Successfully created tile with id=${savedTile.id}`);
+
 		this.eventEmitter.emit(EventType.TILE_CREATED, savedTile);
 
 		return savedTile;
@@ -199,6 +191,8 @@ export class TilesService {
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing tile with id=${id}`);
+
 		const fullTile = await this.getOneOrThrow<TileEntity>(id);
 
 		await this.dataSource.transaction(async (manager) => {

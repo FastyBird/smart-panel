@@ -35,9 +35,7 @@ export class DeviceZonesService {
 			relations: ['zone'],
 		});
 
-		const zones = relations.map((r) => r.zone).filter((z) => z !== null);
-
-		return zones;
+		return relations.map((r) => r.zone).filter((z) => z !== null);
 	}
 
 	/**
@@ -49,9 +47,7 @@ export class DeviceZonesService {
 			relations: ['device'],
 		});
 
-		const devices = relations.map((r) => r.device).filter((d) => d !== null);
-
-		return devices;
+		return relations.map((r) => r.device).filter((d) => d !== null);
 	}
 
 	/**
@@ -59,6 +55,8 @@ export class DeviceZonesService {
 	 * Validates that the zone is not a floor zone
 	 */
 	async addDeviceToZone(deviceId: string, zoneId: string): Promise<DeviceZoneEntity> {
+		this.logger.debug(`Adding device ${deviceId} to zone ${zoneId}`);
+
 		// Verify device exists
 		const device = await this.deviceRepository.findOne({ where: { id: deviceId } });
 		if (!device) {
@@ -92,6 +90,7 @@ export class DeviceZonesService {
 		});
 
 		if (existing) {
+			this.logger.debug(`Device ${deviceId} already in zone ${zoneId}`);
 			return existing;
 		}
 
@@ -103,6 +102,8 @@ export class DeviceZonesService {
 
 		await this.repository.save(deviceZone);
 
+		this.logger.debug(`Successfully added device ${deviceId} to zone ${zoneId}`);
+
 		this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
 
 		return deviceZone;
@@ -112,11 +113,15 @@ export class DeviceZonesService {
 	 * Remove a device from a zone
 	 */
 	async removeDeviceFromZone(deviceId: string, zoneId: string): Promise<void> {
+		this.logger.debug(`Removing device ${deviceId} from zone ${zoneId}`);
+
 		const result = await this.repository.delete({ deviceId, zoneId });
 
 		if (result.affected === 0) {
 			this.logger.warn(`Device ${deviceId} was not in zone ${zoneId}`);
 		} else {
+			this.logger.debug(`Successfully removed device ${deviceId} from zone ${zoneId}`);
+
 			const device = await this.deviceRepository.findOne({ where: { id: deviceId } });
 			if (device) {
 				this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
@@ -128,6 +133,8 @@ export class DeviceZonesService {
 	 * Set zones for a device (replaces existing zone memberships)
 	 */
 	async setDeviceZones(deviceId: string, zoneIds: string[]): Promise<SpaceEntity[]> {
+		this.logger.debug(`Setting zones for device ${deviceId}: ${zoneIds.join(', ')}`);
+
 		// Verify device exists
 		const device = await this.deviceRepository.findOne({ where: { id: deviceId } });
 		if (!device) {
@@ -175,6 +182,8 @@ export class DeviceZonesService {
 			await this.repository.save(deviceZones);
 		}
 
+		this.logger.debug(`Successfully set ${zoneIds.length} zones for device ${deviceId}`);
+
 		this.eventEmitter.emit(EventType.DEVICE_UPDATED, device);
 
 		return validatedZones;
@@ -184,6 +193,10 @@ export class DeviceZonesService {
 	 * Clear all zone memberships for a device
 	 */
 	async clearDeviceZones(deviceId: string): Promise<void> {
-		await this.repository.delete({ deviceId });
+		this.logger.debug(`Clearing all zones for device ${deviceId}`);
+
+		const result = await this.repository.delete({ deviceId });
+
+		this.logger.debug(`Removed ${result.affected ?? 0} zone memberships for device ${deviceId}`);
 	}
 }

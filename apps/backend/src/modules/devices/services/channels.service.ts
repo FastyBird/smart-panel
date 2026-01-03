@@ -40,18 +40,14 @@ export class ChannelsService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (deviceId) {
-			const channels = await repository
+			return repository
 				.createQueryBuilder('channel')
 				.innerJoinAndSelect('channel.device', 'device')
 				.where('device.id = :deviceId', { deviceId })
 				.getCount();
-
-			return channels;
 		}
 
-		const channels = await repository.count();
-
-		return channels;
+		return repository.count();
 	}
 
 	// Channels
@@ -182,6 +178,8 @@ export class ChannelsService {
 	async create<TChannel extends ChannelEntity, TCreateDTO extends CreateChannelDto>(
 		createDto: TCreateDTO,
 	): Promise<TChannel> {
+		this.logger.debug('Creating new channel');
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -216,6 +214,8 @@ export class ChannelsService {
 		const raw = await repository.save(channel);
 
 		for (const propertyDtoInstance of createDto.properties ?? []) {
+			this.logger.debug(`Creating new property for channelId=${raw.id}`);
+
 			await this.channelsPropertiesService.create(raw.id, propertyDtoInstance);
 		}
 
@@ -226,6 +226,8 @@ export class ChannelsService {
 
 			savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 		}
+
+		this.logger.debug(`Successfully created channel with id=${savedChannel.id}`);
 
 		this.eventEmitter.emit(EventType.CHANNEL_CREATED, savedChannel);
 
@@ -262,6 +264,8 @@ export class ChannelsService {
 	}
 
 	async remove(id: string, manager?: EntityManager): Promise<void> {
+		this.logger.debug(`Removing channel with id=${id}`);
+
 		if (typeof manager !== 'undefined') {
 			const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
 

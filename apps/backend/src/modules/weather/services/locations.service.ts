@@ -51,16 +51,14 @@ export class LocationsService {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const location = (await repository.findOne({ where: { id } as any })) as TLocation | null;
 
-		if (!location) {
-			return null;
-		}
-
 		return location;
 	}
 
 	async create<TLocation extends WeatherLocationEntity, TCreateDTO extends CreateLocationDto>(
 		createDto: TCreateDTO,
 	): Promise<TLocation> {
+		this.logger.debug('Creating new location');
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -99,6 +97,8 @@ export class LocationsService {
 			savedLocation = (await this.getOneOrThrow(raw.id)) as TLocation;
 		}
 
+		this.logger.debug(`Successfully created location with id=${savedLocation.id}`);
+
 		this.eventEmitter.emit(EventType.LOCATION_CREATED, savedLocation);
 
 		return savedLocation;
@@ -134,6 +134,8 @@ export class LocationsService {
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing location with id=${id}`);
+
 		const location = await this.getOneOrThrow(id);
 
 		// Check if this location is set as primary
@@ -152,6 +154,8 @@ export class LocationsService {
 			if (error instanceof WeatherValidationException) {
 				throw error;
 			}
+
+			this.logger.debug(`Could not check primary location status, proceeding with deletion`);
 		}
 
 		await this.repository.remove(location);

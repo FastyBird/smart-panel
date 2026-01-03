@@ -228,11 +228,6 @@ export class Z2mDeviceMapperService {
 					if (virtualDef) {
 						const newValue = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
 
-						this.logger.debug(
-							`Updating virtual property ${propertyIdentifier} = ${newValue} (channel: ${channel.category})`,
-							{ resource: device.id },
-						);
-
 						await this.channelsPropertiesService.update<
 							Zigbee2mqttChannelPropertyEntity,
 							UpdateZigbee2mqttChannelPropertyDto

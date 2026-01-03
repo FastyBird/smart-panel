@@ -47,9 +47,7 @@ export class TokensService {
 		}
 		// LongLiveTokenEntity has no relations to join
 
-		const tokens = (await queryBuilder.getMany()) as TToken[];
-
-		return tokens;
+		return (await queryBuilder.getMany()) as TToken[];
 	}
 
 	async findAllByOwner<TToken extends TokenEntity>(
@@ -83,35 +81,33 @@ export class TokensService {
 				.where('owner.id = :ownerId', { ownerId: owner });
 		}
 
-		const tokens = (await queryBuilder.getMany()) as TToken[];
-
-		return tokens;
+		return (await queryBuilder.getMany()) as TToken[];
 	}
 
 	async findAllByOwnerType(ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
-		const tokens = await repository.find({
+		return repository.find({
 			where: { ownerType },
 		});
-
-		return tokens;
 	}
 
 	async findByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
-		const tokens = await repository.find({
+		return repository.find({
 			where: { tokenOwnerId: ownerId, ownerType },
 		});
-
-		return tokens;
 	}
 
 	async revokeByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<void> {
+		this.logger.debug(`Revoking all tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
+
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
 		await repository.update({ tokenOwnerId: ownerId, ownerType }, { revoked: true });
+
+		this.logger.debug(`Successfully revoked tokens for ownerId=${ownerId}`);
 	}
 
 	async findOne<TToken extends TokenEntity>(id: string, type?: new (...args: any[]) => TToken): Promise<TToken | null> {
@@ -122,6 +118,8 @@ export class TokensService {
 		token: string,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken | null> {
+		this.logger.debug('Finding token by hashed value');
+
 		const hashedToken = hashToken(token);
 		const allTokens = await this.findAll(type);
 
@@ -135,6 +133,8 @@ export class TokensService {
 	}
 
 	async create<TToken extends TokenEntity, TCreateDTO extends CreateTokenDto>(createDto: TCreateDTO): Promise<TToken> {
+		this.logger.debug('Creating new token');
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -244,6 +244,8 @@ export class TokensService {
 		// Retrieve the saved token with its full relations
 		const savedToken = await this.getOneOrThrow<TToken>(savedResult.id, mapping.class);
 
+		this.logger.debug(`Successfully created token with id=${savedToken.id}`);
+
 		return savedToken;
 	}
 
@@ -251,6 +253,8 @@ export class TokensService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TToken> {
+		this.logger.debug(`Updating token with id=${id}`);
+
 		const token = await this.getOneOrThrow(id);
 
 		const mapping = this.tokensMapperService.getMapping<TToken, any, TUpdateDTO>(token.type);
@@ -263,12 +267,12 @@ export class TokensService {
 
 		await repository.save(token as TToken);
 
-		const updatedToken = await this.getOneOrThrow<TToken>(token.id);
-
-		return updatedToken;
+		return this.getOneOrThrow<TToken>(token.id);
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing token with id=${id}`);
+
 		const token = await this.getOneOrThrow(id);
 
 		await this.repository.remove(token);
@@ -324,8 +328,6 @@ export class TokensService {
 		const token = (await queryBuilder.getOne()) as TToken;
 
 		if (!token) {
-			this.logger.warn('Token not found');
-
 			return null;
 		}
 

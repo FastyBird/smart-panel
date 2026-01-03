@@ -393,6 +393,8 @@ export class WledClientAdapterService {
 		try {
 			const apiPayload = this.convertStateUpdateToApi(update);
 
+			// State update - too verbose for debug level
+
 			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
 
 			// Update local state with the response
@@ -574,6 +576,8 @@ export class WledClientAdapterService {
 		try {
 			const apiPayload = this.convertExtendedStateUpdateToApi(update);
 
+			// Extended state update - too verbose for debug level
+
 			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
 
 			if (device.context) {
@@ -621,6 +625,7 @@ export class WledClientAdapterService {
 		}
 
 		const wsUrl = `ws://${host}/ws`;
+		this.logger.debug(`Connecting WebSocket to ${wsUrl}`);
 
 		try {
 			const ws = new WebSocket(wsUrl);
@@ -675,6 +680,7 @@ export class WledClientAdapterService {
 			});
 
 			ws.on('close', () => {
+				this.logger.debug(`WebSocket disconnected from ${host}`);
 				this.websockets.delete(host);
 
 				const device = this.devices.get(host);

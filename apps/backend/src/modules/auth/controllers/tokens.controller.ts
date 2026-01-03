@@ -62,6 +62,7 @@ export class TokensController {
 	@Get()
 	async findAll(): Promise<TokensResponseModel> {
 		const tokens = await this.tokensService.findAll<TokenEntity>();
+
 		const response = new TokensResponseModel();
 		response.data = tokens;
 

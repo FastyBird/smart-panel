@@ -24,46 +24,34 @@ export class ChannelsControlsService {
 	) {}
 
 	async findAll(channelId: string): Promise<ChannelControlEntity[]> {
-		const controls = await this.repository
+		return this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
 			.where('channel.id = :channelId', { channelId })
 			.getMany();
-
-		return controls;
 	}
 
 	async findOne(id: string, channelId: string): Promise<ChannelControlEntity | null> {
-		const control = await this.repository
+		return this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
 			.where('control.id = :id', { id })
 			.andWhere('channel.id = :channelId', { channelId })
 			.getOne();
-
-		if (!control) {
-			return null;
-		}
-
-		return control;
 	}
 
 	async findOneByName(name: string, channelId: string): Promise<ChannelControlEntity | null> {
-		const control = await this.repository
+		return this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
 			.where('control.name = :name', { name })
 			.andWhere('channel.id = :channelId', { channelId })
 			.getOne();
-
-		if (!control) {
-			return null;
-		}
-
-		return control;
 	}
 
 	async create(channelId: string, createDto: CreateChannelControlDto): Promise<ChannelControlEntity> {
+		this.logger.debug(`Creating new control for channelId=${channelId}`);
+
 		const existingControl = await this.findOneByName(createDto.name, channelId);
 
 		if (existingControl !== null) {
@@ -82,12 +70,16 @@ export class ChannelsControlsService {
 
 		const savedControl = await this.getOneOrThrow(control.id, channelId);
 
+		this.logger.debug(`Successfully created control with id=${savedControl.id} for channelId=${channelId}`);
+
 		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_CREATED, savedControl);
 
 		return savedControl;
 	}
 
 	async remove(id: string, channelId: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
+		this.logger.debug(`Removing control with id=${id} for channelId=${channelId}`);
+
 		const control = await manager.findOneOrFail<ChannelControlEntity>(ChannelControlEntity, {
 			where: { id, channel: { id: channelId } },
 		});

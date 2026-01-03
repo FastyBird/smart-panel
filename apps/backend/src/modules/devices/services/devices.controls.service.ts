@@ -24,46 +24,34 @@ export class DevicesControlsService {
 	) {}
 
 	async findAll(deviceId: string): Promise<DeviceControlEntity[]> {
-		const controls = await this.repository
+		return this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
 			.where('device.id = :deviceId', { deviceId })
 			.getMany();
-
-		return controls;
 	}
 
 	async findOne(id: string, deviceId: string): Promise<DeviceControlEntity | null> {
-		const control = await this.repository
+		return this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
 			.where('control.id = :id', { id })
 			.andWhere('device.id = :deviceId', { deviceId })
 			.getOne();
-
-		if (!control) {
-			return null;
-		}
-
-		return control;
 	}
 
 	async findOneByName(name: string, deviceId: string): Promise<DeviceControlEntity | null> {
-		const control = await this.repository
+		return this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
 			.where('control.name = :name', { name })
 			.andWhere('device.id = :deviceId', { deviceId })
 			.getOne();
-
-		if (!control) {
-			return null;
-		}
-
-		return control;
 	}
 
 	async create(deviceId: string, createDeviceControlDto: CreateDeviceControlDto): Promise<DeviceControlEntity> {
+		this.logger.debug(`Creating new control for deviceId=${deviceId}`);
+
 		const existingControl = await this.findOneByName(createDeviceControlDto.name, deviceId);
 
 		if (existingControl !== null) {
@@ -82,12 +70,16 @@ export class DevicesControlsService {
 
 		const savedControl = await this.getOneOrThrow(control.id, deviceId);
 
+		this.logger.debug(`Successfully created control with id=${savedControl.id} for deviceId=${deviceId}`);
+
 		this.eventEmitter.emit(EventType.DEVICE_CONTROL_CREATED, savedControl);
 
 		return savedControl;
 	}
 
 	async remove(id: string, deviceId: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
+		this.logger.debug(`Removing control with id=${id} for deviceId=${deviceId}`);
+
 		const control = await manager.findOneOrFail<DeviceControlEntity>(DeviceControlEntity, {
 			where: { id, device: { id: deviceId } },
 		});

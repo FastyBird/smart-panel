@@ -90,6 +90,8 @@ export class ShellyV1HttpClientService {
 		const url = `http://${host}${endpoint}`;
 		const requestTimeout = timeout || this.DEFAULT_TIMEOUT;
 
+		// HTTP fetch - too verbose for debug level
+
 		// Build headers
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
@@ -118,6 +120,8 @@ export class ShellyV1HttpClientService {
 			}
 
 			const data = (await response.json()) as ShellyHttpEndpointResponseMap[E];
+
+			// HTTP response - too verbose for debug level
 
 			return data;
 		} catch (error) {

@@ -336,7 +336,8 @@ export class SpacesController {
 
 		const response = new DevicesResponseModel();
 
-		response.data = devices;
+		// Ensure we always return an array, never null
+		response.data = devices ?? [];
 
 		return response;
 	}

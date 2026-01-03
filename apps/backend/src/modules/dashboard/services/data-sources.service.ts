@@ -44,18 +44,14 @@ export class DataSourcesService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (relation) {
-			const dataSources = await repository
+			return repository
 				.createQueryBuilder('dataSource')
 				.where('dataSource.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('dataSource.parentId = :parentId', { parentId: relation.parentId })
 				.getCount();
-
-			return dataSources;
 		}
 
-		const dataSources = await repository.count();
-
-		return dataSources;
+		return repository.count();
 	}
 
 	async findAll<TDataSource extends DataSourceEntity>(relation?: Relation, type?: string): Promise<TDataSource[]> {
@@ -63,21 +59,17 @@ export class DataSourcesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		let dataSources: DataSourceEntity[];
+
 		if (relation) {
-			const dataSources = await repository
+			dataSources = await repository
 				.createQueryBuilder('dataSource')
 				.where('dataSource.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('dataSource.parentId = :parentId', { parentId: relation.parentId })
 				.getMany();
-
-			for (const dataSource of dataSources) {
-				await this.loadRelations(dataSource);
-			}
-
-			return dataSources as TDataSource[];
+		} else {
+			dataSources = await repository.find();
 		}
-
-		const dataSources = await repository.find();
 
 		for (const dataSource of dataSources) {
 			await this.loadRelations(dataSource);
@@ -104,16 +96,12 @@ export class DataSourcesService {
 				.andWhere('dataSource.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('dataSource.parentId = :parentId', { parentId: relation.parentId })
 				.getOne();
-
-			if (!dataSource) {
-				return null;
-			}
 		} else {
 			dataSource = await repository.createQueryBuilder('dataSource').where('dataSource.id = :id', { id }).getOne();
+		}
 
-			if (!dataSource) {
-				return null;
-			}
+		if (!dataSource) {
+			return null;
 		}
 
 		await this.loadRelations(dataSource);
@@ -125,6 +113,10 @@ export class DataSourcesService {
 		createDto: CreateDataSourceDto,
 		relation: Relation,
 	): Promise<TDataSource> {
+		this.logger.debug(
+			`Creating new data source for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+		);
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -155,6 +147,8 @@ export class DataSourcesService {
 		// Retrieve the saved dataSource with its full relations
 		const savedDataSource = await this.getOneOrThrow<TDataSource>(dataSource.id, relation);
 
+		this.logger.debug(`Successfully created data source with id=${savedDataSource.id}`);
+
 		this.eventEmitter.emit(EventType.DATA_SOURCE_CREATED, savedDataSource);
 
 		return savedDataSource;
@@ -184,6 +178,8 @@ export class DataSourcesService {
 	}
 
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
+		this.logger.debug(`Removing data source with id=${id}`);
+
 		const fullDataSource = await this.getOneOrThrow(id);
 
 		const dataSource = await manager.findOneOrFail<DataSourceEntity>(DataSourceEntity, {

@@ -75,7 +75,9 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		return this.server?.of('/')?.adapter?.rooms?.get(room)?.size ?? 0;
 	}
 
-	afterInit(): void {}
+	afterInit(): void {
+		this.logger.debug('Websockets gateway started');
+	}
 
 	async handleConnection(client: Socket): Promise<void> {
 		try {
@@ -228,6 +230,8 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			},
 		};
 
+		// Message emit - too verbose for debug level
+
 		this.server.emit('event', message);
 	}
 
@@ -249,6 +253,8 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 				timestamp: new Date().toISOString(),
 			},
 		};
+
+		// Event bus emit - too verbose for debug level
 
 		this.server.to(DISPLAY_INTERNAL_ROOM).emit('event', message);
 		this.server.to(EXCHANGE_ROOM).emit('event', message);
