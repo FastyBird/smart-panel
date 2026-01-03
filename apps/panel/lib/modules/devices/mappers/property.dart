@@ -160,6 +160,11 @@ Map<ChannelPropertyCategory, ChannelPropertyView Function(ChannelPropertyModel)>
       channelPropertyModel: channelPropertyModel,
     );
   },
+  ChannelPropertyCategory.command: (ChannelPropertyModel channelPropertyModel) {
+    return GenericChannelPropertyView(
+      channelPropertyModel: channelPropertyModel,
+    );
+  },
   ChannelPropertyCategory.connectionType:
       (ChannelPropertyModel channelPropertyModel) {
     return ConnectionTypeChannelPropertyView(
@@ -496,6 +501,9 @@ Map<ChannelPropertyCategory, IconData Function()> channelPropertyIconMappers = {
   },
   ChannelPropertyCategory.colorWhite: () {
     return MdiIcons.databaseCog;
+  },
+  ChannelPropertyCategory.command: () {
+    return MdiIcons.send;
   },
   ChannelPropertyCategory.connectionType: () {
     return MdiIcons.databaseCog;
