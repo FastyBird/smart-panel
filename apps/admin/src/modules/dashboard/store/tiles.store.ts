@@ -91,7 +91,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		});
 
 	const findById = (parent: string, id: ITile['id']): ITile | null => {
-		const item = id in data.value ? data.value[id] : null;
+		const item = data.value[id] ?? null;
 
 		if (item === null) {
 			return null;
@@ -173,8 +173,9 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 	};
 
 	const get = async (payload: ITilesGetActionPayload): Promise<ITile> => {
-		if (payload.id in pendingGetPromises) {
-			return pendingGetPromises[payload.id];
+		const existingPromise = pendingGetPromises[payload.id];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const getPromise = (async (): Promise<ITile> => {
@@ -229,8 +230,9 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 	};
 
 	const fetch = async (payload: ITilesFetchActionPayload): Promise<ITile[]> => {
-		if (payload.parent.id in pendingFetchPromises) {
-			return pendingFetchPromises[payload.parent.id];
+		const existingPromise = pendingFetchPromises[payload.parent.id];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const fetchPromise = (async (): Promise<ITile[]> => {
@@ -451,13 +453,14 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			throw new DashboardException('Tile is already being saved.');
 		}
 
-		if (!(payload.id in data.value)) {
+		const tileToSave = data.value[payload.id];
+		if (!tileToSave) {
 			throw new DashboardException('Failed to get tile data to save.');
 		}
 
-		const element = getPluginElement(data.value[payload.id].type);
+		const element = getPluginElement(tileToSave.type);
 
-		const parsedSaveItem = (element?.schemas?.tileSchema || TileSchema).safeParse(data.value[payload.id]);
+		const parsedSaveItem = (element?.schemas?.tileSchema || TileSchema).safeParse(tileToSave);
 
 		if (!parsedSaveItem.success) {
 			logger.error('Schema validation failed with:', parsedSaveItem.error);
@@ -515,7 +518,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 		delete data.value[payload.id];
 
-		if (recordToRemove.draft) {
+		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {

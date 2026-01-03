@@ -87,7 +87,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 	const findAll = (): IPage[] => Object.values(data.value);
 
-	const findById = (id: IPage['id']): IPage | null => (id in data.value ? data.value[id] : null);
+	const findById = (id: IPage['id']): IPage | null => data.value[id] ?? null;
 
 	const pendingGetPromises: Record<string, Promise<IPage>> = {};
 
@@ -141,8 +141,9 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 	};
 
 	const get = async (payload: IPagesGetActionPayload): Promise<IPage> => {
-		if (payload.id in pendingGetPromises) {
-			return pendingGetPromises[payload.id];
+		const existingPromise = pendingGetPromises[payload.id];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const getPromise = (async (): Promise<IPage> => {
@@ -424,13 +425,14 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			throw new DashboardException('Page is already being saved.');
 		}
 
-		if (!(payload.id in data.value)) {
+		const pageToSave = data.value[payload.id];
+		if (!pageToSave) {
 			throw new DashboardException('Failed to get page data to save.');
 		}
 
-		const element = getPluginElement(data.value[payload.id].type);
+		const element = getPluginElement(pageToSave.type);
 
-		const parsedSaveItem = (element?.schemas?.pageSchema || PageSchema).safeParse(data.value[payload.id]);
+		const parsedSaveItem = (element?.schemas?.pageSchema || PageSchema).safeParse(pageToSave);
 
 		if (!parsedSaveItem.success) {
 			logger.error('Schema validation failed with:', parsedSaveItem.error);
@@ -494,7 +496,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 		delete data.value[payload.id];
 
-		if (recordToRemove.draft) {
+		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {

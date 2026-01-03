@@ -64,7 +64,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 
 	const findAll = (): IDisplay[] => Object.values(data.value);
 
-	const findById = (id: IDisplay['id']): IDisplay | null => (id in data.value ? data.value[id] : null);
+	const findById = (id: IDisplay['id']): IDisplay | null => data.value[id] ?? null;
 
 	const onEvent = (payload: IDisplaysOnEventActionPayload): IDisplay => {
 		return set({
@@ -110,8 +110,9 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 	};
 
 	const get = async (payload: IDisplaysGetActionPayload): Promise<IDisplay> => {
-		if (payload.id in pendingGetPromises) {
-			return pendingGetPromises[payload.id];
+		const existingPromise = pendingGetPromises[payload.id];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const getPromise = (async (): Promise<IDisplay> => {
@@ -409,7 +410,7 @@ export const useDisplays = defineStore<'displays_module-displays', DisplaysStore
 
 		delete data.value[payload.id];
 
-		if (recordToRemove.draft) {
+		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {

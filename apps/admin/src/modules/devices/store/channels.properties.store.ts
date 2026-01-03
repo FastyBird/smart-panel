@@ -85,7 +85,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 		const findForChannel = (channelId: IChannel['id']): IChannelProperty[] =>
 			Object.values(data.value ?? {}).filter((property: IChannelProperty): boolean => property.channel === channelId);
 
-		const findById = (id: IChannelProperty['id']): IChannelProperty | null => (id in data.value ? data.value[id] : null);
+		const findById = (id: IChannelProperty['id']): IChannelProperty | null => data.value[id] ?? null;
 
 		const pendingGetPromises: Record<string, Promise<IChannelProperty>> = {};
 
@@ -156,8 +156,9 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 		};
 
 		const get = async (payload: IChannelsPropertiesGetActionPayload): Promise<IChannelProperty> => {
-			if (payload.id in pendingGetPromises) {
-				return pendingGetPromises[payload.id];
+			const existingPromise = pendingGetPromises[payload.id];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IChannelProperty> => {
@@ -210,8 +211,9 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 		};
 
 		const fetch = async (payload: IChannelsPropertiesFetchActionPayload): Promise<IChannelProperty[]> => {
-			if (payload.channelId && payload.channelId in pendingFetchPromises) {
-				return pendingFetchPromises[payload.channelId];
+			const existingPromise = pendingFetchPromises[payload.channelId];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<IChannelProperty[]> => {
@@ -441,13 +443,14 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 				throw new DevicesException('Property is already being saved.');
 			}
 
-			if (!(payload.id in data.value)) {
+			const propertyToSave = data.value[payload.id];
+			if (!propertyToSave) {
 				throw new DevicesException('Failed to get channel property data to save.');
 			}
 
-			const element = getPluginElement(data.value[payload.id].type);
+			const element = getPluginElement(propertyToSave.type);
 
-			const parsedSaveItem = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse(data.value[payload.id]);
+			const parsedSaveItem = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse(propertyToSave);
 
 			if (!parsedSaveItem.success) {
 				logger.error('Schema validation failed with:', parsedSaveItem.error);
@@ -511,7 +514,7 @@ export const useChannelsProperties = defineStore<'devices_module-channels_proper
 
 			delete data.value[payload.id];
 
-			if (recordToRemove.draft) {
+			if (recordToRemove?.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {

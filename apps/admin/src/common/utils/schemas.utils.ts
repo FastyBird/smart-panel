@@ -38,6 +38,7 @@ export const getSchemaDefaults = <T extends ZodTypeAny>(schema: T): Partial<z.in
 
 		for (const key of Object.keys(shape)) {
 			const field = shape[key];
+			if (!field) continue;
 			const unwrapped = unwrap(field);
 
 			if (unwrapped instanceof ZodDefault) {

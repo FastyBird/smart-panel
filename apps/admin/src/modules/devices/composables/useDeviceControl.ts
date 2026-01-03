@@ -52,7 +52,7 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 			return null;
 		}
 
-		return id in devicesData.value ? devicesData.value[id] : null;
+		return devicesData.value[id] ?? null;
 	});
 
 	const channels = computed<IChannel[]>((): IChannel[] => {
@@ -92,8 +92,9 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 
 	const getPropertyValue = (propertyId: IChannelProperty['id']): string | number | boolean | null => {
 		// Return pending value if exists
-		if (propertyId in pendingValues.value) {
-			return pendingValues.value[propertyId];
+		const pendingValue = pendingValues.value[propertyId];
+		if (pendingValue !== undefined) {
+			return pendingValue;
 		}
 
 		const property = channelsPropertiesStore.findById(propertyId);

@@ -66,7 +66,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 		const findForDevice = (deviceId: IDevice['id']): IDeviceControl[] =>
 			Object.values(data.value ?? {}).filter((control: IDeviceControl): boolean => control.device === deviceId);
 
-		const findById = (id: IDeviceControl['id']): IDeviceControl | null => (id in data.value ? data.value[id] : null);
+		const findById = (id: IDeviceControl['id']): IDeviceControl | null => data.value[id] ?? null;
 
 		const pendingGetPromises: Record<string, Promise<IDeviceControl>> = {};
 
@@ -130,8 +130,9 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 		};
 
 		const get = async (payload: IDevicesControlsGetActionPayload): Promise<IDeviceControl> => {
-			if (payload.id in pendingGetPromises) {
-				return pendingGetPromises[payload.id];
+			const existingPromise = pendingGetPromises[payload.id];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IDeviceControl> => {
@@ -182,8 +183,9 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 		};
 
 		const fetch = async (payload: IDevicesControlsFetchActionPayload): Promise<IDeviceControl[]> => {
-			if (payload.deviceId && payload.deviceId in pendingFetchPromises) {
-				return pendingFetchPromises[payload.deviceId];
+			const existingPromise = pendingFetchPromises[payload.deviceId];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<IDeviceControl[]> => {
@@ -383,7 +385,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 			delete data.value[payload.id];
 
-			if (recordToRemove.draft) {
+			if (recordToRemove?.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {

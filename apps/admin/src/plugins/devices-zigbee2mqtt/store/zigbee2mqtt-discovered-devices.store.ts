@@ -48,8 +48,7 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 
 	const findAll = (): IZigbee2mqttDiscoveredDevice[] => Object.values(data.value);
 
-	const findById = (id: IZigbee2mqttDiscoveredDevice['id']): IZigbee2mqttDiscoveredDevice | null =>
-		id in data.value ? data.value[id] : null;
+	const findById = (id: IZigbee2mqttDiscoveredDevice['id']): IZigbee2mqttDiscoveredDevice | null => data.value[id] ?? null;
 
 	const pendingGetPromises: Record<string, Promise<IZigbee2mqttDiscoveredDevice>> = {};
 
@@ -93,8 +92,9 @@ export const useZigbee2mqttDiscoveredDevices = defineStore<
 	};
 
 	const get = async (payload: IZigbee2mqttDiscoveredDevicesGetActionPayload): Promise<IZigbee2mqttDiscoveredDevice> => {
-		if (payload.id in pendingGetPromises) {
-			return pendingGetPromises[payload.id];
+		const existingPromise = pendingGetPromises[payload.id];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const fetchPromise = (async (): Promise<IZigbee2mqttDiscoveredDevice> => {

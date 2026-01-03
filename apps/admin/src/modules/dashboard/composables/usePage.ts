@@ -24,11 +24,11 @@ export const usePage = ({ id }: IUsePageProps): IUsePage => {
 			return null;
 		}
 
-		return id in data.value ? data.value[id] : null;
+		return data.value[id] ?? null;
 	});
 
 	const fetchPage = async (): Promise<void> => {
-		const item = id in data.value ? data.value[id] : null;
+		const item = data.value[id] ?? null;
 
 		if (item?.draft) {
 			return;
@@ -42,7 +42,7 @@ export const usePage = ({ id }: IUsePageProps): IUsePage => {
 			return true;
 		}
 
-		const item = id in data.value ? data.value[id] : null;
+		const item = data.value[id] ?? null;
 
 		if (item !== null) {
 			return false;

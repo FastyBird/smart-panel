@@ -85,7 +85,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			});
 
 		const findById = (parent: string, id: IDataSource['id']): IDataSource | null => {
-			const item = id in data.value ? data.value[id] : null;
+			const item = data.value[id] ?? null;
 
 			if (item === null) {
 				return null;
@@ -167,8 +167,9 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 		};
 
 		const get = async (payload: IDataSourcesGetActionPayload): Promise<IDataSource> => {
-			if (payload.id in pendingGetPromises) {
-				return pendingGetPromises[payload.id];
+			const existingPromise = pendingGetPromises[payload.id];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IDataSource> => {
@@ -221,8 +222,9 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 		};
 
 		const fetch = async (payload: IDataSourcesFetchActionPayload): Promise<IDataSource[]> => {
-			if (payload.parent.id in pendingFetchPromises) {
-				return pendingFetchPromises[payload.parent.id];
+			const existingPromise = pendingFetchPromises[payload.parent.id];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<IDataSource[]> => {
@@ -443,13 +445,14 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				throw new DashboardException('Data source is already being saved.');
 			}
 
-			if (!(payload.id in data.value)) {
+			const dataSourceToSave = data.value[payload.id];
+			if (!dataSourceToSave) {
 				throw new DashboardException('Failed to get data source data to save.');
 			}
 
-			const element = getPluginElement(data.value[payload.id].type);
+			const element = getPluginElement(dataSourceToSave.type);
 
-			const parsedSaveItem = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(data.value[payload.id]);
+			const parsedSaveItem = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(dataSourceToSave);
 
 			if (!parsedSaveItem.success) {
 				logger.error('Schema validation failed with:', parsedSaveItem.error);
@@ -508,7 +511,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 
 			delete data.value[payload.id];
 
-			if (recordToRemove.draft) {
+			if (recordToRemove?.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {

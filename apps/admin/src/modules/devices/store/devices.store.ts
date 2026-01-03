@@ -87,7 +87,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 	const findAll = (): IDevice[] => Object.values(data.value);
 
-	const findById = (id: IDevice['id']): IDevice | null => (id in data.value ? data.value[id] : null);
+	const findById = (id: IDevice['id']): IDevice | null => data.value[id] ?? null;
 
 	const pendingGetPromises: Record<string, Promise<IDevice>> = {};
 
@@ -141,8 +141,9 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	};
 
 	const get = async (payload: IDevicesGetActionPayload): Promise<IDevice> => {
-		if (payload.id in pendingGetPromises) {
-			return pendingGetPromises[payload.id];
+		const existingPromise = pendingGetPromises[payload.id];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const getPromise = (async (): Promise<IDevice> => {
@@ -417,13 +418,14 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			throw new DevicesException('Device is already being saved.');
 		}
 
-		if (!(payload.id in data.value)) {
+		const deviceToSave = data.value[payload.id];
+		if (!deviceToSave) {
 			throw new DevicesException('Failed to get device data to save.');
 		}
 
-		const element = getPluginElement(data.value[payload.id].type);
+		const element = getPluginElement(deviceToSave.type);
 
-		const parsedSaveItem = (element?.schemas?.deviceSchema || DeviceSchema).safeParse(data.value[payload.id]);
+		const parsedSaveItem = (element?.schemas?.deviceSchema || DeviceSchema).safeParse(deviceToSave);
 
 		if (!parsedSaveItem.success) {
 			logger.error('Schema validation failed with:', parsedSaveItem.error);
@@ -484,7 +486,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		delete data.value[payload.id];
 
-		if (recordToRemove.draft) {
+		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {

@@ -78,10 +78,10 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
 	const sortBy = ref<'name' | 'description' | 'type' | 'state' | 'category' | undefined>(
-		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'description' | 'type' | 'state' | 'category') : undefined
+		sort.value.length > 0 ? (sort.value[0]?.by as 'name' | 'description' | 'type' | 'state' | 'category') : undefined
 	);
 
-	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
 
 	const isDeviceValid = (deviceId: string): boolean | null => {
 		const result = validationStore.findById(deviceId);
