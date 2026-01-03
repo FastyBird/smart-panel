@@ -65,11 +65,7 @@ export const useChannelAddForm = <TForm extends IChannelAddForm = IChannelAddFor
 				return null;
 			}
 
-			if (!(device.value.category in deviceChannelsSpecificationMappers)) {
-				return null;
-			}
-
-			return deviceChannelsSpecificationMappers[device.value.category];
+			return deviceChannelsSpecificationMappers[device.value.category] ?? null;
 		}
 	);
 

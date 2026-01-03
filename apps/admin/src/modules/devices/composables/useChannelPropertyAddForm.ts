@@ -66,11 +66,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 				return null;
 			}
 
-			if (!(channel.value.category in channelChannelsPropertiesSpecificationMappers)) {
-				return null;
-			}
-
-			return channelChannelsPropertiesSpecificationMappers[channel.value.category];
+			return channelChannelsPropertiesSpecificationMappers[channel.value.category] ?? null;
 		}
 	);
 

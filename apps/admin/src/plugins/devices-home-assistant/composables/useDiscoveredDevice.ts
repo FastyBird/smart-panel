@@ -24,7 +24,7 @@ export const useDiscoveredDevice = ({ id }: IUseDeviceProps): IUseDiscoveredDevi
 			return null;
 		}
 
-		return id in data.value ? data.value[id] : null;
+		return data.value[id] ?? null;
 	});
 
 	const fetchDevice = async (): Promise<void> => {
@@ -36,9 +36,9 @@ export const useDiscoveredDevice = ({ id }: IUseDeviceProps): IUseDiscoveredDevi
 			return true;
 		}
 
-		const item = id in data.value ? data.value[id] : null;
+		const item = data.value[id];
 
-		if (item !== null) {
+		if (item !== undefined) {
 			return false;
 		}
 

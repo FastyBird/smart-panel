@@ -21,7 +21,7 @@ export const useSpace = (id: Ref<ISpace['id'] | undefined>): IUseSpace => {
 
 	const space = computed<ISpace | null>(() => {
 		if (!id.value) return null;
-		return id.value in data.value ? data.value[id.value] : null;
+		return data.value[id.value] ?? null;
 	});
 
 	const fetching = computed<boolean>(() => {

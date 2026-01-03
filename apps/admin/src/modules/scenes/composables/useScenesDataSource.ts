@@ -70,10 +70,10 @@ export const useScenesDataSource = (): IUseScenesDataSource => {
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
 	const sortBy = ref<'name' | 'category' | 'order' | undefined>(
-		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'category' | 'order') : undefined
+		sort.value.length > 0 ? (sort.value[0]?.by as 'name' | 'category' | 'order') : undefined
 	);
 
-	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
 
 	const matchSpaceFilter = (scenePrimarySpaceId: string | null, filterSpaceId: string | undefined): boolean => {
 		// No filter set - match all

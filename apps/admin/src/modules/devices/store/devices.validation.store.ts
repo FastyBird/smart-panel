@@ -133,8 +133,9 @@ export const useDevicesValidationStore = defineStore<'devices_module-devices_val
 		};
 
 		const get = async (payload: IDevicesValidationGetActionPayload): Promise<IDeviceValidationResult> => {
-			if (payload.id in pendingGetPromises) {
-				return pendingGetPromises[payload.id];
+			const existingPromise = pendingGetPromises[payload.id];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IDeviceValidationResult> => {

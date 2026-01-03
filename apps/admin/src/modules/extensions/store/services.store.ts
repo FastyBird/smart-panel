@@ -68,7 +68,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 
 		const findByKey = (pluginName: string, serviceId: string): IService | null => {
 			const key = serviceKey(pluginName, serviceId);
-			return key in data.value ? data.value[key] : null;
+			return data.value[key] ?? null;
 		};
 
 		const set = (payload: IServicesSetActionPayload): IService => {
@@ -102,8 +102,9 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 		const get = async (payload: IServicesGetActionPayload): Promise<IService> => {
 			const key = serviceKey(payload.pluginName, payload.serviceId);
 
-			if (key in pendingGetPromises) {
-				return pendingGetPromises[key];
+			const existingPromise = pendingGetPromises[key];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IService> => {

@@ -73,7 +73,7 @@ export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions',
 				.filter((action: ISceneAction): boolean => action.scene === sceneId)
 				.sort((a, b) => a.order - b.order);
 
-		const findById = (id: ISceneAction['id']): ISceneAction | null => (id in data.value ? data.value[id] : null);
+		const findById = (id: ISceneAction['id']): ISceneAction | null => data.value[id] ?? null;
 
 		const pendingGetPromises: Record<string, Promise<ISceneAction>> = {};
 
@@ -137,8 +137,9 @@ export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions',
 		};
 
 		const get = async (payload: IScenesActionsGetActionPayload): Promise<ISceneAction> => {
-			if (payload.id in pendingGetPromises) {
-				return pendingGetPromises[payload.id];
+			const existingPromise = pendingGetPromises[payload.id];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<ISceneAction> => {
@@ -189,8 +190,9 @@ export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions',
 		};
 
 		const fetch = async (payload: IScenesActionsFetchActionPayload): Promise<ISceneAction[]> => {
-			if (payload.sceneId && payload.sceneId in pendingFetchPromises) {
-				return pendingFetchPromises[payload.sceneId];
+			const existingPromise = pendingFetchPromises[payload.sceneId];
+			if (payload.sceneId && existingPromise) {
+				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<ISceneAction[]> => {
@@ -475,7 +477,7 @@ export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions',
 
 			delete data.value[payload.id];
 
-			if (recordToRemove.draft) {
+			if (recordToRemove?.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
 				try {

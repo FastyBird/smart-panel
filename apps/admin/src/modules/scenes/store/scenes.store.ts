@@ -119,8 +119,9 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 	};
 
 	const get = async (payload: IScenesGetActionPayload): Promise<IScene> => {
-		if (payload.id in pendingGetPromises) {
-			return pendingGetPromises[payload.id];
+		const existingPromise = pendingGetPromises[payload.id];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const getPromise = (async (): Promise<IScene> => {
@@ -190,8 +191,9 @@ export const useScenesStore = defineStore<'scenes_module-scenes', ScenesStoreSet
 	const fetch = async (): Promise<IScene[]> => {
 		const cacheKey = 'all';
 
-		if (cacheKey in pendingFetchPromises) {
-			return pendingFetchPromises[cacheKey];
+		const existingPromise = pendingFetchPromises[cacheKey];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const fetchPromise = (async (): Promise<IScene[]> => {

@@ -26,11 +26,7 @@ export const useChannelSpecification = ({ id }: IUseChannelSpecificationProps): 
 	const getChannelSpecification = (
 		channel: IChannel
 	): { required: DevicesModuleChannelPropertyCategory[]; optional: DevicesModuleChannelPropertyCategory[] } | null => {
-		if (!(channel.category in channelChannelsPropertiesSpecificationMappers)) {
-			return null;
-		}
-
-		return channelChannelsPropertiesSpecificationMappers[channel.category];
+		return channelChannelsPropertiesSpecificationMappers[channel.category] ?? null;
 	};
 
 	const canAddAnotherProperty = computed<boolean>((): boolean => {

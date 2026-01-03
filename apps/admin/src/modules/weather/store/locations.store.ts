@@ -76,7 +76,7 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 
 		const findAll = (): IWeatherLocation[] => Object.values(data.value);
 
-		const findById = (id: IWeatherLocation['id']): IWeatherLocation | null => (id in data.value ? data.value[id] : null);
+		const findById = (id: IWeatherLocation['id']): IWeatherLocation | null => data.value[id] ?? null;
 
 		const pendingGetPromises: Record<string, Promise<IWeatherLocation>> = {};
 
@@ -124,8 +124,9 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 		};
 
 		const get = async (payload: IWeatherLocationsGetActionPayload): Promise<IWeatherLocation> => {
-			if (payload.id in pendingGetPromises) {
-				return pendingGetPromises[payload.id];
+			const existingPromise = pendingGetPromises[payload.id];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const getPromise = (async (): Promise<IWeatherLocation> => {
@@ -186,8 +187,9 @@ export const useWeatherLocations = defineStore<'weather_module-locations', Weath
 		const fetch = async (): Promise<IWeatherLocation[]> => {
 			const cacheKey = 'all';
 
-			if (cacheKey in pendingFetchPromises) {
-				return pendingFetchPromises[cacheKey];
+			const existingPromise = pendingFetchPromises[cacheKey];
+			if (existingPromise) {
+				return existingPromise;
 			}
 
 			const fetchPromise = (async (): Promise<IWeatherLocation[]> => {

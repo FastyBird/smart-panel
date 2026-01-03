@@ -66,10 +66,10 @@ export const useSpacesDataSource = (): IUseSpacesDataSource => {
 	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
 
 	const sortBy = ref<'name' | 'type' | 'displayOrder' | undefined>(
-		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'type' | 'displayOrder') : undefined
+		sort.value.length > 0 ? (sort.value[0]?.by as 'name' | 'type' | 'displayOrder') : undefined
 	);
 
-	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0]?.dir ?? null : null);
 
 	const spaces = computed<ISpace[]>((): ISpace[] => {
 		return orderBy<ISpace>(

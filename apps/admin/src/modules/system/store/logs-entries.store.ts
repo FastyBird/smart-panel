@@ -57,7 +57,7 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 
 	const findAll = (): ILogEntry[] => Object.values(data.value);
 
-	const findById = (id: ILogEntry['id']): ILogEntry | null => (id in data.value ? data.value[id] : null);
+	const findById = (id: ILogEntry['id']): ILogEntry | null => data.value[id] ?? null;
 
 	const pendingFetchPromises: Record<string, Promise<ILogEntry[]>> = {};
 
@@ -105,8 +105,10 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 	};
 
 	const fetch = async (payload?: ILogsEntriesFetchActionPayload): Promise<ILogEntry[]> => {
-		if ((payload?.afterId ? payload.afterId : 'first') in pendingFetchPromises) {
-			return pendingFetchPromises[payload?.afterId ? payload.afterId : 'first'];
+		const cacheKey = payload?.afterId ? payload.afterId : 'first';
+		const existingPromise = pendingFetchPromises[cacheKey];
+		if (existingPromise) {
+			return existingPromise;
 		}
 
 		const fetchPromise = (async (): Promise<ILogEntry[]> => {

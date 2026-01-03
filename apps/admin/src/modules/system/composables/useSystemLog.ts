@@ -24,7 +24,7 @@ export const useSystemLog = ({ id }: IUseSystemLogProps): IUseSystemLog => {
 			return null;
 		}
 
-		return id in data.value ? data.value[id] : null;
+		return data.value[id] ?? null;
 	});
 
 	const isLoading = computed<boolean>((): boolean => {

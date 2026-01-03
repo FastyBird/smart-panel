@@ -36,7 +36,7 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSet
 	const fetching = (): boolean => semaphore.value.fetching.items || semaphore.value.fetching.item.length > 0;
 
 	const findById = (id: ISpace['id']): ISpace | null => {
-		return id in data.value ? data.value[id] : null;
+		return data.value[id] ?? null;
 	};
 
 	const findAll = (): ISpace[] => {
@@ -237,9 +237,10 @@ export const useSpacesStore = defineStore<'spaces_module-spaces', SpacesStoreSet
 	};
 
 	const set = (payload: { id: ISpace['id']; data: Partial<ISpace> }): void => {
-		if (payload.id in data.value) {
+		const existing = data.value[payload.id];
+		if (existing) {
 			data.value[payload.id] = {
-				...data.value[payload.id],
+				...existing,
 				...payload.data,
 			};
 		}

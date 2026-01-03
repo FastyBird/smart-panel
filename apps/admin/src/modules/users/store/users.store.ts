@@ -63,7 +63,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 
 	const findAll = (): IUser[] => Object.values(data.value);
 
-	const findById = (id: IUser['id']): IUser | null => (id in data.value ? data.value[id] : null);
+	const findById = (id: IUser['id']): IUser | null => data.value[id] ?? null;
 
 	const onEvent = (payload: IUsersOnEventActionPayload): IUser => {
 		return set({
@@ -402,7 +402,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 
 		delete data.value[payload.id];
 
-		if (recordToRemove.draft) {
+		if (recordToRemove?.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
 			try {
