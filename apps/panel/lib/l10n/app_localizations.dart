@@ -1895,6 +1895,30 @@ abstract class AppLocalizations {
   /// **'Entry'**
   String get system_view_entry;
 
+  /// Title for lights domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Lights'**
+  String get domain_lights;
+
+  /// Title for climate domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Climate'**
+  String get domain_climate;
+
+  /// Title for media domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Media'**
+  String get domain_media;
+
+  /// Title for sensors domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Sensors'**
+  String get domain_sensors;
+
   /// Label for lighting device category
   ///
   /// In en, this message translates to:

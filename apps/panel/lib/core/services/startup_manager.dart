@@ -43,7 +43,8 @@ import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart'
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
-import 'package:fastybird_smart_panel/modules/scenes/services/scenes_service.dart';
+import 'package:fastybird_smart_panel/modules/scenes/export.dart';
+import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -289,6 +290,8 @@ class StartupManagerService {
         locator.get<SystemModuleService>().initialize(appUid),
         locator.get<WeatherModuleService>().initialize(),
         locator.get<DevicesModuleService>().initialize(),
+        locator.get<SpacesModuleService>().initialize(),
+        locator.get<ScenesModuleService>().initialize(),
         locator.get<DashboardModuleService>().initialize(),
       ]);
     } catch (e) {
@@ -367,6 +370,16 @@ class StartupManagerService {
     if (locator.isRegistered<DashboardModuleService>()) {
       try {
         locator.unregister<DashboardModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<SpacesModuleService>()) {
+      try {
+        locator.unregister<SpacesModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<ScenesModuleService>()) {
+      try {
+        locator.unregister<ScenesModuleService>();
       } catch (_) {}
     }
 
@@ -480,7 +493,24 @@ class StartupManagerService {
       } catch (_) {}
     }
 
-    // Scenes service
+    // Spaces module repositories and services
+    if (locator.isRegistered<SpacesRepository>()) {
+      try {
+        locator.unregister<SpacesRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<SpacesService>()) {
+      try {
+        locator.unregister<SpacesService>();
+      } catch (_) {}
+    }
+
+    // Scenes module repositories and services
+    if (locator.isRegistered<ScenesRepository>()) {
+      try {
+        locator.unregister<ScenesRepository>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<ScenesService>()) {
       try {
         locator.unregister<ScenesService>();
@@ -571,6 +601,14 @@ class StartupManagerService {
       apiClient: _apiClient,
       socketService: _socketClient,
     );
+    var spacesModuleService = SpacesModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var scenesModuleService = ScenesModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
 
     locator.registerSingleton(configModuleService);
     locator.registerSingleton(displaysModuleService);
@@ -578,10 +616,8 @@ class StartupManagerService {
     locator.registerSingleton(weatherModuleService);
     locator.registerSingleton(devicesModuleService);
     locator.registerSingleton(dashboardModuleService);
-
-    // Scenes service
-    var scenesService = ScenesService(dio: _apiIoService);
-    locator.registerSingleton(scenesService);
+    locator.registerSingleton(spacesModuleService);
+    locator.registerSingleton(scenesModuleService);
 
     // Property timeseries service
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);
@@ -592,7 +628,7 @@ class StartupManagerService {
     // needs to synchronize the deck with IntentsService after building it
     var intentsService = IntentsService(
       eventBus: _eventBus,
-      scenesService: scenesService,
+      scenesService: locator<ScenesService>(),
       channelPropertiesRepository: locator<ChannelPropertiesRepository>(),
     );
     locator.registerSingleton(intentsService);
@@ -600,6 +636,7 @@ class StartupManagerService {
     var deckService = DeckService(
       dashboardService: locator<DashboardService>(),
       intentsService: intentsService,
+      spacesRepository: locator<SpacesRepository>(),
     );
     locator.registerSingleton(deckService);
 

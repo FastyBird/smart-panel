@@ -1,7 +1,8 @@
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 
 /// Input parameters for deck building.
@@ -12,6 +13,10 @@ class DeckBuildInput {
   /// Available dashboard pages (already filtered for this display).
   final List<DashboardPageView> pages;
 
+  /// Device categories for the room (only needed for ROOM role).
+  /// Used to determine which domain views to create.
+  final List<DeviceCategory> deviceCategories;
+
   /// Localized title for room system view.
   final String roomViewTitle;
 
@@ -21,12 +26,29 @@ class DeckBuildInput {
   /// Localized title for entry system view.
   final String entryViewTitle;
 
+  /// Localized title for lights domain view.
+  final String lightsViewTitle;
+
+  /// Localized title for climate domain view.
+  final String climateViewTitle;
+
+  /// Localized title for media domain view.
+  final String mediaViewTitle;
+
+  /// Localized title for sensors domain view.
+  final String sensorsViewTitle;
+
   const DeckBuildInput({
     required this.display,
     required this.pages,
-    this.roomViewTitle = 'Room Overview',
-    this.masterViewTitle = 'Home Overview',
+    this.deviceCategories = const [],
+    this.roomViewTitle = 'Room',
+    this.masterViewTitle = 'Home',
     this.entryViewTitle = 'Entry',
+    this.lightsViewTitle = 'Lights',
+    this.climateViewTitle = 'Climate',
+    this.mediaViewTitle = 'Media',
+    this.sensorsViewTitle = 'Sensors',
   });
 }
 
@@ -36,42 +58,48 @@ class DeckBuildInput {
 /// Given the same input, it always produces the same output.
 ///
 /// The deck structure is:
-/// - Index 0: System view (based on display role)
-/// - Index 1+: Dashboard pages (sorted by order)
+/// - System views: RoomOverview + domain views (for ROOM role) or single view (MASTER/ENTRY)
+/// - Dashboard pages (sorted by order)
 ///
 /// Start index determination:
-/// - homeMode=auto → start on system view (index 0)
+/// - homeMode=auto → start on first system view (index 0)
 /// - homeMode=explicit → start on homePageId if found, else fallback to 0
 DeckResult buildDeck(DeckBuildInput input) {
   final display = input.display;
   final pages = input.pages;
 
-  // Build the deck items list
-  final List<DeckItem> items = [];
-
-  // 1. Add system view based on display role
-  final systemViewType = display.role.toSystemViewType();
-  final systemViewTitle = _getSystemViewTitle(systemViewType, input);
-  final systemView = SystemViewItem(
-    id: SystemViewItem.generateId(systemViewType, display.roomId),
-    viewType: systemViewType,
-    roomId: display.roomId,
-    title: systemViewTitle,
+  // Build system views (includes domain views for ROOM role)
+  final systemViewsInput = SystemViewsBuildInput(
+    display: display,
+    deviceCategories: input.deviceCategories,
+    roomViewTitle: input.roomViewTitle,
+    masterViewTitle: input.masterViewTitle,
+    entryViewTitle: input.entryViewTitle,
+    lightsViewTitle: input.lightsViewTitle,
+    climateViewTitle: input.climateViewTitle,
+    mediaViewTitle: input.mediaViewTitle,
+    sensorsViewTitle: input.sensorsViewTitle,
   );
-  items.add(systemView);
 
-  // 2. Add dashboard pages sorted by order
+  final systemViewsResult = buildSystemViews(systemViewsInput);
+
+  // Build the deck items list
+  final List<DeckItem> items = [...systemViewsResult.items];
+  final Map<String, int> indexByViewKey = {...systemViewsResult.indexByViewKey};
+
+  // Add dashboard pages sorted by order
   final sortedPages = List<DashboardPageView>.from(pages);
   sortedPages.sort((a, b) => a.order.compareTo(b.order));
 
   for (final page in sortedPages) {
+    indexByViewKey['page:${page.id}'] = items.length;
     items.add(DashboardPageItem(
       id: page.id,
       pageView: page,
     ));
   }
 
-  // 3. Determine start index based on homeMode
+  // Determine start index based on homeMode
   int startIndex = 0;
   bool didFallback = false;
   String? warningMessage;
@@ -103,18 +131,9 @@ DeckResult buildDeck(DeckBuildInput input) {
     startIndex: startIndex,
     didFallback: didFallback,
     warningMessage: warningMessage,
+    indexByViewKey: indexByViewKey,
+    domainCounts: systemViewsResult.domainCounts,
   );
-}
-
-String _getSystemViewTitle(SystemViewType type, DeckBuildInput input) {
-  switch (type) {
-    case SystemViewType.room:
-      return input.roomViewTitle;
-    case SystemViewType.master:
-      return input.masterViewTitle;
-    case SystemViewType.entry:
-      return input.entryViewTitle;
-  }
 }
 
 /// Validates display configuration for deck building.

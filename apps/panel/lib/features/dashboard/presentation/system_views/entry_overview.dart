@@ -6,8 +6,9 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
-import 'package:fastybird_smart_panel/modules/scenes/models/scene.dart';
-import 'package:fastybird_smart_panel/modules/scenes/services/scenes_service.dart';
+import 'package:fastybird_smart_panel/modules/scenes/export.dart';
+import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene.dart';
+import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -47,8 +48,8 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   int _camerasCount = 0;
 
   // House mode scenes
-  List<SceneModel> _houseModeScenes = [];
-  String? _activeHouseMode;
+  List<ScenesModuleDataScene> _houseModeScenes = [];
+  ScenesModuleDataSceneCategory? _activeHouseMode;
 
   // Error state
   String? _errorMessage;
@@ -83,7 +84,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         _alarmsCount = 1;
         _alarmArmed = false;
         _camerasCount = 3;
-        _activeHouseMode = 'home';
+        _activeHouseMode = ScenesModuleDataSceneCategory.home;
         _isLoading = false;
       });
 
@@ -99,7 +100,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     }
   }
 
-  Future<void> _loadHouseModeScenes() async {
+  void _loadHouseModeScenes() {
     if (_scenesService == null) return;
 
     setState(() {
@@ -107,13 +108,19 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     });
 
     try {
-      // Fetch whole-home scenes for house modes
-      final scenes = await _scenesService!.fetchScenesForSpace('home');
+      // Get triggerable scenes and filter for house modes
+      final scenes = _scenesService!.triggerableScenes;
 
       if (!mounted) return;
 
       // Filter for house mode scenes (away, home, night, movie, etc.)
-      final houseModeCategories = ['away', 'home', 'night', 'movie', 'party', 'sleep'];
+      const houseModeCategories = [
+        ScenesModuleDataSceneCategory.away,
+        ScenesModuleDataSceneCategory.home,
+        ScenesModuleDataSceneCategory.night,
+        ScenesModuleDataSceneCategory.movie,
+        ScenesModuleDataSceneCategory.party,
+      ];
       final houseModeScenes = scenes
           .where((s) => houseModeCategories.contains(s.category))
           .toList();
@@ -132,7 +139,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     }
   }
 
-  Future<void> _triggerHouseMode(SceneModel scene) async {
+  Future<void> _triggerHouseMode(ScenesModuleDataScene scene) async {
     if (_isSceneTriggering) return;
 
     setState(() {
@@ -461,10 +468,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           context,
           icon: MdiIcons.home,
           label: localizations?.entry_mode_home ?? 'Home',
-          isActive: _activeHouseMode == 'home',
+          isActive: _activeHouseMode == ScenesModuleDataSceneCategory.home,
           onTap: () {
             setState(() {
-              _activeHouseMode = 'home';
+              _activeHouseMode = ScenesModuleDataSceneCategory.home;
             });
           },
         ),
@@ -472,10 +479,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           context,
           icon: MdiIcons.exitRun,
           label: localizations?.entry_mode_away ?? 'Away',
-          isActive: _activeHouseMode == 'away',
+          isActive: _activeHouseMode == ScenesModuleDataSceneCategory.away,
           onTap: () {
             setState(() {
-              _activeHouseMode = 'away';
+              _activeHouseMode = ScenesModuleDataSceneCategory.away;
             });
           },
         ),
@@ -483,10 +490,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           context,
           icon: MdiIcons.weatherNight,
           label: localizations?.entry_mode_night ?? 'Night',
-          isActive: _activeHouseMode == 'night',
+          isActive: _activeHouseMode == ScenesModuleDataSceneCategory.night,
           onTap: () {
             setState(() {
-              _activeHouseMode = 'night';
+              _activeHouseMode = ScenesModuleDataSceneCategory.night;
             });
           },
         ),
@@ -494,10 +501,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           context,
           icon: MdiIcons.movieOpen,
           label: localizations?.entry_mode_movie ?? 'Movie',
-          isActive: _activeHouseMode == 'movie',
+          isActive: _activeHouseMode == ScenesModuleDataSceneCategory.movie,
           onTap: () {
             setState(() {
-              _activeHouseMode = 'movie';
+              _activeHouseMode = ScenesModuleDataSceneCategory.movie;
             });
           },
         ),
@@ -580,7 +587,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     );
   }
 
-  Widget _buildSceneHouseModeButton(BuildContext context, SceneModel scene) {
+  Widget _buildSceneHouseModeButton(BuildContext context, ScenesModuleDataScene scene) {
     final isTriggering = _triggeringSceneId == scene.id;
     final isActive = _activeHouseMode == scene.category;
     final buttonSize = _screenService.scale(

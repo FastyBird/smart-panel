@@ -915,6 +915,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get system_view_entry => 'Entry';
 
   @override
+  String get domain_lights => 'Lights';
+
+  @override
+  String get domain_climate => 'Climate';
+
+  @override
+  String get domain_media => 'Media';
+
+  @override
+  String get domain_sensors => 'Sensors';
+
+  @override
   String get device_category_lighting => 'Lights';
 
   @override

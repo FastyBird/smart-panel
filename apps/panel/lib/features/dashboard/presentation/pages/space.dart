@@ -20,8 +20,8 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/space_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/space.dart';
-import 'package:fastybird_smart_panel/modules/scenes/models/scene.dart';
-import 'package:fastybird_smart_panel/modules/scenes/services/scenes_service.dart';
+import 'package:fastybird_smart_panel/modules/scenes/export.dart';
+import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -103,7 +103,7 @@ class _SpacePageState extends State<SpacePage> {
   DevicesState _devicesState = DevicesState.loading;
 
   // Scenes state
-  List<SceneModel> _scenes = [];
+  List<ScenesModuleDataScene> _scenes = [];
   bool _isScenesLoading = false;
   bool _isSceneTriggering = false;
   String? _triggeringSceneId;
@@ -533,7 +533,7 @@ class _SpacePageState extends State<SpacePage> {
     }
   }
 
-  Future<void> _loadScenes() async {
+  void _loadScenes() {
     if (_scenesService == null) return;
 
     setState(() {
@@ -541,7 +541,7 @@ class _SpacePageState extends State<SpacePage> {
     });
 
     try {
-      final scenes = await _scenesService!.fetchScenesForSpace(widget.page.spaceId);
+      final scenes = _scenesService!.getScenesForSpace(widget.page.spaceId);
 
       if (!mounted) return;
 
@@ -559,7 +559,7 @@ class _SpacePageState extends State<SpacePage> {
     }
   }
 
-  Future<void> _triggerScene(SceneModel scene) async {
+  Future<void> _triggerScene(ScenesModuleDataScene scene) async {
     if (_scenesService == null || _isSceneTriggering) return;
 
     setState(() {
@@ -1250,7 +1250,7 @@ class _SpacePageState extends State<SpacePage> {
     );
   }
 
-  Widget _buildSceneButton(BuildContext context, SceneModel scene) {
+  Widget _buildSceneButton(BuildContext context, ScenesModuleDataScene scene) {
     final isTriggering = _triggeringSceneId == scene.id;
     final buttonWidth = _screenService.scale(
       80,

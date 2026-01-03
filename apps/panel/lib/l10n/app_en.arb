@@ -1228,6 +1228,22 @@
   "@system_view_entry": {
     "description": "Title for entry system view in deck navigation"
   },
+  "domain_lights": "Lights",
+  "@domain_lights": {
+    "description": "Title for lights domain view in room navigation"
+  },
+  "domain_climate": "Climate",
+  "@domain_climate": {
+    "description": "Title for climate domain view in room navigation"
+  },
+  "domain_media": "Media",
+  "@domain_media": {
+    "description": "Title for media domain view in room navigation"
+  },
+  "domain_sensors": "Sensors",
+  "@domain_sensors": {
+    "description": "Title for sensors domain view in room navigation"
+  },
   "device_category_lighting": "Lights",
   "@device_category_lighting": {
     "description": "Label for lighting device category"

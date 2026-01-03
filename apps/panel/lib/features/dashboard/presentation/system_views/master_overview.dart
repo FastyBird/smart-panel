@@ -6,8 +6,8 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
-import 'package:fastybird_smart_panel/modules/scenes/models/scene.dart';
-import 'package:fastybird_smart_panel/modules/scenes/services/scenes_service.dart';
+import 'package:fastybird_smart_panel/modules/scenes/export.dart';
+import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -66,7 +66,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   List<RoomSummary> _rooms = [];
 
   // Global scenes
-  List<SceneModel> _globalScenes = [];
+  List<ScenesModuleDataScene> _globalScenes = [];
 
   // Error state
   String? _errorMessage;
@@ -156,7 +156,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     }
   }
 
-  Future<void> _loadGlobalScenes() async {
+  void _loadGlobalScenes() {
     if (_scenesService == null) return;
 
     setState(() {
@@ -164,9 +164,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     });
 
     try {
-      // Fetch global/whole-home scenes
-      // TODO: Use actual API - for now simulate with a "home" space ID
-      final scenes = await _scenesService!.fetchScenesForSpace('home');
+      // Get all triggerable scenes (global scenes)
+      final scenes = _scenesService!.triggerableScenes;
 
       if (!mounted) return;
 
@@ -184,7 +183,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     }
   }
 
-  Future<void> _triggerScene(SceneModel scene) async {
+  Future<void> _triggerScene(ScenesModuleDataScene scene) async {
     if (_isSceneTriggering) return;
 
     setState(() {
@@ -580,7 +579,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     );
   }
 
-  Widget _buildSceneChip(BuildContext context, SceneModel scene) {
+  Widget _buildSceneChip(BuildContext context, ScenesModuleDataScene scene) {
     final isTriggering = _triggeringSceneId == scene.id;
 
     return ActionChip(

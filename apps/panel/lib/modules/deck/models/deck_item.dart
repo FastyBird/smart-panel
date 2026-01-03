@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_item_type.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
 
 /// Base class for items in the navigation deck.
@@ -71,6 +72,52 @@ class SystemViewItem extends DeckItem {
 
   @override
   int get hashCode => Object.hash(id, viewType, roomId);
+}
+
+/// A domain-specific view for a room (lights, climate, media, sensors).
+///
+/// Domain views are generated based on which device categories are present
+/// in the room. Only domains with count > 0 are added to the deck.
+class DomainViewItem extends DeckItem {
+  /// The domain type (lights, climate, media, sensors).
+  final DomainType domainType;
+
+  /// The room ID this domain view belongs to.
+  final String roomId;
+
+  /// Human-readable title for this view.
+  final String title;
+
+  /// Number of devices in this domain.
+  final int deviceCount;
+
+  const DomainViewItem({
+    required super.id,
+    required this.domainType,
+    required this.roomId,
+    required this.title,
+    required this.deviceCount,
+  });
+
+  @override
+  DeckItemType get type => DeckItemType.domainView;
+
+  /// Factory to create a domain view ID.
+  static String generateId(DomainType domain, String roomId) {
+    return 'domain-${domain.name}-$roomId';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is DomainViewItem &&
+        other.id == id &&
+        other.domainType == domainType &&
+        other.roomId == roomId;
+  }
+
+  @override
+  int get hashCode => Object.hash(id, domainType, roomId);
 }
 
 /// A user-configured dashboard page.

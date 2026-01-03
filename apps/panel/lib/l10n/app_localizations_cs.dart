@@ -915,6 +915,18 @@ class AppLocalizationsCs extends AppLocalizations {
   String get system_view_entry => 'Vstup';
 
   @override
+  String get domain_lights => 'Světla';
+
+  @override
+  String get domain_climate => 'Klima';
+
+  @override
+  String get domain_media => 'Média';
+
+  @override
+  String get domain_sensors => 'Senzory';
+
+  @override
   String get device_category_lighting => 'Osvětlení';
 
   @override

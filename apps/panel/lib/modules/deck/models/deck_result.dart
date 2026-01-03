@@ -1,16 +1,17 @@
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 
 /// Result of building a navigation deck.
 ///
 /// Contains the ordered list of deck items and the index of the item
 /// that should be shown first based on display settings.
 class DeckResult {
-  /// The ordered list of deck items (system view + dashboard pages).
+  /// The ordered list of deck items (system views + domain views + dashboard pages).
   final List<DeckItem> items;
 
   /// The index of the item to show first.
   ///
-  /// For homeMode=auto, this points to the system view.
+  /// For homeMode=auto, this points to the first system view.
   /// For homeMode=explicit with valid homePageId, this points to that page.
   /// Falls back to system view (index 0) if explicit page is not found.
   final int startIndex;
@@ -24,11 +25,26 @@ class DeckResult {
   /// Warning message if configuration had issues.
   final String? warningMessage;
 
+  /// Map from view key to deck index.
+  ///
+  /// Keys include:
+  /// - 'room-overview:{roomId}' for room overview
+  /// - 'domain:{roomId}:{domainType}' for domain views
+  /// - 'master-overview' for master overview
+  /// - 'entry-overview' for entry overview
+  /// - 'page:{pageId}' for dashboard pages
+  final Map<String, int> indexByViewKey;
+
+  /// Domain counts for ROOM role displays (null for other roles).
+  final DomainCounts? domainCounts;
+
   const DeckResult({
     required this.items,
     required this.startIndex,
     this.didFallback = false,
     this.warningMessage,
+    this.indexByViewKey = const {},
+    this.domainCounts,
   });
 
   /// Returns true if the deck is empty (no items to display).
@@ -41,15 +57,32 @@ class DeckResult {
   DeckItem? get startItem =>
       items.isNotEmpty && startIndex < items.length ? items[startIndex] : null;
 
-  /// Returns the system view item if present (always first item).
-  SystemViewItem? get systemView =>
-      items.isNotEmpty && items.first is SystemViewItem
-          ? items.first as SystemViewItem
-          : null;
+  /// Returns the first system view item if present.
+  SystemViewItem? get systemView {
+    for (final item in items) {
+      if (item is SystemViewItem) return item;
+    }
+    return null;
+  }
+
+  /// Returns all system view items (room overview).
+  List<SystemViewItem> get systemViews =>
+      items.whereType<SystemViewItem>().toList();
+
+  /// Returns all domain view items.
+  List<DomainViewItem> get domainViews =>
+      items.whereType<DomainViewItem>().toList();
 
   /// Returns all dashboard page items.
   List<DashboardPageItem> get dashboardPages =>
       items.whereType<DashboardPageItem>().toList();
+
+  /// Gets the deck index for a view key.
+  ///
+  /// Returns -1 if the view key is not found.
+  int getIndexByViewKey(String viewKey) {
+    return indexByViewKey[viewKey] ?? -1;
+  }
 
   @override
   bool operator ==(Object other) {
