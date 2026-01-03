@@ -1227,5 +1227,81 @@
   "system_view_entry": "Entry",
   "@system_view_entry": {
     "description": "Title for entry system view in deck navigation"
+  },
+  "device_category_lighting": "Lights",
+  "@device_category_lighting": {
+    "description": "Label for lighting device category"
+  },
+  "device_category_climate": "Climate",
+  "@device_category_climate": {
+    "description": "Label for climate device category"
+  },
+  "device_category_sensors": "Sensors",
+  "@device_category_sensors": {
+    "description": "Label for sensors device category"
+  },
+  "device_category_media": "Media",
+  "@device_category_media": {
+    "description": "Label for media device category"
+  },
+  "master_rooms": "Rooms",
+  "@master_rooms": {
+    "description": "Label for rooms in master overview"
+  },
+  "master_devices": "Devices",
+  "@master_devices": {
+    "description": "Label for devices in master overview"
+  },
+  "master_scenes": "Scenes",
+  "@master_scenes": {
+    "description": "Label for scenes in master overview"
+  },
+  "master_quick_actions": "Quick Actions",
+  "@master_quick_actions": {
+    "description": "Title for quick actions section in master overview"
+  },
+  "entry_mode_activated": "Mode activated",
+  "@entry_mode_activated": {
+    "description": "Success message when house mode is activated"
+  },
+  "entry_house_modes": "House Modes",
+  "@entry_house_modes": {
+    "description": "Title for house modes section in entry overview"
+  },
+  "entry_mode_home": "Home",
+  "@entry_mode_home": {
+    "description": "Label for home mode"
+  },
+  "entry_mode_away": "Away",
+  "@entry_mode_away": {
+    "description": "Label for away mode"
+  },
+  "entry_mode_night": "Night",
+  "@entry_mode_night": {
+    "description": "Label for night mode"
+  },
+  "entry_mode_movie": "Movie",
+  "@entry_mode_movie": {
+    "description": "Label for movie mode"
+  },
+  "entry_security": "Security",
+  "@entry_security": {
+    "description": "Title for security section in entry overview"
+  },
+  "entry_no_security_devices": "No security devices configured",
+  "@entry_no_security_devices": {
+    "description": "Message when no security devices are available"
+  },
+  "entry_locks": "Locks",
+  "@entry_locks": {
+    "description": "Label for locks in security section"
+  },
+  "entry_alarm": "Alarm",
+  "@entry_alarm": {
+    "description": "Label for alarm in security section"
+  },
+  "entry_cameras": "Cameras",
+  "@entry_cameras": {
+    "description": "Label for cameras in security section"
   }
 }

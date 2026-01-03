@@ -1,4 +1,3 @@
-import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -33,7 +32,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   late final IntentsService _intentsService;
-  SpacesModuleClient? _spacesApi;
   ScenesService? _scenesService;
 
   // Loading states
@@ -64,9 +62,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   void initState() {
     super.initState();
     _intentsService = locator<IntentsService>();
-    try {
-      _spacesApi = locator<SpacesModuleClient>();
-    } catch (_) {}
     try {
       _scenesService = locator<ScenesService>();
     } catch (_) {}

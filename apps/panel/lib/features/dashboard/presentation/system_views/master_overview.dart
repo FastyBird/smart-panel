@@ -101,7 +101,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         _onlineDevices = 22;
         _alertsCount = 1;
         _rooms = [
-          const RoomSummary(
+          RoomSummary(
             id: 'living-room',
             name: 'Living Room',
             icon: MdiIcons.sofa,
@@ -109,7 +109,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             totalDevices: 6,
             temperature: 21.5,
           ),
-          const RoomSummary(
+          RoomSummary(
             id: 'bedroom',
             name: 'Bedroom',
             icon: MdiIcons.bedKingOutline,
@@ -117,7 +117,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             totalDevices: 4,
             temperature: 20.0,
           ),
-          const RoomSummary(
+          RoomSummary(
             id: 'kitchen',
             name: 'Kitchen',
             icon: MdiIcons.stove,
@@ -125,14 +125,14 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             totalDevices: 5,
             temperature: 22.0,
           ),
-          const RoomSummary(
+          RoomSummary(
             id: 'bathroom',
             name: 'Bathroom',
             icon: MdiIcons.showerHead,
             onlineDevices: 3,
             totalDevices: 4,
           ),
-          const RoomSummary(
+          RoomSummary(
             id: 'office',
             name: 'Office',
             icon: MdiIcons.deskLamp,
@@ -462,7 +462,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         ),
         _buildSummaryCard(
           context,
-          icon: MdiIcons.devicesOutline,
+          icon: MdiIcons.devices,
           value: '$_totalDevices',
           label: localizations?.master_devices ?? 'Devices',
         ),

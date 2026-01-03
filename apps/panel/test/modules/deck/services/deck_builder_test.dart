@@ -1,11 +1,11 @@
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/deck_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/deck_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // Simple test page model for testing

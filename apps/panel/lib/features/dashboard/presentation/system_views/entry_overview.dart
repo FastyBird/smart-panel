@@ -45,7 +45,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   int _alarmsCount = 0;
   bool _alarmArmed = false;
   int _camerasCount = 0;
-  bool _hasDoorbellActivity = false;
 
   // House mode scenes
   List<SceneModel> _houseModeScenes = [];
@@ -84,7 +83,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         _alarmsCount = 1;
         _alarmArmed = false;
         _camerasCount = 3;
-        _hasDoorbellActivity = false;
         _activeHouseMode = 'home';
         _isLoading = false;
       });
