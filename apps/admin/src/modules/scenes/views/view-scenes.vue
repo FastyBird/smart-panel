@@ -173,7 +173,6 @@ import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useFlashMessage, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import { useSpaces } from '../../spaces/composables';
-import { SpaceType } from '../../spaces/spaces.constants';
 import { ListScenes, ListScenesAdjust } from '../components/components';
 import { useScenesActions, useScenesDataSource, useScenes } from '../composables/composables';
 import { RouteNames } from '../scenes.constants';
@@ -220,14 +219,13 @@ const { spaces, fetchSpaces } = useSpaces();
 
 const sceneActions = useScenesActions();
 
-// Provide spaces to child components (for table room display)
-const rooms = computed(() => {
+// Provide spaces to child components (for table space display)
+const allSpaces = computed(() => {
 	return spaces.value
-		.filter((space) => space.type === SpaceType.ROOM)
 		.map((space) => ({ id: space.id, name: space.name }))
 		.sort((a, b) => a.name.localeCompare(b.name));
 });
-provide('spaces', rooms);
+provide('spaces', allSpaces);
 
 const mounted = ref<boolean>(false);
 
