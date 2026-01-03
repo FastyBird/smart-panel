@@ -1745,7 +1745,7 @@ abstract class AppLocalizations {
   /// **'Scene partially activated'**
   String get space_scene_partial_success;
 
-/// Status when the window covering is fully open
+  /// Status when the window covering is fully open
   ///
   /// In en, this message translates to:
   /// **'Open'**

@@ -76,7 +76,27 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       _spacesService = locator<SpacesService>();
     } catch (_) {}
 
+    // Listen for DeckService changes (e.g., when device categories are loaded)
+    _deckService.addListener(_onDeckServiceChanged);
+
     _loadRoomData();
+  }
+
+  void _onDeckServiceChanged() {
+    // Reload room data when DeckService updates (e.g., device categories loaded)
+    if (mounted && !_deckService.isLoadingDevices) {
+      debugPrint(
+        '[ROOM OVERVIEW] DeckService changed, reloading. '
+        'deviceCategories: ${_deckService.deviceCategories.length}',
+      );
+      _loadRoomData();
+    }
+  }
+
+  @override
+  void dispose() {
+    _deckService.removeListener(_onDeckServiceChanged);
+    super.dispose();
   }
 
   Future<void> _loadRoomData() async {
@@ -99,6 +119,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
       // Get device categories from DeckService
       final deviceCategories = _deckService.deviceCategories;
+
+      debugPrint(
+        '[ROOM OVERVIEW] Loading room data. '
+        'roomId: $_roomId, '
+        'deviceCategories: ${deviceCategories.length}, '
+        'isLoadingDevices: ${_deckService.isLoadingDevices}',
+      );
 
       // Get scenes for this room
       final scenes = _scenesService?.getScenesForSpace(_roomId) ?? [];
@@ -150,9 +177,22 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   Future<void> _fetchLiveDeviceData() async {
     try {
       final spacesRepository = locator<SpacesRepository>();
-      final response = await spacesRepository.apiClient
-          .getSpacesModuleSpaceDevices(id: _roomId);
-      final devices = response.data.data;
+
+      // Handle potential null data from backend - Freezed throws TypeError
+      List<DevicesModuleDataDevice> devices = [];
+      try {
+        final response = await spacesRepository.apiClient
+            .getSpacesModuleSpaceDevices(id: _roomId);
+        devices = response.data.data;
+      } on TypeError {
+        // Backend returns null instead of empty array when no devices assigned
+        devices = [];
+      }
+
+      debugPrint(
+        '[ROOM OVERVIEW] Live device fetch returned ${devices.length} devices. '
+        'Categories: ${devices.map((d) => d.category.name).toList()}',
+      );
 
       int lightsOnCount = 0;
       double? temperature;

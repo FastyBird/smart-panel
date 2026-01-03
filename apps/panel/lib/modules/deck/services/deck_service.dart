@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_data_device.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_data_device_category.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
@@ -79,6 +80,13 @@ class DeckService extends ChangeNotifier {
   void initialize(DisplayModel display, {BuildContext? context}) {
     _display = display;
 
+    if (kDebugMode) {
+      debugPrint(
+        '[DECK SERVICE] Initialize called. '
+        'role: ${display.role}, roomId: ${display.roomId}',
+      );
+    }
+
     // Validate display configuration
     _configError = validateDisplayConfig(display);
     if (_configError != null) {
@@ -97,7 +105,17 @@ class DeckService extends ChangeNotifier {
 
     // For ROOM role, fetch device categories asynchronously
     if (display.role == DisplayRole.room && display.roomId != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DECK SERVICE] Will fetch devices for roomId: ${display.roomId}',
+        );
+      }
       _fetchDeviceCategoriesAsync(display.roomId!, context);
+    } else if (kDebugMode) {
+      debugPrint(
+        '[DECK SERVICE] NOT fetching devices. '
+        'role: ${display.role}, roomId: ${display.roomId}',
+      );
     }
   }
 
@@ -120,9 +138,45 @@ class DeckService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _spacesRepository.apiClient
-          .getSpacesModuleSpaceDevices(id: roomId);
-      final devices = response.data.data;
+      if (kDebugMode) {
+        debugPrint('[DECK SERVICE] Fetching devices for roomId: $roomId');
+      }
+
+      // Fetch devices from API - handle potential null data from backend
+      List<DevicesModuleDataDevice> devices = [];
+      try {
+        final response = await _spacesRepository.apiClient
+            .getSpacesModuleSpaceDevices(id: roomId);
+        devices = response.data.data;
+      } on TypeError catch (e) {
+        // Backend returns null instead of empty array when no devices assigned
+        // The generated Freezed code throws TypeError during deserialization
+        if (kDebugMode) {
+          debugPrint(
+            '[DECK SERVICE] API returned null for devices (no devices assigned): $e',
+          );
+        }
+        devices = [];
+      }
+
+      // Verify the room hasn't changed during the async operation
+      // to avoid race conditions when switching rooms quickly
+      if (_display?.roomId != roomId) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DECK SERVICE] Room changed during fetch '
+            '(was: $roomId, now: ${_display?.roomId}), discarding result',
+          );
+        }
+        return;
+      }
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DECK SERVICE] API returned ${devices.length} devices. '
+          'Categories: ${devices.map((d) => d.category.name).toList()}',
+        );
+      }
 
       // Map API device categories to local DeviceCategory
       _deviceCategories = devices
@@ -131,7 +185,7 @@ class DeckService extends ChangeNotifier {
 
       if (kDebugMode) {
         debugPrint(
-          '[DECK SERVICE] Fetched ${_deviceCategories.length} devices for room $roomId',
+          '[DECK SERVICE] Mapped to ${_deviceCategories.length} categories: $_deviceCategories',
         );
       }
 
@@ -145,6 +199,12 @@ class DeckService extends ChangeNotifier {
       }
     } finally {
       _isLoadingDevices = false;
+      if (kDebugMode) {
+        debugPrint(
+          '[DECK SERVICE] Fetch complete, notifying listeners. '
+          'deviceCategories: ${_deviceCategories.length}',
+        );
+      }
       notifyListeners();
     }
   }

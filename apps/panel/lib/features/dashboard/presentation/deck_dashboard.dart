@@ -151,10 +151,11 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
             .map((item) => buildDeckItemWidget(item))
             .toList();
 
-        // Clamp current index to valid range
+        // Clamp current index to valid range (handles both negative and overflow)
         final maxIndex = widgets.length - 1;
-        if (_currentIndex > maxIndex) {
-          _currentIndex = maxIndex.clamp(0, maxIndex);
+        final clampedIndex = _currentIndex.clamp(0, maxIndex);
+        if (_currentIndex != clampedIndex) {
+          _currentIndex = clampedIndex;
           _updateTrackedItem(deckService, _currentIndex);
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_pageController?.hasClients == true) {
