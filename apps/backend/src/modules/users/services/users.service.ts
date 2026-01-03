@@ -31,11 +31,7 @@ export class UsersService {
 	}
 
 	async findAll(): Promise<UserEntity[]> {
-		this.logger.debug('Fetching all users');
-
 		const users = await this.repository.find();
-
-		this.logger.debug(`Found ${users.length} users`);
 
 		return users;
 	}
@@ -53,18 +49,12 @@ export class UsersService {
 	}
 
 	async findAllByRole(role: UserRole): Promise<UserEntity[]> {
-		this.logger.debug(`Fetching all users by given role: ${role}`);
-
 		const users = await this.repository.createQueryBuilder('user').where('user.role = :role', { role }).getMany();
-
-		this.logger.debug(`Found ${users.length} users by given role: ${role}`);
 
 		return users;
 	}
 
 	async create(createDto: CreateUserDto): Promise<UserEntity> {
-		this.logger.debug('Creating new user');
-
 		const dtoInstance = await this.validateDto<CreateUserDto>(CreateUserDto, createDto);
 
 		// Hash password before storing it
@@ -89,16 +79,12 @@ export class UsersService {
 		// Retrieve the saved user with its full relations
 		const savedUser = await this.getOneOrThrow(user.id);
 
-		this.logger.debug(`Successfully created user with id=${savedUser.id}`);
-
 		this.eventEmitter.emit(EventType.USER_CREATED, savedUser);
 
 		return savedUser;
 	}
 
 	async update(id: string, updateDto: UpdateUserDto): Promise<UserEntity> {
-		this.logger.debug(`Updating user with id=${id}`);
-
 		const user = await this.getOneOrThrow(id);
 
 		const dtoInstance = await this.validateDto<UpdateUserDto>(UpdateUserDto, updateDto);
@@ -124,16 +110,12 @@ export class UsersService {
 
 		const updatedUser = await this.getOneOrThrow(user.id);
 
-		this.logger.debug(`Successfully updated user with id=${updatedUser.id}`);
-
 		this.eventEmitter.emit(EventType.USER_UPDATED, updatedUser);
 
 		return updatedUser;
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`Removing user with id=${id}`);
-
 		const user = await this.getOneOrThrow(id);
 
 		await this.repository.delete(user.id);
@@ -156,17 +138,11 @@ export class UsersService {
 	}
 
 	private async findByField(field: keyof UserEntity, value: string | number | boolean): Promise<UserEntity | null> {
-		this.logger.debug(`Fetching user with ${field}=${value}`);
-
 		const user = await this.repository.findOne({ where: { [field]: value } });
 
 		if (!user) {
-			this.logger.debug(`User with ${field}=${value} not found`);
-
 			return null;
 		}
-
-		this.logger.debug(`Successfully fetched user with ${field}=${value}`);
 
 		return user;
 	}

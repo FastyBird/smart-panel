@@ -130,7 +130,6 @@ export class SeedService {
 			// Truncate all tables
 			const tables = await queryRunner.getTables();
 			for (const table of tables) {
-				this.logger.debug(`Truncating table: ${table.name}`);
 				await queryRunner.query(`DELETE FROM "${table.name}";`);
 			}
 

@@ -22,8 +22,6 @@ export class DisplaysModuleResetService {
 	) {}
 
 	async reset(): Promise<void> {
-		this.logger.debug('Resetting displays module');
-
 		// First revoke all display tokens
 		const displays = await this.displayRepository.find();
 
@@ -37,12 +35,9 @@ export class DisplaysModuleResetService {
 		// Clear display status data from InfluxDB
 		try {
 			await this.influxDbService.dropMeasurement('display_status');
-			this.logger.debug('Cleared display status data from InfluxDB');
 		} catch (error) {
 			const err = error as Error;
 			this.logger.warn(`Failed to clear display status data from InfluxDB: ${err.message}`, err.stack);
 		}
-
-		this.logger.debug('Displays module reset complete');
 	}
 }

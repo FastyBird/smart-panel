@@ -748,7 +748,7 @@ export class DeviceManagerService {
 			} else if (type === String(ComponentType.INPUT)) {
 				const tasks = ids.map((key) =>
 					limit(async () => {
-						const [inputConfig, inputStatus] = await retry(
+						await retry(
 							() =>
 								withTimeout(
 									Promise.all([
@@ -781,11 +781,6 @@ export class DeviceManagerService {
 						 * Reference: Shelly Gen2 API Input component documentation
 						 * @see https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Input
 						 */
-						this.logger.debug(`Received device input status for input=${key}`, {
-							resource: device.id,
-							inputConfig,
-							inputStatus,
-						});
 					}),
 				);
 
@@ -986,10 +981,6 @@ export class DeviceManagerService {
 		for (const channel of allChannels) {
 			if (!channelsIds.includes(channel.id)) {
 				await this.channelsService.remove(channel.id);
-
-				this.logger.debug(`Remove channel=${channel.id} because this channel is not specified for current device`, {
-					resource: device.id,
-				});
 			}
 		}
 

@@ -46,8 +46,6 @@ export class RegistrationService {
 		_userAgent: string,
 		clientIp: string,
 	): Promise<RegistrationResult> {
-		this.logger.debug(`Registering display with MAC=${registerDto.mac_address}, IP=${clientIp}`);
-
 		const dtoInstance = await this.validateDto(RegisterDisplayDto, registerDto);
 
 		// Check if display already exists by MAC address
@@ -55,7 +53,6 @@ export class RegistrationService {
 
 		if (display) {
 			// Update existing display
-			this.logger.debug(`Display already exists, updating`);
 
 			display = await this.displaysService.update(display.id, {
 				version: dtoInstance.version,
@@ -76,7 +73,6 @@ export class RegistrationService {
 			await this.tokensService.revokeByOwnerId(display.id, TokenOwnerType.DISPLAY);
 		} else {
 			// Create new display
-			this.logger.debug(`Creating new display`);
 
 			display = await this.displaysService.create({
 				macAddress: dtoInstance.mac_address,
@@ -97,14 +93,10 @@ export class RegistrationService {
 		// Generate long-lived token for the display
 		const accessToken = await this.generateDisplayToken(display);
 
-		this.logger.debug(`Successfully registered display with id=${display.id}`);
-
 		return { display, accessToken };
 	}
 
 	async refreshDisplayToken(displayId: string, currentToken: string): Promise<TokenRefreshResult> {
-		this.logger.debug(`Refreshing token for display=${displayId}`);
-
 		// Verify the display exists
 		const display = await this.displaysService.getOneOrThrow(displayId);
 
@@ -140,14 +132,10 @@ export class RegistrationService {
 		const expiresAt = new Date();
 		expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
-		this.logger.debug(`Successfully refreshed token for display=${displayId}`);
-
 		return { accessToken: newToken, expiresAt };
 	}
 
 	private async generateDisplayToken(display: DisplayEntity): Promise<string> {
-		this.logger.debug(`Generating token for display=${display.id}`);
-
 		// Calculate expiration date (1 year from now)
 		const expiresAt = new Date();
 		expiresAt.setFullYear(expiresAt.getFullYear() + 1);
@@ -174,8 +162,6 @@ export class RegistrationService {
 			description: `Auto-generated token for display ${display.name ?? display.macAddress}`,
 			expiresAt: expiresAt,
 		});
-
-		this.logger.debug(`Successfully generated token for display=${display.id}`);
 
 		return token;
 	}

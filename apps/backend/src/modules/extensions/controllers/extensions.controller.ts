@@ -30,8 +30,6 @@ export class ExtensionsController {
 	})
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Returns a list of extensions')
 	findAll(): ExtensionsResponseModel {
-		this.logger.debug('Fetching all extensions');
-
 		const extensions = this.extensionsService.findAll();
 
 		const response = new ExtensionsResponseModel();
@@ -49,8 +47,6 @@ export class ExtensionsController {
 	})
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Returns a list of modules')
 	findAllModules(): ExtensionsResponseModel {
-		this.logger.debug('Fetching all modules');
-
 		const extensions = this.extensionsService.findAllModules();
 
 		const response = new ExtensionsResponseModel();
@@ -68,8 +64,6 @@ export class ExtensionsController {
 	})
 	@ApiSuccessResponse(ExtensionsResponseModel, 'Returns a list of plugins')
 	findAllPlugins(): ExtensionsResponseModel {
-		this.logger.debug('Fetching all plugins');
-
 		const extensions = this.extensionsService.findAllPlugins();
 
 		const response = new ExtensionsResponseModel();
@@ -89,8 +83,6 @@ export class ExtensionsController {
 	@ApiSuccessResponse(ExtensionResponseModel, 'Returns the extension')
 	@ApiNotFoundResponse('Extension not found')
 	findOne(@Param('type') type: string): ExtensionResponseModel {
-		this.logger.debug(`Fetching extension type=${type}`);
-
 		const extension = this.extensionsService.findOne(type);
 
 		const response = new ExtensionResponseModel();
@@ -112,8 +104,6 @@ export class ExtensionsController {
 	@ApiNotFoundResponse('Extension not found')
 	@ApiBadRequestResponse('Cannot modify core extension')
 	update(@Param('type') type: string, @Body() body: ReqUpdateExtensionDto): ExtensionResponseModel {
-		this.logger.debug(`Updating extension type=${type}`);
-
 		const extension = this.extensionsService.updateEnabled(type, body.data.enabled);
 
 		const response = new ExtensionResponseModel();

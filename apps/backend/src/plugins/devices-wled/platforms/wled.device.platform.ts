@@ -59,7 +59,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 
 		// Check if device is enabled
 		if (!device.enabled) {
-			this.logger.debug(`Device ${device.identifier} is disabled, ignoring command`, { resource: device.id });
 			return false;
 		}
 
@@ -161,8 +160,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 				return this.executeSegmentCommand(device, segmentId, propertyUpdates, host);
 			}
 		}
-
-		this.logger.debug(`Ignoring command for unhandled channel: ${channelId}`);
 		return false;
 	}
 
@@ -182,7 +179,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 			const stateUpdate = this.buildMainLightStateUpdate(propertyUpdates, currentColors);
 
 			if (Object.keys(stateUpdate).length === 0) {
-				this.logger.debug('No valid properties to update');
 				return false;
 			}
 
@@ -193,7 +189,7 @@ export class WledDevicePlatform implements IDevicePlatform {
 			const success = await this.wledAdapter.updateStateExtended(host, stateUpdate);
 
 			if (success) {
-				this.logger.debug(`Successfully updated device ${device.identifier}`, { resource: device.id });
+				// Intentionally empty - update successful
 			}
 
 			return success;
@@ -464,7 +460,6 @@ export class WledDevicePlatform implements IDevicePlatform {
 					break;
 
 				default:
-					this.logger.debug(`Unknown property: ${property.identifier}, ignoring`);
 			}
 		}
 

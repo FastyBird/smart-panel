@@ -53,8 +53,6 @@ export class RegistrationController {
 		@Headers('user-agent') userAgent: string,
 		@Body() body: ReqRegisterDisplayDto,
 	): Promise<DisplayRegistrationResponseModel> {
-		this.logger.debug(`Display registration request received`);
-
 		// Validate user agent
 		const isAllowedUserAgent = ALLOWED_USER_AGENTS.some((allowed) => userAgent?.includes(allowed));
 

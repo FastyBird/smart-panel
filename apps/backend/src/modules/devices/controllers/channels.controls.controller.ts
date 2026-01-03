@@ -64,13 +64,9 @@ export class ChannelsControlsController {
 	async findAll(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 	): Promise<ChannelControlsResponseModel> {
-		this.logger.debug(`Fetching all controls for channelId=${channelId}`);
-
 		const channel = await this.getChannelOrThrow(channelId);
 
 		const controls = await this.channelsControlsService.findAll(channel.id);
-
-		this.logger.debug(`Retrieved ${controls.length} controls for channelId=${channel.id}`);
 
 		const response = new ChannelControlsResponseModel();
 
@@ -100,13 +96,9 @@ export class ChannelsControlsController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<ChannelControlResponseModel> {
-		this.logger.debug(`Fetching channel id=${id} for channelId=${channelId}`);
-
 		const channel = await this.getChannelOrThrow(channelId);
 
 		const control = await this.getOneOrThrow(id, channel.id);
-
-		this.logger.debug(`Found control id=${control.id} for channelId=${channel.id}`);
 
 		const response = new ChannelControlResponseModel();
 
@@ -140,8 +132,6 @@ export class ChannelsControlsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<ChannelControlResponseModel> {
-		this.logger.debug(`Incoming request to create a new control for channelId=${channelId}`);
-
 		const channel = await this.getChannelOrThrow(channelId);
 
 		const existingControl = await this.channelsControlsService.findOneByName(createControlDto.data.name, channel.id);
@@ -164,8 +154,6 @@ export class ChannelsControlsController {
 
 		try {
 			const control = await this.channelsControlsService.create(channel.id, createControlDto.data);
-
-			this.logger.debug(`Successfully created control id=${control.id} for channelId=${channel.id}`);
 
 			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'channels', channel.id, 'controls', control.id);
 
@@ -202,19 +190,13 @@ export class ChannelsControlsController {
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<void> {
-		this.logger.debug(`Incoming request to delete control id=${id} for channelId=${channelId}`);
-
 		const channel = await this.getChannelOrThrow(channelId);
 		const control = await this.getOneOrThrow(id, channel.id);
 
 		await this.channelsControlsService.remove(control.id, channel.id);
-
-		this.logger.debug(`Successfully deleted control id=${id} for channelId=${channel.id}`);
 	}
 
 	private async getOneOrThrow(id: string, channelId: string): Promise<ChannelControlEntity> {
-		this.logger.debug(`Checking existence of control id=${id} for channelId=${channelId}`);
-
 		const control = await this.channelsControlsService.findOne(id, channelId);
 
 		if (!control) {
@@ -227,8 +209,6 @@ export class ChannelsControlsController {
 	}
 
 	private async getChannelOrThrow(channelId: string): Promise<ChannelEntity> {
-		this.logger.debug(`Checking existence of channel id=${channelId}`);
-
 		const channel = await this.channelsService.findOne(channelId);
 
 		if (!channel) {

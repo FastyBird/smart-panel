@@ -151,7 +151,6 @@ export class ShellyNgService implements IManagedPluginService {
 			}
 
 			// Config didn't change for this plugin, no restart needed
-			this.logger.debug('Config event received but no relevant changes for this plugin');
 			return Promise.resolve({ restartRequired: false });
 		}
 
@@ -184,8 +183,6 @@ export class ShellyNgService implements IManagedPluginService {
 
 	private async doStart(): Promise<void> {
 		if (typeof this.shellies !== 'undefined') {
-			this.logger.debug('Shellies already started');
-
 			this.state = 'started';
 
 			return;
@@ -315,15 +312,9 @@ export class ShellyNgService implements IManagedPluginService {
 					this.deviceManagerService
 						.createOrUpdate(sysDevice.id)
 						.then((): void => {
-							this.logger.debug(`Device=${sysDevice.id} was updated in system`, { resource: sysDevice.id });
-
 							this.delegatesRegistryService
 								.insert(device)
-								.then((): void => {
-									this.logger.debug(`Device=${sysDevice.id} was added to delegates registry`, {
-										resource: sysDevice.id,
-									});
-								})
+								.then((): void => {})
 								.catch((err: Error): void => {
 									this.logger.error(`Failed to create Shelly device delegate for device=${sysDevice.id}`, {
 										resource: sysDevice.id,
@@ -342,11 +333,7 @@ export class ShellyNgService implements IManagedPluginService {
 				} else {
 					this.delegatesRegistryService
 						.insert(device)
-						.then((): void => {
-							this.logger.debug(`New device=${device.id} was added to delegates registry`, {
-								resource: device.id,
-							});
-						})
+						.then((): void => {})
 						.catch((err: Error): void => {
 							this.logger.error(`Failed to create new Shelly device delegate for device=${device.id}`, {
 								resource: device.id,
@@ -370,8 +357,6 @@ export class ShellyNgService implements IManagedPluginService {
 	 */
 	protected handleRemovedDevice = (device: Device): void => {
 		this.delegatesRegistryService.remove(device.id);
-
-		this.logger.debug(`Device=${device.id} was removed from delegates registry`, { resource: device.id });
 	};
 
 	/**
@@ -379,10 +364,6 @@ export class ShellyNgService implements IManagedPluginService {
 	 */
 	protected handleExcludedDevice = (deviceId: DeviceId): void => {
 		this.delegatesRegistryService.remove(deviceId);
-
-		this.logger.debug(`Device=${deviceId} was set as excluded and removed from delegates registry`, {
-			resource: deviceId,
-		});
 	};
 
 	/**

@@ -148,10 +148,6 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 			stack.pop();
 		}
 
-		this.logger.debug(
-			`Pushed undo entry spaceId=${snapshot.spaceId} action="${actionDescription}" stackSize=${stack.length}`,
-		);
-
 		return entry;
 	}
 
@@ -205,8 +201,6 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 			};
 		}
 
-		this.logger.debug(`Executing undo spaceId=${spaceId} action="${entry.actionDescription}"`);
-
 		// Remove the entry from the stack (it's being consumed)
 		const stack = this.undoStacks.get(spaceId);
 
@@ -235,7 +229,6 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 	 */
 	clearSpace(spaceId: string): void {
 		this.undoStacks.delete(spaceId);
-		this.logger.debug(`Cleared undo stack spaceId=${spaceId}`);
 	}
 
 	/**
@@ -301,8 +294,6 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 			const commands = this.buildLightRestoreCommands(device, channel, lightState);
 
 			if (commands.length === 0) {
-				this.logger.debug(`No commands to restore for device id=${device.id}`);
-
 				return true;
 			}
 
@@ -331,15 +322,11 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 	private async restoreClimateState(climate: ClimateState): Promise<{ restored: boolean; failed: boolean }> {
 		// Skip if no climate devices or no setpoint capability
 		if (!climate.hasClimate || !climate.canSetSetpoint || !climate.primaryThermostatId) {
-			this.logger.debug('No climate restoration needed - no thermostat or setpoint capability');
-
 			return { restored: false, failed: false };
 		}
 
 		// Skip if no target temperature was captured
 		if (climate.targetTemperature === null) {
-			this.logger.debug('No climate restoration needed - no target temperature in snapshot');
-
 			return { restored: false, failed: false };
 		}
 
@@ -391,8 +378,6 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 
 				return { restored: false, failed: true };
 			}
-
-			this.logger.debug(`Restored thermostat setpoint to ${climate.targetTemperature}°C deviceId=${device.id}`);
 
 			return { restored: true, failed: false };
 		} catch (error) {
@@ -528,7 +513,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 		}
 
 		if (cleanedCount > 0) {
-			this.logger.debug(`Cleaned up ${cleanedCount} expired undo entries`);
+			// Intentionally empty - reserved for future logging
 		}
 	}
 

@@ -36,8 +36,6 @@ export class HomeAssistantDiscoveryController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	getDiscoveredInstances(): DiscoveredInstancesResponseModel {
-		this.logger.debug('Incoming request to get discovered Home Assistant instances');
-
 		const discoveredInstances = this.discovererService.getDiscoveredInstances();
 
 		const instances: DiscoveredInstanceModel[] = discoveredInstances.map((instance) =>
@@ -66,8 +64,6 @@ export class HomeAssistantDiscoveryController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('refresh')
 	refreshDiscovery(): DiscoveredInstancesResponseModel {
-		this.logger.debug('Incoming request to refresh Home Assistant discovery');
-
 		this.discovererService.refresh();
 
 		// Return current list - existing instances are preserved while discovery restarts

@@ -48,8 +48,6 @@ export class HelperMappingPreviewService {
 		entityId: string,
 		options?: HelperMappingPreviewRequestDto,
 	): Promise<HelperMappingPreviewModel> {
-		this.logger.debug(`[HELPER MAPPING PREVIEW] Generating preview for helper: ${entityId}`);
-
 		// Fetch helper information
 		const helper = await this.homeAssistantHttpService.getDiscoveredHelper(entityId);
 

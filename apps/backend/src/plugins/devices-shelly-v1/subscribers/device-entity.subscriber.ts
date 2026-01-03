@@ -65,17 +65,13 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 						username,
 						device.password,
 					);
-
-					this.logger.debug(`Auth credentials set for device ${device.identifier} (username: ${username})`);
 				} else {
-					this.logger.debug(`Device ${device.identifier} not yet discovered, credentials will be set on discovery`);
+					// Intentionally empty - registered device not found
 				}
 			}
 
 			// Set enabled status
 			this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, device.enabled);
-
-			this.logger.debug(`Device ${device.identifier} was successfully created (enabled: ${device.enabled})`);
 		} catch (error) {
 			const err = error as Error;
 
@@ -113,8 +109,6 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 			// Handle enabled status change
 			if (enabledUpdated) {
 				this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, device.enabled);
-
-				this.logger.debug(`Device ${device.identifier} enabled status updated to: ${device.enabled}`);
 			}
 
 			// Handle credentials update
@@ -131,8 +125,6 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 						username,
 						device.password,
 					);
-
-					this.logger.debug(`Auth credentials updated for device ${device.identifier} (username: ${username})`);
 				} else {
 					this.logger.warn(`Device ${device.identifier} not found in adapter, cannot update credentials`);
 				}
@@ -157,8 +149,6 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		try {
 			// Mark the device as disabled when removed from a database
 			this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, false);
-
-			this.logger.debug(`Device ${device.identifier} marked as disabled after removal`);
 		} catch (error) {
 			const err = error as Error;
 

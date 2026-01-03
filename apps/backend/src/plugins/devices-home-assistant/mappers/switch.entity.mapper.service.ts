@@ -48,8 +48,6 @@ export class SwitchEntityMapperService extends EntityMapper {
 			this.logger.warn('Missing main state property');
 		}
 
-		this.logger.debug('Received switch entity state was mapped to system properties');
-
 		return mapped;
 	}
 
@@ -84,8 +82,6 @@ export class SwitchEntityMapperService extends EntityMapper {
 		const state = isOn === true ? 'on' : 'off';
 
 		const service = isOn === true ? 'turn_on' : 'turn_off';
-
-		this.logger.debug('Received properties were mapped to Home Assistant entity state');
 
 		return { state, service };
 	}

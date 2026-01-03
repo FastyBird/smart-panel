@@ -37,8 +37,6 @@ export class WeatherController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async getAllWeather(): Promise<AllLocationsWeatherResponseModel> {
-		this.logger.debug('Fetching weather data for all locations');
-
 		const data = await this.weatherService.getAllWeather();
 
 		const response = new AllLocationsWeatherResponseModel();
@@ -59,8 +57,6 @@ export class WeatherController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('primary')
 	async getPrimaryWeather(): Promise<LocationWeatherResponseModel> {
-		this.logger.debug('Fetching weather data for primary location');
-
 		try {
 			const data = await this.weatherService.getPrimaryWeather();
 
@@ -96,8 +92,6 @@ export class WeatherController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':locationId')
 	async getWeather(@Param('locationId', ParseUUIDPipe) locationId: string): Promise<LocationWeatherResponseModel> {
-		this.logger.debug(`Fetching weather data for location=${locationId}`);
-
 		try {
 			const data = await this.weatherService.getWeather(locationId);
 
@@ -135,8 +129,6 @@ export class WeatherController {
 	async getCurrentWeather(
 		@Param('locationId', ParseUUIDPipe) locationId: string,
 	): Promise<LocationCurrentResponseModel> {
-		this.logger.debug(`Fetching current weather data for location=${locationId}`);
-
 		try {
 			const data = await this.weatherService.getCurrentWeather(locationId);
 
@@ -174,8 +166,6 @@ export class WeatherController {
 	async getForecastWeather(
 		@Param('locationId', ParseUUIDPipe) locationId: string,
 	): Promise<LocationForecastResponseModel> {
-		this.logger.debug(`Fetching forecast weather data for location=${locationId}`);
-
 		try {
 			const data = await this.weatherService.getForecastWeather(locationId);
 
@@ -212,8 +202,6 @@ export class WeatherController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':locationId/alerts')
 	async getAlerts(@Param('locationId', ParseUUIDPipe) locationId: string): Promise<LocationAlertsResponseModel> {
-		this.logger.debug(`Fetching weather alerts for location=${locationId}`);
-
 		try {
 			const data = await this.weatherService.getAlerts(locationId);
 

@@ -57,7 +57,6 @@ export class WeatherService {
 		const locations = await this.locationsService.findAll();
 
 		if (locations.length === 0) {
-			this.logger.debug('No locations configured');
 			return [];
 		}
 
@@ -220,15 +219,11 @@ export class WeatherService {
 	 */
 	async refreshAllWeather(): Promise<void> {
 		try {
-			this.logger.debug('Refreshing weather data for all locations...');
-
 			const weatherList = await this.getAllWeather(true);
 
 			for (const weather of weatherList) {
 				this.eventEmitter.emit(EventType.WEATHER_INFO, weather);
 			}
-
-			this.logger.debug(`Weather info broadcasted for ${weatherList.length} locations`);
 		} catch (error) {
 			const err = error as Error;
 			this.logger.error('Failed to broadcast weather info', { message: err.message, stack: err.stack });
@@ -238,15 +233,12 @@ export class WeatherService {
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
 	handleConfigurationUpdatedEvent() {
 		// Configuration changes might affect providers, trigger a refresh
-		this.logger.debug('Config updated, scheduling weather refresh');
 	}
 
 	@OnEvent(EventType.LOCATION_CREATED)
 	@OnEvent(EventType.LOCATION_UPDATED)
 	async handleLocationChangedEvent(location: WeatherLocationEntity) {
 		try {
-			this.logger.debug(`Location changed, refreshing weather for location=${location.id}`);
-
 			// Clear cache for this location
 			await this.clearLocationCache(location.id);
 
@@ -265,7 +257,6 @@ export class WeatherService {
 	@OnEvent(EventType.LOCATION_DELETED)
 	async handleLocationDeletedEvent(payload: { id: string }) {
 		await this.clearLocationCache(payload.id);
-		this.logger.debug(`Cleared cache for deleted location=${payload.id}`);
 	}
 
 	private async getWeatherForLocation(
@@ -314,7 +305,6 @@ export class WeatherService {
 		if (!force) {
 			const cached = await this.cacheManager.get<{ current: CurrentDayModel; location: LocationModel }>(cacheKey);
 			if (cached) {
-				this.logger.debug(`Returning cached current weather for location=${location.id}`);
 				return cached;
 			}
 		}
@@ -361,7 +351,6 @@ export class WeatherService {
 		if (!force) {
 			const cached = await this.cacheManager.get<ForecastDayModel[]>(cacheKey);
 			if (cached) {
-				this.logger.debug(`Returning cached forecast for location=${location.id}`);
 				return cached;
 			}
 		}
@@ -389,7 +378,6 @@ export class WeatherService {
 		if (!force) {
 			const cached = await this.cacheManager.get<WeatherAlertModel[]>(cacheKey);
 			if (cached) {
-				this.logger.debug(`Returning cached alerts for location=${location.id}`);
 				return cached;
 			}
 		}

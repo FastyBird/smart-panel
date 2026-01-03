@@ -46,7 +46,7 @@ export class WeatherProviderRegistryService {
 		const provider = this.providers[type] ?? null;
 
 		if (!provider) {
-			this.logger.debug(`Weather provider '${type}' not found`);
+			// Intentionally empty - provider not found
 		}
 
 		return provider;

@@ -27,8 +27,6 @@ export class DisplayEntitySubscriber implements EntitySubscriberInterface<Displa
 			const status = await this.displayStatusService.readLatest(entity);
 			entity.online = status.online;
 			entity.status = status.status;
-
-			this.logger.debug(`Loaded display status from InfluxDB id=${entity.id}, value=${entity.status}`);
 		} catch (error) {
 			const err = error as Error;
 
@@ -45,8 +43,6 @@ export class DisplayEntitySubscriber implements EntitySubscriberInterface<Displa
 		const displayId = event.entity.id;
 
 		try {
-			this.logger.debug(`Deleting stored statuses for id=${displayId}`);
-
 			await this.displayStatusService.delete(event.entity);
 
 			this.logger.log(`Successfully removed all stored statuses for id=${displayId}`);

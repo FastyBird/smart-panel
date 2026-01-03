@@ -35,7 +35,5 @@ export class ListUsersCommand extends CommandRunner {
 		users.forEach((user, index) => {
 			console.log(`${'\x1b[35m' + (index + 1) + '.\x1b[0m'} \x1b[1m${user.username}\x1b[0m`);
 		});
-
-		this.logger.debug(`Successfully displayed user list.`);
 	}
 }

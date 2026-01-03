@@ -46,12 +46,9 @@ export class OpenWeatherMapProvider implements IWeatherProvider {
 			return null;
 		}
 
-		this.logger.debug(`[WEATHER] Fetching current weather for location id=${location.id}`);
-
 		const result = await this.httpService.fetchCurrentWeather(location);
 
 		if (result) {
-			this.logger.debug(`[WEATHER] Successfully fetched current weather for location id=${location.id}`);
 			return result.current;
 		}
 
@@ -64,12 +61,9 @@ export class OpenWeatherMapProvider implements IWeatherProvider {
 			return null;
 		}
 
-		this.logger.debug(`[WEATHER] Fetching forecast weather for location id=${location.id}`);
-
 		const forecast = await this.httpService.fetchForecastWeather(location);
 
 		if (forecast) {
-			this.logger.debug(`[WEATHER] Successfully fetched forecast weather for location id=${location.id}`);
 			return forecast;
 		}
 

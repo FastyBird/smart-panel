@@ -130,10 +130,6 @@ describe('ShellyV1DevicePlatform', () => {
 		const ok = await platform.processBatch([{ device, channel: makeChannel('ch'), property: makeProp('p'), value: 1 }]);
 
 		expect(ok).toBe(false);
-		expect(Logger.prototype.debug).toHaveBeenCalledWith(
-			`[ShellyV1DevicePlatform] Device ${device.identifier} is disabled, ignoring command`,
-			expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
-		);
 	});
 
 	it('processBatch returns false when Shelly device not found in adapter (offline)', async () => {

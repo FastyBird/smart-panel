@@ -57,8 +57,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 
 		// Check if a device is enabled
 		if (!device.enabled) {
-			this.logger.debug(`Device ${device.identifier} is disabled, ignoring command`, { resource: device.id });
-
 			return false;
 		}
 
@@ -155,10 +153,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		const bindings = this.getBindings(descriptor, shellyDevice);
 
 		if (!bindings || bindings.length === 0) {
-			this.logger.debug(`No bindings found for device ${device.identifier}, cannot execute command`, {
-				resource: device.id,
-			});
-
 			return false;
 		}
 
@@ -184,8 +178,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				// Roller command
 				return await this.executeRollerCommand(device, shellyDevice, parseInt(rollerMatch[1], 10), propertyUpdates);
 			} else {
-				this.logger.debug(`Unknown channel type for command: ${channel.identifier}, ignoring`);
-
 				return false;
 			}
 		} catch (error) {
@@ -214,8 +206,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		const stateUpdate = propertyUpdates.find((u) => u.property.identifier === 'state');
 
 		if (!stateUpdate) {
-			this.logger.debug(`No state property found in relay command`);
-
 			return false;
 		}
 
@@ -226,8 +216,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		});
 
 		await shellyDevice.setRelay(index, boolValue);
-
-		this.logger.debug(`Successfully set relay ${index} on device ${device.identifier}`, { resource: device.id });
 
 		return true;
 	}
@@ -306,7 +294,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					break;
 
 				default:
-					this.logger.debug(`Unknown light property: ${property.identifier}, ignoring`);
 			}
 		}
 
@@ -447,8 +434,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			return false;
 		}
 
-		this.logger.debug(`Successfully set light ${index} on device ${device.identifier}`, { resource: device.id });
-
 		return true;
 	}
 
@@ -501,13 +486,9 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				// No reverse mapping needed
 				await shellyDevice.setRollerState(command);
 			} else {
-				this.logger.debug(`Unknown roller property: ${property.identifier}, ignoring`);
+				// Intentionally empty - unsupported command type
 			}
 		}
-
-		this.logger.debug(`Successfully executed roller ${index} command on device ${device.identifier}`, {
-			resource: device.id,
-		});
 
 		return true;
 	}

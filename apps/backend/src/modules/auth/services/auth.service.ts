@@ -40,8 +40,6 @@ export class AuthService {
 	) {}
 
 	generateToken(user: UserEntity, role?: UserRole, options?: JwtSignOptions): string {
-		this.logger.debug(`Generating token for user=${user.id} role=${role || user.role}`);
-
 		const payload = {
 			sub: user.id,
 			role: role || user.role,
@@ -51,46 +49,30 @@ export class AuthService {
 
 		const token = this.jwtService.sign(payload, options);
 
-		this.logger.debug(`Successfully generated token for user=${user.id}`);
-
 		return token;
 	}
 
 	async checkUsername({ username }: CheckUsernameDto): Promise<CheckModel> {
-		this.logger.debug(`Checking if username=${username} exists`);
-
 		const user = await this.usersService.findByUsername(username);
 		const isTaken = user !== null;
-
-		this.logger.debug(`Username=${username} taken=${isTaken}`);
 
 		return toInstance(CheckModel, { valid: !isTaken });
 	}
 
 	async checkEmail({ email }: CheckEmailDto): Promise<CheckModel> {
-		this.logger.debug(`Checking if email=${email} exists`);
-
 		const user = await this.usersService.findByEmail(email);
 		const isTaken = user !== null;
-
-		this.logger.debug(`Email=${email} taken=${isTaken}`);
 
 		return toInstance(CheckModel, { valid: !isTaken });
 	}
 
 	async getProfile(id: string): Promise<UserEntity> {
-		this.logger.debug(`Fetching profile for user=${id}`);
-
 		const user = await this.usersService.getOneOrThrow(id);
-
-		this.logger.debug(`Successfully fetched profile for user=${id}`);
 
 		return user;
 	}
 
 	async login(loginDto: LoginDto): Promise<LoggedInModel> {
-		this.logger.debug(`Attempting login for username=${loginDto.username}`);
-
 		const dtoInstance = await this.validateDto<LoginDto>(LoginDto, loginDto);
 
 		const { username, password } = dtoInstance;
@@ -121,16 +103,12 @@ export class AuthService {
 
 		const tokens = await this.createTokenPair(user);
 
-		this.logger.debug(`Successful login for user=${user.id}`);
-
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
 		return toInstance(LoggedInModel, { ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt });
 	}
 
 	async register(registerDto: RegisterDto): Promise<UserEntity> {
-		this.logger.debug(`Registering new user username=${registerDto.username}, email=${registerDto.email}`);
-
 		const dtoInstance = await this.validateDto<RegisterDto>(RegisterDto, registerDto);
 
 		const { password, email, username } = dtoInstance;
@@ -167,8 +145,6 @@ export class AuthService {
 			role: dtoInstance.role ?? (ownerExists ? UserRole.USER : UserRole.OWNER),
 		});
 
-		this.logger.debug(`Successfully registered user id=${user.id}`);
-
 		return user;
 	}
 
@@ -177,11 +153,7 @@ export class AuthService {
 
 		try {
 			payload = await this.jwtService.verifyAsync(token);
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.debug('JWT validation failed', { message: err.message, stack: err.stack });
-
+		} catch {
 			throw new AuthUnauthorizedException('Invalid or expired token');
 		}
 
@@ -294,8 +266,6 @@ export class AuthService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		this.logger.debug(`Validating DTO for class=${DtoClass.name}`);
-
 		const dtoInstance = toInstance(DtoClass, dto, {
 			excludeExtraneousValues: false,
 		});
@@ -311,8 +281,6 @@ export class AuthService {
 
 			throw new AuthValidationException('Provided user data are invalid.');
 		}
-
-		this.logger.debug(`DTO validation successful for class=${DtoClass.name}`);
 
 		return dtoInstance;
 	}

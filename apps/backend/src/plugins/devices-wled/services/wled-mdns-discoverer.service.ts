@@ -126,7 +126,6 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 
 		// Check if already discovered
 		if (this.discoveredDevices.has(host)) {
-			this.logger.debug(`Device already discovered: ${host}`);
 			return;
 		}
 

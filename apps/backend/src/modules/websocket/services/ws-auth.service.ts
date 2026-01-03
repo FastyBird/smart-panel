@@ -101,8 +101,6 @@ export class WsAuthService {
 
 		(client.data as object)['user'] = toInstance(ClientUserDto, { id: user.id, role: user.role, type: 'user' });
 
-		this.logger.debug(`User authentication successful for user=${user.id}`);
-
 		return true;
 	}
 
@@ -143,11 +141,7 @@ export class WsAuthService {
 			token_id: storedToken.id,
 		});
 
-		this.logger.debug(`Display authentication successful for display=${displayId}`);
-
 		return true;
-
-		this.logger.debug(`Token authentication successful (ownerType=${storedToken.ownerType})`);
 
 		return true;
 	}
@@ -197,8 +191,6 @@ export class WsAuthService {
 			ownerType: storedLongLiveToken.ownerType,
 			tokenId: storedLongLiveToken.id,
 		});
-
-		this.logger.debug(`Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
 
 		return true;
 	}

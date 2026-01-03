@@ -82,7 +82,6 @@ export class Z2mDeviceMapperService {
 		// Use per-device lock to prevent concurrent mapping of the same device
 		const existingLock = this.deviceLocks.get(friendlyName);
 		if (existingLock !== undefined) {
-			this.logger.debug(`Waiting for existing mapping operation for device: ${friendlyName}`);
 			return existingLock;
 		}
 
@@ -107,7 +106,6 @@ export class Z2mDeviceMapperService {
 		const definition = z2mDevice.definition;
 
 		if (!definition) {
-			this.logger.debug(`Skipping device without definition: ${friendlyName}`);
 			return null;
 		}
 
@@ -130,7 +128,6 @@ export class Z2mDeviceMapperService {
 
 		if (!device) {
 			if (!createIfNotExists) {
-				this.logger.debug(`Skipping new device (auto-add disabled): ${friendlyName}`);
 				return null;
 			}
 
@@ -153,7 +150,6 @@ export class Z2mDeviceMapperService {
 
 		// Skip channel/property creation if device is disabled
 		if (!device.enabled) {
-			this.logger.debug(`Device ${identifier} is disabled, skipping channel creation`, { resource: device.id });
 			return device;
 		}
 
@@ -191,7 +187,6 @@ export class Z2mDeviceMapperService {
 		);
 
 		if (!device) {
-			this.logger.debug(`Device not found for state update: ${friendlyName}`);
 			return;
 		}
 
@@ -199,12 +194,8 @@ export class Z2mDeviceMapperService {
 			return;
 		}
 
-		this.logger.debug(`Updating state for ${friendlyName}: ${JSON.stringify(state)}`, { resource: device.id });
-
 		// Get all channels for this device
 		const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
-
-		this.logger.debug(`Found ${channels.length} channels for device ${friendlyName}`, { resource: device.id });
 
 		// Build virtual property context
 		const virtualContext: VirtualPropertyContext = {
@@ -293,10 +284,6 @@ export class Z2mDeviceMapperService {
 				// Convert value to appropriate type based on property's data type
 				const convertedValue = this.convertValue(value, property.dataType);
 
-				this.logger.debug(
-					`Updating property ${propertyIdentifier} (${property.dataType}) = ${JSON.stringify(value)} -> ${convertedValue}`,
-				);
-
 				// Update property value
 				await this.channelsPropertiesService.update<
 					Zigbee2mqttChannelPropertyEntity,
@@ -322,8 +309,6 @@ export class Z2mDeviceMapperService {
 					const normalizedStatus = this.normalizeCoverState(z2mState);
 
 					if (normalizedStatus) {
-						this.logger.debug(`Updating window covering status: ${JSON.stringify(z2mState)} -> ${normalizedStatus}`);
-
 						await this.channelsPropertiesService.update<
 							Zigbee2mqttChannelPropertyEntity,
 							UpdateZigbee2mqttChannelPropertyDto
@@ -349,8 +334,6 @@ export class Z2mDeviceMapperService {
 					// Normalize to percentage (Z2M reports 0-255, spec expects 0-100)
 					const linkQualityPercent = typeof linkQuality === 'number' ? Math.round((linkQuality / 255) * 100) : null;
 
-					this.logger.debug(`Updating link_quality = ${linkQualityPercent}%`);
-
 					await this.channelsPropertiesService.update<
 						Zigbee2mqttChannelPropertyEntity,
 						UpdateZigbee2mqttChannelPropertyDto
@@ -373,8 +356,6 @@ export class Z2mDeviceMapperService {
 					const z2mBrightness = state.brightness;
 					// Convert Z2M range (0-254) to spec range (0-100%)
 					const brightnessPercent = typeof z2mBrightness === 'number' ? Math.round((z2mBrightness / 254) * 100) : null;
-
-					this.logger.debug(`Updating brightness: ${JSON.stringify(z2mBrightness)} -> ${brightnessPercent}%`);
 
 					await this.channelsPropertiesService.update<
 						Zigbee2mqttChannelPropertyEntity,
@@ -400,7 +381,6 @@ export class Z2mDeviceMapperService {
 						const hueProp = properties.find((p) => p.category === PropertyCategory.HUE);
 						if (hueProp) {
 							const hueValue = Math.round(colorState.hue);
-							this.logger.debug(`Updating hue: ${colorState.hue} -> ${hueValue}`);
 
 							await this.channelsPropertiesService.update<
 								Zigbee2mqttChannelPropertyEntity,
@@ -420,7 +400,6 @@ export class Z2mDeviceMapperService {
 						const saturationProp = properties.find((p) => p.category === PropertyCategory.SATURATION);
 						if (saturationProp) {
 							const satValue = Math.round(colorState.saturation);
-							this.logger.debug(`Updating saturation: ${colorState.saturation} -> ${satValue}%`);
 
 							await this.channelsPropertiesService.update<
 								Zigbee2mqttChannelPropertyEntity,
@@ -455,10 +434,6 @@ export class Z2mDeviceMapperService {
 						const maxKelvin = Array.isArray(propFormat) && typeof propFormat[1] === 'number' ? propFormat[1] : 6500;
 						const clampedKelvin = Math.max(minKelvin, Math.min(maxKelvin, kelvin));
 
-						this.logger.debug(
-							`Updating color_temp: ${z2mColorTemp} mired -> ${clampedKelvin} K (range: ${minKelvin}-${maxKelvin})`,
-						);
-
 						await this.channelsPropertiesService.update<
 							Zigbee2mqttChannelPropertyEntity,
 							UpdateZigbee2mqttChannelPropertyDto
@@ -480,8 +455,6 @@ export class Z2mDeviceMapperService {
 	 * Device is found by identifier (which equals friendly_name)
 	 */
 	async setDeviceAvailability(friendlyName: string, available: boolean): Promise<void> {
-		this.logger.debug(`Setting availability for ${friendlyName}: ${available}`);
-
 		const device = await this.devicesService.findOneBy<Zigbee2mqttDeviceEntity>(
 			'identifier',
 			friendlyName,
@@ -489,14 +462,12 @@ export class Z2mDeviceMapperService {
 		);
 
 		if (device) {
-			this.logger.debug(`Found device ${device.identifier} for availability update`);
 			await this.deviceConnectivityService.setConnectionState(device.id, {
 				state: available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 			});
 		} else {
 			// Use debug level - device may not exist yet if availability arrives before mapping
 			// This is normal during startup when Z2M sends availability before bridge/devices
-			this.logger.debug(`Device not found for availability update: ${friendlyName} (may not be adopted yet)`);
 		}
 	}
 
@@ -763,15 +734,10 @@ export class Z2mDeviceMapperService {
 
 			// Skip if this property already exists in database (prevents UNIQUE constraint violation)
 			if (existingDbIdentifiers.has(identifier)) {
-				this.logger.debug(`Virtual property ${identifier} already exists in database, skipping creation`);
 				continue;
 			}
 
 			const value = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
-
-			this.logger.debug(
-				`Creating virtual property ${identifier} for channel ${mappedChannel.category}, value=${value}`,
-			);
 
 			const format =
 				virtualDef.format && virtualDef.format.length > 0

@@ -33,8 +33,6 @@ export class ServicesController {
 	})
 	@ApiSuccessResponse(ServicesStatusResponseModel, 'Returns a list of service statuses')
 	async findAll(): Promise<ServicesStatusResponseModel> {
-		this.logger.debug('Fetching all service statuses');
-
 		const statuses = await this.pluginServiceManager.getStatus();
 
 		const response = new ServicesStatusResponseModel();
@@ -58,8 +56,6 @@ export class ServicesController {
 		@Param('pluginName') pluginName: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		this.logger.debug(`Fetching service status pluginName=${pluginName} serviceId=${serviceId}`);
-
 		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 		if (!status) {
@@ -88,18 +84,12 @@ export class ServicesController {
 		@Param('pluginName') pluginName: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		this.logger.debug(`Starting service pluginName=${pluginName} serviceId=${serviceId}`);
-
-		const success = await this.pluginServiceManager.startServiceManually(pluginName, serviceId);
+		await this.pluginServiceManager.startServiceManually(pluginName, serviceId);
 
 		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 		if (!status) {
 			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
-		}
-
-		if (!success) {
-			this.logger.debug(`Service ${pluginName}:${serviceId} start returned false, current state: ${status.state}`);
 		}
 
 		const response = new ServiceStatusResponseModel();
@@ -124,18 +114,12 @@ export class ServicesController {
 		@Param('pluginName') pluginName: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		this.logger.debug(`Stopping service pluginName=${pluginName} serviceId=${serviceId}`);
-
-		const success = await this.pluginServiceManager.stopServiceManually(pluginName, serviceId);
+		await this.pluginServiceManager.stopServiceManually(pluginName, serviceId);
 
 		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 		if (!status) {
 			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
-		}
-
-		if (!success) {
-			this.logger.debug(`Service ${pluginName}:${serviceId} stop returned false, current state: ${status.state}`);
 		}
 
 		const response = new ServiceStatusResponseModel();
@@ -160,18 +144,12 @@ export class ServicesController {
 		@Param('pluginName') pluginName: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		this.logger.debug(`Restarting service pluginName=${pluginName} serviceId=${serviceId}`);
-
-		const success = await this.pluginServiceManager.restartService(pluginName, serviceId);
+		await this.pluginServiceManager.restartService(pluginName, serviceId);
 
 		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
 
 		if (!status) {
 			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
-		}
-
-		if (!success) {
-			this.logger.debug(`Service ${pluginName}:${serviceId} restart returned false, current state: ${status.state}`);
 		}
 
 		const response = new ServiceStatusResponseModel();

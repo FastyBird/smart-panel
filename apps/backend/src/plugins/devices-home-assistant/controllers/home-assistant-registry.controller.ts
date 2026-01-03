@@ -47,12 +47,8 @@ export class HomeAssistantRegistryController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('devices')
 	async findAllDevices(): Promise<HomeAssistantDeviceRegistryResponseModel> {
-		this.logger.debug('Fetching all Home Assistant devices from registry');
-
 		try {
 			const devices = await this.homeAssistantWsService.getDevicesRegistry();
-
-			this.logger.debug(`Retrieved ${devices.length} devices from registry`);
 
 			const response = new HomeAssistantDeviceRegistryResponseModel();
 			response.data = devices;
@@ -95,12 +91,8 @@ export class HomeAssistantRegistryController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('entities')
 	async findAllEntities(): Promise<HomeAssistantEntityRegistryResponseModel> {
-		this.logger.debug('Fetching all Home Assistant entities from registry');
-
 		try {
 			const entities = await this.homeAssistantWsService.getEntitiesRegistry();
-
-			this.logger.debug(`Retrieved ${entities.length} entities from registry`);
 
 			const response = new HomeAssistantEntityRegistryResponseModel();
 			response.data = entities;

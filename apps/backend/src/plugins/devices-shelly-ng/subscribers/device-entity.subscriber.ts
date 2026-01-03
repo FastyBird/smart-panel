@@ -32,8 +32,6 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 		try {
 			await this.deviceManagerService.createOrUpdate(event.entity.id);
 
-			this.logger.debug(`Shelly device=${event.entity.id} was successfully created`);
-
 			this.shellyNgService.restart().catch((error) => {
 				const err = error as Error;
 
@@ -67,8 +65,6 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 
 		try {
 			await this.deviceManagerService.createOrUpdate(event.databaseEntity.id);
-
-			this.logger.debug(`Shelly device=${event.databaseEntity.id} was successfully updated`);
 
 			this.shellyNgService.restart().catch((error) => {
 				const err = error as Error;

@@ -158,7 +158,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 			}
 
 			// Config didn't change for this plugin (or only discovery settings changed), no restart needed
-			this.logger.debug('Config event received but no relevant changes for this plugin');
 			return Promise.resolve({ restartRequired: false });
 		}
 
@@ -370,20 +369,17 @@ export class Zigbee2mqttService implements IManagedPluginService {
 		// cache devices for processing when BRIDGE_ONLINE arrives
 		// This handles the race condition where DEVICES_RECEIVED arrives before BRIDGE_ONLINE
 		if (!this.bridgeOnline && this.config.discovery.syncOnStartup) {
-			this.logger.debug('Bridge not online yet, caching devices for later sync');
 			this.pendingDevices = event.devices;
 			return;
 		}
 
 		// Skip if neither auto-add nor sync is needed
 		if (!shouldAddNew && !shouldSyncExisting) {
-			this.logger.debug('Auto-add disabled and no sync pending, skipping device mapping');
 			return;
 		}
 
 		// Prevent concurrent sync operations (can happen if Z2M sends devices list multiple times)
 		if (this.isSyncing) {
-			this.logger.debug('Sync already in progress, skipping duplicate device list');
 			return;
 		}
 
@@ -438,8 +434,6 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_AVAILABILITY_CHANGED)
 	async handleDeviceAvailabilityChanged(event: Z2mDeviceAvailabilityChangedEvent): Promise<void> {
-		this.logger.debug(`Device availability changed: ${event.friendlyName} -> ${event.available}`);
-
 		try {
 			await this.deviceMapper.setDeviceAvailability(event.friendlyName, event.available);
 		} catch (error) {

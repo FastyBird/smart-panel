@@ -47,10 +47,6 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 
 		try {
 			entity.value = await this.propertyValueService.readLatest(entity);
-
-			this.logger.debug(`Loaded property value from InfluxDB id=${entity.id}, value=${entity.value}`, {
-				resource: resourceId,
-			});
 		} catch (error) {
 			const err = error as Error;
 
@@ -63,10 +59,6 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 
 	beforeUpdate(event: UpdateEvent<ChannelPropertyEntity>): void {
 		if (event.entity) {
-			const resourceId = this.getResourceId(event.entity.channel, event.entity.id);
-
-			this.logger.debug(`Updating property id=${event.entity.id}`, { resource: resourceId });
-
 			event.entity.updatedAt = new Date();
 		}
 	}
@@ -81,8 +73,6 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 		const resourceId = this.getResourceId(event.entity.channel, propertyId);
 
 		try {
-			this.logger.debug(`Deleting stored values for id=${propertyId}`, { resource: resourceId });
-
 			await this.propertyValueService.delete(event.entity);
 			await this.deviceStatusService.deleteByProperty(event.entity);
 

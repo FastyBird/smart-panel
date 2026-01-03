@@ -168,15 +168,11 @@ export class SpaceSuggestionService {
 	 * @throws SpacesNotFoundException if space not found
 	 */
 	async getSuggestion(spaceId: string): Promise<SpaceSuggestion | null> {
-		this.logger.debug(`Getting suggestion for space id=${spaceId}`);
-
 		// Get space - throws if not found
 		const space = await this.spacesService.getOneOrThrow(spaceId);
 
 		// Check if suggestions are enabled
 		if (!space.suggestionsEnabled) {
-			this.logger.debug(`Suggestions disabled for space id=${spaceId}`);
-
 			return null;
 		}
 
@@ -195,15 +191,11 @@ export class SpaceSuggestionService {
 		const suggestion = evaluateSuggestionRules(context);
 
 		if (!suggestion) {
-			this.logger.debug(`No suggestion applicable for space id=${spaceId}`);
-
 			return null;
 		}
 
 		// Check cooldown
 		if (isOnCooldown(spaceId, suggestion.type)) {
-			this.logger.debug(`Suggestion ${suggestion.type} is on cooldown for space id=${spaceId}`);
-
 			return null;
 		}
 
@@ -235,7 +227,6 @@ export class SpaceSuggestionService {
 		// If dismissed, set cooldown and return
 		if (feedback === SuggestionFeedback.DISMISSED) {
 			setCooldown(spaceId, suggestionType);
-			this.logger.debug(`Suggestion dismissed for space id=${spaceId} type=${suggestionType}`);
 
 			return { success: true };
 		}
@@ -262,8 +253,6 @@ export class SpaceSuggestionService {
 	 * Execute the lighting intent for a suggestion type.
 	 */
 	private async executeIntent(spaceId: string, suggestionType: SuggestionType): Promise<boolean> {
-		this.logger.debug(`Executing intent for suggestion type=${suggestionType} space id=${spaceId}`);
-
 		try {
 			switch (suggestionType) {
 				case SuggestionType.LIGHTING_RELAX:

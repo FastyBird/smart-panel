@@ -20,8 +20,6 @@ export class ModuleResetService {
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			this.logger.debug(`Resetting all module data`);
-
 			await this.usersRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.USER_RESET, null);

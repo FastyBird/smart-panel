@@ -229,7 +229,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 			}
 
 			// Config didn't change for this plugin, no restart needed
-			this.logger.debug('Config event received but no relevant changes for this plugin');
 			return Promise.resolve({ restartRequired: false });
 		}
 
@@ -276,8 +275,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	}
 
 	private connect() {
-		this.logger.debug('Connecting to Home Assistant WebSocket API...');
-
 		// Clear the intentional disconnect flag when starting a new connection
 		this.intentionalDisconnect = false;
 
@@ -354,8 +351,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		}
 
 		try {
-			this.logger.debug('Fetching devices registry from Home Assistant');
-
 			const response = await this.send({
 				type: 'config/device_registry/list',
 			});
@@ -399,8 +394,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		}
 
 		try {
-			this.logger.debug('Fetching entities registry from Home Assistant');
-
 			const response = await this.send({
 				type: 'config/entity_registry/list',
 			});
@@ -511,8 +504,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 		}
 
 		if (msg.type === 'auth_required') {
-			this.logger.debug('Authenticating with Home Assistant instance...');
-
 			this.ws?.send(
 				JSON.stringify({
 					type: 'auth',
@@ -520,8 +511,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 				}),
 			);
 		} else if (msg.type === 'auth_ok') {
-			this.logger.debug('Authenticated with Home Assistant instance.');
-
 			// Resolve the connection promise - service is now fully started
 			if (this.connectionResolver) {
 				this.connectionResolver.resolve();
@@ -573,8 +562,6 @@ export class HomeAssistantWsService implements IManagedPluginService {
 	}
 
 	private subscribeToStates() {
-		this.logger.debug('Subscribing to events.');
-
 		this.ws?.send(
 			JSON.stringify({
 				id: this.nextId++,

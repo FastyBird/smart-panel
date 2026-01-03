@@ -113,8 +113,6 @@ export class ShellyNgDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('supported')
 	async getSupported(): Promise<ShellyNgSupportedDevicesResponseModel> {
-		this.logger.debug('Incoming request to get Shelly NG supported devices list');
-
 		const devices: ShellyNgSupportedDeviceModel[] = [];
 
 		for (const [group, spec] of Object.entries(DESCRIPTORS)) {

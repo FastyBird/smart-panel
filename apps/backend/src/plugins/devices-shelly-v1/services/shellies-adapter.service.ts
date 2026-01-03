@@ -94,8 +94,6 @@ export class ShelliesAdapterService {
 	 */
 	stop(): void {
 		if (!this.isStarted || !this.shellies) {
-			this.logger.debug('Shellies adapter not started, nothing to stop');
-
 			return;
 		}
 
@@ -159,8 +157,6 @@ export class ShelliesAdapterService {
 		if (device) {
 			device.enabled = enabled;
 			this.devicesRegistry.set(deviceId, device);
-
-			this.logger.debug(`Updated enabled status for ${deviceId}: ${enabled}`, { resource: deviceId });
 		}
 	}
 
@@ -172,8 +168,6 @@ export class ShelliesAdapterService {
 
 		if (device && device.setAuthCredentials) {
 			device.setAuthCredentials(username, password);
-
-			this.logger.debug(`Set auth credentials for ${deviceId} (username: ${username})`, { resource: deviceId });
 		} else if (!device) {
 			this.logger.warn(`Cannot set auth credentials - device not found: ${deviceId}`, { resource: deviceId });
 		}
@@ -183,18 +177,12 @@ export class ShelliesAdapterService {
 	 * Handle device discovered event from a shellies library
 	 */
 	private handleDeviceDiscovered(device: ShellyDevice): void {
-		this.logger.debug(`Device discovered: ${device.id} (${device.type})`, { resource: device.id });
-
 		// Add a device to a registry (default enabled = true, will be updated by mapper)
 		this.devicesRegistry.set(device.id, {
 			id: device.id,
 			type: device.type,
 			host: device.host,
 			enabled: true,
-		});
-
-		this.logger.debug(`Device registered: ${device.id} (${this.devicesRegistry.size} total devices)`, {
-			resource: device.id,
 		});
 
 		// Register device-specific event handlers
@@ -213,9 +201,7 @@ export class ShelliesAdapterService {
 			this.handleDeviceOnline(device);
 		});
 
-		device.on('stale', () => {
-			this.logger.debug(`Device stale: ${device.id}`, { resource: device.id });
-		});
+		device.on('stale', () => {});
 
 		device.on('remove', () => {
 			this.handleDeviceRemoved(device);
@@ -240,8 +226,6 @@ export class ShelliesAdapterService {
 		newValue: string | number | boolean,
 		oldValue: string | number | boolean | null,
 	): void {
-		this.logger.debug(`Device ${device.id} property changed: ${property}`, { resource: device.id });
-
 		const normalizedEvent: NormalizedDeviceChangeEvent = {
 			id: device.id,
 			property,
@@ -256,8 +240,6 @@ export class ShelliesAdapterService {
 	 * Handle device offline event
 	 */
 	private handleDeviceOffline(device: ShellyDevice): void {
-		this.logger.debug(`Device went offline: ${device.id}`, { resource: device.id });
-
 		const normalizedEvent: NormalizedDeviceEvent = {
 			id: device.id,
 			type: device.type,
@@ -272,8 +254,6 @@ export class ShelliesAdapterService {
 	 * Handle device online event
 	 */
 	private handleDeviceOnline(device: ShellyDevice): void {
-		this.logger.debug(`Device came online: ${device.id}`, { resource: device.id });
-
 		const normalizedEvent: NormalizedDeviceEvent = {
 			id: device.id,
 			type: device.type,
@@ -288,14 +268,8 @@ export class ShelliesAdapterService {
 	 * Handle device removed event
 	 */
 	private handleDeviceRemoved(device: ShellyDevice): void {
-		this.logger.debug(`Device removed: ${device.id}`, { resource: device.id });
-
 		// Remove device from registry
 		this.devicesRegistry.delete(device.id);
-
-		this.logger.debug(`Device unregistered: ${device.id} (${this.devicesRegistry.size} total devices)`, {
-			resource: device.id,
-		});
 	}
 
 	private get config(): ShellyV1ConfigModel {
@@ -318,8 +292,6 @@ export class ShelliesAdapterService {
 
 		const now = Date.now();
 		const staleTimeout = this.config.timeouts.staleTimeout * 1000;
-
-		this.logger.debug(`Checking status of ${this.devicesRegistry.size} registered devices`);
 
 		for (const registeredDevice of this.devicesRegistry.values()) {
 			try {

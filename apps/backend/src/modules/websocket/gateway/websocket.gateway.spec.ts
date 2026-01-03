@@ -109,15 +109,8 @@ describe('WebsocketGateway', () => {
 	});
 
 	describe('afterInit', () => {
-		it('should log when the gateway starts', () => {
-			const logSpy = jest.spyOn(Logger.prototype, 'debug');
-
-			gateway.afterInit();
-
-			expect(logSpy).toHaveBeenCalledWith(
-				'[WebsocketGateway] Websockets gateway started',
-				expect.objectContaining({ tag: 'websocket-module' }),
-			);
+		it('should not throw when the gateway starts', () => {
+			expect(() => gateway.afterInit()).not.toThrow();
 		});
 	});
 
@@ -208,19 +201,11 @@ describe('WebsocketGateway', () => {
 	});
 
 	describe('sendMessage', () => {
-		it('should log and emit a message to the clients', () => {
-			const logSpy = jest.spyOn(Logger.prototype, 'debug');
+		it('should emit a message to the clients', () => {
 			const event = 'DevicesModule.Property.Updated';
 			const payload = { id: '1', value: 'test' };
 
 			gateway.sendMessage(event, payload);
-
-			const logMessage = logSpy.mock.calls[0][0]; // Capture the logged message
-
-			// Check that the log message contains the correct structure
-			expect(logMessage).toContain(`"event":"${event}"`);
-			expect(logMessage).toContain(`"payload":${JSON.stringify(payload)}`);
-			expect(logMessage).toMatch(/"timestamp":"[^"]+"/); // Ensure timestamp is present and properly formatted
 
 			// Check that the emit call was made correctly
 			expect(mockServer.emit).toHaveBeenCalledWith('event', {

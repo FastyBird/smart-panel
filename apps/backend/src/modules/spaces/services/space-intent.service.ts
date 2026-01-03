@@ -162,8 +162,6 @@ export class SpaceIntentService {
 	 * Execute a lighting intent for all lights in a space
 	 */
 	async executeLightingIntent(spaceId: string, intent: LightingIntentDto): Promise<IntentExecutionResult> {
-		this.logger.debug(`Executing lighting intent type=${intent.type} spaceId=${spaceId}`);
-
 		// Verify space exists
 		const space = await this.spacesService.findOne(spaceId);
 
@@ -177,12 +175,8 @@ export class SpaceIntentService {
 		const lights = await this.getLightsInSpace(spaceId);
 
 		if (lights.length === 0) {
-			this.logger.debug(`No lights found in space id=${spaceId}`);
-
 			return { success: true, affectedDevices: 0, failedDevices: 0 };
 		}
-
-		this.logger.debug(`Found ${lights.length} lights in space id=${spaceId}`);
 
 		// Capture snapshot for undo BEFORE executing the intent
 		await this.captureUndoSnapshot(spaceId, intent);
@@ -207,10 +201,6 @@ export class SpaceIntentService {
 		}
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
-
-		this.logger.debug(
-			`Lighting intent completed spaceId=${spaceId} affected=${affectedDevices} failed=${failedDevices}`,
-		);
 
 		return { success: overallSuccess, affectedDevices, failedDevices };
 	}
@@ -239,17 +229,7 @@ export class SpaceIntentService {
 				`hasRoles=${hasRoles} usingFallback=${usingFallback}`,
 		);
 
-		// Log individual device selections for debugging/telemetry
-		for (const selection of selections) {
-			const deviceName = selection.light.device.name ?? selection.light.device.id;
-			const roleStr = selection.light.role ?? 'none';
-
-			this.logger.debug(
-				`Mode selection device="${deviceName}" role=${roleStr} ` +
-					`on=${selection.rule.on} brightness=${selection.rule.brightness ?? 'N/A'} ` +
-					`isFallback=${selection.isFallback}`,
-			);
-		}
+		// Reserved for future telemetry logging of individual device selections
 
 		let affectedDevices = 0;
 		let failedDevices = 0;
@@ -266,10 +246,6 @@ export class SpaceIntentService {
 		}
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
-
-		this.logger.debug(
-			`Mode intent completed spaceId=${spaceId} mode=${mode} affected=${affectedDevices} failed=${failedDevices}`,
-		);
 
 		return { success: overallSuccess, affectedDevices, failedDevices };
 	}
@@ -344,7 +320,6 @@ export class SpaceIntentService {
 			const lightChannel = device.channels?.find((ch) => ch.category === ChannelCategory.LIGHT);
 
 			if (!lightChannel) {
-				this.logger.debug(`Light device has no light channel deviceId=${device.id}`);
 				continue;
 			}
 
@@ -352,7 +327,6 @@ export class SpaceIntentService {
 			const onProperty = lightChannel.properties?.find((p) => p.category === PropertyCategory.ON);
 
 			if (!onProperty) {
-				this.logger.debug(`Light channel has no ON property deviceId=${device.id} channelId=${lightChannel.id}`);
 				continue;
 			}
 
@@ -433,8 +407,6 @@ export class SpaceIntentService {
 		}
 
 		if (commands.length === 0) {
-			this.logger.debug(`No commands to execute for device id=${light.device.id}`);
-
 			return true;
 		}
 
@@ -446,8 +418,6 @@ export class SpaceIntentService {
 
 				return false;
 			}
-
-			this.logger.debug(`Successfully executed commands for device id=${light.device.id}`);
 
 			return true;
 		} catch (error) {
@@ -473,8 +443,6 @@ export class SpaceIntentService {
 
 		// If light doesn't support brightness, just ignore (no-op)
 		if (!light.brightnessProperty) {
-			this.logger.debug(`Device does not support brightness adjustment deviceId=${light.device.id}`);
-
 			return commands;
 		}
 
@@ -483,8 +451,6 @@ export class SpaceIntentService {
 		const isOn = onValue === true || onValue === 'true' || onValue === 1 || onValue === '1';
 
 		if (!isOn) {
-			this.logger.debug(`Skipping brightness delta for OFF device deviceId=${light.device.id}`);
-
 			return commands;
 		}
 
@@ -551,8 +517,6 @@ export class SpaceIntentService {
 		const climateDevices = await this.getClimateDevicesInSpace(spaceId);
 
 		if (climateDevices.thermostats.length === 0 && climateDevices.sensors.length === 0) {
-			this.logger.debug(`No climate devices found in space id=${spaceId}`);
-
 			return defaultState;
 		}
 
@@ -642,8 +606,6 @@ export class SpaceIntentService {
 	 * Execute a climate intent for the space
 	 */
 	async executeClimateIntent(spaceId: string, intent: ClimateIntentDto): Promise<ClimateIntentResult> {
-		this.logger.debug(`Executing climate intent type=${intent.type} spaceId=${spaceId}`);
-
 		const defaultResult: ClimateIntentResult = {
 			success: false,
 			affectedDevices: 0,
@@ -664,14 +626,10 @@ export class SpaceIntentService {
 		const climateState = await this.getClimateState(spaceId);
 
 		if (!climateState.hasClimate) {
-			this.logger.debug(`No climate devices in space id=${spaceId}`);
-
 			return { ...defaultResult, success: true };
 		}
 
 		if (!climateState.canSetSetpoint || !climateState.primaryThermostatId) {
-			this.logger.debug(`No thermostat with setpoint capability in space id=${spaceId}`);
-
 			return { ...defaultResult, success: true };
 		}
 
@@ -731,8 +689,6 @@ export class SpaceIntentService {
 		// Re-clamp after rounding (rounding can push value outside range)
 		newSetpoint = Math.max(climateState.minSetpoint, Math.min(climateState.maxSetpoint, newSetpoint));
 
-		this.logger.debug(`Setting thermostat setpoint to ${newSetpoint}°C deviceId=${thermostatDevice.id}`);
-
 		// Execute command
 		const platform = this.platformRegistryService.get(thermostatDevice);
 
@@ -757,8 +713,6 @@ export class SpaceIntentService {
 
 				return { ...defaultResult, failedDevices: 1 };
 			}
-
-			this.logger.debug(`Successfully set thermostat setpoint to ${newSetpoint}°C deviceId=${thermostatDevice.id}`);
 
 			return {
 				success: true,
@@ -909,8 +863,6 @@ export class SpaceIntentService {
 			const snapshot = await this.contextSnapshotService.captureSnapshot(spaceId);
 
 			if (!snapshot) {
-				this.logger.debug(`Could not capture snapshot for undo spaceId=${spaceId}`);
-
 				return;
 			}
 
@@ -918,8 +870,6 @@ export class SpaceIntentService {
 			const actionDescription = this.buildLightingIntentDescription(intent);
 
 			this.undoHistoryService.pushSnapshot(snapshot, actionDescription, 'lighting');
-
-			this.logger.debug(`Undo snapshot captured spaceId=${spaceId} action="${actionDescription}"`);
 		} catch (error) {
 			// Log but don't fail the intent execution if snapshot capture fails
 			this.logger.error(`Error capturing undo snapshot spaceId=${spaceId}: ${error}`);
@@ -934,8 +884,6 @@ export class SpaceIntentService {
 			const snapshot = await this.contextSnapshotService.captureSnapshot(spaceId);
 
 			if (!snapshot) {
-				this.logger.debug(`Could not capture snapshot for undo spaceId=${spaceId}`);
-
 				return;
 			}
 
@@ -943,8 +891,6 @@ export class SpaceIntentService {
 			const actionDescription = this.buildClimateIntentDescription(intent);
 
 			this.undoHistoryService.pushSnapshot(snapshot, actionDescription, 'climate');
-
-			this.logger.debug(`Undo snapshot captured spaceId=${spaceId} action="${actionDescription}"`);
 		} catch (error) {
 			// Log but don't fail the intent execution if snapshot capture fails
 			this.logger.error(`Error capturing undo snapshot spaceId=${spaceId}: ${error}`);

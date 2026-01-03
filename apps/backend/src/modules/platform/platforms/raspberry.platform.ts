@@ -297,7 +297,6 @@ export class RaspberryPlatform extends Platform {
 
 					reject(error);
 				} else {
-					this.logger.debug(`[EXECUTE] Command succeeded: ${stdout.trim()}`);
 					resolve();
 				}
 			});

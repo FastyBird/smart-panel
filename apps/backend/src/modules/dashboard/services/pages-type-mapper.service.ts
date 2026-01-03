@@ -35,8 +35,6 @@ export class PagesTypeMapperService {
 	getMapping<TPage extends PageEntity, TCreateDTO extends CreatePageDto, TUpdateDTO extends UpdatePageDto>(
 		type: string,
 	): PageTypeMapping<TPage, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`Attempting to find mapping for page type: '${type}'`);
-
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -46,8 +44,6 @@ export class PagesTypeMapperService {
 
 			throw new DashboardException(`Unsupported page type: ${type}`);
 		}
-
-		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for page type: '${type}'`);
 
 		return mapping as PageTypeMapping<TPage, TCreateDTO, TUpdateDTO>;
 	}

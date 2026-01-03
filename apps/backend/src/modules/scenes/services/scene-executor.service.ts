@@ -72,8 +72,6 @@ export class SceneExecutorService {
 	 * Trigger a scene execution
 	 */
 	async triggerScene(sceneId: string, triggeredBy?: string): Promise<SceneExecutionResultModel> {
-		this.logger.debug(`[TRIGGER] Triggering scene with id=${sceneId}`);
-
 		const scene = await this.scenesService.getOneOrThrow(sceneId);
 
 		// Check if scene is triggerable
@@ -151,8 +149,6 @@ export class SceneExecutorService {
 				result,
 			});
 
-			this.logger.debug(`[TRIGGER] Scene execution completed with status=${result.status}`);
-
 			return result;
 		} catch (error) {
 			const err = error as Error;
@@ -176,11 +172,8 @@ export class SceneExecutorService {
 		const actions = (scene.actions || []).filter((a) => a.enabled).sort((a, b) => a.order - b.order);
 
 		if (actions.length === 0) {
-			this.logger.debug(`[EXECUTE] No enabled actions to execute for scene id=${scene.id}`);
 			return [];
 		}
-
-		this.logger.debug(`[EXECUTE] Executing ${actions.length} actions for scene id=${scene.id}`);
 
 		const results: ActionExecutionResultModel[] = [];
 

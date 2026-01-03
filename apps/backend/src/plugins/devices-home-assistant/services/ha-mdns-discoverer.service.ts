@@ -50,7 +50,6 @@ export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
 	 */
 	start(): void {
 		if (this.isRunning) {
-			this.logger.debug('Discovery is already running');
 			return;
 		}
 
@@ -153,9 +152,6 @@ export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
 		const host = this.getHostFromService(service);
 
 		if (!host) {
-			this.logger.debug('Discovered service without valid address', {
-				name: service.name,
-			});
 			return;
 		}
 
@@ -163,7 +159,6 @@ export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
 		const key = `${host}:${service.port || 8123}`;
 
 		if (this.discoveredInstances.has(key)) {
-			this.logger.debug(`Instance already discovered: ${key}`);
 			return;
 		}
 

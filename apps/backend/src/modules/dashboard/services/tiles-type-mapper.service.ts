@@ -35,8 +35,6 @@ export class TilesTypeMapperService {
 	getMapping<TTile extends TileEntity, TCreateDTO extends CreateTileDto, TUpdateDTO extends UpdateTileDto>(
 		type: string,
 	): TileTypeMapping<TTile, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`Attempting to find mapping for tile type: '${type}'`);
-
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -46,8 +44,6 @@ export class TilesTypeMapperService {
 
 			throw new DashboardException(`Unsupported tile type: ${type}`);
 		}
-
-		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for tile type: '${type}'`);
 
 		return mapping as TileTypeMapping<TTile, TCreateDTO, TUpdateDTO>;
 	}

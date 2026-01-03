@@ -26,11 +26,9 @@ export class ScenesModuleResetService {
 			// Delete actions first, then scenes (due to foreign keys)
 			const actionsCount = await this.actionsRepository.count();
 			await this.actionsRepository.clear();
-			this.logger.debug(`[RESET] Deleted ${actionsCount} scene actions`);
 
 			const scenesCount = await this.scenesRepository.count();
 			await this.scenesRepository.clear();
-			this.logger.debug(`[RESET] Deleted ${scenesCount} scenes`);
 
 			this.logger.log('[RESET] Scenes module factory reset completed successfully');
 

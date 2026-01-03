@@ -74,8 +74,6 @@ export class TilesController {
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
 	): Promise<TilesResponseModel> {
-		this.logger.debug(`Fetching all tiles`);
-
 		const tiles = await this.tilesService.findAll(
 			parentType && parentId
 				? {
@@ -84,8 +82,6 @@ export class TilesController {
 					}
 				: undefined,
 		);
-
-		this.logger.debug(`Retrieved ${tiles.length} tiles`);
 
 		const response = new TilesResponseModel();
 		response.data = tiles;
@@ -106,11 +102,7 @@ export class TilesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TileResponseModel> {
-		this.logger.debug(`Fetching tile id=${id}`);
-
 		const tile = await this.getOneOrThrow(id);
-
-		this.logger.debug(`Found tile id=${tile.id}`);
 
 		const response = new TileResponseModel();
 		response.data = tile;
@@ -143,8 +135,6 @@ export class TilesController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<TileResponseModel> {
-		this.logger.debug(`Incoming request to create a new tile`);
-
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
@@ -209,8 +199,6 @@ export class TilesController {
 				parentId: parent.id,
 			});
 
-			this.logger.debug(`Successfully created tile id=${tile.id}`);
-
 			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'tiles', tile.id);
 
 			const response = new TileResponseModel();
@@ -247,8 +235,6 @@ export class TilesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<TileResponseModel> {
-		this.logger.debug(`Incoming update request for tile id=${id}`);
-
 		const tile = await this.getOneOrThrow(id);
 
 		const baseDtoInstance = toInstance(UpdateSingleTileDto, updateDto.data, {
@@ -308,8 +294,6 @@ export class TilesController {
 		try {
 			const updatedTile = await this.tilesService.update(tile.id, dtoInstance);
 
-			this.logger.debug(`Successfully updated tile id=${updatedTile.id}`);
-
 			const response = new TileResponseModel();
 			response.data = updatedTile;
 
@@ -337,18 +321,12 @@ export class TilesController {
 	@HttpCode(204)
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`Incoming request to delete tile id=${id}`);
-
 		const tile = await this.getOneOrThrow(id);
 
 		await this.tilesService.remove(tile.id);
-
-		this.logger.debug(`Successfully deleted tile id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<TileEntity> {
-		this.logger.debug(`Checking existence of tile id=${id}`);
-
 		const tile = await this.tilesService.findOne(id);
 
 		if (!tile) {

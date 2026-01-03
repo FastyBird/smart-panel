@@ -47,7 +47,6 @@ export class ConverterRegistry {
 		}
 
 		this.converters.push(converter);
-		this.logger.debug(`Registered converter: ${converter.type}`);
 	}
 
 	/**
@@ -154,7 +153,7 @@ export class ConverterRegistry {
 					this.logger.error(`Error converting expose '${exposeKey}' with '${converter.type}': ${error}`);
 				}
 			} else {
-				this.logger.debug(`No converter found for expose: ${exposeKey} (type: ${expose.type})`);
+				// Intentionally empty - no converter found
 			}
 		}
 

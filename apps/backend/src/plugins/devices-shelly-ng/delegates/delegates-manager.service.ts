@@ -1464,13 +1464,9 @@ export class DelegatesManagerService {
 				})
 				.then((): void => {
 					if (state) {
-						this.logger.debug(`Connection state for device=${delegate.id} changed to connected`, {
-							resource: device.id,
-						});
+						// Intentionally empty - device connected
 					} else {
-						this.logger.debug(`Connection state for device=${delegate.id} changed to disconnected`, {
-							resource: device.id,
-						});
+						// Intentionally empty - device disconnected
 					}
 				})
 				.catch((err: Error) => {
@@ -1557,21 +1553,10 @@ export class DelegatesManagerService {
 		const handler = this.setChannelsHandlers.get(`${device.identifier}|${channel.id}`);
 
 		if (!handler) {
-			this.logger.debug(
-				`Trying to write to device=${device.identifier} and channel=${channel.id} multiple properties`,
-				{
-					resource: device.id,
-				},
-			);
-
 			return Promise.reject(
 				new DevicesShellyNgNotImplementedException('Multiple property writes are not supported by the component.'),
 			);
 		}
-
-		this.logger.debug(`Writing value to Shelly device=${device.identifier} channel=${channel.id}`, {
-			resource: device.id,
-		});
 
 		return handler(updates.map((row): BatchUpdate => ({ property: row.property, val: row.value })));
 	}
@@ -1592,10 +1577,6 @@ export class DelegatesManagerService {
 			return Promise.resolve(false);
 		}
 
-		this.logger.debug(`Writing value to Shelly device=${device.identifier} property=${property.id} value=${value}`, {
-			resource: device.id,
-		});
-
 		return handler(value);
 	}
 
@@ -1604,8 +1585,6 @@ export class DelegatesManagerService {
 		value: string | number | boolean,
 		immediately = true,
 	): Promise<void> {
-		this.logger.debug(`Received component attribute update from Shelly device`);
-
 		if (immediately) {
 			await this.writeValueToProperty(property, value);
 		} else {

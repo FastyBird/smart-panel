@@ -48,8 +48,6 @@ export class RegistrationGuard implements CanActivate {
 		const config = this.getConfig();
 		const mode = config.deploymentMode;
 
-		this.logger.debug(`Registration attempt from IP=${clientIp}, mode=${mode}`);
-
 		// Localhost registrations are always allowed without permit join in all modes
 		// This allows local development and all-in-one deployments
 		if (isLocalhost(clientIp)) {
@@ -67,11 +65,8 @@ export class RegistrationGuard implements CanActivate {
 				}
 
 				// Display exists but all tokens are revoked - allow re-registration
-				this.logger.debug(`Allowed: localhost display exists but all tokens are revoked, allowing re-registration`);
 				return true;
 			}
-
-			this.logger.debug(`Allowed: localhost registration (no permit join required)`);
 			return true;
 		}
 
@@ -88,8 +83,6 @@ export class RegistrationGuard implements CanActivate {
 				'Registration is not currently permitted. Please activate permit join in the admin panel.',
 			);
 		}
-
-		this.logger.debug(`Allowed: permit join is active`);
 		return true;
 	}
 }

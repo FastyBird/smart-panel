@@ -110,8 +110,6 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const key = this.getServiceKey(pluginName, serviceId);
 
 		if (!this.services.has(key)) {
-			this.logger.debug(`Service not found: ${key}`);
-
 			return;
 		}
 
@@ -169,21 +167,14 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 			// Skip services that are already stopped
 			if (state === 'stopped') {
+				// Intentionally empty
 				continue;
 			}
 
 			// Wait for transitional states to complete before stopping
 			if (state === 'starting') {
-				const key = this.getServiceKey(registration.pluginName, registration.serviceId);
-
-				this.logger.debug(`Waiting for ${key} to finish starting before stopping`);
-
 				await this.waitForState(registration, 'started', 5000);
 			} else if (state === 'stopping') {
-				const key = this.getServiceKey(registration.pluginName, registration.serviceId);
-
-				this.logger.debug(`Waiting for ${key} to finish stopping`);
-
 				await this.waitForState(registration, 'stopped', 5000);
 
 				continue; // Already stopping, no need to call stopService again
@@ -205,8 +196,6 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		if (this.shutdownInProgress || !this.startupComplete) {
 			return;
 		}
-
-		this.logger.debug('Configuration updated, syncing service states');
 
 		for (const registration of this.services.values()) {
 			await this.syncServiceState(registration);
@@ -413,8 +402,6 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const config = this.getPluginConfig(registration.pluginName);
 
 		if (!config?.enabled) {
-			this.logger.debug(`Plugin ${registration.pluginName} is disabled, skipping ${registration.serviceId}`);
-
 			return;
 		}
 
@@ -426,8 +413,6 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const currentState = registration.service.getState();
 
 		if (currentState === 'started' || currentState === 'starting') {
-			this.logger.debug(`Service ${key} is already ${currentState}`);
-
 			return;
 		}
 
@@ -465,8 +450,6 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const currentState = registration.service.getState();
 
 		if (currentState === 'stopped' || currentState === 'stopping') {
-			this.logger.debug(`Service ${key} is already ${currentState}`);
-
 			return;
 		}
 
@@ -505,8 +488,6 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		// Handle transitional states by waiting for them to complete
 		if (currentState === 'starting' || currentState === 'stopping') {
-			this.logger.debug(`Service ${key} is ${currentState}, waiting for transition to complete`);
-
 			const targetState = currentState === 'starting' ? 'started' : 'stopped';
 
 			await this.waitForState(registration, targetState);
@@ -531,15 +512,11 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			await this.stopService(registration);
 		} else if (!shouldBeRunning && currentState === 'error') {
 			// Service is in error state and should not be running - ensure it's stopped
-			this.logger.debug(
-				`Plugin ${registration.pluginName} disabled, service ${registration.serviceId} already in error state`,
-			);
 
 			// Try to stop cleanly in case there are resources to clean up
 			await this.stopService(registration);
 		} else if (shouldBeRunning && currentState === 'started' && registration.service.onConfigChanged) {
 			// Notify service of config change
-			this.logger.debug(`Notifying ${key} of config change`);
 
 			try {
 				const result = await registration.service.onConfigChanged();

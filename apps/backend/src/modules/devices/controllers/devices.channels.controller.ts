@@ -73,13 +73,9 @@ export class DevicesChannelsController {
 	async findAll(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 	): Promise<DeviceChannelsResponseModel> {
-		this.logger.debug(`Fetching all channels for deviceId=${deviceId}`);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		const channels = await this.channelsService.findAll(device.id);
-
-		this.logger.debug(`Retrieved ${channels.length} channels for deviceId=${device.id}`);
 
 		const response = new DeviceChannelsResponseModel();
 
@@ -109,13 +105,9 @@ export class DevicesChannelsController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<DeviceChannelResponseModel> {
-		this.logger.debug(`Fetching device id=${id} for deviceId=${deviceId}`);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		const channel = await this.getOneOrThrow(id, device.id);
-
-		this.logger.debug(`Found channel id=${channel.id} for deviceId=${device.id}`);
 
 		const response = new DeviceChannelResponseModel();
 
@@ -149,8 +141,6 @@ export class DevicesChannelsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<DeviceChannelResponseModel> {
-		this.logger.debug(`Incoming request to create a new channel for deviceId=${deviceId}`);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		const type: string | undefined =
@@ -203,8 +193,6 @@ export class DevicesChannelsController {
 		try {
 			const channel = await this.channelsService.create(dtoInstance);
 
-			this.logger.debug(`Successfully created channel id=${channel.id} for deviceId=${device.id}`);
-
 			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'devices', device.id, 'channels', channel.id);
 
 			const response = new DeviceChannelResponseModel();
@@ -245,8 +233,6 @@ export class DevicesChannelsController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<DeviceChannelResponseModel> {
-		this.logger.debug(`Incoming update request for channel id=${id} for deviceId=${deviceId}`);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getOneOrThrow(id, device.id);
 
@@ -295,8 +281,6 @@ export class DevicesChannelsController {
 		try {
 			const updatedChannel = await this.channelsService.update(channel.id, dtoInstance);
 
-			this.logger.debug(`Successfully updated channel id=${updatedChannel.id} for deviceId=${device.id}`);
-
 			const response = new DeviceChannelResponseModel();
 
 			response.data = updatedChannel;
@@ -330,19 +314,13 @@ export class DevicesChannelsController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<void> {
-		this.logger.debug(`Incoming request to delete channel id=${id} for deviceId=${deviceId}`);
-
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getOneOrThrow(id, device.id);
 
 		await this.channelsService.remove(channel.id);
-
-		this.logger.debug(`Successfully deleted channel id=${id} for deviceId=${device.id}`);
 	}
 
 	private async getOneOrThrow(id: string, deviceId: string): Promise<ChannelEntity> {
-		this.logger.debug(`Checking existence of channel id=${id} for deviceId=${deviceId}`);
-
 		const channel = await this.channelsService.findOne(id, deviceId);
 
 		if (!channel) {
@@ -355,8 +333,6 @@ export class DevicesChannelsController {
 	}
 
 	private async getDeviceOrThrow(deviceId: string): Promise<DeviceEntity> {
-		this.logger.debug(`Checking existence of device id=${deviceId}`);
-
 		const device = await this.devicesService.findOne(deviceId);
 
 		if (!device) {

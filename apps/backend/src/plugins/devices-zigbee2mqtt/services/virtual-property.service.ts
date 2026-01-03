@@ -66,10 +66,6 @@ export class Z2mVirtualPropertyService {
 					format: def.format,
 					unit: def.unit,
 				});
-
-				this.logger.debug(
-					`[VIRTUAL] Added virtual property ${def.property_category} for channel ${channelCategory}, value=${value}`,
-				);
 			}
 		}
 

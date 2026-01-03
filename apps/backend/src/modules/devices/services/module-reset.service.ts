@@ -36,8 +36,6 @@ export class ModuleResetService {
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			this.logger.debug(`Resetting all module data`);
-
 			await this.channelsPropertiesRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.DEVICE_RESET, null);

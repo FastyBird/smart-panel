@@ -94,9 +94,8 @@ export class HouseModeActionsService implements OnModuleInit {
 
 				await this.pendingAction;
 			}
-		} catch (error) {
+		} catch {
 			// Config may not have system module yet, or other issue - log and continue
-			this.logger.debug(`Could not process config update for house mode: ${error}`);
 		}
 	}
 
@@ -115,7 +114,6 @@ export class HouseModeActionsService implements OnModuleInit {
 			const spaces = await this.spacesService.findAll();
 
 			if (spaces.length === 0) {
-				this.logger.debug('No spaces found, skipping house mode actions');
 				return;
 			}
 
@@ -162,7 +160,6 @@ export class HouseModeActionsService implements OnModuleInit {
 				const result = await this.spaceIntentService.executeLightingIntent(spaceId, intent);
 				if (result.success) {
 					successCount++;
-					this.logger.debug(`Away mode: turned off lights in space=${spaceId} affected=${result.affectedDevices}`);
 				} else {
 					failCount++;
 					this.logger.warn(`Away mode: failed to turn off lights in space=${spaceId}`);
@@ -200,7 +197,6 @@ export class HouseModeActionsService implements OnModuleInit {
 				const result = await this.spaceIntentService.executeLightingIntent(spaceId, intent);
 				if (result.success) {
 					successCount++;
-					this.logger.debug(`Night mode: applied lighting in space=${spaceId} affected=${result.affectedDevices}`);
 				} else {
 					failCount++;
 					this.logger.warn(`Night mode: failed to apply lighting in space=${spaceId}`);

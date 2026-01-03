@@ -23,8 +23,6 @@ export class PluginResetService {
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			this.logger.debug(`[PAGES CARDS][RESET SERVICE] Resetting all plugin data`);
-
 			await this.cardsRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.CARD_RESET, null);

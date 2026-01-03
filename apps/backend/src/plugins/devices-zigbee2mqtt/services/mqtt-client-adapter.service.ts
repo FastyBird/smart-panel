@@ -246,8 +246,6 @@ export class Z2mMqttClientAdapterService {
 		const topic = `${this.baseTopic}/${friendlyName}/set`;
 		const message = JSON.stringify(payload);
 
-		this.logger.debug(`Publishing to ${topic}: ${message}`);
-
 		return new Promise((resolve) => {
 			this.client?.publish(topic, message, { qos: 1 }, (error) => {
 				if (error) {
@@ -312,7 +310,7 @@ export class Z2mMqttClientAdapterService {
 						message: error.message,
 					});
 				} else {
-					this.logger.debug(`Subscribed to ${topic}`);
+					// Intentionally empty - subscription successful
 				}
 			});
 		}
@@ -548,7 +546,6 @@ export class Z2mMqttClientAdapterService {
 		for (const [friendlyName, device] of this.deviceRegistry.entries()) {
 			// Check if device has any state values
 			if (Object.keys(device.currentState).length === 0) {
-				this.logger.debug(`Requesting state for device without current state: ${friendlyName}`);
 				// Fire and forget - responses will be handled by handleDeviceStateMessage
 				this.requestState(friendlyName).catch(() => {
 					// Ignore errors - device might be offline
@@ -591,7 +588,6 @@ export class Z2mMqttClientAdapterService {
 					break;
 
 				case 'device_interview':
-					this.logger.debug(`Device interview: ${event.data.friendly_name} - ${event.data.status}`);
 					break;
 			}
 		} catch (error) {
@@ -612,8 +608,6 @@ export class Z2mMqttClientAdapterService {
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
 
-			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
-
 			// ALWAYS store state in the global cache (independent of device registry)
 			// This ensures state is available for adoption preview even if device isn't registered yet
 			const existingCachedState = this.stateCache.get(friendlyName) ?? {};
@@ -624,9 +618,8 @@ export class Z2mMqttClientAdapterService {
 			if (device) {
 				device.currentState = { ...device.currentState, ...state };
 				device.lastSeen = new Date();
-				this.logger.debug(`Updated registry and cache for "${friendlyName}"`);
 			} else {
-				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
+				// Intentionally empty - device not in registry
 			}
 
 			// Emit state changed event
@@ -646,8 +639,6 @@ export class Z2mMqttClientAdapterService {
 	 * Handle device availability message
 	 */
 	private handleDeviceAvailabilityMessage(friendlyName: string, message: string): void {
-		this.logger.debug(`Received availability for "${friendlyName}": ${message}`);
-
 		try {
 			let available: boolean;
 

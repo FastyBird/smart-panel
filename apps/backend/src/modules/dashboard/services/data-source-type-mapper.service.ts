@@ -39,8 +39,6 @@ export class DataSourcesTypeMapperService {
 		TCreateDTO extends CreateDataSourceDto,
 		TUpdateDTO extends UpdateDataSourceDto,
 	>(type: string): DataSourceTypeMapping<TDataSource, TCreateDTO, TUpdateDTO> {
-		this.logger.debug(`Attempting to find mapping for data source type: '${type}'`);
-
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -50,8 +48,6 @@ export class DataSourcesTypeMapperService {
 
 			throw new DashboardException(`Unsupported data source type: ${type}`);
 		}
-
-		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for data source type: '${type}'`);
 
 		return mapping as DataSourceTypeMapping<TDataSource, TCreateDTO, TUpdateDTO>;
 	}
