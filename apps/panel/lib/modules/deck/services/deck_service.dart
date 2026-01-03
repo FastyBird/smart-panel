@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 /// combining system views with user-configured pages.
 class DeckService extends ChangeNotifier {
   final DashboardService _dashboardService;
+  final IntentsService _intentsService;
 
   /// The current deck result.
   DeckResult? _deck;
@@ -26,7 +27,9 @@ class DeckService extends ChangeNotifier {
 
   DeckService({
     required DashboardService dashboardService,
-  }) : _dashboardService = dashboardService;
+    required IntentsService intentsService,
+  })  : _dashboardService = dashboardService,
+        _intentsService = intentsService;
 
   /// Returns the current deck, or null if not yet built.
   DeckResult? get deck => _deck;
@@ -101,6 +104,9 @@ class DeckService extends ChangeNotifier {
     );
 
     _deck = buildDeck(input);
+
+    // Synchronize deck with IntentsService for navigation intents
+    _intentsService.setDeck(_deck!);
 
     if (kDebugMode) {
       debugPrint(

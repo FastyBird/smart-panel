@@ -588,17 +588,20 @@ class StartupManagerService {
     locator.registerSingleton(propertyTimeseriesService);
 
     // Deck navigation services
-    var deckService = DeckService(
-      dashboardService: locator<DashboardService>(),
-    );
-    locator.registerSingleton(deckService);
-
+    // Note: IntentsService must be created before DeckService since DeckService
+    // needs to synchronize the deck with IntentsService after building it
     var intentsService = IntentsService(
       eventBus: _eventBus,
       scenesService: scenesService,
       channelPropertiesRepository: locator<ChannelPropertiesRepository>(),
     );
     locator.registerSingleton(intentsService);
+
+    var deckService = DeckService(
+      dashboardService: locator<DashboardService>(),
+      intentsService: intentsService,
+    );
+    locator.registerSingleton(deckService);
 
     // Api client
     locator.registerSingleton(_apiIoService);
