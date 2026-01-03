@@ -45,7 +45,13 @@ export class PagesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		return repository.count();
+		this.logger.debug('Fetching all pages count');
+
+		const pages = await repository.count();
+
+		this.logger.debug(`Found that in system is ${pages} pages`);
+
+		return pages;
 	}
 
 	async findAll<TPage extends PageEntity>(type?: string): Promise<TPage[]> {
@@ -53,9 +59,13 @@ export class PagesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		this.logger.debug('Fetching all pages');
+
 		const pages = await repository.find({
 			relations: ['displays'],
 		});
+
+		this.logger.debug(`Found ${pages.length} pages`);
 
 		for (const page of pages) {
 			await this.loadRelations(page);
@@ -69,6 +79,8 @@ export class PagesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		this.logger.debug(`Fetching page with id=${id}`);
+
 		const page = (await repository
 			.createQueryBuilder('page')
 			.leftJoinAndSelect('page.displays', 'displays')
@@ -76,8 +88,12 @@ export class PagesService {
 			.getOne()) as TPage | null;
 
 		if (!page) {
+			this.logger.debug(`Page with id=${id} not found`);
+
 			return null;
 		}
+
+		this.logger.debug(`Successfully fetched page with id=${id}`);
 
 		await this.loadRelations(page);
 
@@ -170,6 +186,8 @@ export class PagesService {
 		id: string,
 		updateDto: UpdatePageDto,
 	): Promise<TPage> {
+		this.logger.debug(`Updating page with id=${id}`);
+
 		const page = await this.getOneOrThrow<TPage>(id);
 
 		const mapping = this.pagesMapperService.getMapping<TPage, any, TUpdateDTO>(page.type);
@@ -221,6 +239,8 @@ export class PagesService {
 		await repository.save(page);
 
 		const updatedPage = await this.getOneOrThrow<TPage>(page.id);
+
+		this.logger.debug(`Successfully updated page with id=${updatedPage.id}`);
 
 		this.eventEmitter.emit(EventType.PAGE_UPDATED, updatedPage);
 

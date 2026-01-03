@@ -143,6 +143,12 @@ export class WsAuthService {
 			token_id: storedToken.id,
 		});
 
+		this.logger.debug(`Display authentication successful for display=${displayId}`);
+
+		return true;
+
+		this.logger.debug(`Token authentication successful (ownerType=${storedToken.ownerType})`);
+
 		return true;
 	}
 

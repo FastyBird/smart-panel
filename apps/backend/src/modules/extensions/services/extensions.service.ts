@@ -66,6 +66,8 @@ export class ExtensionsService {
 	 * Get all extensions (modules and plugins)
 	 */
 	findAll(): ExtensionModel[] {
+		this.logger.debug('Fetching all extensions');
+
 		const extensions: ExtensionModel[] = [];
 
 		// Get modules from mapper
@@ -87,6 +89,8 @@ export class ExtensionsService {
 	 * Get all modules
 	 */
 	findAllModules(): ExtensionModel[] {
+		this.logger.debug('Fetching all modules');
+
 		const moduleMappings = this.modulesMapperService.getMappings();
 		return moduleMappings.map((mapping) => this.buildModuleExtension(mapping.type));
 	}
@@ -95,6 +99,8 @@ export class ExtensionsService {
 	 * Get all plugins
 	 */
 	findAllPlugins(): ExtensionModel[] {
+		this.logger.debug('Fetching all plugins');
+
 		const pluginMappings = this.pluginsMapperService.getMappings();
 		return pluginMappings.map((mapping) => this.buildPluginExtension(mapping.type));
 	}
@@ -103,6 +109,8 @@ export class ExtensionsService {
 	 * Get a specific extension by type
 	 */
 	findOne(type: string): ExtensionModel {
+		this.logger.debug(`Fetching extension type=${type}`);
+
 		// Check if it's a module
 		const moduleMappings = this.modulesMapperService.getMappings();
 		const moduleMapping = moduleMappings.find((m) => m.type === type);
@@ -124,6 +132,8 @@ export class ExtensionsService {
 	 * Update extension enabled status
 	 */
 	updateEnabled(type: string, enabled: boolean): ExtensionModel {
+		this.logger.debug(`Updating extension type=${type} enabled=${enabled}`);
+
 		const extension = this.findOne(type);
 
 		// Check if extension supports enable/disable based on its config schema

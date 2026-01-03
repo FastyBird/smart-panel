@@ -393,7 +393,7 @@ export class WledClientAdapterService {
 		try {
 			const apiPayload = this.convertStateUpdateToApi(update);
 
-			// State update - too verbose for debug level
+			this.logger.debug(`Sending state update to ${host}: ${JSON.stringify(apiPayload)}`);
 
 			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
 
@@ -576,7 +576,7 @@ export class WledClientAdapterService {
 		try {
 			const apiPayload = this.convertExtendedStateUpdateToApi(update);
 
-			// Extended state update - too verbose for debug level
+			this.logger.debug(`Sending extended state update to ${host}: ${JSON.stringify(apiPayload)}`);
 
 			const response = await this.post<WledApiState>(`http://${host}/json/state`, apiPayload);
 

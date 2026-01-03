@@ -52,6 +52,8 @@ export class ScenesService {
 	 * Find all scenes for a specific space
 	 */
 	async findBySpace(primarySpaceId: string): Promise<SceneEntity[]> {
+		this.logger.debug(`[LOOKUP] Fetching scenes for primarySpaceId=${primarySpaceId}`);
+
 		const scenes = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
@@ -61,16 +63,24 @@ export class ScenesService {
 			.addOrderBy('scene.name', 'ASC')
 			.getMany();
 
+		this.logger.debug(`[LOOKUP] Found ${scenes.length} scenes for primarySpaceId=${primarySpaceId}`);
+
 		return scenes;
 	}
 
 	async getCount(): Promise<number> {
+		this.logger.debug('[LOOKUP ALL] Fetching all scenes count');
+
 		const count = await this.repository.count();
+
+		this.logger.debug(`[LOOKUP ALL] Found that in system is ${count} scenes`);
 
 		return count;
 	}
 
 	async findAll(): Promise<SceneEntity[]> {
+		this.logger.debug('[LOOKUP ALL] Fetching all scenes');
+
 		const scenes = await this.repository.find({
 			relations: ['actions', 'actions.scene'],
 			order: {
@@ -78,10 +88,14 @@ export class ScenesService {
 			},
 		});
 
+		this.logger.debug(`[LOOKUP ALL] Found ${scenes.length} scenes`);
+
 		return scenes;
 	}
 
 	async findOne(id: string): Promise<SceneEntity | null> {
+		this.logger.debug(`[LOOKUP] Fetching scene with id=${id}`);
+
 		const scene = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
@@ -91,13 +105,18 @@ export class ScenesService {
 			.getOne();
 
 		if (!scene) {
+			this.logger.debug(`[LOOKUP] Scene with id=${id} not found`);
 			return null;
 		}
+
+		this.logger.debug(`[LOOKUP] Successfully fetched scene with id=${id}`);
 
 		return scene;
 	}
 
 	async findOneBy(column: 'id' | 'category' | 'name', value: string | number | boolean): Promise<SceneEntity | null> {
+		this.logger.debug(`[LOOKUP] Fetching scene with ${column}=${value}`);
+
 		const scene = await this.repository
 			.createQueryBuilder('scene')
 			.leftJoinAndSelect('scene.actions', 'actions')
@@ -107,8 +126,11 @@ export class ScenesService {
 			.getOne();
 
 		if (!scene) {
+			this.logger.debug(`[LOOKUP] Scene with ${column}=${value} not found`);
 			return null;
 		}
+
+		this.logger.debug(`[LOOKUP] Successfully fetched scene with ${column}=${value}`);
 
 		return scene;
 	}

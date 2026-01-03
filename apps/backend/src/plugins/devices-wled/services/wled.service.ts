@@ -404,7 +404,7 @@ export class WledService implements IManagedPluginService {
 			return;
 		}
 
-		// Periodic state refresh - too verbose for debug level
+		this.logger.debug('Running periodic state refresh');
 
 		await this.pollDeviceStates();
 	}

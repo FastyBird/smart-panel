@@ -59,6 +59,24 @@ export class MapperService {
 		const readableProperties = await this.getReadableProperties(channels);
 		const grouped = this.groupProperties(readableProperties);
 
+		// Debug: Log property grouping details
+		this.logger.debug(
+			`[MAP FROM HA] Device ${device.id}: Found ${readableProperties.length} readable properties, ` +
+				`grouped into ${grouped.size} entities`,
+		);
+
+		// Log all entity IDs that have properties
+		const entityIds = Array.from(grouped.keys());
+		this.logger.debug(`[MAP FROM HA] Properties grouped by entity IDs: ${entityIds.join(', ')}`);
+
+		// Log each property's details
+		for (const prop of readableProperties) {
+			this.logger.debug(
+				`[MAP FROM HA] Property: category=${prop.category}, haAttribute=${prop.haAttribute}, ` +
+					`haEntityId=${prop.haEntityId}, permissions=${prop.permissions.join(',')}`,
+			);
+		}
+
 		const updates: MappedFromHa[] = [];
 
 		for (const state of states) {
@@ -67,8 +85,18 @@ export class MapperService {
 			const properties = grouped.get(state.entity_id);
 
 			if (!properties) {
+				this.logger.debug(
+					`[MAP FROM HA] No properties found for entityId=${state.entity_id}. ` +
+						`Available entity IDs: ${entityIds.join(', ')}`,
+				);
+
 				continue;
 			}
+
+			this.logger.debug(
+				`[MAP FROM HA] Found ${properties.length} properties for entity ${state.entity_id}: ` +
+					`${properties.map((p) => `${p.category}:${p.haAttribute}`).join(', ')}`,
+			);
 
 			const mapper = this.mappers.get(domain);
 
@@ -84,8 +112,17 @@ export class MapperService {
 				}
 			}
 
+			// Log what was mapped
 			if (result.size > 0) {
+				this.logger.debug(
+					`[MAP FROM HA] Mapped ${result.size} values for entity ${state.entity_id}: ` +
+						`${Array.from(result.entries())
+							.map(([id, val]) => `${id}=${String(val)}`)
+							.join(', ')}`,
+				);
 				updates.push(result);
+			} else {
+				this.logger.debug(`[MAP FROM HA] No values mapped for entity ${state.entity_id}`);
 			}
 		}
 

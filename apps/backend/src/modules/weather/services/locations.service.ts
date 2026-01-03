@@ -37,8 +37,12 @@ export class LocationsService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		this.logger.debug('Fetching all locations');
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const locations = (await repository.find({ order: { createdAt: 'ASC' } as any })) as TLocation[];
+
+		this.logger.debug(`Found ${locations.length} locations`);
 
 		return locations;
 	}
@@ -48,8 +52,18 @@ export class LocationsService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		this.logger.debug(`Fetching location with id=${id}`);
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const location = (await repository.findOne({ where: { id } as any })) as TLocation | null;
+
+		if (!location) {
+			this.logger.debug(`Location with id=${id} not found`);
+
+			return null;
+		}
+
+		this.logger.debug(`Successfully fetched location with id=${id}`);
 
 		return location;
 	}
@@ -108,6 +122,8 @@ export class LocationsService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TLocation> {
+		this.logger.debug(`Updating location with id=${id}`);
+
 		const location = await this.getOneOrThrow(id);
 
 		const mapping = this.locationsMapperService.getMapping<TLocation, any, TUpdateDTO>(location.type);
@@ -127,6 +143,8 @@ export class LocationsService {
 
 			updatedLocation = (await this.getOneOrThrow(location.id)) as TLocation;
 		}
+
+		this.logger.debug(`Successfully updated location with id=${updatedLocation.id}`);
 
 		this.eventEmitter.emit(EventType.LOCATION_UPDATED, updatedLocation);
 

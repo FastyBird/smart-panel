@@ -47,19 +47,29 @@ export class SpacesService {
 	) {}
 
 	async findAll(): Promise<SpaceEntity[]> {
+		this.logger.debug('Fetching all spaces');
+
 		const spaces = await this.repository.find({
 			order: { displayOrder: 'ASC', name: 'ASC' },
 		});
+
+		this.logger.debug(`Found ${spaces.length} spaces`);
 
 		return spaces;
 	}
 
 	async findOne(id: string): Promise<SpaceEntity | null> {
+		this.logger.debug(`Fetching space with id=${id}`);
+
 		const space = await this.repository.findOne({ where: { id } });
 
 		if (!space) {
+			this.logger.warn(`Space not found by id=${id}`);
+
 			return null;
 		}
+
+		this.logger.debug('Successfully fetched space');
 
 		return space;
 	}
@@ -134,6 +144,8 @@ export class SpacesService {
 	}
 
 	async update(id: string, updateDto: UpdateSpaceDto): Promise<SpaceEntity> {
+		this.logger.debug(`Updating space with id=${id}`);
+
 		const space = await this.getOneOrThrow(id);
 
 		const dtoInstance = await this.validateDto(UpdateSpaceDto, updateDto);
@@ -196,6 +208,8 @@ export class SpacesService {
 
 		await this.repository.save(space);
 
+		this.logger.debug(`Successfully updated space with id=${space.id}`);
+
 		this.eventEmitter.emit(EventType.SPACE_UPDATED, space);
 
 		return space;
@@ -240,6 +254,8 @@ export class SpacesService {
 	}
 
 	async findDevicesBySpace(spaceId: string): Promise<DeviceEntity[]> {
+		this.logger.debug(`Fetching devices for space with id=${spaceId}`);
+
 		// Verify space exists
 		const space = await this.getOneOrThrow(spaceId);
 
@@ -251,18 +267,22 @@ export class SpacesService {
 				order: { name: 'ASC' },
 			});
 
-			// Always return an array, never null/undefined
-			return devices ?? [];
+			this.logger.debug(`Found ${devices.length} devices in room`);
+
+			return devices;
 		} else {
 			// Zones have devices via junction table
 			const devices = await this.deviceZonesService.getZoneDevices(spaceId);
 
-			// Always return an array, never null/undefined
-			return devices ?? [];
+			this.logger.debug(`Found ${devices.length} devices in zone`);
+
+			return devices;
 		}
 	}
 
 	async findDisplaysBySpace(spaceId: string): Promise<DisplayEntity[]> {
+		this.logger.debug(`Fetching displays for space with id=${spaceId}`);
+
 		// Verify space exists
 		await this.getOneOrThrow(spaceId);
 
@@ -270,6 +290,8 @@ export class SpacesService {
 			where: { roomId: spaceId },
 			order: { name: 'ASC' },
 		});
+
+		this.logger.debug(`Found ${displays.length} displays in space`);
 
 		return displays;
 	}
@@ -318,6 +340,8 @@ export class SpacesService {
 			this.logger.debug(`Assigned ${displaysAssigned} displays to space`);
 		}
 
+		this.logger.debug(`Successfully bulk assigned to space with id=${spaceId}`);
+
 		return { devicesAssigned, displaysAssigned };
 	}
 
@@ -364,6 +388,8 @@ export class SpacesService {
 	async proposeSpaces(): Promise<
 		{ name: string; type: SpaceType; category: SpaceCategory | null; deviceIds: string[]; deviceCount: number }[]
 	> {
+		this.logger.debug('Proposing spaces based on device names');
+
 		// Token to (type, category) mapping for intelligent space proposals
 		const tokenMapping: Record<string, { type: SpaceType; category: SpaceCategory | null }> = {
 			// Room tokens
@@ -483,6 +509,8 @@ export class SpacesService {
 			})
 			.sort((a, b) => b.deviceCount - a.deviceCount);
 
+		this.logger.debug(`Proposed ${proposals.length} spaces from device names`);
+
 		return proposals;
 	}
 
@@ -490,9 +518,12 @@ export class SpacesService {
 	 * Get child rooms for a zone
 	 */
 	async getChildRooms(zoneId: string): Promise<SpaceEntity[]> {
+		this.logger.debug(`Fetching child rooms for zone id=${zoneId}`);
+
 		const zone = await this.getOneOrThrow(zoneId);
 
 		if (zone.type !== SpaceType.ZONE) {
+			this.logger.warn(`Space ${zoneId} is not a zone, returning empty list`);
 			return [];
 		}
 
@@ -501,6 +532,8 @@ export class SpacesService {
 			order: { displayOrder: 'ASC', name: 'ASC' },
 		});
 
+		this.logger.debug(`Found ${children.length} child rooms for zone`);
+
 		return children;
 	}
 
@@ -508,9 +541,12 @@ export class SpacesService {
 	 * Get parent zone for a room
 	 */
 	async getParentZone(roomId: string): Promise<SpaceEntity | null> {
+		this.logger.debug(`Fetching parent zone for room id=${roomId}`);
+
 		const room = await this.getOneOrThrow(roomId);
 
 		if (!room.parentId) {
+			this.logger.debug(`Room ${roomId} has no parent zone`);
 			return null;
 		}
 
@@ -523,10 +559,14 @@ export class SpacesService {
 	 * Get all zones (for parent selection dropdown)
 	 */
 	async findAllZones(): Promise<SpaceEntity[]> {
+		this.logger.debug('Fetching all zones');
+
 		const zones = await this.repository.find({
 			where: { type: SpaceType.ZONE },
 			order: { displayOrder: 'ASC', name: 'ASC' },
 		});
+
+		this.logger.debug(`Found ${zones.length} zones`);
 
 		return zones;
 	}

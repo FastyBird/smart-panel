@@ -62,7 +62,11 @@ export class PagesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<PagesResponseModel> {
+		this.logger.debug('Fetching all pages');
+
 		const pages = await this.pagesService.findAll();
+
+		this.logger.debug(`Retrieved ${pages.length} pages`);
 
 		const response = new PagesResponseModel();
 		response.data = pages;
@@ -83,7 +87,11 @@ export class PagesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<PageResponseModel> {
+		this.logger.debug(`Fetching page id=${id}`);
+
 		const page = await this.getOneOrThrow(id);
+
+		this.logger.debug(`Found page id=${page.id}`);
 
 		const response = new PageResponseModel();
 		response.data = page;
@@ -115,6 +123,8 @@ export class PagesController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<PageResponseModel> {
+		this.logger.debug('Incoming request to create a new page');
+
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
@@ -174,6 +184,8 @@ export class PagesController {
 		try {
 			const page = await this.pagesService.create(dtoInstance);
 
+			this.logger.debug(`Successfully created page id=${page.id}`);
+
 			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'pages', page.id);
 
 			const response = new PageResponseModel();
@@ -210,6 +222,8 @@ export class PagesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<PageResponseModel> {
+		this.logger.debug(`Incoming update request for page id=${id}`);
+
 		const page = await this.getOneOrThrow(id);
 
 		let mapping: PageTypeMapping<PageEntity, CreatePageDto, UpdatePageDto>;
@@ -252,6 +266,8 @@ export class PagesController {
 		try {
 			const updatedPage = await this.pagesService.update(page.id, dtoInstance);
 
+			this.logger.debug(`Successfully updated page id=${updatedPage.id}`);
+
 			const response = new PageResponseModel();
 			response.data = updatedPage;
 
@@ -279,12 +295,18 @@ export class PagesController {
 	@HttpCode(204)
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`Incoming request to delete page id=${id}`);
+
 		const page = await this.getOneOrThrow(id);
 
 		await this.pagesService.remove(page.id);
+
+		this.logger.debug(`Successfully deleted page id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<PageEntity> {
+		this.logger.debug(`Checking existence of page id=${id}`);
+
 		const page = await this.pagesService.findOne(id);
 
 		if (!page) {

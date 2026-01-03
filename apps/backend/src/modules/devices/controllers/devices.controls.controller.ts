@@ -64,9 +64,13 @@ export class DevicesControlsController {
 	async findAll(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 	): Promise<DeviceControlsResponseModel> {
+		this.logger.debug(`Fetching all controls for deviceId=${deviceId}`);
+
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		const controls = await this.devicesControlsService.findAll(device.id);
+
+		this.logger.debug(`Retrieved ${controls.length} controls for deviceId=${device.id}`);
 
 		const response = new DeviceControlsResponseModel();
 
@@ -96,9 +100,13 @@ export class DevicesControlsController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<DeviceControlResponseModel> {
+		this.logger.debug(`Fetching device id=${id} for deviceId=${deviceId}`);
+
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		const control = await this.getOneOrThrow(id, device.id);
+
+		this.logger.debug(`Found control id=${control.id} for deviceId=${device.id}`);
 
 		const response = new DeviceControlResponseModel();
 
@@ -132,6 +140,8 @@ export class DevicesControlsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<DeviceControlResponseModel> {
+		this.logger.debug(`Incoming request to create a new control for deviceId=${deviceId}`);
+
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		const existingControl = await this.devicesControlsService.findOneByName(createDto.data.name, device.id);
@@ -154,6 +164,8 @@ export class DevicesControlsController {
 
 		try {
 			const control = await this.devicesControlsService.create(device.id, createDto.data);
+
+			this.logger.debug(`Successfully created control id=${control.id} for deviceId=${device.id}`);
 
 			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'devices', device.id, 'controls', control.id);
 
@@ -190,13 +202,19 @@ export class DevicesControlsController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<void> {
+		this.logger.debug(`Incoming request to delete control id=${id} for deviceId=${deviceId}`);
+
 		const device = await this.getDeviceOrThrow(deviceId);
 		const control = await this.getOneOrThrow(id, device.id);
 
 		await this.devicesControlsService.remove(control.id, device.id);
+
+		this.logger.debug(`Successfully deleted control id=${id} for deviceId=${device.id}`);
 	}
 
 	private async getOneOrThrow(id: string, deviceId: string): Promise<DeviceControlEntity> {
+		this.logger.debug(`Checking existence of control id=${id} for deviceId=${deviceId}`);
+
 		const control = await this.devicesControlsService.findOne(id, deviceId);
 
 		if (!control) {
@@ -209,6 +227,8 @@ export class DevicesControlsController {
 	}
 
 	private async getDeviceOrThrow(deviceId: string): Promise<DeviceEntity> {
+		this.logger.debug(`Checking existence of device id=${deviceId}`);
+
 		const device = await this.devicesService.findOne(deviceId);
 
 		if (!device) {

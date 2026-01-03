@@ -47,6 +47,10 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 
 		try {
 			entity.value = await this.propertyValueService.readLatest(entity);
+
+			this.logger.debug(`Loaded property value from InfluxDB id=${entity.id}, value=${entity.value}`, {
+				resource: resourceId,
+			});
 		} catch (error) {
 			const err = error as Error;
 

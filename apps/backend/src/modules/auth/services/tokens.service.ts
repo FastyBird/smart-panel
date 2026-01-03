@@ -30,6 +30,8 @@ export class TokensService {
 	) {}
 
 	async findAll<TToken extends TokenEntity>(type?: new (...args: any[]) => TToken): Promise<TToken[]> {
+		this.logger.debug('Fetching all tokens');
+
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
 
@@ -47,13 +49,19 @@ export class TokensService {
 		}
 		// LongLiveTokenEntity has no relations to join
 
-		return (await queryBuilder.getMany()) as TToken[];
+		const tokens = (await queryBuilder.getMany()) as TToken[];
+
+		this.logger.debug(`Found ${tokens.length} tokens`);
+
+		return tokens;
 	}
 
 	async findAllByOwner<TToken extends TokenEntity>(
 		owner: string,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken[]> {
+		this.logger.debug('Fetching all tokens by owner');
+
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
 
@@ -81,23 +89,39 @@ export class TokensService {
 				.where('owner.id = :ownerId', { ownerId: owner });
 		}
 
-		return (await queryBuilder.getMany()) as TToken[];
+		const tokens = (await queryBuilder.getMany()) as TToken[];
+
+		this.logger.debug(`Found ${tokens.length} tokens`);
+
+		return tokens;
 	}
 
 	async findAllByOwnerType(ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
+		this.logger.debug(`Fetching all long-live tokens by owner type=${ownerType}`);
+
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
-		return repository.find({
+		const tokens = await repository.find({
 			where: { ownerType },
 		});
+
+		this.logger.debug(`Found ${tokens.length} long-live tokens`);
+
+		return tokens;
 	}
 
 	async findByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
+		this.logger.debug(`Fetching long-live tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
+
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
-		return repository.find({
+		const tokens = await repository.find({
 			where: { tokenOwnerId: ownerId, ownerType },
 		});
+
+		this.logger.debug(`Found ${tokens.length} long-live tokens`);
+
+		return tokens;
 	}
 
 	async revokeByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<void> {
@@ -267,7 +291,11 @@ export class TokensService {
 
 		await repository.save(token as TToken);
 
-		return this.getOneOrThrow<TToken>(token.id);
+		const updatedToken = await this.getOneOrThrow<TToken>(token.id);
+
+		this.logger.debug(`Successfully updated token with id=${updatedToken.id}`);
+
+		return updatedToken;
 	}
 
 	async remove(id: string): Promise<void> {
@@ -306,6 +334,8 @@ export class TokensService {
 		value: string | number | boolean,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken | null> {
+		this.logger.debug('Fetching token');
+
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
 
@@ -328,8 +358,12 @@ export class TokensService {
 		const token = (await queryBuilder.getOne()) as TToken;
 
 		if (!token) {
+			this.logger.warn('Token not found');
+
 			return null;
 		}
+
+		this.logger.debug('Successfully fetched token');
 
 		return token;
 	}

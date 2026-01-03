@@ -30,7 +30,20 @@ export class LightEntityMapperService extends EntityMapper {
 	): Promise<Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean | null>> {
 		const mapped: Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean | null> = new Map();
 
+		// Debug: Log available properties and their haAttribute values
+		this.logger.debug(
+			`[LIGHT ENTITY MAPPER] mapFromHA called with ${properties.length} properties for entity ${state.entity_id}`,
+		);
+		this.logger.debug(
+			`[LIGHT ENTITY MAPPER] Properties: ${properties.map((p) => `${p.category}:${p.haAttribute}`).join(', ')}`,
+		);
+		this.logger.debug(`[LIGHT ENTITY MAPPER] State attributes: ${Object.keys(state.attributes).join(', ')}`);
+
 		const brightness = state.attributes[LightEntityAttribute.BRIGHTNESS];
+
+		this.logger.debug(
+			`[LIGHT ENTITY MAPPER] Brightness from HA: ${JSON.stringify(brightness)} (type: ${typeof brightness})`,
+		);
 
 		if (typeof brightness === 'number') {
 			const brightnessProp = await this.getValidProperty(
@@ -40,9 +53,26 @@ export class LightEntityMapperService extends EntityMapper {
 				[ChannelCategory.LIGHT],
 			);
 
+			this.logger.debug(
+				`[LIGHT ENTITY MAPPER] Brightness prop found: ${!!brightnessProp}, ` +
+					`looking for haAttribute='${LightEntityAttribute.BRIGHTNESS}'`,
+			);
+
 			if (brightnessProp) {
 				const mappedValue = Math.round((brightness / 255) * 100);
 				mapped.set(brightnessProp.id, mappedValue);
+				this.logger.debug(`[LIGHT ENTITY MAPPER] Mapped brightness: ${brightness} (0-255) -> ${mappedValue}% (0-100)`);
+			} else {
+				// Check what haAttribute the brightness property actually has
+				const anyBrightnessProp = properties.find((p) => p.category === PropertyCategory.BRIGHTNESS);
+				if (anyBrightnessProp) {
+					this.logger.warn(
+						`[LIGHT ENTITY MAPPER] Brightness property exists but haAttribute mismatch: ` +
+							`expected '${LightEntityAttribute.BRIGHTNESS}', got '${anyBrightnessProp.haAttribute}'`,
+					);
+				} else {
+					this.logger.warn(`[LIGHT ENTITY MAPPER] No brightness property found at all`);
+				}
 			}
 		}
 
@@ -148,6 +178,8 @@ export class LightEntityMapperService extends EntityMapper {
 		if (Array.isArray(rgbwColor) && rgbwColor.length === 4) {
 			const [r, g, b, w] = rgbwColor as [number, number, number, number];
 
+			this.logger.debug(`[LIGHT ENTITY MAPPER] Received rgbw_color: [${r}, ${g}, ${b}, ${w}]`);
+
 			const redProp = await this.getValidProperty(
 				properties,
 				PropertyCategory.COLOR_RED,
@@ -173,6 +205,10 @@ export class LightEntityMapperService extends EntityMapper {
 				[ChannelCategory.LIGHT],
 			);
 
+			this.logger.debug(
+				`[LIGHT ENTITY MAPPER] RGBW props found: red=${!!redProp}, green=${!!greenProp}, blue=${!!blueProp}, white=${!!whiteProp}`,
+			);
+
 			if (
 				redProp &&
 				typeof r === 'number' &&
@@ -187,6 +223,12 @@ export class LightEntityMapperService extends EntityMapper {
 				mapped.set(greenProp.id, g);
 				mapped.set(blueProp.id, b);
 				mapped.set(whiteProp.id, w);
+				this.logger.debug(`[LIGHT ENTITY MAPPER] Mapped RGBW values: r=${r}, g=${g}, b=${b}, w=${w}`);
+			} else {
+				this.logger.warn(
+					`[LIGHT ENTITY MAPPER] Could not map RGBW - missing properties or invalid values. ` +
+						`Props: red=${!!redProp}, green=${!!greenProp}, blue=${!!blueProp}, white=${!!whiteProp}`,
+				);
 			}
 		}
 
@@ -199,6 +241,8 @@ export class LightEntityMapperService extends EntityMapper {
 		} else {
 			this.logger.warn('[LIGHT ENTITY MAPPER] Missing main state property');
 		}
+
+		this.logger.debug('[LIGHT ENTITY MAPPER] Received light entity state was mapped to system properties');
 
 		return mapped;
 	}
@@ -380,6 +424,8 @@ export class LightEntityMapperService extends EntityMapper {
 				attributes.set(LightEntityAttribute.BRIGHTNESS_PCT, values.get(brightnessPctProp.id));
 			}
 		}
+
+		this.logger.debug('[LIGHT ENTITY MAPPER] Received properties were mapped to Home Assistant entity state');
 
 		return { state, service, attributes };
 	}

@@ -31,7 +31,11 @@ export class UsersService {
 	}
 
 	async findAll(): Promise<UserEntity[]> {
+		this.logger.debug('Fetching all users');
+
 		const users = await this.repository.find();
+
+		this.logger.debug(`Found ${users.length} users`);
 
 		return users;
 	}
@@ -49,7 +53,11 @@ export class UsersService {
 	}
 
 	async findAllByRole(role: UserRole): Promise<UserEntity[]> {
+		this.logger.debug(`Fetching all users by given role: ${role}`);
+
 		const users = await this.repository.createQueryBuilder('user').where('user.role = :role', { role }).getMany();
+
+		this.logger.debug(`Found ${users.length} users by given role: ${role}`);
 
 		return users;
 	}
@@ -110,6 +118,8 @@ export class UsersService {
 
 		const updatedUser = await this.getOneOrThrow(user.id);
 
+		this.logger.debug(`Successfully updated user with id=${updatedUser.id}`);
+
 		this.eventEmitter.emit(EventType.USER_UPDATED, updatedUser);
 
 		return updatedUser;
@@ -138,11 +148,17 @@ export class UsersService {
 	}
 
 	private async findByField(field: keyof UserEntity, value: string | number | boolean): Promise<UserEntity | null> {
+		this.logger.debug(`Fetching user with ${field}=${value}`);
+
 		const user = await this.repository.findOne({ where: { [field]: value } });
 
 		if (!user) {
+			this.logger.debug(`User with ${field}=${value} not found`);
+
 			return null;
 		}
+
+		this.logger.debug(`Successfully fetched user with ${field}=${value}`);
 
 		return user;
 	}

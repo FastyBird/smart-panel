@@ -416,6 +416,10 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_STATE_CHANGED)
 	async handleDeviceStateChanged(event: Z2mDeviceStateChangedEvent): Promise<void> {
+		this.logger.debug(
+			`Device state changed: ${event.friendlyName}, state keys: ${Object.keys(event.state).join(', ')}`,
+		);
+
 		try {
 			await this.deviceMapper.updateDeviceState(event.friendlyName, event.state);
 		} catch (error) {
@@ -430,6 +434,8 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_AVAILABILITY_CHANGED)
 	async handleDeviceAvailabilityChanged(event: Z2mDeviceAvailabilityChangedEvent): Promise<void> {
+		this.logger.debug(`Device availability changed: ${event.friendlyName} -> ${event.available}`);
+
 		try {
 			await this.deviceMapper.setDeviceAvailability(event.friendlyName, event.available);
 		} catch (error) {

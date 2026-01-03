@@ -612,6 +612,8 @@ export class Z2mMqttClientAdapterService {
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
 
+			this.logger.debug(`Received state for "${friendlyName}": ${Object.keys(state).join(', ')}`);
+
 			// ALWAYS store state in the global cache (independent of device registry)
 			// This ensures state is available for adoption preview even if device isn't registered yet
 			const existingCachedState = this.stateCache.get(friendlyName) ?? {};
@@ -622,6 +624,9 @@ export class Z2mMqttClientAdapterService {
 			if (device) {
 				device.currentState = { ...device.currentState, ...state };
 				device.lastSeen = new Date();
+				this.logger.debug(`Updated registry and cache for "${friendlyName}"`);
+			} else {
+				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
 			// Emit state changed event
@@ -641,6 +646,8 @@ export class Z2mMqttClientAdapterService {
 	 * Handle device availability message
 	 */
 	private handleDeviceAvailabilityMessage(friendlyName: string, message: string): void {
+		this.logger.debug(`Received availability for "${friendlyName}": ${message}`);
+
 		try {
 			let available: boolean;
 

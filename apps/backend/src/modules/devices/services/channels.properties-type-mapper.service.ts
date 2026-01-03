@@ -41,6 +41,8 @@ export class ChannelsPropertiesTypeMapperService {
 		TCreateDTO extends CreateChannelPropertyDto,
 		TUpdateDTO extends UpdateChannelPropertyDto,
 	>(type: string): ChannelPropertyTypeMapping<TProperty, TCreateDTO, TUpdateDTO> {
+		this.logger.debug(`Attempting to find mapping for channel property type: '${type}'`);
+
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -50,6 +52,8 @@ export class ChannelsPropertiesTypeMapperService {
 
 			throw new DevicesException(`Unsupported channel property type: ${type}`);
 		}
+
+		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for channel property type: '${type}'`);
 
 		return mapping as ChannelPropertyTypeMapping<TProperty, TCreateDTO, TUpdateDTO>;
 	}

@@ -269,7 +269,7 @@ export class ShellyV1Service implements IManagedPluginService {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_CHANGED)
 	async handleDeviceChanged(event: NormalizedDeviceChangeEvent): Promise<void> {
-		// Property change event - too verbose for debug level (runs on every property update)
+		this.logger.debug(`Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`);
 
 		try {
 			// Check if a device is enabled in the registry

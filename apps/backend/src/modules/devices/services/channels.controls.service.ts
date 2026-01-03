@@ -24,29 +24,59 @@ export class ChannelsControlsService {
 	) {}
 
 	async findAll(channelId: string): Promise<ChannelControlEntity[]> {
-		return this.repository
+		this.logger.debug(`Fetching all controls for channelId=${channelId}`);
+
+		const controls = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
 			.where('channel.id = :channelId', { channelId })
 			.getMany();
+
+		this.logger.debug(`Found ${controls.length} controls for channelId=${channelId}`);
+
+		return controls;
 	}
 
 	async findOne(id: string, channelId: string): Promise<ChannelControlEntity | null> {
-		return this.repository
+		this.logger.debug(`Fetching control with id=${id} for channelId=${channelId}`);
+
+		const control = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
 			.where('control.id = :id', { id })
 			.andWhere('channel.id = :channelId', { channelId })
 			.getOne();
+
+		if (!control) {
+			this.logger.debug(`Control with id=${id} for channelId=${channelId} not found`);
+
+			return null;
+		}
+
+		this.logger.debug(`Successfully fetched control with id=${id} for channelId=${channelId}`);
+
+		return control;
 	}
 
 	async findOneByName(name: string, channelId: string): Promise<ChannelControlEntity | null> {
-		return this.repository
+		this.logger.debug(`Fetching control with name=${name} for channelId=${channelId}`);
+
+		const control = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
 			.where('control.name = :name', { name })
 			.andWhere('channel.id = :channelId', { channelId })
 			.getOne();
+
+		if (!control) {
+			this.logger.debug(`Control with name=${name} for channelId=${channelId} not found`);
+
+			return null;
+		}
+
+		this.logger.debug(`Successfully fetched control with name=${name} for channelId=${channelId}`);
+
+		return control;
 	}
 
 	async create(channelId: string, createDto: CreateChannelControlDto): Promise<ChannelControlEntity> {

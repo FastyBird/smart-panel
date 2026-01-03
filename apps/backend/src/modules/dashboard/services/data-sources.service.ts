@@ -44,14 +44,30 @@ export class DataSourcesService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (relation) {
-			return repository
+			this.logger.debug(
+				`Fetching all data sources count for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			const dataSources = await repository
 				.createQueryBuilder('dataSource')
 				.where('dataSource.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('dataSource.parentId = :parentId', { parentId: relation.parentId })
 				.getCount();
+
+			this.logger.debug(
+				`Found that in system is ${dataSources} data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			return dataSources;
 		}
 
-		return repository.count();
+		this.logger.debug('Fetching all data sources count');
+
+		const dataSources = await repository.count();
+
+		this.logger.debug(`Found that in system is ${dataSources} data sources`);
+
+		return dataSources;
 	}
 
 	async findAll<TDataSource extends DataSourceEntity>(relation?: Relation, type?: string): Promise<TDataSource[]> {
@@ -59,17 +75,33 @@ export class DataSourcesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		let dataSources: DataSourceEntity[];
-
 		if (relation) {
-			dataSources = await repository
+			this.logger.debug(
+				`Fetching all data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			const dataSources = await repository
 				.createQueryBuilder('dataSource')
 				.where('dataSource.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('dataSource.parentId = :parentId', { parentId: relation.parentId })
 				.getMany();
-		} else {
-			dataSources = await repository.find();
+
+			this.logger.debug(
+				`Found ${dataSources.length} data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			for (const dataSource of dataSources) {
+				await this.loadRelations(dataSource);
+			}
+
+			return dataSources as TDataSource[];
 		}
+
+		this.logger.debug('Fetching all data sources');
+
+		const dataSources = await repository.find();
+
+		this.logger.debug(`Found ${dataSources.length} data sources`);
 
 		for (const dataSource of dataSources) {
 			await this.loadRelations(dataSource);
@@ -90,18 +122,40 @@ export class DataSourcesService {
 		let dataSource: DataSourceEntity | null;
 
 		if (relation) {
+			this.logger.debug(
+				`Fetching data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
 			dataSource = await repository
 				.createQueryBuilder('dataSource')
 				.where('dataSource.id = :id', { id })
 				.andWhere('dataSource.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('dataSource.parentId = :parentId', { parentId: relation.parentId })
 				.getOne();
-		} else {
-			dataSource = await repository.createQueryBuilder('dataSource').where('dataSource.id = :id', { id }).getOne();
-		}
 
-		if (!dataSource) {
-			return null;
+			if (!dataSource) {
+				this.logger.debug(
+					`Data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
+				);
+
+				return null;
+			}
+
+			this.logger.debug(
+				`Successfully fetched data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+		} else {
+			this.logger.debug(`Fetching data source with id=${id}`);
+
+			dataSource = await repository.createQueryBuilder('dataSource').where('dataSource.id = :id', { id }).getOne();
+
+			if (!dataSource) {
+				this.logger.debug(`Data source with id=${id} not found`);
+
+				return null;
+			}
+
+			this.logger.debug(`Successfully fetched data source with id=${id}`);
 		}
 
 		await this.loadRelations(dataSource);
@@ -158,6 +212,8 @@ export class DataSourcesService {
 		id: string,
 		updateDto: UpdateDataSourceDto,
 	): Promise<TDataSource> {
+		this.logger.debug(`Updating data source with id=${id}`);
+
 		const dataSource = await this.getOneOrThrow<TDataSource>(id);
 
 		const mapping = this.dataSourcesMapperService.getMapping<TDataSource, any, TUpdateDTO>(dataSource.type);
@@ -171,6 +227,8 @@ export class DataSourcesService {
 		await repository.save(dataSource);
 
 		const updatedDataSource = await this.getOneOrThrow<TDataSource>(id);
+
+		this.logger.debug(`Successfully updated data source with id=${updatedDataSource.id}`);
 
 		this.eventEmitter.emit(EventType.DATA_SOURCE_UPDATED, updatedDataSource);
 

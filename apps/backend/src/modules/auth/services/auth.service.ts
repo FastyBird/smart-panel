@@ -79,7 +79,13 @@ export class AuthService {
 	}
 
 	async getProfile(id: string): Promise<UserEntity> {
-		return this.usersService.getOneOrThrow(id);
+		this.logger.debug(`Fetching profile for user=${id}`);
+
+		const user = await this.usersService.getOneOrThrow(id);
+
+		this.logger.debug(`Successfully fetched profile for user=${id}`);
+
+		return user;
 	}
 
 	async login(loginDto: LoginDto): Promise<LoggedInModel> {

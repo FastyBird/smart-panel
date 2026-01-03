@@ -82,6 +82,8 @@ export class DataSourceController {
 		@Query('parent_type') parentType?: string,
 		@Query('parent_id') parentId?: string,
 	): Promise<DataSourcesResponseModel> {
+		this.logger.debug(`Fetching all data sources`);
+
 		const dataSources = await this.dataSourceService.findAll(
 			parentType && parentId
 				? {
@@ -90,6 +92,8 @@ export class DataSourceController {
 					}
 				: undefined,
 		);
+
+		this.logger.debug(`Retrieved ${dataSources.length} data sources`);
 
 		const response = new DataSourcesResponseModel();
 		response.data = dataSources;
@@ -110,7 +114,11 @@ export class DataSourceController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DataSourceResponseModel> {
+		this.logger.debug(`Fetching data source id=${id}`);
+
 		const dataSource = await this.getOneOrThrow(id);
+
+		this.logger.debug(`Found data source id=${dataSource.id}`);
 
 		const response = new DataSourceResponseModel();
 		response.data = dataSource;
@@ -143,6 +151,8 @@ export class DataSourceController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<DataSourceResponseModel> {
+		this.logger.debug(`Incoming request to create a new data source`);
+
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
@@ -220,6 +230,8 @@ export class DataSourceController {
 				parentId: parent.id,
 			});
 
+			this.logger.debug(`Successfully created data source id=${dataSource.id}`);
+
 			setLocationHeader(req, res, DASHBOARD_MODULE_PREFIX, 'data-source', dataSource.id);
 
 			const response = new DataSourceResponseModel();
@@ -256,6 +268,8 @@ export class DataSourceController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<DataSourceResponseModel> {
+		this.logger.debug(`Incoming update request for data source id=${id}`);
+
 		const dataSource = await this.getOneOrThrow(id);
 
 		const baseDtoInstance = toInstance(UpdateSingleDataSourceDto, updateDto.data, {
@@ -319,6 +333,8 @@ export class DataSourceController {
 		try {
 			const updatedDataSource = await this.dataSourceService.update(dataSource.id, dtoInstance);
 
+			this.logger.debug(`Successfully updated data source id=${updatedDataSource.id}`);
+
 			const response = new DataSourceResponseModel();
 			response.data = updatedDataSource;
 
@@ -346,12 +362,18 @@ export class DataSourceController {
 	@HttpCode(204)
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`Incoming request to delete data source id=${id}`);
+
 		const dataSource = await this.getOneOrThrow(id);
 
 		await this.dataSourceService.remove(dataSource.id);
+
+		this.logger.debug(`Successfully deleted data source id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<DataSourceEntity> {
+		this.logger.debug(`Checking existence of data source id=${id}`);
+
 		const dataSource = await this.dataSourceService.findOne(id);
 
 		if (!dataSource) {

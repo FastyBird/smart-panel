@@ -64,6 +64,11 @@ export class DeviceConnectionStateService {
 	async readLatest(device: DeviceEntity): Promise<{ online: boolean; status: ConnectionState }> {
 		// Check local cache first
 		if (this.statusMap.has(device.id)) {
+			this.logger.debug(
+				`Loaded cached status for device id=${device.id}, status=${this.statusMap.get(device.id)?.status}`,
+				{ resource: device.id },
+			);
+
 			return this.statusMap.get(device.id);
 		}
 
@@ -83,6 +88,8 @@ export class DeviceConnectionStateService {
         LIMIT 1
       `;
 
+			this.logger.debug(`Fetching latest status id=${device.id}`, { resource: device.id });
+
 			const result = await this.influxDbService.query<{
 				online: boolean;
 				onlineI: number;
@@ -92,6 +99,8 @@ export class DeviceConnectionStateService {
 			}>(query);
 
 			if (!result.length) {
+				this.logger.debug(`No stored status found for id=${device.id}`, { resource: device.id });
+
 				return {
 					online: false,
 					status: ConnectionState.UNKNOWN,
@@ -99,6 +108,8 @@ export class DeviceConnectionStateService {
 			}
 
 			const latest = result[0];
+
+			this.logger.debug(`Read latest value id=${device.id} status=${latest.status}`, { resource: device.id });
 
 			this.statusMap.set(device.id, { online: latest.online, status: latest.status });
 			this.statusPropertyMap.set(device.id, latest.propertyId);
@@ -136,6 +147,8 @@ export class DeviceConnectionStateService {
 		const result = await this.influxDbService.query<{ sum: number }>(query);
 
 		if (!result.length) {
+			this.logger.debug('No stored statuses found');
+
 			return 0;
 		}
 

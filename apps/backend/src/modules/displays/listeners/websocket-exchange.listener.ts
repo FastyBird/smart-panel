@@ -39,10 +39,12 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				// Update current IP address if provided
 				if (payload.ipAddress && payload.ipAddress !== 'unknown') {
 					await this.displaysService.update(payload.user.id, { current_ip_address: payload.ipAddress });
+					this.logger.debug(`Updated current IP address for display=${payload.user.id} to ${payload.ipAddress}`);
 				}
 
 				// Write connection state to InfluxDB
 				await this.displayConnectionStateService.write(display, ConnectionState.CONNECTED);
+				this.logger.debug(`Updated connection state for display=${payload.user.id} to CONNECTED`);
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -68,6 +70,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 
 				// Write disconnection state to InfluxDB
 				await this.displayConnectionStateService.write(display, ConnectionState.DISCONNECTED);
+				this.logger.debug(`Updated connection state for display=${payload.user.id} to DISCONNECTED`);
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -93,6 +96,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 
 				// Write lost connection state to InfluxDB
 				await this.displayConnectionStateService.write(display, ConnectionState.LOST);
+				this.logger.debug(`Updated connection state for display=${payload.user.id} to LOST`);
 			}
 		} catch (error) {
 			const err = error as Error;

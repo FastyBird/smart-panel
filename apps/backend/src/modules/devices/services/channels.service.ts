@@ -40,14 +40,26 @@ export class ChannelsService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (deviceId) {
-			return repository
+			this.logger.debug(`Fetching all channels count deviceId=${deviceId}`);
+
+			const channels = await repository
 				.createQueryBuilder('channel')
 				.innerJoinAndSelect('channel.device', 'device')
 				.where('device.id = :deviceId', { deviceId })
 				.getCount();
+
+			this.logger.debug(`Found that in system is ${channels} channels for deviceId=${deviceId}`);
+
+			return channels;
 		}
 
-		return repository.count();
+		this.logger.debug('Fetching all channels count');
+
+		const channels = await repository.count();
+
+		this.logger.debug(`Found that in system is ${channels} channels`);
+
+		return channels;
 	}
 
 	// Channels
@@ -57,6 +69,8 @@ export class ChannelsService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (deviceId) {
+			this.logger.debug(`Fetching all channels for deviceId=${deviceId}`);
+
 			const channels = (await repository
 				.createQueryBuilder('channel')
 				.innerJoinAndSelect('channel.device', 'device')
@@ -67,8 +81,12 @@ export class ChannelsService {
 				.where('device.id = :deviceId', { deviceId })
 				.getMany()) as TChannel[];
 
+			this.logger.debug(`Found ${channels.length} channels for deviceId=${deviceId}`);
+
 			return channels;
 		}
+
+		this.logger.debug('Fetching all channels');
 
 		// Use QueryBuilder instead of find() to ensure device relation is properly loaded
 		// with STI (Single Table Inheritance) subclasses
@@ -80,6 +98,8 @@ export class ChannelsService {
 			.leftJoinAndSelect('channel.properties', 'properties')
 			.leftJoinAndSelect('properties.channel', 'propertyChannel')
 			.getMany()) as TChannel[];
+
+		this.logger.debug(`Found ${channels.length} channels`);
 
 		return channels;
 	}
@@ -96,6 +116,8 @@ export class ChannelsService {
 		let channel: TChannel | null;
 
 		if (deviceId) {
+			this.logger.debug(`Fetching channel with id=${id} for deviceId=${deviceId}`);
+
 			channel = (await repository
 				.createQueryBuilder('channel')
 				.innerJoinAndSelect('channel.device', 'device')
@@ -108,8 +130,12 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
+				this.logger.debug(`Channel with id=${id} for deviceId=${deviceId} not found`);
+
 				return null;
 			}
+
+			this.logger.debug(`Successfully fetched channel with id=${id} for deviceId=${deviceId}`);
 		} else {
 			channel = (await repository
 				.createQueryBuilder('channel')
@@ -122,8 +148,12 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
+				this.logger.debug(`Channel with id=${id} not found`);
+
 				return null;
 			}
+
+			this.logger.debug(`Successfully fetched channel with id=${id}`);
 		}
 
 		return channel;
@@ -142,6 +172,8 @@ export class ChannelsService {
 		let channel: TChannel | null;
 
 		if (deviceId) {
+			this.logger.debug(`Fetching channel with ${column}=${value} for deviceId=${deviceId}`);
+
 			channel = (await repository
 				.createQueryBuilder('channel')
 				.innerJoinAndSelect('channel.device', 'device')
@@ -154,8 +186,12 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
+				this.logger.debug(`Channel with ${column}=${value} for deviceId=${deviceId} not found`);
+
 				return null;
 			}
+
+			this.logger.debug(`Successfully fetched channel with ${column}=${value} for deviceId=${deviceId}`);
 		} else {
 			channel = (await repository
 				.createQueryBuilder('channel')
@@ -168,8 +204,12 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
+				this.logger.debug(`Channel with ${column}=${value} not found`);
+
 				return null;
 			}
+
+			this.logger.debug(`Successfully fetched channel with ${column}=${value}`);
 		}
 
 		return channel;
@@ -238,6 +278,8 @@ export class ChannelsService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TChannel> {
+		this.logger.debug(`Updating data source with id=${id}`);
+
 		const channel = await this.getOneOrThrow(id);
 
 		const mapping = this.channelsMapperService.getMapping<TChannel, any, TUpdateDTO>(channel.type);
@@ -257,6 +299,8 @@ export class ChannelsService {
 
 			updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 		}
+
+		this.logger.debug(`Successfully updated channel with id=${updatedChannel.id}`);
 
 		this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChannel);
 

@@ -137,6 +137,8 @@ export class DeviceValidationService {
 	 * Validate all devices against their specifications
 	 */
 	async validateAllDevices(): Promise<ValidationResponse> {
+		this.logger.debug('Validating all devices');
+
 		const devices = await this.devicesService.findAll();
 		const results: DeviceValidationResult[] = [];
 
@@ -145,6 +147,8 @@ export class DeviceValidationService {
 		}
 
 		const summary = this.calculateSummary(results);
+
+		this.logger.debug(`Validation complete: ${summary.validDevices}/${summary.totalDevices} devices valid`);
 
 		return { summary, devices: results };
 	}

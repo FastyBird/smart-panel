@@ -109,18 +109,34 @@ export class StateChangedEventService implements WsEventService {
 			entityId,
 			setTimeout(() => {
 				void (async () => {
+					this.logger.debug(
+						`[STATE CHANGED] Processing state for ${entityId}, ` +
+							`state=${event.data.new_state.state}, ` +
+							`brightness=${JSON.stringify(event.data.new_state.attributes?.brightness ?? 'N/A')}`,
+					);
+
 					const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [event.data.new_state]);
 
+					this.logger.debug(`[STATE CHANGED] Received ${resultMaps.length} result maps from mapper`);
+
 					for (const map of resultMaps) {
+						this.logger.debug(`[STATE CHANGED] Processing map with ${map.size} entries`);
+
 						for (const [propertyId, value] of map) {
 							const property = this.properties.find((property) => property.id === propertyId);
 
 							if (!property) {
 								this.logger.warn(
-									`Property ${propertyId} not found in cache, ` + `cache has ${this.properties.length} properties`,
+									`[STATE CHANGED] Property ${propertyId} not found in cache, ` +
+										`cache has ${this.properties.length} properties`,
 								);
 								continue;
 							}
+
+							this.logger.debug(
+								`[STATE CHANGED] Updating property ${property.category} (${property.id}) ` +
+									`with value=${String(value)}`,
+							);
 
 							await this.channelsPropertiesService.update(
 								property.id,
@@ -225,6 +241,10 @@ export class StateChangedEventService implements WsEventService {
 							...instanceToPlain(virtualProp),
 							value: resolved.value,
 						}),
+					);
+
+					this.logger.debug(
+						`Updated virtual property ${virtualProp.category} = ${String(resolved.value)} for channel ${channel.category}`,
 					);
 				}
 			}

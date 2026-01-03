@@ -30,24 +30,36 @@ export class DeviceZonesService {
 	 * Get all zones for a device
 	 */
 	async getDeviceZones(deviceId: string): Promise<SpaceEntity[]> {
+		this.logger.debug(`Fetching zones for device id=${deviceId}`);
+
 		const relations = await this.repository.find({
 			where: { deviceId },
 			relations: ['zone'],
 		});
 
-		return relations.map((r) => r.zone).filter((z) => z !== null);
+		const zones = relations.map((r) => r.zone).filter((z) => z !== null);
+
+		this.logger.debug(`Found ${zones.length} zones for device`);
+
+		return zones;
 	}
 
 	/**
 	 * Get all devices in a zone
 	 */
 	async getZoneDevices(zoneId: string): Promise<DeviceEntity[]> {
+		this.logger.debug(`Fetching devices for zone id=${zoneId}`);
+
 		const relations = await this.repository.find({
 			where: { zoneId },
 			relations: ['device'],
 		});
 
-		return relations.map((r) => r.device).filter((d) => d !== null);
+		const devices = relations.map((r) => r.device).filter((d) => d !== null);
+
+		this.logger.debug(`Found ${devices.length} devices in zone`);
+
+		return devices;
 	}
 
 	/**

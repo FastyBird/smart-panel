@@ -64,7 +64,7 @@ export class PropertyValueService {
 				},
 			]);
 
-			// Value saved - only log at trace level (too verbose for debug)
+			this.logger.debug(`Value saved id=${property.id} dataType=${property.dataType} value=${value}`);
 		} catch (error) {
 			const err = error as Error;
 
@@ -78,6 +78,8 @@ export class PropertyValueService {
 	async readLatest(property: ChannelPropertyEntity): Promise<string | number | boolean | null> {
 		// Check local cache first
 		if (this.valuesMap.has(property.id)) {
+			this.logger.debug(`Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`);
+
 			return this.valuesMap.get(property.id);
 		}
 
@@ -94,6 +96,8 @@ export class PropertyValueService {
         LIMIT 1
       `;
 
+			this.logger.debug(`Fetching latest value id=${property.id}`);
+
 			const result = await this.influxDbService.query<{
 				stringValue?: string;
 				numberValue?: number;
@@ -101,6 +105,8 @@ export class PropertyValueService {
 			}>(query);
 
 			if (!result.length) {
+				this.logger.debug(`No stored value found for id=${property.id}`);
+
 				return null;
 			}
 
@@ -134,6 +140,8 @@ export class PropertyValueService {
 				default:
 					parsedValue = null;
 			}
+
+			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${parsedValue}`);
 
 			this.valuesMap.set(property.id, parsedValue);
 

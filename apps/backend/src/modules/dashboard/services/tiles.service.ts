@@ -49,14 +49,30 @@ export class TilesService {
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
 		if (relation) {
-			return repository
+			this.logger.debug(
+				`Fetching all tiles count for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			const tiles = await repository
 				.createQueryBuilder('tile')
 				.where('tile.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
 				.getCount();
+
+			this.logger.debug(
+				`Found that in system is ${tiles} tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			return tiles;
 		}
 
-		return repository.count();
+		this.logger.debug('Fetching all tiles count');
+
+		const tiles = await repository.count();
+
+		this.logger.debug(`Found that in system is ${tiles} tiles`);
+
+		return tiles;
 	}
 
 	async findAll<TTile extends TileEntity>(relation?: Relation, type?: string): Promise<TTile[]> {
@@ -64,17 +80,31 @@ export class TilesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
-		let tiles: TileEntity[];
-
 		if (relation) {
-			tiles = await repository
+			this.logger.debug(`Fetching all tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`);
+
+			const tiles = await repository
 				.createQueryBuilder('tile')
 				.where('tile.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
 				.getMany();
-		} else {
-			tiles = await repository.find();
+
+			this.logger.debug(
+				`Found ${tiles.length} tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			for (const tile of tiles) {
+				await this.loadRelations(tile);
+			}
+
+			return tiles as TTile[];
 		}
+
+		this.logger.debug('Fetching all tiles');
+
+		const tiles = await repository.find();
+
+		this.logger.debug(`Found ${tiles.length} tiles`);
 
 		for (const tile of tiles) {
 			await this.loadRelations(tile);
@@ -91,18 +121,40 @@ export class TilesService {
 		let tile: TileEntity | null;
 
 		if (relation) {
+			this.logger.debug(
+				`Fetching tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
 			tile = await repository
 				.createQueryBuilder('tile')
 				.where('tile.id = :id', { id })
 				.andWhere('tile.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
 				.getOne();
-		} else {
-			tile = await repository.createQueryBuilder('tile').where('tile.id = :id', { id }).getOne();
-		}
 
-		if (!tile) {
-			return null;
+			if (!tile) {
+				this.logger.debug(
+					`Tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
+				);
+
+				return null;
+			}
+
+			this.logger.debug(
+				`Successfully fetched tile with id=${id} parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+		} else {
+			this.logger.debug(`Fetching tile with id=${id}`);
+
+			tile = await repository.createQueryBuilder('tile').where('tile.id = :id', { id }).getOne();
+
+			if (!tile) {
+				this.logger.debug(`Tile with id=${id} not found`);
+
+				return null;
+			}
+
+			this.logger.debug(`Successfully fetched tile with id=${id}`);
 		}
 
 		await this.loadRelations(tile);
@@ -171,6 +223,8 @@ export class TilesService {
 		id: string,
 		updateDto: UpdateTileDto,
 	): Promise<TTile> {
+		this.logger.debug(`Updating data source with id=${id}`);
+
 		const tile = await this.getOneOrThrow<TTile>(id);
 
 		const mapping = this.tilesMapperService.getMapping<TTile, any, TUpdateDTO>(tile.type);
@@ -184,6 +238,8 @@ export class TilesService {
 		await repository.save(tile);
 
 		const updatedTile = await this.getOneOrThrow<TTile>(tile.id);
+
+		this.logger.debug(`Successfully updated tile with id=${updatedTile.id}`);
 
 		this.eventEmitter.emit(EventType.TILE_UPDATED, updatedTile);
 

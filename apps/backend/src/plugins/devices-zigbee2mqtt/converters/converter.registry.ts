@@ -153,6 +153,8 @@ export class ConverterRegistry {
 				} catch (error) {
 					this.logger.error(`Error converting expose '${exposeKey}' with '${converter.type}': ${error}`);
 				}
+			} else {
+				this.logger.debug(`No converter found for expose: ${exposeKey} (type: ${expose.type})`);
 			}
 		}
 

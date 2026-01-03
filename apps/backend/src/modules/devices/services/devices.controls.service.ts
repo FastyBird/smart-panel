@@ -24,29 +24,59 @@ export class DevicesControlsService {
 	) {}
 
 	async findAll(deviceId: string): Promise<DeviceControlEntity[]> {
-		return this.repository
+		this.logger.debug(`Fetching all controls for deviceId=${deviceId}`);
+
+		const controls = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
 			.where('device.id = :deviceId', { deviceId })
 			.getMany();
+
+		this.logger.debug(`Found ${controls.length} controls for deviceId=${deviceId}`);
+
+		return controls;
 	}
 
 	async findOne(id: string, deviceId: string): Promise<DeviceControlEntity | null> {
-		return this.repository
+		this.logger.debug(`Fetching control with id=${id} for deviceId=${deviceId}`);
+
+		const control = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
 			.where('control.id = :id', { id })
 			.andWhere('device.id = :deviceId', { deviceId })
 			.getOne();
+
+		if (!control) {
+			this.logger.debug(`Control with id=${id} for deviceId=${deviceId} not found`);
+
+			return null;
+		}
+
+		this.logger.debug(`Successfully fetched control with id=${id} for deviceId=${deviceId}`);
+
+		return control;
 	}
 
 	async findOneByName(name: string, deviceId: string): Promise<DeviceControlEntity | null> {
-		return this.repository
+		this.logger.debug(`Fetching control with name=${name} for deviceId=${deviceId}`);
+
+		const control = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
 			.where('control.name = :name', { name })
 			.andWhere('device.id = :deviceId', { deviceId })
 			.getOne();
+
+		if (!control) {
+			this.logger.debug(`Control with name=${name} for deviceId=${deviceId} not found`);
+
+			return null;
+		}
+
+		this.logger.debug(`Successfully fetched control with name=${name} for deviceId=${deviceId}`);
+
+		return control;
 	}
 
 	async create(deviceId: string, createDeviceControlDto: CreateDeviceControlDto): Promise<DeviceControlEntity> {

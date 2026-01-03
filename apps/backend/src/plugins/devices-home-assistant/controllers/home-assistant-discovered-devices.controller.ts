@@ -62,8 +62,12 @@ export class HomeAssistantDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<HomeAssistantDiscoveredDevicesResponseModel> {
+		this.logger.debug('Fetching all Home Assistant discovered devices');
+
 		try {
 			const devices = await this.homeAssistantHttpService.getDiscoveredDevices();
+
+			this.logger.debug(`Retrieved ${devices.length} discovered devices`);
 
 			const response = new HomeAssistantDiscoveredDevicesResponseModel();
 			response.data = devices;
@@ -110,8 +114,12 @@ export class HomeAssistantDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id') id: string): Promise<HomeAssistantDiscoveredDeviceResponseModel> {
+		this.logger.debug(`Fetching Home Assistant discovered device id=${id}`);
+
 		try {
 			const device = await this.homeAssistantHttpService.getDiscoveredDevice(id);
+
+			this.logger.debug(`Found Home Assistant discovered device id=${device.id}`);
 
 			const response = new HomeAssistantDiscoveredDeviceResponseModel();
 			response.data = device;
@@ -161,9 +169,15 @@ export class HomeAssistantDiscoveredDevicesController {
 		@Param('id') id: string,
 		@Body() body?: MappingPreviewRequestDto,
 	): Promise<MappingPreviewResponseModel> {
+		this.logger.debug(`Previewing mapping for device id=${id}`);
+
 		try {
 			const request = body ? toInstance(MappingPreviewRequestDto, body) : undefined;
 			const preview = await this.mappingPreviewService.generatePreview(id, request);
+
+			this.logger.debug(
+				`Generated mapping preview for device id=${id}, entities=${preview.entities.length}, warnings=${preview.warnings.length}, readyToAdopt=${preview.readyToAdopt}`,
+			);
 
 			const response = new MappingPreviewResponseModel();
 			response.data = preview;
@@ -207,9 +221,13 @@ export class HomeAssistantDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('adopt')
 	async adoptDevice(@Body() body: AdoptDeviceRequestDto): Promise<DeviceResponseModel> {
+		this.logger.debug(`Adopting device ha_device_id=${body.haDeviceId}`);
+
 		try {
 			const request = toInstance(AdoptDeviceRequestDto, body);
 			const device = await this.deviceAdoptionService.adoptDevice(request);
+
+			this.logger.debug(`Adopted device ha_device_id=${body.haDeviceId} as device id=${device.id}`);
 
 			const response = new DeviceResponseModel();
 			response.data = device;

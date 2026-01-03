@@ -57,6 +57,8 @@ export class ShellyV1DevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('info')
 	async getInfo(@Body() createDto: DevicesShellyV1PluginReqGetInfo): Promise<ShellyV1DeviceInfoResponseModel> {
+		this.logger.debug(`Incoming request to probe device at ${createDto.data.hostname}`);
+
 		let probeResult: ShellyV1DeviceInfoModel;
 
 		try {
@@ -90,6 +92,8 @@ export class ShellyV1DevicesController {
 			throw new UnprocessableEntityException('Device info model could not be created');
 		}
 
+		this.logger.debug(`Probe completed for ${createDto.data.hostname}. Reachable: ${shellyProbeResult.reachable}`);
+
 		const response = new ShellyV1DeviceInfoResponseModel();
 		response.data = shellyProbeResult;
 
@@ -112,6 +116,8 @@ export class ShellyV1DevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('supported')
 	async getSupported(): Promise<ShellyV1SupportedDevicesResponseModel> {
+		this.logger.debug('Incoming request to get Shelly V1 supported devices list');
+
 		const devices: ShellyV1SupportedDeviceModel[] = [];
 
 		for (const [group, spec] of Object.entries(DESCRIPTORS)) {

@@ -230,7 +230,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			},
 		};
 
-		// Message emit - too verbose for debug level
+		this.logger.debug(`Emitting message: ${JSON.stringify(message)}`);
 
 		this.server.emit('event', message);
 	}
@@ -254,7 +254,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			},
 		};
 
-		// Event bus emit - too verbose for debug level
+		this.logger.debug(`Emitting event bus message: ${JSON.stringify(message)}`);
 
 		this.server.to(DISPLAY_INTERNAL_ROOM).emit('event', message);
 		this.server.to(EXCHANGE_ROOM).emit('event', message);

@@ -112,6 +112,8 @@ export class WeatherHistoryService implements OnModuleInit {
 			};
 
 			await this.influxDb.writePoints([point]);
+
+			this.logger.debug(`Stored weather data for location=${locationId}`);
 		} catch (error) {
 			const err = error as Error;
 			this.logger.warn(`Failed to store weather data for location=${locationId}`, {
@@ -293,7 +295,7 @@ export class WeatherHistoryService implements OnModuleInit {
 				'RESAMPLE EVERY 1m FOR 2h',
 			);
 
-			// Continuous queries set up successfully
+			this.logger.debug('Weather continuous queries set up');
 		} catch (error) {
 			const err = error as Error;
 			this.logger.warn('Failed to set up continuous queries', { message: err.message });

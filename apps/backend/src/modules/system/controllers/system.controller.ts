@@ -52,6 +52,8 @@ export class SystemController {
 	@Public()
 	@Get('health')
 	getSystemHealth(): SystemHealthResponseModel {
+		this.logger.debug('Health check');
+
 		try {
 			const pkgJson = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8')) as
 				| { version: string }
@@ -82,8 +84,12 @@ export class SystemController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('info')
 	async getSystemInfo(): Promise<SystemInfoResponseModel> {
+		this.logger.debug('Fetching system info');
+
 		try {
 			const systemInfo = await this.systemService.getSystemInfo();
+
+			this.logger.debug('Successfully retrieved system info');
 
 			const response = new SystemInfoResponseModel();
 			response.data = systemInfo;
@@ -105,8 +111,12 @@ export class SystemController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('throttle')
 	async getThrottleStatus(): Promise<ThrottleStatusResponseModel> {
+		this.logger.debug('Fetching throttle status');
+
 		try {
 			const throttleStatus = await this.systemService.getThrottleStatus();
+
+			this.logger.debug('Successfully retrieved throttle status');
 
 			const response = new ThrottleStatusResponseModel();
 			response.data = throttleStatus;

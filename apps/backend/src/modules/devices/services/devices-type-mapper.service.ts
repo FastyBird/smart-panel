@@ -37,6 +37,8 @@ export class DevicesTypeMapperService {
 	getMapping<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto, TUpdateDTO extends UpdateDeviceDto>(
 		type: string,
 	): DeviceTypeMapping<TDevice, TCreateDTO, TUpdateDTO> {
+		this.logger.debug(`Attempting to find mapping for device type: '${type}'`);
+
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -46,6 +48,8 @@ export class DevicesTypeMapperService {
 
 			throw new DevicesException(`Unsupported device type: ${type}`);
 		}
+
+		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for device type: '${type}'`);
 
 		return mapping as DeviceTypeMapping<TDevice, TCreateDTO, TUpdateDTO>;
 	}

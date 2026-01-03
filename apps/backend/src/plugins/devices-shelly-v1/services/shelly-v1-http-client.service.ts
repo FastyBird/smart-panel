@@ -90,7 +90,7 @@ export class ShellyV1HttpClientService {
 		const url = `http://${host}${endpoint}`;
 		const requestTimeout = timeout || this.DEFAULT_TIMEOUT;
 
-		// HTTP fetch - too verbose for debug level
+		this.logger.debug(`Fetching ${url}${username ? ' (with authentication)' : ''}`);
 
 		// Build headers
 		const headers: Record<string, string> = {
@@ -121,7 +121,7 @@ export class ShellyV1HttpClientService {
 
 			const data = (await response.json()) as ShellyHttpEndpointResponseMap[E];
 
-			// HTTP response - too verbose for debug level
+			this.logger.debug(`Response from ${url}: ${JSON.stringify(data).substring(0, 200)}...`);
 
 			return data;
 		} catch (error) {

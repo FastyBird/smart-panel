@@ -118,6 +118,8 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
+			this.logger.debug('Fetching all Home Assistant discovered devices list');
+
 			const [devices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
 
 			if (devices && states) {
@@ -156,6 +158,8 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
+			this.logger.debug(`Fetching Home Assistant discovered helper: ${entityId}`);
+
 			const [helpers, states] = await Promise.all([this.fetchListHaHelpers(), this.fetchListHaStates()]);
 
 			if (helpers && states) {
@@ -204,6 +208,8 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
+			this.logger.debug('Fetching all Home Assistant discovered helpers list');
+
 			const [helpers, states] = await Promise.all([this.fetchListHaHelpers(), this.fetchListHaStates()]);
 
 			if (helpers && states) {
@@ -245,6 +251,8 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
+			this.logger.debug('Fetching all Home Assistant discovered devices list');
+
 			const state = await this.fetchSingleHaState(entityId);
 
 			if (state) {
@@ -270,6 +278,8 @@ export class HomeAssistantHttpService {
 		this.ensureApiKey();
 
 		try {
+			this.logger.debug('Fetching all Home Assistant entities states list');
+
 			const states = await this.fetchListHaStates();
 
 			if (states) {
@@ -298,7 +308,7 @@ export class HomeAssistantHttpService {
 		}
 
 		try {
-			// Automatic sync started - too verbose for debug level
+			this.logger.debug('Automatic fetch of all Home Assistant entities states list');
 
 			const [states, haDevices, devices, properties] = await Promise.all([
 				this.fetchListHaStates(),
@@ -311,7 +321,8 @@ export class HomeAssistantHttpService {
 			]);
 
 			if (!states?.length || !haDevices?.length || !devices?.length || !properties?.length) {
-				// Missing data - too verbose for debug level
+				this.logger.debug('Missing data, skipping automatic sync');
+
 				return;
 			}
 
@@ -394,11 +405,14 @@ export class HomeAssistantHttpService {
 						state: isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
 					});
 
-					// Device connectivity change - too verbose for debug level
+					this.logger.debug(
+						`Device ${device.name} (${device.id}) marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,
+						{ resource: device.id },
+					);
 				}
 			}
 
-			// Automatic sync completed - too verbose for debug level
+			this.logger.debug('Automatic fetch of all Home Assistant entities states list completed');
 		} catch (error) {
 			const err = error as Error;
 

@@ -41,6 +41,8 @@ export class SpaceLightingRoleService {
 	 * Get all lighting role assignments for a space
 	 */
 	async findBySpace(spaceId: string): Promise<SpaceLightingRoleEntity[]> {
+		this.logger.debug(`Fetching lighting roles for space id=${spaceId}`);
+
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
@@ -48,6 +50,8 @@ export class SpaceLightingRoleService {
 			where: { spaceId },
 			order: { role: 'ASC', priority: 'ASC' },
 		});
+
+		this.logger.debug(`Found ${roles.length} lighting roles for space id=${spaceId}`);
 
 		return roles;
 	}
@@ -157,6 +161,8 @@ export class SpaceLightingRoleService {
 	 * This combines device/channel info with role data
 	 */
 	async getLightTargetsInSpace(spaceId: string): Promise<LightTargetInfo[]> {
+		this.logger.debug(`Getting light targets for space id=${spaceId}`);
+
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(spaceId);
 
@@ -217,6 +223,8 @@ export class SpaceLightingRoleService {
 			}
 		}
 
+		this.logger.debug(`Found ${lightTargets.length} light targets in space id=${spaceId}`);
+
 		return lightTargets;
 	}
 
@@ -226,6 +234,8 @@ export class SpaceLightingRoleService {
 	 * - Remaining lights become AMBIENT
 	 */
 	async inferDefaultLightingRoles(spaceId: string): Promise<SetLightingRoleDto[]> {
+		this.logger.debug(`Inferring default lighting roles for space id=${spaceId}`);
+
 		const lightTargets = await this.getLightTargetsInSpace(spaceId);
 
 		if (lightTargets.length === 0) {
@@ -251,6 +261,8 @@ export class SpaceLightingRoleService {
 				priority: i,
 			});
 		}
+
+		this.logger.debug(`Inferred ${defaultRoles.length} default lighting roles for space id=${spaceId}`);
 
 		return defaultRoles;
 	}
