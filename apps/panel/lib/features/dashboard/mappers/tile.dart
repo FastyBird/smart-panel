@@ -1,28 +1,17 @@
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/device_preview.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/forecast.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/time.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/weather.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-device-preview/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-scene/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-time/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-weather/mapper.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/device_preview.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/forecast.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/time.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/weather.dart';
 import 'package:flutter/material.dart';
 
-Map<TileType, Widget Function(TileView)> tileWidgetMappers = {
-  TileType.clock: (tile) {
-    return TimeTileWidget(tile as TimeTileView);
-  },
-  TileType.weatherDay: (tile) {
-    return WeatherTileWidget(tile as DayWeatherTileView);
-  },
-  TileType.weatherForecast: (tile) {
-    return ForecastTileWidget(tile as ForecastWeatherTileView);
-  },
-  TileType.devicePreview: (tile) {
-    return DevicePreviewTileWidget(tile as DevicePreviewTileView);
-  },
+/// Combines all tile widget mappers from plugins
+final Map<TileType, Widget Function(TileView)> tileWidgetMappers = {
+  ...timeTileWidgetMappers,
+  ...weatherTileWidgetMappers,
+  ...devicePreviewTileWidgetMappers,
+  ...sceneTileWidgetMappers,
 };
 
 Widget buildTileWidget(TileView tile) {
@@ -31,7 +20,7 @@ Widget buildTileWidget(TileView tile) {
   if (builder != null) {
     return builder(tile);
   } else {
-    throw Exception(
+    throw ArgumentError(
       'Tile widget can not be created. Unsupported tile type: ${tile.type.value}',
     );
   }

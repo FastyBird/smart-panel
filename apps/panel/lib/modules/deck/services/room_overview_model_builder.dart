@@ -1,11 +1,10 @@
-import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_space.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -15,13 +14,13 @@ class RoomOverviewBuildInput {
   final DisplayModel display;
 
   /// Room (space) data.
-  final SpacesModuleDataSpace? room;
+  final SpaceView? room;
 
   /// Device categories for devices in this room.
   final List<DeviceCategory> deviceCategories;
 
   /// Scenes for this room.
-  final List<ScenesModuleDataScene> scenes;
+  final List<SceneView> scenes;
 
   /// Current time (for time-based suggestions).
   final DateTime now;
@@ -272,7 +271,7 @@ int _getSceneCategoryPriority(ScenesModuleDataSceneCategory category) {
   }
 }
 
-List<QuickScene> _buildQuickScenes(List<ScenesModuleDataScene> scenes) {
+List<QuickScene> _buildQuickScenes(List<SceneView> scenes) {
   // Filter for triggerable scenes only
   final triggerableScenes = scenes
       .where((s) => s.enabled && s.triggerable)
@@ -312,7 +311,7 @@ List<SuggestedAction> _buildSuggestedActions({
   }
 
   // Helper to find first triggerable scene by category
-  ScenesModuleDataScene? findSceneByCategory(ScenesModuleDataSceneCategory category) {
+  SceneView? findSceneByCategory(ScenesModuleDataSceneCategory category) {
     return input.scenes
         .where((s) => s.category == category && s.enabled && s.triggerable)
         .firstOrNull;

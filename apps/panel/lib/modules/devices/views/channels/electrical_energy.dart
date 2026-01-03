@@ -10,7 +10,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/rate.dart
 class ElectricalEnergyChannelView extends ChannelView
     with ChannelFaultMixin, ChannelActiveMixin {
   ElectricalEnergyChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,

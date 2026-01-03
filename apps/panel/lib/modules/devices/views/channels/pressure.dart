@@ -8,7 +8,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/measured.
 class PressureChannelView extends ChannelView
     with ChannelMeasuredMixin, ChannelActiveMixin, ChannelFaultMixin {
   PressureChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,

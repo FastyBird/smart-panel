@@ -35,16 +35,16 @@ class DevicesService extends ChangeNotifier {
         _validationRepository = validationRepository;
 
   Future<void> initialize() async {
+    // Fetch devices - embedded channels and properties are auto-extracted
     await _devicesRepository.fetchAll();
 
+    // Fetch device controls (not embedded in device response)
     for (var device in _devicesRepository.getItems()) {
       await _devicesControlsRepository.fetchAll(device.id);
     }
 
-    await _channelsRepository.fetchAll();
-
+    // Fetch channel controls (not embedded in channel response)
     for (var channel in _channelsRepository.getItems()) {
-      await _channelPropertiesRepository.fetchAll(channel.id);
       await _channelControlsRepository.fetchAll(channel.id);
     }
 
@@ -198,8 +198,14 @@ class DevicesService extends ChangeNotifier {
             _validationRepository.getIssuesForChannel(device.id, channel.id);
         final channelIsValid = !channelIssues.any((issue) => issue.isError);
 
+        // Get the channel model from the repository to rebuild with validation
+        final channelModel = _channelsRepository.getItem(channel.id);
+        if (channelModel == null) {
+          return channel; // Fallback to the existing channel view
+        }
+
         final validatedChannel = buildChannelView(
-          channel.channelModel,
+          channelModel,
           channel.properties,
           isValid: channelIsValid,
           validationIssues: channelIssues,

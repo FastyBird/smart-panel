@@ -11,6 +11,9 @@ abstract class DeviceModel extends Model {
   final String? _description;
   final IconData? _icon;
 
+  final String? _roomId;
+  final List<String> _zoneIds;
+
   final List<String> _controls;
   final List<String> _channels;
 
@@ -21,6 +24,8 @@ abstract class DeviceModel extends Model {
     required String name,
     String? description,
     IconData? icon,
+    String? roomId,
+    List<String> zoneIds = const [],
     List<String> controls = const [],
     List<String> channels = const [],
     super.createdAt,
@@ -30,6 +35,8 @@ abstract class DeviceModel extends Model {
         _name = name,
         _description = description,
         _icon = icon,
+        _roomId = roomId,
+        _zoneIds = zoneIds,
         _controls = controls,
         _channels = channels;
 
@@ -42,6 +49,10 @@ abstract class DeviceModel extends Model {
   String? get description => _description;
 
   IconData? get icon => _icon;
+
+  String? get roomId => _roomId;
+
+  List<String> get zoneIds => _zoneIds;
 
   List<String> get controls => _controls;
 

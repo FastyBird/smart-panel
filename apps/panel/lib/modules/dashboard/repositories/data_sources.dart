@@ -11,15 +11,6 @@ import 'package:flutter/foundation.dart';
 class DataSourcesRepository extends Repository<DataSourceModel> {
   DataSourcesRepository({required super.apiClient});
 
-  List<DataSourceModel> getForParent(String parentId, String parentType) {
-    return data.entries
-        .where((entry) =>
-            entry.value.parentId == parentId &&
-            entry.value.parentType == parentType)
-        .map((entry) => entry.value)
-        .toList();
-  }
-
   void insert(List<Map<String, dynamic>> json) {
     final PagesRepository pagesRepository = locator<PagesRepository>();
     final CardsRepository cardsRepository = locator<CardsRepository>();

@@ -1,12 +1,14 @@
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/device_channel_data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/weather_current_data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/weather_forecast_day_data_source.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/generic_data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/device_channel.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/generic_data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/weather_current.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/weather_forecast_day.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-device-channel/models/model.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-device-channel/views/view.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/models/weather_current.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/models/weather_forecast_day.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/views/weather_current.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/views/weather_forecast_day.dart';
 
 Map<String, DataSourceModel Function(Map<String, dynamic>)> dataModelMappers = {
   DataSourceType.deviceChannel.value: (data) {
@@ -20,6 +22,13 @@ Map<String, DataSourceModel Function(Map<String, dynamic>)> dataModelMappers = {
   },
 };
 
+void registerDataSourceModelMapper(
+  String type,
+  DataSourceModel Function(Map<String, dynamic>) mapper,
+) {
+  dataModelMappers[type] = mapper;
+}
+
 DataSourceModel buildDataSourceModel(
   DataSourceType type,
   Map<String, dynamic> data,
@@ -29,9 +38,7 @@ DataSourceModel buildDataSourceModel(
   if (builder != null) {
     return builder(data);
   } else {
-    throw Exception(
-      'Page data source model can not be created. Unsupported page data source type: ${data['type']}',
-    );
+    return GenericDataSourceModel.fromJson(data);
   }
 }
 
@@ -45,7 +52,14 @@ Map<DataSourceType, DataSourceView Function(DataSourceModel)>
     }
 
     return DeviceChannelDataSourceView(
-      dataSourceModel: dataSource,
+      id: dataSource.id,
+      type: dataSource.type,
+      parentType: dataSource.parentType,
+      parentId: dataSource.parentId,
+      device: dataSource.device,
+      channel: dataSource.channel,
+      property: dataSource.property,
+      icon: dataSource.icon,
     );
   },
   DataSourceType.weatherCurrent: (dataSource) {
@@ -56,7 +70,14 @@ Map<DataSourceType, DataSourceView Function(DataSourceModel)>
     }
 
     return WeatherCurrentDataSourceView(
-      dataSourceModel: dataSource,
+      id: dataSource.id,
+      type: dataSource.type,
+      parentType: dataSource.parentType,
+      parentId: dataSource.parentId,
+      locationId: dataSource.locationId,
+      field: dataSource.field,
+      icon: dataSource.icon,
+      unit: dataSource.unit,
     );
   },
   DataSourceType.weatherForecastDay: (dataSource) {
@@ -67,10 +88,25 @@ Map<DataSourceType, DataSourceView Function(DataSourceModel)>
     }
 
     return WeatherForecastDayDataSourceView(
-      dataSourceModel: dataSource,
+      id: dataSource.id,
+      type: dataSource.type,
+      parentType: dataSource.parentType,
+      parentId: dataSource.parentId,
+      locationId: dataSource.locationId,
+      dayOffset: dataSource.dayOffset,
+      field: dataSource.field,
+      icon: dataSource.icon,
+      unit: dataSource.unit,
     );
   },
 };
+
+void registerDataSourceViewMapper(
+  DataSourceType type,
+  DataSourceView Function(DataSourceModel) mapper,
+) {
+  dataSourceViewsMappers[type] = mapper;
+}
 
 DataSourceView buildDataSourceView(
   DataSourceModel dataSource,
@@ -80,8 +116,17 @@ DataSourceView buildDataSourceView(
   if (builder != null) {
     return builder(dataSource);
   } else {
-    throw ArgumentError(
-      'Data source view can not be created. Unsupported data source type: ${dataSource.type.value}',
+    final Map<String, dynamic> configuration =
+        dataSource is GenericDataSourceModel
+            ? dataSource.configuration
+            : <String, dynamic>{};
+
+    return GenericDataSourceView(
+      id: dataSource.id,
+      type: dataSource.type,
+      parentType: dataSource.parentType,
+      parentId: dataSource.parentId,
+      configuration: configuration,
     );
   }
 }

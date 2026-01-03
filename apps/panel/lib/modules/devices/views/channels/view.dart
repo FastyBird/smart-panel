@@ -1,33 +1,51 @@
-import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
-abstract class ChannelView {
-  final ChannelModel _channelModel;
+class ChannelView {
+  final String _id;
+  final String _type;
+  final ChannelCategory _category;
+  final String? _name;
+  final String? _description;
+  final String _device;
   final List<ChannelPropertyView> _properties;
   final bool _isValid;
   final List<ValidationIssue> _validationIssues;
 
   ChannelView({
-    required ChannelModel channelModel,
+    required String id,
+    required String type,
+    ChannelCategory category = ChannelCategory.generic,
+    String? name,
+    String? description,
+    required String device,
     required List<ChannelPropertyView> properties,
     bool isValid = true,
     List<ValidationIssue> validationIssues = const [],
-  })  : _channelModel = channelModel,
+  })  : _id = id,
+        _type = type,
+        _category = category,
+        _name = name,
+        _description = description,
+        _device = device,
         _properties = properties,
         _isValid = isValid,
         _validationIssues = validationIssues;
 
-  ChannelModel get channelModel => _channelModel;
+  String get id => _id;
+
+  String get type => _type;
+
+  ChannelCategory get category => _category;
+
+  String get name => _name ?? _category.value;
+
+  String? get description => _description;
+
+  String get device => _device;
 
   List<ChannelPropertyView> get properties => _properties;
-
-  String get id => channelModel.id;
-
-  ChannelCategory get category => channelModel.category;
-
-  String get name => channelModel.name ?? channelModel.category.value;
 
   /// Whether this channel passes validation (no errors)
   bool get isValid => _isValid;
@@ -42,6 +60,10 @@ abstract class ChannelView {
   bool get hasWarnings => _validationIssues.any((i) => i.isWarning);
 
   ChannelPropertyView? getProperty(String id) {
-    return _properties.firstWhere((property) => property.id == id);
+    try {
+      return _properties.firstWhere((property) => property.id == id);
+    } catch (_) {
+      return null;
+    }
   }
 }

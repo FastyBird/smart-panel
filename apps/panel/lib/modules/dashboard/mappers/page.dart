@@ -1,23 +1,23 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/pages/cards_page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/pages/device_page.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/pages/generic_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/house_modes_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/house_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/pages/space_page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/pages/tiles_page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/pages/cards.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/generic_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/house.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/house_modes.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/pages/space.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/pages/tiles.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
+import 'package:fastybird_smart_panel/plugins/pages-cards/models/model.dart';
+import 'package:fastybird_smart_panel/plugins/pages-cards/views/view.dart';
+import 'package:fastybird_smart_panel/plugins/pages-device-detail/models/model.dart';
+import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
+import 'package:fastybird_smart_panel/plugins/pages-space/models/model.dart';
+import 'package:fastybird_smart_panel/plugins/pages-space/views/view.dart';
+import 'package:fastybird_smart_panel/plugins/pages-tiles/models/model.dart';
+import 'package:fastybird_smart_panel/plugins/pages-tiles/views/view.dart';
 
 Map<String, PageModel Function(Map<String, dynamic>)> pageModelMappers = {
   PageType.cards.value: (data) {
@@ -40,76 +40,70 @@ Map<String, PageModel Function(Map<String, dynamic>)> pageModelMappers = {
   },
 };
 
+void registerPageModelMapper(
+  String type,
+  PageModel Function(Map<String, dynamic>) mapper,
+) {
+  pageModelMappers[type] = mapper;
+}
+
 PageModel buildPageModel(PageType type, Map<String, dynamic> data) {
   final builder = pageModelMappers[type.value];
 
   if (builder != null) {
     return builder(data);
   } else {
-    throw Exception(
-      'Page model can not be created. Unsupported page type: ${type.value}',
-    );
+    return GenericPageModel.fromJson(data);
   }
 }
 
-Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
-  PageType.tiles: (page) {
+Map<PageType,
+        DashboardPageView Function(PageModel, List<TileView>, List<CardView>, List<DataSourceView>)>
+    pageViewsMappers = {
+  PageType.tiles: (page, tiles, cards, dataSources) {
     if (page is! TilesPageModel) {
       throw ArgumentError(
         'Page model is not valid for Tiles page view.',
       );
     }
 
-    final DashboardService dashboardService = locator<DashboardService>();
-
-    final List<TileView> tiles = dashboardService.tiles.entries
-        .where((entry) => page.tiles.contains(entry.key))
-        .map((entry) => entry.value)
-        .toList();
-
-    // Query data sources by parentId to include newly created ones
-    final List<DataSourceView> dataSources = dashboardService
-        .dataSources.entries
-        .where((entry) =>
-            entry.value.parentId == page.id && entry.value.parentType == 'page')
-        .map((entry) => entry.value)
-        .toList();
-
     return TilesPageView(
-      pageModel: page,
+      id: page.id,
+      type: page.type,
+      title: page.title,
+      icon: page.icon,
+      order: page.order,
+      showTopBar: page.showTopBar,
+      displays: page.displays,
       tiles: tiles,
+      cards: cards,
       dataSources: dataSources,
+      tileSize: page.tileSize,
+      rows: page.rows,
+      cols: page.cols,
     );
   },
-  PageType.cards: (page) {
+  PageType.cards: (page, tiles, cards, dataSources) {
     if (page is! CardsPageModel) {
       throw ArgumentError(
         'Page model is not valid for Cards page view.',
       );
     }
 
-    final DashboardService dashboardService = locator<DashboardService>();
-
-    final List<CardView> cards = dashboardService.cards.entries
-        .where((entry) => page.cards.contains(entry.key))
-        .map((entry) => entry.value)
-        .toList();
-
-    // Query data sources by parentId to include newly created ones
-    final List<DataSourceView> dataSources = dashboardService
-        .dataSources.entries
-        .where((entry) =>
-            entry.value.parentId == page.id && entry.value.parentType == 'page')
-        .map((entry) => entry.value)
-        .toList();
-
     return CardsPageView(
-      pageModel: page,
+      id: page.id,
+      type: page.type,
+      title: page.title,
+      icon: page.icon,
+      order: page.order,
+      showTopBar: page.showTopBar,
+      displays: page.displays,
+      tiles: tiles,
       cards: cards,
       dataSources: dataSources,
     );
   },
-  PageType.deviceDetail: (page) {
+  PageType.deviceDetail: (page, tiles, cards, dataSources) {
     if (page is! DeviceDetailPageModel) {
       throw ArgumentError(
         'Page model is not valid for Device detail page view.',
@@ -117,10 +111,20 @@ Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
     }
 
     return DeviceDetailPageView(
-      pageModel: page,
+      id: page.id,
+      type: page.type,
+      title: page.title,
+      icon: page.icon,
+      order: page.order,
+      showTopBar: page.showTopBar,
+      displays: page.displays,
+      tiles: tiles,
+      cards: cards,
+      dataSources: dataSources,
+      device: page.device,
     );
   },
-  PageType.space: (page) {
+  PageType.space: (page, tiles, cards, dataSources) {
     if (page is! SpacePageModel) {
       throw ArgumentError(
         'Page model is not valid for Space page view.',
@@ -128,10 +132,22 @@ Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
     }
 
     return SpacePageView(
-      pageModel: page,
+      id: page.id,
+      type: page.type,
+      title: page.title,
+      icon: page.icon,
+      order: page.order,
+      showTopBar: page.showTopBar,
+      displays: page.displays,
+      tiles: tiles,
+      cards: cards,
+      dataSources: dataSources,
+      spaceId: page.spaceId,
+      viewMode: page.viewMode,
+      quickActions: page.quickActions,
     );
   },
-  PageType.house: (page) {
+  PageType.house: (page, tiles, cards, dataSources) {
     if (page is! HousePageModel) {
       throw ArgumentError(
         'Page model is not valid for House page view.',
@@ -139,10 +155,21 @@ Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
     }
 
     return HousePageView(
-      pageModel: page,
+      id: page.id,
+      type: page.type,
+      title: page.title,
+      icon: page.icon,
+      order: page.order,
+      showTopBar: page.showTopBar,
+      displays: page.displays,
+      tiles: tiles,
+      cards: cards,
+      dataSources: dataSources,
+      viewMode: page.viewMode,
+      showWeather: page.showWeather,
     );
   },
-  PageType.houseModes: (page) {
+  PageType.houseModes: (page, tiles, cards, dataSources) {
     if (page is! HouseModesPageModel) {
       throw ArgumentError(
         'Page model is not valid for House Modes page view.',
@@ -150,21 +177,58 @@ Map<PageType, DashboardPageView Function(PageModel)> pageViewsMappers = {
     }
 
     return HouseModesPageView(
-      pageModel: page,
+      id: page.id,
+      type: page.type,
+      title: page.title,
+      icon: page.icon,
+      order: page.order,
+      showTopBar: page.showTopBar,
+      displays: page.displays,
+      tiles: tiles,
+      cards: cards,
+      dataSources: dataSources,
+      confirmOnAway: page.confirmOnAway,
+      showLastChanged: page.showLastChanged,
     );
   },
 };
 
-DashboardPageView buildPageView(
-  PageModel page,
+void registerPageViewMapper(
+  PageType type,
+  DashboardPageView Function(
+          PageModel, List<TileView>, List<CardView>, List<DataSourceView>)
+      mapper,
 ) {
+  pageViewsMappers[type] = mapper;
+}
+
+DashboardPageView buildPageView(
+  PageModel page, {
+  List<TileView> tiles = const [],
+  List<CardView> cards = const [],
+  List<DataSourceView> dataSources = const [],
+}) {
   final builder = pageViewsMappers[page.type];
 
   if (builder != null) {
-    return builder(page);
+    return builder(page, tiles, cards, dataSources);
   } else {
-    throw ArgumentError(
-      'Page view can not be created. Unsupported page type: ${page.type.value}',
+    final Map<String, dynamic> configuration = page is GenericPageModel
+        ? page.configuration
+        : <String, dynamic>{};
+
+    return GenericPageView(
+      id: page.id,
+      type: page.type,
+      title: page.title,
+      icon: page.icon,
+      order: page.order,
+      showTopBar: page.showTopBar,
+      displays: page.displays,
+      tiles: tiles,
+      cards: cards,
+      dataSources: dataSources,
+      configuration: configuration,
     );
   }
 }

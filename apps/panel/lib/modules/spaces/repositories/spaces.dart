@@ -1,13 +1,13 @@
 import 'package:dio/dio.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_space.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:flutter/foundation.dart';
 
 class SpacesRepository extends ChangeNotifier {
   final SpacesModuleClient _apiClient;
 
-  Map<String, SpacesModuleDataSpace> _spaces = {};
+  Map<String, SpaceModel> _spaces = {};
   bool _isLoading = false;
 
   SpacesRepository({
@@ -19,25 +19,25 @@ class SpacesRepository extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   /// Get all spaces
-  List<SpacesModuleDataSpace> get spaces => _spaces.values.toList();
+  List<SpaceModel> get spaces => _spaces.values.toList();
 
   /// Get all rooms (spaces with type=room)
-  List<SpacesModuleDataSpace> get rooms => _spaces.values
+  List<SpaceModel> get rooms => _spaces.values
       .where((s) => s.type == SpacesModuleDataSpaceType.room)
       .toList()
     ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
 
   /// Get all zones (spaces with type=zone)
-  List<SpacesModuleDataSpace> get zones => _spaces.values
+  List<SpaceModel> get zones => _spaces.values
       .where((s) => s.type == SpacesModuleDataSpaceType.zone)
       .toList()
     ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
 
   /// Get a specific space by ID
-  SpacesModuleDataSpace? getSpace(String id) => _spaces[id];
+  SpaceModel? getSpace(String id) => _spaces[id];
 
   /// Get spaces by list of IDs
-  List<SpacesModuleDataSpace> getSpaces(List<String> ids) {
+  List<SpaceModel> getSpaces(List<String> ids) {
     return _spaces.entries
         .where((entry) => ids.contains(entry.key))
         .map((entry) => entry.value)
@@ -45,20 +45,18 @@ class SpacesRepository extends ChangeNotifier {
   }
 
   /// Get child rooms of a zone
-  List<SpacesModuleDataSpace> getChildRooms(String zoneId) {
-    return _spaces.values
-        .where((s) => s.parentId == zoneId)
-        .toList()
+  List<SpaceModel> getChildRooms(String zoneId) {
+    return _spaces.values.where((s) => s.parentId == zoneId).toList()
       ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
   }
 
   /// Insert spaces from raw JSON data
   void insert(List<Map<String, dynamic>> jsonList) {
-    Map<String, SpacesModuleDataSpace> newData = {..._spaces};
+    Map<String, SpaceModel> newData = {..._spaces};
 
     for (var json in jsonList) {
       try {
-        final space = SpacesModuleDataSpace.fromJson(json);
+        final space = SpaceModel.fromJson(json);
         newData[space.id] = space;
       } catch (e) {
         if (kDebugMode) {

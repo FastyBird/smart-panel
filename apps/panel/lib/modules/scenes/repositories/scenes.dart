@@ -1,60 +1,47 @@
 import 'package:dio/dio.dart';
-import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_req_trigger_scene.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_trigger_scene.dart';
-import 'package:fastybird_smart_panel/api/scenes_module/scenes_module_client.dart';
+import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
+import 'package:fastybird_smart_panel/modules/scenes/repositories/actions.dart';
+import 'package:fastybird_smart_panel/modules/scenes/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 
-class ScenesRepository extends ChangeNotifier {
-  final ScenesModuleClient _apiClient;
+class ScenesRepository extends Repository<SceneModel> {
+  final ActionsRepository _actionsRepository;
 
-  Map<String, ScenesModuleDataScene> _scenes = {};
   bool _isLoading = false;
 
   ScenesRepository({
-    required ScenesModuleClient apiClient,
-  }) : _apiClient = apiClient;
-
-  ScenesModuleClient get apiClient => _apiClient;
+    required super.apiClient,
+    required ActionsRepository actionsRepository,
+  }) : _actionsRepository = actionsRepository;
 
   bool get isLoading => _isLoading;
 
   /// Get all scenes
-  List<ScenesModuleDataScene> get scenes => _scenes.values.toList();
-
-  /// Get triggerable scenes only
-  List<ScenesModuleDataScene> get triggerableScenes => _scenes.values
-      .where((s) => s.enabled && s.triggerable)
-      .toList()
-    ..sort((a, b) => a.order.compareTo(b.order));
+  List<SceneModel> get scenes => data.values.toList();
 
   /// Get a specific scene by ID
-  ScenesModuleDataScene? getScene(String id) => _scenes[id];
-
-  /// Get scenes by list of IDs
-  List<ScenesModuleDataScene> getScenes(List<String> ids) {
-    return _scenes.entries
-        .where((entry) => ids.contains(entry.key))
-        .map((entry) => entry.value)
-        .toList();
-  }
-
-  /// Get scenes for a specific space (by primarySpaceId)
-  List<ScenesModuleDataScene> getScenesForSpace(String spaceId) {
-    return _scenes.values
-        .where((s) => s.primarySpaceId == spaceId && s.enabled && s.triggerable)
-        .toList()
-      ..sort((a, b) => a.order.compareTo(b.order));
-  }
+  SceneModel? getScene(String id) => getItem(id);
 
   /// Insert scenes from raw JSON data
   void insert(List<Map<String, dynamic>> jsonList) {
-    Map<String, ScenesModuleDataScene> newData = {..._scenes};
+    Map<String, SceneModel> newData = {...data};
+    List<Map<String, dynamic>> embeddedActions = [];
 
     for (var json in jsonList) {
       try {
-        final scene = ScenesModuleDataScene.fromJson(json);
+        final scene = SceneModel.fromJson(json);
         newData[scene.id] = scene;
+
+        // Extract embedded action objects (not just IDs)
+        if (json['actions'] is List) {
+          for (var action in json['actions']) {
+            if (action is Map<String, dynamic> && action.containsKey('id')) {
+              embeddedActions.add(action);
+            }
+          }
+        }
       } catch (e) {
         if (kDebugMode) {
           debugPrint(
@@ -64,15 +51,23 @@ class ScenesRepository extends ChangeNotifier {
       }
     }
 
-    if (!mapEquals(_scenes, newData)) {
-      _scenes = newData;
+    // Insert embedded actions into actions repository
+    if (embeddedActions.isNotEmpty) {
+      _actionsRepository.insert(embeddedActions);
+    }
+
+    if (!mapEquals(data, newData)) {
+      data = newData;
       notifyListeners();
     }
   }
 
   /// Delete a scene by ID
   void delete(String id) {
-    if (_scenes.containsKey(id) && _scenes.remove(id) != null) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      // Also delete associated actions
+      _actionsRepository.deleteForScene(id);
+
       if (kDebugMode) {
         debugPrint('[SCENES MODULE][SCENES] Removed scene: $id');
       }
@@ -86,7 +81,7 @@ class ScenesRepository extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiClient.getScenesModuleScenes();
+      final response = await apiClient.getScenesModuleScenes();
 
       if (response.response.statusCode == 200) {
         final raw = response.response.data['data'] as List;
@@ -113,7 +108,7 @@ class ScenesRepository extends ChangeNotifier {
   /// Fetch a single scene by ID
   Future<void> fetchOne(String id) async {
     try {
-      final response = await _apiClient.getScenesModuleScene(id: id);
+      final response = await apiClient.getScenesModuleScene(id: id);
 
       if (response.response.statusCode == 200) {
         final raw = response.response.data['data'] as Map<String, dynamic>;
@@ -137,7 +132,7 @@ class ScenesRepository extends ChangeNotifier {
   /// Trigger a scene
   Future<TriggerSceneResult> triggerScene(String sceneId) async {
     try {
-      final response = await _apiClient.triggerScenesModuleScene(
+      final response = await apiClient.triggerScenesModuleScene(
         id: sceneId,
         body: const ScenesModuleReqTriggerScene(
           data: ScenesModuleTriggerScene(
@@ -147,19 +142,19 @@ class ScenesRepository extends ChangeNotifier {
       );
 
       if (response.response.statusCode == 200) {
-        final data = response.data.data;
+        final result = response.data.data;
 
         if (kDebugMode) {
           debugPrint(
-            '[SCENES MODULE][SCENES] Scene triggered: status=${data.status}, '
-            'successCount=${data.successfulActions}, failureCount=${data.failedActions}',
+            '[SCENES MODULE][SCENES] Scene triggered: status=${result.status}, '
+            'successCount=${result.successfulActions}, failureCount=${result.failedActions}',
           );
         }
 
         return TriggerSceneResult(
-          success: data.failedActions == 0,
-          successCount: data.successfulActions,
-          failureCount: data.failedActions,
+          success: result.failedActions == 0,
+          successCount: result.successfulActions,
+          failureCount: result.failedActions,
         );
       }
 

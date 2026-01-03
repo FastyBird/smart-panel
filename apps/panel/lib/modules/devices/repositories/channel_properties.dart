@@ -14,7 +14,7 @@ import 'package:flutter/foundation.dart';
 class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   final SocketService _socketService;
 
-  final ChannelsRepository _channelsRepository;
+  ChannelsRepository? _channelsRepository;
 
   final Map<String, ValueType?> _valueBackup = {};
   final Map<String, Timer> _debounceTimers = {};
@@ -22,9 +22,12 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   ChannelPropertiesRepository({
     required super.apiClient,
     required SocketService socketService,
-    required ChannelsRepository channelsRepository,
-  })  : _socketService = socketService,
-        _channelsRepository = channelsRepository;
+  }) : _socketService = socketService;
+
+  /// Set the channels repository after construction to avoid circular dependency
+  void setChannelsRepository(ChannelsRepository channelsRepository) {
+    _channelsRepository = channelsRepository;
+  }
 
   void insert(List<Map<String, dynamic>> json) {
     late Map<String, ChannelPropertyModel> insertData = {...data};
@@ -155,7 +158,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
     replaceItem(property);
 
-    ChannelModel? channel = _channelsRepository.getItem(property.channel);
+    ChannelModel? channel = _channelsRepository?.getItem(property.channel);
 
     if (channel != null) {
       final completer = Completer<bool>();

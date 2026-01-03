@@ -10,7 +10,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/events/navigate_to_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/house.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/pages/space.dart';
+import 'package:fastybird_smart_panel/plugins/pages-space/views/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';

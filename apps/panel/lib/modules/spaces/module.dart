@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,7 @@ class SpacesModuleService {
   final SocketService _socketService;
 
   late SpacesRepository _spacesRepository;
+  late LightTargetsRepository _lightTargetsRepository;
   late SpacesService _spacesService;
 
   bool _isLoading = true;
@@ -22,11 +24,17 @@ class SpacesModuleService {
       apiClient: apiClient.spacesModule,
     );
 
+    _lightTargetsRepository = LightTargetsRepository(
+      apiClient: apiClient.spacesModule,
+    );
+
     _spacesService = SpacesService(
       spacesRepository: _spacesRepository,
+      lightTargetsRepository: _lightTargetsRepository,
     );
 
     locator.registerSingleton(_spacesRepository);
+    locator.registerSingleton(_lightTargetsRepository);
     locator.registerSingleton(_spacesService);
   }
 
@@ -72,6 +80,7 @@ class SpacesModuleService {
     } else if (event == SpacesModuleConstants.spaceDeletedEvent &&
         payload.containsKey('id')) {
       _spacesRepository.delete(payload['id']);
+      _lightTargetsRepository.deleteForSpace(payload['id']);
     }
   }
 }

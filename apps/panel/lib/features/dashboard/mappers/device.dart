@@ -23,7 +23,7 @@ import 'package:fastybird_smart_panel/features/dashboard/presentation/devices/te
 import 'package:fastybird_smart_panel/features/dashboard/presentation/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/devices/valve.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/devices/window_covering.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';

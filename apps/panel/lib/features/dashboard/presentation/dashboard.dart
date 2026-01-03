@@ -8,7 +8,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/events/navigate_to_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/material.dart';

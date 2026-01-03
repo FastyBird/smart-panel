@@ -1,12 +1,10 @@
-import 'package:fastybird_smart_panel/modules/devices/models/properties/home_assistant_properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/properties/generic_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/properties/shelly_ng_properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/properties/shelly_v1_properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/properties/third_party_properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/properties/wled_properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/properties/zigbee2mqtt_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/angle.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/brightness.dart';
@@ -54,6 +52,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/power.dar
 import 'package:fastybird_smart_panel/modules/devices/views/properties/rate.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/remaining.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/remote_key.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/saturation.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/serial_number.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/source.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/speed.dart';
@@ -72,598 +71,266 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/zoom.dart
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+/// Registry of channel property model builders by type
 Map<String, ChannelPropertyModel Function(Map<String, dynamic>)>
-    deviceModelMappers = {
-  DeviceType.devicesThirdParty.value: (data) {
-    return ThirdPartyChannelPropertyModel.fromJson(data);
-  },
-  DeviceType.devicesHomeAssistant.value: (data) {
-    return HomeAssistantChannelPropertyModel.fromJson(data);
-  },
-  DeviceType.devicesShellyNg.value: (data) {
-    return ShellyNgChannelPropertyModel.fromJson(data);
-  },
-  DeviceType.devicesShellyV1.value: (data) {
-    return ShellyV1ChannelPropertyModel.fromJson(data);
-  },
-  DeviceType.devicesWled.value: (data) {
-    return WledChannelPropertyModel.fromJson(data);
-  },
-  DeviceType.devicesZigbee2mqtt.value: (data) {
-    return Zigbee2mqttChannelPropertyModel.fromJson(data);
-  },
-};
+    channelPropertyModelMappers = {};
 
+/// Register a channel property model mapper for a specific type
+void registerChannelPropertyModelMapper(
+  String type,
+  ChannelPropertyModel Function(Map<String, dynamic>) mapper,
+) {
+  channelPropertyModelMappers[type] = mapper;
+}
+
+/// Build a channel property model from JSON data
+/// Falls back to GenericChannelPropertyModel for unknown types
 ChannelPropertyModel buildChannelPropertyModel(
     String type, Map<String, dynamic> data) {
-  final builder = deviceModelMappers[type];
+  final builder = channelPropertyModelMappers[type];
 
   if (builder != null) {
     return builder(data);
   } else {
-    throw Exception(
-      'Channel property model can not be created. Unsupported device type: $type',
-    );
+    // Unknown type, use generic model
+    return GenericChannelPropertyModel.fromJson(data);
   }
 }
 
-Map<ChannelPropertyCategory, ChannelPropertyView Function(ChannelPropertyModel)>
-    channelPropertyViewsMappers = {
-  ChannelPropertyCategory.generic: (ChannelPropertyModel channelPropertyModel) {
-    return GenericChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.active: (ChannelPropertyModel channelPropertyModel) {
-    return ActiveChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.angle: (ChannelPropertyModel channelPropertyModel) {
-    return AngleChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.brightness:
-      (ChannelPropertyModel channelPropertyModel) {
-    return BrightnessChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.colorBlue:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ColorBlueChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.colorGreen:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ColorGreenChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.colorRed:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ColorRedChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.colorTemperature:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ColorTemperatureChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.colorWhite:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ColorWhiteChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.command: (ChannelPropertyModel channelPropertyModel) {
-    return GenericChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.connectionType:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ConnectionTypeChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.consumption:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ConsumptionChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.current: (ChannelPropertyModel channelPropertyModel) {
-    return CurrentChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.density: (ChannelPropertyModel channelPropertyModel) {
-    return DensityChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.detected:
-      (ChannelPropertyModel channelPropertyModel) {
-    return DetectedChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.direction:
-      (ChannelPropertyModel channelPropertyModel) {
-    return DirectionChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.distance:
-      (ChannelPropertyModel channelPropertyModel) {
-    return DistanceChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.duration:
-      (ChannelPropertyModel channelPropertyModel) {
-    return DurationChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.event: (ChannelPropertyModel channelPropertyModel) {
-    return EventChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.fault: (ChannelPropertyModel channelPropertyModel) {
-    return FaultChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.firmwareRevision:
-      (ChannelPropertyModel channelPropertyModel) {
-    return FirmwareRevisionChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.frequency:
-      (ChannelPropertyModel channelPropertyModel) {
-    return FrequencyChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.hardwareRevision:
-      (ChannelPropertyModel channelPropertyModel) {
-    return HardwareRevisionChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.hue: (ChannelPropertyModel channelPropertyModel) {
-    return HueChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.humidity:
-      (ChannelPropertyModel channelPropertyModel) {
-    return HumidityChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.inUse: (ChannelPropertyModel channelPropertyModel) {
-    return InUseChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.infrared:
-      (ChannelPropertyModel channelPropertyModel) {
-    return InfraredChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.inputSource:
-      (ChannelPropertyModel channelPropertyModel) {
-    return InputSourceChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.level: (ChannelPropertyModel channelPropertyModel) {
-    return LevelChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.linkQuality:
-      (ChannelPropertyModel channelPropertyModel) {
-    return LinkQualityChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.locked: (ChannelPropertyModel channelPropertyModel) {
-    return LockedChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.manufacturer:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ManufacturerChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.measured:
-      (ChannelPropertyModel channelPropertyModel) {
-    return MeasuredChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.model: (ChannelPropertyModel channelPropertyModel) {
-    return ModelChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.mode: (ChannelPropertyModel channelPropertyModel) {
-    return ModeChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.obstruction:
-      (ChannelPropertyModel channelPropertyModel) {
-    return ObstructionChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.on: (ChannelPropertyModel channelPropertyModel) {
-    return OnChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.overCurrent:
-      (ChannelPropertyModel channelPropertyModel) {
-    return OverCurrentChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.overVoltage:
-      (ChannelPropertyModel channelPropertyModel) {
-    return OverVoltageChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.overPower:
-      (ChannelPropertyModel channelPropertyModel) {
-    return OverPowerChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.pan: (ChannelPropertyModel channelPropertyModel) {
-    return PanChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.peakLevel:
-      (ChannelPropertyModel channelPropertyModel) {
-    return PeakLevelChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.percentage:
-      (ChannelPropertyModel channelPropertyModel) {
-    return PercentageChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.position:
-      (ChannelPropertyModel channelPropertyModel) {
-    return PositionChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.power: (ChannelPropertyModel channelPropertyModel) {
-    return PowerChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.rate: (ChannelPropertyModel channelPropertyModel) {
-    return RateChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.remaining:
-      (ChannelPropertyModel channelPropertyModel) {
-    return RemainingChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.remoteKey:
-      (ChannelPropertyModel channelPropertyModel) {
-    return RemoteKeyChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.saturation:
-      (ChannelPropertyModel channelPropertyModel) {
-    return StatusChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.serialNumber:
-      (ChannelPropertyModel channelPropertyModel) {
-    return SerialNumberChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.source: (ChannelPropertyModel channelPropertyModel) {
-    return SourceChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.speed: (ChannelPropertyModel channelPropertyModel) {
-    return SpeedChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.status: (ChannelPropertyModel channelPropertyModel) {
-    return StatusChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.swing: (ChannelPropertyModel channelPropertyModel) {
-    return SwingChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.tampered:
-      (ChannelPropertyModel channelPropertyModel) {
-    return TamperedChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.temperature:
-      (ChannelPropertyModel channelPropertyModel) {
-    return TemperatureChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.tilt: (ChannelPropertyModel channelPropertyModel) {
-    return TiltChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.track: (ChannelPropertyModel channelPropertyModel) {
-    return TrackChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.type: (ChannelPropertyModel channelPropertyModel) {
-    return TypeChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.units: (ChannelPropertyModel channelPropertyModel) {
-    return UnitsChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.voltage: (ChannelPropertyModel channelPropertyModel) {
-    return VoltageChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.volume: (ChannelPropertyModel channelPropertyModel) {
-    return VolumeChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-  ChannelPropertyCategory.zoom: (ChannelPropertyModel channelPropertyModel) {
-    return ZoomChannelPropertyView(
-      channelPropertyModel: channelPropertyModel,
-    );
-  },
-};
-
-ChannelPropertyView buildChannelPropertyView(
-  ChannelPropertyModel property,
+/// Helper to create a property view with attributes from model
+T _createPropertyView<T extends ChannelPropertyView>(
+  ChannelPropertyModel model,
+  T Function({
+    required String id,
+    required String type,
+    required String channel,
+    ChannelPropertyCategory category,
+    String? name,
+    List<Permission> permission,
+    DataType dataType,
+    String? unit,
+    FormatType? format,
+    InvalidValueType? invalid,
+    double? step,
+    ValueType? defaultValue,
+    ValueType? value,
+  }) constructor,
 ) {
-  final builder = channelPropertyViewsMappers[property.category];
+  return constructor(
+    id: model.id,
+    type: model.type,
+    channel: model.channel,
+    category: model.category,
+    name: model.name,
+    permission: model.permission,
+    dataType: model.dataType,
+    unit: model.unit,
+    format: model.format,
+    invalid: model.invalid,
+    step: model.step,
+    defaultValue: model.defaultValue,
+    value: model.value,
+  );
+}
 
-  if (builder != null) {
-    return builder(property);
-  } else {
-    throw ArgumentError(
-      'Channel property view can not be created. Unsupported channel property category: ${property.category.value}',
-    );
+/// Build a channel property view from a model
+ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
+  switch (property.category) {
+    case ChannelPropertyCategory.active:
+      return _createPropertyView(property, ActiveChannelPropertyView.new);
+    case ChannelPropertyCategory.angle:
+      return _createPropertyView(property, AngleChannelPropertyView.new);
+    case ChannelPropertyCategory.brightness:
+      return _createPropertyView(property, BrightnessChannelPropertyView.new);
+    case ChannelPropertyCategory.colorBlue:
+      return _createPropertyView(property, ColorBlueChannelPropertyView.new);
+    case ChannelPropertyCategory.colorGreen:
+      return _createPropertyView(property, ColorGreenChannelPropertyView.new);
+    case ChannelPropertyCategory.colorRed:
+      return _createPropertyView(property, ColorRedChannelPropertyView.new);
+    case ChannelPropertyCategory.colorTemperature:
+      return _createPropertyView(
+          property, ColorTemperatureChannelPropertyView.new);
+    case ChannelPropertyCategory.colorWhite:
+      return _createPropertyView(property, ColorWhiteChannelPropertyView.new);
+    case ChannelPropertyCategory.connectionType:
+      return _createPropertyView(
+          property, ConnectionTypeChannelPropertyView.new);
+    case ChannelPropertyCategory.consumption:
+      return _createPropertyView(property, ConsumptionChannelPropertyView.new);
+    case ChannelPropertyCategory.current:
+      return _createPropertyView(property, CurrentChannelPropertyView.new);
+    case ChannelPropertyCategory.density:
+      return _createPropertyView(property, DensityChannelPropertyView.new);
+    case ChannelPropertyCategory.detected:
+      return _createPropertyView(property, DetectedChannelPropertyView.new);
+    case ChannelPropertyCategory.direction:
+      return _createPropertyView(property, DirectionChannelPropertyView.new);
+    case ChannelPropertyCategory.distance:
+      return _createPropertyView(property, DistanceChannelPropertyView.new);
+    case ChannelPropertyCategory.duration:
+      return _createPropertyView(property, DurationChannelPropertyView.new);
+    case ChannelPropertyCategory.event:
+      return _createPropertyView(property, EventChannelPropertyView.new);
+    case ChannelPropertyCategory.fault:
+      return _createPropertyView(property, FaultChannelPropertyView.new);
+    case ChannelPropertyCategory.firmwareRevision:
+      return _createPropertyView(
+          property, FirmwareRevisionChannelPropertyView.new);
+    case ChannelPropertyCategory.frequency:
+      return _createPropertyView(property, FrequencyChannelPropertyView.new);
+    case ChannelPropertyCategory.hardwareRevision:
+      return _createPropertyView(
+          property, HardwareRevisionChannelPropertyView.new);
+    case ChannelPropertyCategory.hue:
+      return _createPropertyView(property, HueChannelPropertyView.new);
+    case ChannelPropertyCategory.humidity:
+      return _createPropertyView(property, HumidityChannelPropertyView.new);
+    case ChannelPropertyCategory.inUse:
+      return _createPropertyView(property, InUseChannelPropertyView.new);
+    case ChannelPropertyCategory.infrared:
+      return _createPropertyView(property, InfraredChannelPropertyView.new);
+    case ChannelPropertyCategory.inputSource:
+      return _createPropertyView(property, InputSourceChannelPropertyView.new);
+    case ChannelPropertyCategory.level:
+      return _createPropertyView(property, LevelChannelPropertyView.new);
+    case ChannelPropertyCategory.linkQuality:
+      return _createPropertyView(property, LinkQualityChannelPropertyView.new);
+    case ChannelPropertyCategory.locked:
+      return _createPropertyView(property, LockedChannelPropertyView.new);
+    case ChannelPropertyCategory.manufacturer:
+      return _createPropertyView(property, ManufacturerChannelPropertyView.new);
+    case ChannelPropertyCategory.measured:
+      return _createPropertyView(property, MeasuredChannelPropertyView.new);
+    case ChannelPropertyCategory.mode:
+      return _createPropertyView(property, ModeChannelPropertyView.new);
+    case ChannelPropertyCategory.model:
+      return _createPropertyView(property, ModelChannelPropertyView.new);
+    case ChannelPropertyCategory.obstruction:
+      return _createPropertyView(property, ObstructionChannelPropertyView.new);
+    case ChannelPropertyCategory.on:
+      return _createPropertyView(property, OnChannelPropertyView.new);
+    case ChannelPropertyCategory.overCurrent:
+      return _createPropertyView(property, OverCurrentChannelPropertyView.new);
+    case ChannelPropertyCategory.overPower:
+      return _createPropertyView(property, OverPowerChannelPropertyView.new);
+    case ChannelPropertyCategory.overVoltage:
+      return _createPropertyView(property, OverVoltageChannelPropertyView.new);
+    case ChannelPropertyCategory.pan:
+      return _createPropertyView(property, PanChannelPropertyView.new);
+    case ChannelPropertyCategory.peakLevel:
+      return _createPropertyView(property, PeakLevelChannelPropertyView.new);
+    case ChannelPropertyCategory.percentage:
+      return _createPropertyView(property, PercentageChannelPropertyView.new);
+    case ChannelPropertyCategory.position:
+      return _createPropertyView(property, PositionChannelPropertyView.new);
+    case ChannelPropertyCategory.power:
+      return _createPropertyView(property, PowerChannelPropertyView.new);
+    case ChannelPropertyCategory.rate:
+      return _createPropertyView(property, RateChannelPropertyView.new);
+    case ChannelPropertyCategory.remaining:
+      return _createPropertyView(property, RemainingChannelPropertyView.new);
+    case ChannelPropertyCategory.remoteKey:
+      return _createPropertyView(property, RemoteKeyChannelPropertyView.new);
+    case ChannelPropertyCategory.saturation:
+      return _createPropertyView(property, SaturationChannelPropertyView.new);
+    case ChannelPropertyCategory.serialNumber:
+      return _createPropertyView(property, SerialNumberChannelPropertyView.new);
+    case ChannelPropertyCategory.source:
+      return _createPropertyView(property, SourceChannelPropertyView.new);
+    case ChannelPropertyCategory.speed:
+      return _createPropertyView(property, SpeedChannelPropertyView.new);
+    case ChannelPropertyCategory.status:
+      return _createPropertyView(property, StatusChannelPropertyView.new);
+    case ChannelPropertyCategory.swing:
+      return _createPropertyView(property, SwingChannelPropertyView.new);
+    case ChannelPropertyCategory.tampered:
+      return _createPropertyView(property, TamperedChannelPropertyView.new);
+    case ChannelPropertyCategory.temperature:
+      return _createPropertyView(property, TemperatureChannelPropertyView.new);
+    case ChannelPropertyCategory.tilt:
+      return _createPropertyView(property, TiltChannelPropertyView.new);
+    case ChannelPropertyCategory.track:
+      return _createPropertyView(property, TrackChannelPropertyView.new);
+    case ChannelPropertyCategory.type:
+      return _createPropertyView(property, TypeChannelPropertyView.new);
+    case ChannelPropertyCategory.units:
+      return _createPropertyView(property, UnitsChannelPropertyView.new);
+    case ChannelPropertyCategory.voltage:
+      return _createPropertyView(property, VoltageChannelPropertyView.new);
+    case ChannelPropertyCategory.volume:
+      return _createPropertyView(property, VolumeChannelPropertyView.new);
+    case ChannelPropertyCategory.zoom:
+      return _createPropertyView(property, ZoomChannelPropertyView.new);
+    default:
+      return _createPropertyView(property, GenericChannelPropertyView.new);
   }
 }
 
 Map<ChannelPropertyCategory, IconData Function()> channelPropertyIconMappers = {
-  ChannelPropertyCategory.generic: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.active: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.angle: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.brightness: () {
-    return MdiIcons.weatherSunny;
-  },
-  ChannelPropertyCategory.colorBlue: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.colorGreen: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.colorRed: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.colorTemperature: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.colorWhite: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.command: () {
-    return MdiIcons.send;
-  },
-  ChannelPropertyCategory.connectionType: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.consumption: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.current: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.density: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.detected: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.direction: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.distance: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.duration: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.event: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.fault: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.firmwareRevision: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.frequency: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.hardwareRevision: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.hue: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.humidity: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.inUse: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.infrared: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.inputSource: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.level: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.linkQuality: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.locked: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.manufacturer: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.measured: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.model: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.mode: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.obstruction: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.on: () {
-    return MdiIcons.power;
-  },
-  ChannelPropertyCategory.overCurrent: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.overVoltage: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.overPower: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.pan: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.peakLevel: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.percentage: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.position: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.power: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.rate: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.remaining: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.remoteKey: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.saturation: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.serialNumber: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.source: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.speed: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.status: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.swing: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.tampered: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.temperature: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.tilt: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.track: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.type: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.units: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.voltage: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.volume: () {
-    return MdiIcons.databaseCog;
-  },
-  ChannelPropertyCategory.zoom: () {
-    return MdiIcons.databaseCog;
-  },
+  ChannelPropertyCategory.generic: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.active: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.angle: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.brightness: () => MdiIcons.weatherSunny,
+  ChannelPropertyCategory.colorBlue: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.colorGreen: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.colorRed: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.colorTemperature: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.colorWhite: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.command: () => MdiIcons.send,
+  ChannelPropertyCategory.connectionType: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.consumption: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.current: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.density: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.detected: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.direction: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.distance: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.duration: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.event: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.fault: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.firmwareRevision: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.frequency: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.hardwareRevision: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.hue: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.humidity: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.inUse: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.infrared: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.inputSource: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.level: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.linkQuality: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.locked: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.manufacturer: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.measured: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.model: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.mode: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.obstruction: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.on: () => MdiIcons.power,
+  ChannelPropertyCategory.overCurrent: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.overVoltage: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.overPower: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.pan: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.peakLevel: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.percentage: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.position: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.power: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.rate: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.remaining: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.remoteKey: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.saturation: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.serialNumber: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.source: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.speed: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.status: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.swing: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.tampered: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.temperature: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.tilt: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.track: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.type: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.units: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.voltage: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.volume: () => MdiIcons.databaseCog,
+  ChannelPropertyCategory.zoom: () => MdiIcons.databaseCog,
 };
 
 IconData buildChannelPropertyIcon(ChannelPropertyCategory category) {
@@ -672,8 +339,6 @@ IconData buildChannelPropertyIcon(ChannelPropertyCategory category) {
   if (builder != null) {
     return builder();
   } else {
-    throw Exception(
-      'Channel property icon can not be created. Unsupported channel property category: ${category.value}',
-    );
+    return MdiIcons.databaseCog;
   }
 }

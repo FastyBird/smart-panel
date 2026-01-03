@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/plugins/pages-cards/models/model.dart';
+import 'package:fastybird_smart_panel/plugins/pages-tiles/models/model.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
@@ -126,6 +128,7 @@ class DashboardService extends ChangeNotifier {
 
     late bool triggerNotifyListeners = false;
 
+    // Step 1: Build all DataSourceViews first (no nested children)
     Map<String, DataSourceView> newDataSourcesViews = {};
 
     for (var dataSource in dataSources) {
@@ -148,12 +151,22 @@ class DashboardService extends ChangeNotifier {
       triggerNotifyListeners = true;
     }
 
+    // Step 2: Build TileViews with their embedded dataSources
     Map<String, TileView> newTilesViews = {};
 
     for (var tile in tiles) {
       try {
+        // Get dataSources for this tile
+        final tileDataSources = newDataSourcesViews.entries
+            .where((entry) =>
+                entry.value.parentId == tile.id &&
+                entry.value.parentType == 'tile')
+            .map((entry) => entry.value)
+            .toList();
+
         newTilesViews[tile.id] = buildTileView(
           tile,
+          dataSources: tileDataSources,
         );
       } catch (e) {
         if (kDebugMode) {
@@ -170,12 +183,35 @@ class DashboardService extends ChangeNotifier {
       triggerNotifyListeners = true;
     }
 
+    // Step 3: Build CardViews with their embedded tiles and dataSources
     Map<String, CardView> newCardsViews = {};
 
     for (var card in cards) {
       try {
+        // Get tiles for this card
+        final cardTiles = newTilesViews.entries
+            .where((entry) => card.tiles.contains(entry.key))
+            .map((entry) => entry.value)
+            .toList();
+
+        // Get dataSources for this card
+        final cardDataSources = newDataSourcesViews.entries
+            .where((entry) =>
+                entry.value.parentId == card.id &&
+                entry.value.parentType == 'card')
+            .map((entry) => entry.value)
+            .toList();
+
         newCardsViews[card.id] = CardView(
-          cardModel: card,
+          id: card.id,
+          title: card.title,
+          icon: card.icon,
+          order: card.order,
+          page: card.page,
+          tilesIds: card.tiles,
+          dataSourceIds: card.dataSource,
+          tiles: cardTiles,
+          dataSources: cardDataSources,
         );
       } catch (e) {
         if (kDebugMode) {
@@ -192,12 +228,46 @@ class DashboardService extends ChangeNotifier {
       triggerNotifyListeners = true;
     }
 
+    // Step 4: Build PageViews with their embedded tiles, cards, and dataSources
     Map<String, DashboardPageView> newPagesViews = {};
 
     for (var page in pages) {
       try {
+        // Get tiles for this page (from page model's tiles list)
+        List<String> pageTileIds = [];
+        if (page is TilesPageModel) {
+          pageTileIds = page.tiles;
+        }
+
+        final pageTiles = newTilesViews.entries
+            .where((entry) => pageTileIds.contains(entry.key))
+            .map((entry) => entry.value)
+            .toList();
+
+        // Get cards for this page (from page model's cards list)
+        List<String> pageCardIds = [];
+        if (page is CardsPageModel) {
+          pageCardIds = page.cards;
+        }
+
+        final pageCards = newCardsViews.entries
+            .where((entry) => pageCardIds.contains(entry.key))
+            .map((entry) => entry.value)
+            .toList();
+
+        // Get dataSources for this page
+        final pageDataSources = newDataSourcesViews.entries
+            .where((entry) =>
+                entry.value.parentId == page.id &&
+                entry.value.parentType == 'page')
+            .map((entry) => entry.value)
+            .toList();
+
         newPagesViews[page.id] = buildPageView(
           page,
+          tiles: pageTiles,
+          cards: pageCards,
+          dataSources: pageDataSources,
         );
       } catch (e) {
         if (kDebugMode) {

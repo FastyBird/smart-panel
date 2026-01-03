@@ -9,15 +9,6 @@ import 'package:flutter/foundation.dart';
 class TilesRepository extends Repository<TileModel> {
   TilesRepository({required super.apiClient});
 
-  List<TileModel> getForParent(String parentId, String parentType) {
-    return data.entries
-        .where((entry) =>
-            entry.value.parentId == parentId &&
-            entry.value.parentType == parentType)
-        .map((entry) => entry.value)
-        .toList();
-  }
-
   void insert(List<Map<String, dynamic>> json) {
     final PagesRepository pagesRepository = locator<PagesRepository>();
     final CardsRepository cardsRepository = locator<CardsRepository>();

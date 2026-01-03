@@ -1,24 +1,57 @@
-import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/data_sources/view.dart';
 
-abstract class TileView<M extends TileModel> {
-  final M _tileModel;
+abstract class TileView {
+  final String _id;
+  final TileType _type;
+  final String _parentType;
+  final String _parentId;
+  final List<String> _dataSource;
+  final int _row;
+  final int _col;
+  final int _rowSpan;
+  final int _colSpan;
+  final List<DataSourceView> _dataSources;
 
   TileView({
-    required M tileModel,
-  }) : _tileModel = tileModel;
+    required String id,
+    required TileType type,
+    required String parentType,
+    required String parentId,
+    List<String> dataSource = const [],
+    required int row,
+    required int col,
+    int rowSpan = 1,
+    int colSpan = 1,
+    List<DataSourceView> dataSources = const [],
+  })  : _id = id,
+        _type = type,
+        _parentType = parentType,
+        _parentId = parentId,
+        _dataSource = dataSource,
+        _row = row,
+        _col = col,
+        _rowSpan = rowSpan,
+        _colSpan = colSpan,
+        _dataSources = dataSources;
 
-  String get id => _tileModel.id;
+  String get id => _id;
 
-  M get tileModel => _tileModel;
+  TileType get type => _type;
 
-  TileType get type => _tileModel.type;
+  String get parentType => _parentType;
 
-  int get row => _tileModel.row;
+  String get parentId => _parentId;
 
-  int get col => _tileModel.col;
+  List<String> get dataSource => _dataSource;
 
-  int get rowSpan => _tileModel.rowSpan;
+  int get row => _row;
 
-  int get colSpan => _tileModel.colSpan;
+  int get col => _col;
+
+  int get rowSpan => _rowSpan;
+
+  int get colSpan => _colSpan;
+
+  List<DataSourceView> get dataSources => _dataSources;
 }

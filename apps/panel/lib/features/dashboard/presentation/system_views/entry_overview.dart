@@ -7,7 +7,6 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
-import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -48,7 +47,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   int _camerasCount = 0;
 
   // House mode scenes
-  List<ScenesModuleDataScene> _houseModeScenes = [];
+  List<SceneView> _houseModeScenes = [];
   ScenesModuleDataSceneCategory? _activeHouseMode;
 
   // Error state
@@ -139,7 +138,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     }
   }
 
-  Future<void> _triggerHouseMode(ScenesModuleDataScene scene) async {
+  Future<void> _triggerHouseMode(SceneView scene) async {
     if (_isSceneTriggering) return;
 
     setState(() {
@@ -587,7 +586,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     );
   }
 
-  Widget _buildSceneHouseModeButton(BuildContext context, ScenesModuleDataScene scene) {
+  Widget _buildSceneHouseModeButton(BuildContext context, SceneView scene) {
     final isTriggering = _triggeringSceneId == scene.id;
     final isActive = _activeHouseMode == scene.category;
     final buttonSize = _screenService.scale(

@@ -1,34 +1,91 @@
-import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
-abstract class ChannelPropertyView {
-  final ChannelPropertyModel _channelPropertyModel;
+class ChannelPropertyView {
+  final String _id;
+  final String _type;
+  final String _channel;
+  final ChannelPropertyCategory _category;
+  final String? _name;
+  final List<Permission> _permission;
+  final DataType _dataType;
+  final String? _unit;
+  final FormatType? _format;
+  final InvalidValueType? _invalid;
+  final double? _step;
+  final ValueType? _defaultValue;
+  final ValueType? _value;
 
   ChannelPropertyView({
-    required ChannelPropertyModel channelPropertyModel,
-  }) : _channelPropertyModel = channelPropertyModel;
+    required String id,
+    required String type,
+    required String channel,
+    ChannelPropertyCategory category = ChannelPropertyCategory.generic,
+    String? name,
+    List<Permission> permission = const [],
+    DataType dataType = DataType.unknown,
+    String? unit,
+    FormatType? format,
+    InvalidValueType? invalid,
+    double? step,
+    ValueType? defaultValue,
+    ValueType? value,
+  })  : _id = id,
+        _type = type,
+        _channel = channel,
+        _category = category,
+        _name = name,
+        _permission = permission,
+        _dataType = dataType,
+        _unit = unit,
+        _format = format,
+        _invalid = invalid,
+        _step = step,
+        _defaultValue = defaultValue,
+        _value = value;
 
-  ChannelPropertyModel get channelPropertyModel => _channelPropertyModel;
+  String get id => _id;
 
-  String get id => channelPropertyModel.id;
+  String get type => _type;
 
-  ChannelPropertyCategory get category => channelPropertyModel.category;
+  String get channel => _channel;
 
-  String get name =>
-      channelPropertyModel.name ?? channelPropertyModel.category.value;
+  ChannelPropertyCategory get category => _category;
 
-  DataType get dataType => channelPropertyModel.dataType;
+  String get name => _name ?? _category.value;
 
-  ValueType? get value => channelPropertyModel.value;
+  List<Permission> get permission => _permission;
 
-  ValueType? get defaultValue => channelPropertyModel.defaultValue;
+  DataType get dataType => _dataType;
 
-  InvalidValueType? get invalid => channelPropertyModel.invalid;
+  String? get unit => _unit;
 
-  FormatType? get format => channelPropertyModel.format;
+  FormatType? get format => _format;
 
-  String? get unit => channelPropertyModel.unit;
+  InvalidValueType? get invalid => _invalid;
+
+  double? get step => _step;
+
+  ValueType? get defaultValue => _defaultValue;
+
+  ValueType? get value => _value;
+
+  bool get isReadable {
+    return _permission.any(
+      (permission) =>
+          permission == Permission.readOnly ||
+          permission == Permission.readWrite,
+    );
+  }
+
+  bool get isWritable {
+    return _permission.any(
+      (permission) =>
+          permission == Permission.writeOnly ||
+          permission == Permission.readWrite,
+    );
+  }
 }

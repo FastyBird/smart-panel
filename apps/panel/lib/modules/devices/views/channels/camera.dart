@@ -15,7 +15,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/zoom.dart
 class CameraChannelView extends ChannelView
     with ChannelTiltMixin, ChannelFaultMixin {
   CameraChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,

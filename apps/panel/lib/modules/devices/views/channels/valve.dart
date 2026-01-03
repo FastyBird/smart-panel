@@ -14,7 +14,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart
 class ValveChannelView extends ChannelView
     with ChannelOnMixin, ChannelFaultMixin {
   ValveChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -40,14 +45,14 @@ class ValveChannelView extends ChannelView
   FaultChannelPropertyView? get faultProp =>
       properties.whereType<FaultChannelPropertyView>().firstOrNull;
 
-  ValveTypeValue get type {
+  ValveTypeValue get valveType {
     final ValueType? value = typeProp.value;
 
     if (value is StringValueType && ValveTypeValue.contains(value.value)) {
-      ValveTypeValue? type = ValveTypeValue.fromValue(value.value);
+      ValveTypeValue? valveTypeValue = ValveTypeValue.fromValue(value.value);
 
-      if (type != null) {
-        return type;
+      if (valveTypeValue != null) {
+        return valveTypeValue;
       }
     }
 

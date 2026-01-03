@@ -7,7 +7,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/volume.da
 class MicrophoneChannelView extends ChannelView
     with ChannelActiveMixin, ChannelVolumeMixin {
   MicrophoneChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
