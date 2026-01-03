@@ -81,7 +81,7 @@
 											:step="property.step ?? 1"
 											:disabled="isPropertyLoading(property.id)"
 											class="flex-grow touch-action-none"
-											@input="(val: number | number[]) => onPropertyChange(channel.id, property.id, Array.isArray(val) ? val[0] : val)"
+											@input="(val: number | number[]) => onPropertyChange(channel.id, property.id, Array.isArray(val) ? val[0] ?? 0 : val)"
 										/>
 										<el-text class="min-w-[60px] text-right">
 											{{ getPropertyValue(property.id) ?? '-' }}{{ property.unit ? ` ${property.unit}` : '' }}

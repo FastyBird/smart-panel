@@ -191,8 +191,9 @@ const getSpaceIcon = (space: ISpace): string => {
 		return space.icon;
 	}
 	// Use category template icon if category is set
-	if (space.category && SPACE_CATEGORY_TEMPLATES[space.category]) {
-		return SPACE_CATEGORY_TEMPLATES[space.category].icon;
+	const categoryTemplate = space.category ? SPACE_CATEGORY_TEMPLATES[space.category] : undefined;
+	if (categoryTemplate) {
+		return categoryTemplate.icon;
 	}
 	// Default icons based on type
 	return space.type === SpaceType.ROOM ? 'mdi:door' : 'mdi:map-marker-radius';

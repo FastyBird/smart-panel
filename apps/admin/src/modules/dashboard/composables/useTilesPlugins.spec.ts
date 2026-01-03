@@ -73,7 +73,7 @@ describe('usePlugins', () => {
 	it('returns only plugins related to devices module', () => {
 		const { plugins } = useTilesPlugins();
 		expect(plugins.value.length).toBe(1);
-		expect(plugins.value[0].type).toBe('test-plugin');
+		expect(plugins.value[0]?.type).toBe('test-plugin');
 	});
 
 	it('returns correct options list', () => {

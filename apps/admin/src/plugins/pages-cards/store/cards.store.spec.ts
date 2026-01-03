@@ -117,7 +117,7 @@ describe('Cards Store', () => {
 		const result = await store.fetch({ pageId } satisfies ICardsFetchActionPayload);
 
 		expect(store.findForPage(pageId)).toHaveLength(1);
-		expect(result[0].id).toBe(cardId);
+		expect(result[0]?.id).toBe(cardId);
 		expect(store.firstLoadFinished(pageId)).toBe(true);
 		expect(store.findAll()).toHaveLength(1);
 		expect(store.findById(cardId)).not.toBeNull();

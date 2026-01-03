@@ -78,7 +78,7 @@ describe('Home Assistant Discovered Devices Store', () => {
 
 		const result = await store.fetch();
 
-		expect(result[0].entityId).toBe(entityId);
+		expect(result[0]?.entityId).toBe(entityId);
 		expect(store.firstLoadFinished()).toBe(true);
 		expect(store.findAll()).toHaveLength(1);
 		expect(store.findById(entityId)).not.toBeNull();

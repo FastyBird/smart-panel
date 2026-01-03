@@ -128,7 +128,7 @@ describe('useExtensionsDataSource', () => {
 			const { extensions } = useExtensionsDataSource();
 
 			expect(extensions.value).toHaveLength(1);
-			expect(extensions.value[0].type).toBe('auth-module');
+			expect(extensions.value[0]?.type).toBe('auth-module');
 		});
 	});
 
@@ -148,7 +148,7 @@ describe('useExtensionsDataSource', () => {
 			const { extensions } = useExtensionsDataSource();
 
 			expect(extensions.value).toHaveLength(1);
-			expect(extensions.value[0].type).toBe('external-plugin');
+			expect(extensions.value[0]?.type).toBe('external-plugin');
 		});
 	});
 
@@ -159,7 +159,7 @@ describe('useExtensionsDataSource', () => {
 			const { extensions } = useExtensionsDataSource();
 
 			expect(extensions.value).toHaveLength(1);
-			expect(extensions.value[0].type).toBe('devices-module');
+			expect(extensions.value[0]?.type).toBe('devices-module');
 		});
 
 		it('should filter by name', () => {
@@ -168,7 +168,7 @@ describe('useExtensionsDataSource', () => {
 			const { extensions } = useExtensionsDataSource();
 
 			expect(extensions.value).toHaveLength(1);
-			expect(extensions.value[0].type).toBe('auth-module');
+			expect(extensions.value[0]?.type).toBe('auth-module');
 		});
 
 		it('should filter by description', () => {
@@ -177,7 +177,7 @@ describe('useExtensionsDataSource', () => {
 			const { extensions } = useExtensionsDataSource();
 
 			expect(extensions.value).toHaveLength(1);
-			expect(extensions.value[0].type).toBe('pages-tiles-plugin');
+			expect(extensions.value[0]?.type).toBe('pages-tiles-plugin');
 		});
 
 		it('should be case insensitive', () => {
@@ -201,7 +201,7 @@ describe('useExtensionsDataSource', () => {
 			const { extensions } = useExtensionsDataSource();
 
 			expect(extensions.value).toHaveLength(1);
-			expect(extensions.value[0].type).toBe('pages-tiles-plugin');
+			expect(extensions.value[0]?.type).toBe('pages-tiles-plugin');
 		});
 	});
 

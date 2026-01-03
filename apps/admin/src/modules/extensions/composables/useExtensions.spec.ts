@@ -70,7 +70,7 @@ describe('useExtensions', () => {
 		const { plugins } = useExtensions();
 
 		expect(plugins.value).toHaveLength(1);
-		expect(plugins.value[0].kind).toBe(ExtensionKind.PLUGIN);
+		expect(plugins.value[0]?.kind).toBe(ExtensionKind.PLUGIN);
 	});
 
 	it('should indicate loading state', () => {

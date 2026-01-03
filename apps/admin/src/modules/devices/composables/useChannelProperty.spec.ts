@@ -84,7 +84,7 @@ describe('useChannelProperty', () => {
 	});
 
 	it('should not call get() if property is a draft', async () => {
-		data[propertyId].draft = true;
+		data[propertyId]!.draft = true;
 
 		const { fetchProperty } = useChannelProperty({ channelId, id: propertyId });
 

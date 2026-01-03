@@ -154,9 +154,10 @@ const accountManager = injectAccountManager();
 
 const activeIndex = computed<string | undefined>((): string | undefined => {
 	for (const name of Object.keys(mainMenuItems)) {
-		if (route.matched.find((matched) => matched.name === name) !== undefined) {
-			if (mainMenuItems[name].children) {
-				for (const subName of Object.keys(mainMenuItems[name].children)) {
+		const menuItem = mainMenuItems[name];
+		if (menuItem && route.matched.find((matched) => matched.name === name) !== undefined) {
+			if (menuItem.children) {
+				for (const subName of Object.keys(menuItem.children)) {
 					if (route.matched.find((matched) => matched.name === subName) !== undefined) {
 						return subName;
 					}

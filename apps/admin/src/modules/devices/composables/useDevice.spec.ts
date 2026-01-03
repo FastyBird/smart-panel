@@ -83,7 +83,7 @@ describe('useDevice', () => {
 	});
 
 	it('should not call get() if device is a draft', async () => {
-		data[deviceId].draft = true;
+		data[deviceId]!.draft = true;
 
 		const { fetchDevice } = useDevice({ id: deviceId });
 

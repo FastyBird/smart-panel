@@ -317,10 +317,10 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 	watch(
 		() => categoriesOptions.value,
 		(categories): void => {
-			if (categories.length) {
-				model.category = categoriesOptions.value[0].value;
+			if (categories.length && categories[0]) {
+				model.category = categories[0].value;
 
-				initialModel.category = categoriesOptions.value[0].value;
+				initialModel.category = categories[0].value;
 			}
 		},
 		{ immediate: true }

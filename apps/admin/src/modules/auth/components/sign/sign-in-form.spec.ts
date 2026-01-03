@@ -56,8 +56,8 @@ describe('SignInForm', (): void => {
 
 		expect(formItems.length).eq(2);
 
-		expect(formItems[0].findComponent(ElInput).exists()).toBe(true);
-		expect(formItems[1].findComponent(ElInput).exists()).toBe(true);
+		expect(formItems[0]?.findComponent(ElInput).exists()).toBe(true);
+		expect(formItems[1]?.findComponent(ElInput).exists()).toBe(true);
 		expect(wrapper.findComponent(ElButton).exists()).toBe(true);
 	});
 

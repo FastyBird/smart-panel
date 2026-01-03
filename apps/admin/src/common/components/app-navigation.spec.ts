@@ -107,7 +107,7 @@ describe('AppNavigation', () => {
 	it('emits event when menu item is clicked', async () => {
 		const menuItems = wrapper.findAllComponents(ElMenuItem);
 
-		await menuItems[0].trigger('click');
+		await menuItems[0]?.trigger('click');
 
 		expect(wrapper.emitted('click')).toBeTruthy();
 	});

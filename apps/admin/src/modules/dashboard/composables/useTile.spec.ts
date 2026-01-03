@@ -88,7 +88,7 @@ describe('useTile', () => {
 	});
 
 	it('should not call get() if tile is a draft', async () => {
-		data[tileId].draft = true;
+		data[tileId]!.draft = true;
 
 		const { fetchTile } = useTile({ parent: 'page', parentId, id: tileId });
 

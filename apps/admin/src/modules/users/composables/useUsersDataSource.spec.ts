@@ -91,7 +91,7 @@ describe('useUsers', (): void => {
 		usersHandler.filters.value.search = 'john';
 
 		expect(usersHandler.users.value.length).toBe(1);
-		expect(usersHandler.users.value[0].username).toBe('john');
+		expect(usersHandler.users.value[0]?.username).toBe('john');
 	});
 
 	it('should filter users by role', async (): Promise<void> => {
@@ -105,7 +105,7 @@ describe('useUsers', (): void => {
 		usersHandler.filters.value.roles = [UsersModuleUserRole.admin];
 
 		expect(usersHandler.users.value.length).toBe(1);
-		expect(usersHandler.users.value[0].role).toBe(UsersModuleUserRole.admin);
+		expect(usersHandler.users.value[0]?.role).toBe(UsersModuleUserRole.admin);
 	});
 
 	it('should paginate users correctly', async (): Promise<void> => {
@@ -119,11 +119,11 @@ describe('useUsers', (): void => {
 		usersHandler.paginatePage.value = 1;
 
 		expect(usersHandler.usersPaginated.value.length).toBe(10);
-		expect(usersHandler.usersPaginated.value[0].username).toBe('user1');
+		expect(usersHandler.usersPaginated.value[0]?.username).toBe('user1');
 
 		usersHandler.paginatePage.value = 2;
 
-		expect(usersHandler.usersPaginated.value[0].username).toBe('user11');
+		expect(usersHandler.usersPaginated.value[0]?.username).toBe('user11');
 	});
 
 	it('should handle loading states correctly', async (): Promise<void> => {

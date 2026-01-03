@@ -111,7 +111,7 @@ describe('SignUpForm', (): void => {
 	});
 
 	it('navigates to sign-in page when "Back to Sign In" button is clicked', async (): Promise<void> => {
-		await wrapper.findAllComponents(ElButton)[1].trigger('click');
+		await wrapper.findAllComponents(ElButton)[1]?.trigger('click');
 
 		expect(mockRouter.push).toHaveBeenCalledWith({ name: RouteNames.SIGN_IN });
 	});

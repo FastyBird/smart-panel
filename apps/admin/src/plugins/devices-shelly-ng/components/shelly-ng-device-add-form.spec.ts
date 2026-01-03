@@ -89,7 +89,7 @@ describe('ShellyNgDeviceAddForm.vue', () => {
 	it('renders category select with options', () => {
 		const options = wrapper.findAllComponents({ name: 'ElOption' });
 		expect(options.length).toBe(2);
-		expect(options[0].props('label')).toBe('Generic');
+		expect(options[0]?.props('label')).toBe('Generic');
 	});
 
 	it('emits update:remote-form-submit when remoteFormSubmit is true', async () => {

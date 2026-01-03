@@ -73,7 +73,7 @@ describe('useChannelsPropertiesPlugins', () => {
 	it('returns only plugins related to channels module', () => {
 		const { plugins } = useChannelsPropertiesPlugins();
 		expect(plugins.value.length).toBe(1);
-		expect(plugins.value[0].type).toBe('test-plugin');
+		expect(plugins.value[0]?.type).toBe('test-plugin');
 	});
 
 	it('returns correct options list', () => {

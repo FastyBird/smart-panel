@@ -108,7 +108,7 @@ describe('Extensions Store', () => {
 			});
 
 			expect(updated.enabled).toBe(false);
-			expect(store.data['test-module'].enabled).toBe(false);
+			expect(store.data['test-module']?.enabled).toBe(false);
 		});
 
 		it('should throw validation error for invalid data', () => {
@@ -182,7 +182,7 @@ describe('Extensions Store', () => {
 			const modules = store.findByKind(ExtensionKind.MODULE);
 
 			expect(modules).toHaveLength(1);
-			expect(modules[0].type).toBe('module-1');
+			expect(modules[0]?.type).toBe('module-1');
 		});
 
 		it('should return only plugins', () => {
@@ -213,7 +213,7 @@ describe('Extensions Store', () => {
 			const plugins = store.findByKind(ExtensionKind.PLUGIN);
 
 			expect(plugins).toHaveLength(1);
-			expect(plugins[0].type).toBe('plugin-1');
+			expect(plugins[0]?.type).toBe('plugin-1');
 		});
 	});
 
@@ -381,7 +381,7 @@ describe('Extensions Store', () => {
 			});
 
 			expect(result.enabled).toBe(false);
-			expect(store.data['devices-module'].enabled).toBe(false);
+			expect(store.data['devices-module']?.enabled).toBe(false);
 		});
 
 		it('should throw validation error for invalid payload', async () => {

@@ -35,9 +35,9 @@ describe('AboutApplication', () => {
 
 		expect(links).toHaveLength(4);
 
-		expect(links[0].attributes('href')).toBe('http://www.github.com/fastybird');
-		expect(links[1].attributes('href')).toBe('http://www.x.com/fastybird');
-		expect(links[2].attributes('href')).toBe('http://www.facebook.com/fastybird');
-		expect(links[3].attributes('href')).toBe('http://www.facebook.com/fastybird');
+		expect(links[0]?.attributes('href')).toBe('http://www.github.com/fastybird');
+		expect(links[1]?.attributes('href')).toBe('http://www.x.com/fastybird');
+		expect(links[2]?.attributes('href')).toBe('http://www.facebook.com/fastybird');
+		expect(links[3]?.attributes('href')).toBe('http://www.facebook.com/fastybird');
 	});
 });

@@ -106,8 +106,8 @@ describe('useLocationsWeather', () => {
 		expect(Object.keys(weatherByLocation.value)).toHaveLength(2);
 		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000']).toBeDefined();
 		expect(weatherByLocation.value['223e4567-e89b-12d3-a456-426614174001']).toBeDefined();
-		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000'].locationName).toBe('Home');
-		expect(weatherByLocation.value['223e4567-e89b-12d3-a456-426614174001'].locationName).toBe('Office');
+		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000']?.locationName).toBe('Home');
+		expect(weatherByLocation.value['223e4567-e89b-12d3-a456-426614174001']?.locationName).toBe('Office');
 		expect(isLoading.value).toBe(false);
 		expect(hasError.value).toBe(false);
 		expect(fetchCompleted.value).toBe(true);
@@ -206,7 +206,7 @@ describe('useLocationsWeather', () => {
 
 		await fetchLocationsWeather();
 
-		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000'].country).toBe('US');
+		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000']?.country).toBe('US');
 	});
 
 	it('should handle missing location data gracefully', async () => {
@@ -228,7 +228,7 @@ describe('useLocationsWeather', () => {
 
 		await fetchLocationsWeather();
 
-		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000'].locationName).toBe('');
-		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000'].country).toBeNull();
+		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000']?.locationName).toBe('');
+		expect(weatherByLocation.value['123e4567-e89b-12d3-a456-426614174000']?.country).toBeNull();
 	});
 });

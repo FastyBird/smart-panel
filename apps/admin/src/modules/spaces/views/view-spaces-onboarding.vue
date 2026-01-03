@@ -194,7 +194,7 @@
 											>
 												<span class="flex items-center gap-2">
 													<el-icon v-if="getCategoryTemplates(space.type)[category]">
-														<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+														<icon :icon="getCategoryTemplates(space.type)[category]?.icon ?? ''" />
 													</el-icon>
 													{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
 												</span>
@@ -211,7 +211,7 @@
 										>
 											<span class="flex items-center gap-2">
 												<el-icon v-if="getCategoryTemplates(space.type)[category]">
-													<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+													<icon :icon="getCategoryTemplates(space.type)[category]?.icon ?? ''" />
 												</el-icon>
 												{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
 											</span>
@@ -352,7 +352,7 @@
 											>
 												<span class="flex items-center gap-2">
 													<el-icon v-if="getCategoryTemplates(space.type)[category]">
-														<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+														<icon :icon="getCategoryTemplates(space.type)[category]?.icon ?? ''" />
 													</el-icon>
 													{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
 												</span>
@@ -369,7 +369,7 @@
 										>
 											<span class="flex items-center gap-2">
 												<el-icon v-if="getCategoryTemplates(space.type)[category]">
-													<icon :icon="getCategoryTemplates(space.type)[category].icon" />
+													<icon :icon="getCategoryTemplates(space.type)[category]?.icon ?? ''" />
 												</el-icon>
 												{{ t(`spacesModule.fields.spaces.category.options.${category}`) }}
 											</span>
