@@ -435,8 +435,13 @@ export const useScenesActionsStore = defineStore<'scenes_module-scenes_actions',
 					},
 				});
 
-				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+				if (typeof responseData !== 'undefined') {
 					const transformed = transformSceneActionResponse(responseData.data);
+
+					// Remove the draft entry if server returned a different ID
+					if (transformed.id !== payload.id) {
+						unset({ sceneId: parsedSaveItem.data.scene, id: payload.id });
+					}
 
 					data.value[transformed.id] = transformed;
 
