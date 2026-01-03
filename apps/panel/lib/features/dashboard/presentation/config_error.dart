@@ -9,7 +9,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 /// Screen shown when display configuration is invalid.
 ///
 /// This is displayed when the display cannot be used due to
-/// configuration issues (e.g., Room display without spaceId).
+/// configuration issues (e.g., Room display without roomId).
 class ConfigErrorScreen extends StatelessWidget {
   final String errorMessage;
   final VoidCallback? onRetry;

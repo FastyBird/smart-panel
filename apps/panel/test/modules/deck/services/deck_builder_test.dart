@@ -40,7 +40,7 @@ class TestPageView extends DashboardPageView<TestPageModel> {
 DisplayModel createTestDisplay({
   String id = 'test-display-id',
   DisplayRole role = DisplayRole.room,
-  String? spaceId,
+  String? roomId,
   HomeMode homeMode = HomeMode.autoSpace,
   String? homePageId,
   String? resolvedHomePageId,
@@ -66,7 +66,7 @@ DisplayModel createTestDisplay({
     microphone: false,
     microphoneVolume: 50,
     role: role,
-    spaceId: spaceId,
+    roomId: roomId,
     homeMode: homeMode,
     homePageId: homePageId,
     resolvedHomePageId: resolvedHomePageId,
@@ -80,7 +80,7 @@ void main() {
       test('should create room system view for room role', () {
         final display = createTestDisplay(
           role: DisplayRole.room,
-          spaceId: 'space-123',
+          roomId: 'space-123',
         );
         final input = DeckBuildInput(
           display: display,
@@ -94,7 +94,7 @@ void main() {
         expect(result.items.first, isA<SystemViewItem>());
         final systemView = result.items.first as SystemViewItem;
         expect(systemView.viewType, SystemViewType.room);
-        expect(systemView.spaceId, 'space-123');
+        expect(systemView.roomId, 'space-123');
         expect(systemView.title, 'Room Overview');
       });
 
@@ -262,7 +262,7 @@ void main() {
     test('should return error for room role without spaceId', () {
       final display = createTestDisplay(
         role: DisplayRole.room,
-        spaceId: null,
+        roomId: null,
       );
 
       final error = validateDisplayConfig(display);
@@ -274,7 +274,7 @@ void main() {
     test('should return null for room role with spaceId', () {
       final display = createTestDisplay(
         role: DisplayRole.room,
-        spaceId: 'space-123',
+        roomId: 'space-123',
       );
 
       final error = validateDisplayConfig(display);
@@ -285,7 +285,7 @@ void main() {
     test('should return null for master role', () {
       final display = createTestDisplay(
         role: DisplayRole.master,
-        spaceId: null,
+        roomId: null,
       );
 
       final error = validateDisplayConfig(display);
@@ -296,7 +296,7 @@ void main() {
     test('should return null for entry role', () {
       final display = createTestDisplay(
         role: DisplayRole.entry,
-        spaceId: null,
+        roomId: null,
       );
 
       final error = validateDisplayConfig(display);

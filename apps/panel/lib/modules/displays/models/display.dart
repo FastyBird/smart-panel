@@ -25,7 +25,7 @@ class DisplayModel {
   final bool microphone;
   final int microphoneVolume;
   final DisplayRole role;
-  final String? spaceId;
+  final String? roomId;
   final HomeMode homeMode;
   final String? homePageId;
   final String? resolvedHomePageId;
@@ -55,7 +55,7 @@ class DisplayModel {
     required this.microphone,
     required this.microphoneVolume,
     this.role = DisplayRole.room,
-    this.spaceId,
+    this.roomId,
     this.homeMode = HomeMode.autoSpace,
     this.homePageId,
     this.resolvedHomePageId,
@@ -87,7 +87,7 @@ class DisplayModel {
       microphone: json['microphone'] as bool,
       microphoneVolume: json['microphone_volume'] as int,
       role: _parseDisplayRole(json['role'] as String?),
-      spaceId: json['space_id'] as String?,
+      roomId: json['room_id'] as String?,
       homeMode: _parseHomeMode(json['home_mode'] as String?),
       homePageId: json['home_page_id'] as String?,
       resolvedHomePageId: json['resolved_home_page_id'] as String?,
@@ -143,7 +143,7 @@ class DisplayModel {
     bool? microphone,
     int? microphoneVolume,
     DisplayRole? role,
-    String? spaceId,
+    String? roomId,
     HomeMode? homeMode,
     String? homePageId,
     String? resolvedHomePageId,
@@ -173,7 +173,7 @@ class DisplayModel {
       microphone: microphone ?? this.microphone,
       microphoneVolume: microphoneVolume ?? this.microphoneVolume,
       role: role ?? this.role,
-      spaceId: spaceId ?? this.spaceId,
+      roomId: roomId ?? this.roomId,
       homeMode: homeMode ?? this.homeMode,
       homePageId: homePageId ?? this.homePageId,
       resolvedHomePageId: resolvedHomePageId ?? this.resolvedHomePageId,
@@ -208,7 +208,7 @@ class DisplayModel {
         other.microphone == microphone &&
         other.microphoneVolume == microphoneVolume &&
         other.role == role &&
-        other.spaceId == spaceId &&
+        other.roomId == roomId &&
         other.homeMode == homeMode &&
         other.homePageId == homePageId &&
         other.resolvedHomePageId == resolvedHomePageId;
@@ -239,7 +239,7 @@ class DisplayModel {
       microphone,
       microphoneVolume,
       role,
-      spaceId,
+      roomId,
       homeMode,
       homePageId,
       resolvedHomePageId,

@@ -35,8 +35,8 @@ class SystemViewItem extends DeckItem {
   /// The type of system view to render.
   final SystemViewType viewType;
 
-  /// The space ID for room views (required for room type, null for others).
-  final String? spaceId;
+  /// The room ID for room views (required for room type, null for others).
+  final String? roomId;
 
   /// Human-readable title for this view.
   final String title;
@@ -44,18 +44,18 @@ class SystemViewItem extends DeckItem {
   const SystemViewItem({
     required super.id,
     required this.viewType,
-    this.spaceId,
+    this.roomId,
     required this.title,
   });
 
   @override
   DeckItemType get type => DeckItemType.systemView;
 
-  /// Factory to create a system view ID based on type and optional space.
-  static String generateId(SystemViewType type, [String? spaceId]) {
+  /// Factory to create a system view ID based on type and optional room.
+  static String generateId(SystemViewType type, [String? roomId]) {
     final base = 'system-view-${type.name}';
-    if (spaceId != null) {
-      return '$base-$spaceId';
+    if (roomId != null) {
+      return '$base-$roomId';
     }
     return base;
   }
@@ -66,11 +66,11 @@ class SystemViewItem extends DeckItem {
     return other is SystemViewItem &&
         other.id == id &&
         other.viewType == viewType &&
-        other.spaceId == spaceId;
+        other.roomId == roomId;
   }
 
   @override
-  int get hashCode => Object.hash(id, viewType, spaceId);
+  int get hashCode => Object.hash(id, viewType, roomId);
 }
 
 /// A user-configured dashboard page.

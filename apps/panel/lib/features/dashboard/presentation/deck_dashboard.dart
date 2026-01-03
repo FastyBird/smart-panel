@@ -114,7 +114,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
       builder: (context, deckService, _) {
         // Show configuration error if present
         // Note: No retry button shown because configuration errors (e.g., room
-        // display without spaceId) require Admin configuration, not a retry.
+        // display without roomId) require Admin configuration, not a retry.
         if (deckService.hasConfigError) {
           return ConfigErrorScreen(
             errorMessage: deckService.configError!,

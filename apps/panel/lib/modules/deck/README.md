@@ -8,7 +8,7 @@ The Deck module implements the Spaces + Deck + Intents architecture for the Pane
 ┌─────────────────────────────────────────────────────────┐
 │                    Display Settings                      │
 │  • role: room/master/entry                              │
-│  • spaceId: UUID (required for room role)               │
+│  • roomId: UUID (required for room role)                │
 │  • homeMode: auto/explicit                              │
 │  • homePageId: UUID (for explicit mode)                 │
 └───────────────────────┬─────────────────────────────────┘
@@ -114,7 +114,7 @@ await intentsService.setDeviceProperty(
 
 | Role   | Required Fields | System View |
 |--------|-----------------|-------------|
-| room   | spaceId         | RoomOverviewPage |
+| room   | roomId          | RoomOverviewPage |
 | master | -               | MasterOverviewPage |
 | entry  | -               | EntryOverviewPage |
 
@@ -131,7 +131,7 @@ await intentsService.setDeviceProperty(
 ## Configuration Validation
 
 The `validateDisplayConfig` function returns an error message if:
-- Role is `room` but `spaceId` is null
+- Role is `room` but `roomId` is null
 
 ## Testing
 

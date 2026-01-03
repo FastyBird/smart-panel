@@ -56,7 +56,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   // Error state
   String? _errorMessage;
 
-  String get _spaceId => widget.viewItem.spaceId ?? '';
+  String get _roomId => widget.viewItem.roomId ?? '';
 
   @override
   void initState() {
@@ -70,7 +70,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   Future<void> _loadRoomData() async {
-    if (_spaceId.isEmpty) {
+    if (_roomId.isEmpty) {
       setState(() {
         _isLoading = false;
         _errorMessage = 'No room assigned to this display';
@@ -116,14 +116,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   Future<void> _loadScenes() async {
-    if (_scenesService == null || _spaceId.isEmpty) return;
+    if (_scenesService == null || _roomId.isEmpty) return;
 
     setState(() {
       _isScenesLoading = true;
     });
 
     try {
-      final scenes = await _scenesService!.fetchScenesForSpace(_spaceId);
+      final scenes = await _scenesService!.fetchScenesForSpace(_roomId);
 
       if (!mounted) return;
 

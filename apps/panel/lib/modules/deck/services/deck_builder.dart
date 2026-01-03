@@ -53,9 +53,9 @@ DeckResult buildDeck(DeckBuildInput input) {
   final systemViewType = display.role.toSystemViewType();
   final systemViewTitle = _getSystemViewTitle(systemViewType, input);
   final systemView = SystemViewItem(
-    id: SystemViewItem.generateId(systemViewType, display.spaceId),
+    id: SystemViewItem.generateId(systemViewType, display.roomId),
     viewType: systemViewType,
-    spaceId: display.spaceId,
+    roomId: display.roomId,
     title: systemViewTitle,
   );
   items.add(systemView);
@@ -122,10 +122,10 @@ String _getSystemViewTitle(SystemViewType type, DeckBuildInput input) {
 /// Returns a validation error message if the configuration is invalid,
 /// or null if the configuration is valid.
 String? validateDisplayConfig(DisplayModel display) {
-  // Room role requires a non-empty spaceId
-  final spaceId = display.spaceId;
+  // Room role requires a non-empty roomId
+  final roomId = display.roomId;
   if (display.role == DisplayRole.room &&
-      (spaceId == null || spaceId.isEmpty)) {
+      (roomId == null || roomId.isEmpty)) {
     return 'Room display requires a space (room) to be assigned. '
         'Please configure this in Admin > Displays.';
   }
