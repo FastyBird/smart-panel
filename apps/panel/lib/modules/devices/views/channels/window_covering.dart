@@ -19,7 +19,12 @@ class WindowCoveringChannelView extends ChannelView
         ChannelTiltMixin,
         ChannelFaultMixin {
   WindowCoveringChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -89,21 +94,21 @@ class WindowCoveringChannelView extends ChannelView
     return [];
   }
 
-  WindowCoveringTypeValue get type {
+  WindowCoveringTypeValue get windowCoveringType {
     final ValueType? value = typeProp.value;
 
     if (value is StringValueType &&
         WindowCoveringTypeValue.contains(value.value)) {
-      WindowCoveringTypeValue? type =
+      WindowCoveringTypeValue? windowCoveringTypeValue =
           WindowCoveringTypeValue.fromValue(value.value);
 
-      if (type != null) {
-        return type;
+      if (windowCoveringTypeValue != null) {
+        return windowCoveringTypeValue;
       }
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${typeProp.category.value}',
+      'Channel is missing required value for property: ${typeProp.category.json}',
     );
   }
 }

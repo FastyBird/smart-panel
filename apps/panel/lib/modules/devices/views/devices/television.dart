@@ -8,7 +8,14 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 class TelevisionDeviceView extends DeviceView
     with DeviceDeviceInformationMixin, DeviceSpeakerMixin {
   TelevisionDeviceView({
-    required super.deviceModel,
+    required super.id,
+    required super.type,
+    super.category,
+    required super.name,
+    super.description,
+    super.icon,
+    super.roomId,
+    super.zoneIds,
     required super.channels,
     super.isValid,
     super.validationIssues,

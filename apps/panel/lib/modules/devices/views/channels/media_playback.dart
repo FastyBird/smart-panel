@@ -10,7 +10,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/track.dar
 
 class MediaPlaybackChannelView extends ChannelView {
   MediaPlaybackChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -42,7 +47,7 @@ class MediaPlaybackChannelView extends ChannelView {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${statusProp.category.value}',
+      'Channel is missing required value for property: ${statusProp.category.json}',
     );
   }
 

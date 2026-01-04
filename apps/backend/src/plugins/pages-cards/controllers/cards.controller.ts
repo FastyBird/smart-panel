@@ -67,9 +67,13 @@ export class CardsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(@Query('page') page?: string): Promise<CardsResponseModel> {
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Fetching all page cards`);
+
 		const filterPage = page ? await this.getPageOrThrow(page) : undefined;
 
 		const cards = await this.cardsService.findAll(filterPage?.id);
+
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Retrieved ${cards.length} page cards for pageId=${page}`);
 
 		const response = new CardsResponseModel();
 		response.data = cards;
@@ -93,7 +97,11 @@ export class CardsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<CardResponseModel> {
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Fetching page card id=${id}`);
+
 		const card = await this.getOneOrThrow(id);
+
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Found page card id=${card.id}`);
 
 		const response = new CardResponseModel();
 		response.data = card;
@@ -123,8 +131,12 @@ export class CardsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<CardResponseModel> {
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to create a new page card`);
+
 		try {
 			const card = await this.cardsService.create(createDto.data);
+
+			this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully created page card id=${card.id}`);
 
 			setLocationHeader(req, res, PAGES_CARDS_PLUGIN_PREFIX, 'cards', card.id, { isPlugin: true });
 
@@ -162,10 +174,14 @@ export class CardsController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateCardDto,
 	): Promise<CardResponseModel> {
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming update request for page card id=${id}`);
+
 		const card = await this.getOneOrThrow(id);
 
 		try {
 			const updatedCard = await this.cardsService.update(card.id, updateDto.data);
+
+			this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully updated page card id=${updatedCard.id}`);
 
 			const response = new CardResponseModel();
 			response.data = updatedCard;
@@ -193,12 +209,18 @@ export class CardsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to delete page card id=${id}`);
+
 		const card = await this.getOneOrThrow(id);
 
 		await this.cardsService.remove(card.id);
+
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully deleted page card id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<CardEntity> {
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Checking existence of page card id=${id}`);
+
 		const card = await this.cardsService.findOne(id);
 
 		if (!card) {
@@ -211,6 +233,8 @@ export class CardsController {
 	}
 
 	private async getPageOrThrow(pageId: string): Promise<PageEntity> {
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Checking existence of page id=${pageId}`);
+
 		const page = await this.pagesService.findOne(pageId);
 
 		if (!page) {

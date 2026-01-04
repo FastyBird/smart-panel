@@ -1,15 +1,22 @@
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 
 class ChannelsRepository extends Repository<ChannelModel> {
+  final ChannelPropertiesRepository _channelPropertiesRepository;
+
   ChannelsRepository({
     required super.apiClient,
-  });
+    required ChannelPropertiesRepository channelPropertiesRepository,
+  }) : _channelPropertiesRepository = channelPropertiesRepository;
 
   void insert(List<Map<String, dynamic>> json) {
     late Map<String, ChannelModel> insertData = {...data};
+
+    // Collect embedded properties to insert
+    List<Map<String, dynamic>> embeddedProperties = [];
 
     for (var row in json) {
       if (!row.containsKey('type')) {
@@ -20,6 +27,15 @@ class ChannelsRepository extends Repository<ChannelModel> {
         }
 
         continue;
+      }
+
+      // Extract embedded properties before building the model
+      if (row['properties'] is List) {
+        for (var property in row['properties']) {
+          if (property is Map<String, dynamic> && property.containsKey('id')) {
+            embeddedProperties.add(property);
+          }
+        }
       }
 
       try {
@@ -35,6 +51,11 @@ class ChannelsRepository extends Repository<ChannelModel> {
 
         /// Failed to create new model
       }
+    }
+
+    // Insert embedded properties into the properties repository
+    if (embeddedProperties.isNotEmpty) {
+      _channelPropertiesRepository.insert(embeddedProperties);
     }
 
     if (!mapEquals(data, insertData)) {

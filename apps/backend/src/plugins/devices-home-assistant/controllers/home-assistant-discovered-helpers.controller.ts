@@ -62,8 +62,12 @@ export class HomeAssistantDiscoveredHelpersController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<HomeAssistantDiscoveredHelpersResponseModel> {
+		this.logger.debug('Fetching all Home Assistant discovered helpers');
+
 		try {
 			const helpers = await this.homeAssistantHttpService.getDiscoveredHelpers();
+
+			this.logger.debug(`Retrieved ${helpers.length} discovered helpers`);
 
 			const response = new HomeAssistantDiscoveredHelpersResponseModel();
 			response.data = helpers;
@@ -110,8 +114,12 @@ export class HomeAssistantDiscoveredHelpersController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':entityId')
 	async findOne(@Param('entityId') entityId: string): Promise<HomeAssistantDiscoveredHelperResponseModel> {
+		this.logger.debug(`Fetching Home Assistant discovered helper entityId=${entityId}`);
+
 		try {
 			const helper = await this.homeAssistantHttpService.getDiscoveredHelper(entityId);
+
+			this.logger.debug(`Found Home Assistant discovered helper entityId=${helper.entityId}`);
 
 			const response = new HomeAssistantDiscoveredHelperResponseModel();
 			response.data = helper;
@@ -161,9 +169,15 @@ export class HomeAssistantDiscoveredHelpersController {
 		@Param('entityId') entityId: string,
 		@Body() body?: HelperMappingPreviewRequestDto,
 	): Promise<HelperMappingPreviewResponseModel> {
+		this.logger.debug(`Previewing mapping for helper entityId=${entityId}`);
+
 		try {
 			const request = body ? toInstance(HelperMappingPreviewRequestDto, body) : undefined;
 			const preview = await this.helperMappingPreviewService.generatePreview(entityId, request);
+
+			this.logger.debug(
+				`Generated mapping preview for helper entityId=${entityId}, warnings=${preview.warnings.length}, readyToAdopt=${preview.readyToAdopt}`,
+			);
 
 			const response = new HelperMappingPreviewResponseModel();
 			response.data = preview;
@@ -207,9 +221,13 @@ export class HomeAssistantDiscoveredHelpersController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('adopt')
 	async adoptHelper(@Body() body: AdoptHelperRequestDto): Promise<DeviceResponseModel> {
+		this.logger.debug(`Adopting helper entity_id=${body.entityId}`);
+
 		try {
 			const request = toInstance(AdoptHelperRequestDto, body);
 			const device = await this.helperAdoptionService.adoptHelper(request);
+
+			this.logger.debug(`Adopted helper entity_id=${body.entityId} as device id=${device.id}`);
 
 			const response = new DeviceResponseModel();
 			response.data = device;

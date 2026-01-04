@@ -28,7 +28,9 @@ void main() async {
   buffer.writeln('// ignore_for_file: constant_identifier_names\n');
   buffer.writeln();
   buffer.writeln(
-      'import \'package:fastybird_smart_panel/modules/devices/types/categories.dart\';\n');
+      'import \'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart\';');
+  buffer.writeln(
+      'import \'package:fastybird_smart_panel/api/models/devices_module_property_category.dart\';\n');
 
   // PropertyConstraintType enum
   buffer.writeln('/// Type of property constraint');
@@ -46,7 +48,7 @@ void main() async {
   buffer.writeln('/// A constraint defining relationships between properties');
   buffer.writeln('class PropertyConstraint {');
   buffer.writeln('  final PropertyConstraintType type;');
-  buffer.writeln('  final List<List<ChannelPropertyCategory>> groups;\n');
+  buffer.writeln('  final List<List<DevicesModulePropertyCategory>> groups;\n');
   buffer.writeln('  const PropertyConstraint({');
   buffer.writeln('    required this.type,');
   buffer.writeln('    required this.groups,');
@@ -55,22 +57,22 @@ void main() async {
 
   // ChannelPropertiesSpecification class
   buffer.writeln('class ChannelPropertiesSpecification {');
-  buffer.writeln('  final List<ChannelPropertyCategory> required;');
-  buffer.writeln('  final List<ChannelPropertyCategory> optional;');
+  buffer.writeln('  final List<DevicesModulePropertyCategory> required;');
+  buffer.writeln('  final List<DevicesModulePropertyCategory> optional;');
   buffer.writeln('  final List<PropertyConstraint> constraints;\n');
   buffer.writeln('  const ChannelPropertiesSpecification({');
   buffer.writeln('    required this.required,');
   buffer.writeln('    required this.optional,');
   buffer.writeln('    this.constraints = const [],');
   buffer.writeln('  });\n');
-  buffer.writeln('  List<ChannelPropertyCategory> get all => [');
+  buffer.writeln('  List<DevicesModulePropertyCategory> get all => [');
   buffer.writeln('        ...required,');
   buffer.writeln('        ...optional,');
   buffer.writeln('      ];');
   buffer.writeln('}\n');
 
   buffer.writeln(
-      'const Map<ChannelCategory, ChannelPropertiesSpecification> channelPropertiesSpecificationMappers = {');
+      'const Map<DevicesModuleChannelCategory, ChannelPropertiesSpecification> channelPropertiesSpecificationMappers = {');
 
   for (final entry in json.entries) {
     final category = entry.key;
@@ -90,7 +92,7 @@ void main() async {
 
       if (propCategory != null) {
         (isRequired ? required : optional)
-            .add('ChannelPropertyCategory.${_camelToEnum(propCategory)}');
+            .add('DevicesModulePropertyCategory.${_camelToEnumWithOn(propCategory)}');
       }
     }
 
@@ -103,7 +105,7 @@ void main() async {
         final oneOfGroups = constraintsData['oneOf'] as List<dynamic>;
         for (final group in oneOfGroups) {
           final props = (group as List<dynamic>)
-              .map((p) => 'ChannelPropertyCategory.${_camelToEnum(p as String)}')
+              .map((p) => 'DevicesModulePropertyCategory.${_camelToEnumWithOn(p as String)}')
               .toList();
           constraints.add(
               'PropertyConstraint(type: PropertyConstraintType.oneOf, groups: [[${props.join(', ')}]])');
@@ -116,7 +118,7 @@ void main() async {
             constraintsData['oneOrMoreOf'] as List<dynamic>;
         for (final group in oneOrMoreOfGroups) {
           final props = (group as List<dynamic>)
-              .map((p) => 'ChannelPropertyCategory.${_camelToEnum(p as String)}')
+              .map((p) => 'DevicesModulePropertyCategory.${_camelToEnumWithOn(p as String)}')
               .toList();
           constraints.add(
               'PropertyConstraint(type: PropertyConstraintType.oneOrMoreOf, groups: [[${props.join(', ')}]])');
@@ -131,7 +133,7 @@ void main() async {
           final groups = (groupPair as List<dynamic>).map((group) {
             final props = (group as List<dynamic>)
                 .map(
-                    (p) => 'ChannelPropertyCategory.${_camelToEnum(p as String)}')
+                    (p) => 'DevicesModulePropertyCategory.${_camelToEnumWithOn(p as String)}')
                 .toList();
             return '[${props.join(', ')}]';
           }).toList();
@@ -142,7 +144,7 @@ void main() async {
     }
 
     buffer.writeln(
-        '  ChannelCategory.${_camelToEnum(category)}: ChannelPropertiesSpecification(');
+        '  DevicesModuleChannelCategory.${_camelToEnum(category)}: ChannelPropertiesSpecification(');
     buffer.writeln('    required: [${required.join(', ')}],');
     buffer.writeln('    optional: [${optional.join(', ')}],');
     if (constraints.isNotEmpty) {
@@ -159,7 +161,7 @@ void main() async {
 
   buffer.writeln(
       'ChannelPropertiesSpecification buildChannelPropertiesSpecification(');
-  buffer.writeln('  ChannelCategory category,');
+  buffer.writeln('  DevicesModuleChannelCategory category,');
   buffer.writeln(') {');
   buffer.writeln('  return channelPropertiesSpecificationMappers[category] ??');
   buffer.writeln('      const ChannelPropertiesSpecification(');
@@ -176,3 +178,11 @@ void main() async {
 
 String _camelToEnum(String input) => input.replaceAllMapped(
     RegExp(r'_([a-z])'), (m) => m.group(1)!.toUpperCase());
+
+/// Converts snake_case to camelCase with special handling for 'on' keyword
+/// which is renamed to 'valueOn' in the generated API code
+String _camelToEnumWithOn(String input) {
+  final result = _camelToEnum(input);
+  // 'on' is a Dart keyword, so it's renamed to 'valueOn' in generated code
+  return result == 'on' ? 'valueOn' : result;
+}

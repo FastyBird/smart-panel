@@ -210,6 +210,7 @@ const spaceTypeRef = toRef(props, 'spaceType');
 const {
 	devices,
 	loading,
+	firstLoadFinished,
 	fetchDevices,
 	removeDevice,
 	reassignDevice,
@@ -290,7 +291,10 @@ const onRemoveDevice = (device: IDevice): void => {
 };
 
 onMounted(async () => {
-	await fetchDevices();
+	// Only fetch if devices haven't been loaded yet
+	if (!firstLoadFinished.value) {
+		await fetchDevices();
+	}
 });
 
 // Expose methods for parent component

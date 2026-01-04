@@ -895,4 +895,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get battery_title => 'Battery';
+
+  @override
+  String get config_error_title => 'Configuration Required';
+
+  @override
+  String get config_error_hint => 'Configure this display in Admin > Displays';
+
+  @override
+  String get button_retry => 'Retry';
+
+  @override
+  String get system_view_room => 'Room';
+
+  @override
+  String get system_view_master => 'Home';
+
+  @override
+  String get system_view_entry => 'Entry';
+
+  @override
+  String get domain_lights => 'Lights';
+
+  @override
+  String get domain_climate => 'Climate';
+
+  @override
+  String get domain_media => 'Media';
+
+  @override
+  String get domain_sensors => 'Sensors';
+
+  @override
+  String get device_category_lighting => 'Lights';
+
+  @override
+  String get device_category_climate => 'Climate';
+
+  @override
+  String get device_category_sensors => 'Sensors';
+
+  @override
+  String get device_category_media => 'Media';
+
+  @override
+  String get master_rooms => 'Rooms';
+
+  @override
+  String get master_devices => 'Devices';
+
+  @override
+  String get master_scenes => 'Scenes';
+
+  @override
+  String get master_quick_actions => 'Quick Actions';
+
+  @override
+  String get entry_mode_activated => 'Mode activated';
+
+  @override
+  String get entry_house_modes => 'House Modes';
+
+  @override
+  String get entry_mode_home => 'Home';
+
+  @override
+  String get entry_mode_away => 'Away';
+
+  @override
+  String get entry_mode_night => 'Night';
+
+  @override
+  String get entry_mode_movie => 'Movie';
+
+  @override
+  String get entry_security => 'Security';
+
+  @override
+  String get entry_no_security_devices => 'No security devices configured';
+
+  @override
+  String get entry_locks => 'Locks';
+
+  @override
+  String get entry_alarm => 'Alarm';
+
+  @override
+  String get entry_cameras => 'Cameras';
 }

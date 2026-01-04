@@ -150,6 +150,7 @@ export class WledService implements IManagedPluginService {
 			}
 
 			// Config didn't change for this plugin, no restart needed
+			this.logger.debug('Config event received but no relevant changes for this plugin');
 			return Promise.resolve({ restartRequired: false });
 		}
 
@@ -276,6 +277,8 @@ export class WledService implements IManagedPluginService {
 		}
 
 		try {
+			this.logger.debug(`Connecting to WLED device at ${device.hostname}`, { resource: device.id });
+
 			await this.wledAdapter.connect(device.hostname, device.identifier, this.config.timeouts.connectionTimeout);
 
 			// Get the device context and update state
@@ -321,6 +324,8 @@ export class WledService implements IManagedPluginService {
 	 */
 	@OnEvent(WledAdapterEventType.DEVICE_STATE_CHANGED)
 	async handleDeviceStateChanged(event: WledDeviceStateChangedEvent): Promise<void> {
+		this.logger.debug(`Device state changed: ${event.host}`);
+
 		const device = this.wledAdapter.getDevice(event.host);
 
 		if (device) {
@@ -347,6 +352,8 @@ export class WledService implements IManagedPluginService {
 		}
 
 		const interval = this.config.polling.interval;
+
+		this.logger.debug(`Starting state polling with interval: ${interval}ms`);
 
 		this.pollingInterval = setInterval(() => {
 			void this.pollDeviceStates();
@@ -397,6 +404,8 @@ export class WledService implements IManagedPluginService {
 			return;
 		}
 
+		this.logger.debug('Running periodic state refresh');
+
 		await this.pollDeviceStates();
 	}
 
@@ -405,6 +414,7 @@ export class WledService implements IManagedPluginService {
 	 */
 	private startMdnsDiscovery(): void {
 		if (!this.config.mdns.enabled) {
+			this.logger.debug('mDNS discovery is disabled');
 			return;
 		}
 
@@ -430,8 +440,11 @@ export class WledService implements IManagedPluginService {
 		const existingDevice = devices.find((d) => d.hostname === device.host);
 
 		if (existingDevice) {
+			this.logger.debug(`Device at ${device.host} already exists in database`);
+
 			// If device is enabled and not connected, try to connect
 			if (existingDevice.enabled && !this.wledAdapter.isConnected(device.host)) {
+				this.logger.debug(`Connecting to existing device at ${device.host}`);
 				await this.connectToDevice(existingDevice);
 			}
 			return;

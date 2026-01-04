@@ -16,7 +16,12 @@ class LockChannelView extends ChannelView
         ChannelFaultMixin,
         ChannelTamperedMixin {
   LockChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -53,7 +58,7 @@ class LockChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${statusProp.category.value}',
+      'Channel is missing required value for property: ${statusProp.category.json}',
     );
   }
 

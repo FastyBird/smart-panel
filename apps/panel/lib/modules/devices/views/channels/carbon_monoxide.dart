@@ -17,7 +17,12 @@ class CarbonMonoxideChannelView extends ChannelView
         ChannelFaultMixin,
         ChannelTamperedMixin {
   CarbonMonoxideChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,

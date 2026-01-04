@@ -78,6 +78,8 @@ export class Zigbee2mqttDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<Zigbee2mqttDiscoveredDevicesResponseModel> {
+		this.logger.debug('Fetching all Zigbee2MQTT discovered devices');
+
 		try {
 			// Check if bridge is online
 			if (!this.zigbee2mqttService.isBridgeOnline()) {
@@ -95,6 +97,8 @@ export class Zigbee2mqttDiscoveredDevicesController {
 			const devices = registeredDevices.map((d) =>
 				this.transformToDiscoveredDevice(d, adoptedIdentifiers, adoptedDevices),
 			);
+
+			this.logger.debug(`Retrieved ${devices.length} discovered devices`);
 
 			const response = new Zigbee2mqttDiscoveredDevicesResponseModel();
 			response.data = toInstance(Zigbee2mqttDiscoveredDeviceModel, devices);
@@ -132,6 +136,8 @@ export class Zigbee2mqttDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':ieeeAddress')
 	async findOne(@Param('ieeeAddress') ieeeAddress: string): Promise<Zigbee2mqttDiscoveredDeviceResponseModel> {
+		this.logger.debug(`Fetching Zigbee2MQTT discovered device ieeeAddress=${ieeeAddress}`);
+
 		try {
 			// Check if bridge is online
 			if (!this.zigbee2mqttService.isBridgeOnline()) {
@@ -151,6 +157,8 @@ export class Zigbee2mqttDiscoveredDevicesController {
 			const adoptedIdentifiers = new Set(adoptedDevices.map((d) => d.identifier));
 
 			const device = this.transformToDiscoveredDevice(z2mDevice, adoptedIdentifiers, adoptedDevices);
+
+			this.logger.debug(`Found Zigbee2MQTT discovered device ieeeAddress=${z2mDevice.ieeeAddress}`);
 
 			const response = new Zigbee2mqttDiscoveredDeviceResponseModel();
 			response.data = toInstance(Zigbee2mqttDiscoveredDeviceModel, device);
@@ -193,9 +201,17 @@ export class Zigbee2mqttDiscoveredDevicesController {
 		@Param('ieeeAddress') ieeeAddress: string,
 		@Body() body?: ReqMappingPreviewDto,
 	): Promise<Z2mMappingPreviewResponseModel> {
+		this.logger.debug(`Previewing mapping for device ieeeAddress=${ieeeAddress}`);
+
 		try {
 			const request = body?.data ? toInstance(MappingPreviewRequestDto, body.data) : undefined;
 			const preview = await this.mappingPreviewService.generatePreview(ieeeAddress, request);
+
+			this.logger.debug(
+				`Generated mapping preview for device ieeeAddress=${ieeeAddress}, ` +
+					`exposes=${preview.exposes.length}, warnings=${preview.warnings.length}, ` +
+					`readyToAdopt=${preview.readyToAdopt}`,
+			);
 
 			const response = new Z2mMappingPreviewResponseModel();
 			response.data = toInstance(Z2mMappingPreviewModel, preview);
@@ -239,9 +255,13 @@ export class Zigbee2mqttDiscoveredDevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('adopt')
 	async adoptDevice(@Body() body: ReqAdoptDeviceDto): Promise<DeviceResponseModel> {
+		this.logger.debug(`Adopting device ieeeAddress=${body.data.ieeeAddress}`);
+
 		try {
 			const request = toInstance(AdoptDeviceRequestDto, body.data);
 			const device = await this.deviceAdoptionService.adoptDevice(request);
+
+			this.logger.debug(`Adopted device ieeeAddress=${body.data.ieeeAddress} as device id=${device.id}`);
 
 			const response = new DeviceResponseModel();
 			response.data = device;

@@ -12,7 +12,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/remote_ke
 class TelevisionChannelView extends ChannelView
     with ChannelOnMixin, ChannelBrightnessMixin {
   TelevisionChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,

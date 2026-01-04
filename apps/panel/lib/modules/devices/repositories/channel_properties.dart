@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
@@ -7,14 +8,13 @@ import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.da
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:flutter/foundation.dart';
 
 class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   final SocketService _socketService;
 
-  final ChannelsRepository _channelsRepository;
+  ChannelsRepository? _channelsRepository;
 
   final Map<String, ValueType?> _valueBackup = {};
   final Map<String, Timer> _debounceTimers = {};
@@ -22,9 +22,12 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   ChannelPropertiesRepository({
     required super.apiClient,
     required SocketService socketService,
-    required ChannelsRepository channelsRepository,
-  })  : _socketService = socketService,
-        _channelsRepository = channelsRepository;
+  }) : _socketService = socketService;
+
+  /// Set the channels repository after construction to avoid circular dependency
+  void setChannelsRepository(ChannelsRepository channelsRepository) {
+    _channelsRepository = channelsRepository;
+  }
 
   void insert(List<Map<String, dynamic>> json) {
     late Map<String, ChannelPropertyModel> insertData = {...data};
@@ -82,7 +85,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       return false;
     }
 
-    if (property.dataType != DataType.boolean) {
+    if (property.dataType != DevicesModuleDataType.bool) {
       debugPrint(
         '[DEVICES MODULE][CHANNEL PROPERTIES] Only boolean values could be toggled',
       );
@@ -113,7 +116,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       _valueBackup[id] = property.value;
     }
 
-    if (property.dataType == DataType.boolean) {
+    if (property.dataType == DevicesModuleDataType.bool) {
       try {
         property = property.copyWith(
           value: BooleanValueType(_valueToBoolean(value)),
@@ -124,13 +127,13 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
         return false;
       }
-    } else if (property.dataType == DataType.char ||
-        property.dataType == DataType.uchar ||
-        property.dataType == DataType.short ||
-        property.dataType == DataType.ushort ||
-        property.dataType == DataType.int ||
-        property.dataType == DataType.uint ||
-        property.dataType == DataType.float) {
+    } else if (property.dataType == DevicesModuleDataType.char ||
+        property.dataType == DevicesModuleDataType.uchar ||
+        property.dataType == DevicesModuleDataType.short ||
+        property.dataType == DevicesModuleDataType.ushort ||
+        property.dataType == DevicesModuleDataType.int ||
+        property.dataType == DevicesModuleDataType.uint ||
+        property.dataType == DevicesModuleDataType.float) {
       try {
         property = property.copyWith(
           value: NumberValueType(_valueToNumber(value)),
@@ -141,8 +144,8 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
         return false;
       }
-    } else if (property.dataType == DataType.string ||
-        property.dataType == DataType.enumerate) {
+    } else if (property.dataType == DevicesModuleDataType.string ||
+        property.dataType == DevicesModuleDataType.valueEnum) {
       property = property.copyWith(
         value: StringValueType(value.toString()),
       );
@@ -155,7 +158,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
     replaceItem(property);
 
-    ChannelModel? channel = _channelsRepository.getItem(property.channel);
+    ChannelModel? channel = _channelsRepository?.getItem(property.channel);
 
     if (channel != null) {
       final completer = Completer<bool>();

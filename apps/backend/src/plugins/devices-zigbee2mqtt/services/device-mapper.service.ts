@@ -194,8 +194,12 @@ export class Z2mDeviceMapperService {
 			return;
 		}
 
+		this.logger.debug(`Updating state for ${friendlyName}: ${JSON.stringify(state)}`, { resource: device.id });
+
 		// Get all channels for this device
 		const channels = await this.channelsService.findAll<Zigbee2mqttChannelEntity>(device.id, DEVICES_ZIGBEE2MQTT_TYPE);
+
+		this.logger.debug(`Found ${channels.length} channels for device ${friendlyName}`, { resource: device.id });
 
 		// Build virtual property context
 		const virtualContext: VirtualPropertyContext = {
@@ -284,6 +288,10 @@ export class Z2mDeviceMapperService {
 				// Convert value to appropriate type based on property's data type
 				const convertedValue = this.convertValue(value, property.dataType);
 
+				this.logger.debug(
+					`Updating property ${propertyIdentifier} (${property.dataType}) = ${JSON.stringify(value)} -> ${convertedValue}`,
+				);
+
 				// Update property value
 				await this.channelsPropertiesService.update<
 					Zigbee2mqttChannelPropertyEntity,
@@ -309,6 +317,8 @@ export class Z2mDeviceMapperService {
 					const normalizedStatus = this.normalizeCoverState(z2mState);
 
 					if (normalizedStatus) {
+						this.logger.debug(`Updating window covering status: ${JSON.stringify(z2mState)} -> ${normalizedStatus}`);
+
 						await this.channelsPropertiesService.update<
 							Zigbee2mqttChannelPropertyEntity,
 							UpdateZigbee2mqttChannelPropertyDto
@@ -334,6 +344,8 @@ export class Z2mDeviceMapperService {
 					// Normalize to percentage (Z2M reports 0-255, spec expects 0-100)
 					const linkQualityPercent = typeof linkQuality === 'number' ? Math.round((linkQuality / 255) * 100) : null;
 
+					this.logger.debug(`Updating link_quality = ${linkQualityPercent}%`);
+
 					await this.channelsPropertiesService.update<
 						Zigbee2mqttChannelPropertyEntity,
 						UpdateZigbee2mqttChannelPropertyDto
@@ -356,6 +368,8 @@ export class Z2mDeviceMapperService {
 					const z2mBrightness = state.brightness;
 					// Convert Z2M range (0-254) to spec range (0-100%)
 					const brightnessPercent = typeof z2mBrightness === 'number' ? Math.round((z2mBrightness / 254) * 100) : null;
+
+					this.logger.debug(`Updating brightness: ${JSON.stringify(z2mBrightness)} -> ${brightnessPercent}%`);
 
 					await this.channelsPropertiesService.update<
 						Zigbee2mqttChannelPropertyEntity,
@@ -381,6 +395,7 @@ export class Z2mDeviceMapperService {
 						const hueProp = properties.find((p) => p.category === PropertyCategory.HUE);
 						if (hueProp) {
 							const hueValue = Math.round(colorState.hue);
+							this.logger.debug(`Updating hue: ${colorState.hue} -> ${hueValue}`);
 
 							await this.channelsPropertiesService.update<
 								Zigbee2mqttChannelPropertyEntity,
@@ -400,6 +415,7 @@ export class Z2mDeviceMapperService {
 						const saturationProp = properties.find((p) => p.category === PropertyCategory.SATURATION);
 						if (saturationProp) {
 							const satValue = Math.round(colorState.saturation);
+							this.logger.debug(`Updating saturation: ${colorState.saturation} -> ${satValue}%`);
 
 							await this.channelsPropertiesService.update<
 								Zigbee2mqttChannelPropertyEntity,
@@ -433,6 +449,10 @@ export class Z2mDeviceMapperService {
 						const minKelvin = Array.isArray(propFormat) && typeof propFormat[0] === 'number' ? propFormat[0] : 2000;
 						const maxKelvin = Array.isArray(propFormat) && typeof propFormat[1] === 'number' ? propFormat[1] : 6500;
 						const clampedKelvin = Math.max(minKelvin, Math.min(maxKelvin, kelvin));
+
+						this.logger.debug(
+							`Updating color_temp: ${z2mColorTemp} mired -> ${clampedKelvin} K (range: ${minKelvin}-${maxKelvin})`,
+						);
 
 						await this.channelsPropertiesService.update<
 							Zigbee2mqttChannelPropertyEntity,

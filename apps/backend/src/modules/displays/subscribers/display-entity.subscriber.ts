@@ -27,6 +27,8 @@ export class DisplayEntitySubscriber implements EntitySubscriberInterface<Displa
 			const status = await this.displayStatusService.readLatest(entity);
 			entity.online = status.online;
 			entity.status = status.status;
+
+			this.logger.debug(`Loaded display status from InfluxDB id=${entity.id}, value=${entity.status}`);
 		} catch (error) {
 			const err = error as Error;
 

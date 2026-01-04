@@ -33,7 +33,11 @@ export class DisplaysService {
 	) {}
 
 	async findAll(): Promise<DisplayEntity[]> {
+		this.logger.debug('Fetching all displays');
+
 		const displays = await this.repository.find();
+
+		this.logger.debug(`Found ${displays.length} displays`);
 
 		return displays;
 	}
@@ -63,6 +67,8 @@ export class DisplaysService {
 	}
 
 	async create(data: Partial<DisplayEntity>): Promise<DisplayEntity> {
+		this.logger.debug('Creating new display');
+
 		const display = this.repository.create(data);
 
 		await this.repository.save(display);
@@ -70,12 +76,16 @@ export class DisplaysService {
 		// Re-fetch to get database default values populated
 		const savedDisplay = await this.getOneOrThrow(display.id);
 
+		this.logger.debug(`Successfully created display with id=${savedDisplay.id}`);
+
 		this.eventEmitter.emit(EventType.DISPLAY_CREATED, savedDisplay);
 
 		return savedDisplay;
 	}
 
 	async update(id: string, updateDto: UpdateDisplayDto): Promise<DisplayEntity> {
+		this.logger.debug(`Updating display with id=${id}`);
+
 		const display = await this.getOneOrThrow(id);
 
 		const dtoInstance = await this.validateDto(UpdateDisplayDto, updateDto);
@@ -106,12 +116,16 @@ export class DisplaysService {
 
 		await this.repository.save(display);
 
+		this.logger.debug(`Successfully updated display with id=${display.id}`);
+
 		this.eventEmitter.emit(EventType.DISPLAY_UPDATED, display);
 
 		return display;
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing display with id=${id}`);
+
 		const display = await this.getOneOrThrow(id);
 
 		// Explicitly clean up page-display relations in the join table
@@ -124,6 +138,8 @@ export class DisplaysService {
 			.execute();
 
 		await this.repository.remove(display);
+
+		this.logger.debug(`Successfully removed display with id=${id}`);
 
 		this.eventEmitter.emit(EventType.DISPLAY_DELETED, { id });
 	}
@@ -198,6 +214,8 @@ export class DisplaysService {
 	}
 
 	private async findByField(field: keyof DisplayEntity, value: string): Promise<DisplayEntity | null> {
+		this.logger.debug(`Fetching display by ${field}`);
+
 		const display = await this.repository.findOne({ where: { [field]: value } });
 
 		if (!display) {
@@ -205,6 +223,8 @@ export class DisplaysService {
 
 			return null;
 		}
+
+		this.logger.debug(`Successfully fetched display`);
 
 		return display;
 	}

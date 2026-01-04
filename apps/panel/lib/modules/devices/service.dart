@@ -2,10 +2,6 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesService extends ChangeNotifier {
@@ -35,16 +31,16 @@ class DevicesService extends ChangeNotifier {
         _validationRepository = validationRepository;
 
   Future<void> initialize() async {
+    // Fetch devices - embedded channels and properties are auto-extracted
     await _devicesRepository.fetchAll();
 
+    // Fetch device controls (not embedded in device response)
     for (var device in _devicesRepository.getItems()) {
       await _devicesControlsRepository.fetchAll(device.id);
     }
 
-    await _channelsRepository.fetchAll();
-
+    // Fetch channel controls (not embedded in channel response)
     for (var channel in _channelsRepository.getItems()) {
-      await _channelPropertiesRepository.fetchAll(channel.id);
       await _channelControlsRepository.fetchAll(channel.id);
     }
 
@@ -59,6 +55,8 @@ class DevicesService extends ChangeNotifier {
   }
 
   Map<String, DeviceView> get devices => _devices;
+
+  List<DeviceView> get devicesList => _devices.values.toList();
 
   Map<String, ChannelView> get channels => _channels;
 
@@ -88,6 +86,38 @@ class DevicesService extends ChangeNotifier {
     return _properties[id];
   }
 
+  /// Get all devices assigned to a specific room
+  List<DeviceView> getDevicesForRoom(String roomId) {
+    return _devices.values.where((d) => d.roomId == roomId).toList();
+  }
+
+  /// Get all devices assigned to a specific zone
+  List<DeviceView> getDevicesForZone(String zoneId) {
+    return _devices.values.where((d) => d.zoneIds.contains(zoneId)).toList();
+  }
+
+  /// Get all devices of a specific category
+  List<DeviceView> getDevicesByCategory(DevicesModuleDeviceCategory category) {
+    return _devices.values.where((d) => d.category == category).toList();
+  }
+
+  /// Get all devices matching any of the specified categories
+  List<DeviceView> getDevicesByCategories(List<DevicesModuleDeviceCategory> categories) {
+    return _devices.values
+        .where((d) => categories.contains(d.category))
+        .toList();
+  }
+
+  /// Get devices for a room filtered by category
+  List<DeviceView> getDevicesForRoomByCategory(
+    String roomId,
+    DevicesModuleDeviceCategory category,
+  ) {
+    return _devices.values
+        .where((d) => d.roomId == roomId && d.category == category)
+        .toList();
+  }
+
   Future<bool> toggleDeviceOnState(String id) async {
     final DeviceView? device = getDevice(id);
 
@@ -105,7 +135,7 @@ class DevicesService extends ChangeNotifier {
                 .toList(),
           ),
         )
-        .where((property) => property.category == ChannelPropertyCategory.on)
+        .where((property) => property.category == DevicesModulePropertyCategory.valueOn)
         .toList();
 
     for (var property in properties) {
@@ -198,8 +228,14 @@ class DevicesService extends ChangeNotifier {
             _validationRepository.getIssuesForChannel(device.id, channel.id);
         final channelIsValid = !channelIssues.any((issue) => issue.isError);
 
+        // Get the channel model from the repository to rebuild with validation
+        final channelModel = _channelsRepository.getItem(channel.id);
+        if (channelModel == null) {
+          return channel; // Fallback to the existing channel view
+        }
+
         final validatedChannel = buildChannelView(
-          channel.channelModel,
+          channelModel,
           channel.properties,
           isValid: channelIsValid,
           validationIssues: channelIssues,

@@ -15,7 +15,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/zoom.dart
 class CameraChannelView extends ChannelView
     with ChannelTiltMixin, ChannelFaultMixin {
   CameraChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -56,7 +61,7 @@ class CameraChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${statusProp.category.value}',
+      'Channel is missing required value for property: ${statusProp.category.json}',
     );
   }
 
@@ -80,7 +85,7 @@ class CameraChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${sourceProp.category.value}',
+      'Channel is missing required value for property: ${sourceProp.category.json}',
     );
   }
 

@@ -895,4 +895,91 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get battery_title => 'Baterie';
+
+  @override
+  String get config_error_title => 'Vyžadována konfigurace';
+
+  @override
+  String get config_error_hint => 'Nakonfigurujte tento displej v Správci > Displeje';
+
+  @override
+  String get button_retry => 'Opakovat';
+
+  @override
+  String get system_view_room => 'Místnost';
+
+  @override
+  String get system_view_master => 'Domov';
+
+  @override
+  String get system_view_entry => 'Vstup';
+
+  @override
+  String get domain_lights => 'Světla';
+
+  @override
+  String get domain_climate => 'Klima';
+
+  @override
+  String get domain_media => 'Média';
+
+  @override
+  String get domain_sensors => 'Senzory';
+
+  @override
+  String get device_category_lighting => 'Osvětlení';
+
+  @override
+  String get device_category_climate => 'Klima';
+
+  @override
+  String get device_category_sensors => 'Senzory';
+
+  @override
+  String get device_category_media => 'Média';
+
+  @override
+  String get master_rooms => 'Místnosti';
+
+  @override
+  String get master_devices => 'Zařízení';
+
+  @override
+  String get master_scenes => 'Scény';
+
+  @override
+  String get master_quick_actions => 'Rychlé akce';
+
+  @override
+  String get entry_mode_activated => 'Režim aktivován';
+
+  @override
+  String get entry_house_modes => 'Režimy domu';
+
+  @override
+  String get entry_mode_home => 'Doma';
+
+  @override
+  String get entry_mode_away => 'Pryč';
+
+  @override
+  String get entry_mode_night => 'Noc';
+
+  @override
+  String get entry_mode_movie => 'Film';
+
+  @override
+  String get entry_security => 'Zabezpečení';
+
+  @override
+  String get entry_no_security_devices => 'Žádná bezpečnostní zařízení nejsou nakonfigurována';
+
+  @override
+  String get entry_locks => 'Zámky';
+
+  @override
+  String get entry_alarm => 'Alarm';
+
+  @override
+  String get entry_cameras => 'Kamery';
 }

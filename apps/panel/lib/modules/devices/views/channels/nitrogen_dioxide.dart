@@ -19,7 +19,12 @@ class NitrogenDioxideChannelView extends ChannelView
         ChannelFaultMixin,
         ChannelTamperedMixin {
   NitrogenDioxideChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -78,7 +83,7 @@ class NitrogenDioxideChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${modeProp?.category.value}',
+      'Channel is missing required value for property: ${modeProp?.category.json}',
     );
   }
 

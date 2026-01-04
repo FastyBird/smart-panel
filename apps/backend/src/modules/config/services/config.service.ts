@@ -482,6 +482,8 @@ export class ConfigService {
 	}
 
 	getPluginsConfig<TConfig extends PluginConfigModel>(): TConfig[] {
+		this.logger.debug('Fetching configuration for plugins');
+
 		const configSection = this.appConfig['plugins'];
 
 		if (!configSection) {
@@ -520,6 +522,8 @@ export class ConfigService {
 	}
 
 	getPluginConfig<TConfig extends PluginConfigModel>(plugin: string): TConfig {
+		this.logger.debug(`Fetching configuration plugin=${plugin}`);
+
 		const configSection = this.appConfig['plugins'];
 
 		if (!configSection) {
@@ -549,6 +553,8 @@ export class ConfigService {
 
 			throw new ConfigCorruptedException(`Configuration plugin '${plugin}' is corrupted and can not be loaded.`);
 		}
+
+		this.logger.debug(`Successfully retrieved configuration plugin=${plugin}`);
 
 		return instance;
 	}
@@ -595,6 +601,8 @@ export class ConfigService {
 	}
 
 	getModulesConfig<TConfig extends ModuleConfigModel>(): TConfig[] {
+		this.logger.debug('Fetching configuration for modules');
+
 		const configSection = this.appConfig['modules'];
 
 		if (!configSection) {
@@ -633,6 +641,8 @@ export class ConfigService {
 	}
 
 	getModuleConfig<TConfig extends ModuleConfigModel>(module: string): TConfig {
+		this.logger.debug(`Fetching configuration module=${module}`);
+
 		const configSection = this.appConfig['modules'];
 
 		if (!configSection) {
@@ -662,6 +672,8 @@ export class ConfigService {
 
 			throw new ConfigCorruptedException(`Configuration module '${module}' is corrupted and can not be loaded.`);
 		}
+
+		this.logger.debug(`Successfully retrieved configuration module=${module}`);
 
 		return instance;
 	}

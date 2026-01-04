@@ -41,6 +41,8 @@ export class DisplayConnectionStateService {
 					timestamp: new Date(),
 				},
 			]);
+
+			this.logger.debug(`Status saved id=${display.id} status=${status}`);
 		} catch (error) {
 			const err = error as Error;
 
@@ -51,6 +53,10 @@ export class DisplayConnectionStateService {
 	async readLatest(display: DisplayEntity): Promise<{ online: boolean; status: ConnectionState }> {
 		// Check local cache first
 		if (this.statusMap.has(display.id)) {
+			this.logger.debug(
+				`Loaded cached status for display id=${display.id}, status=${this.statusMap.get(display.id)?.status}`,
+			);
+
 			return this.statusMap.get(display.id);
 		}
 
@@ -70,6 +76,8 @@ export class DisplayConnectionStateService {
         LIMIT 1
       `;
 
+			this.logger.debug(`Fetching latest status id=${display.id}`);
+
 			const result = await this.influxDbService.query<{
 				online: boolean;
 				onlineI: number;
@@ -78,6 +86,8 @@ export class DisplayConnectionStateService {
 			}>(query);
 
 			if (!result.length) {
+				this.logger.debug(`No stored status found for id=${display.id}`);
+
 				return {
 					online: false,
 					status: ConnectionState.UNKNOWN,
@@ -85,6 +95,8 @@ export class DisplayConnectionStateService {
 			}
 
 			const latest = result[0];
+
+			this.logger.debug(`Read latest value id=${display.id} status=${latest.status}`);
 
 			this.statusMap.set(display.id, { online: latest.online, status: latest.status });
 

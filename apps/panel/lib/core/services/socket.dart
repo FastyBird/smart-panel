@@ -246,12 +246,6 @@ class SocketService {
         try {
           SocketEventModel event = SocketEventModel.fromJson(data);
 
-          if (kDebugMode) {
-            debugPrint(
-              '[SOCKETS] Received event: ${event.event}',
-            );
-          }
-
           /// Handle received event by module consumers
           _dispatchEvent(event);
         } catch (e) {

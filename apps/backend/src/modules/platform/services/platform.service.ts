@@ -32,18 +32,26 @@ export class PlatformService {
 	}
 
 	getSystemInfo() {
+		this.logger.debug('Fetching system information');
+
 		return this.platform.getSystemInfo();
 	}
 
 	getThrottleStatus() {
+		this.logger.debug('Fetching system throttle status');
+
 		return this.platform.getThrottleStatus();
 	}
 
 	getTemperature() {
+		this.logger.debug('Fetching system temperature');
+
 		return this.platform.getTemperature();
 	}
 
 	getNetworkStats() {
+		this.logger.debug('Fetching network statistics');
+
 		return this.platform.getNetworkStats();
 	}
 

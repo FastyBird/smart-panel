@@ -434,6 +434,8 @@ export class Zigbee2mqttService implements IManagedPluginService {
 	 */
 	@OnEvent(Z2mAdapterEventType.DEVICE_AVAILABILITY_CHANGED)
 	async handleDeviceAvailabilityChanged(event: Z2mDeviceAvailabilityChangedEvent): Promise<void> {
+		this.logger.debug(`Device availability changed: ${event.friendlyName} -> ${event.available}`);
+
 		try {
 			await this.deviceMapper.setDeviceAvailability(event.friendlyName, event.available);
 		} catch (error) {

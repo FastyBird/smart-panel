@@ -54,7 +54,11 @@ export class AuthController {
 	@Post('login')
 	async login(@Body() body: ReqLoginDto): Promise<LoginResponseModel> {
 		try {
+			this.logger.debug(`Attempting login for username=${body.data.username}`);
+
 			const data = await this.authService.login(body.data);
+
+			this.logger.debug(`Successful login for username=${body.data.username}`);
 
 			const response = new LoginResponseModel();
 			response.data = data;
@@ -92,7 +96,11 @@ export class AuthController {
 			throw new ForbiddenException('Application owner already exists');
 		}
 
+		this.logger.debug(`Registering new user username=${body.data.username}, email=${body.data.email}`);
+
 		await this.authService.register(body.data);
+
+		this.logger.debug(`Successfully registered user username=${body.data.username}`);
 	}
 
 	@ApiOperation({
@@ -111,6 +119,8 @@ export class AuthController {
 	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshResponseModel> {
 		try {
 			const data = await this.authService.refreshAccessToken(body.data.token);
+
+			this.logger.debug('Successfully refreshed user access token');
 
 			const response = new RefreshResponseModel();
 			response.data = data;
@@ -138,7 +148,11 @@ export class AuthController {
 	@Public()
 	@Post('check/username')
 	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckUsernameResponseModel> {
+		this.logger.debug(`Checking availability for username=${body.data.username}`);
+
 		const data = await this.authService.checkUsername(body.data);
+
+		this.logger.debug(`Username=${body.data.username} available=${data.valid}`);
 
 		const response = new CheckUsernameResponseModel();
 		response.data = data;
@@ -159,7 +173,11 @@ export class AuthController {
 	@Public()
 	@Post('check/email')
 	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckEmailResponseModel> {
+		this.logger.debug(`Checking availability for email=${body.data.email}`);
+
 		const data = await this.authService.checkEmail(body.data);
+
+		this.logger.debug(`Email=${body.data.email} available=${data.valid}`);
 
 		const response = new CheckEmailResponseModel();
 		response.data = data;
@@ -186,7 +204,11 @@ export class AuthController {
 			throw new ForbiddenException('User not found');
 		}
 
+		this.logger.debug(`Fetching profile for user=${auth.id}`);
+
 		const userData = await this.authService.getProfile(auth.id);
+
+		this.logger.debug(`Successfully fetched profile for user=${auth.id}`);
 
 		const response = new ProfileResponseModel();
 		response.data = userData;

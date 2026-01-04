@@ -56,7 +56,11 @@ export class UsersController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<UsersResponseModel> {
+		this.logger.debug('Fetching all users');
+
 		const users = await this.usersService.findAll();
+
+		this.logger.debug(`Retrieved ${users.length} users`);
 
 		const response = new UsersResponseModel();
 
@@ -82,7 +86,11 @@ export class UsersController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UserResponseModel> {
+		this.logger.debug(`Fetching page id=${id}`);
+
 		const user = await this.getOneOrThrow(id);
+
+		this.logger.debug(`Found user id=${user.id}`);
 
 		const response = new UserResponseModel();
 
@@ -112,6 +120,8 @@ export class UsersController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<UserResponseModel> {
+		this.logger.debug('Incoming request to create a new user');
+
 		const existingUsername = await this.usersService.findByUsername(createDto.data.username);
 
 		if (existingUsername) {
@@ -131,6 +141,8 @@ export class UsersController {
 		}
 
 		const user = await this.usersService.create(createDto.data);
+
+		this.logger.debug(`Successfully created user id=${user.id}`);
 
 		setLocationHeader(req, res, USERS_MODULE_PREFIX, 'users', user.id);
 
@@ -162,6 +174,8 @@ export class UsersController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateUserDto,
 	): Promise<UserResponseModel> {
+		this.logger.debug(`Incoming update request for user id=${id}`);
+
 		const user = await this.getOneOrThrow(id);
 
 		if (updateDto.data.email) {
@@ -175,6 +189,8 @@ export class UsersController {
 		}
 
 		const updatedUser = await this.usersService.update(user.id, updateDto.data);
+
+		this.logger.debug(`Successfully updated user id=${updatedUser.id}`);
 
 		const response = new UserResponseModel();
 
@@ -201,6 +217,8 @@ export class UsersController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Req() req: AuthenticatedRequest,
 	): Promise<void> {
+		this.logger.debug(`Incoming request to delete user id=${id}`);
+
 		const user = await this.getOneOrThrow(id);
 
 		const { auth } = req;
@@ -211,9 +229,13 @@ export class UsersController {
 		}
 
 		await this.usersService.remove(user.id);
+
+		this.logger.debug(`Successfully deleted user id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<UserEntity> {
+		this.logger.debug(`Checking existence of user id=${id}`);
+
 		const user = await this.usersService.findOne(id);
 
 		if (!user) {

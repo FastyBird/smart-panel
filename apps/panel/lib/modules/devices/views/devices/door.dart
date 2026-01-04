@@ -16,7 +16,14 @@ class DoorDeviceView extends DeviceView
         DeviceLockMixin,
         DeviceMotionMixin {
   DoorDeviceView({
-    required super.deviceModel,
+    required super.id,
+    required super.type,
+    super.category,
+    required super.name,
+    super.description,
+    super.icon,
+    super.roomId,
+    super.zoneIds,
     required super.channels,
     super.isValid,
     super.validationIssues,
@@ -64,7 +71,7 @@ class DoorDeviceView extends DeviceView
   List<DoorStatusValue> get doorAvailableStatuses =>
       doorChannel.availableStatuses;
 
-  DoorTypeValue get doorType => doorChannel.type;
+  DoorTypeValue get doorType => doorChannel.doorType;
 
   DoorPositionValue? get doorCurrentAction => doorChannel.currentAction;
 

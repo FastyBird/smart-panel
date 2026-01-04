@@ -67,7 +67,11 @@ export class ScenesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<ScenesResponseModel> {
+		this.logger.debug('[LOOKUP ALL] Fetching all scenes');
+
 		const scenes = await this.scenesService.findAll();
+
+		this.logger.debug(`[LOOKUP ALL] Retrieved ${scenes.length} scenes`);
 
 		const response = new ScenesResponseModel();
 		response.data = scenes;
@@ -92,7 +96,11 @@ export class ScenesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SceneResponseModel> {
+		this.logger.debug(`[LOOKUP] Fetching scene id=${id}`);
+
 		const scene = await this.getOneOrThrow(id);
+
+		this.logger.debug(`[LOOKUP] Found scene id=${scene.id}`);
 
 		const response = new SceneResponseModel();
 		response.data = scene;

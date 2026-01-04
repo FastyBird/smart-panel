@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/details/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/lock.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/screen_saver.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/modules/config/repositories/module_config_
 import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
+import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
@@ -31,6 +32,7 @@ class _AppBodyState extends State<AppBody> {
   late final ModuleConfigRepository<SystemConfigModel> _systemConfigRepository =
       _configModule.getModuleRepository<SystemConfigModel>('system-module');
   final NavigationService _navigator = locator<NavigationService>();
+  final DeckService _deckService = locator<DeckService>();
 
   bool _hasDarkMode = false;
   Language _language = Language.english;
@@ -48,11 +50,33 @@ class _AppBodyState extends State<AppBody> {
 
     _syncStateWithRepository();
     _resetInactivityTimer();
+    _initializeDeck();
 
     _displayRepository.addListener(_syncStateWithRepository);
+    _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
 
     locator<SystemActionsService>().init();
+  }
+
+  /// Initialize the deck with display settings
+  void _initializeDeck() {
+    final display = _displayRepository.display;
+    if (display != null && !_deckService.isInitialized) {
+      _deckService.initialize(display);
+    }
+  }
+
+  /// Update deck when display settings change
+  void _onDisplayChanged() {
+    final display = _displayRepository.display;
+    if (display != null) {
+      if (_deckService.isInitialized) {
+        _deckService.updateDisplay(display);
+      } else {
+        _deckService.initialize(display);
+      }
+    }
   }
 
   @override
@@ -60,6 +84,7 @@ class _AppBodyState extends State<AppBody> {
     _inactivityTimer?.cancel();
 
     _displayRepository.removeListener(_syncStateWithRepository);
+    _displayRepository.removeListener(_onDisplayChanged);
     _systemConfigRepository.removeListener(_syncStateWithRepository);
 
     locator<SystemActionsService>().dispose();

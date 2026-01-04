@@ -77,6 +77,8 @@ export class DisplaysController {
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}
 
+		this.logger.debug(`Fetching display data for id=${auth.ownerId}`);
+
 		const display = await this.displaysService.getOneOrThrow(auth.ownerId);
 
 		// Resolve home page for the display
@@ -107,6 +109,8 @@ export class DisplaysController {
 			this.logger.warn('Attempted access by non-display entity');
 			throw new ForbiddenException('This endpoint is only accessible by displays');
 		}
+
+		this.logger.debug(`Updating display with id=${auth.ownerId}`);
 
 		const display = await this.displaysService.update(auth.ownerId, body.data);
 
@@ -144,6 +148,8 @@ export class DisplaysController {
 		// Extract the token from the Authorization header
 		const token = authHeader?.replace('Bearer ', '');
 
+		this.logger.debug(`Refreshing token for display=${auth.ownerId}`);
+
 		const result = await this.registrationService.refreshDisplayToken(auth.ownerId, token);
 
 		const responseData = new DisplayTokenRefreshDataModel();
@@ -164,6 +170,8 @@ export class DisplaysController {
 	})
 	@ApiSuccessResponse(DisplaysResponseModel, 'Returns a list of displays')
 	async findAll(): Promise<DisplaysResponseModel> {
+		this.logger.debug('Fetching all displays');
+
 		const displays = await this.displaysService.findAll();
 
 		// Batch resolve home pages for all displays (avoids N+1 queries)
@@ -190,6 +198,8 @@ export class DisplaysController {
 	@ApiSuccessResponse(DisplayResponseModel, 'Returns the display')
 	@ApiNotFoundResponse('Display not found')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayResponseModel> {
+		this.logger.debug(`Fetching display with id=${id}`);
+
 		const display = await this.displaysService.getOneOrThrow(id);
 
 		// Resolve home page for the display
@@ -218,6 +228,8 @@ export class DisplaysController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqUpdateDisplayDto,
 	): Promise<DisplayResponseModel> {
+		this.logger.debug(`Updating display with id=${id}`);
+
 		const display = await this.displaysService.update(id, body.data);
 
 		// Resolve home page for the display
@@ -243,7 +255,11 @@ export class DisplaysController {
 	@ApiNotFoundResponse('Display not found')
 	@HttpCode(204)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`Removing display with id=${id}`);
+
 		await this.displaysService.remove(id);
+
+		this.logger.debug(`Successfully removed display with id=${id}`);
 	}
 
 	@Get(':id/tokens')
@@ -258,12 +274,16 @@ export class DisplaysController {
 	@ApiSuccessResponse(DisplayTokensResponseModel, 'Returns the list of display tokens')
 	@ApiNotFoundResponse('Display not found')
 	async getTokens(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayTokensResponseModel> {
+		this.logger.debug(`Fetching tokens for display with id=${id}`);
+
 		// Verify display exists
 		await this.displaysService.getOneOrThrow(id);
 
 		// Get all tokens for this display (only active, non-revoked tokens)
 		const allTokens = await this.tokensService.findByOwnerId(id, TokenOwnerType.DISPLAY);
 		const activeTokens = allTokens.filter((token) => !token.revoked);
+
+		this.logger.debug(`Found ${activeTokens.length} active tokens for display with id=${id}`);
 
 		const response = new DisplayTokensResponseModel();
 
@@ -285,11 +305,15 @@ export class DisplaysController {
 	@ApiNotFoundResponse('Display not found')
 	@HttpCode(204)
 	async revokeToken(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`Revoking tokens for display with id=${id}`);
+
 		// Verify display exists
 		const display = await this.displaysService.getOneOrThrow(id);
 
 		// Revoke all tokens for this display
 		await this.tokensService.revokeByOwnerId(id, TokenOwnerType.DISPLAY);
+
+		this.logger.debug(`Successfully revoked tokens for display with id=${id}`);
 
 		// Emit token revoked event for socket notification
 		this.eventEmitter.emit(EventType.DISPLAY_TOKEN_REVOKED, { id: display.id });
@@ -306,6 +330,8 @@ export class DisplaysController {
 	@ApiSuccessResponse(PermitJoinResponseModel, 'Permit join activated successfully')
 	@ApiBadRequestResponse('Permit join is not available in all-in-one deployment mode')
 	permitJoin(): PermitJoinResponseModel {
+		this.logger.debug('Activating permit join');
+
 		this.permitJoinService.activatePermitJoin();
 
 		const expiresAt = this.permitJoinService.getExpiresAt();
@@ -314,6 +340,8 @@ export class DisplaysController {
 		if (!expiresAt || remainingTime === null) {
 			throw new Error('Failed to activate permit join');
 		}
+
+		this.logger.debug(`Successfully activated, expires at ${expiresAt.toISOString()}`);
 
 		const data = new PermitJoinDataModel();
 		data.success = true;
@@ -364,6 +392,8 @@ export class DisplaysController {
 	@ApiNoContentResponse({ description: 'Permit join deactivated successfully' })
 	@HttpCode(204)
 	deactivatePermitJoin(): void {
+		this.logger.debug('Deactivating permit join');
 		this.permitJoinService.deactivatePermitJoin();
+		this.logger.debug('Successfully deactivated');
 	}
 }

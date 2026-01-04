@@ -71,7 +71,11 @@ export class DevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<DevicesResponseModel> {
+		this.logger.debug('Fetching all devices');
+
 		const devices = await this.devicesService.findAll();
+
+		this.logger.debug(`Retrieved ${devices.length} devices`);
 
 		const response = new DevicesResponseModel();
 
@@ -94,7 +98,13 @@ export class DevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get('validation')
 	async validateAll(): Promise<DevicesValidationResponseModel> {
+		this.logger.debug('Validating all devices');
+
 		const validationResult = await this.deviceValidationService.validateAllDevices();
+
+		this.logger.debug(
+			`Validation complete: ${validationResult.summary.validDevices}/${validationResult.summary.totalDevices} valid`,
+		);
 
 		const response = new DevicesValidationResponseModel();
 
@@ -125,6 +135,8 @@ export class DevicesController {
 	async validateOne(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<DeviceValidationResponseModel> {
+		this.logger.debug(`Validating device id=${id}`);
+
 		const validationResult = await this.deviceValidationService.validateDeviceById(id);
 
 		if (!validationResult) {
@@ -132,6 +144,8 @@ export class DevicesController {
 
 			throw new NotFoundException('Requested device does not exist');
 		}
+
+		this.logger.debug(`Device id=${id} validation: ${validationResult.isValid ? 'valid' : 'invalid'}`);
 
 		const response = new DeviceValidationResponseModel();
 
@@ -157,7 +171,11 @@ export class DevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DeviceResponseModel> {
+		this.logger.debug(`Fetching device id=${id}`);
+
 		const device = await this.getOneOrThrow(id);
+
+		this.logger.debug(`Found device id=${device.id}`);
 
 		const response = new DeviceResponseModel();
 
@@ -188,6 +206,8 @@ export class DevicesController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<DeviceResponseModel> {
+		this.logger.debug('Incoming request to create a new device');
+
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
@@ -232,6 +252,8 @@ export class DevicesController {
 		try {
 			const device = await this.devicesService.create(dtoInstance);
 
+			this.logger.debug(`Successfully created device id=${device.id}`);
+
 			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'devices', device.id);
 
 			const response = new DeviceResponseModel();
@@ -270,6 +292,8 @@ export class DevicesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<DeviceResponseModel> {
+		this.logger.debug(`Incoming update request for device id=${id}`);
+
 		const device = await this.getOneOrThrow(id);
 
 		let mapping: DeviceTypeMapping<DeviceEntity, CreateDeviceDto, UpdateDeviceDto>;
@@ -314,6 +338,8 @@ export class DevicesController {
 		try {
 			const updatedDevice = await this.devicesService.update(device.id, dtoInstance);
 
+			this.logger.debug(`Successfully updated device id=${updatedDevice.id}`);
+
 			const response = new DeviceResponseModel();
 
 			response.data = updatedDevice;
@@ -343,9 +369,13 @@ export class DevicesController {
 	@Delete(':id')
 	@HttpCode(204)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`Incoming request to delete device id=${id}`);
+
 		const device = await this.getOneOrThrow(id);
 
 		await this.devicesService.remove(device.id);
+
+		this.logger.debug(`Successfully deleted device id=${id}`);
 	}
 
 	@ApiOperation({
@@ -362,9 +392,13 @@ export class DevicesController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id/zones')
 	async getDeviceZones(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpacesResponseModel> {
+		this.logger.debug(`Fetching zones for device id=${id}`);
+
 		await this.getOneOrThrow(id);
 
 		const zones = await this.deviceZonesService.getDeviceZones(id);
+
+		this.logger.debug(`Found ${zones.length} zones for device id=${id}`);
 
 		const response = new SpacesResponseModel();
 
@@ -393,10 +427,14 @@ export class DevicesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Param('zoneId', new ParseUUIDPipe({ version: '4' })) zoneId: string,
 	): Promise<void> {
+		this.logger.debug(`Adding device id=${id} to zone id=${zoneId}`);
+
 		await this.getOneOrThrow(id);
 
 		try {
 			await this.deviceZonesService.addDeviceToZone(id, zoneId);
+
+			this.logger.debug(`Successfully added device id=${id} to zone id=${zoneId}`);
 		} catch (error) {
 			if (error instanceof DevicesNotFoundException) {
 				throw new NotFoundException(error.message);
@@ -426,12 +464,18 @@ export class DevicesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Param('zoneId', new ParseUUIDPipe({ version: '4' })) zoneId: string,
 	): Promise<void> {
+		this.logger.debug(`Removing device id=${id} from zone id=${zoneId}`);
+
 		await this.getOneOrThrow(id);
 
 		await this.deviceZonesService.removeDeviceFromZone(id, zoneId);
+
+		this.logger.debug(`Successfully removed device id=${id} from zone id=${zoneId}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<DeviceEntity> {
+		this.logger.debug(`Checking existence of device id=${id}`);
+
 		const device = await this.devicesService.findOne(id);
 
 		if (!device) {

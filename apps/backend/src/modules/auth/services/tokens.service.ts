@@ -30,6 +30,8 @@ export class TokensService {
 	) {}
 
 	async findAll<TToken extends TokenEntity>(type?: new (...args: any[]) => TToken): Promise<TToken[]> {
+		this.logger.debug('Fetching all tokens');
+
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
 
@@ -49,6 +51,8 @@ export class TokensService {
 
 		const tokens = (await queryBuilder.getMany()) as TToken[];
 
+		this.logger.debug(`Found ${tokens.length} tokens`);
+
 		return tokens;
 	}
 
@@ -56,6 +60,8 @@ export class TokensService {
 		owner: string,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken[]> {
+		this.logger.debug('Fetching all tokens by owner');
+
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
 
@@ -85,33 +91,47 @@ export class TokensService {
 
 		const tokens = (await queryBuilder.getMany()) as TToken[];
 
+		this.logger.debug(`Found ${tokens.length} tokens`);
+
 		return tokens;
 	}
 
 	async findAllByOwnerType(ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
+		this.logger.debug(`Fetching all long-live tokens by owner type=${ownerType}`);
+
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
 		const tokens = await repository.find({
 			where: { ownerType },
 		});
 
+		this.logger.debug(`Found ${tokens.length} long-live tokens`);
+
 		return tokens;
 	}
 
 	async findByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
+		this.logger.debug(`Fetching long-live tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
+
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
 		const tokens = await repository.find({
 			where: { tokenOwnerId: ownerId, ownerType },
 		});
 
+		this.logger.debug(`Found ${tokens.length} long-live tokens`);
+
 		return tokens;
 	}
 
 	async revokeByOwnerId(ownerId: string, ownerType: TokenOwnerType): Promise<void> {
+		this.logger.debug(`Revoking all tokens for ownerId=${ownerId}, ownerType=${ownerType}`);
+
 		const repository = this.dataSource.getRepository(LongLiveTokenEntity);
 
 		await repository.update({ tokenOwnerId: ownerId, ownerType }, { revoked: true });
+
+		this.logger.debug(`Successfully revoked tokens for ownerId=${ownerId}`);
 	}
 
 	async findOne<TToken extends TokenEntity>(id: string, type?: new (...args: any[]) => TToken): Promise<TToken | null> {
@@ -122,6 +142,8 @@ export class TokensService {
 		token: string,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken | null> {
+		this.logger.debug('Finding token by hashed value');
+
 		const hashedToken = hashToken(token);
 		const allTokens = await this.findAll(type);
 
@@ -135,6 +157,8 @@ export class TokensService {
 	}
 
 	async create<TToken extends TokenEntity, TCreateDTO extends CreateTokenDto>(createDto: TCreateDTO): Promise<TToken> {
+		this.logger.debug('Creating new token');
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -244,6 +268,8 @@ export class TokensService {
 		// Retrieve the saved token with its full relations
 		const savedToken = await this.getOneOrThrow<TToken>(savedResult.id, mapping.class);
 
+		this.logger.debug(`Successfully created token with id=${savedToken.id}`);
+
 		return savedToken;
 	}
 
@@ -251,6 +277,8 @@ export class TokensService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TToken> {
+		this.logger.debug(`Updating token with id=${id}`);
+
 		const token = await this.getOneOrThrow(id);
 
 		const mapping = this.tokensMapperService.getMapping<TToken, any, TUpdateDTO>(token.type);
@@ -265,10 +293,14 @@ export class TokensService {
 
 		const updatedToken = await this.getOneOrThrow<TToken>(token.id);
 
+		this.logger.debug(`Successfully updated token with id=${updatedToken.id}`);
+
 		return updatedToken;
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing token with id=${id}`);
+
 		const token = await this.getOneOrThrow(id);
 
 		await this.repository.remove(token);
@@ -302,6 +334,8 @@ export class TokensService {
 		value: string | number | boolean,
 		type?: new (...args: any[]) => TToken,
 	): Promise<TToken | null> {
+		this.logger.debug('Fetching token');
+
 		const repository = this.dataSource.getRepository(type ?? TokenEntity);
 		const typeName = type?.name;
 
@@ -328,6 +362,8 @@ export class TokensService {
 
 			return null;
 		}
+
+		this.logger.debug('Successfully fetched token');
 
 		return token;
 	}

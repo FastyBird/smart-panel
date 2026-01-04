@@ -49,6 +49,8 @@ export class ModulesTypeMapperService {
 	getMapping<TModule extends ModuleConfigModel, TConfigDTO extends UpdateModuleConfigDto>(
 		type: string,
 	): ModuleTypeMapping<TModule, TConfigDTO> {
+		this.logger.debug(`Attempting to find mapping for config type: '${type}'`, { data: 'type' });
+
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -58,6 +60,8 @@ export class ModulesTypeMapperService {
 
 			throw new ConfigException(`Unsupported module type: ${type}`);
 		}
+
+		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for module type: '${type}'`);
 
 		return mapping as ModuleTypeMapping<TModule, TConfigDTO>;
 	}

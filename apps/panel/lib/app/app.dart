@@ -14,6 +14,8 @@ import 'package:flutter/foundation.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart'
     as dashboard_module;
+import 'package:fastybird_smart_panel/modules/deck/export.dart'
+    as deck_module;
 import 'package:fastybird_smart_panel/modules/devices/export.dart'
     as devices_module;
 import 'package:fastybird_smart_panel/modules/displays/export.dart'
@@ -397,6 +399,12 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider.value(
           value: locator<dashboard_module.DashboardService>(),
+        ),
+        ChangeNotifierProvider.value(
+          value: locator<deck_module.DeckService>(),
+        ),
+        ChangeNotifierProvider.value(
+          value: locator<deck_module.IntentsService>(),
         ),
       ],
       child: AppBody(),

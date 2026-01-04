@@ -84,6 +84,8 @@ export class AuthGuard implements CanActivate {
 		]);
 
 		if (isPublic) {
+			this.logger.debug('Route is public, allowing access');
+
 			return true;
 		}
 
@@ -163,6 +165,8 @@ export class AuthGuard implements CanActivate {
 
 		request.auth = { type: 'user', id: user.id, role: user.role };
 
+		this.logger.debug(`User authentication successful for user=${user.id}`);
+
 		return true;
 	}
 
@@ -205,6 +209,8 @@ export class AuthGuard implements CanActivate {
 			ownerId: storedToken.ownerId,
 			role: UserRole.USER,
 		};
+
+		this.logger.debug(`Token authentication successful (ownerType=${storedToken.ownerType})`);
 
 		return true;
 	}
@@ -253,6 +259,8 @@ export class AuthGuard implements CanActivate {
 			ownerId: storedLongLiveToken.ownerId,
 			role: role,
 		};
+
+		this.logger.debug(`Long-live token authentication successful (ownerType=${storedLongLiveToken.ownerType})`);
 
 		return true;
 	}

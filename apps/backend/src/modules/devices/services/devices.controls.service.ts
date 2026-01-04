@@ -24,16 +24,22 @@ export class DevicesControlsService {
 	) {}
 
 	async findAll(deviceId: string): Promise<DeviceControlEntity[]> {
+		this.logger.debug(`Fetching all controls for deviceId=${deviceId}`);
+
 		const controls = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
 			.where('device.id = :deviceId', { deviceId })
 			.getMany();
 
+		this.logger.debug(`Found ${controls.length} controls for deviceId=${deviceId}`);
+
 		return controls;
 	}
 
 	async findOne(id: string, deviceId: string): Promise<DeviceControlEntity | null> {
+		this.logger.debug(`Fetching control with id=${id} for deviceId=${deviceId}`);
+
 		const control = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
@@ -42,13 +48,19 @@ export class DevicesControlsService {
 			.getOne();
 
 		if (!control) {
+			this.logger.debug(`Control with id=${id} for deviceId=${deviceId} not found`);
+
 			return null;
 		}
+
+		this.logger.debug(`Successfully fetched control with id=${id} for deviceId=${deviceId}`);
 
 		return control;
 	}
 
 	async findOneByName(name: string, deviceId: string): Promise<DeviceControlEntity | null> {
+		this.logger.debug(`Fetching control with name=${name} for deviceId=${deviceId}`);
+
 		const control = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.device', 'device')
@@ -57,13 +69,19 @@ export class DevicesControlsService {
 			.getOne();
 
 		if (!control) {
+			this.logger.debug(`Control with name=${name} for deviceId=${deviceId} not found`);
+
 			return null;
 		}
+
+		this.logger.debug(`Successfully fetched control with name=${name} for deviceId=${deviceId}`);
 
 		return control;
 	}
 
 	async create(deviceId: string, createDeviceControlDto: CreateDeviceControlDto): Promise<DeviceControlEntity> {
+		this.logger.debug(`Creating new control for deviceId=${deviceId}`);
+
 		const existingControl = await this.findOneByName(createDeviceControlDto.name, deviceId);
 
 		if (existingControl !== null) {
@@ -82,12 +100,16 @@ export class DevicesControlsService {
 
 		const savedControl = await this.getOneOrThrow(control.id, deviceId);
 
+		this.logger.debug(`Successfully created control with id=${savedControl.id} for deviceId=${deviceId}`);
+
 		this.eventEmitter.emit(EventType.DEVICE_CONTROL_CREATED, savedControl);
 
 		return savedControl;
 	}
 
 	async remove(id: string, deviceId: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
+		this.logger.debug(`Removing control with id=${id} for deviceId=${deviceId}`);
+
 		const control = await manager.findOneOrFail<DeviceControlEntity>(DeviceControlEntity, {
 			where: { id, device: { id: deviceId } },
 		});

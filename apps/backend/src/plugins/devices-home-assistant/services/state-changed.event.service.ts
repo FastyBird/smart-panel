@@ -117,7 +117,11 @@ export class StateChangedEventService implements WsEventService {
 
 					const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, [event.data.new_state]);
 
+					this.logger.debug(`[STATE CHANGED] Received ${resultMaps.length} result maps from mapper`);
+
 					for (const map of resultMaps) {
+						this.logger.debug(`[STATE CHANGED] Processing map with ${map.size} entries`);
+
 						for (const [propertyId, value] of map) {
 							const property = this.properties.find((property) => property.id === propertyId);
 
@@ -237,6 +241,10 @@ export class StateChangedEventService implements WsEventService {
 							...instanceToPlain(virtualProp),
 							value: resolved.value,
 						}),
+					);
+
+					this.logger.debug(
+						`Updated virtual property ${virtualProp.category} = ${String(resolved.value)} for channel ${channel.category}`,
 					);
 				}
 			}

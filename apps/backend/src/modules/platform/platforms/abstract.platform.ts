@@ -43,6 +43,8 @@ export abstract class Platform {
 			throw new PlatformException('Validation of platform DTO failed. Error was logged.');
 		}
 
+		this.logger.debug(`DTO validation passed: ${dtoClass.name}`);
+
 		return instance;
 	}
 }

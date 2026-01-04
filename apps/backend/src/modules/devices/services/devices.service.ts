@@ -46,7 +46,11 @@ export class DevicesService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		this.logger.debug('Fetching all devices count');
+
 		const devices = await repository.count();
+
+		this.logger.debug(`Found that in system is ${devices} devices`);
 
 		return devices;
 	}
@@ -56,6 +60,8 @@ export class DevicesService {
 		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		this.logger.debug('Fetching all devices');
 
 		const devices = (await repository.find({
 			relations: [
@@ -71,6 +77,8 @@ export class DevicesService {
 			],
 		})) as TDevice[];
 
+		this.logger.debug(`Found ${devices.length} devices`);
+
 		return devices;
 	}
 
@@ -78,6 +86,8 @@ export class DevicesService {
 		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		this.logger.debug(`Fetching device with id=${id}`);
 
 		const device = (await repository
 			.createQueryBuilder('device')
@@ -94,8 +104,12 @@ export class DevicesService {
 			.getOne()) as TDevice | null;
 
 		if (!device) {
+			this.logger.debug(`Device with id=${id} not found`);
+
 			return null;
 		}
+
+		this.logger.debug(`Successfully fetched device with id=${id}`);
 
 		return device;
 	}
@@ -108,6 +122,8 @@ export class DevicesService {
 		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		this.logger.debug(`Fetching device with ${column}=${value}`);
 
 		const device = (await repository
 			.createQueryBuilder('device')
@@ -124,8 +140,12 @@ export class DevicesService {
 			.getOne()) as TDevice | null;
 
 		if (!device) {
+			this.logger.debug(`Device with ${column}=${value} not found`);
+
 			return null;
 		}
+
+		this.logger.debug(`Successfully fetched device with ${column}=${value}`);
 
 		return device;
 	}
@@ -133,6 +153,8 @@ export class DevicesService {
 	async create<TDevice extends DeviceEntity, TCreateDTO extends CreateDeviceDto>(
 		createDto: TCreateDTO,
 	): Promise<TDevice> {
+		this.logger.debug('Creating new device');
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -186,6 +208,8 @@ export class DevicesService {
 		const raw = await repository.save(device);
 
 		for (const channelDtoInstance of channels) {
+			this.logger.debug(`Creating new channel for deviceId=${raw.id}`);
+
 			await this.channelsService.create({
 				...channelDtoInstance,
 				device: raw.id,
@@ -207,6 +231,8 @@ export class DevicesService {
 			savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 		}
 
+		this.logger.debug(`Successfully created device with id=${savedDevice.id}`);
+
 		this.eventEmitter.emit(EventType.DEVICE_CREATED, savedDevice);
 
 		return savedDevice;
@@ -216,6 +242,8 @@ export class DevicesService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TDevice> {
+		this.logger.debug(`Updating device with id=${id}`);
+
 		const device = await this.getOneOrThrow(id);
 
 		const mapping = this.devicesMapperService.getMapping<TDevice, any, TUpdateDTO>(device.type);
@@ -255,12 +283,16 @@ export class DevicesService {
 			updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
 		}
 
+		this.logger.debug(`Successfully updated device with id=${updatedDevice.id}`);
+
 		this.eventEmitter.emit(EventType.DEVICE_UPDATED, updatedDevice);
 
 		return updatedDevice;
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing device with id=${id}`);
+
 		// Get the full device entity before removal to preserve ID for event emission
 		const fullDevice = await this.getOneOrThrow(id);
 
@@ -327,6 +359,8 @@ export class DevicesService {
 	 * @throws DevicesValidationException if space is not a room
 	 */
 	private async validateRoomAssignment(roomId: string): Promise<void> {
+		this.logger.debug(`Validating room assignment for roomId=${roomId}`);
+
 		const space = await this.spaceRepository.findOne({ where: { id: roomId } });
 
 		if (!space) {
@@ -342,5 +376,7 @@ export class DevicesService {
 				'Device can only be assigned to a room, not a zone. Use zone_ids for zone membership.',
 			);
 		}
+
+		this.logger.debug(`Room assignment validated for roomId=${roomId}`);
 	}
 }

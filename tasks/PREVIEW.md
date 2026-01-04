@@ -6,9 +6,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 62 |
+| Done | 78 |
 | Planned | 11 |
-| **Total** | **73** |
+| **Total** | **89** |
 
 ---
 
@@ -20,6 +20,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 |----|-------|-------|------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | Display roles & House control | backend, admin, panel | large |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | Display roles & House control v2 (refined specification) | backend, admin, panel | large |
+| EPIC-PANEL-SPACES-DECK-INTENTS | Panel App Spaces + Deck + Intents architecture | panel | large |
 | EPIC-SCENES-MVP | Scenes module MVP (room-scoped scenes) | backend, admin, panel | large |
 | EPIC-SCENES-PLUGIN-MVP | Scenes module (plugin-based) MVP | backend, admin, panel | large |
 | EPIC-SPACES-FIRST-UX | Spaces-first UX (Spaces module + Space pages + onboarding + MVP intents) | backend, admin, panel | large |
@@ -52,7 +53,19 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-MDNS-BACKEND-DISCOVERY | mDNS Backend Discovery | backend, panel | medium |
 | FEATURE-MODULE-CONFIG | Module Configuration Support | backend, admin | large |
 | FEATURE-MULTI-LOCATION-WEATHER | Multi-Location Weather Support | backend, admin, panel | large |
+| FEATURE-PANEL-DASHBOARD-PAGES-AS-DECKITEM | Dashboard page rendering via DeckItem abstraction | panel | medium |
+| FEATURE-PANEL-DECK-BUILDER | Deck Builder (system view + dashboard pages) | panel | large |
+| FEATURE-PANEL-DECK-DOMAIN-MODELS | Domain models for Spaces, Displays, Pages, Deck items | panel | medium |
+| FEATURE-PANEL-DECK-NAVIGATION-UI | Deck navigation UI with new deck model | panel | large |
+| FEATURE-PANEL-DISPLAY-CONFIG-VALIDATION | Display Role and Home Mode config validation | panel | medium |
+| FEATURE-PANEL-HYDRATION-PIPELINE | App Hydration pipeline | panel | large |
 | FEATURE-PANEL-IDLE-MODE-SPACE-AWARE | Space-aware idle mode for panel | panel | medium |
+| FEATURE-PANEL-INTENTS-CORE | Intents layer (navigation + device control + scene trigger) | panel | large |
+| FEATURE-PANEL-REALTIME-SYSTEMVIEWS | Real-time updates for system views via WebSocket | panel | medium |
+| FEATURE-PANEL-SCENES-INTEGRATION | Scenes invocation from system views | panel | medium |
+| FEATURE-PANEL-SYSTEMVIEW-ENTRY | System View – Entry Overview | panel | large |
+| FEATURE-PANEL-SYSTEMVIEW-MASTER | System View – Master Overview | panel | large |
+| FEATURE-PANEL-SYSTEMVIEW-ROOM | System View – Room Overview | panel | large |
 | FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | Home Assistant Adoption Improvements | backend | large |
 | FEATURE-PLUGIN-HA-AUTO-MAP | Automatic Entity Mapping for HA | backend | large |
 | FEATURE-PLUGIN-SHELLY-V1 | Shelly Gen 1 Plugin | backend | large |
@@ -115,7 +128,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | Display Token Revocation & Multi-Backend | backend, admin, panel | large |
 | TECHNICAL-SCENES-ACTION-VALIDATION | Scene action validation & typing | backend | small |
 | TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | Align implementation to v2 specification | backend, admin, panel | small |
+| TECH-PANEL-REMOVE-LEGACY-NAV | Remove legacy "first page" navigation assumptions | panel | medium |
 | TECH-SCENES-OPENAPI-SYNC | Scenes — OpenAPI models + client sync tests | backend, admin, panel | small |
+| TEST-PANEL-DECK-STARTUP-MATRIX | Integration tests for deck startup matrix | panel | medium |
 
 ### Planned
 
@@ -133,6 +148,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 |----|-------|-------|
 | CHORE-CODEBASE-TODO-CLEANUP | Codebase TODO Cleanup | backend, admin, panel |
 | CHORE-EXTENSIONS-CORE-CONTROL | Extensions Core Control Implementation | backend, admin |
+| CHORE-PANEL-DOCS-SPACES-DECK-INTENTS | Panel App documentation for Spaces + Deck + System Views + Intents | panel |
 | CHORE-SCENES-APPLY-FEEDBACK | Apply scene feedback & idempotency | backend, panel |
 
 ### Planned
@@ -293,9 +309,25 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
 | TECH-SCENES-OPENAPI-SYNC | technical | done |
 | CHORE-CODEBASE-TODO-CLEANUP | chore | done |
+| CHORE-PANEL-DOCS-SPACES-DECK-INTENTS | chore | done |
 | CHORE-SCENES-APPLY-FEEDBACK | chore | done |
 | TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
+| TECH-PANEL-REMOVE-LEGACY-NAV | technical | done |
+| TEST-PANEL-DECK-STARTUP-MATRIX | technical | done |
+| EPIC-PANEL-SPACES-DECK-INTENTS | epic | done |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
+| FEATURE-PANEL-DASHBOARD-PAGES-AS-DECKITEM | feature | done |
+| FEATURE-PANEL-DECK-BUILDER | feature | done |
+| FEATURE-PANEL-DECK-DOMAIN-MODELS | feature | done |
+| FEATURE-PANEL-DECK-NAVIGATION-UI | feature | done |
+| FEATURE-PANEL-DISPLAY-CONFIG-VALIDATION | feature | done |
+| FEATURE-PANEL-HYDRATION-PIPELINE | feature | done |
+| FEATURE-PANEL-INTENTS-CORE | feature | done |
+| FEATURE-PANEL-REALTIME-SYSTEMVIEWS | feature | done |
+| FEATURE-PANEL-SCENES-INTEGRATION | feature | done |
+| FEATURE-PANEL-SYSTEMVIEW-ENTRY | feature | done |
+| FEATURE-PANEL-SYSTEMVIEW-MASTER | feature | done |
+| FEATURE-PANEL-SYSTEMVIEW-ROOM | feature | done |
 | FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
 | FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
 | FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
@@ -373,6 +405,23 @@ EPIC-APP-ONBOARDING (planned)
 ├── TECH-ONBOARDING-ROUTER-GUARDS (planned)
 ├── FEATURE-ONBOARDING-WIZARD (planned)
 └── FEATURE-ONBOARDING-INTEGRATIONS (planned)
+
+EPIC-PANEL-SPACES-DECK-INTENTS (done)
+├── FEATURE-PANEL-DECK-DOMAIN-MODELS (done)
+├── FEATURE-PANEL-DECK-BUILDER (done)
+├── FEATURE-PANEL-HYDRATION-PIPELINE (done)
+├── TECH-PANEL-REMOVE-LEGACY-NAV (done)
+├── FEATURE-PANEL-SYSTEMVIEW-ROOM (done)
+├── FEATURE-PANEL-SYSTEMVIEW-MASTER (done)
+├── FEATURE-PANEL-SYSTEMVIEW-ENTRY (done)
+├── FEATURE-PANEL-INTENTS-CORE (done)
+├── FEATURE-PANEL-DECK-NAVIGATION-UI (done)
+├── FEATURE-PANEL-DISPLAY-CONFIG-VALIDATION (done)
+├── FEATURE-PANEL-REALTIME-SYSTEMVIEWS (done)
+├── FEATURE-PANEL-SCENES-INTEGRATION (done)
+├── FEATURE-PANEL-DASHBOARD-PAGES-AS-DECKITEM (done)
+├── TEST-PANEL-DECK-STARTUP-MATRIX (done)
+└── CHORE-PANEL-DOCS-SPACES-DECK-INTENTS (done)
 ```
 
 ---
@@ -396,6 +445,7 @@ tasks/
 │   ├── EPIC-SCENES-MVP.md
 │   ├── EPIC-SCENES-PLUGIN-MVP.md
 │   ├── EPIC-SPACES-FIRST-UX.md
+│   ├── EPIC_PANEL_APP_SPACES_DEK_INTENTS.md
 │   ├── FEATURE-ADMIN-PLUGIN-SERVICES.md
 │   ├── FEATURE-APP-UPDATES.md
 │   ├── FEATURE-CONFIG-CONSOLIDATION.md
@@ -467,4 +517,4 @@ tasks/
 
 ---
 
-*Last updated: 2026-01-03*
+*Last updated: 2026-01-04*

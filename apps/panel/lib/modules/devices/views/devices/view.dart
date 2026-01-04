@@ -1,39 +1,65 @@
 import 'package:collection/collection.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:flutter/material.dart';
 
-abstract class DeviceView {
-  final DeviceModel _deviceModel;
+class DeviceView {
+  final String _id;
+  final String _type;
+  final DevicesModuleDeviceCategory _category;
+  final String _name;
+  final String? _description;
+  final IconData? _icon;
+  final String? _roomId;
+  final List<String> _zoneIds;
   final List<ChannelView> _channels;
   final bool _isValid;
   final List<ValidationIssue> _validationIssues;
 
   DeviceView({
-    required DeviceModel deviceModel,
+    required String id,
+    required String type,
+    DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.generic,
+    required String name,
+    String? description,
+    IconData? icon,
+    String? roomId,
+    List<String> zoneIds = const [],
     required List<ChannelView> channels,
     bool isValid = true,
     List<ValidationIssue> validationIssues = const [],
-  })  : _deviceModel = deviceModel,
+  })  : _id = id,
+        _type = type,
+        _category = category,
+        _name = name,
+        _description = description,
+        _icon = icon,
+        _roomId = roomId,
+        _zoneIds = zoneIds,
         _channels = channels,
         _isValid = isValid,
         _validationIssues = validationIssues;
 
-  DeviceModel get deviceModel => _deviceModel;
+  String get id => _id;
+
+  String get type => _type;
+
+  DevicesModuleDeviceCategory get category => _category;
+
+  String get name => _name;
+
+  String? get description => _description;
+
+  IconData? get icon => _icon;
+
+  String? get roomId => _roomId;
+
+  List<String> get zoneIds => _zoneIds;
 
   List<ChannelView> get channels => _channels;
 
-  String get id => deviceModel.id;
-
-  String get name => deviceModel.name;
-
-  IconData? get icon => deviceModel.icon;
-
   bool? get isOn => null;
-
-  DeviceCategory get category => deviceModel.category;
 
   /// Whether this device passes validation (no errors)
   bool get isValid => _isValid;

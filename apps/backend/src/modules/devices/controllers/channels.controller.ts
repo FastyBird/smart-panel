@@ -65,7 +65,11 @@ export class ChannelsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
 	async findAll(): Promise<ChannelsResponseModel> {
+		this.logger.debug('Fetching all channels');
+
 		const channels = await this.channelsService.findAll();
+
+		this.logger.debug(`Retrieved ${channels.length} channels`);
 
 		const response = new ChannelsResponseModel();
 
@@ -91,7 +95,11 @@ export class ChannelsController {
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<ChannelResponseModel> {
+		this.logger.debug(`Fetching channel id=${id}`);
+
 		const channel = await this.getOneOrThrow(id);
+
+		this.logger.debug(`Found channel id=${channel.id}`);
 
 		const response = new ChannelResponseModel();
 
@@ -122,6 +130,8 @@ export class ChannelsController {
 		@Res({ passthrough: true }) res: Response,
 		@Req() req: Request,
 	): Promise<ChannelResponseModel> {
+		this.logger.debug('Incoming request to create a new channel');
+
 		const type: string | undefined =
 			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
@@ -166,6 +176,8 @@ export class ChannelsController {
 		try {
 			const channel = await this.channelsService.create(dtoInstance);
 
+			this.logger.debug(`Successfully created channel id=${channel.id}`);
+
 			setLocationHeader(req, res, DEVICES_MODULE_PREFIX, 'channels', channel.id);
 
 			const response = new ChannelResponseModel();
@@ -204,6 +216,8 @@ export class ChannelsController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: { data: object },
 	): Promise<ChannelResponseModel> {
+		this.logger.debug(`Incoming update request for channel id=${id}`);
+
 		const channel = await this.getOneOrThrow(id);
 
 		let mapping: ChannelTypeMapping<ChannelEntity, CreateChannelDto, UpdateChannelDto>;
@@ -248,6 +262,8 @@ export class ChannelsController {
 		try {
 			const updatedChannel = await this.channelsService.update(channel.id, dtoInstance);
 
+			this.logger.debug(`Successfully updated channel id=${updatedChannel.id}`);
+
 			const response = new ChannelResponseModel();
 
 			response.data = updatedChannel;
@@ -277,12 +293,18 @@ export class ChannelsController {
 	@Delete(':id')
 	@HttpCode(204)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`Incoming request to delete channel id=${id}`);
+
 		const channel = await this.getOneOrThrow(id);
 
 		await this.channelsService.remove(channel.id);
+
+		this.logger.debug(`Successfully deleted channel id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<ChannelEntity> {
+		this.logger.debug(`Checking existence of channel id=${id}`);
+
 		const channel = await this.channelsService.findOne(id);
 
 		if (!channel) {

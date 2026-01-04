@@ -39,6 +39,8 @@ export class ChannelsTypeMapperService {
 	getMapping<TChannel extends ChannelEntity, TCreateDTO extends CreateChannelDto, TUpdateDTO extends UpdateChannelDto>(
 		type: string,
 	): ChannelTypeMapping<TChannel, TCreateDTO, TUpdateDTO> {
+		this.logger.debug(`Attempting to find mapping for channel type: '${type}'`);
+
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -48,6 +50,8 @@ export class ChannelsTypeMapperService {
 
 			throw new DevicesException(`Unsupported channel type: ${type}`);
 		}
+
+		this.logger.debug(`[LOOKUP SUCCESS] Found mapping for channel type: '${type}'`);
 
 		return mapping as ChannelTypeMapping<TChannel, TCreateDTO, TUpdateDTO>;
 	}

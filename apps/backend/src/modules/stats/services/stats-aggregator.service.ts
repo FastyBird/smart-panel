@@ -80,6 +80,8 @@ export class StatsAggregatorService {
 			const stats = await this.getAll();
 
 			this.eventEmitter.emit(EventType.STATS_INFO, instanceToPlain(stats));
+
+			this.logger.debug('Stats info broadcasted successfully');
 		} catch (error) {
 			const err = error as Error;
 

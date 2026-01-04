@@ -145,6 +145,16 @@ export const DevicesRemoveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 });
 
+export const DevicesAddZoneActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	zoneId: z.string().uuid(),
+});
+
+export const DevicesRemoveZoneActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	zoneId: z.string().uuid(),
+});
+
 // BACKEND API
 // ===========
 

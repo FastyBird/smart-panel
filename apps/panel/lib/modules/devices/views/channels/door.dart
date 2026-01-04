@@ -14,7 +14,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart
 class DoorChannelView extends ChannelView
     with ChannelObstructionMixin, ChannelPercentageMixin, ChannelFaultMixin {
   DoorChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -53,7 +58,7 @@ class DoorChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${statusProp.category.value}',
+      'Channel is missing required value for property: ${statusProp.category.json}',
     );
   }
 
@@ -80,19 +85,19 @@ class DoorChannelView extends ChannelView
     return [];
   }
 
-  DoorTypeValue get type {
+  DoorTypeValue get doorType {
     final ValueType? value = typeProp.value;
 
     if (value is StringValueType && DoorTypeValue.contains(value.value)) {
-      DoorTypeValue? type = DoorTypeValue.fromValue(value.value);
+      DoorTypeValue? doorTypeValue = DoorTypeValue.fromValue(value.value);
 
-      if (type != null) {
-        return type;
+      if (doorTypeValue != null) {
+        return doorTypeValue;
       }
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${typeProp.category.value}',
+      'Channel is missing required value for property: ${typeProp.category.json}',
     );
   }
 

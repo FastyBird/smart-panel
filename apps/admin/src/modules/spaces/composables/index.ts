@@ -4,6 +4,7 @@ export * from './useSpaceCategories';
 export * from './useSpaceDevices';
 export * from './useSpaceDisplays';
 export * from './useSpaceEditForm';
+export * from './useSpaceScenes';
 export * from './useSpaces';
 export * from './useSpacesActions';
 export * from './useSpacesDataSource';

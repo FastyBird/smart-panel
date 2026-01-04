@@ -73,31 +73,57 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import { ElAlert, ElIcon, ElPopover, ElText } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
-import { useBackend } from '../../../common';
-import { MODULES_PREFIX } from '../../../app.constants';
 import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { DEVICES_MODULE_PREFIX } from '../../devices/devices.constants';
-import { SPACES_MODULE_PREFIX } from '../spaces.constants';
+import { useChannels, useDevices } from '../../devices/composables/composables';
+import type { IChannel } from '../../devices/store/channels.store.types';
+import { SpaceType } from '../spaces.constants';
 
-import type { IClimateDevice, IDeviceChannel, ISpaceClimateOverridesSummaryProps } from './space-climate-overrides-summary.types';
+import type { ISpaceClimateOverridesSummaryProps } from './space-climate-overrides-summary.types';
 
 defineOptions({
 	name: 'SpaceClimateOverridesSummary',
 });
 
+interface IClimateDevice {
+	id: string;
+	name: string;
+	category: DevicesModuleDeviceCategory;
+	channels: IChannel[];
+	createdAt: Date;
+}
+
 const props = defineProps<ISpaceClimateOverridesSummaryProps>();
 
 const { t } = useI18n();
-const backend = useBackend();
+const { devices: allDevices, loaded: devicesLoaded, fetchDevices } = useDevices();
+const { channels: allChannels, loaded: channelsLoaded, fetchChannels } = useChannels();
 
-const loading = ref(false);
-const spaceDevices = ref<IClimateDevice[]>([]);
+// Devices filtered by this space (room or zone) with channels
+const spaceDevices = computed<IClimateDevice[]>(() => {
+	if (!props.space?.id) return [];
+
+	let filteredDevices;
+	if (props.space.type === SpaceType.ROOM) {
+		filteredDevices = allDevices.value.filter((device) => device.roomId === props.space.id);
+	} else {
+		// For zones: filter devices where zoneIds includes this zone
+		filteredDevices = allDevices.value.filter((device) => device.zoneIds.includes(props.space.id));
+	}
+
+	return filteredDevices.map((device) => ({
+		id: device.id,
+		name: device.name,
+		category: device.category as DevicesModuleDeviceCategory,
+		channels: allChannels.value.filter((ch) => ch.device === device.id),
+		createdAt: device.createdAt,
+	}));
+});
 
 // Helper to sort devices by createdAt (oldest first)
 const sortByCreatedAt = (devices: IClimateDevice[]): IClimateDevice[] =>
@@ -105,26 +131,24 @@ const sortByCreatedAt = (devices: IClimateDevice[]): IClimateDevice[] =>
 
 // Filter devices by category (same logic as space-edit-form), sorted by createdAt
 const thermostatDevices = computed(() =>
-	sortByCreatedAt(spaceDevices.value.filter(d => d.category === DevicesModuleDeviceCategory.thermostat))
+	sortByCreatedAt(spaceDevices.value.filter((d) => d.category === DevicesModuleDeviceCategory.thermostat))
 );
 
 const sensorDevices = computed(() =>
-	sortByCreatedAt(spaceDevices.value.filter(d => d.category === DevicesModuleDeviceCategory.sensor))
+	sortByCreatedAt(spaceDevices.value.filter((d) => d.category === DevicesModuleDeviceCategory.sensor))
 );
 
 // Temperature sensor devices: thermostats (always have temp) OR sensors with temperature channel, sorted by createdAt
 const temperatureSensorDevices = computed(() => {
 	const thermostats = thermostatDevices.value;
-	const sensorsWithTemp = sensorDevices.value.filter(d =>
-		d.channels.some(ch => ch.category === DevicesModuleChannelCategory.temperature)
+	const sensorsWithTemp = sensorDevices.value.filter((d) =>
+		d.channels.some((ch) => ch.category === DevicesModuleChannelCategory.temperature)
 	);
 	return sortByCreatedAt([...thermostats, ...sensorsWithTemp]);
 });
 
 // All climate-capable devices (for showing/hiding the section) - same as space-edit-form
-const climateDevices = computed(() =>
-	[...thermostatDevices.value, ...sensorDevices.value]
-);
+const climateDevices = computed(() => [...thermostatDevices.value, ...sensorDevices.value]);
 
 // Check if there are any climate devices in the space
 const hasClimateDevices = computed<boolean>(() => climateDevices.value.length > 0);
@@ -188,78 +212,14 @@ const summaryText = computed<string>(() => {
 	return parts.join(' · ');
 });
 
-// Load channels for a specific device
-const loadDeviceChannels = async (deviceId: string): Promise<IDeviceChannel[]> => {
-	try {
-		const { data: responseData, error } = await backend.client.GET(
-			`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`,
-			{ params: { path: { deviceId } } }
-		);
-
-		if (error || !responseData) {
-			return [];
-		}
-
-		return (responseData.data ?? []).map((channel) => ({
-			id: channel.id,
-			category: channel.category as DevicesModuleChannelCategory,
-		}));
-	} catch {
-		return [];
+onMounted(async () => {
+	// Fetch devices if not already loaded
+	if (!devicesLoaded.value) {
+		await fetchDevices();
 	}
-};
-
-const loadSpaceDevices = async (): Promise<void> => {
-	if (!props.space?.id) return;
-
-	loading.value = true;
-
-	try {
-		const { data: responseData, error } = await backend.client.GET(
-			`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/devices`,
-			{ params: { path: { id: props.space.id } } }
-		);
-
-		if (error || !responseData) {
-			return;
-		}
-
-		// Map devices with empty channels initially
-		const devices: IClimateDevice[] = (responseData.data ?? []).map((device) => ({
-			id: device.id,
-			name: device.name,
-			category: device.category as DevicesModuleDeviceCategory,
-			channels: [],
-			createdAt: new Date(device.created_at),
-		}));
-
-		// Load channels for sensor devices to check for temperature channel
-		const sensorDevicesTemp = devices.filter(d => d.category === DevicesModuleDeviceCategory.sensor);
-
-		await Promise.all(
-			sensorDevicesTemp.map(async (device) => {
-				device.channels = await loadDeviceChannels(device.id);
-			})
-		);
-
-		spaceDevices.value = devices;
-	} finally {
-		loading.value = false;
-	}
-};
-
-watch(
-	() => props.space?.id,
-	(newId) => {
-		if (newId) {
-			loadSpaceDevices();
-		}
-	}
-);
-
-onMounted(() => {
-	if (props.space?.id) {
-		loadSpaceDevices();
+	// Fetch channels if not already loaded
+	if (!channelsLoaded.value) {
+		await fetchChannels();
 	}
 });
 </script>

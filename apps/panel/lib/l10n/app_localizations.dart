@@ -1858,6 +1858,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Battery'**
   String get battery_title;
+
+  /// Title shown when display configuration is invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration Required'**
+  String get config_error_title;
+
+  /// Hint text explaining how to fix configuration error
+  ///
+  /// In en, this message translates to:
+  /// **'Configure this display in Admin > Displays'**
+  String get config_error_hint;
+
+  /// Text for Retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get button_retry;
+
+  /// Title for room system view in deck navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Room'**
+  String get system_view_room;
+
+  /// Title for master/home system view in deck navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get system_view_master;
+
+  /// Title for entry system view in deck navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Entry'**
+  String get system_view_entry;
+
+  /// Title for lights domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Lights'**
+  String get domain_lights;
+
+  /// Title for climate domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Climate'**
+  String get domain_climate;
+
+  /// Title for media domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Media'**
+  String get domain_media;
+
+  /// Title for sensors domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Sensors'**
+  String get domain_sensors;
+
+  /// Label for lighting device category
+  ///
+  /// In en, this message translates to:
+  /// **'Lights'**
+  String get device_category_lighting;
+
+  /// Label for climate device category
+  ///
+  /// In en, this message translates to:
+  /// **'Climate'**
+  String get device_category_climate;
+
+  /// Label for sensors device category
+  ///
+  /// In en, this message translates to:
+  /// **'Sensors'**
+  String get device_category_sensors;
+
+  /// Label for media device category
+  ///
+  /// In en, this message translates to:
+  /// **'Media'**
+  String get device_category_media;
+
+  /// Label for rooms in master overview
+  ///
+  /// In en, this message translates to:
+  /// **'Rooms'**
+  String get master_rooms;
+
+  /// Label for devices in master overview
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get master_devices;
+
+  /// Label for scenes in master overview
+  ///
+  /// In en, this message translates to:
+  /// **'Scenes'**
+  String get master_scenes;
+
+  /// Title for quick actions section in master overview
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Actions'**
+  String get master_quick_actions;
+
+  /// Success message when house mode is activated
+  ///
+  /// In en, this message translates to:
+  /// **'Mode activated'**
+  String get entry_mode_activated;
+
+  /// Title for house modes section in entry overview
+  ///
+  /// In en, this message translates to:
+  /// **'House Modes'**
+  String get entry_house_modes;
+
+  /// Label for home mode
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get entry_mode_home;
+
+  /// Label for away mode
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get entry_mode_away;
+
+  /// Label for night mode
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get entry_mode_night;
+
+  /// Label for movie mode
+  ///
+  /// In en, this message translates to:
+  /// **'Movie'**
+  String get entry_mode_movie;
+
+  /// Title for security section in entry overview
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get entry_security;
+
+  /// Message when no security devices are available
+  ///
+  /// In en, this message translates to:
+  /// **'No security devices configured'**
+  String get entry_no_security_devices;
+
+  /// Label for locks in security section
+  ///
+  /// In en, this message translates to:
+  /// **'Locks'**
+  String get entry_locks;
+
+  /// Label for alarm in security section
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm'**
+  String get entry_alarm;
+
+  /// Label for cameras in security section
+  ///
+  /// In en, this message translates to:
+  /// **'Cameras'**
+  String get entry_cameras;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

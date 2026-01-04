@@ -16,13 +16,6 @@ class CardsRepository extends ChangeNotifier {
 
   PagesCardsPluginClient get apiClient => _apiClient;
 
-  List<CardModel> getForParent(String parentId) {
-    return data.entries
-        .where((entry) => entry.value.page == parentId)
-        .map((entry) => entry.value)
-        .toList();
-  }
-
   List<CardModel> getItems([List<String>? ids]) {
     if (ids != null) {
       return data.entries

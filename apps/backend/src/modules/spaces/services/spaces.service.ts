@@ -47,19 +47,29 @@ export class SpacesService {
 	) {}
 
 	async findAll(): Promise<SpaceEntity[]> {
+		this.logger.debug('Fetching all spaces');
+
 		const spaces = await this.repository.find({
 			order: { displayOrder: 'ASC', name: 'ASC' },
 		});
+
+		this.logger.debug(`Found ${spaces.length} spaces`);
 
 		return spaces;
 	}
 
 	async findOne(id: string): Promise<SpaceEntity | null> {
+		this.logger.debug(`Fetching space with id=${id}`);
+
 		const space = await this.repository.findOne({ where: { id } });
 
 		if (!space) {
+			this.logger.warn(`Space not found by id=${id}`);
+
 			return null;
 		}
+
+		this.logger.debug('Successfully fetched space');
 
 		return space;
 	}
@@ -86,6 +96,8 @@ export class SpacesService {
 	}
 
 	async create(createDto: CreateSpaceDto): Promise<SpaceEntity> {
+		this.logger.debug('Creating new space');
+
 		const dtoInstance = await this.validateDto(CreateSpaceDto, createDto);
 
 		// Check for existing space with same canonical name (deduplication)
@@ -93,6 +105,9 @@ export class SpacesService {
 		const existingSpace = await this.findByCanonicalName(canonicalName);
 
 		if (existingSpace) {
+			this.logger.debug(
+				`Space with canonical name "${canonicalName}" already exists (id=${existingSpace.id}), returning existing`,
+			);
 			return existingSpace;
 		}
 
@@ -121,12 +136,16 @@ export class SpacesService {
 		// Re-fetch to get database default values populated
 		const savedSpace = await this.getOneOrThrow(space.id);
 
+		this.logger.debug(`Successfully created space with id=${savedSpace.id}`);
+
 		this.eventEmitter.emit(EventType.SPACE_CREATED, savedSpace);
 
 		return savedSpace;
 	}
 
 	async update(id: string, updateDto: UpdateSpaceDto): Promise<SpaceEntity> {
+		this.logger.debug(`Updating space with id=${id}`);
+
 		const space = await this.getOneOrThrow(id);
 
 		const dtoInstance = await this.validateDto(UpdateSpaceDto, updateDto);
@@ -189,12 +208,16 @@ export class SpacesService {
 
 		await this.repository.save(space);
 
+		this.logger.debug(`Successfully updated space with id=${space.id}`);
+
 		this.eventEmitter.emit(EventType.SPACE_UPDATED, space);
 
 		return space;
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing space with id=${id}`);
+
 		const space = await this.getOneOrThrow(id);
 
 		await this.dataSource.transaction(async (manager) => {
@@ -225,10 +248,14 @@ export class SpacesService {
 			await manager.remove(space);
 		});
 
+		this.logger.debug(`Successfully removed space with id=${id}`);
+
 		this.eventEmitter.emit(EventType.SPACE_DELETED, { id });
 	}
 
 	async findDevicesBySpace(spaceId: string): Promise<DeviceEntity[]> {
+		this.logger.debug(`Fetching devices for space with id=${spaceId}`);
+
 		// Verify space exists
 		const space = await this.getOneOrThrow(spaceId);
 
@@ -240,16 +267,22 @@ export class SpacesService {
 				order: { name: 'ASC' },
 			});
 
+			this.logger.debug(`Found ${devices.length} devices in room`);
+
 			return devices;
 		} else {
 			// Zones have devices via junction table
 			const devices = await this.deviceZonesService.getZoneDevices(spaceId);
+
+			this.logger.debug(`Found ${devices.length} devices in zone`);
 
 			return devices;
 		}
 	}
 
 	async findDisplaysBySpace(spaceId: string): Promise<DisplayEntity[]> {
+		this.logger.debug(`Fetching displays for space with id=${spaceId}`);
+
 		// Verify space exists
 		await this.getOneOrThrow(spaceId);
 
@@ -258,6 +291,8 @@ export class SpacesService {
 			order: { name: 'ASC' },
 		});
 
+		this.logger.debug(`Found ${displays.length} displays in space`);
+
 		return displays;
 	}
 
@@ -265,6 +300,8 @@ export class SpacesService {
 		spaceId: string,
 		bulkAssignDto: BulkAssignDto,
 	): Promise<{ devicesAssigned: number; displaysAssigned: number }> {
+		this.logger.debug(`Bulk assigning to space with id=${spaceId}`);
+
 		// Verify space exists
 		const space = await this.getOneOrThrow(spaceId);
 
@@ -287,6 +324,7 @@ export class SpacesService {
 				.execute();
 
 			devicesAssigned = result.affected || 0;
+			this.logger.debug(`Assigned ${devicesAssigned} devices to space`);
 		}
 
 		// Assign displays
@@ -299,12 +337,17 @@ export class SpacesService {
 				.execute();
 
 			displaysAssigned = result.affected || 0;
+			this.logger.debug(`Assigned ${displaysAssigned} displays to space`);
 		}
+
+		this.logger.debug(`Successfully bulk assigned to space with id=${spaceId}`);
 
 		return { devicesAssigned, displaysAssigned };
 	}
 
 	async unassignDevices(deviceIds: string[]): Promise<number> {
+		this.logger.debug(`Unassigning ${deviceIds.length} devices from their rooms`);
+
 		if (deviceIds.length === 0) {
 			return 0;
 		}
@@ -316,10 +359,15 @@ export class SpacesService {
 			.where('id IN (:...ids)', { ids: deviceIds })
 			.execute();
 
-		return result.affected || 0;
+		const unassigned = result.affected || 0;
+		this.logger.debug(`Unassigned ${unassigned} devices`);
+
+		return unassigned;
 	}
 
 	async unassignDisplays(displayIds: string[]): Promise<number> {
+		this.logger.debug(`Unassigning ${displayIds.length} displays from their rooms`);
+
 		if (displayIds.length === 0) {
 			return 0;
 		}
@@ -331,12 +379,17 @@ export class SpacesService {
 			.where('id IN (:...ids)', { ids: displayIds })
 			.execute();
 
-		return result.affected || 0;
+		const unassigned = result.affected || 0;
+		this.logger.debug(`Unassigned ${unassigned} displays`);
+
+		return unassigned;
 	}
 
 	async proposeSpaces(): Promise<
 		{ name: string; type: SpaceType; category: SpaceCategory | null; deviceIds: string[]; deviceCount: number }[]
 	> {
+		this.logger.debug('Proposing spaces based on device names');
+
 		// Token to (type, category) mapping for intelligent space proposals
 		const tokenMapping: Record<string, { type: SpaceType; category: SpaceCategory | null }> = {
 			// Room tokens
@@ -456,6 +509,8 @@ export class SpacesService {
 			})
 			.sort((a, b) => b.deviceCount - a.deviceCount);
 
+		this.logger.debug(`Proposed ${proposals.length} spaces from device names`);
+
 		return proposals;
 	}
 
@@ -463,6 +518,8 @@ export class SpacesService {
 	 * Get child rooms for a zone
 	 */
 	async getChildRooms(zoneId: string): Promise<SpaceEntity[]> {
+		this.logger.debug(`Fetching child rooms for zone id=${zoneId}`);
+
 		const zone = await this.getOneOrThrow(zoneId);
 
 		if (zone.type !== SpaceType.ZONE) {
@@ -475,6 +532,8 @@ export class SpacesService {
 			order: { displayOrder: 'ASC', name: 'ASC' },
 		});
 
+		this.logger.debug(`Found ${children.length} child rooms for zone`);
+
 		return children;
 	}
 
@@ -482,9 +541,12 @@ export class SpacesService {
 	 * Get parent zone for a room
 	 */
 	async getParentZone(roomId: string): Promise<SpaceEntity | null> {
+		this.logger.debug(`Fetching parent zone for room id=${roomId}`);
+
 		const room = await this.getOneOrThrow(roomId);
 
 		if (!room.parentId) {
+			this.logger.debug(`Room ${roomId} has no parent zone`);
 			return null;
 		}
 
@@ -497,10 +559,14 @@ export class SpacesService {
 	 * Get all zones (for parent selection dropdown)
 	 */
 	async findAllZones(): Promise<SpaceEntity[]> {
+		this.logger.debug('Fetching all zones');
+
 		const zones = await this.repository.find({
 			where: { type: SpaceType.ZONE },
 			order: { displayOrder: 'ASC', name: 'ASC' },
 		});
+
+		this.logger.debug(`Found ${zones.length} zones`);
 
 		return zones;
 	}

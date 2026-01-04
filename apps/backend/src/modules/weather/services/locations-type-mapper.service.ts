@@ -41,6 +41,8 @@ export class LocationsTypeMapperService {
 		TCreateDTO extends CreateLocationDto,
 		TUpdateDTO extends UpdateLocationDto,
 	>(type: string): LocationTypeMapping<TLocation, TCreateDTO, TUpdateDTO> {
+		this.logger.debug(`Attempting to find mapping for location type: '${type}'`);
+
 		const mapping = this.mappings.get(type);
 
 		if (!mapping) {
@@ -50,6 +52,8 @@ export class LocationsTypeMapperService {
 
 			throw new WeatherException(`Unsupported location type: ${type}`);
 		}
+
+		this.logger.debug(`Found mapping for location type: '${type}'`);
 
 		return mapping as LocationTypeMapping<TLocation, TCreateDTO, TUpdateDTO>;
 	}

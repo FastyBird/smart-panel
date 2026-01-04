@@ -305,6 +305,7 @@ export class WeatherService {
 		if (!force) {
 			const cached = await this.cacheManager.get<{ current: CurrentDayModel; location: LocationModel }>(cacheKey);
 			if (cached) {
+				this.logger.debug(`Returning cached current weather for location=${location.id}`);
 				return cached;
 			}
 		}
@@ -351,6 +352,7 @@ export class WeatherService {
 		if (!force) {
 			const cached = await this.cacheManager.get<ForecastDayModel[]>(cacheKey);
 			if (cached) {
+				this.logger.debug(`Returning cached forecast for location=${location.id}`);
 				return cached;
 			}
 		}

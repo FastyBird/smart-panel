@@ -25,6 +25,10 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<DeviceE
 	async afterLoad(entity: DeviceEntity): Promise<void> {
 		try {
 			entity.status = await this.deviceStatusService.readLatest(entity);
+
+			this.logger.debug(`Loaded device status from InfluxDB id=${entity.id}, value=${entity.status.status}`, {
+				resource: entity.id,
+			});
 		} catch (error) {
 			const err = error as Error;
 

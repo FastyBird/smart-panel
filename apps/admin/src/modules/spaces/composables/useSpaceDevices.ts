@@ -2,9 +2,7 @@ import { computed, type ComputedRef, type Ref, ref } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { injectStoresManager, useBackend } from '../../../common';
-import { MODULES_PREFIX } from '../../../app.constants';
-import { DEVICES_MODULE_PREFIX } from '../../devices/devices.constants';
+import { injectStoresManager } from '../../../common';
 import type { IDevice } from '../../devices/store/devices.store.types';
 import { devicesStoreKey } from '../../devices/store/keys';
 import { isFloorZoneCategory, SpaceType } from '../spaces.constants';
@@ -13,6 +11,7 @@ import { spacesStoreKey } from '../store';
 interface IUseSpaceDevices {
 	devices: ComputedRef<IDevice[]>;
 	loading: ComputedRef<boolean>;
+	firstLoadFinished: ComputedRef<boolean>;
 	fetchDevices: () => Promise<void>;
 	addDevice: (deviceId: string) => Promise<void>;
 	removeDevice: (deviceId: string) => Promise<void>;
@@ -23,7 +22,6 @@ export const useSpaceDevices = (
 	spaceId: Ref<string | undefined>,
 	spaceType: Ref<SpaceType | undefined>
 ): IUseSpaceDevices => {
-	const backend = useBackend();
 	const storesManager = injectStoresManager();
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 	const spacesStore = storesManager.getStore(spacesStoreKey);
@@ -56,6 +54,8 @@ export const useSpaceDevices = (
 		if (!firstLoad.value) return true;
 		return false;
 	});
+
+	const firstLoadFinished = computed<boolean>(() => firstLoad.value);
 
 	const fetchDevices = async (): Promise<void> => {
 		// Fetch all devices - zoneIds are now included in the device response
@@ -91,25 +91,11 @@ export const useSpaceDevices = (
 					throw new Error('Cannot assign devices to floor zones. Floor membership is derived from room assignment.');
 				}
 
-				// Call POST /devices/{id}/zones/{zoneId}
-				const { response } = await backend.client.POST(
-					`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}/zones/{zoneId}`,
-					{
-						params: {
-							path: {
-								id: deviceId,
-								zoneId: spaceId.value,
-							},
-						},
-					}
-				);
-
-				if (!response.ok) {
-					throw new Error('Failed to add device to zone');
-				}
-
-				// Re-fetch the device to update store with new zoneIds
-				await devicesStore.get({ id: deviceId });
+				// Add device to zone using the store method
+				await devicesStore.addZone({
+					id: deviceId,
+					zoneId: spaceId.value,
+				});
 			}
 		} finally {
 			isOperating.value = false;
@@ -139,25 +125,11 @@ export const useSpaceDevices = (
 					},
 				});
 			} else {
-				// For zones: call DELETE /devices/{id}/zones/{zoneId}
-				const { response } = await backend.client.DELETE(
-					`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/devices/{id}/zones/{zoneId}`,
-					{
-						params: {
-							path: {
-								id: deviceId,
-								zoneId: spaceId.value,
-							},
-						},
-					}
-				);
-
-				if (!response.ok) {
-					throw new Error('Failed to remove device from zone');
-				}
-
-				// Re-fetch the device to update store with new zoneIds
-				await devicesStore.get({ id: deviceId });
+				// Remove device from zone using the store method
+				await devicesStore.removeZone({
+					id: deviceId,
+					zoneId: spaceId.value,
+				});
 			}
 		} finally {
 			isOperating.value = false;
@@ -189,6 +161,7 @@ export const useSpaceDevices = (
 	return {
 		devices,
 		loading,
+		firstLoadFinished,
 		fetchDevices,
 		addDevice,
 		removeDevice,

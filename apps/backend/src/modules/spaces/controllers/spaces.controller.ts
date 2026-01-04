@@ -101,6 +101,8 @@ export class SpacesController {
 	})
 	@ApiSuccessResponse(SpacesResponseModel, 'Returns a list of spaces')
 	async findAll(): Promise<SpacesResponseModel> {
+		this.logger.debug('Fetching all spaces');
+
 		const spaces = await this.spacesService.findAll();
 
 		const response = new SpacesResponseModel();
@@ -121,6 +123,8 @@ export class SpacesController {
 	})
 	@ApiSuccessResponse(ProposedSpacesResponseModel, 'Returns proposed spaces')
 	async proposeSpaces(): Promise<ProposedSpacesResponseModel> {
+		this.logger.debug('Proposing spaces from device names');
+
 		const proposals = await this.spacesService.proposeSpaces();
 
 		const response = new ProposedSpacesResponseModel();
@@ -148,6 +152,8 @@ export class SpacesController {
 	})
 	@ApiSuccessResponse(CategoryTemplatesResponseModel, 'Returns category templates')
 	getCategoryTemplates(): CategoryTemplatesResponseModel {
+		this.logger.debug('Fetching category templates');
+
 		const templates = Object.entries(SPACE_CATEGORY_TEMPLATES).map(([category, template]) => {
 			const model = new CategoryTemplateDataModel();
 			model.category = category as SpaceCategory;
@@ -173,6 +179,8 @@ export class SpacesController {
 	})
 	@ApiSuccessResponse(IntentCatalogResponseModel, 'Returns the intent catalog')
 	getIntentCatalog(): IntentCatalogResponseModel {
+		this.logger.debug('Fetching intent catalog');
+
 		// Transform intent categories
 		const categories = INTENT_CATEGORY_CATALOG.map((cat) => {
 			const categoryData = new IntentCategoryDataModel();
@@ -253,6 +261,8 @@ export class SpacesController {
 	@ApiSuccessResponse(SpaceResponseModel, 'Returns the space')
 	@ApiNotFoundResponse('Space not found')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpaceResponseModel> {
+		this.logger.debug(`Fetching space with id=${id}`);
+
 		const space = await this.spacesService.getOneOrThrow(id);
 
 		const response = new SpaceResponseModel();
@@ -273,6 +283,8 @@ export class SpacesController {
 	@ApiBadRequestResponse('Invalid space data')
 	@ApiUnprocessableEntityResponse('Space validation failed')
 	async create(@Body() body: ReqCreateSpaceDto): Promise<SpaceResponseModel> {
+		this.logger.debug('Creating new space');
+
 		const space = await this.spacesService.create(body.data);
 
 		const response = new SpaceResponseModel();
@@ -297,6 +309,8 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqUpdateSpaceDto,
 	): Promise<SpaceResponseModel> {
+		this.logger.debug(`Updating space with id=${id}`);
+
 		const space = await this.spacesService.update(id, body.data);
 
 		const response = new SpaceResponseModel();
@@ -319,7 +333,11 @@ export class SpacesController {
 	@ApiNotFoundResponse('Space not found')
 	@HttpCode(204)
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`Removing space with id=${id}`);
+
 		await this.spacesService.remove(id);
+
+		this.logger.debug(`Successfully removed space with id=${id}`);
 	}
 
 	@Get(':id/devices')
@@ -332,6 +350,8 @@ export class SpacesController {
 	@ApiSuccessResponse(DevicesResponseModel, 'Returns the list of devices in the space')
 	@ApiNotFoundResponse('Space not found')
 	async findDevices(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DevicesResponseModel> {
+		this.logger.debug(`Fetching devices for space with id=${id}`);
+
 		const devices = await this.spacesService.findDevicesBySpace(id);
 
 		const response = new DevicesResponseModel();
@@ -351,6 +371,8 @@ export class SpacesController {
 	@ApiSuccessResponse(DisplaysResponseModel, 'Returns the list of displays in the space')
 	@ApiNotFoundResponse('Space not found')
 	async findDisplays(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplaysResponseModel> {
+		this.logger.debug(`Fetching displays for space with id=${id}`);
+
 		const displays = await this.spacesService.findDisplaysBySpace(id);
 
 		const response = new DisplaysResponseModel();
@@ -370,6 +392,8 @@ export class SpacesController {
 	@ApiSuccessResponse(SpacesResponseModel, 'Returns the list of child rooms')
 	@ApiNotFoundResponse('Space not found')
 	async findChildren(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpacesResponseModel> {
+		this.logger.debug(`Fetching child rooms for zone with id=${id}`);
+
 		const children = await this.spacesService.getChildRooms(id);
 
 		const response = new SpacesResponseModel();
@@ -390,6 +414,8 @@ export class SpacesController {
 	@ApiSuccessResponse(SpaceResponseModel, 'Returns the parent zone or null')
 	@ApiNotFoundResponse('Space not found')
 	async findParent(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SpaceResponseModel> {
+		this.logger.debug(`Fetching parent zone for room with id=${id}`);
+
 		const parent = await this.spacesService.getParentZone(id);
 
 		const response = new SpaceResponseModel();
@@ -406,6 +432,8 @@ export class SpacesController {
 	})
 	@ApiSuccessResponse(SpacesResponseModel, 'Returns a list of zones')
 	async findAllZones(): Promise<SpacesResponseModel> {
+		this.logger.debug('Fetching all zones');
+
 		const zones = await this.spacesService.findAllZones();
 
 		const response = new SpacesResponseModel();
@@ -430,6 +458,8 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqBulkAssignDto,
 	): Promise<BulkAssignmentResponseModel> {
+		this.logger.debug(`Bulk assigning to space with id=${id}`);
+
 		const result = await this.spacesService.bulkAssign(id, body.data);
 
 		const resultData = new BulkAssignmentResultDataModel();
@@ -460,6 +490,8 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqLightingIntentDto,
 	): Promise<LightingIntentResponseModel> {
+		this.logger.debug(`Executing lighting intent for space with id=${id}`);
+
 		const result = await this.spaceIntentService.executeLightingIntent(id, body.data);
 
 		const resultData = new LightingIntentResultDataModel();
@@ -487,6 +519,8 @@ export class SpacesController {
 	async getClimateState(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<ClimateStateResponseModel> {
+		this.logger.debug(`Fetching climate state for space with id=${id}`);
+
 		const state = await this.spaceIntentService.getClimateState(id);
 
 		const stateData = new ClimateStateDataModel();
@@ -522,6 +556,8 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqClimateIntentDto,
 	): Promise<ClimateIntentResponseModel> {
+		this.logger.debug(`Executing climate intent for space with id=${id}`);
+
 		const result = await this.spaceIntentService.executeClimateIntent(id, body.data);
 
 		const resultData = new ClimateIntentResultDataModel();
@@ -555,6 +591,8 @@ export class SpacesController {
 	async getLightTargets(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<LightTargetsResponseModel> {
+		this.logger.debug(`Fetching light targets for space with id=${id}`);
+
 		const targets = await this.spaceLightingRoleService.getLightTargetsInSpace(id);
 
 		const response = new LightTargetsResponseModel();
@@ -592,6 +630,8 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqSetLightingRoleDto,
 	): Promise<LightingRoleResponseModel> {
+		this.logger.debug(`Setting lighting role for space with id=${id}`);
+
 		const role = await this.spaceLightingRoleService.setRole(id, body.data);
 
 		const response = new LightingRoleResponseModel();
@@ -618,6 +658,8 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqBulkSetLightingRolesDto,
 	): Promise<BulkLightingRolesResponseModel> {
+		this.logger.debug(`Bulk setting lighting roles for space with id=${id}`);
+
 		const updatedCount = await this.spaceLightingRoleService.bulkSetRoles(id, body.data.roles);
 
 		const resultData = new BulkLightingRolesResultDataModel();
@@ -645,6 +687,8 @@ export class SpacesController {
 	async applyDefaultLightingRoles(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<BulkLightingRolesResponseModel> {
+		this.logger.debug(`Applying default lighting roles for space with id=${id}`);
+
 		const defaultRoles = await this.spaceLightingRoleService.inferDefaultLightingRoles(id);
 		const updatedCount = await this.spaceLightingRoleService.bulkSetRoles(id, defaultRoles);
 
@@ -678,7 +722,11 @@ export class SpacesController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 	): Promise<void> {
+		this.logger.debug(`Deleting lighting role for space=${id} device=${deviceId} channel=${channelId}`);
+
 		await this.spaceLightingRoleService.deleteRole(id, deviceId, channelId);
+
+		this.logger.debug(`Successfully deleted lighting role for device=${deviceId} channel=${channelId}`);
 	}
 
 	// ================================
@@ -698,6 +746,8 @@ export class SpacesController {
 	@ApiSuccessResponse(SuggestionResponseModel, 'Returns the suggestion or null')
 	@ApiNotFoundResponse('Space not found')
 	async getSuggestion(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<SuggestionResponseModel> {
+		this.logger.debug(`Getting suggestion for space with id=${id}`);
+
 		const suggestion = await this.spaceSuggestionService.getSuggestion(id);
 
 		const response = new SuggestionResponseModel();
@@ -733,6 +783,8 @@ export class SpacesController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() body: ReqSuggestionFeedbackDto,
 	): Promise<SuggestionFeedbackResponseModel> {
+		this.logger.debug(`Submitting suggestion feedback for space with id=${id}`);
+
 		const result = await this.spaceSuggestionService.recordFeedback(id, body.data.suggestionType, body.data.feedback);
 
 		const resultData = new SuggestionFeedbackResultDataModel();
@@ -765,6 +817,8 @@ export class SpacesController {
 	async captureContextSnapshot(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 	): Promise<ContextSnapshotResponseModel> {
+		this.logger.debug(`Capturing context snapshot for space with id=${id}`);
+
 		const snapshot = await this.spaceContextSnapshotService.captureSnapshot(id);
 
 		if (!snapshot) {
@@ -835,6 +889,8 @@ export class SpacesController {
 	@ApiSuccessResponse(UndoStateResponseModel, 'Returns the undo state')
 	@ApiNotFoundResponse('Space not found')
 	async getUndoState(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UndoStateResponseModel> {
+		this.logger.debug(`Fetching undo state for space with id=${id}`);
+
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(id);
 
@@ -881,6 +937,8 @@ export class SpacesController {
 	@ApiSuccessResponse(UndoResultResponseModel, 'Returns the undo result')
 	@ApiNotFoundResponse('Space not found')
 	async executeUndo(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UndoResultResponseModel> {
+		this.logger.debug(`Executing undo for space with id=${id}`);
+
 		// Verify space exists
 		await this.spacesService.getOneOrThrow(id);
 

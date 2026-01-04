@@ -37,8 +37,12 @@ export class LocationsService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		this.logger.debug('Fetching all locations');
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const locations = (await repository.find({ order: { createdAt: 'ASC' } as any })) as TLocation[];
+
+		this.logger.debug(`Found ${locations.length} locations`);
 
 		return locations;
 	}
@@ -48,12 +52,18 @@ export class LocationsService {
 
 		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
 
+		this.logger.debug(`Fetching location with id=${id}`);
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const location = (await repository.findOne({ where: { id } as any })) as TLocation | null;
 
 		if (!location) {
+			this.logger.debug(`Location with id=${id} not found`);
+
 			return null;
 		}
+
+		this.logger.debug(`Successfully fetched location with id=${id}`);
 
 		return location;
 	}
@@ -61,6 +71,8 @@ export class LocationsService {
 	async create<TLocation extends WeatherLocationEntity, TCreateDTO extends CreateLocationDto>(
 		createDto: TCreateDTO,
 	): Promise<TLocation> {
+		this.logger.debug('Creating new location');
+
 		const { type } = createDto;
 
 		if (!type) {
@@ -99,6 +111,8 @@ export class LocationsService {
 			savedLocation = (await this.getOneOrThrow(raw.id)) as TLocation;
 		}
 
+		this.logger.debug(`Successfully created location with id=${savedLocation.id}`);
+
 		this.eventEmitter.emit(EventType.LOCATION_CREATED, savedLocation);
 
 		return savedLocation;
@@ -108,6 +122,8 @@ export class LocationsService {
 		id: string,
 		updateDto: TUpdateDTO,
 	): Promise<TLocation> {
+		this.logger.debug(`Updating location with id=${id}`);
+
 		const location = await this.getOneOrThrow(id);
 
 		const mapping = this.locationsMapperService.getMapping<TLocation, any, TUpdateDTO>(location.type);
@@ -128,12 +144,16 @@ export class LocationsService {
 			updatedLocation = (await this.getOneOrThrow(location.id)) as TLocation;
 		}
 
+		this.logger.debug(`Successfully updated location with id=${updatedLocation.id}`);
+
 		this.eventEmitter.emit(EventType.LOCATION_UPDATED, updatedLocation);
 
 		return updatedLocation;
 	}
 
 	async remove(id: string): Promise<void> {
+		this.logger.debug(`Removing location with id=${id}`);
+
 		const location = await this.getOneOrThrow(id);
 
 		// Check if this location is set as primary
@@ -152,6 +172,8 @@ export class LocationsService {
 			if (error instanceof WeatherValidationException) {
 				throw error;
 			}
+
+			this.logger.debug(`Could not check primary location status, proceeding with deletion`);
 		}
 
 		await this.repository.remove(location);

@@ -15,7 +15,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/status.da
 
 class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
   DeviceInformationChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -57,7 +62,7 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${manufacturerProp.category.value}',
+      'Channel is missing required value for property: ${manufacturerProp.category.json}',
     );
   }
 
@@ -69,7 +74,7 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${modelProp.category.value}',
+      'Channel is missing required value for property: ${modelProp.category.json}',
     );
   }
 
@@ -81,7 +86,7 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${serialNumberProp.category.value}',
+      'Channel is missing required value for property: ${serialNumberProp.category.json}',
     );
   }
 
@@ -93,7 +98,7 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${firmwareRevisionProp.category.value}',
+      'Channel is missing required value for property: ${firmwareRevisionProp.category.json}',
     );
   }
 

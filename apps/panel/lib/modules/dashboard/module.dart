@@ -7,6 +7,15 @@ import 'package:fastybird_smart_panel/modules/dashboard/repositories/data_source
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/pages.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/tiles.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-device-channel/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/data-sources-weather/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/pages-cards/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/pages-device-detail/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/pages-tiles/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-device-preview/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-scene/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-time/mapper.dart';
+import 'package:fastybird_smart_panel/plugins/tiles-weather/mapper.dart';
 import 'package:flutter/foundation.dart';
 
 class DashboardModuleService {
@@ -25,6 +34,9 @@ class DashboardModuleService {
     required ApiClient apiClient,
     required SocketService socketService,
   }) : _socketService = socketService {
+    // Register all dashboard plugins
+    _registerPlugins();
+
     _pagesRepository = PagesRepository(
       apiClient: apiClient.dashboardModule,
     );
@@ -79,6 +91,33 @@ class DashboardModuleService {
       DashboardModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+  }
+
+  /// ////////////////
+  /// PLUGIN REGISTRATION
+  /// ////////////////
+
+  void _registerPlugins() {
+    // Register tile plugins
+    registerTilesTimePlugin();
+    registerTilesWeatherPlugin();
+    registerTilesDevicePreviewPlugin();
+    registerTilesScenePlugin();
+
+    // Register data source plugins
+    registerDataSourcesDeviceChannelPlugin();
+    registerDataSourcesWeatherPlugin();
+
+    // Register page plugins
+    registerPagesTilesPlugin();
+    registerPagesCardsPlugin();
+    registerPagesDeviceDetailPlugin();
+
+    if (kDebugMode) {
+      debugPrint(
+        '[DASHBOARD MODULE][MODULE] All dashboard plugins registered successfully',
+      );
+    }
   }
 
   /// ////////////////

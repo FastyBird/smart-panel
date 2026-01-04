@@ -121,10 +121,7 @@ import { useScene } from '../composables/composables';
 import SceneEditForm from '../components/scenes/scene-edit-form.vue';
 import { FormResult, type FormResultType, RouteNames } from '../scenes.constants';
 
-interface IViewSceneEditProps {
-	id: string;
-	remoteFormChanged?: boolean;
-}
+import type { IViewSceneEditProps } from './view-scene-edit.types';
 
 defineOptions({
 	name: 'ViewSceneEdit',

@@ -7,7 +7,12 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/source.da
 
 class MediaInputChannelView extends ChannelView with ChannelActiveMixin {
   MediaInputChannelView({
-    required super.channelModel,
+    required super.id,
+    required super.type,
+    super.category,
+    super.name,
+    super.description,
+    required super.device,
     required super.properties,
     super.isValid,
     super.validationIssues,
@@ -28,7 +33,7 @@ class MediaInputChannelView extends ChannelView with ChannelActiveMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${sourceProp.category.value}',
+      'Channel is missing required value for property: ${sourceProp.category.json}',
     );
   }
 }

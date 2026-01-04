@@ -21,7 +21,9 @@ export class SpaceActivityListener implements OnModuleInit {
 		private readonly channelRepository: Repository<ChannelEntity>,
 	) {}
 
-	onModuleInit() {}
+	onModuleInit() {
+		this.logger.debug('Space activity listener initialized');
+	}
 
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	async handlePropertyUpdated(property: ChannelPropertyEntity): Promise<void> {
@@ -38,6 +40,7 @@ export class SpaceActivityListener implements OnModuleInit {
 		const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
 
 		if (!channelId) {
+			this.logger.debug('Property has no channel, skipping activity update');
 			return;
 		}
 
@@ -50,12 +53,14 @@ export class SpaceActivityListener implements OnModuleInit {
 			.getOne();
 
 		if (!channel) {
+			this.logger.debug('Channel not found or device has no room, skipping activity update');
 			return;
 		}
 
 		const device = channel.device as DeviceEntity;
 
 		if (!device.roomId) {
+			this.logger.debug('Device has no room, skipping activity update');
 			return;
 		}
 
@@ -68,5 +73,7 @@ export class SpaceActivityListener implements OnModuleInit {
 			.set({ lastActivityAt: now })
 			.where('id = :roomId', { roomId: device.roomId })
 			.execute();
+
+		this.logger.debug(`Updated lastActivityAt for room=${device.roomId} to ${now.toISOString()}`);
 	}
 }

@@ -9,6 +9,12 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/device_contro
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/plugins/devices-home-assistant/plugin.dart';
+import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/plugin.dart';
+import 'package:fastybird_smart_panel/plugins/devices-shelly-v1/plugin.dart';
+import 'package:fastybird_smart_panel/plugins/devices-third-party/plugin.dart';
+import 'package:fastybird_smart_panel/plugins/devices-wled/plugin.dart';
+import 'package:fastybird_smart_panel/plugins/devices-zigbee2mqtt/plugin.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesModuleService {
@@ -29,21 +35,40 @@ class DevicesModuleService {
     required ApiClient apiClient,
     required SocketService socketService,
   }) : _socketService = socketService {
-    _devicesRepository = DevicesRepository(
+    // Register all device plugins
+    DevicesThirdPartyPlugin.register();
+    DevicesHomeAssistantPlugin.register();
+    DevicesShellyNgPlugin.register();
+    DevicesShellyV1Plugin.register();
+    DevicesWledPlugin.register();
+    DevicesZigbee2mqttPlugin.register();
+
+    // Initialize repositories in dependency order:
+    // 1. ChannelPropertiesRepository (no repo dependencies)
+    // 2. ChannelsRepository (depends on ChannelPropertiesRepository for embedded data)
+    // 3. DevicesRepository (depends on ChannelsRepository for embedded data)
+    // 4. Set ChannelsRepository in ChannelPropertiesRepository (for setValue command)
+
+    _channelPropertiesRepository = ChannelPropertiesRepository(
       apiClient: apiClient.devicesModule,
-    );
-    _deviceControlsRepository = DeviceControlsRepository(
-      apiClient: apiClient.devicesModule,
-    );
-    _channelsRepository = ChannelsRepository(
-      apiClient: apiClient.devicesModule,
+      socketService: _socketService,
     );
     _channelControlsRepository = ChannelControlsRepository(
       apiClient: apiClient.devicesModule,
     );
-    _channelPropertiesRepository = ChannelPropertiesRepository(
+    _channelsRepository = ChannelsRepository(
       apiClient: apiClient.devicesModule,
-      socketService: _socketService,
+      channelPropertiesRepository: _channelPropertiesRepository,
+    );
+
+    // Set the channels repository for command handling
+    _channelPropertiesRepository.setChannelsRepository(_channelsRepository);
+
+    _deviceControlsRepository = DeviceControlsRepository(
+      apiClient: apiClient.devicesModule,
+    );
+    _devicesRepository = DevicesRepository(
+      apiClient: apiClient.devicesModule,
       channelsRepository: _channelsRepository,
     );
     _validationRepository = DeviceValidationRepository(
