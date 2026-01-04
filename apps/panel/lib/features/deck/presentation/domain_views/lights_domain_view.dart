@@ -933,7 +933,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
     bool hasColor = false;
     int totalBrightness = 0;
     int brightnessCount = 0;
-    int onCount = 0;
 
     for (final target in lightTargets) {
       final device = devicesService.getDevice(target.deviceId);
@@ -943,10 +942,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
         );
-
-        if (channel.on) {
-          onCount++;
-        }
 
         if (channel.hasBrightness) {
           hasBrightness = true;
@@ -1351,24 +1346,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
         );
       },
     );
-  }
-
-  /// Get icon for a role
-  IconData _getRoleIcon(LightTargetRole role, bool isOn) {
-    switch (role) {
-      case LightTargetRole.main:
-        return MdiIcons.ceilingLight;
-      case LightTargetRole.task:
-        return MdiIcons.deskLamp;
-      case LightTargetRole.ambient:
-        return isOn ? MdiIcons.wallSconce : MdiIcons.wallSconceFlat;
-      case LightTargetRole.accent:
-        return isOn ? MdiIcons.floorLamp : MdiIcons.floorLampOutline;
-      case LightTargetRole.night:
-        return isOn ? MdiIcons.weatherNight : MdiIcons.moonWaningCrescent;
-      case LightTargetRole.other:
-        return isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline;
-    }
   }
 
   /// Get display name for a role
