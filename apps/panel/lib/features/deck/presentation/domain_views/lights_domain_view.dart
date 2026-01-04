@@ -202,7 +202,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       for (final target in roleTargets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
+        if (device is LightingDeviceView &&
+            device.lightChannels.isNotEmpty) {
           // Find matching channel
           final channel = device.lightChannels.firstWhere(
             (c) => c.id == target.channelId,
@@ -452,7 +453,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       for (final target in group.targets) {
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
+        if (device is LightingDeviceView &&
+            device.lightChannels.isNotEmpty) {
           final channel = device.lightChannels.firstWhere(
             (c) => c.id == target.channelId,
             orElse: () => device.lightChannels.first,
@@ -570,7 +572,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
   ) {
     final device = devicesService.getDevice(target.deviceId);
-    if (device is! LightingDeviceView) {
+    if (device is! LightingDeviceView ||
+        device.lightChannels.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -827,7 +830,55 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
 
   void _onDataChanged() {
     if (mounted) {
+      _updateTabControllerIfNeeded();
       setState(() {});
+    }
+  }
+
+  /// Calculate required tab count based on current light targets
+  int _calculateRequiredTabCount(
+      SpacesService spacesService, DevicesService devicesService) {
+    final lightTargets = spacesService
+        .getLightTargetsForSpace(widget.roomId)
+        .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
+        .toList();
+
+    bool hasBrightness = false;
+    bool hasTemperature = false;
+    bool hasColor = false;
+
+    for (final target in lightTargets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasBrightness) hasBrightness = true;
+        if (target.hasColorTemp) hasTemperature = true;
+        if (target.hasColor) hasColor = true;
+      }
+    }
+
+    int count = 1; // Always have devices tab
+    if (hasBrightness) count++;
+    if (hasTemperature) count++;
+    if (hasColor) count++;
+    return count;
+  }
+
+  /// Update tab controller if the required tab count changed
+  void _updateTabControllerIfNeeded() {
+    final spacesService = _spacesService;
+    final devicesService = _devicesService;
+    if (spacesService == null || devicesService == null) return;
+
+    final requiredCount =
+        _calculateRequiredTabCount(spacesService, devicesService);
+    if (_tabCount != requiredCount) {
+      _tabCount = requiredCount;
+      _tabController.dispose();
+      _tabController = TabController(length: requiredCount, vsync: this);
     }
   }
 
@@ -864,7 +915,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
 
     for (final target in lightTargets) {
       final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView) {
+      if (device is LightingDeviceView &&
+          device.lightChannels.isNotEmpty) {
         final channel = device.lightChannels.firstWhere(
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
@@ -927,13 +979,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
       lightTargets,
       devicesService,
     ));
-
-    // Update tab controller if needed
-    if (_tabCount != tabs.length) {
-      _tabCount = tabs.length;
-      _tabController.dispose();
-      _tabController = TabController(length: tabs.length, vsync: this);
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -1049,16 +1094,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
     int brightness,
     DevicesService devicesService,
   ) async {
+    final localizations = AppLocalizations.of(context);
+
     setState(() {
       _isSettingBrightness = true;
     });
 
     try {
+      int successCount = 0;
+      int failCount = 0;
+
       for (final target in targets) {
         if (!target.hasBrightness) continue;
 
         final device = devicesService.getDevice(target.deviceId);
-        if (device is LightingDeviceView) {
+        if (device is LightingDeviceView &&
+            device.lightChannels.isNotEmpty) {
           final channel = device.lightChannels.firstWhere(
             (c) => c.id == target.channelId,
             orElse: () => device.lightChannels.first,
@@ -1066,13 +1117,34 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
 
           final brightnessProp = channel.brightnessProp;
           if (brightnessProp != null) {
-            await devicesService.setPropertyValue(
+            final success = await devicesService.setPropertyValue(
               brightnessProp.id,
               brightness,
             );
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
           }
         }
       }
+
+      if (!mounted) return;
+
+      if (failCount > 0 && successCount == 0) {
+        AlertBar.showError(
+          this.context,
+          message:
+              localizations?.action_failed ?? 'Failed to set brightness',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AlertBar.showError(
+        this.context,
+        message: localizations?.action_failed ?? 'Failed to set brightness',
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -1181,7 +1253,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
         final target = targets[index];
         final device = devicesService.getDevice(target.deviceId);
 
-        if (device is! LightingDeviceView) {
+        if (device is! LightingDeviceView ||
+            device.lightChannels.isEmpty) {
           return const SizedBox.shrink();
         }
 
