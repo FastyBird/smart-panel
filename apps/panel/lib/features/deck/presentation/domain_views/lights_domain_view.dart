@@ -111,6 +111,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   void _onDataChanged() {
     if (mounted) {
+      // Re-fetch light targets when devices change (e.g., device assigned/unassigned from space)
+      _spacesService?.fetchLightTargetsForSpace(_roomId);
       setState(() {});
     }
   }
@@ -860,6 +862,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
 
   void _onDataChanged() {
     if (mounted) {
+      // Re-fetch light targets when devices change (e.g., device assigned/unassigned from space)
+      _spacesService?.fetchLightTargetsForSpace(widget.roomId);
       _updateAvailableModes();
       setState(() {
         // Reset slider brightness so it reflects actual device state
