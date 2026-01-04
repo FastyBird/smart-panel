@@ -1,7 +1,6 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
-import 'package:fastybird_smart_panel/features/deck/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/constants.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/cards.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/data_sources.dart';
@@ -115,9 +114,6 @@ class DashboardModuleService {
     registerPagesCardsPlugin();
     registerPagesDeviceDetailPlugin();
     registerPagesSpacePlugin();
-
-    // Register deck feature pages (house, house modes)
-    registerDeckPagesFeature();
 
     if (kDebugMode) {
       debugPrint(

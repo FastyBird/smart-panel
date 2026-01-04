@@ -44,9 +44,7 @@ enum PageType {
   tiles('pages-tiles'),
   cards('pages-cards'),
   deviceDetail('pages-device-detail'),
-  space('pages-space'),
-  house('pages-house'),
-  houseModes('pages-house-modes');
+  space('pages-space');
 
   final String value;
 
