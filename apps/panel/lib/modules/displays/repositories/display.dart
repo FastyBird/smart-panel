@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_req_update_display.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_update_display_home_mode.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_update_display_role.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:flutter/foundation.dart';
 
@@ -395,6 +397,28 @@ class DisplayRepository extends ChangeNotifier {
     }
   }
 
+  /// Convert local DisplayRole to API DisplaysModuleUpdateDisplayRole
+  DisplaysModuleUpdateDisplayRole _toApiRole(DisplayRole role) {
+    switch (role) {
+      case DisplayRole.room:
+        return DisplaysModuleUpdateDisplayRole.room;
+      case DisplayRole.master:
+        return DisplaysModuleUpdateDisplayRole.master;
+      case DisplayRole.entry:
+        return DisplaysModuleUpdateDisplayRole.entry;
+    }
+  }
+
+  /// Convert local HomeMode to API DisplaysModuleUpdateDisplayHomeMode
+  DisplaysModuleUpdateDisplayHomeMode _toApiHomeMode(HomeMode mode) {
+    switch (mode) {
+      case HomeMode.autoSpace:
+        return DisplaysModuleUpdateDisplayHomeMode.autoSpace;
+      case HomeMode.explicit:
+        return DisplaysModuleUpdateDisplayHomeMode.explicit;
+    }
+  }
+
   /// Build update data with all current values
   DisplaysModuleUpdateDisplay _buildUpdateData({
     bool? darkMode,
@@ -421,6 +445,12 @@ class DisplayRepository extends ChangeNotifier {
       brightness: brightness ?? _display!.brightness,
       screenLockDuration: screenLockDuration ?? _display!.screenLockDuration,
       screenSaver: screenSaver ?? _display!.screenSaver,
+      // Display configuration
+      name: _display!.name,
+      role: _toApiRole(_display!.role),
+      roomId: _display!.roomId,
+      homeMode: _toApiHomeMode(_display!.homeMode),
+      homePageId: _display!.homePageId,
       // Audio settings
       speaker: speaker ?? _display!.speaker,
       speakerVolume: speakerVolume ?? _display!.speakerVolume,
@@ -446,15 +476,6 @@ class DisplayRepository extends ChangeNotifier {
         return true;
       }
 
-      return false;
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint('[DISPLAYS MODULE] Failed to update dark mode: ${e.type}');
-        debugPrint('[DISPLAYS MODULE] Status: ${e.response?.statusCode}');
-        debugPrint('[DISPLAYS MODULE] Response: ${e.response?.data}');
-        debugPrint('[DISPLAYS MODULE] Message: ${e.message}');
-        debugPrint('[DISPLAYS MODULE] Error: ${e.error}');
-      }
       return false;
     } catch (e) {
       if (kDebugMode) {
