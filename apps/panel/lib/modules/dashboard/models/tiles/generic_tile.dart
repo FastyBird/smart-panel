@@ -39,7 +39,7 @@ class GenericTileModel extends TileModel {
 
     // Extract parent type and id with proper type checking
     String parentType = 'page';
-    String? parentId;
+    String parentId;
 
     if (json['parent'] is Map<String, dynamic>) {
       final parent = json['parent'] as Map<String, dynamic>;
@@ -48,12 +48,18 @@ class GenericTileModel extends TileModel {
       }
       if (parent['id'] is String) {
         parentId = parent['id'] as String;
+      } else {
+        throw ArgumentError('Missing or invalid parent id in tile JSON');
       }
     } else {
       if (json['parent_type'] is String) {
         parentType = json['parent_type'] as String;
       }
-      parentId = json['parent_id'] as String?;
+      if (json['parent_id'] is String) {
+        parentId = json['parent_id'] as String;
+      } else {
+        throw ArgumentError('Missing or invalid parent_id in tile JSON');
+      }
     }
 
     return GenericTileModel(
