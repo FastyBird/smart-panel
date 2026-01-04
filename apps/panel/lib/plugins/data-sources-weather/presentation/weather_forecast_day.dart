@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/data_sources/data_source.dart';
-import 'package:fastybird_smart_panel/features/dashboard/utils/openweather.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/data_sources/data_source.dart';
+import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/weather_data_field.dart';
 import 'package:fastybird_smart_panel/plugins/data-sources-weather/views/weather_forecast_day.dart';

@@ -1,5 +1,30 @@
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/generic_device.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/alarm.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/camera.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/door.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/doorbell.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/generic.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heater.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lock.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/media.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/outlet.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/pump.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/robot_vacuum.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sensor.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/speaker.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sprinkler.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/switcher.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/television.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/thermostat.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/valve.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
@@ -277,4 +302,211 @@ IconData buildDeviceIcon(DeviceCategory category, [IconData? icon]) {
     // Fallback to generic icon
     return MdiIcons.powerPlug;
   }
+}
+
+/// Registry of device widget builders by category
+Map<DeviceCategory, Widget Function(DeviceView)> deviceWidgetMappers = {
+  DeviceCategory.airConditioner: (device) {
+    if (device is! AirConditionerDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Air conditioner device detail',
+      );
+    }
+    return AirConditionerDeviceDetail(device: device);
+  },
+  DeviceCategory.airDehumidifier: (device) {
+    if (device is! AirDehumidifierDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Air dehumidifier device detail',
+      );
+    }
+    return AirDehumidifierDeviceDetail(device: device);
+  },
+  DeviceCategory.airHumidifier: (device) {
+    if (device is! AirHumidifierDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Air humidifier device detail',
+      );
+    }
+    return AirHumidifierDeviceDetail(device: device);
+  },
+  DeviceCategory.airPurifier: (device) {
+    if (device is! AirPurifierDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Air purifier device detail',
+      );
+    }
+    return AirPurifierDeviceDetail(device: device);
+  },
+  DeviceCategory.alarm: (device) {
+    if (device is! AlarmDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Alarm device detail',
+      );
+    }
+    return AlarmDeviceDetail(device: device);
+  },
+  DeviceCategory.camera: (device) {
+    if (device is! CameraDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Camera device detail',
+      );
+    }
+    return CameraDeviceDetail(device: device);
+  },
+  DeviceCategory.door: (device) {
+    if (device is! DoorDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Door device detail',
+      );
+    }
+    return DoorDeviceDetail(device: device);
+  },
+  DeviceCategory.doorbell: (device) {
+    if (device is! DoorbellDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Doorbell device detail',
+      );
+    }
+    return DoorbellDeviceDetail(device: device);
+  },
+  DeviceCategory.fan: (device) {
+    if (device is! FanDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Fan device detail',
+      );
+    }
+    return FanDeviceDetail(device: device);
+  },
+  DeviceCategory.heater: (device) {
+    if (device is! HeaterDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Heater device detail',
+      );
+    }
+    return HeaterDeviceDetail(device: device);
+  },
+  DeviceCategory.lighting: (device) {
+    if (device is! LightingDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Lighting device detail',
+      );
+    }
+    return LightingDeviceDetail(device: device);
+  },
+  DeviceCategory.lock: (device) {
+    if (device is! LockDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Lock device detail',
+      );
+    }
+    return LockDeviceDetail(device: device);
+  },
+  DeviceCategory.media: (device) {
+    if (device is! MediaDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Media device detail',
+      );
+    }
+    return MediaDeviceDetail(device: device);
+  },
+  DeviceCategory.outlet: (device) {
+    if (device is! OutletDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Outlet device detail',
+      );
+    }
+    return OutletDeviceDetail(device: device);
+  },
+  DeviceCategory.pump: (device) {
+    if (device is! PumpDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Pump device detail',
+      );
+    }
+    return PumpDeviceDetail(device: device);
+  },
+  DeviceCategory.robotVacuum: (device) {
+    if (device is! RobotVacuumDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Robot vacuum device detail',
+      );
+    }
+    return RobotVacuumDeviceDetail(device: device);
+  },
+  DeviceCategory.sensor: (device) {
+    if (device is! SensorDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Sensor device detail',
+      );
+    }
+    return SensorDeviceDetail(device: device);
+  },
+  DeviceCategory.speaker: (device) {
+    if (device is! SpeakerDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Speaker device detail',
+      );
+    }
+    return SpeakerDeviceDetail(device: device);
+  },
+  DeviceCategory.sprinkler: (device) {
+    if (device is! SprinklerDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Sprinkler device detail',
+      );
+    }
+    return SprinklerDeviceDetail(device: device);
+  },
+  DeviceCategory.switcher: (device) {
+    if (device is! SwitcherDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Switcher device detail',
+      );
+    }
+    return SwitcherDeviceDetail(device: device);
+  },
+  DeviceCategory.television: (device) {
+    if (device is! TelevisionDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Television device detail',
+      );
+    }
+    return TelevisionDeviceDetail(device: device);
+  },
+  DeviceCategory.thermostat: (device) {
+    if (device is! ThermostatDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Thermostat device detail',
+      );
+    }
+    return ThermostatDeviceDetail(device: device);
+  },
+  DeviceCategory.valve: (device) {
+    if (device is! ValveDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Valve device detail',
+      );
+    }
+    return ValveDeviceDetail(device: device);
+  },
+  DeviceCategory.windowCovering: (device) {
+    if (device is! WindowCoveringDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Window covering device detail',
+      );
+    }
+    return WindowCoveringDeviceDetail(device: device);
+  },
+};
+
+/// Build a device detail widget for the given device view
+Widget buildDeviceWidget(DeviceView device) {
+  final builder = deviceWidgetMappers[device.category];
+
+  if (builder == null) {
+    return GenericDeviceDetail(device: device);
+  }
+
+  return builder(device);
 }

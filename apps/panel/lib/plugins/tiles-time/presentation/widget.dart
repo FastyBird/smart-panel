@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/tile.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-time/views/view.dart';
 import 'package:flutter/material.dart';
 

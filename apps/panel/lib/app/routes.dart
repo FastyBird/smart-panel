@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/features/dashboard/presentation/deck_dashboard.dart';
+import 'package:fastybird_smart_panel/features/deck/presentation/deck_dashboard.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/power_off.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/reboot.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/settings.dart';

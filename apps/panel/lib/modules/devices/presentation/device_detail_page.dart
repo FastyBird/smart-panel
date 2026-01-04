@@ -6,8 +6,6 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
-import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
@@ -17,9 +15,9 @@ class DeviceDetailPage extends StatelessWidget {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
-  final DeviceDetailPageView page;
+  final String id;
 
-  DeviceDetailPage({super.key, required this.page});
+  DeviceDetailPage(this.id, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +26,7 @@ class DeviceDetailPage extends StatelessWidget {
       devicesService,
       _,
     ) {
-      final DeviceView? device = devicesService.getDevice(page.device);
+      var device = devicesService.getDevice(id);
 
       if (device == null) {
         final localizations = AppLocalizations.of(context)!;
@@ -66,16 +64,13 @@ class DeviceDetailPage extends StatelessWidget {
       }
 
       return Scaffold(
-        appBar: page.showTopBar
-            ? AppTopBar(
-                title: device.name,
-                icon: page.icon ??
-                    buildDeviceIcon(
-                      device.category,
-                      device.icon,
-                    ),
-              )
-            : null,
+        appBar: AppTopBar(
+          title: device.name,
+          icon: buildDeviceIcon(
+            device.category,
+            device.icon,
+          ),
+        ),
         body: buildDeviceWidget(device),
       );
     });
