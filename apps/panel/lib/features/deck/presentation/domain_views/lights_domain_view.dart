@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -284,7 +285,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return GestureDetector(
       onTap:
           isToggling ? null : () => _toggleRole(context, group, devicesService),
-      onLongPress: () => _openRoleDetail(context, group),
+      onLongPress: () => _openRoleDetail(context, group, devicesService),
       child: Container(
         decoration: BoxDecoration(
           color: isOn
@@ -495,8 +496,28 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
-  /// Open role detail page
-  void _openRoleDetail(BuildContext context, _RoleGroup group) {
+  /// Open role detail page or device detail if only one device
+  void _openRoleDetail(
+    BuildContext context,
+    _RoleGroup group,
+    DevicesService devicesService,
+  ) {
+    // If only one device in role, open device detail directly
+    if (group.targets.length == 1) {
+      final target = group.targets.first;
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DeviceDetailPage(device.id),
+          ),
+        );
+        return;
+      }
+    }
+
+    // Otherwise open role detail page
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -894,12 +915,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
 
     if (spacesService == null || devicesService == null) {
       return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(_getRoleName(widget.role)),
+        appBar: AppTopBar(
+          title: _getRoleName(widget.role),
         ),
         body: const Center(child: Text('Services not available')),
       );
@@ -986,31 +1003,16 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
     ));
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            Icon(_getRoleIcon(widget.role, onCount > 0)),
-            const SizedBox(width: 8),
-            Text(_getRoleName(widget.role)),
-          ],
-        ),
+      appBar: AppTopBar(
+        title: _getRoleName(widget.role),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Text(
-                '${lightTargets.length} devices',
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular,
-                ),
-              ),
+          Text(
+            '${lightTargets.length} devices',
+            style: TextStyle(
+              fontSize: AppFontSize.small,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
             ),
           ),
         ],
@@ -1039,65 +1041,106 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
     int currentBrightness,
     DevicesService devicesService,
   ) {
-    return Padding(
-      padding: AppSpacings.paddingLg,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.brightness6,
-            size: _screenService.scale(
-              48,
-              density: _visualDensityService.density,
-            ),
-            color: Theme.of(context).colorScheme.primary,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sliderHeight = constraints.maxHeight * 0.6;
+
+        return Padding(
+          padding: AppSpacings.paddingLg,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${(_sliderBrightness?.round() ?? currentBrightness)}',
+                    style: TextStyle(
+                      fontSize: _screenService.scale(
+                        60,
+                        density: _visualDensityService.density,
+                      ),
+                      fontFamily: 'DIN1451',
+                      fontWeight: FontWeight.w100,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTextColorLight.regular
+                          : AppTextColorDark.regular,
+                    ),
+                  ),
+                  Text(
+                    '%',
+                    style: TextStyle(
+                      fontSize: _screenService.scale(
+                        25,
+                        density: _visualDensityService.density,
+                      ),
+                      fontFamily: 'DIN1451',
+                      fontWeight: FontWeight.w100,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTextColorLight.regular
+                          : AppTextColorDark.regular,
+                    ),
+                  ),
+                ],
+              ),
+              AppSpacings.spacingMdVertical,
+              if (_isSettingBrightness)
+                const CircularProgressIndicator()
+              else
+                ColoredSlider(
+                  value: _sliderBrightness ?? currentBrightness.toDouble(),
+                  min: 0,
+                  max: 100,
+                  enabled: true,
+                  vertical: true,
+                  trackWidth: sliderHeight,
+                  showThumb: false,
+                  onValueChanged: (value) {
+                    setState(() {
+                      _sliderBrightness = value;
+                    });
+                    _setBrightnessForAll(
+                        context, targets, value.round(), devicesService);
+                  },
+                  inner: [
+                    Positioned(
+                      left: _screenService.scale(
+                        20,
+                        density: _visualDensityService.density,
+                      ),
+                      child: RotatedBox(
+                        quarterTurns: 1,
+                        child: Icon(
+                          MdiIcons.weatherSunny,
+                          size: _screenService.scale(
+                            40,
+                            density: _visualDensityService.density,
+                          ),
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? AppTextColorLight.placeholder
+                                  : AppTextColorDark.regular,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              AppSpacings.spacingMdVertical,
+              Text(
+                'Drag to set brightness for all lights',
+                style: TextStyle(
+                  fontSize: AppFontSize.small,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.placeholder
+                      : AppTextColorDark.placeholder,
+                ),
+              ),
+            ],
           ),
-          AppSpacings.spacingMdVertical,
-          Text(
-            '${(_sliderBrightness?.round() ?? currentBrightness)}%',
-            style: TextStyle(
-              fontSize: AppFontSize.extraLarge,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.primary
-                  : AppTextColorDark.primary,
-            ),
-          ),
-          AppSpacings.spacingLgVertical,
-          if (_isSettingBrightness)
-            const CircularProgressIndicator()
-          else
-            Slider(
-              value: _sliderBrightness ?? currentBrightness.toDouble(),
-              min: 0,
-              max: 100,
-              divisions: 20,
-              label: '${(_sliderBrightness?.round() ?? currentBrightness)}%',
-              onChanged: (value) {
-                setState(() {
-                  _sliderBrightness = value;
-                });
-              },
-              onChangeEnd: (value) {
-                _setBrightnessForAll(
-                    context, targets, value.round(), devicesService);
-                setState(() {
-                  _sliderBrightness = null;
-                });
-              },
-            ),
-          AppSpacings.spacingMdVertical,
-          Text(
-            'Drag to set brightness for all lights',
-            style: TextStyle(
-              fontSize: AppFontSize.small,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.placeholder
-                  : AppTextColorDark.placeholder,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
