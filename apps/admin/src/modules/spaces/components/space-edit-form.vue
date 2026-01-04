@@ -367,15 +367,20 @@ watch(formRef, (newVal) => {
 // Collapse state - General and Organization open by default
 const activeCollapses = ref<string[]>(['general', 'organization']);
 
-// Devices filtered by this space (room)
+// Devices filtered by this space (room or zone)
 const spaceDevices = computed<IDevice[]>(() => {
 	if (!props.space?.id) return [];
-	return allDevices.value.filter((device) => device.roomId === props.space.id);
+	if (props.space.type === SpaceType.ROOM) {
+		return allDevices.value.filter((device) => device.roomId === props.space.id);
+	} else {
+		// For zones: filter devices where zoneIds includes this zone
+		return allDevices.value.filter((device) => device.zoneIds.includes(props.space.id));
+	}
 });
 
-// Displays filtered by this space (room)
+// Displays filtered by this space (room only - displays can only belong to rooms)
 const spaceDisplays = computed<IDisplay[]>(() => {
-	if (!props.space?.id) return [];
+	if (!props.space?.id || props.space.type !== SpaceType.ROOM) return [];
 	return allDisplays.value.filter((display) => display.roomId === props.space.id);
 });
 

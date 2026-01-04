@@ -82,6 +82,7 @@ import { useI18n } from 'vue-i18n';
 import { DevicesModuleChannelCategory, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { useChannels, useDevices } from '../../devices/composables/composables';
 import type { IChannel } from '../../devices/store/channels.store.types';
+import { SpaceType } from '../spaces.constants';
 
 import type { ISpaceClimateOverridesSummaryProps } from './space-climate-overrides-summary.types';
 
@@ -103,19 +104,25 @@ const { t } = useI18n();
 const { devices: allDevices, loaded: devicesLoaded, fetchDevices } = useDevices();
 const { channels: allChannels, loaded: channelsLoaded, fetchChannels } = useChannels();
 
-// Devices filtered by this space (room) with channels
+// Devices filtered by this space (room or zone) with channels
 const spaceDevices = computed<IClimateDevice[]>(() => {
 	if (!props.space?.id) return [];
 
-	return allDevices.value
-		.filter((device) => device.roomId === props.space.id)
-		.map((device) => ({
-			id: device.id,
-			name: device.name,
-			category: device.category as DevicesModuleDeviceCategory,
-			channels: allChannels.value.filter((ch) => ch.device === device.id),
-			createdAt: device.createdAt,
-		}));
+	let filteredDevices;
+	if (props.space.type === SpaceType.ROOM) {
+		filteredDevices = allDevices.value.filter((device) => device.roomId === props.space.id);
+	} else {
+		// For zones: filter devices where zoneIds includes this zone
+		filteredDevices = allDevices.value.filter((device) => device.zoneIds.includes(props.space.id));
+	}
+
+	return filteredDevices.map((device) => ({
+		id: device.id,
+		name: device.name,
+		category: device.category as DevicesModuleDeviceCategory,
+		channels: allChannels.value.filter((ch) => ch.device === device.id),
+		createdAt: device.createdAt,
+	}));
 });
 
 // Helper to sort devices by createdAt (oldest first)
