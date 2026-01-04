@@ -11,7 +11,6 @@ import 'package:fastybird_smart_panel/plugins/data-sources-device-channel/mapper
 import 'package:fastybird_smart_panel/plugins/data-sources-weather/mapper.dart';
 import 'package:fastybird_smart_panel/plugins/pages-cards/mapper.dart';
 import 'package:fastybird_smart_panel/plugins/pages-device-detail/mapper.dart';
-import 'package:fastybird_smart_panel/plugins/pages-space/mapper.dart';
 import 'package:fastybird_smart_panel/plugins/pages-tiles/mapper.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-device-preview/mapper.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-scene/mapper.dart';
@@ -113,7 +112,6 @@ class DashboardModuleService {
     registerPagesTilesPlugin();
     registerPagesCardsPlugin();
     registerPagesDeviceDetailPlugin();
-    registerPagesSpacePlugin();
 
     if (kDebugMode) {
       debugPrint(
