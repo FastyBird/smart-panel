@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -6,8 +7,8 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
-import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -31,6 +32,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   late final IntentsService _intentsService;
+  DevicesService? _devicesService;
   ScenesService? _scenesService;
 
   // Loading states
@@ -57,6 +59,11 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   void initState() {
     super.initState();
     _intentsService = locator<IntentsService>();
+
+    try {
+      _devicesService = locator<DevicesService>();
+    } catch (_) {}
+
     try {
       _scenesService = locator<ScenesService>();
     } catch (_) {}
@@ -71,18 +78,36 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     });
 
     try {
-      // TODO: Call actual security/devices API when available
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Get security devices from DevicesService
+      final locks = _devicesService?.getDevicesByCategory(DeviceCategory.lock) ?? [];
+      final alarms = _devicesService?.getDevicesByCategory(DeviceCategory.alarm) ?? [];
+      final cameras = _devicesService?.getDevicesByCategory(DeviceCategory.camera) ?? [];
 
       if (!mounted) return;
 
-      // Set security info (simulated for now)
+      // Count locked devices
+      int lockedCount = 0;
+      for (final lock in locks) {
+        if (_isDeviceLocked(lock)) {
+          lockedCount++;
+        }
+      }
+
+      // Check if alarm is armed
+      bool isAlarmArmed = false;
+      for (final alarm in alarms) {
+        if (_isAlarmArmed(alarm)) {
+          isAlarmArmed = true;
+          break;
+        }
+      }
+
       setState(() {
-        _locksCount = 2;
-        _locksLockedCount = 2;
-        _alarmsCount = 1;
-        _alarmArmed = false;
-        _camerasCount = 3;
+        _locksCount = locks.length;
+        _locksLockedCount = lockedCount;
+        _alarmsCount = alarms.length;
+        _alarmArmed = isAlarmArmed;
+        _camerasCount = cameras.length;
         _activeHouseMode = ScenesModuleDataSceneCategory.home;
         _isLoading = false;
       });
@@ -97,6 +122,50 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         _errorMessage = 'Failed to load security data';
       });
     }
+  }
+
+  /// Check if a lock device is currently locked
+  bool _isDeviceLocked(DeviceView device) {
+    for (final channel in device.channels) {
+      for (final property in channel.properties) {
+        if (property.category == ChannelPropertyCategory.locked) {
+          final valueType = property.value;
+          if (valueType != null) {
+            final rawValue = valueType.value;
+            if (rawValue is bool) {
+              return rawValue;
+            }
+            if (rawValue is String) {
+              return rawValue.toLowerCase() == 'true';
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Check if an alarm device is armed
+  bool _isAlarmArmed(DeviceView device) {
+    for (final channel in device.channels) {
+      for (final property in channel.properties) {
+        // Check for 'active' or 'on' property
+        if (property.category == ChannelPropertyCategory.active ||
+            property.category == ChannelPropertyCategory.on) {
+          final valueType = property.value;
+          if (valueType != null) {
+            final rawValue = valueType.value;
+            if (rawValue is bool) {
+              return rawValue;
+            }
+            if (rawValue is String) {
+              return rawValue.toLowerCase() == 'true';
+            }
+          }
+        }
+      }
+    }
+    return false;
   }
 
   void _loadHouseModeScenes() {

@@ -636,7 +636,7 @@ class StartupManagerService {
     var deckService = DeckService(
       dashboardService: locator<DashboardService>(),
       intentsService: intentsService,
-      spacesRepository: locator<SpacesRepository>(),
+      devicesService: locator<DevicesService>(),
     );
     locator.registerSingleton(deckService);
 

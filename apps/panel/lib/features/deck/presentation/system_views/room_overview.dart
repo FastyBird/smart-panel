@@ -1,6 +1,4 @@
 import 'package:event_bus/event_bus.dart';
-import 'package:fastybird_smart_panel/api/models/devices_module_data_channel_property_category.dart';
-import 'package:fastybird_smart_panel/api/models/devices_module_data_device.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -9,6 +7,7 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -42,6 +41,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
   late final IntentsService _intentsService;
   late final DeckService _deckService;
+  DevicesService? _devicesService;
   ScenesService? _scenesService;
   SpacesService? _spacesService;
 
@@ -67,6 +67,10 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     super.initState();
     _intentsService = locator<IntentsService>();
     _deckService = locator<DeckService>();
+
+    try {
+      _devicesService = locator<DevicesService>();
+    } catch (_) {}
 
     try {
       _scenesService = locator<ScenesService>();
@@ -176,18 +180,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   /// Fetches live device property values (temperature, lights on count).
   Future<void> _fetchLiveDeviceData() async {
     try {
-      final spacesRepository = locator<SpacesRepository>();
-
-      // Handle potential null data from backend - Freezed throws TypeError
-      List<DevicesModuleDataDevice> devices = [];
-      try {
-        final response = await spacesRepository.apiClient
-            .getSpacesModuleSpaceDevices(id: _roomId);
-        devices = response.data.data;
-      } on TypeError {
-        // Backend returns null instead of empty array when no devices assigned
-        devices = [];
-      }
+      // Get devices for this room from DevicesService
+      final devices = _devicesService?.getDevicesForRoom(_roomId) ?? [];
 
       debugPrint(
         '[ROOM OVERVIEW] Live device fetch returned ${devices.length} devices. '
@@ -214,22 +208,24 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     }
   }
 
-  bool _isLightingDevice(DevicesModuleDataDevice device) {
-    return device.category.name == 'lighting';
+  bool _isLightingDevice(DeviceView device) {
+    return device.category == DeviceCategory.lighting;
   }
 
   /// Check if a device is currently on by looking for the 'on' property
-  bool _isDeviceOn(DevicesModuleDataDevice device) {
+  bool _isDeviceOn(DeviceView device) {
     for (final channel in device.channels) {
       for (final property in channel.properties) {
-        if (property.category ==
-            DevicesModuleDataChannelPropertyCategory.valueOn) {
-          final value = property.value;
-          if (value is bool) {
-            return value;
-          }
-          if (value is String) {
-            return value.toLowerCase() == 'true';
+        if (property.category == ChannelPropertyCategory.on) {
+          final valueType = property.value;
+          if (valueType != null) {
+            final rawValue = valueType.value;
+            if (rawValue is bool) {
+              return rawValue;
+            }
+            if (rawValue is String) {
+              return rawValue.toLowerCase() == 'true';
+            }
           }
         }
       }
@@ -238,17 +234,16 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   /// Get temperature value from a device's channels
-  double? _getTemperature(DevicesModuleDataDevice device) {
+  double? _getTemperature(DeviceView device) {
     for (final channel in device.channels) {
       for (final property in channel.properties) {
-        if (property.category ==
-            DevicesModuleDataChannelPropertyCategory.temperature) {
-          final value = property.value;
-          if (value is num) {
-            return value.toDouble();
-          }
-          if (value is String) {
-            return double.tryParse(value);
+        if (property.category == ChannelPropertyCategory.temperature) {
+          final valueType = property.value;
+          if (valueType != null) {
+            final rawValue = valueType.value;
+            if (rawValue is num) {
+              return rawValue.toDouble();
+            }
           }
         }
       }
@@ -326,8 +321,57 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         }
         break;
       case SuggestedActionType.turnOffLights:
-        // TODO: Implement turn off all lights action
+        await _turnOffAllLights();
         break;
+    }
+  }
+
+  Future<void> _turnOffAllLights() async {
+    final localizations = AppLocalizations.of(context);
+
+    // Get all lighting devices in this room
+    final lightDevices =
+        _devicesService?.getDevicesForRoomByCategory(_roomId, DeviceCategory.lighting) ?? [];
+
+    if (lightDevices.isEmpty) return;
+
+    int successCount = 0;
+    int failCount = 0;
+
+    for (final device in lightDevices) {
+      // Only turn off devices that are currently on
+      if (_isDeviceOn(device)) {
+        final result = await _intentsService.toggleDevice(device.id);
+        if (result.isSuccess) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+    }
+
+    if (!mounted) return;
+
+    // Refresh live data
+    await _fetchLiveDeviceData();
+    setState(() {});
+
+    // Show feedback
+    if (failCount == 0 && successCount > 0) {
+      AlertBar.showSuccess(
+        context,
+        message: 'Lights turned off',
+      );
+    } else if (successCount > 0) {
+      AlertBar.showInfo(
+        context,
+        message: 'Some lights turned off',
+      );
+    } else if (failCount > 0) {
+      AlertBar.showError(
+        context,
+        message: localizations?.action_failed ?? 'Failed to turn off lights',
+      );
     }
   }
 

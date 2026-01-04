@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -6,7 +7,9 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
+import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -49,6 +52,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
   late final IntentsService _intentsService;
+  SpacesService? _spacesService;
+  DevicesService? _devicesService;
   ScenesService? _scenesService;
 
   // Loading states
@@ -74,6 +79,15 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   void initState() {
     super.initState();
     _intentsService = locator<IntentsService>();
+
+    try {
+      _spacesService = locator<SpacesService>();
+    } catch (_) {}
+
+    try {
+      _devicesService = locator<DevicesService>();
+    } catch (_) {}
+
     try {
       _scenesService = locator<ScenesService>();
     } catch (_) {}
@@ -88,58 +102,52 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     });
 
     try {
-      // TODO: Call actual spaces API when available
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Get rooms from SpacesService
+      final rooms = _spacesService?.rooms ?? [];
+
+      // Get all devices from DevicesService
+      final allDevices = _devicesService?.devicesList ?? [];
 
       if (!mounted) return;
 
-      // Set house info (simulated for now)
+      // Build room summaries
+      final roomSummaries = <RoomSummary>[];
+      int onlineDeviceCount = 0;
+
+      for (final room in rooms) {
+        // Get devices assigned to this room
+        final roomDevices =
+            _devicesService?.getDevicesForRoom(room.id) ?? [];
+        final deviceCount = roomDevices.length;
+
+        // Count online devices (for now, assume all are online)
+        final onlineCount = deviceCount;
+        onlineDeviceCount += onlineCount;
+
+        // Get temperature from primary temperature sensor if available
+        double? temperature;
+        if (room.primaryTemperatureSensorId != null) {
+          temperature = _getTemperatureFromDevice(
+            room.primaryTemperatureSensorId!,
+          );
+        }
+
+        roomSummaries.add(RoomSummary(
+          id: room.id,
+          name: room.name,
+          icon: _getIconForRoom(room),
+          onlineDevices: onlineCount,
+          totalDevices: deviceCount,
+          temperature: temperature,
+        ));
+      }
+
       setState(() {
-        _roomsCount = 5;
-        _totalDevices = 24;
-        _onlineDevices = 22;
-        _alertsCount = 1;
-        _rooms = [
-          RoomSummary(
-            id: 'living-room',
-            name: 'Living Room',
-            icon: MdiIcons.sofa,
-            onlineDevices: 6,
-            totalDevices: 6,
-            temperature: 21.5,
-          ),
-          RoomSummary(
-            id: 'bedroom',
-            name: 'Bedroom',
-            icon: MdiIcons.bedKingOutline,
-            onlineDevices: 4,
-            totalDevices: 4,
-            temperature: 20.0,
-          ),
-          RoomSummary(
-            id: 'kitchen',
-            name: 'Kitchen',
-            icon: MdiIcons.stove,
-            onlineDevices: 5,
-            totalDevices: 5,
-            temperature: 22.0,
-          ),
-          RoomSummary(
-            id: 'bathroom',
-            name: 'Bathroom',
-            icon: MdiIcons.showerHead,
-            onlineDevices: 3,
-            totalDevices: 4,
-          ),
-          RoomSummary(
-            id: 'office',
-            name: 'Office',
-            icon: MdiIcons.deskLamp,
-            onlineDevices: 4,
-            totalDevices: 5,
-            temperature: 21.0,
-          ),
-        ];
+        _roomsCount = rooms.length;
+        _totalDevices = allDevices.length;
+        _onlineDevices = onlineDeviceCount;
+        _alertsCount = 0; // TODO: Add alerts tracking when available
+        _rooms = roomSummaries;
         _isLoading = false;
       });
 
@@ -152,6 +160,74 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         _isLoading = false;
         _errorMessage = 'Failed to load house data';
       });
+    }
+  }
+
+  /// Get temperature value from a device by ID
+  double? _getTemperatureFromDevice(String deviceId) {
+    final device = _devicesService?.getDevice(deviceId);
+    if (device == null) return null;
+
+    for (final channel in device.channels) {
+      for (final property in channel.properties) {
+        if (property.category == ChannelPropertyCategory.temperature) {
+          final valueType = property.value;
+          if (valueType != null) {
+            final rawValue = valueType.value;
+            if (rawValue is num) {
+              return rawValue.toDouble();
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Get an appropriate icon for a room based on its category
+  IconData _getIconForRoom(SpaceView room) {
+    switch (room.category) {
+      case SpacesModuleDataSpaceCategory.livingRoom:
+        return MdiIcons.sofa;
+      case SpacesModuleDataSpaceCategory.bedroom:
+        return MdiIcons.bedKingOutline;
+      case SpacesModuleDataSpaceCategory.bathroom:
+        return MdiIcons.showerHead;
+      case SpacesModuleDataSpaceCategory.kitchen:
+        return MdiIcons.stove;
+      case SpacesModuleDataSpaceCategory.office:
+        return MdiIcons.deskLamp;
+      case SpacesModuleDataSpaceCategory.garage:
+        return MdiIcons.garage;
+      case SpacesModuleDataSpaceCategory.outdoorGarden:
+        return MdiIcons.flower;
+      case SpacesModuleDataSpaceCategory.hallway:
+      case SpacesModuleDataSpaceCategory.entryway:
+        return MdiIcons.doorOpen;
+      case SpacesModuleDataSpaceCategory.laundry:
+        return MdiIcons.washingMachine;
+      case SpacesModuleDataSpaceCategory.floorBasement:
+        return MdiIcons.stairs;
+      case SpacesModuleDataSpaceCategory.floorAttic:
+        return MdiIcons.homeRoof;
+      case SpacesModuleDataSpaceCategory.nursery:
+        return MdiIcons.toyBrickOutline;
+      case SpacesModuleDataSpaceCategory.diningRoom:
+        return MdiIcons.tableFurniture;
+      case SpacesModuleDataSpaceCategory.outdoorBalcony:
+        return MdiIcons.balcony;
+      case SpacesModuleDataSpaceCategory.outdoorTerrace:
+        return MdiIcons.tableChair;
+      case SpacesModuleDataSpaceCategory.guestRoom:
+        return MdiIcons.bedOutline;
+      case SpacesModuleDataSpaceCategory.gym:
+        return MdiIcons.dumbbell;
+      case SpacesModuleDataSpaceCategory.mediaRoom:
+        return MdiIcons.television;
+      case SpacesModuleDataSpaceCategory.workshop:
+        return MdiIcons.hammerWrench;
+      default:
+        return MdiIcons.homeOutline;
     }
   }
 

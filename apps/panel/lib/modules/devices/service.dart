@@ -60,6 +60,8 @@ class DevicesService extends ChangeNotifier {
 
   Map<String, DeviceView> get devices => _devices;
 
+  List<DeviceView> get devicesList => _devices.values.toList();
+
   Map<String, ChannelView> get channels => _channels;
 
   Map<String, ChannelPropertyView> get properties => _properties;
@@ -86,6 +88,38 @@ class DevicesService extends ChangeNotifier {
     }
 
     return _properties[id];
+  }
+
+  /// Get all devices assigned to a specific room
+  List<DeviceView> getDevicesForRoom(String roomId) {
+    return _devices.values.where((d) => d.roomId == roomId).toList();
+  }
+
+  /// Get all devices assigned to a specific zone
+  List<DeviceView> getDevicesForZone(String zoneId) {
+    return _devices.values.where((d) => d.zoneIds.contains(zoneId)).toList();
+  }
+
+  /// Get all devices of a specific category
+  List<DeviceView> getDevicesByCategory(DeviceCategory category) {
+    return _devices.values.where((d) => d.category == category).toList();
+  }
+
+  /// Get all devices matching any of the specified categories
+  List<DeviceView> getDevicesByCategories(List<DeviceCategory> categories) {
+    return _devices.values
+        .where((d) => categories.contains(d.category))
+        .toList();
+  }
+
+  /// Get devices for a room filtered by category
+  List<DeviceView> getDevicesForRoomByCategory(
+    String roomId,
+    DeviceCategory category,
+  ) {
+    return _devices.values
+        .where((d) => d.roomId == roomId && d.category == category)
+        .toList();
   }
 
   Future<bool> toggleDeviceOnState(String id) async {

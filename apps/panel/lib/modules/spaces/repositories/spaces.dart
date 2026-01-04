@@ -14,8 +14,6 @@ class SpacesRepository extends ChangeNotifier {
     required SpacesModuleClient apiClient,
   }) : _apiClient = apiClient;
 
-  SpacesModuleClient get apiClient => _apiClient;
-
   bool get isLoading => _isLoading;
 
   /// Get all spaces

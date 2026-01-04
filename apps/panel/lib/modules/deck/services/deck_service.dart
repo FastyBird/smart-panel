@@ -1,11 +1,8 @@
-import 'package:fastybird_smart_panel/api/models/devices_module_data_device.dart';
-import 'package:fastybird_smart_panel/api/models/devices_module_data_device_category.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -16,7 +13,7 @@ import 'package:flutter/material.dart';
 class DeckService extends ChangeNotifier {
   final DashboardService _dashboardService;
   final IntentsService _intentsService;
-  final SpacesRepository? _spacesRepository;
+  final DevicesService? _devicesService;
 
   /// The current deck result.
   DeckResult? _deck;
@@ -39,10 +36,10 @@ class DeckService extends ChangeNotifier {
   DeckService({
     required DashboardService dashboardService,
     required IntentsService intentsService,
-    SpacesRepository? spacesRepository,
+    DevicesService? devicesService,
   })  : _dashboardService = dashboardService,
         _intentsService = intentsService,
-        _spacesRepository = spacesRepository;
+        _devicesService = devicesService;
 
   /// Returns the current deck, or null if not yet built.
   DeckResult? get deck => _deck;
@@ -124,10 +121,10 @@ class DeckService extends ChangeNotifier {
     String roomId,
     BuildContext? context,
   ) async {
-    if (_spacesRepository == null) {
+    if (_devicesService == null) {
       if (kDebugMode) {
         debugPrint(
-          '[DECK SERVICE] SpacesRepository not available, '
+          '[DECK SERVICE] DevicesService not available, '
           'cannot fetch device categories',
         );
       }
@@ -142,24 +139,10 @@ class DeckService extends ChangeNotifier {
         debugPrint('[DECK SERVICE] Fetching devices for roomId: $roomId');
       }
 
-      // Fetch devices from API - handle potential null data from backend
-      List<DevicesModuleDataDevice> devices = [];
-      try {
-        final response = await _spacesRepository.apiClient
-            .getSpacesModuleSpaceDevices(id: roomId);
-        devices = response.data.data;
-      } on TypeError catch (e) {
-        // Backend returns null instead of empty array when no devices assigned
-        // The generated Freezed code throws TypeError during deserialization
-        if (kDebugMode) {
-          debugPrint(
-            '[DECK SERVICE] API returned null for devices (no devices assigned): $e',
-          );
-        }
-        devices = [];
-      }
+      // Get devices for the room from DevicesService
+      final devices = _devicesService.getDevicesForRoom(roomId);
 
-      // Verify the room hasn't changed during the async operation
+      // Verify the room hasn't changed during the operation
       // to avoid race conditions when switching rooms quickly
       if (_display?.roomId != roomId) {
         if (kDebugMode) {
@@ -173,19 +156,17 @@ class DeckService extends ChangeNotifier {
 
       if (kDebugMode) {
         debugPrint(
-          '[DECK SERVICE] API returned ${devices.length} devices. '
+          '[DECK SERVICE] DevicesService returned ${devices.length} devices. '
           'Categories: ${devices.map((d) => d.category.name).toList()}',
         );
       }
 
-      // Map API device categories to local DeviceCategory
-      _deviceCategories = devices
-          .map((d) => _mapApiDeviceCategory(d.category))
-          .toList();
+      // Get device categories directly from DeviceView
+      _deviceCategories = devices.map((d) => d.category).toList();
 
       if (kDebugMode) {
         debugPrint(
-          '[DECK SERVICE] Mapped to ${_deviceCategories.length} categories: $_deviceCategories',
+          '[DECK SERVICE] Got ${_deviceCategories.length} categories: $_deviceCategories',
         );
       }
 
@@ -206,64 +187,6 @@ class DeckService extends ChangeNotifier {
         );
       }
       notifyListeners();
-    }
-  }
-
-  /// Maps API device category enum to local DeviceCategory.
-  DeviceCategory _mapApiDeviceCategory(DevicesModuleDataDeviceCategory category) {
-    switch (category) {
-      case DevicesModuleDataDeviceCategory.generic:
-        return DeviceCategory.generic;
-      case DevicesModuleDataDeviceCategory.airConditioner:
-        return DeviceCategory.airConditioner;
-      case DevicesModuleDataDeviceCategory.airDehumidifier:
-        return DeviceCategory.airDehumidifier;
-      case DevicesModuleDataDeviceCategory.airHumidifier:
-        return DeviceCategory.airHumidifier;
-      case DevicesModuleDataDeviceCategory.airPurifier:
-        return DeviceCategory.airPurifier;
-      case DevicesModuleDataDeviceCategory.alarm:
-        return DeviceCategory.alarm;
-      case DevicesModuleDataDeviceCategory.camera:
-        return DeviceCategory.camera;
-      case DevicesModuleDataDeviceCategory.door:
-        return DeviceCategory.door;
-      case DevicesModuleDataDeviceCategory.doorbell:
-        return DeviceCategory.doorbell;
-      case DevicesModuleDataDeviceCategory.fan:
-        return DeviceCategory.fan;
-      case DevicesModuleDataDeviceCategory.heater:
-        return DeviceCategory.heater;
-      case DevicesModuleDataDeviceCategory.lighting:
-        return DeviceCategory.lighting;
-      case DevicesModuleDataDeviceCategory.lock:
-        return DeviceCategory.lock;
-      case DevicesModuleDataDeviceCategory.media:
-        return DeviceCategory.media;
-      case DevicesModuleDataDeviceCategory.outlet:
-        return DeviceCategory.outlet;
-      case DevicesModuleDataDeviceCategory.pump:
-        return DeviceCategory.pump;
-      case DevicesModuleDataDeviceCategory.robotVacuum:
-        return DeviceCategory.robotVacuum;
-      case DevicesModuleDataDeviceCategory.sensor:
-        return DeviceCategory.sensor;
-      case DevicesModuleDataDeviceCategory.speaker:
-        return DeviceCategory.speaker;
-      case DevicesModuleDataDeviceCategory.sprinkler:
-        return DeviceCategory.sprinkler;
-      case DevicesModuleDataDeviceCategory.switcher:
-        return DeviceCategory.switcher;
-      case DevicesModuleDataDeviceCategory.television:
-        return DeviceCategory.television;
-      case DevicesModuleDataDeviceCategory.thermostat:
-        return DeviceCategory.thermostat;
-      case DevicesModuleDataDeviceCategory.valve:
-        return DeviceCategory.valve;
-      case DevicesModuleDataDeviceCategory.windowCovering:
-        return DeviceCategory.windowCovering;
-      case DevicesModuleDataDeviceCategory.$unknown:
-        return DeviceCategory.generic;
     }
   }
 
