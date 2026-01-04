@@ -31,21 +31,36 @@ class GenericTileModel extends TileModel {
         if (dataSource is String) {
           dataSources.add(dataSource);
         } else if (dataSource is Map<String, dynamic> &&
-            dataSource.containsKey('id')) {
-          dataSources.add(dataSource['id']);
+            dataSource['id'] is String) {
+          dataSources.add(dataSource['id'] as String);
         }
       }
+    }
+
+    // Extract parent type and id with proper type checking
+    String parentType = 'page';
+    String? parentId;
+
+    if (json['parent'] is Map<String, dynamic>) {
+      final parent = json['parent'] as Map<String, dynamic>;
+      if (parent['type'] is String) {
+        parentType = parent['type'] as String;
+      }
+      if (parent['id'] is String) {
+        parentId = parent['id'] as String;
+      }
+    } else {
+      if (json['parent_type'] is String) {
+        parentType = json['parent_type'] as String;
+      }
+      parentId = json['parent_id'] as String?;
     }
 
     return GenericTileModel(
       id: UuidUtils.validateUuid(json['id']),
       type: json['type'] ?? 'unknown',
-      parentType: json['parent'] is Map<String, dynamic>
-          ? json['parent']['type']
-          : (json['parent_type'] ?? 'page'),
-      parentId: UuidUtils.validateUuid(json['parent'] is Map<String, dynamic>
-          ? json['parent']['id']
-          : json['parent_id']),
+      parentType: parentType,
+      parentId: UuidUtils.validateUuid(parentId),
       dataSource: UuidUtils.validateUuidList(dataSources),
       row: json['row'] ?? 0,
       col: json['col'] ?? 0,

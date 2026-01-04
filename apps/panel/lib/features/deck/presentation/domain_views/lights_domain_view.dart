@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -826,6 +828,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
   bool _isSettingBrightness = false;
   // Local slider value for visual feedback during drag
   double? _sliderBrightness;
+  // Debounce timer for brightness slider
+  Timer? _brightnessDebounceTimer;
 
   @override
   void initState() {
@@ -848,6 +852,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
 
   @override
   void dispose() {
+    _brightnessDebounceTimer?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     _tabController.dispose();
@@ -1096,8 +1101,13 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
                     setState(() {
                       _sliderBrightness = value;
                     });
-                    _setBrightnessForAll(
-                        context, targets, value.round(), devicesService);
+                    // Debounce the API call to prevent overwhelming the backend
+                    _brightnessDebounceTimer?.cancel();
+                    _brightnessDebounceTimer = Timer(
+                      const Duration(milliseconds: 300),
+                      () => _setBrightnessForAll(
+                          context, targets, value.round(), devicesService),
+                    );
                   },
                   inner: [
                     Positioned(
