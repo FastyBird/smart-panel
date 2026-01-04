@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_navigation.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -813,8 +814,7 @@ class _LightRoleDetailPage extends StatefulWidget {
   State<_LightRoleDetailPage> createState() => _LightRoleDetailPageState();
 }
 
-class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
-    with TickerProviderStateMixin {
+class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
@@ -822,8 +822,9 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
   SpacesService? _spacesService;
   DevicesService? _devicesService;
 
-  late TabController _tabController;
-  int _tabCount = 1;
+  // Current mode for bottom navigation
+  _LightRoleMode _currentMode = _LightRoleMode.off;
+  final List<_LightRoleMode> _availableModes = [];
 
   bool _isSettingBrightness = false;
   // Local slider value for visual feedback during drag
@@ -834,7 +835,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 1, vsync: this);
 
     try {
       _spacesService = locator<SpacesService>();
@@ -846,8 +846,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
       _devicesService?.addListener(_onDataChanged);
     } catch (_) {}
 
-    // Sync tab controller with actual tab count after services are available
-    _updateTabControllerIfNeeded();
+    // Initialize available modes
+    _updateAvailableModes();
   }
 
   @override
@@ -855,13 +855,12 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
     _brightnessDebounceTimer?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
-    _tabController.dispose();
     super.dispose();
   }
 
   void _onDataChanged() {
     if (mounted) {
-      _updateTabControllerIfNeeded();
+      _updateAvailableModes();
       setState(() {
         // Reset slider brightness so it reflects actual device state
         _sliderBrightness = null;
@@ -869,9 +868,12 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
     }
   }
 
-  /// Calculate required tab count based on current light targets
-  int _calculateRequiredTabCount(
-      SpacesService spacesService, DevicesService devicesService) {
+  /// Update available modes based on current light targets capabilities
+  void _updateAvailableModes() {
+    final spacesService = _spacesService;
+    final devicesService = _devicesService;
+    if (spacesService == null || devicesService == null) return;
+
     final lightTargets = spacesService
         .getLightTargetsForSpace(widget.roomId)
         .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
@@ -894,30 +896,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
       }
     }
 
-    int count = 1; // Always have devices tab
-    if (hasBrightness) count++;
-    if (hasTemperature) count++;
-    if (hasColor) count++;
-    return count;
-  }
+    _availableModes.clear();
+    _availableModes.add(_LightRoleMode.off);
+    if (hasBrightness) _availableModes.add(_LightRoleMode.brightness);
+    if (hasColor) _availableModes.add(_LightRoleMode.color);
+    if (hasTemperature) _availableModes.add(_LightRoleMode.temperature);
 
-  /// Update tab controller if the required tab count changed
-  void _updateTabControllerIfNeeded() {
-    final spacesService = _spacesService;
-    final devicesService = _devicesService;
-    if (spacesService == null || devicesService == null) return;
-
-    final requiredCount =
-        _calculateRequiredTabCount(spacesService, devicesService);
-    if (_tabCount != requiredCount) {
-      _tabCount = requiredCount;
-      _tabController.dispose();
-      _tabController = TabController(length: requiredCount, vsync: this);
+    // Set initial mode to brightness if available, otherwise first available
+    if (_availableModes.length > 1 &&
+        !_availableModes.contains(_currentMode)) {
+      _currentMode = _availableModes[1];
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final spacesService = _spacesService;
     final devicesService = _devicesService;
 
@@ -925,6 +919,22 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
       return Scaffold(
         appBar: AppTopBar(
           title: _getRoleName(widget.role),
+          icon: _getRoleIcon(widget.role),
+          actions: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Icon(
+                MdiIcons.close,
+                size: _screenService.scale(
+                  16,
+                  density: _visualDensityService.density,
+                ),
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.regular
+                    : AppTextColorDark.regular,
+              ),
+            ),
+          ],
         ),
         body: const Center(child: Text('Services not available')),
       );
@@ -935,221 +945,505 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
         .where((t) => (t.role ?? LightTargetRole.other) == widget.role)
         .toList();
 
-    // Calculate aggregate capabilities
-    bool hasBrightness = false;
-    bool hasTemperature = false;
-    bool hasColor = false;
+    // Calculate aggregate values
     int totalBrightness = 0;
     int brightnessCount = 0;
+    int onCount = 0;
 
     for (final target in lightTargets) {
       final device = devicesService.getDevice(target.deviceId);
-      if (device is LightingDeviceView &&
-          device.lightChannels.isNotEmpty) {
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
         final channel = device.lightChannels.firstWhere(
           (c) => c.id == target.channelId,
           orElse: () => device.lightChannels.first,
         );
 
-        if (channel.hasBrightness) {
-          hasBrightness = true;
-          if (channel.on) {
+        if (channel.on) {
+          onCount++;
+          if (channel.hasBrightness) {
             totalBrightness += channel.brightness;
             brightnessCount++;
           }
-        }
-
-        if (target.hasColorTemp) {
-          hasTemperature = true;
-        }
-
-        if (target.hasColor) {
-          hasColor = true;
         }
       }
     }
 
     final avgBrightness = brightnessCount > 0
         ? (totalBrightness / brightnessCount).round()
-        : 50;
-
-    // Build tab list based on capabilities
-    final List<Widget> tabs = [];
-    final List<Widget> tabViews = [];
-
-    if (hasBrightness) {
-      tabs.add(Tab(icon: Icon(MdiIcons.brightness6)));
-      tabViews.add(_buildBrightnessTab(
-        context,
-        lightTargets,
-        avgBrightness,
-        devicesService,
-      ));
-    }
-
-    if (hasTemperature) {
-      tabs.add(Tab(icon: Icon(MdiIcons.thermometer)));
-      tabViews.add(_buildTemperatureTab(context, lightTargets));
-    }
-
-    if (hasColor) {
-      tabs.add(Tab(icon: Icon(MdiIcons.palette)));
-      tabViews.add(_buildColorTab(context, lightTargets));
-    }
-
-    // Always add devices tab
-    tabs.add(Tab(icon: Icon(MdiIcons.viewList)));
-    tabViews.add(_buildDevicesTab(
-      context,
-      lightTargets,
-      devicesService,
-    ));
+        : 0;
+    final allOn = onCount == lightTargets.length && lightTargets.isNotEmpty;
 
     return Scaffold(
       appBar: AppTopBar(
         title: _getRoleName(widget.role),
+        icon: _getRoleIcon(widget.role),
         actions: [
-          Text(
-            '${lightTargets.length} devices',
-            style: TextStyle(
-              fontSize: AppFontSize.small,
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Icon(
+              MdiIcons.close,
+              size: _screenService.scale(
+                16,
+                density: _visualDensityService.density,
+              ),
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.regular
                   : AppTextColorDark.regular,
             ),
           ),
         ],
-        bottom: tabs.length > 1
-            ? TabBar(
-                controller: _tabController,
-                tabs: tabs,
-              )
-            : null,
       ),
-      body: tabs.length > 1
-          ? TabBarView(
-              controller: _tabController,
-              children: tabViews,
-            )
-          : (tabViews.isNotEmpty
-              ? tabViews.first
-              : const SizedBox.shrink()),
+      body: Column(
+        children: [
+          Expanded(
+            child: SafeArea(
+              bottom: false,
+              child: _buildModeContent(
+                context,
+                lightTargets,
+                avgBrightness,
+                allOn,
+                devicesService,
+              ),
+            ),
+          ),
+          if (_availableModes.length > 1)
+            SafeArea(
+              top: false,
+              child: _buildBottomNavigation(context, localizations, lightTargets, devicesService),
+            ),
+        ],
+      ),
     );
   }
 
-  /// Build brightness control tab
-  Widget _buildBrightnessTab(
+  /// Build content based on current mode
+  Widget _buildModeContent(
     BuildContext context,
     List<LightTargetView> targets,
-    int currentBrightness,
+    int avgBrightness,
+    bool allOn,
     DevicesService devicesService,
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final sliderHeight = constraints.maxHeight * 0.6;
+        final elementMaxSize = constraints.maxHeight - 2 * AppSpacings.pMd;
 
         return Padding(
-          padding: AppSpacings.paddingLg,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          padding: AppSpacings.paddingMd,
+          child: Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${(_sliderBrightness?.round() ?? currentBrightness)}',
-                    style: TextStyle(
-                      fontSize: _screenService.scale(
-                        60,
-                        density: _visualDensityService.density,
-                      ),
-                      fontFamily: 'DIN1451',
-                      fontWeight: FontWeight.w100,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppTextColorLight.regular
-                          : AppTextColorDark.regular,
-                    ),
-                  ),
-                  Text(
-                    '%',
-                    style: TextStyle(
-                      fontSize: _screenService.scale(
-                        25,
-                        density: _visualDensityService.density,
-                      ),
-                      fontFamily: 'DIN1451',
-                      fontWeight: FontWeight.w100,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppTextColorLight.regular
-                          : AppTextColorDark.regular,
-                    ),
-                  ),
-                ],
-              ),
-              AppSpacings.spacingMdVertical,
-              if (_isSettingBrightness)
-                const CircularProgressIndicator()
-              else
-                ColoredSlider(
-                  value: _sliderBrightness ?? currentBrightness.toDouble(),
-                  min: 0,
-                  max: 100,
-                  enabled: true,
-                  vertical: true,
-                  trackWidth: sliderHeight,
-                  showThumb: false,
-                  onValueChanged: (value) {
-                    setState(() {
-                      _sliderBrightness = value;
-                    });
-                    // Debounce the API call to prevent overwhelming the backend
-                    _brightnessDebounceTimer?.cancel();
-                    _brightnessDebounceTimer = Timer(
-                      const Duration(milliseconds: 300),
-                      () => _setBrightnessForAll(
-                          context, targets, value.round(), devicesService),
-                    );
-                  },
-                  inner: [
-                    Positioned(
-                      left: _screenService.scale(
-                        20,
-                        density: _visualDensityService.density,
-                      ),
-                      child: RotatedBox(
-                        quarterTurns: 1,
-                        child: Icon(
-                          MdiIcons.weatherSunny,
-                          size: _screenService.scale(
-                            40,
-                            density: _visualDensityService.density,
-                          ),
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? AppTextColorLight.placeholder
-                                  : AppTextColorDark.regular,
+              // Left side - info and device list
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: AppSpacings.pLg),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Flexible(
+                        flex: 0,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Brightness display
+                            _buildBrightnessDisplay(context, avgBrightness, allOn),
+                            AppSpacings.spacingMdVertical,
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      AppSpacings.spacingSmVertical,
+                      Flexible(
+                        flex: 1,
+                        child: SingleChildScrollView(
+                          child: _buildDevicesList(context, targets, devicesService),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              AppSpacings.spacingMdVertical,
-              Text(
-                'Drag to set brightness for all lights',
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.placeholder
-                      : AppTextColorDark.placeholder,
-                ),
+              ),
+              // Right side - control slider
+              _buildControlSlider(
+                context,
+                targets,
+                avgBrightness,
+                elementMaxSize,
+                devicesService,
               ),
             ],
           ),
         );
       },
     );
+  }
+
+  /// Build brightness display like lighting.dart
+  Widget _buildBrightnessDisplay(BuildContext context, int brightness, bool allOn) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              allOn ? '$brightness' : localizations.light_state_off,
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppTextColorLight.regular
+                    : AppTextColorDark.regular,
+                fontSize: _screenService.scale(
+                  60,
+                  density: _visualDensityService.density,
+                ),
+                fontFamily: 'DIN1451',
+                fontWeight: FontWeight.w100,
+                height: 1.0,
+              ),
+            ),
+            if (allOn)
+              Text(
+                '%',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.regular
+                      : AppTextColorDark.regular,
+                  fontSize: _screenService.scale(
+                    25,
+                    density: _visualDensityService.density,
+                  ),
+                  fontFamily: 'DIN1451',
+                  fontWeight: FontWeight.w100,
+                  height: 1.0,
+                ),
+              ),
+          ],
+        ),
+        Text(
+          allOn
+              ? localizations.light_state_brightness_description
+              : localizations.light_state_off_description,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.regular
+                : AppTextColorDark.regular,
+            fontSize: AppFontSize.base,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build control slider based on current mode
+  Widget _buildControlSlider(
+    BuildContext context,
+    List<LightTargetView> targets,
+    int currentBrightness,
+    double elementMaxSize,
+    DevicesService devicesService,
+  ) {
+    switch (_currentMode) {
+      case _LightRoleMode.brightness:
+        return _buildBrightnessSlider(
+          context,
+          targets,
+          currentBrightness,
+          elementMaxSize,
+          devicesService,
+        );
+      case _LightRoleMode.color:
+        return _buildColorSlider(context, elementMaxSize);
+      case _LightRoleMode.temperature:
+        return _buildTemperatureSlider(context, elementMaxSize);
+      case _LightRoleMode.off:
+        return _buildBrightnessSlider(
+          context,
+          targets,
+          currentBrightness,
+          elementMaxSize,
+          devicesService,
+        );
+    }
+  }
+
+  /// Build brightness slider
+  Widget _buildBrightnessSlider(
+    BuildContext context,
+    List<LightTargetView> targets,
+    int currentBrightness,
+    double elementMaxSize,
+    DevicesService devicesService,
+  ) {
+    if (_isSettingBrightness) {
+      return SizedBox(
+        width: _screenService.scale(60, density: _visualDensityService.density),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return ColoredSlider(
+      value: _sliderBrightness ?? currentBrightness.toDouble(),
+      min: 0,
+      max: 100,
+      enabled: true,
+      vertical: true,
+      trackWidth: elementMaxSize,
+      showThumb: false,
+      onValueChanged: (value) {
+        setState(() {
+          _sliderBrightness = value;
+        });
+        // Debounce the API call to prevent overwhelming the backend
+        _brightnessDebounceTimer?.cancel();
+        _brightnessDebounceTimer = Timer(
+          const Duration(milliseconds: 300),
+          () => _setBrightnessForAll(context, targets, value.round(), devicesService),
+        );
+      },
+      inner: [
+        Positioned(
+          left: _screenService.scale(20, density: _visualDensityService.density),
+          child: RotatedBox(
+            quarterTurns: 1,
+            child: Icon(
+              MdiIcons.weatherSunny,
+              size: _screenService.scale(40, density: _visualDensityService.density),
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.placeholder
+                  : AppTextColorDark.regular,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build color slider (placeholder)
+  Widget _buildColorSlider(BuildContext context, double elementMaxSize) {
+    return ColoredSlider(
+      value: 0.5,
+      min: 0.0,
+      max: 1.0,
+      enabled: true,
+      vertical: true,
+      trackWidth: elementMaxSize,
+      onValueChanged: (value) {
+        // TODO: Implement color control for all devices
+      },
+      background: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFFFF0000),
+            Color(0xFFFFFF00),
+            Color(0xFF00FF00),
+            Color(0xFF00FFFF),
+            Color(0xFF0000FF),
+            Color(0xFFFF00FF),
+            Color(0xFFFF0000),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+      ),
+    );
+  }
+
+  /// Build temperature slider (placeholder)
+  Widget _buildTemperatureSlider(BuildContext context, double elementMaxSize) {
+    return ColoredSlider(
+      value: 4000,
+      min: 2700,
+      max: 6500,
+      enabled: true,
+      vertical: true,
+      trackWidth: elementMaxSize,
+      onValueChanged: (value) {
+        // TODO: Implement temperature control for all devices
+      },
+      background: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFFFFAA55),
+            Color(0xFFB3D9FF),
+          ],
+        ),
+      ),
+      thumbDividerColor: AppBorderColorDark.base,
+      inner: [
+        Positioned(
+          left: _screenService.scale(5, density: _visualDensityService.density),
+          child: RotatedBox(
+            quarterTurns: 1,
+            child: Icon(
+              MdiIcons.thermometer,
+              size: _screenService.scale(40, density: _visualDensityService.density),
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build devices list
+  Widget _buildDevicesList(
+    BuildContext context,
+    List<LightTargetView> targets,
+    DevicesService devicesService,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: targets.map((target) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device == null) return const SizedBox.shrink();
+
+        LightChannelView? channel;
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+          channel = device.lightChannels.firstWhere(
+            (c) => c.id == target.channelId,
+            orElse: () => device.lightChannels.first,
+          );
+        }
+
+        return Material(
+          elevation: 0,
+          color: Colors.transparent,
+          child: ListTile(
+            minTileHeight: _screenService.scale(
+              25,
+              density: _visualDensityService.density,
+            ),
+            leading: Icon(
+              channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+              size: AppFontSize.large,
+              color: channel?.on == true
+                  ? Theme.of(context).primaryColor
+                  : null,
+            ),
+            title: Text(
+              device.name,
+              style: TextStyle(
+                fontSize: AppFontSize.extraSmall * 0.8,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            trailing: channel?.hasBrightness == true
+                ? Text(
+                    '${channel!.brightness}%',
+                    style: TextStyle(fontSize: AppFontSize.extraSmall),
+                  )
+                : null,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DeviceDetailPage(device.id),
+                ),
+              );
+            },
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Build bottom navigation bar
+  Widget _buildBottomNavigation(
+    BuildContext context,
+    AppLocalizations localizations,
+    List<LightTargetView> targets,
+    DevicesService devicesService,
+  ) {
+    final currentIndex = _availableModes.indexOf(_currentMode);
+
+    return AppBottomNavigationBar(
+      currentIndex: currentIndex >= 0 ? currentIndex : 0,
+      enableFloatingNavBar: false,
+      onTap: (int index) async {
+        final selectedMode = _availableModes[index];
+
+        if (selectedMode == _LightRoleMode.off) {
+          // Toggle all lights
+          await _toggleAllLights(context, targets, devicesService);
+          // Switch to brightness mode after toggle
+          if (_availableModes.contains(_LightRoleMode.brightness)) {
+            setState(() {
+              _currentMode = _LightRoleMode.brightness;
+            });
+          }
+        } else {
+          setState(() {
+            _currentMode = selectedMode;
+          });
+        }
+      },
+      items: _availableModes.map((mode) {
+        switch (mode) {
+          case _LightRoleMode.off:
+            return AppBottomNavigationItem(
+              icon: Icon(MdiIcons.power),
+              label: localizations.light_mode_off,
+            );
+          case _LightRoleMode.brightness:
+            return AppBottomNavigationItem(
+              icon: Icon(MdiIcons.weatherSunny),
+              label: localizations.light_mode_brightness,
+            );
+          case _LightRoleMode.color:
+            return AppBottomNavigationItem(
+              icon: Icon(MdiIcons.paletteOutline),
+              label: localizations.light_mode_color,
+            );
+          case _LightRoleMode.temperature:
+            return AppBottomNavigationItem(
+              icon: Icon(MdiIcons.thermometer),
+              label: localizations.light_mode_temperature,
+            );
+        }
+      }).toList(),
+    );
+  }
+
+  /// Toggle all lights in the role
+  Future<void> _toggleAllLights(
+    BuildContext context,
+    List<LightTargetView> targets,
+    DevicesService devicesService,
+  ) async {
+    // Determine if we should turn on or off (if any are on, turn all off)
+    bool anyOn = false;
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.on) {
+          anyOn = true;
+          break;
+        }
+      }
+    }
+
+    final newState = !anyOn;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        final onProp = channel.onProp;
+        await devicesService.setPropertyValue(onProp.id, newState);
+      }
+    }
   }
 
   /// Set brightness for all devices in the role
@@ -1221,148 +1515,6 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
     }
   }
 
-  /// Build temperature control tab (placeholder)
-  Widget _buildTemperatureTab(
-    BuildContext context,
-    List<LightTargetView> targets,
-  ) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.thermometer,
-            size: _screenService.scale(
-              48,
-              density: _visualDensityService.density,
-            ),
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          AppSpacings.spacingMdVertical,
-          Text(
-            'Color Temperature',
-            style: TextStyle(
-              fontSize: AppFontSize.large,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.primary
-                  : AppTextColorDark.primary,
-            ),
-          ),
-          AppSpacings.spacingSmVertical,
-          Text(
-            'Coming soon',
-            style: TextStyle(
-              fontSize: AppFontSize.small,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.placeholder
-                  : AppTextColorDark.placeholder,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build color control tab (placeholder)
-  Widget _buildColorTab(
-    BuildContext context,
-    List<LightTargetView> targets,
-  ) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            MdiIcons.palette,
-            size: _screenService.scale(
-              48,
-              density: _visualDensityService.density,
-            ),
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          AppSpacings.spacingMdVertical,
-          Text(
-            'Color',
-            style: TextStyle(
-              fontSize: AppFontSize.large,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.primary
-                  : AppTextColorDark.primary,
-            ),
-          ),
-          AppSpacings.spacingSmVertical,
-          Text(
-            'Coming soon',
-            style: TextStyle(
-              fontSize: AppFontSize.small,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppTextColorLight.placeholder
-                  : AppTextColorDark.placeholder,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build devices list tab
-  Widget _buildDevicesTab(
-    BuildContext context,
-    List<LightTargetView> targets,
-    DevicesService devicesService,
-  ) {
-    return ListView.builder(
-      padding: AppSpacings.paddingMd,
-      itemCount: targets.length,
-      itemBuilder: (context, index) {
-        final target = targets[index];
-        final device = devicesService.getDevice(target.deviceId);
-
-        if (device is! LightingDeviceView ||
-            device.lightChannels.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        final channel = device.lightChannels.firstWhere(
-          (c) => c.id == target.channelId,
-          orElse: () => device.lightChannels.first,
-        );
-
-        final isOn = channel.on;
-
-        return Card(
-          child: ListTile(
-            leading: Icon(
-              isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-              color: isOn
-                  ? (Theme.of(context).brightness == Brightness.light
-                      ? AppColorsLight.warning
-                      : AppColorsDark.warning)
-                  : null,
-            ),
-            title: Text(target.displayName),
-            subtitle: Text(
-              isOn
-                  ? (channel.hasBrightness ? '${channel.brightness}%' : 'On')
-                  : 'Off',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DeviceDetailPage(device.id),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
   /// Get display name for a role
   String _getRoleName(LightTargetRole role) {
     switch (role) {
@@ -1380,4 +1532,30 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
         return 'Other';
     }
   }
+
+  /// Get icon for a role
+  IconData _getRoleIcon(LightTargetRole role) {
+    switch (role) {
+      case LightTargetRole.main:
+        return MdiIcons.ceilingLight;
+      case LightTargetRole.task:
+        return MdiIcons.deskLamp;
+      case LightTargetRole.ambient:
+        return MdiIcons.wallSconce;
+      case LightTargetRole.accent:
+        return MdiIcons.floorLamp;
+      case LightTargetRole.night:
+        return MdiIcons.weatherNight;
+      case LightTargetRole.other:
+        return MdiIcons.lightbulbOutline;
+    }
+  }
+}
+
+/// Light role mode for bottom navigation
+enum _LightRoleMode {
+  off,
+  brightness,
+  color,
+  temperature,
 }
