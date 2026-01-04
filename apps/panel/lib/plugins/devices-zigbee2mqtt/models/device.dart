@@ -1,13 +1,13 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/plugins/devices-zigbee2mqtt/constants.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class Zigbee2mqttDeviceModel extends DeviceModel {
   Zigbee2mqttDeviceModel({
     required super.id,
-    super.category = DeviceCategory.generic,
+    super.category = DevicesModuleDeviceCategory.generic,
     required super.name,
     super.description,
     super.icon,
@@ -22,7 +22,7 @@ class Zigbee2mqttDeviceModel extends DeviceModel {
         );
 
   factory Zigbee2mqttDeviceModel.fromJson(Map<String, dynamic> json) {
-    DeviceCategory? category = DeviceCategory.fromValue(
+    DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.fromJson(
       json['category'],
     );
 
@@ -64,7 +64,7 @@ class Zigbee2mqttDeviceModel extends DeviceModel {
 
     return Zigbee2mqttDeviceModel(
       id: json['id'],
-      category: category ?? DeviceCategory.generic,
+      category: category,
       name: json['name'],
       description: json['description'],
       icon: json['icon'] != null && json['icon'] is String

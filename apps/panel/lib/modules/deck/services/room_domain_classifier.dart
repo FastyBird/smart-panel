@@ -1,5 +1,5 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 
 /// Classifies devices into domains for room overview.
 ///
@@ -9,46 +9,47 @@ import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 /// Classifies a device category into a domain.
 ///
 /// Returns null if the device category doesn't belong to any domain.
-DomainType? classifyDeviceToDomain(DeviceCategory category) {
+DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
   switch (category) {
     // LIGHTS domain
-    case DeviceCategory.lighting:
+    case DevicesModuleDeviceCategory.lighting:
       return DomainType.lights;
 
     // CLIMATE domain
-    case DeviceCategory.thermostat:
-    case DeviceCategory.heater:
-    case DeviceCategory.airConditioner:
-    case DeviceCategory.fan:
-    case DeviceCategory.airHumidifier:
-    case DeviceCategory.airDehumidifier:
-    case DeviceCategory.airPurifier:
+    case DevicesModuleDeviceCategory.thermostat:
+    case DevicesModuleDeviceCategory.heater:
+    case DevicesModuleDeviceCategory.airConditioner:
+    case DevicesModuleDeviceCategory.fan:
+    case DevicesModuleDeviceCategory.airHumidifier:
+    case DevicesModuleDeviceCategory.airDehumidifier:
+    case DevicesModuleDeviceCategory.airPurifier:
       return DomainType.climate;
 
     // MEDIA domain
-    case DeviceCategory.television:
-    case DeviceCategory.media:
-    case DeviceCategory.speaker:
+    case DevicesModuleDeviceCategory.television:
+    case DevicesModuleDeviceCategory.media:
+    case DevicesModuleDeviceCategory.speaker:
       return DomainType.media;
 
     // SENSORS domain
-    case DeviceCategory.sensor:
-    case DeviceCategory.camera:
+    case DevicesModuleDeviceCategory.sensor:
+    case DevicesModuleDeviceCategory.camera:
       return DomainType.sensors;
 
     // Not classified into any domain
-    case DeviceCategory.generic:
-    case DeviceCategory.alarm:
-    case DeviceCategory.door:
-    case DeviceCategory.doorbell:
-    case DeviceCategory.lock:
-    case DeviceCategory.outlet:
-    case DeviceCategory.pump:
-    case DeviceCategory.robotVacuum:
-    case DeviceCategory.sprinkler:
-    case DeviceCategory.switcher:
-    case DeviceCategory.valve:
-    case DeviceCategory.windowCovering:
+    case DevicesModuleDeviceCategory.generic:
+    case DevicesModuleDeviceCategory.alarm:
+    case DevicesModuleDeviceCategory.door:
+    case DevicesModuleDeviceCategory.doorbell:
+    case DevicesModuleDeviceCategory.lock:
+    case DevicesModuleDeviceCategory.outlet:
+    case DevicesModuleDeviceCategory.pump:
+    case DevicesModuleDeviceCategory.robotVacuum:
+    case DevicesModuleDeviceCategory.sprinkler:
+    case DevicesModuleDeviceCategory.switcher:
+    case DevicesModuleDeviceCategory.valve:
+    case DevicesModuleDeviceCategory.windowCovering:
+    case DevicesModuleDeviceCategory.$unknown:
       return null;
   }
 }
@@ -108,7 +109,7 @@ class DomainCounts {
 ///
 /// Each device is classified into at most one domain.
 /// Devices that don't classify into any domain are not counted.
-DomainCounts buildDomainCounts(List<DeviceCategory> deviceCategories) {
+DomainCounts buildDomainCounts(List<DevicesModuleDeviceCategory> deviceCategories) {
   int lights = 0;
   int climate = 0;
   int media = 0;
@@ -145,7 +146,7 @@ DomainCounts buildDomainCounts(List<DeviceCategory> deviceCategories) {
 /// Builds domain counts from device views using their categories.
 DomainCounts buildDomainCountsFromCategories<T>({
   required List<T> items,
-  required DeviceCategory Function(T) getCategory,
+  required DevicesModuleDeviceCategory Function(T) getCategory,
 }) {
   return buildDomainCounts(items.map(getCategory).toList());
 }

@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_catego
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -163,8 +163,8 @@ void main() {
           display: createDisplay(roomId: 'room-1'),
           room: createRoom(),
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
@@ -185,7 +185,7 @@ void main() {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
         );
@@ -203,9 +203,9 @@ void main() {
           display: createDisplay(roomId: 'room-1'),
           room: createRoom(),
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.lighting,
-            DeviceCategory.sensor,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.sensor,
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
@@ -229,9 +229,9 @@ void main() {
           display: createDisplay(),
           room: createRoom(),
           deviceCategories: [
-            DeviceCategory.sensor, // sensors = 3
-            DeviceCategory.television, // media = 2
-            DeviceCategory.lighting, // lights = 0
+            DevicesModuleDeviceCategory.sensor, // sensors = 3
+            DevicesModuleDeviceCategory.television, // media = 2
+            DevicesModuleDeviceCategory.lighting, // lights = 0
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
@@ -369,7 +369,7 @@ void main() {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
           lightsOnCount: 3,
@@ -389,7 +389,7 @@ void main() {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
           lightsOnCount: 0,
@@ -406,7 +406,7 @@ void main() {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
           lightsOnCount: null,
@@ -428,8 +428,8 @@ void main() {
           display: createDisplay(),
           room: createRoom(),
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.television,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.television,
           ],
           scenes: [
             createScene(
@@ -452,8 +452,8 @@ void main() {
           display: createDisplay(),
           room: createRoom(),
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.television,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.television,
           ],
           scenes: [
             createScene(
@@ -565,8 +565,8 @@ void main() {
           display: createDisplay(),
           room: createRoom(),
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.television,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.television,
           ],
           scenes: [
             createScene(
@@ -601,7 +601,7 @@ void main() {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
           displayCols: 3,
@@ -616,7 +616,7 @@ void main() {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
           displayCols: 4,
@@ -632,8 +632,8 @@ void main() {
           display: createDisplay(),
           room: createRoom(),
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
@@ -649,7 +649,7 @@ void main() {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
           displayCols: 6,
@@ -668,9 +668,9 @@ void main() {
           display: createDisplay(),
           room: createRoom(),
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
@@ -688,7 +688,7 @@ void main() {
         final inputWithDevices = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
         );

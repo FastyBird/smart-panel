@@ -6,8 +6,10 @@ export 'package:fastybird_smart_panel/modules/devices/repositories/device_contro
 export 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 export 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 
-// Types
-export 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+// Types (now using generated API enums)
+export 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
+export 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
+export 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 
 // Views
 export 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';

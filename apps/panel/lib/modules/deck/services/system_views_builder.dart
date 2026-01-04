@@ -1,8 +1,8 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 
 /// Input for building system views.
@@ -12,7 +12,7 @@ class SystemViewsBuildInput {
 
   /// Device categories for the room (for ROOM role only).
   /// Used to determine which domain views to create.
-  final List<DeviceCategory> deviceCategories;
+  final List<DevicesModuleDeviceCategory> deviceCategories;
 
   /// Localized titles.
   final String roomViewTitle;

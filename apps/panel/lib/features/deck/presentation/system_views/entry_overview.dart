@@ -79,9 +79,9 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
 
     try {
       // Get security devices from DevicesService
-      final locks = _devicesService?.getDevicesByCategory(DeviceCategory.lock) ?? [];
-      final alarms = _devicesService?.getDevicesByCategory(DeviceCategory.alarm) ?? [];
-      final cameras = _devicesService?.getDevicesByCategory(DeviceCategory.camera) ?? [];
+      final locks = _devicesService?.getDevicesByCategory(DevicesModuleDeviceCategory.lock) ?? [];
+      final alarms = _devicesService?.getDevicesByCategory(DevicesModuleDeviceCategory.alarm) ?? [];
+      final cameras = _devicesService?.getDevicesByCategory(DevicesModuleDeviceCategory.camera) ?? [];
 
       if (!mounted) return;
 
@@ -128,7 +128,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   bool _isDeviceLocked(DeviceView device) {
     for (final channel in device.channels) {
       for (final property in channel.properties) {
-        if (property.category == ChannelPropertyCategory.locked) {
+        if (property.category == DevicesModulePropertyCategory.locked) {
           final valueType = property.value;
           if (valueType != null) {
             final rawValue = valueType.value;
@@ -150,8 +150,8 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     for (final channel in device.channels) {
       for (final property in channel.properties) {
         // Check for 'active' or 'on' property
-        if (property.category == ChannelPropertyCategory.active ||
-            property.category == ChannelPropertyCategory.on) {
+        if (property.category == DevicesModulePropertyCategory.active ||
+            property.category == DevicesModulePropertyCategory.valueOn) {
           final valueType = property.value;
           if (valueType != null) {
             final rawValue = valueType.value;

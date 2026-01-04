@@ -1,7 +1,7 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
@@ -17,7 +17,7 @@ class RoomOverviewBuildInput {
   final SpaceView? room;
 
   /// Device categories for devices in this room.
-  final List<DeviceCategory> deviceCategories;
+  final List<DevicesModuleDeviceCategory> deviceCategories;
 
   /// Scenes for this room.
   final List<SceneView> scenes;

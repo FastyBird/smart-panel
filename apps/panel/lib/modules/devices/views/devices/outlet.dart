@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
@@ -45,7 +45,7 @@ class OutletDeviceView extends DeviceView
   bool get isOn {
     final properties = outletChannels
         .expand((channel) => channel.properties)
-        .where((property) => property.category == ChannelPropertyCategory.on)
+        .where((property) => property.category == DevicesModulePropertyCategory.valueOn)
         .toList();
 
     return properties.every(
@@ -62,7 +62,7 @@ class OutletDeviceView extends DeviceView
   bool get isOutletInUse {
     final properties = outletChannels
         .expand((channel) => channel.properties)
-        .where((property) => property.category == ChannelPropertyCategory.inUse)
+        .where((property) => property.category == DevicesModulePropertyCategory.inUse)
         .toList();
 
     return properties.every(

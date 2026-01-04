@@ -1,5 +1,5 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/model.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
@@ -10,7 +10,7 @@ abstract class ChannelPropertyModel extends Model {
 
   final String _channel;
 
-  final ChannelPropertyCategory _category;
+  final DevicesModulePropertyCategory _category;
 
   final String? _name;
 
@@ -28,7 +28,7 @@ abstract class ChannelPropertyModel extends Model {
     required super.id,
     required String type,
     required String channel,
-    ChannelPropertyCategory category = ChannelPropertyCategory.generic,
+    DevicesModulePropertyCategory category = DevicesModulePropertyCategory.generic,
     String? name,
     List<Permission> permission = const [],
     DataType dataType = DataType.unknown,
@@ -57,7 +57,7 @@ abstract class ChannelPropertyModel extends Model {
 
   String get channel => _channel;
 
-  ChannelPropertyCategory get category => _category;
+  DevicesModulePropertyCategory get category => _category;
 
   String? get name => _name;
 

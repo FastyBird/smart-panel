@@ -1,11 +1,11 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class ChannelView {
   final String _id;
   final String _type;
-  final ChannelCategory _category;
+  final DevicesModuleChannelCategory _category;
   final String? _name;
   final String? _description;
   final String _device;
@@ -16,7 +16,7 @@ class ChannelView {
   ChannelView({
     required String id,
     required String type,
-    ChannelCategory category = ChannelCategory.generic,
+    DevicesModuleChannelCategory category = DevicesModuleChannelCategory.generic,
     String? name,
     String? description,
     required String device,
@@ -37,9 +37,9 @@ class ChannelView {
 
   String get type => _type;
 
-  ChannelCategory get category => _category;
+  DevicesModuleChannelCategory get category => _category;
 
-  String get name => _name ?? _category.value;
+  String get name => _name ?? (_category.json ?? _category.toString());
 
   String? get description => _description;
 

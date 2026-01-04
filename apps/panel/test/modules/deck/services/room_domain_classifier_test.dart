@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -8,7 +8,7 @@ void main() {
     group('LIGHTS domain', () {
       test('should classify lighting to lights domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.lighting),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.lighting),
           DomainType.lights,
         );
       });
@@ -17,49 +17,49 @@ void main() {
     group('CLIMATE domain', () {
       test('should classify thermostat to climate domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.thermostat),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.thermostat),
           DomainType.climate,
         );
       });
 
       test('should classify heater to climate domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.heater),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.heater),
           DomainType.climate,
         );
       });
 
       test('should classify airConditioner to climate domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.airConditioner),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.airConditioner),
           DomainType.climate,
         );
       });
 
       test('should classify fan to climate domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.fan),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.fan),
           DomainType.climate,
         );
       });
 
       test('should classify airHumidifier to climate domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.airHumidifier),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.airHumidifier),
           DomainType.climate,
         );
       });
 
       test('should classify airDehumidifier to climate domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.airDehumidifier),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.airDehumidifier),
           DomainType.climate,
         );
       });
 
       test('should classify airPurifier to climate domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.airPurifier),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.airPurifier),
           DomainType.climate,
         );
       });
@@ -68,21 +68,21 @@ void main() {
     group('MEDIA domain', () {
       test('should classify television to media domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.television),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.television),
           DomainType.media,
         );
       });
 
       test('should classify media to media domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.media),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.media),
           DomainType.media,
         );
       });
 
       test('should classify speaker to media domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.speaker),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.speaker),
           DomainType.media,
         );
       });
@@ -91,14 +91,14 @@ void main() {
     group('SENSORS domain', () {
       test('should classify sensor to sensors domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.sensor),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.sensor),
           DomainType.sensors,
         );
       });
 
       test('should classify camera to sensors domain', () {
         expect(
-          classifyDeviceToDomain(DeviceCategory.camera),
+          classifyDeviceToDomain(DevicesModuleDeviceCategory.camera),
           DomainType.sensors,
         );
       });
@@ -106,35 +106,35 @@ void main() {
 
     group('unclassified categories', () {
       test('should return null for generic', () {
-        expect(classifyDeviceToDomain(DeviceCategory.generic), isNull);
+        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.generic), isNull);
       });
 
       test('should return null for alarm', () {
-        expect(classifyDeviceToDomain(DeviceCategory.alarm), isNull);
+        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.alarm), isNull);
       });
 
       test('should return null for door', () {
-        expect(classifyDeviceToDomain(DeviceCategory.door), isNull);
+        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.door), isNull);
       });
 
       test('should return null for doorbell', () {
-        expect(classifyDeviceToDomain(DeviceCategory.doorbell), isNull);
+        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.doorbell), isNull);
       });
 
       test('should return null for lock', () {
-        expect(classifyDeviceToDomain(DeviceCategory.lock), isNull);
+        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.lock), isNull);
       });
 
       test('should return null for outlet', () {
-        expect(classifyDeviceToDomain(DeviceCategory.outlet), isNull);
+        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.outlet), isNull);
       });
 
       test('should return null for switcher', () {
-        expect(classifyDeviceToDomain(DeviceCategory.switcher), isNull);
+        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.switcher), isNull);
       });
 
       test('should return null for windowCovering', () {
-        expect(classifyDeviceToDomain(DeviceCategory.windowCovering), isNull);
+        expect(classifyDeviceToDomain(DevicesModuleDeviceCategory.windowCovering), isNull);
       });
     });
   });
@@ -237,9 +237,9 @@ void main() {
 
     test('should count lighting devices', () {
       final categories = [
-        DeviceCategory.lighting,
-        DeviceCategory.lighting,
-        DeviceCategory.lighting,
+        DevicesModuleDeviceCategory.lighting,
+        DevicesModuleDeviceCategory.lighting,
+        DevicesModuleDeviceCategory.lighting,
       ];
 
       final counts = buildDomainCounts(categories);
@@ -252,9 +252,9 @@ void main() {
 
     test('should count climate devices', () {
       final categories = [
-        DeviceCategory.thermostat,
-        DeviceCategory.heater,
-        DeviceCategory.airConditioner,
+        DevicesModuleDeviceCategory.thermostat,
+        DevicesModuleDeviceCategory.heater,
+        DevicesModuleDeviceCategory.airConditioner,
       ];
 
       final counts = buildDomainCounts(categories);
@@ -267,13 +267,13 @@ void main() {
 
     test('should count mixed device categories', () {
       final categories = [
-        DeviceCategory.lighting,
-        DeviceCategory.thermostat,
-        DeviceCategory.television,
-        DeviceCategory.sensor,
-        DeviceCategory.lighting,
-        DeviceCategory.outlet, // Not classified
-        DeviceCategory.camera,
+        DevicesModuleDeviceCategory.lighting,
+        DevicesModuleDeviceCategory.thermostat,
+        DevicesModuleDeviceCategory.television,
+        DevicesModuleDeviceCategory.sensor,
+        DevicesModuleDeviceCategory.lighting,
+        DevicesModuleDeviceCategory.outlet, // Not classified
+        DevicesModuleDeviceCategory.camera,
       ];
 
       final counts = buildDomainCounts(categories);
@@ -287,10 +287,10 @@ void main() {
 
     test('should ignore unclassified categories', () {
       final categories = [
-        DeviceCategory.generic,
-        DeviceCategory.outlet,
-        DeviceCategory.switcher,
-        DeviceCategory.door,
+        DevicesModuleDeviceCategory.generic,
+        DevicesModuleDeviceCategory.outlet,
+        DevicesModuleDeviceCategory.switcher,
+        DevicesModuleDeviceCategory.door,
       ];
 
       final counts = buildDomainCounts(categories);

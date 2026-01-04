@@ -2,8 +2,8 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/core/utils/color.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
@@ -176,11 +176,11 @@ class LightChannelView extends ChannelView
 
   bool get hasColor => properties.any(
         (property) => [
-          ChannelPropertyCategory.colorRed,
-          ChannelPropertyCategory.colorGreen,
-          ChannelPropertyCategory.colorBlue,
-          ChannelPropertyCategory.hue,
-          ChannelPropertyCategory.saturation,
+          DevicesModulePropertyCategory.colorRed,
+          DevicesModulePropertyCategory.colorGreen,
+          DevicesModulePropertyCategory.colorBlue,
+          DevicesModulePropertyCategory.hue,
+          DevicesModulePropertyCategory.saturation,
         ].contains(property.category),
       );
 
@@ -426,7 +426,7 @@ class LightChannelView extends ChannelView
 
   bool get hasTemperature => properties.any(
         (property) => [
-          ChannelPropertyCategory.colorTemperature,
+          DevicesModulePropertyCategory.colorTemperature,
         ].contains(property.category),
       );
 }

@@ -1,6 +1,6 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/constants.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -11,7 +11,7 @@ class ShellyNgDeviceModel extends DeviceModel {
 
   ShellyNgDeviceModel({
     required super.id,
-    super.category = DeviceCategory.generic,
+    super.category = DevicesModuleDeviceCategory.generic,
     required super.name,
     super.description,
     super.icon,
@@ -34,7 +34,7 @@ class ShellyNgDeviceModel extends DeviceModel {
   String? get hostname => _hostname;
 
   factory ShellyNgDeviceModel.fromJson(Map<String, dynamic> json) {
-    DeviceCategory? category = DeviceCategory.fromValue(
+    DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.fromJson(
       json['category'],
     );
 
@@ -76,7 +76,7 @@ class ShellyNgDeviceModel extends DeviceModel {
 
     return ShellyNgDeviceModel(
       id: json['id'],
-      category: category ?? DeviceCategory.generic,
+      category: category,
       name: json['name'],
       description: json['description'],
       icon: json['icon'] != null && json['icon'] is String

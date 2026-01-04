@@ -22,7 +22,7 @@ class DeckService extends ChangeNotifier {
   DisplayModel? _display;
 
   /// Device categories for the current room (ROOM role only).
-  List<DeviceCategory> _deviceCategories = [];
+  List<DevicesModuleDeviceCategory> _deviceCategories = [];
 
   /// Configuration validation error.
   String? _configError;
@@ -66,7 +66,7 @@ class DeckService extends ChangeNotifier {
   DeckItem? get startItem => _deck?.startItem;
 
   /// Returns device categories for the current room (ROOM role only).
-  List<DeviceCategory> get deviceCategories => _deviceCategories;
+  List<DevicesModuleDeviceCategory> get deviceCategories => _deviceCategories;
 
   /// Returns true if device data is currently being loaded.
   bool get isLoadingDevices => _isLoadingDevices;

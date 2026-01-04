@@ -209,14 +209,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   bool _isLightingDevice(DeviceView device) {
-    return device.category == DeviceCategory.lighting;
+    return device.category == DevicesModuleDeviceCategory.lighting;
   }
 
   /// Check if a device is currently on by looking for the 'on' property
   bool _isDeviceOn(DeviceView device) {
     for (final channel in device.channels) {
       for (final property in channel.properties) {
-        if (property.category == ChannelPropertyCategory.on) {
+        if (property.category == DevicesModulePropertyCategory.valueOn) {
           final valueType = property.value;
           if (valueType != null) {
             final rawValue = valueType.value;
@@ -237,7 +237,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   double? _getTemperature(DeviceView device) {
     for (final channel in device.channels) {
       for (final property in channel.properties) {
-        if (property.category == ChannelPropertyCategory.temperature) {
+        if (property.category == DevicesModulePropertyCategory.temperature) {
           final valueType = property.value;
           if (valueType != null) {
             final rawValue = valueType.value;
@@ -331,7 +331,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
     // Get all lighting devices in this room
     final lightDevices =
-        _devicesService?.getDevicesForRoomByCategory(_roomId, DeviceCategory.lighting) ?? [];
+        _devicesService?.getDevicesForRoomByCategory(_roomId, DevicesModuleDeviceCategory.lighting) ?? [];
 
     if (lightDevices.isEmpty) return;
 

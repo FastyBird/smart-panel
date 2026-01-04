@@ -108,7 +108,7 @@ class WindowCoveringChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${typeProp.category.value}',
+      'Channel is missing required value for property: ${typeProp.category.json}',
     );
   }
 }

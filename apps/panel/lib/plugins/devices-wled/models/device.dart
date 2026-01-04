@@ -1,6 +1,6 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/plugins/devices-wled/constants.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -9,7 +9,7 @@ class WledDeviceModel extends DeviceModel {
 
   WledDeviceModel({
     required super.id,
-    super.category = DeviceCategory.lighting,
+    super.category = DevicesModuleDeviceCategory.lighting,
     required super.name,
     super.description,
     super.icon,
@@ -28,7 +28,7 @@ class WledDeviceModel extends DeviceModel {
   String? get hostname => _hostname;
 
   factory WledDeviceModel.fromJson(Map<String, dynamic> json) {
-    DeviceCategory? category = DeviceCategory.fromValue(
+    DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.fromJson(
       json['category'],
     );
 
@@ -70,7 +70,7 @@ class WledDeviceModel extends DeviceModel {
 
     return WledDeviceModel(
       id: json['id'],
-      category: category ?? DeviceCategory.lighting,
+      category: category,
       name: json['name'],
       description: json['description'],
       icon: json['icon'] != null && json['icon'] is String

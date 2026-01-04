@@ -1,5 +1,5 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
@@ -14,7 +14,7 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
     required super.id,
     required super.type,
     required super.channel,
-    super.category = ChannelPropertyCategory.generic,
+    super.category = DevicesModulePropertyCategory.generic,
     super.name,
     super.permission = const [],
     super.dataType = DataType.unknown,
@@ -37,8 +37,7 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
       id: json['id'],
       type: json['type'] ?? 'unknown',
       channel: json['channel'],
-      category: ChannelPropertyCategory.fromValue(json['category']) ??
-          ChannelPropertyCategory.generic,
+      category: DevicesModulePropertyCategory.fromJson(json['category'] ?? 'generic'),
       name: json['name'],
       permission: (json['permission'] as List<dynamic>? ?? [])
           .map((e) => Permission.fromValue(e.toString()))

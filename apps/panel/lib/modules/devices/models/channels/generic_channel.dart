@@ -1,6 +1,6 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 
 /// Generic channel model for unknown or unregistered device types.
 /// Falls back to this when no plugin has registered a mapper for the device type.
@@ -11,7 +11,7 @@ class GenericChannelModel extends ChannelModel {
     required super.id,
     required super.type,
     required super.device,
-    super.category = ChannelCategory.generic,
+    super.category = DevicesModuleChannelCategory.generic,
     super.name,
     super.description,
     required super.controls,
@@ -25,8 +25,8 @@ class GenericChannelModel extends ChannelModel {
   Map<String, dynamic> get configuration => _configuration;
 
   factory GenericChannelModel.fromJson(Map<String, dynamic> json) {
-    ChannelCategory? category = ChannelCategory.fromValue(
-      json['category'],
+    DevicesModuleChannelCategory category = DevicesModuleChannelCategory.fromJson(
+      json['category'] ?? 'generic',
     );
 
     List<String> controls = [];
@@ -59,7 +59,7 @@ class GenericChannelModel extends ChannelModel {
       id: json['id'],
       type: json['type'] ?? 'unknown',
       device: UuidUtils.validateUuid(json['device']),
-      category: category ?? ChannelCategory.generic,
+      category: category,
       name: json['name'],
       description: json['description'],
       controls: UuidUtils.validateUuidList(controls),

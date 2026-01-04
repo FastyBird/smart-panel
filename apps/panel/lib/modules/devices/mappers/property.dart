@@ -1,6 +1,6 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/generic_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
@@ -104,7 +104,7 @@ T _createPropertyView<T extends ChannelPropertyView>(
     required String id,
     required String type,
     required String channel,
-    ChannelPropertyCategory category,
+    DevicesModulePropertyCategory category,
     String? name,
     List<Permission> permission,
     DataType dataType,
@@ -136,204 +136,204 @@ T _createPropertyView<T extends ChannelPropertyView>(
 /// Build a channel property view from a model
 ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
   switch (property.category) {
-    case ChannelPropertyCategory.active:
+    case DevicesModulePropertyCategory.active:
       return _createPropertyView(property, ActiveChannelPropertyView.new);
-    case ChannelPropertyCategory.angle:
+    case DevicesModulePropertyCategory.angle:
       return _createPropertyView(property, AngleChannelPropertyView.new);
-    case ChannelPropertyCategory.brightness:
+    case DevicesModulePropertyCategory.brightness:
       return _createPropertyView(property, BrightnessChannelPropertyView.new);
-    case ChannelPropertyCategory.colorBlue:
+    case DevicesModulePropertyCategory.colorBlue:
       return _createPropertyView(property, ColorBlueChannelPropertyView.new);
-    case ChannelPropertyCategory.colorGreen:
+    case DevicesModulePropertyCategory.colorGreen:
       return _createPropertyView(property, ColorGreenChannelPropertyView.new);
-    case ChannelPropertyCategory.colorRed:
+    case DevicesModulePropertyCategory.colorRed:
       return _createPropertyView(property, ColorRedChannelPropertyView.new);
-    case ChannelPropertyCategory.colorTemperature:
+    case DevicesModulePropertyCategory.colorTemperature:
       return _createPropertyView(
           property, ColorTemperatureChannelPropertyView.new);
-    case ChannelPropertyCategory.colorWhite:
+    case DevicesModulePropertyCategory.colorWhite:
       return _createPropertyView(property, ColorWhiteChannelPropertyView.new);
-    case ChannelPropertyCategory.connectionType:
+    case DevicesModulePropertyCategory.connectionType:
       return _createPropertyView(
           property, ConnectionTypeChannelPropertyView.new);
-    case ChannelPropertyCategory.consumption:
+    case DevicesModulePropertyCategory.consumption:
       return _createPropertyView(property, ConsumptionChannelPropertyView.new);
-    case ChannelPropertyCategory.current:
+    case DevicesModulePropertyCategory.current:
       return _createPropertyView(property, CurrentChannelPropertyView.new);
-    case ChannelPropertyCategory.density:
+    case DevicesModulePropertyCategory.density:
       return _createPropertyView(property, DensityChannelPropertyView.new);
-    case ChannelPropertyCategory.detected:
+    case DevicesModulePropertyCategory.detected:
       return _createPropertyView(property, DetectedChannelPropertyView.new);
-    case ChannelPropertyCategory.direction:
+    case DevicesModulePropertyCategory.direction:
       return _createPropertyView(property, DirectionChannelPropertyView.new);
-    case ChannelPropertyCategory.distance:
+    case DevicesModulePropertyCategory.distance:
       return _createPropertyView(property, DistanceChannelPropertyView.new);
-    case ChannelPropertyCategory.duration:
+    case DevicesModulePropertyCategory.duration:
       return _createPropertyView(property, DurationChannelPropertyView.new);
-    case ChannelPropertyCategory.event:
+    case DevicesModulePropertyCategory.event:
       return _createPropertyView(property, EventChannelPropertyView.new);
-    case ChannelPropertyCategory.fault:
+    case DevicesModulePropertyCategory.fault:
       return _createPropertyView(property, FaultChannelPropertyView.new);
-    case ChannelPropertyCategory.firmwareRevision:
+    case DevicesModulePropertyCategory.firmwareRevision:
       return _createPropertyView(
           property, FirmwareRevisionChannelPropertyView.new);
-    case ChannelPropertyCategory.frequency:
+    case DevicesModulePropertyCategory.frequency:
       return _createPropertyView(property, FrequencyChannelPropertyView.new);
-    case ChannelPropertyCategory.hardwareRevision:
+    case DevicesModulePropertyCategory.hardwareRevision:
       return _createPropertyView(
           property, HardwareRevisionChannelPropertyView.new);
-    case ChannelPropertyCategory.hue:
+    case DevicesModulePropertyCategory.hue:
       return _createPropertyView(property, HueChannelPropertyView.new);
-    case ChannelPropertyCategory.humidity:
+    case DevicesModulePropertyCategory.humidity:
       return _createPropertyView(property, HumidityChannelPropertyView.new);
-    case ChannelPropertyCategory.inUse:
+    case DevicesModulePropertyCategory.inUse:
       return _createPropertyView(property, InUseChannelPropertyView.new);
-    case ChannelPropertyCategory.infrared:
+    case DevicesModulePropertyCategory.infrared:
       return _createPropertyView(property, InfraredChannelPropertyView.new);
-    case ChannelPropertyCategory.inputSource:
+    case DevicesModulePropertyCategory.inputSource:
       return _createPropertyView(property, InputSourceChannelPropertyView.new);
-    case ChannelPropertyCategory.level:
+    case DevicesModulePropertyCategory.level:
       return _createPropertyView(property, LevelChannelPropertyView.new);
-    case ChannelPropertyCategory.linkQuality:
+    case DevicesModulePropertyCategory.linkQuality:
       return _createPropertyView(property, LinkQualityChannelPropertyView.new);
-    case ChannelPropertyCategory.locked:
+    case DevicesModulePropertyCategory.locked:
       return _createPropertyView(property, LockedChannelPropertyView.new);
-    case ChannelPropertyCategory.manufacturer:
+    case DevicesModulePropertyCategory.manufacturer:
       return _createPropertyView(property, ManufacturerChannelPropertyView.new);
-    case ChannelPropertyCategory.measured:
+    case DevicesModulePropertyCategory.measured:
       return _createPropertyView(property, MeasuredChannelPropertyView.new);
-    case ChannelPropertyCategory.mode:
+    case DevicesModulePropertyCategory.mode:
       return _createPropertyView(property, ModeChannelPropertyView.new);
-    case ChannelPropertyCategory.model:
+    case DevicesModulePropertyCategory.model:
       return _createPropertyView(property, ModelChannelPropertyView.new);
-    case ChannelPropertyCategory.obstruction:
+    case DevicesModulePropertyCategory.obstruction:
       return _createPropertyView(property, ObstructionChannelPropertyView.new);
-    case ChannelPropertyCategory.on:
+    case DevicesModulePropertyCategory.valueOn:
       return _createPropertyView(property, OnChannelPropertyView.new);
-    case ChannelPropertyCategory.overCurrent:
+    case DevicesModulePropertyCategory.overCurrent:
       return _createPropertyView(property, OverCurrentChannelPropertyView.new);
-    case ChannelPropertyCategory.overPower:
+    case DevicesModulePropertyCategory.overPower:
       return _createPropertyView(property, OverPowerChannelPropertyView.new);
-    case ChannelPropertyCategory.overVoltage:
+    case DevicesModulePropertyCategory.overVoltage:
       return _createPropertyView(property, OverVoltageChannelPropertyView.new);
-    case ChannelPropertyCategory.pan:
+    case DevicesModulePropertyCategory.pan:
       return _createPropertyView(property, PanChannelPropertyView.new);
-    case ChannelPropertyCategory.peakLevel:
+    case DevicesModulePropertyCategory.peakLevel:
       return _createPropertyView(property, PeakLevelChannelPropertyView.new);
-    case ChannelPropertyCategory.percentage:
+    case DevicesModulePropertyCategory.percentage:
       return _createPropertyView(property, PercentageChannelPropertyView.new);
-    case ChannelPropertyCategory.position:
+    case DevicesModulePropertyCategory.position:
       return _createPropertyView(property, PositionChannelPropertyView.new);
-    case ChannelPropertyCategory.power:
+    case DevicesModulePropertyCategory.power:
       return _createPropertyView(property, PowerChannelPropertyView.new);
-    case ChannelPropertyCategory.rate:
+    case DevicesModulePropertyCategory.rate:
       return _createPropertyView(property, RateChannelPropertyView.new);
-    case ChannelPropertyCategory.remaining:
+    case DevicesModulePropertyCategory.remaining:
       return _createPropertyView(property, RemainingChannelPropertyView.new);
-    case ChannelPropertyCategory.remoteKey:
+    case DevicesModulePropertyCategory.remoteKey:
       return _createPropertyView(property, RemoteKeyChannelPropertyView.new);
-    case ChannelPropertyCategory.saturation:
+    case DevicesModulePropertyCategory.saturation:
       return _createPropertyView(property, SaturationChannelPropertyView.new);
-    case ChannelPropertyCategory.serialNumber:
+    case DevicesModulePropertyCategory.serialNumber:
       return _createPropertyView(property, SerialNumberChannelPropertyView.new);
-    case ChannelPropertyCategory.source:
+    case DevicesModulePropertyCategory.source:
       return _createPropertyView(property, SourceChannelPropertyView.new);
-    case ChannelPropertyCategory.speed:
+    case DevicesModulePropertyCategory.speed:
       return _createPropertyView(property, SpeedChannelPropertyView.new);
-    case ChannelPropertyCategory.status:
+    case DevicesModulePropertyCategory.status:
       return _createPropertyView(property, StatusChannelPropertyView.new);
-    case ChannelPropertyCategory.swing:
+    case DevicesModulePropertyCategory.swing:
       return _createPropertyView(property, SwingChannelPropertyView.new);
-    case ChannelPropertyCategory.tampered:
+    case DevicesModulePropertyCategory.tampered:
       return _createPropertyView(property, TamperedChannelPropertyView.new);
-    case ChannelPropertyCategory.temperature:
+    case DevicesModulePropertyCategory.temperature:
       return _createPropertyView(property, TemperatureChannelPropertyView.new);
-    case ChannelPropertyCategory.tilt:
+    case DevicesModulePropertyCategory.tilt:
       return _createPropertyView(property, TiltChannelPropertyView.new);
-    case ChannelPropertyCategory.track:
+    case DevicesModulePropertyCategory.track:
       return _createPropertyView(property, TrackChannelPropertyView.new);
-    case ChannelPropertyCategory.type:
+    case DevicesModulePropertyCategory.type:
       return _createPropertyView(property, TypeChannelPropertyView.new);
-    case ChannelPropertyCategory.units:
+    case DevicesModulePropertyCategory.units:
       return _createPropertyView(property, UnitsChannelPropertyView.new);
-    case ChannelPropertyCategory.voltage:
+    case DevicesModulePropertyCategory.voltage:
       return _createPropertyView(property, VoltageChannelPropertyView.new);
-    case ChannelPropertyCategory.volume:
+    case DevicesModulePropertyCategory.volume:
       return _createPropertyView(property, VolumeChannelPropertyView.new);
-    case ChannelPropertyCategory.zoom:
+    case DevicesModulePropertyCategory.zoom:
       return _createPropertyView(property, ZoomChannelPropertyView.new);
     default:
       return _createPropertyView(property, GenericChannelPropertyView.new);
   }
 }
 
-Map<ChannelPropertyCategory, IconData Function()> channelPropertyIconMappers = {
-  ChannelPropertyCategory.generic: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.active: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.angle: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.brightness: () => MdiIcons.weatherSunny,
-  ChannelPropertyCategory.colorBlue: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.colorGreen: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.colorRed: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.colorTemperature: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.colorWhite: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.command: () => MdiIcons.send,
-  ChannelPropertyCategory.connectionType: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.consumption: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.current: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.density: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.detected: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.direction: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.distance: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.duration: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.event: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.fault: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.firmwareRevision: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.frequency: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.hardwareRevision: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.hue: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.humidity: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.inUse: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.infrared: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.inputSource: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.level: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.linkQuality: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.locked: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.manufacturer: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.measured: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.model: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.mode: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.obstruction: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.on: () => MdiIcons.power,
-  ChannelPropertyCategory.overCurrent: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.overVoltage: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.overPower: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.pan: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.peakLevel: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.percentage: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.position: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.power: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.rate: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.remaining: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.remoteKey: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.saturation: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.serialNumber: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.source: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.speed: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.status: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.swing: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.tampered: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.temperature: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.tilt: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.track: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.type: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.units: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.voltage: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.volume: () => MdiIcons.databaseCog,
-  ChannelPropertyCategory.zoom: () => MdiIcons.databaseCog,
+Map<DevicesModulePropertyCategory, IconData Function()> channelPropertyIconMappers = {
+  DevicesModulePropertyCategory.generic: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.active: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.angle: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.brightness: () => MdiIcons.weatherSunny,
+  DevicesModulePropertyCategory.colorBlue: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.colorGreen: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.colorRed: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.colorTemperature: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.colorWhite: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.command: () => MdiIcons.send,
+  DevicesModulePropertyCategory.connectionType: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.consumption: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.current: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.density: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.detected: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.direction: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.distance: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.duration: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.event: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.fault: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.firmwareRevision: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.frequency: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.hardwareRevision: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.hue: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.humidity: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.inUse: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.infrared: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.inputSource: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.level: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.linkQuality: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.locked: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.manufacturer: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.measured: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.model: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.mode: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.obstruction: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.valueOn: () => MdiIcons.power,
+  DevicesModulePropertyCategory.overCurrent: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.overVoltage: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.overPower: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.pan: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.peakLevel: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.percentage: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.position: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.power: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.rate: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.remaining: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.remoteKey: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.saturation: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.serialNumber: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.source: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.speed: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.status: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.swing: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.tampered: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.temperature: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.tilt: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.track: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.type: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.units: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.voltage: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.volume: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.zoom: () => MdiIcons.databaseCog,
 };
 
-IconData buildChannelPropertyIcon(ChannelPropertyCategory category) {
+IconData buildChannelPropertyIcon(DevicesModulePropertyCategory category) {
   final builder = channelPropertyIconMappers[category];
 
   if (builder != null) {

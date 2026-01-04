@@ -1,6 +1,6 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/constants.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -9,7 +9,7 @@ class HomeAssistantDeviceModel extends DeviceModel {
 
   HomeAssistantDeviceModel({
     required super.id,
-    super.category = DeviceCategory.generic,
+    super.category = DevicesModuleDeviceCategory.generic,
     required super.name,
     super.description,
     super.icon,
@@ -28,7 +28,7 @@ class HomeAssistantDeviceModel extends DeviceModel {
   String get haDeviceId => _haDeviceId;
 
   factory HomeAssistantDeviceModel.fromJson(Map<String, dynamic> json) {
-    DeviceCategory? category = DeviceCategory.fromValue(
+    DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.fromJson(
       json['category'],
     );
 
@@ -70,7 +70,7 @@ class HomeAssistantDeviceModel extends DeviceModel {
 
     return HomeAssistantDeviceModel(
       id: json['id'],
-      category: category ?? DeviceCategory.generic,
+      category: category,
       name: json['name'],
       description: json['description'],
       icon: json['icon'] != null && json['icon'] is String

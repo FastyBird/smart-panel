@@ -33,7 +33,7 @@ class MediaInputChannelView extends ChannelView with ChannelActiveMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${sourceProp.category.value}',
+      'Channel is missing required value for property: ${sourceProp.category.json}',
     );
   }
 }

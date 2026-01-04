@@ -1,8 +1,8 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 
 /// Input parameters for deck building.
@@ -15,7 +15,7 @@ class DeckBuildInput {
 
   /// Device categories for the room (only needed for ROOM role).
   /// Used to determine which domain views to create.
-  final List<DeviceCategory> deviceCategories;
+  final List<DevicesModuleDeviceCategory> deviceCategories;
 
   /// Localized title for room system view.
   final String roomViewTitle;

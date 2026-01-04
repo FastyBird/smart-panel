@@ -2,10 +2,6 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesService extends ChangeNotifier {
@@ -101,12 +97,12 @@ class DevicesService extends ChangeNotifier {
   }
 
   /// Get all devices of a specific category
-  List<DeviceView> getDevicesByCategory(DeviceCategory category) {
+  List<DeviceView> getDevicesByCategory(DevicesModuleDeviceCategory category) {
     return _devices.values.where((d) => d.category == category).toList();
   }
 
   /// Get all devices matching any of the specified categories
-  List<DeviceView> getDevicesByCategories(List<DeviceCategory> categories) {
+  List<DeviceView> getDevicesByCategories(List<DevicesModuleDeviceCategory> categories) {
     return _devices.values
         .where((d) => categories.contains(d.category))
         .toList();
@@ -115,7 +111,7 @@ class DevicesService extends ChangeNotifier {
   /// Get devices for a room filtered by category
   List<DeviceView> getDevicesForRoomByCategory(
     String roomId,
-    DeviceCategory category,
+    DevicesModuleDeviceCategory category,
   ) {
     return _devices.values
         .where((d) => d.roomId == roomId && d.category == category)
@@ -139,7 +135,7 @@ class DevicesService extends ChangeNotifier {
                 .toList(),
           ),
         )
-        .where((property) => property.category == ChannelPropertyCategory.on)
+        .where((property) => property.category == DevicesModulePropertyCategory.valueOn)
         .toList();
 
     for (var property in properties) {

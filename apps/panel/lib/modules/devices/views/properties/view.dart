@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
@@ -8,7 +8,7 @@ class ChannelPropertyView {
   final String _id;
   final String _type;
   final String _channel;
-  final ChannelPropertyCategory _category;
+  final DevicesModulePropertyCategory _category;
   final String? _name;
   final List<Permission> _permission;
   final DataType _dataType;
@@ -23,7 +23,7 @@ class ChannelPropertyView {
     required String id,
     required String type,
     required String channel,
-    ChannelPropertyCategory category = ChannelPropertyCategory.generic,
+    DevicesModulePropertyCategory category = DevicesModulePropertyCategory.generic,
     String? name,
     List<Permission> permission = const [],
     DataType dataType = DataType.unknown,
@@ -53,9 +53,9 @@ class ChannelPropertyView {
 
   String get channel => _channel;
 
-  ChannelPropertyCategory get category => _category;
+  DevicesModulePropertyCategory get category => _category;
 
-  String get name => _name ?? _category.value;
+  String get name => _name ?? (_category.json ?? _category.toString());
 
   List<Permission> get permission => _permission;
 

@@ -1,13 +1,13 @@
 import 'package:collection/collection.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:flutter/material.dart';
 
 class DeviceView {
   final String _id;
   final String _type;
-  final DeviceCategory _category;
+  final DevicesModuleDeviceCategory _category;
   final String _name;
   final String? _description;
   final IconData? _icon;
@@ -20,7 +20,7 @@ class DeviceView {
   DeviceView({
     required String id,
     required String type,
-    DeviceCategory category = DeviceCategory.generic,
+    DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.generic,
     required String name,
     String? description,
     IconData? icon,
@@ -45,7 +45,7 @@ class DeviceView {
 
   String get type => _type;
 
-  DeviceCategory get category => _category;
+  DevicesModuleDeviceCategory get category => _category;
 
   String get name => _name;
 

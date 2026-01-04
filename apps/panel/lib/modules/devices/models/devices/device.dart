@@ -1,11 +1,11 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/model.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:flutter/material.dart';
 
 abstract class DeviceModel extends Model {
   final String _type;
 
-  final DeviceCategory _category;
+  final DevicesModuleDeviceCategory _category;
 
   final String _name;
   final String? _description;
@@ -20,7 +20,7 @@ abstract class DeviceModel extends Model {
   DeviceModel({
     required super.id,
     required String type,
-    DeviceCategory category = DeviceCategory.generic,
+    DevicesModuleDeviceCategory category = DevicesModuleDeviceCategory.generic,
     required String name,
     String? description,
     IconData? icon,
@@ -42,7 +42,7 @@ abstract class DeviceModel extends Model {
 
   String get type => _type;
 
-  DeviceCategory get category => _category;
+  DevicesModuleDeviceCategory get category => _category;
 
   String get name => _name;
 

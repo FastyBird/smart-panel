@@ -1,12 +1,12 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/constants.dart';
 
 class ShellyNgChannelModel extends ChannelModel {
   ShellyNgChannelModel({
     required super.id,
-    super.category = ChannelCategory.generic,
+    super.category = DevicesModuleChannelCategory.generic,
     super.name,
     super.description,
     required super.device,
@@ -19,7 +19,7 @@ class ShellyNgChannelModel extends ChannelModel {
         );
 
   factory ShellyNgChannelModel.fromJson(Map<String, dynamic> json) {
-    ChannelCategory? category = ChannelCategory.fromValue(
+    DevicesModuleChannelCategory category = DevicesModuleChannelCategory.fromJson(
       json['category'],
     );
 
@@ -51,7 +51,7 @@ class ShellyNgChannelModel extends ChannelModel {
 
     return ShellyNgChannelModel(
       id: json['id'],
-      category: category ?? ChannelCategory.generic,
+      category: category,
       name: json['name'],
       description: json['description'],
       device: json['device'],

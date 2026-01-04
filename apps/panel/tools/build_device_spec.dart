@@ -28,7 +28,9 @@ void main() async {
   buffer.writeln('// ignore_for_file: constant_identifier_names\n');
   buffer.writeln();
   buffer.writeln(
-      'import \'package:fastybird_smart_panel/modules/devices/types/categories.dart\';\n');
+      'import \'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart\';');
+  buffer.writeln(
+      'import \'package:fastybird_smart_panel/api/models/devices_module_device_category.dart\';\n');
 
   // ChannelConstraintType enum
   buffer.writeln('/// Type of channel constraint');
@@ -46,7 +48,7 @@ void main() async {
   buffer.writeln('/// A constraint defining relationships between channels');
   buffer.writeln('class ChannelConstraint {');
   buffer.writeln('  final ChannelConstraintType type;');
-  buffer.writeln('  final List<List<ChannelCategory>> groups;\n');
+  buffer.writeln('  final List<List<DevicesModuleChannelCategory>> groups;\n');
   buffer.writeln('  const ChannelConstraint({');
   buffer.writeln('    required this.type,');
   buffer.writeln('    required this.groups,');
@@ -55,22 +57,22 @@ void main() async {
 
   // DeviceChannelsSpecification class
   buffer.writeln('class DeviceChannelsSpecification {');
-  buffer.writeln('  final List<ChannelCategory> required;');
-  buffer.writeln('  final List<ChannelCategory> optional;');
+  buffer.writeln('  final List<DevicesModuleChannelCategory> required;');
+  buffer.writeln('  final List<DevicesModuleChannelCategory> optional;');
   buffer.writeln('  final List<ChannelConstraint> constraints;\n');
   buffer.writeln('  const DeviceChannelsSpecification({');
   buffer.writeln('    required this.required,');
   buffer.writeln('    required this.optional,');
   buffer.writeln('    this.constraints = const [],');
   buffer.writeln('  });\n');
-  buffer.writeln('  List<ChannelCategory> get all => [');
+  buffer.writeln('  List<DevicesModuleChannelCategory> get all => [');
   buffer.writeln('        ...required,');
   buffer.writeln('        ...optional,');
   buffer.writeln('      ];');
   buffer.writeln('}\n');
 
   buffer.writeln(
-      'const Map<DeviceCategory, DeviceChannelsSpecification> deviceChannelsSpecificationMappers = {');
+      'const Map<DevicesModuleDeviceCategory, DeviceChannelsSpecification> deviceChannelsSpecificationMappers = {');
 
   for (final entry in json.entries) {
     final category = entry.key;
@@ -89,7 +91,7 @@ void main() async {
       final channelCategory = channel['category'];
       if (channelCategory != null) {
         (isRequired ? required : optional)
-            .add('ChannelCategory.${_camelToEnum(channelCategory)}');
+            .add('DevicesModuleChannelCategory.${_camelToEnum(channelCategory)}');
       }
     }
 
@@ -102,7 +104,7 @@ void main() async {
         final oneOfGroups = constraintsData['oneOf'] as List<dynamic>;
         for (final group in oneOfGroups) {
           final channels = (group as List<dynamic>)
-              .map((c) => 'ChannelCategory.${_camelToEnum(c as String)}')
+              .map((c) => 'DevicesModuleChannelCategory.${_camelToEnum(c as String)}')
               .toList();
           constraints.add(
               'ChannelConstraint(type: ChannelConstraintType.oneOf, groups: [[${channels.join(', ')}]])');
@@ -115,7 +117,7 @@ void main() async {
             constraintsData['oneOrMoreOf'] as List<dynamic>;
         for (final group in oneOrMoreOfGroups) {
           final channels = (group as List<dynamic>)
-              .map((c) => 'ChannelCategory.${_camelToEnum(c as String)}')
+              .map((c) => 'DevicesModuleChannelCategory.${_camelToEnum(c as String)}')
               .toList();
           constraints.add(
               'ChannelConstraint(type: ChannelConstraintType.oneOrMoreOf, groups: [[${channels.join(', ')}]])');
@@ -129,7 +131,7 @@ void main() async {
         for (final groupPair in exclusiveGroups) {
           final groups = (groupPair as List<dynamic>).map((group) {
             final channels = (group as List<dynamic>)
-                .map((c) => 'ChannelCategory.${_camelToEnum(c as String)}')
+                .map((c) => 'DevicesModuleChannelCategory.${_camelToEnum(c as String)}')
                 .toList();
             return '[${channels.join(', ')}]';
           }).toList();
@@ -140,7 +142,7 @@ void main() async {
     }
 
     buffer.writeln(
-        '  DeviceCategory.${_camelToEnum(category)}: DeviceChannelsSpecification(');
+        '  DevicesModuleDeviceCategory.${_camelToEnum(category)}: DeviceChannelsSpecification(');
     buffer.writeln('    required: [${required.join(', ')}],');
     buffer.writeln('    optional: [${optional.join(', ')}],');
     if (constraints.isNotEmpty) {
@@ -157,7 +159,7 @@ void main() async {
 
   buffer
       .writeln('DeviceChannelsSpecification buildDeviceChannelsSpecification(');
-  buffer.writeln('  DeviceCategory category,');
+  buffer.writeln('  DevicesModuleDeviceCategory category,');
   buffer.writeln(') {');
   buffer.writeln('  return deviceChannelsSpecificationMappers[category] ??');
   buffer.writeln('      const DeviceChannelsSpecification(');

@@ -58,7 +58,7 @@ class LockChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${statusProp.category.value}',
+      'Channel is missing required value for property: ${statusProp.category.json}',
     );
   }
 

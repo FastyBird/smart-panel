@@ -1,5 +1,5 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
@@ -10,7 +10,7 @@ class WledChannelPropertyModel extends ChannelPropertyModel {
   WledChannelPropertyModel({
     required super.id,
     required super.channel,
-    super.category = ChannelPropertyCategory.generic,
+    super.category = DevicesModulePropertyCategory.generic,
     super.name,
     super.permission = const [],
     super.dataType = DataType.unknown,
@@ -30,8 +30,7 @@ class WledChannelPropertyModel extends ChannelPropertyModel {
     return WledChannelPropertyModel(
       channel: json['channel'],
       id: json['id'],
-      category: ChannelPropertyCategory.fromValue(json['category']) ??
-          ChannelPropertyCategory.generic,
+      category: DevicesModulePropertyCategory.fromJson(json['category']),
       name: json['name'],
       permission: (json['permission'] as List<dynamic>? ?? [])
           .map((e) => Permission.fromValue(e.toString()))

@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -45,7 +45,7 @@ void main() {
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
         expect(result.items, isEmpty);
@@ -58,7 +58,7 @@ void main() {
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
         expect(result.items, isEmpty);
@@ -71,7 +71,7 @@ void main() {
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
           roomViewTitle: 'Living Room',
         ));
 
@@ -101,8 +101,8 @@ void main() {
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
           lightsViewTitle: 'Lights',
           climateViewTitle: 'Climate',
@@ -136,9 +136,9 @@ void main() {
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.television,
-            DeviceCategory.sensor,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.television,
+            DevicesModuleDeviceCategory.sensor,
           ],
         ));
 
@@ -153,7 +153,7 @@ void main() {
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
         // Room overview + 1 domain view (lights only)
@@ -174,9 +174,9 @@ void main() {
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
         ));
 
@@ -193,10 +193,10 @@ void main() {
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
           deviceCategories: [
-            DeviceCategory.sensor, // sensors = displayOrder 3
-            DeviceCategory.thermostat, // climate = displayOrder 1
-            DeviceCategory.lighting, // lights = displayOrder 0
-            DeviceCategory.television, // media = displayOrder 2
+            DevicesModuleDeviceCategory.sensor, // sensors = displayOrder 3
+            DevicesModuleDeviceCategory.thermostat, // climate = displayOrder 1
+            DevicesModuleDeviceCategory.lighting, // lights = displayOrder 0
+            DevicesModuleDeviceCategory.television, // media = displayOrder 2
           ],
         ));
 
@@ -228,9 +228,9 @@ void main() {
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
           deviceCategories: [
-            DeviceCategory.outlet,
-            DeviceCategory.switcher,
-            DeviceCategory.door,
+            DevicesModuleDeviceCategory.outlet,
+            DevicesModuleDeviceCategory.switcher,
+            DevicesModuleDeviceCategory.door,
           ],
         ));
 
@@ -271,7 +271,7 @@ void main() {
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
         expect(result.domainCounts, isNull);
@@ -283,8 +283,8 @@ void main() {
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
         ));
 
@@ -325,7 +325,7 @@ void main() {
 
         final result = buildSystemViews(SystemViewsBuildInput(
           display: display,
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
         ));
 
         expect(result.domainCounts, isNull);

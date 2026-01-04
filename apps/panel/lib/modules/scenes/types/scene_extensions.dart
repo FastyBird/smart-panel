@@ -13,29 +13,31 @@ IconData getSceneCategoryIcon(ScenesModuleDataSceneCategory category) {
     case ScenesModuleDataSceneCategory.party:
       return MdiIcons.partyPopper;
     case ScenesModuleDataSceneCategory.relax:
-      return MdiIcons.sofaOutline;
+      return MdiIcons.sofa;
     case ScenesModuleDataSceneCategory.work:
-      return MdiIcons.desktopClassic;
+      return MdiIcons.briefcase;
     case ScenesModuleDataSceneCategory.night:
       return MdiIcons.weatherNight;
     case ScenesModuleDataSceneCategory.morning:
-      return MdiIcons.weatherSunny;
+      return MdiIcons.weatherSunsetUp;
     case ScenesModuleDataSceneCategory.away:
-      return MdiIcons.exitRun;
+      return MdiIcons.homeExportOutline;
     case ScenesModuleDataSceneCategory.home:
-      return MdiIcons.home;
+      return MdiIcons.homeImportOutline;
     case ScenesModuleDataSceneCategory.lighting:
-      return MdiIcons.lightbulbOutline;
+      return MdiIcons.lightbulbGroup;
     case ScenesModuleDataSceneCategory.climate:
-      return MdiIcons.thermometer;
+      return MdiIcons.thermostat;
     case ScenesModuleDataSceneCategory.media:
-      return MdiIcons.playCircleOutline;
+      return MdiIcons.televisionPlay;
     case ScenesModuleDataSceneCategory.security:
       return MdiIcons.shieldHome;
     case ScenesModuleDataSceneCategory.energy:
       return MdiIcons.flash;
-    case ScenesModuleDataSceneCategory.custom:
     case ScenesModuleDataSceneCategory.generic:
+      return MdiIcons.playlistPlay;
+    case ScenesModuleDataSceneCategory.custom:
+      return MdiIcons.shapeOutline;
     case ScenesModuleDataSceneCategory.$unknown:
       return MdiIcons.lightbulbGroupOutline;
   }

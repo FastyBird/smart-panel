@@ -170,7 +170,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
     for (final channel in device.channels) {
       for (final property in channel.properties) {
-        if (property.category == ChannelPropertyCategory.temperature) {
+        if (property.category == DevicesModulePropertyCategory.temperature) {
           final valueType = property.value;
           if (valueType != null) {
             final rawValue = valueType.value;

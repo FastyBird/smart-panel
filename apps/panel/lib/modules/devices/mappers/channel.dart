@@ -1,7 +1,7 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/generic_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_particulate.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/alarm.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
@@ -83,7 +83,7 @@ T _createChannelView<T extends ChannelView>(
   T Function({
     required String id,
     required String type,
-    ChannelCategory category,
+    DevicesModuleChannelCategory category,
     String? name,
     String? description,
     required String device,
@@ -105,132 +105,132 @@ T _createChannelView<T extends ChannelView>(
   );
 }
 
-Map<ChannelCategory, ChannelView Function(ChannelModel, List<ChannelPropertyView>, bool, List<ValidationIssue>)>
+Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<ChannelPropertyView>, bool, List<ValidationIssue>)>
     channelViewsMappers = {
-  ChannelCategory.generic: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.generic: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, GenericChannelView.new);
   },
-  ChannelCategory.airParticulate: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.airParticulate: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, AirParticulateChannelView.new);
   },
-  ChannelCategory.alarm: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.alarm: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, AlarmChannelView.new);
   },
-  ChannelCategory.battery: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.battery: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, BatteryChannelView.new);
   },
-  ChannelCategory.camera: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.camera: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, CameraChannelView.new);
   },
-  ChannelCategory.carbonDioxide: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.carbonDioxide: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, CarbonDioxideChannelView.new);
   },
-  ChannelCategory.carbonMonoxide: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.carbonMonoxide: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, CarbonMonoxideChannelView.new);
   },
-  ChannelCategory.contact: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.contact: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, ContactChannelView.new);
   },
-  ChannelCategory.cooler: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.cooler: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, CoolerChannelView.new);
   },
-  ChannelCategory.deviceInformation: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.deviceInformation: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, DeviceInformationChannelView.new);
   },
-  ChannelCategory.door: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.door: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, DoorChannelView.new);
   },
-  ChannelCategory.doorbell: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.doorbell: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, DoorbellChannelView.new);
   },
-  ChannelCategory.electricalEnergy: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.electricalEnergy: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, ElectricalEnergyChannelView.new);
   },
-  ChannelCategory.electricalPower: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.electricalPower: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, ElectricalPowerChannelView.new);
   },
-  ChannelCategory.fan: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.fan: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, FanChannelView.new);
   },
-  ChannelCategory.flow: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.flow: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, FlowChannelView.new);
   },
-  ChannelCategory.heater: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.heater: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, HeaterChannelView.new);
   },
-  ChannelCategory.humidity: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.humidity: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, HumidityChannelView.new);
   },
-  ChannelCategory.illuminance: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.illuminance: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, IlluminanceChannelView.new);
   },
-  ChannelCategory.leak: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.leak: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, LeakChannelView.new);
   },
-  ChannelCategory.light: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.light: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, LightChannelView.new);
   },
-  ChannelCategory.lock: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.lock: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, LockChannelView.new);
   },
-  ChannelCategory.mediaInput: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.mediaInput: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, MediaInputChannelView.new);
   },
-  ChannelCategory.mediaPlayback: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.mediaPlayback: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, MediaPlaybackChannelView.new);
   },
-  ChannelCategory.microphone: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.microphone: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, MicrophoneChannelView.new);
   },
-  ChannelCategory.motion: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.motion: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, MotionChannelView.new);
   },
-  ChannelCategory.nitrogenDioxide: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.nitrogenDioxide: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, NitrogenDioxideChannelView.new);
   },
-  ChannelCategory.occupancy: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.occupancy: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, OccupancyChannelView.new);
   },
-  ChannelCategory.outlet: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.outlet: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, OutletChannelView.new);
   },
-  ChannelCategory.ozone: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.ozone: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, OzoneChannelView.new);
   },
-  ChannelCategory.pressure: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.pressure: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, PressureChannelView.new);
   },
-  ChannelCategory.robotVacuum: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.robotVacuum: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, RobotVacuumChannelView.new);
   },
-  ChannelCategory.smoke: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.smoke: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, SmokeChannelView.new);
   },
-  ChannelCategory.speaker: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.speaker: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, SpeakerChannelView.new);
   },
-  ChannelCategory.sulphurDioxide: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.sulphurDioxide: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, SulphurDioxideChannelView.new);
   },
-  ChannelCategory.switcher: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.switcher: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, SwitcherChannelView.new);
   },
-  ChannelCategory.television: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.television: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, TelevisionChannelView.new);
   },
-  ChannelCategory.temperature: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.temperature: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, TemperatureChannelView.new);
   },
-  ChannelCategory.thermostat: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.thermostat: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, ThermostatChannelView.new);
   },
-  ChannelCategory.valve: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.valve: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, ValveChannelView.new);
   },
-  ChannelCategory.volatileOrganicCompounds: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.volatileOrganicCompounds: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, VolatileOrganicCompoundsChannelView.new);
   },
-  ChannelCategory.windowCovering: (channel, properties, isValid, validationIssues) {
+  DevicesModuleChannelCategory.windowCovering: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, WindowCoveringChannelView.new);
   },
 };
@@ -251,136 +251,136 @@ ChannelView buildChannelView(
   }
 }
 
-Map<ChannelCategory, IconData Function()> channelIconMappers = {
-  ChannelCategory.generic: () {
+Map<DevicesModuleChannelCategory, IconData Function()> channelIconMappers = {
+  DevicesModuleChannelCategory.generic: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.airParticulate: () {
+  DevicesModuleChannelCategory.airParticulate: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.alarm: () {
+  DevicesModuleChannelCategory.alarm: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.battery: () {
+  DevicesModuleChannelCategory.battery: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.camera: () {
+  DevicesModuleChannelCategory.camera: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.carbonDioxide: () {
+  DevicesModuleChannelCategory.carbonDioxide: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.carbonMonoxide: () {
+  DevicesModuleChannelCategory.carbonMonoxide: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.contact: () {
+  DevicesModuleChannelCategory.contact: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.cooler: () {
+  DevicesModuleChannelCategory.cooler: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.deviceInformation: () {
+  DevicesModuleChannelCategory.deviceInformation: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.door: () {
+  DevicesModuleChannelCategory.door: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.doorbell: () {
+  DevicesModuleChannelCategory.doorbell: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.electricalEnergy: () {
+  DevicesModuleChannelCategory.electricalEnergy: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.electricalPower: () {
+  DevicesModuleChannelCategory.electricalPower: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.fan: () {
+  DevicesModuleChannelCategory.fan: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.flow: () {
+  DevicesModuleChannelCategory.flow: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.heater: () {
+  DevicesModuleChannelCategory.heater: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.humidity: () {
+  DevicesModuleChannelCategory.humidity: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.illuminance: () {
+  DevicesModuleChannelCategory.illuminance: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.leak: () {
+  DevicesModuleChannelCategory.leak: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.light: () {
+  DevicesModuleChannelCategory.light: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.lock: () {
+  DevicesModuleChannelCategory.lock: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.mediaInput: () {
+  DevicesModuleChannelCategory.mediaInput: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.mediaPlayback: () {
+  DevicesModuleChannelCategory.mediaPlayback: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.microphone: () {
+  DevicesModuleChannelCategory.microphone: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.motion: () {
+  DevicesModuleChannelCategory.motion: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.nitrogenDioxide: () {
+  DevicesModuleChannelCategory.nitrogenDioxide: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.occupancy: () {
+  DevicesModuleChannelCategory.occupancy: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.outlet: () {
+  DevicesModuleChannelCategory.outlet: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.ozone: () {
+  DevicesModuleChannelCategory.ozone: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.pressure: () {
+  DevicesModuleChannelCategory.pressure: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.robotVacuum: () {
+  DevicesModuleChannelCategory.robotVacuum: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.smoke: () {
+  DevicesModuleChannelCategory.smoke: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.speaker: () {
+  DevicesModuleChannelCategory.speaker: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.sulphurDioxide: () {
+  DevicesModuleChannelCategory.sulphurDioxide: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.switcher: () {
+  DevicesModuleChannelCategory.switcher: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.television: () {
+  DevicesModuleChannelCategory.television: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.temperature: () {
+  DevicesModuleChannelCategory.temperature: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.thermostat: () {
+  DevicesModuleChannelCategory.thermostat: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.valve: () {
+  DevicesModuleChannelCategory.valve: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.volatileOrganicCompounds: () {
+  DevicesModuleChannelCategory.volatileOrganicCompounds: () {
     return MdiIcons.chip;
   },
-  ChannelCategory.windowCovering: () {
+  DevicesModuleChannelCategory.windowCovering: () {
     return MdiIcons.chip;
   },
 };
 
-IconData buildChannelIcon(ChannelCategory category) {
+IconData buildChannelIcon(DevicesModuleChannelCategory category) {
   final builder = channelIconMappers[category];
 
   if (builder != null) {

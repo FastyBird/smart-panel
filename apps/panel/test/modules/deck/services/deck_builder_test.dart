@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/system_view_type.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -145,8 +145,8 @@ void main() {
           display: display,
           pages: [],
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
           lightsViewTitle: 'Lights',
           climateViewTitle: 'Climate',
@@ -177,8 +177,8 @@ void main() {
           display: display,
           pages: [],
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
         );
 
@@ -195,7 +195,7 @@ void main() {
           display: display,
           pages: [],
           deviceCategories: [
-            DeviceCategory.lighting,
+            DevicesModuleDeviceCategory.lighting,
           ],
         );
 
@@ -217,7 +217,7 @@ void main() {
         final input = DeckBuildInput(
           display: display,
           pages: pages,
-          deviceCategories: [DeviceCategory.lighting],
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
         );
 
         final result = buildDeck(input);
@@ -238,9 +238,9 @@ void main() {
           display: display,
           pages: [],
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.lighting,
-            DeviceCategory.thermostat,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.thermostat,
           ],
         );
 
@@ -276,8 +276,8 @@ void main() {
           display: display,
           pages: [],
           deviceCategories: [
-            DeviceCategory.lighting,
-            DeviceCategory.television,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.television,
           ],
         );
 
@@ -543,9 +543,9 @@ void main() {
         display: display,
         pages: pages,
         deviceCategories: [
-          DeviceCategory.lighting,
-          DeviceCategory.thermostat,
-          DeviceCategory.television,
+          DevicesModuleDeviceCategory.lighting,
+          DevicesModuleDeviceCategory.thermostat,
+          DevicesModuleDeviceCategory.television,
         ],
       );
       final deck = buildDeck(input);

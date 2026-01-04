@@ -62,7 +62,7 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${manufacturerProp.category.value}',
+      'Channel is missing required value for property: ${manufacturerProp.category.json}',
     );
   }
 
@@ -74,7 +74,7 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${modelProp.category.value}',
+      'Channel is missing required value for property: ${modelProp.category.json}',
     );
   }
 
@@ -86,7 +86,7 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${serialNumberProp.category.value}',
+      'Channel is missing required value for property: ${serialNumberProp.category.json}',
     );
   }
 
@@ -98,7 +98,7 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${firmwareRevisionProp.category.value}',
+      'Channel is missing required value for property: ${firmwareRevisionProp.category.json}',
     );
   }
 

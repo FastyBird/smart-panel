@@ -57,7 +57,7 @@ class ValveChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${typeProp.category.value}',
+      'Channel is missing required value for property: ${typeProp.category.json}',
     );
   }
 
@@ -157,7 +157,7 @@ class ValveChannelView extends ChannelView
     }
 
     throw Exception(
-      'Channel is missing required value for property: ${modeProp?.category.value}',
+      'Channel is missing required value for property: ${modeProp?.category.json}',
     );
   }
 
