@@ -1446,7 +1446,7 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
             channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
             size: AppFontSize.large,
             color: channel?.on == true
-                ? Theme.of(context).primaryColor
+                ? (channel!.hasColor ? channel.color : Theme.of(context).primaryColor)
                 : null,
           ),
           title: Text(
