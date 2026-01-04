@@ -1028,6 +1028,44 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     bool allOn,
     DevicesService devicesService,
   ) {
+    // Check if any devices have color support
+    final hasColorSupport = targets.any((target) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        return channel.hasColor;
+      }
+      return false;
+    });
+
+    // Get average color from devices that are on and have color
+    Color? avgColor;
+    if (hasColorSupport && allOn) {
+      int r = 0, g = 0, b = 0, count = 0;
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+          final channel = device.lightChannels.firstWhere(
+            (c) => c.id == target.channelId,
+            orElse: () => device.lightChannels.first,
+          );
+          if (channel.hasColor && channel.on) {
+            final color = channel.color;
+            r += color.red;
+            g += color.green;
+            b += color.blue;
+            count++;
+          }
+        }
+      }
+      if (count > 0) {
+        avgColor = Color.fromARGB(255, r ~/ count, g ~/ count, b ~/ count);
+      }
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final elementMaxSize = constraints.maxHeight - 2 * AppSpacings.pMd;
@@ -1052,6 +1090,15 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
                             // Brightness display
                             _buildBrightnessDisplay(context, avgBrightness, allOn),
                             AppSpacings.spacingMdVertical,
+                            // Color box for color-supported devices
+                            if (hasColorSupport)
+                              Wrap(
+                                spacing: AppSpacings.pMd,
+                                runSpacing: AppSpacings.pMd,
+                                children: [
+                                  _buildColorBox(context, avgColor),
+                                ],
+                              ),
                           ],
                         ),
                       ),
@@ -1078,6 +1125,48 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
           ),
         );
       },
+    );
+  }
+
+  /// Build color box display
+  Widget _buildColorBox(BuildContext context, Color? color) {
+    final boxSize = _screenService.scale(
+      75,
+      density: _visualDensityService.density,
+    );
+
+    return SizedBox(
+      width: boxSize,
+      height: boxSize,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.light
+                ? AppBorderColorLight.base
+                : AppBorderColorDark.base,
+            width: _screenService.scale(
+              1,
+              density: _visualDensityService.density,
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(_screenService.scale(
+            1,
+            density: _visualDensityService.density,
+          )),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(
+                AppBorderRadius.base -
+                    2 * _screenService.scale(1, density: _visualDensityService.density),
+              ),
+              color: color ?? Colors.grey,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1333,59 +1422,61 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage> {
     List<LightTargetView> targets,
     DevicesService devicesService,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: targets.map((target) {
-        final device = devicesService.getDevice(target.deviceId);
-        if (device == null) return const SizedBox.shrink();
+    final items = targets.map((target) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device == null) return null;
 
-        LightChannelView? channel;
-        if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
-          channel = device.lightChannels.firstWhere(
-            (c) => c.id == target.channelId,
-            orElse: () => device.lightChannels.first,
-          );
-        }
-
-        return Material(
-          elevation: 0,
-          color: Colors.transparent,
-          child: ListTile(
-            minTileHeight: _screenService.scale(
-              25,
-              density: _visualDensityService.density,
-            ),
-            leading: Icon(
-              channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-              size: AppFontSize.large,
-              color: channel?.on == true
-                  ? Theme.of(context).primaryColor
-                  : null,
-            ),
-            title: Text(
-              device.name,
-              style: TextStyle(
-                fontSize: AppFontSize.extraSmall * 0.8,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            trailing: channel?.hasBrightness == true
-                ? Text(
-                    '${channel!.brightness}%',
-                    style: TextStyle(fontSize: AppFontSize.extraSmall),
-                  )
-                : null,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DeviceDetailPage(device.id),
-                ),
-              );
-            },
-          ),
+      LightChannelView? channel;
+      if (device is LightingDeviceView && device.lightChannels.isNotEmpty) {
+        channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
         );
-      }).toList(),
+      }
+
+      return Material(
+        elevation: 0,
+        color: Colors.transparent,
+        child: ListTile(
+          minTileHeight: _screenService.scale(
+            25,
+            density: _visualDensityService.density,
+          ),
+          leading: Icon(
+            channel?.on == true ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
+            size: AppFontSize.large,
+            color: channel?.on == true
+                ? Theme.of(context).primaryColor
+                : null,
+          ),
+          title: Text(
+            device.name,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall * 0.8,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          trailing: channel?.hasBrightness == true
+              ? Text(
+                  '${channel!.brightness}%',
+                  style: TextStyle(fontSize: AppFontSize.extraSmall),
+                )
+              : null,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DeviceDetailPage(device.id),
+              ),
+            );
+          },
+        ),
+      );
+    }).whereType<Widget>().toList();
+
+    return Wrap(
+      runSpacing: AppSpacings.pSm,
+      children: items,
     );
   }
 
