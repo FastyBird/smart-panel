@@ -81,6 +81,16 @@ class SpacesModuleService {
         payload.containsKey('id')) {
       _spacesRepository.delete(payload['id']);
       _lightTargetsRepository.deleteForSpace(payload['id']);
+
+      /// Light Target CREATE/UPDATE
+    } else if (event == SpacesModuleConstants.lightTargetCreatedEvent ||
+        event == SpacesModuleConstants.lightTargetUpdatedEvent) {
+      _lightTargetsRepository.insertOne(payload);
+
+      /// Light Target DELETE
+    } else if (event == SpacesModuleConstants.lightTargetDeletedEvent &&
+        payload.containsKey('id')) {
+      _lightTargetsRepository.delete(payload['id']);
     }
   }
 }
