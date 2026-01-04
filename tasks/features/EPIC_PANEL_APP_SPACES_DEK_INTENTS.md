@@ -107,7 +107,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -139,9 +139,9 @@ I want explicit, typed domain models for deck items, display settings, and syste
 
 ## 4. Acceptance criteria
 
-- [ ] Domain models exist and compile.
-- [ ] Mapping functions exist from API DTOs to domain models.
-- [ ] `DeckItem` supports stable `id` and `type` for navigation and testing.
+- [x] Domain models exist and compile.
+- [x] Mapping functions exist from API DTOs to domain models.
+- [x] `DeckItem` supports stable `id` and `type` for navigation and testing.
 
 ## 6. Technical constraints
 
@@ -166,7 +166,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -204,9 +204,9 @@ I want a pure “deck builder” that deterministically produces the deck order 
 
 ## 4. Acceptance criteria
 
-- [ ] Unit tests cover all rules above (including explicit missing page fallback).
-- [ ] Deck builder has no side effects and no UI dependencies.
-- [ ] Deck order is stable for the same input data.
+- [x] Unit tests cover all rules above (including explicit missing page fallback).
+- [x] Deck builder has no side effects and no UI dependencies.
+- [x] Deck order is stable for the same input data.
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
@@ -240,7 +240,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -278,10 +278,10 @@ I want to reliably hydrate state from backend APIs (display + spaces + assignmen
 
 ## 4. Acceptance criteria
 
-- [ ] On cold start with valid backend: state hydrates and deck is built.
-- [ ] If displayRole=Room and roomId missing: app shows a clear configuration error view.
-- [ ] Retry action exists for transient failures.
-- [ ] Tests cover at least: happy path + Room missing roomId + API error retry.
+- [x] On cold start with valid backend: state hydrates and deck is built.
+- [x] If displayRole=Room and roomId missing: app shows a clear configuration error view.
+- [x] Retry action exists for transient failures.
+- [x] Tests cover at least: happy path + Room missing roomId + API error retry.
 
 ## 6. Technical constraints
 
@@ -306,7 +306,7 @@ Type: technical
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -335,9 +335,9 @@ I want all legacy navigation logic removed so only the new deck model exists.
 
 ## 4. Acceptance criteria
 
-- [ ] No code references or fallback logic for “legacy first page”.
-- [ ] App start index is always derived from deck builder.
-- [ ] Tests updated to new behavior.
+- [x] No code references or fallback logic for "legacy first page".
+- [x] App start index is always derived from deck builder.
+- [x] Tests updated to new behavior.
 
 ## 6. Technical constraints
 
@@ -361,7 +361,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -393,10 +393,10 @@ I want a room-centric overview showing key info and quick actions for that room.
 
 ## 4. Acceptance criteria
 
-- [ ] Room system view renders for Room role displays.
-- [ ] If room has no devices: view shows “empty state” with guidance (assign devices in Admin).
-- [ ] Scenes list shows only enabled scenes relevant to this room (or whole home if you decide to include).
-- [ ] Unit/widget actions route through intents (no direct service calls from UI).
+- [x] Room system view renders for Room role displays.
+- [x] If room has no devices: view shows "empty state" with guidance (assign devices in Admin).
+- [x] Scenes list shows only enabled scenes relevant to this room (or whole home if you decide to include).
+- [x] Unit/widget actions route through intents (no direct service calls from UI).
 
 ## 6. Technical constraints
 
@@ -421,7 +421,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -452,9 +452,9 @@ I want a high-level overview across rooms and quick global actions.
 
 ## 4. Acceptance criteria
 
-- [ ] Master system view renders for Master role displays.
-- [ ] Rooms list is built from spaces of type Room.
-- [ ] Quick actions trigger scenes via intents.
+- [x] Master system view renders for Master role displays.
+- [x] Rooms list is built from spaces of type Room.
+- [x] Quick actions trigger scenes via intents.
 
 ## 6. Technical constraints
 
@@ -478,11 +478,11 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
-In order to have an entry/foyer display that supports “house mode” actions,
+In order to have an entry/foyer display that supports "house mode" actions,
 As a user with an Entry display,
 I want quick access to common scenes and security-related status.
 
@@ -508,9 +508,9 @@ I want quick access to common scenes and security-related status.
 
 ## 4. Acceptance criteria
 
-- [ ] Entry system view renders for Entry role displays.
-- [ ] Scene shortcuts show only scenes available/enabled.
-- [ ] If no security devices exist, security panel shows a compact empty state.
+- [x] Entry system view renders for Entry role displays.
+- [x] Scene shortcuts show only scenes available/enabled.
+- [x] If no security devices exist, security panel shows a compact empty state.
 
 ## 6. Technical constraints
 
@@ -534,7 +534,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -570,9 +570,9 @@ I want a single “intents” API that the UI calls, which routes to the correct
 
 ## 4. Acceptance criteria
 
-- [ ] UI uses intents for system view actions (scenes, device toggles).
-- [ ] Intents have unit tests (routing and validation).
-- [ ] Failures are surfaced in a consistent way (snackbar/toast or error state).
+- [x] UI uses intents for system view actions (scenes, device toggles).
+- [x] Intents have unit tests (routing and validation).
+- [x] Failures are surfaced in a consistent way (snackbar/toast or error state).
 
 ## 6. Technical constraints
 
@@ -597,7 +597,7 @@ Type: feature
 Scope: panel
 Size: large
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -626,9 +626,9 @@ I want to swipe through the deck items seamlessly, regardless of whether they ar
 
 ## 4. Acceptance criteria
 
-- [ ] Deck is rendered from `deckItems` (not from pages directly).
-- [ ] Swiping works across the full deck.
-- [ ] `NavigateToDeckItem` intent navigates correctly.
+- [x] Deck is rendered from `deckItems` (not from pages directly).
+- [x] Swiping works across the full deck.
+- [x] `NavigateToDeckItem` intent navigates correctly.
 
 ## 6. Technical constraints
 
@@ -653,7 +653,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -679,9 +679,9 @@ I want the panel to clearly report configuration issues (e.g., Room display with
 
 ## 4. Acceptance criteria
 
-- [ ] Missing `roomId` for Room role shows error view.
-- [ ] Invalid `homePageId` falls back to system view and shows a non-blocking warning.
-- [ ] Tests cover validations.
+- [x] Missing `roomId` for Room role shows error view.
+- [x] Invalid `homePageId` falls back to system view and shows a non-blocking warning.
+- [x] Tests cover validations.
 
 ## 6. Technical constraints
 
@@ -705,7 +705,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -734,9 +734,9 @@ I want device states and relevant counts to update live.
 
 ## 4. Acceptance criteria
 
-- [ ] When a device value changes, the relevant system view updates without restart.
-- [ ] No significant performance regressions (avoid full hydration per update).
-- [ ] Tests cover the update reducer logic (unit tests).
+- [x] When a device value changes, the relevant system view updates without restart.
+- [x] No significant performance regressions (avoid full hydration per update).
+- [x] Tests cover the update reducer logic (unit tests).
 
 ## 6. Technical constraints
 
@@ -760,11 +760,11 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
-In order to provide “one tap” multi-device actions,
+In order to provide "one tap" multi-device actions,
 As a user,
 I want to trigger scenes from system views.
 
@@ -789,9 +789,9 @@ I want to trigger scenes from system views.
 
 ## 4. Acceptance criteria
 
-- [ ] Scene buttons appear in system views according to relevance rules.
-- [ ] Triggering a scene shows progress + success/failure feedback.
-- [ ] Tests cover relevance filtering rules.
+- [x] Scene buttons appear in system views according to relevance rules.
+- [x] Triggering a scene shows progress + success/failure feedback.
+- [x] Tests cover relevance filtering rules.
 
 ## 6. Technical constraints
 
@@ -815,7 +815,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -842,9 +842,9 @@ I want existing page rendering to work unchanged, but mounted through the deck i
 
 ## 4. Acceptance criteria
 
-- [ ] All existing page types render correctly inside the deck.
-- [ ] Global + per-display filtering still works.
-- [ ] Tests (or smoke tests) confirm no regressions.
+- [x] All existing page types render correctly inside the deck.
+- [x] Global + per-display filtering still works.
+- [x] Tests (or smoke tests) confirm no regressions.
 
 ## 6. Technical constraints
 
@@ -868,7 +868,7 @@ Type: technical
 Scope: panel
 Size: medium
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -899,8 +899,8 @@ I want a test matrix that verifies startup behavior for key combinations.
 
 ## 4. Acceptance criteria
 
-- [ ] Tests cover at least 8 core combinations.
-- [ ] Tests are stable and deterministic.
+- [x] Tests cover at least 8 core combinations.
+- [x] Tests are stable and deterministic.
 
 ## 6. Technical constraints
 
@@ -924,7 +924,7 @@ Type: chore
 Scope: panel
 Size: small
 Parent: EPIC-PANEL-SPACES-DECK-INTENTS
-Status: planned
+Status: implemented
 
 ## 1. Business goal
 
@@ -953,8 +953,8 @@ I want clear internal documentation describing the new navigation and intents ar
 
 ## 4. Acceptance criteria
 
-- [ ] Doc exists and matches implemented behavior.
-- [ ] Includes examples for each display role and home mode.
+- [x] Doc exists and matches implemented behavior.
+- [x] Includes examples for each display role and home mode.
 
 ## 6. Technical constraints
 
