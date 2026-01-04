@@ -214,6 +214,18 @@ class StartupManagerService {
     // Add interceptor to serialize Freezed objects to JSON
     _apiIoService.interceptors.add(JsonSerializerInterceptor());
 
+    // Add logging interceptor for debugging
+    if (kDebugMode) {
+      _apiIoService.interceptors.add(LogInterceptor(
+        requestHeader: true,
+        requestBody: true,
+        responseHeader: true,
+        responseBody: true,
+        error: true,
+        logPrint: (obj) => debugPrint('[DIO] $obj'),
+      ));
+    }
+
     _apiClient = ApiClient(_apiIoService);
 
     return _performInitialization();
