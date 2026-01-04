@@ -862,7 +862,10 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
   void _onDataChanged() {
     if (mounted) {
       _updateTabControllerIfNeeded();
-      setState(() {});
+      setState(() {
+        // Reset slider brightness so it reflects actual device state
+        _sliderBrightness = null;
+      });
     }
   }
 
@@ -1211,6 +1214,8 @@ class _LightRoleDetailPageState extends State<_LightRoleDetailPage>
       if (mounted) {
         setState(() {
           _isSettingBrightness = false;
+          // Reset slider brightness so it reflects actual device state
+          _sliderBrightness = null;
         });
       }
     }
