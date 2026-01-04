@@ -51,6 +51,12 @@ class GenericTileModel extends TileModel {
       } else {
         throw ArgumentError('Missing or invalid parent id in tile JSON');
       }
+    } else if (json['parent'] is String) {
+      // Handle case where parent is a direct UUID string
+      parentId = json['parent'] as String;
+      if (json['parent_type'] is String) {
+        parentType = json['parent_type'] as String;
+      }
     } else {
       if (json['parent_type'] is String) {
         parentType = json['parent_type'] as String;
