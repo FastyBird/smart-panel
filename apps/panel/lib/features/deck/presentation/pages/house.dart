@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/events/navigate_to_page.dart';
+import 'package:fastybird_smart_panel/modules/deck/events/navigate_to_deck_item.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/house.dart';
 import 'package:fastybird_smart_panel/plugins/pages-space/views/view.dart';
@@ -511,6 +511,6 @@ class _HousePageState extends State<HousePage> {
     }
 
     // Fire navigation event to navigate to the space page
-    _eventBus.fire(NavigateToPageEvent(space.spacePageId!));
+    _eventBus.fire(NavigateToDeckItemEvent(space.spacePageId!));
   }
 }

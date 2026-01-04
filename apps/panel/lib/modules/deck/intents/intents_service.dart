@@ -1,9 +1,7 @@
 import 'package:event_bus/event_bus.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/events/navigate_to_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/events/navigate_to_deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/intents/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/intents/intent_types.dart';
-import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
@@ -70,11 +68,6 @@ class IntentsService extends ChangeNotifier {
 
     // Fire navigation event
     _eventBus.fire(NavigateToDeckItemEvent(itemId));
-
-    // For backwards compatibility, also fire page navigation event if it's a page
-    if (item is DashboardPageItem) {
-      _eventBus.fire(NavigateToPageEvent(itemId));
-    }
 
     if (kDebugMode) {
       debugPrint('[INTENTS] Navigating to deck item: $itemId');
